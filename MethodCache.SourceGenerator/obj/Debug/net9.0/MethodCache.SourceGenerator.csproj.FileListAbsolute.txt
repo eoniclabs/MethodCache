@@ -1,5 +1,0 @@
-/Users/johan/dev/MethodCache/MethodCache.SourceGenerator/obj/Debug/net9.0/MethodCache.SourceGenerator.csproj.AssemblyReference.cache
-/Users/johan/dev/MethodCache/MethodCache.SourceGenerator/obj/Debug/net9.0/MethodCache.SourceGenerator.GeneratedMSBuildEditorConfig.editorconfig
-/Users/johan/dev/MethodCache/MethodCache.SourceGenerator/obj/Debug/net9.0/MethodCache.SourceGenerator.AssemblyInfoInputs.cache
-/Users/johan/dev/MethodCache/MethodCache.SourceGenerator/obj/Debug/net9.0/MethodCache.SourceGenerator.AssemblyInfo.cs
-/Users/johan/dev/MethodCache/MethodCache.SourceGenerator/obj/Debug/net9.0/MethodCache.SourceGenerator.csproj.CoreCompileInputs.cache
