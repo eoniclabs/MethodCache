@@ -1,0 +1,15 @@
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/bin/Debug/net9.0/MethodCache.Analyzers.deps.json
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/bin/Debug/net9.0/MethodCache.Analyzers.dll
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/bin/Debug/net9.0/MethodCache.Analyzers.pdb
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/bin/Debug/net9.0/MethodCache.Core.dll
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/bin/Debug/net9.0/MethodCache.Core.pdb
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCache.Analyzers.csproj.AssemblyReference.cache
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCache.Analyzers.GeneratedMSBuildEditorConfig.editorconfig
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCache.Analyzers.AssemblyInfoInputs.cache
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCache.Analyzers.AssemblyInfo.cs
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCache.Analyzers.csproj.CoreCompileInputs.cache
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCa.595FBC20.Up2Date
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCache.Analyzers.dll
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/refint/MethodCache.Analyzers.dll
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/MethodCache.Analyzers.pdb
+/Users/johan/dev/MethodCache/MethodCache.Analyzers/obj/Debug/net9.0/ref/MethodCache.Analyzers.dll

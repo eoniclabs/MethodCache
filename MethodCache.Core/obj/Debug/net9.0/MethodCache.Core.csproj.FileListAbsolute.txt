@@ -1,0 +1,12 @@
+/Users/johan/dev/MethodCache/MethodCache.Core/bin/Debug/net9.0/MethodCache.Core.deps.json
+/Users/johan/dev/MethodCache/MethodCache.Core/bin/Debug/net9.0/MethodCache.Core.dll
+/Users/johan/dev/MethodCache/MethodCache.Core/bin/Debug/net9.0/MethodCache.Core.pdb
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/MethodCache.Core.csproj.AssemblyReference.cache
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/MethodCache.Core.GeneratedMSBuildEditorConfig.editorconfig
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/MethodCache.Core.AssemblyInfoInputs.cache
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/MethodCache.Core.AssemblyInfo.cs
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/MethodCache.Core.csproj.CoreCompileInputs.cache
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/MethodCache.Core.dll
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/refint/MethodCache.Core.dll
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/MethodCache.Core.pdb
+/Users/johan/dev/MethodCache/MethodCache.Core/obj/Debug/net9.0/ref/MethodCache.Core.dll

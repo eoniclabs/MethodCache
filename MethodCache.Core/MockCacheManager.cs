@@ -1,0 +1,47 @@
+using System;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
+using MethodCache.Core.Configuration;
+
+namespace MethodCache.Core
+{
+    public class MockCacheManager : ICacheManager
+    {
+        private readonly ConcurrentDictionary<string, object> _cache = new ConcurrentDictionary<string, object>();
+        public bool ForceCacheHit { get; set; }
+        public bool ForceCacheMiss { get; set; }
+
+        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+        {
+            var key = keyGenerator.GenerateKey(methodName, args, settings);
+
+            if (ForceCacheHit && _cache.TryGetValue(key, out var hitValue))
+            {
+                return Task.FromResult((T)hitValue);
+            }
+
+            if (ForceCacheMiss || !_cache.TryGetValue(key, out var value))
+            {
+                var result = factory().Result; // Blocking call for simplicity in mock
+                if (result != null)
+                {
+                    _cache.TryAdd(key, result);
+                }
+                return Task.FromResult(result);
+            }
+
+            return Task.FromResult((T)value);
+        }
+
+        public Task InvalidateByTagsAsync(params string[] tags)
+        {
+            // For simplicity, this mock doesn't fully support tag-based invalidation yet.
+            return Task.CompletedTask;
+        }
+
+        public void Clear()
+        {
+            _cache.Clear();
+        }
+    }
+}
