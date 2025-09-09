@@ -98,7 +98,7 @@ services.AddMethodCache(config =>
 
 ```mermaid
 graph TB
-    A[Interface with [Cache]] --> B[Source Generator]
+    A["Interface with Cache Attribute"] --> B[Source Generator]
     B --> C[Generated Decorator]
     C --> D[Cache Manager]
     D --> E[In-Memory Cache]
