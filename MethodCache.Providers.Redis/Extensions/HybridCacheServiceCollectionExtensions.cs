@@ -1,0 +1,156 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using MethodCache.Core;
+using MethodCache.Providers.Redis.Configuration;
+using MethodCache.Providers.Redis.Hybrid;
+using System;
+
+namespace MethodCache.Providers.Redis.Extensions
+{
+    public static class HybridCacheServiceCollectionExtensions
+    {
+        /// <summary>
+        /// Adds hybrid L1/L2 cache with Redis as L2 and in-memory as L1
+        /// </summary>
+        public static IServiceCollection AddHybridRedisCache(
+            this IServiceCollection services,
+            Action<HybridCacheOptions> configureHybridOptions,
+            Action<RedisOptions>? configureRedisOptions = null)
+        {
+            if (configureHybridOptions == null)
+                throw new ArgumentNullException(nameof(configureHybridOptions));
+
+            // Configure hybrid cache options
+            services.Configure(configureHybridOptions);
+
+            // Add Redis as L2 cache (but don't replace ICacheManager yet)
+            services.AddRedisCache(configureRedisOptions ?? (_ => { }));
+
+            // Register L1 cache
+            services.AddSingleton<IL1Cache, MemoryL1Cache>();
+
+            // Register hybrid cache manager
+            services.AddSingleton<IHybridCacheManager>(provider =>
+            {
+                var l1Cache = provider.GetRequiredService<IL1Cache>();
+                var l2Cache = provider.GetRequiredService<ICacheManager>(); // This will be RedisCacheManager
+                var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();
+                var metricsProvider = provider.GetRequiredService<ICacheMetricsProvider>();
+                var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HybridCacheManager>>();
+
+                return new HybridCacheManager(l1Cache, l2Cache, hybridOptions, metricsProvider, logger);
+            });
+
+            // Replace ICacheManager with hybrid implementation
+            services.Replace(ServiceDescriptor.Singleton<ICacheManager>(provider =>
+                provider.GetRequiredService<IHybridCacheManager>()));
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds hybrid cache with custom L2 cache implementation
+        /// </summary>
+        public static IServiceCollection AddHybridCache<TL2Cache>(
+            this IServiceCollection services,
+            Action<HybridCacheOptions> configureHybridOptions)
+            where TL2Cache : class, ICacheManager
+        {
+            if (configureHybridOptions == null)
+                throw new ArgumentNullException(nameof(configureHybridOptions));
+
+            // Configure hybrid cache options
+            services.Configure(configureHybridOptions);
+
+            // Register L1 cache
+            services.AddSingleton<IL1Cache, MemoryL1Cache>();
+
+            // Register custom L2 cache
+            services.AddSingleton<ICacheManager, TL2Cache>();
+
+            // Register hybrid cache manager
+            services.AddSingleton<IHybridCacheManager, HybridCacheManager>();
+
+            // Replace ICacheManager with hybrid implementation
+            services.Replace(ServiceDescriptor.Singleton<ICacheManager>(provider =>
+                provider.GetRequiredService<IHybridCacheManager>()));
+
+            return services;
+        }
+
+        /// <summary>
+        /// Fluent configuration extension for hybrid cache options
+        /// </summary>
+        public static HybridCacheOptions WithL1Configuration(
+            this HybridCacheOptions options,
+            long maxItems = 10000,
+            TimeSpan? defaultExpiration = null,
+            L1EvictionPolicy evictionPolicy = L1EvictionPolicy.LRU,
+            bool slidingExpiration = true)
+        {
+            options.L1MaxItems = maxItems;
+            options.L1DefaultExpiration = defaultExpiration ?? TimeSpan.FromMinutes(5);
+            options.L1EvictionPolicy = evictionPolicy;
+            options.L1SlidingExpiration = slidingExpiration;
+            return options;
+        }
+
+        /// <summary>
+        /// Fluent configuration extension for L2 cache options
+        /// </summary>
+        public static HybridCacheOptions WithL2Configuration(
+            this HybridCacheOptions options,
+            TimeSpan? defaultExpiration = null,
+            bool enabled = true)
+        {
+            options.L2DefaultExpiration = defaultExpiration ?? TimeSpan.FromHours(4);
+            options.L2Enabled = enabled;
+            return options;
+        }
+
+        /// <summary>
+        /// Fluent configuration extension for hybrid strategy
+        /// </summary>
+        public static HybridCacheOptions WithStrategy(
+            this HybridCacheOptions options,
+            HybridStrategy strategy,
+            bool enableL1Warming = true,
+            bool enableAsyncL2Writes = true)
+        {
+            options.Strategy = strategy;
+            options.EnableL1Warming = enableL1Warming;
+            options.EnableAsyncL2Writes = enableAsyncL2Writes;
+            return options;
+        }
+
+        /// <summary>
+        /// Fluent configuration extension for performance settings
+        /// </summary>
+        public static HybridCacheOptions WithPerformanceSettings(
+            this HybridCacheOptions options,
+            int maxConcurrentL2Operations = 10,
+            TimeSpan? l2OperationTimeout = null,
+            bool enableStatistics = true)
+        {
+            options.MaxConcurrentL2Operations = maxConcurrentL2Operations;
+            options.L2OperationTimeout = l2OperationTimeout ?? TimeSpan.FromSeconds(5);
+            options.EnableStatistics = enableStatistics;
+            return options;
+        }
+
+        /// <summary>
+        /// Fluent configuration extension for advanced features
+        /// </summary>
+        public static HybridCacheOptions WithAdvancedFeatures(
+            this HybridCacheOptions options,
+            bool enableStaleWhileRevalidate = false,
+            TimeSpan? staleWindow = null,
+            bool enableCrossInstanceInvalidation = true)
+        {
+            options.EnableStaleWhileRevalidate = enableStaleWhileRevalidate;
+            options.StaleWhileRevalidateWindow = staleWindow ?? TimeSpan.FromMinutes(1);
+            options.EnableCrossInstanceInvalidation = enableCrossInstanceInvalidation;
+            return options;
+        }
+    }
+}

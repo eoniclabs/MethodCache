@@ -1,0 +1,7 @@
+{
+  "runtimeOptions": {
+    "configProperties": {
+      "System.Runtime.Loader.UseRidGraph": true
+    }
+  }
+}
