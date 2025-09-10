@@ -416,17 +416,45 @@ namespace MethodCache.SourceGenerator
                 if (type.SpecialType == SpecialType.System_Int64) return "long";
                 if (type.SpecialType == SpecialType.System_Decimal) return "decimal";
                 
-                // Handle common Task types
+                // Handle generic types
                 if (type is INamedTypeSymbol namedType)
                 {
+                    // Handle Task types
                     if (namedType.Name == "Task" && namedType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
                     {
                         if (namedType.TypeArguments.Length == 1)
                         {
-                            var innerType = Utils.GetReturnTypeForSignature(namedType.TypeArguments[0]);
-                            return $"Task<{innerType}>";
+                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            return $"System.Threading.Tasks.Task<{innerType}>";
                         }
-                        return "Task";
+                        return "System.Threading.Tasks.Task";
+                    }
+                    
+                    // Handle common generic collection types
+                    var ns = namedType.ContainingNamespace?.ToDisplayString();
+                    if (ns == "System.Collections.Generic")
+                    {
+                        if (namedType.Name == "List" && namedType.TypeArguments.Length == 1)
+                        {
+                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            return $"List<{innerType}>";
+                        }
+                        if (namedType.Name == "Dictionary" && namedType.TypeArguments.Length == 2)
+                        {
+                            var keyType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            var valueType = GetReturnTypeForSignature(namedType.TypeArguments[1]);
+                            return $"Dictionary<{keyType}, {valueType}>";
+                        }
+                        if (namedType.Name == "IEnumerable" && namedType.TypeArguments.Length == 1)
+                        {
+                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            return $"IEnumerable<{innerType}>";
+                        }
+                        if (namedType.Name == "IList" && namedType.TypeArguments.Length == 1)
+                        {
+                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            return $"IList<{innerType}>";
+                        }
                     }
                 }
                 
@@ -761,18 +789,8 @@ namespace MethodCache.SourceGenerator
 
             private static string GetSimpleParameterType(ITypeSymbol type)
             {
-                // Use the same logic as return types for consistency
-                if (type.SpecialType == SpecialType.System_String) return "string";
-                if (type.SpecialType == SpecialType.System_Int32) return "int";
-                if (type.SpecialType == SpecialType.System_Boolean) return "bool";
-                if (type.SpecialType == SpecialType.System_Double) return "double";
-                if (type.SpecialType == SpecialType.System_Single) return "float";
-                if (type.SpecialType == SpecialType.System_Int64) return "long";
-                if (type.SpecialType == SpecialType.System_Decimal) return "decimal";
-                
-                return type.ToDisplayString(new SymbolDisplayFormat(
-                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                    genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters));
+                // Use the same logic as Utils.GetReturnTypeForSignature for consistency
+                return Utils.GetReturnTypeForSignature(type);
             }
 
             internal static string Emit(List<InterfaceInfo> interfaces)
