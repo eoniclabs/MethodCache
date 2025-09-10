@@ -95,7 +95,7 @@ namespace MethodCache.Providers.Redis.Tests
             var factoryResult = "factory result";
             var cacheKey = "generated-key";
             var fullKey = "test:" + cacheKey;
-            var settings = new CacheMethodSettings { Tags = new List<string> { "tag1" } };
+            var settings = new CacheMethodSettings { Tags = new List<string> { "tag1" }, Duration = TimeSpan.FromMinutes(10) };
             var lockHandle = Substitute.For<ILockHandle>();
 
             _keyGeneratorMock.GenerateKey(methodName, args, settings).Returns(cacheKey);
@@ -106,7 +106,7 @@ namespace MethodCache.Providers.Redis.Tests
                                .Returns(lockHandle);
 
             _serializerMock.SerializeAsync(factoryResult).Returns(new byte[] { 1, 2, 3 });
-            _databaseMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>()).Returns(true);
+            _databaseMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>()).Returns(true);
 
             // Act
             var result = await _cacheManager.GetOrCreateAsync(
@@ -120,8 +120,18 @@ namespace MethodCache.Providers.Redis.Tests
             // Assert
             Assert.Equal(factoryResult, result);
             _metricsProviderMock.Received(1).CacheMiss(methodName);
-            _databaseMock.Received(1).StringSetAsync(fullKey, Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>());
+            
+            // Debug: Verify that the distributed lock was actually called
+            _distributedLockMock.Received(1).AcquireAsync($"lock:{fullKey}", TimeSpan.FromSeconds(30), default);
+            
+            // Debug: Verify serializer was called  
+            _serializerMock.Received(1).SerializeAsync(factoryResult);
+            
+            // Debug: Verify tag manager was called
             _tagManagerMock.Received(1).AssociateTagsAsync(fullKey, settings.Tags);
+            
+            // This should be the last assertion to debug
+            _databaseMock.Received(1).StringSetAsync(fullKey, Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>());
         }
 
         [Fact]
