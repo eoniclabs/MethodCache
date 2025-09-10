@@ -49,13 +49,13 @@ namespace MethodCache.Providers.Redis.Extensions
             // Register Redis backplane for hybrid cache
             services.AddSingleton<ICacheBackplane, RedisCacheBackplane>();
             
-            // Register L1 cache
-            services.AddSingleton<IL1Cache, MemoryL1Cache>();
+            // Register L1 cache (using enhanced InMemoryCacheManager)
+            services.AddSingleton<IMemoryCache, InMemoryCacheManager>();
 
             // Register hybrid cache manager
             services.AddSingleton<IHybridCacheManager>(provider =>
             {
-                var l1Cache = provider.GetRequiredService<IL1Cache>();
+                var l1Cache = provider.GetRequiredService<IMemoryCache>();
                 var l2Cache = provider.GetRequiredService<RedisCacheManager>(); // Use dedicated Redis instance
                 var backplane = provider.GetRequiredService<ICacheBackplane>();
                 var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();
@@ -85,8 +85,8 @@ namespace MethodCache.Providers.Redis.Extensions
             // Configure hybrid cache options
             services.Configure(configureHybridOptions);
 
-            // Register L1 cache
-            services.AddSingleton<IL1Cache, MemoryL1Cache>();
+            // Register L1 cache (using enhanced InMemoryCacheManager)
+            services.AddSingleton<IMemoryCache, InMemoryCacheManager>();
 
             // Register custom L2 cache
             services.AddSingleton<TL2Cache>();
@@ -95,7 +95,7 @@ namespace MethodCache.Providers.Redis.Extensions
             // Register hybrid cache manager with null backplane
             services.AddSingleton<IHybridCacheManager>(provider =>
             {
-                var l1Cache = provider.GetRequiredService<IL1Cache>();
+                var l1Cache = provider.GetRequiredService<IMemoryCache>();
                 var l2Cache = provider.GetRequiredService<TL2Cache>();
                 var backplane = provider.GetService<ICacheBackplane>(); // Optional
                 var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();

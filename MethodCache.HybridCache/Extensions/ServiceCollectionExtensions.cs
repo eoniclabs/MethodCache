@@ -29,8 +29,8 @@ namespace MethodCache.HybridCache.Extensions
                 services.Configure<HybridCacheOptions>(_ => { });
             }
             
-            // Register L1 cache
-            services.AddSingleton<IL1Cache, MemoryL1Cache>();
+            // Register L1 cache (using enhanced InMemoryCacheManager)
+            services.AddSingleton<IMemoryCache, InMemoryCacheManager>();
             
             // Register hybrid cache manager as both IHybridCacheManager and ICacheManager
             services.AddSingleton<IHybridCacheManager, HybridCacheManager>();
@@ -45,7 +45,7 @@ namespace MethodCache.HybridCache.Extensions
         public static IServiceCollection AddHybridCache<TL1Cache>(
             this IServiceCollection services,
             Action<HybridCacheOptions>? configureOptions = null)
-            where TL1Cache : class, IL1Cache
+            where TL1Cache : class, IMemoryCache
         {
             // Configure options
             if (configureOptions != null)
@@ -58,7 +58,7 @@ namespace MethodCache.HybridCache.Extensions
             }
             
             // Register custom L1 cache
-            services.AddSingleton<IL1Cache, TL1Cache>();
+            services.AddSingleton<IMemoryCache, TL1Cache>();
             
             // Register hybrid cache manager
             services.AddSingleton<IHybridCacheManager, HybridCacheManager>();
@@ -119,9 +119,9 @@ namespace MethodCache.HybridCache.Extensions
                 _options = new HybridCacheOptions();
             }
             
-            public HybridCacheBuilder WithL1Cache<TL1Cache>() where TL1Cache : class, IL1Cache
+            public HybridCacheBuilder WithL1Cache<TL1Cache>() where TL1Cache : class, IMemoryCache
             {
-                _services.AddSingleton<IL1Cache, TL1Cache>();
+                _services.AddSingleton<IMemoryCache, TL1Cache>();
                 return this;
             }
             

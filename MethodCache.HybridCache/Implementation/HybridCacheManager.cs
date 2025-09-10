@@ -16,7 +16,7 @@ namespace MethodCache.HybridCache.Implementation
     /// </summary>
     public class HybridCacheManager : IHybridCacheManager
     {
-        private readonly IL1Cache _l1Cache;
+        private readonly IMemoryCache _l1Cache;
         private readonly ICacheManager _l2Cache;
         private readonly ICacheBackplane? _backplane;
         private readonly HybridCacheOptions _options;
@@ -32,7 +32,7 @@ namespace MethodCache.HybridCache.Implementation
         private long _backplaneMessagesReceived;
 
         public HybridCacheManager(
-            IL1Cache l1Cache,
+            IMemoryCache l1Cache,
             ICacheManager l2Cache,
             ICacheBackplane? backplane,
             IOptions<HybridCacheOptions> options,

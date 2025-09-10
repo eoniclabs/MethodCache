@@ -15,7 +15,7 @@ namespace MethodCache.HybridCache.Tests.Implementation;
 
 public class HybridCacheManagerTests : IDisposable
 {
-    private readonly IL1Cache _mockL1Cache;
+    private readonly IMemoryCache _mockL1Cache;
     private readonly ICacheManager _mockL2Cache;
     private readonly ICacheBackplane? _mockBackplane;
     private readonly ILogger<HybridCacheManager> _mockLogger;
@@ -24,7 +24,7 @@ public class HybridCacheManagerTests : IDisposable
 
     public HybridCacheManagerTests()
     {
-        _mockL1Cache = Substitute.For<IL1Cache>();
+        _mockL1Cache = Substitute.For<IMemoryCache>();
         _mockL2Cache = Substitute.For<ICacheManager>();
         _mockBackplane = Substitute.For<ICacheBackplane>();
         _mockLogger = Substitute.For<ILogger<HybridCacheManager>>();
@@ -113,7 +113,7 @@ public class HybridCacheManagerTests : IDisposable
     public async Task GetStatsAsync_ShouldReturnHybridCacheStatistics()
     {
         // Arrange
-        var l1Stats = new L1CacheStats
+        var l1Stats = new CacheStats
         {
             Hits = 100,
             Misses = 50,
