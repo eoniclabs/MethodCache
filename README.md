@@ -68,6 +68,13 @@ services.AddMethodCache(config =>
 - **Security considerations** - Parameter redaction and secure key generation
 - **Async/await best practices** - Proper cancellation token support
 
+### **Enterprise Features**
+- **Redis provider** - Distributed caching with advanced features
+- **Hybrid L1/L2 caching** - In-memory + Redis for optimal performance
+- **Multi-region support** - Global scale with region failover
+- **Compression** - Automatic compression for large cached values
+- **Distributed locking** - Cache stampede prevention across instances
+
 ---
 
 ## 🚀 Benefits
@@ -91,6 +98,7 @@ services.AddMethodCache(config =>
 | **MethodCache.Core** | Core library with attributes and interfaces | ✅ Available |
 | **MethodCache.SourceGenerator** | Roslyn source generator for decorator patterns | ✅ Available |
 | **MethodCache.Analyzers** | Compile-time validation and warnings | ✅ Available |
+| **MethodCache.Providers.Redis** | Redis provider with advanced features | ✅ Available |
 
 ---
 
@@ -232,6 +240,9 @@ public class CacheManagementController : ControllerBase
 | Provider | Scope | Persistence | Scalability |
 |----------|-------|-------------|-------------|
 | **InMemoryCacheManager** | Single instance | In-memory | Low |
+| **RedisCacheManager** | Distributed | Redis | High |
+| **HybridCacheManager** | L1/L2 hybrid | In-memory + Redis | High |
+| **MultiRegionCacheManager** | Multi-region | Redis clusters | Very High |
 | **MockCacheManager** | Testing/development | In-memory | Low |
 | **NoOpCacheManager** | Testing (no caching) | None | N/A |
 
@@ -406,7 +417,9 @@ MethodCache/
 ├── MethodCache.Core/              # Core library and interfaces
 ├── MethodCache.SourceGenerator/   # Roslyn source generator
 ├── MethodCache.Analyzers/         # Roslyn analyzers
-├── MethodCache.Tests/             # Comprehensive unit tests
+├── MethodCache.Providers.Redis/           # Redis provider with enterprise features
+├── MethodCache.Providers.Redis.Tests/    # Redis provider unit tests
+├── MethodCache.Tests/                     # Core library unit tests
 ├── MethodCache.SampleApp/         # Sample application
 └── MethodCache.Demo/              # Demo project
 ```
@@ -763,6 +776,46 @@ services.AddMethodCache(config =>
 // The InMemoryCacheManager is used by default
 services.AddSingleton<ICacheManager, InMemoryCacheManager>();
 services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+```
+
+### Redis Cache Provider
+
+```csharp
+// Add Redis cache with distributed features
+services.AddRedisCache(options =>
+{
+    options.ConnectionString = "localhost:6379";
+    options.KeyPrefix = "myapp:";
+    options.DefaultExpiration = TimeSpan.FromHours(1);
+    options.EnableDistributedLocking = true;
+    options.EnablePubSubInvalidation = true;
+});
+```
+
+### Hybrid L1/L2 Cache
+
+```csharp
+// Combines in-memory L1 with Redis L2 for optimal performance
+services.AddHybridRedisCache(options =>
+{
+    options.Strategy = HybridStrategy.WriteThrough;
+    options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+    options.L2DefaultExpiration = TimeSpan.FromHours(1);
+    options.EnableL1Warming = true;
+});
+```
+
+### Multi-Region Cache
+
+```csharp
+// For global applications with multiple Redis regions
+services.AddMultiRegionRedisCache(options =>
+{
+    options.AddRegion("us-east-1", "redis-east.example.com:6379", isPrimary: true)
+           .AddRegion("us-west-2", "redis-west.example.com:6379")
+           .WithFailoverStrategy(RegionFailoverStrategy.PriorityBased)
+           .EnableCrossRegionInvalidation();
+});
 ```
 
 
