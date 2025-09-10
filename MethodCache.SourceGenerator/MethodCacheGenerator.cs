@@ -1,556 +1,900 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+#nullable enable
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
-using System.Collections.Generic;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using System.Threading;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MethodCache.SourceGenerator
 {
-    [Generator]
-    public class MethodCacheGenerator : IIncrementalGenerator
+    [Generator(LanguageNames.CSharp)]
+    public sealed class MethodCacheGenerator : IIncrementalGenerator
     {
+        // ======================== Diagnostics ========================
+        private static class Diagnostics
+        {
+            internal static readonly DiagnosticDescriptor UnsupportedVoidCache = new(
+                id: "MCG001",
+                title: "Caching not supported on void returns",
+                messageFormat: "[Cache] attribute on method '{0}' with void return type is not supported",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor UnsupportedTaskCache = new(
+                id: "MCG002",
+                title: "Caching not supported on non-generic Task/ValueTask",
+                messageFormat: "[Cache] attribute on method '{0}' with non-generic Task/ValueTask return type is not supported",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor UnsupportedRefParams = new(
+                id: "MCG003",
+                title: "Caching not supported with ref/out/in parameters",
+                messageFormat: "[Cache] attribute on method '{0}' with ref/out/in parameters is not supported",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor AttributeConflict = new(
+                id: "MCG004",
+                title: "Conflicting cache attributes",
+                messageFormat: "Method '{0}' cannot have both [Cache] and [CacheInvalidate] attributes",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor NoInvalidateTags = new(
+                id: "MCG005",
+                title: "CacheInvalidate has no tags",
+                messageFormat: "[CacheInvalidate] on method '{0}' has no tags specified; invalidation will be a no-op",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor UnsupportedPointerType = new(
+                id: "MCG006",
+                title: "Caching not supported with pointer types",
+                messageFormat: "[Cache] attribute on method '{0}' with pointer type parameters is not supported",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor UnsupportedRefLikeType = new(
+                id: "MCG007",
+                title: "Caching not supported with ref struct types",
+                messageFormat: "[Cache] attribute on method '{0}' with ref struct parameters is not supported",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+        }
+
+        // ======================== Core Generator ========================
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
+            // Look for methods with Cache attribute and get their containing interfaces
             var interfaceProvider = context.SyntaxProvider
-                .CreateSyntaxProvider(
-                    predicate: static (s, _) => IsSyntaxTargetForGeneration(s),
-                    transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
-                .Where(static m => m is not null);
+                .ForAttributeWithMetadataName(
+                    fullyQualifiedMetadataName: "MethodCache.Core.CacheAttribute",
+                    predicate: static (node, _) => node is MethodDeclarationSyntax method && 
+                                                   method.Parent is InterfaceDeclarationSyntax,
+                    transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
+                .Where(static info => info != null)
+                .Collect();
 
-            context.RegisterSourceOutput(interfaceProvider.Collect(), Execute);
-        }
+            // Also check for CacheInvalidate attributes on methods
+            var invalidateProvider = context.SyntaxProvider
+                .ForAttributeWithMetadataName(
+                    fullyQualifiedMetadataName: "MethodCache.Core.CacheInvalidateAttribute",
+                    predicate: static (node, _) => node is MethodDeclarationSyntax method && 
+                                                   method.Parent is InterfaceDeclarationSyntax,
+                    transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
+                .Where(static info => info != null)
+                .Collect();
 
-        private static bool IsSyntaxTargetForGeneration(SyntaxNode node)
-        {
-            return node is InterfaceDeclarationSyntax interfaceDecl &&
-                   interfaceDecl.Members.OfType<MethodDeclarationSyntax>().Any();
-        }
-
-        private static InterfaceInfo? GetSemanticTargetForGeneration(GeneratorSyntaxContext context)
-        {
-            var interfaceDecl = (InterfaceDeclarationSyntax)context.Node;
-            var interfaceSymbol = context.SemanticModel.GetDeclaredSymbol(interfaceDecl) as INamedTypeSymbol;
-
-            if (interfaceSymbol == null) return null;
-
-            var cachedMethods = new List<IMethodSymbol>();
-            var invalidateMethods = new List<IMethodSymbol>();
-
-            foreach (var member in interfaceSymbol.GetMembers().OfType<IMethodSymbol>())
-            {
-                var attributes = member.GetAttributes();
-                
-                // Use string-based detection to avoid assembly references
-                if (attributes.Any(ad => IsCacheAttribute(ad.AttributeClass)))
+            // Combine both providers
+            var combinedProvider = interfaceProvider.Combine(invalidateProvider)
+                .Select(static (pair, _) =>
                 {
-                    cachedMethods.Add(member);
-                }
-                
-                if (attributes.Any(ad => IsCacheInvalidateAttribute(ad.AttributeClass)))
-                {
-                    invalidateMethods.Add(member);
-                }
-            }
+                    var combined = pair.Left.Concat(pair.Right)
+                        .Where(i => i != null)
+                        .GroupBy(i => i!.Symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
+                        .Select(g => g.First())
+                        .ToImmutableArray();
+                    return combined;
+                });
 
-            if (cachedMethods.Any() || invalidateMethods.Any())
-            {
-                return new InterfaceInfo(interfaceSymbol, cachedMethods, invalidateMethods);
-            }
-
-            return null;
-        }
-
-        private static bool IsCacheAttribute(INamedTypeSymbol? attributeClass)
-        {
-            return attributeClass?.Name == "CacheAttribute" && 
-                   (attributeClass.ContainingNamespace?.ToDisplayString() == "MethodCache.Core" ||
-                    attributeClass.ToDisplayString() == "MethodCache.Core.CacheAttribute");
-        }
-
-        private static bool IsCacheInvalidateAttribute(INamedTypeSymbol? attributeClass)
-        {
-            return attributeClass?.Name == "CacheInvalidateAttribute" && 
-                   (attributeClass.ContainingNamespace?.ToDisplayString() == "MethodCache.Core" ||
-                    attributeClass.ToDisplayString() == "MethodCache.Core.CacheInvalidateAttribute");
+            context.RegisterSourceOutput(combinedProvider, Execute);
         }
 
         private static void Execute(SourceProductionContext context, ImmutableArray<InterfaceInfo?> interfaces)
         {
-            var validInterfaces = interfaces.Where(i => i != null).Cast<InterfaceInfo>().ToList();
+            if (interfaces.IsDefaultOrEmpty) return;
 
-            var allCachedMethods = validInterfaces.SelectMany(i => i.CachedMethods).ToList();
+            var validInterfaces = interfaces
+                .Where(i => i != null)
+                .Cast<InterfaceInfo>()
+                .ToList();
 
-            // Generate the registry only if there are cached methods
-            if (allCachedMethods.Any())
+            if (validInterfaces.Count == 0) return;
+
+            // Report diagnostics
+            foreach (var info in validInterfaces)
             {
-                var registryCode = GenerateRegistry(allCachedMethods);
-                context.AddSource("CacheMethodRegistry.g.cs", Microsoft.CodeAnalysis.Text.SourceText.From(registryCode.NormalizeWhitespace().ToFullString(), Encoding.UTF8));
+                foreach (var diagnostic in info.Diagnostics)
+                {
+                    context.ReportDiagnostic(diagnostic);
+                }
             }
 
-            // Generate service registration extensions if we have interfaces to decorate
-            if (validInterfaces.Any())
+            // Generate sources
+            foreach (var info in validInterfaces)
             {
-                var serviceRegistrationCode = GenerateServiceRegistrationExtensions(validInterfaces);
-                context.AddSource("MethodCacheServiceCollectionExtensions.g.cs",
-                    Microsoft.CodeAnalysis.Text.SourceText.From(serviceRegistrationCode.NormalizeWhitespace().ToFullString(), Encoding.UTF8));
+                var decoratorCode = DecoratorEmitter.Emit(info);
+                context.AddSource($"{info.Symbol.Name}Decorator.g.cs", decoratorCode);
             }
 
-            foreach (var interfaceInfo in validInterfaces)
+            // Generate shared components
+            if (validInterfaces.Any(i => i.CachedMethods.Any()))
             {
-                var decoratorCode = GenerateDecoratorClass(interfaceInfo.InterfaceSymbol);
-                context.AddSource($@"{interfaceInfo.InterfaceSymbol.Name}Decorator.g.cs",
-                    Microsoft.CodeAnalysis.Text.SourceText.From(decoratorCode.NormalizeWhitespace().ToFullString(), Encoding.UTF8));
+                var registryCode = RegistryEmitter.Emit(validInterfaces);
+                context.AddSource("CacheMethodRegistry.g.cs", registryCode);
             }
+
+            var extensionsCode = DIExtensionsEmitter.Emit(validInterfaces);
+            context.AddSource("MethodCacheServiceCollectionExtensions.g.cs", extensionsCode);
         }
 
-        private class InterfaceInfo
+        // ======================== Discovery & Analysis ========================
+        private static InterfaceInfo? GetInterfaceInfoFromMethod(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
         {
-            public INamedTypeSymbol InterfaceSymbol { get; }
-            public List<IMethodSymbol> CachedMethods { get; }
-            public List<IMethodSymbol> InvalidateMethods { get; }
+            // The target symbol is the method, we need to get the containing interface
+            if (ctx.TargetSymbol is not IMethodSymbol methodSymbol)
+                return null;
 
-            public InterfaceInfo(INamedTypeSymbol interfaceSymbol, List<IMethodSymbol> cachedMethods, List<IMethodSymbol> invalidateMethods)
-            {
-                InterfaceSymbol = interfaceSymbol;
-                CachedMethods = cachedMethods;
-                InvalidateMethods = invalidateMethods;
-            }
+            var interfaceSymbol = methodSymbol.ContainingType;
+            if (interfaceSymbol?.TypeKind != TypeKind.Interface)
+                return null;
+
+            return GetInterfaceInfo(interfaceSymbol);
         }
 
-        private static CompilationUnitSyntax GenerateRegistry(List<IMethodSymbol> methods)
+        private static InterfaceInfo? GetInterfaceInfo(INamedTypeSymbol interfaceSymbol)
         {
-            var registerMethodsStatements = new List<StatementSyntax>();
 
-            foreach (var method in methods)
+            var allMethods = GetAllInterfaceMethods(interfaceSymbol).ToList();
+            if (allMethods.Count == 0)
+                return null;
+
+            var cachedMethods = new List<MethodModel>();
+            var invalidateMethods = new List<MethodModel>();
+            var diagnostics = new List<Diagnostic>();
+
+            foreach (var method in allMethods)
             {
-                var containingType = method.ContainingType.ToDisplayString();
-                var methodName = method.Name;
+                if (method.MethodKind != MethodKind.Ordinary) continue;
 
-                var attribute = method.GetAttributes().FirstOrDefault(ad => IsCacheAttribute(ad.AttributeClass));
-                var groupName = attribute?.ConstructorArguments.FirstOrDefault().Value?.ToString();
+                var methodToCheck = method.OriginalDefinition ?? method;
+                var attributes = methodToCheck.GetAttributes();
 
-                var parameterArguments = method.Parameters.Select(p =>
-                    Argument(MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        GenericName(Identifier("Any"))
-                            .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(ParseTypeName(p.Type.ToDisplayString())))),
-                        IdentifierName("Value")))).ToArray();
-                var methodId = $"{containingType}.{methodName}";
+                var cacheAttr = attributes.FirstOrDefault(a => IsCacheAttribute(a.AttributeClass));
+                var invalidateAttr = attributes.FirstOrDefault(a => IsCacheInvalidateAttribute(a.AttributeClass));
 
-                var groupNameArgument = groupName != null 
-                    ? LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(groupName))
-                    : LiteralExpression(SyntaxKind.NullLiteralExpression);
+                if (cacheAttr == null && invalidateAttr == null) continue;
 
-                registerMethodsStatements.Add(
-                    ExpressionStatement(
-                        InvocationExpression(
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                IdentifierName("config"),
-                                GenericName(Identifier("RegisterMethod"))
-                                    .WithTypeArgumentList(
-                                        TypeArgumentList(
-                                            SingletonSeparatedList<TypeSyntax>(
-                                                IdentifierName(containingType))))))
-                            .WithArgumentList(
-                                ArgumentList(
-                                    SeparatedList<ArgumentSyntax>(
-                                        new SyntaxNodeOrToken[]
-                                        {
-                                            Argument(
-                                                SimpleLambdaExpression(
-                                                    Parameter(Identifier("x")))
-                                                    .WithExpressionBody(
-                                                        InvocationExpression(
-                                                            MemberAccessExpression(
-                                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                                IdentifierName("x"),
-                                                                IdentifierName(methodName)))
-                                                            .WithArgumentList(
-                                                                ArgumentList(
-                                                                    SeparatedList(parameterArguments))))),
-                                            Token(SyntaxKind.CommaToken),
-                                            Argument(
-                                                LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(methodId))),
-                                            Token(SyntaxKind.CommaToken),
-                                            Argument(groupNameArgument)
-                                        })))));
+                // Check for conflicts
+                if (cacheAttr != null && invalidateAttr != null)
+                {
+                    diagnostics.Add(Diagnostic.Create(
+                        Diagnostics.AttributeConflict,
+                        method.Locations.FirstOrDefault(),
+                        method.ToDisplayString()));
+                    continue;
+                }
+
+                if (cacheAttr != null)
+                {
+                    var validation = ValidateCacheMethod(method);
+                    if (validation.diagnostic != null)
+                    {
+                        diagnostics.Add(validation.diagnostic);
+                        if (!validation.canProceed) continue;
+                    }
+                    cachedMethods.Add(new MethodModel(method, cacheAttr, null));
+                }
+                else if (invalidateAttr != null)
+                {
+                    var tags = ExtractTags(invalidateAttr);
+                    if (!tags.Any())
+                    {
+                        diagnostics.Add(Diagnostic.Create(
+                            Diagnostics.NoInvalidateTags,
+                            method.Locations.FirstOrDefault(),
+                            method.ToDisplayString()));
+                    }
+                    invalidateMethods.Add(new MethodModel(method, null, invalidateAttr));
+                }
             }
 
-            // Create the registry implementation class
-            var registryClass = ClassDeclaration("GeneratedCacheMethodRegistry")
-                .AddModifiers(Token(SyntaxKind.InternalKeyword))
-                .AddBaseListTypes(SimpleBaseType(IdentifierName("ICacheMethodRegistry")))
-                .AddMembers(
-                    MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), "RegisterMethods")
-                        .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                        .AddParameterListParameters(
-                            Parameter(Identifier("config"))
-                                .WithType(IdentifierName("IMethodCacheConfiguration")))
-                        .WithBody(Block(registerMethodsStatements)));
+            if (!cachedMethods.Any() && !invalidateMethods.Any() && !diagnostics.Any())
+                return null;
 
-            // Create the module initializer to register the implementation
-            var moduleInitializer = ClassDeclaration("ModuleInitializer")
-                .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword))
-                .AddMembers(
-                    MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), "Initialize")
-                        .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword))
-                        .AddAttributeLists(AttributeList(SingletonSeparatedList(
-                            Attribute(IdentifierName("System.Runtime.CompilerServices.ModuleInitializer")))))
-                        .WithBody(Block(
-                            ExpressionStatement(
-                                InvocationExpression(
-                                    MemberAccessExpression(
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        IdentifierName("CacheMethodRegistry"),
-                                        IdentifierName("SetRegistry")))
-                                    .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                                        Argument(ObjectCreationExpression(IdentifierName("GeneratedCacheMethodRegistry"))
-                                            .WithArgumentList(ArgumentList())))))))));
-
-            return CompilationUnit()
-                .AddUsings(
-                    UsingDirective(ParseName("System")),
-                    UsingDirective(ParseName("System.Linq.Expressions")),
-                    UsingDirective(ParseName("MethodCache.Core")),
-                    UsingDirective(ParseName("MethodCache.Core.Configuration")))
-                .AddMembers(
-                    NamespaceDeclaration(ParseName("MethodCache.Core"))
-                        .AddMembers(registryClass, moduleInitializer));
+            return new InterfaceInfo(
+                interfaceSymbol,
+                cachedMethods.ToImmutableArray(),
+                invalidateMethods.ToImmutableArray(),
+                diagnostics.ToImmutableArray());
         }
 
-        private static CompilationUnitSyntax GenerateServiceRegistrationExtensions(List<InterfaceInfo> interfaces)
+        private static (Diagnostic? diagnostic, bool canProceed) ValidateCacheMethod(IMethodSymbol method)
         {
-            var registrationMethods = new List<MemberDeclarationSyntax>();
+            var location = method.Locations.FirstOrDefault();
+            var methodName = method.ToDisplayString();
 
-            foreach (var interfaceInfo in interfaces)
+            // Check for void return
+            if (method.ReturnsVoid)
             {
-                var interfaceType = interfaceInfo.InterfaceSymbol;
-                var interfaceName = interfaceType.Name;
-                var fullInterfaceName = interfaceType.ToDisplayString();
-                var decoratorName = $"{interfaceName}Decorator";
-
-                // Create a simple helper method that avoids complex nested syntax
-                var methodBody = $@"
-            return services.AddSingleton<{fullInterfaceName}>(provider =>
-                new {interfaceType.ContainingNamespace.ToDisplayString()}.{decoratorName}(
-                    implementationFactory(provider),
-                    provider.GetRequiredService<ICacheManager>(),
-                    provider.GetRequiredService<MethodCacheConfiguration>(),
-                    provider));";
-
-                var helperMethod = MethodDeclaration(IdentifierName("IServiceCollection"), $"Add{interfaceName}WithCaching")
-                    .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
-                    .AddParameterListParameters(
-                        Parameter(Identifier("services"))
-                            .WithModifiers(TokenList(Token(SyntaxKind.ThisKeyword)))
-                            .WithType(IdentifierName("IServiceCollection")),
-                        Parameter(Identifier("implementationFactory"))
-                            .WithType(GenericName(Identifier("Func"))
-                                .WithTypeArgumentList(TypeArgumentList(SeparatedList(new TypeSyntax[]
-                                {
-                                    IdentifierName("IServiceProvider"),
-                                    IdentifierName(fullInterfaceName)
-                                })))))
-                    .WithBody(Block(ParseStatement(methodBody)));
-
-                registrationMethods.Add(helperMethod);
+                return (Diagnostic.Create(Diagnostics.UnsupportedVoidCache, location, methodName), false);
             }
 
-            return CompilationUnit()
-                .AddUsings(
-                    UsingDirective(ParseName("System")),
-                    UsingDirective(ParseName("Microsoft.Extensions.DependencyInjection")),
-                    UsingDirective(ParseName("MethodCache.Core")),
-                    UsingDirective(ParseName("MethodCache.Core.Configuration")))
-                .AddMembers(
-                    NamespaceDeclaration(ParseName("Microsoft.Extensions.DependencyInjection"))
-                        .AddMembers(
-                            ClassDeclaration("MethodCacheServiceCollectionExtensions")
-                                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
-                                .AddMembers(registrationMethods.ToArray())));
+            // Check for non-generic Task/ValueTask
+            if (method.ReturnType is INamedTypeSymbol namedType)
+            {
+                var ns = namedType.ContainingNamespace?.ToDisplayString();
+                if (ns == "System.Threading.Tasks" && !namedType.IsGenericType)
+                {
+                    if (namedType.Name == "Task" || namedType.Name == "ValueTask")
+                    {
+                        return (Diagnostic.Create(Diagnostics.UnsupportedTaskCache, location, methodName), false);
+                    }
+                }
+            }
+
+            // Check for ref/out/in parameters
+            if (method.Parameters.Any(p => p.RefKind != RefKind.None))
+            {
+                return (Diagnostic.Create(Diagnostics.UnsupportedRefParams, location, methodName), false);
+            }
+
+            // Check for pointer types
+            if (method.Parameters.Any(p => p.Type.TypeKind == TypeKind.Pointer))
+            {
+                return (Diagnostic.Create(Diagnostics.UnsupportedPointerType, location, methodName), false);
+            }
+
+            // Check for ref struct types
+            if (method.Parameters.Any(p => IsRefLikeType(p.Type)))
+            {
+                return (Diagnostic.Create(Diagnostics.UnsupportedRefLikeType, location, methodName), false);
+            }
+
+            return (null, true);
         }
 
-        private static CompilationUnitSyntax GenerateDecoratorClass(INamedTypeSymbol interfaceSymbol)
+        private static bool IsRefLikeType(ITypeSymbol type)
         {
-            var decoratorClassName = $"{interfaceSymbol.Name}Decorator";
-            var decoratedInterfaceName = interfaceSymbol.ToDisplayString();
-            var namespaceName = interfaceSymbol.ContainingNamespace.ToDisplayString();
-
-            var fields = new List<MemberDeclarationSyntax>
+            if (type is INamedTypeSymbol namedType)
             {
-                FieldDeclaration(
-                    VariableDeclaration(ParseTypeName(decoratedInterfaceName))
-                        .AddVariables(VariableDeclarator(Identifier("_decorated"))))
-                    .AddModifiers(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword)),
-                FieldDeclaration(
-                    VariableDeclaration(ParseTypeName("ICacheManager"))
-                        .AddVariables(VariableDeclarator(Identifier("_cacheManager"))))
-                    .AddModifiers(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword)),
-                FieldDeclaration(
-                    VariableDeclaration(ParseTypeName("MethodCacheConfiguration"))
-                        .AddVariables(VariableDeclarator(Identifier("_methodCacheConfiguration"))))
-                    .AddModifiers(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword)),
-                FieldDeclaration(
-                    VariableDeclaration(ParseTypeName("IServiceProvider"))
-                        .AddVariables(VariableDeclarator(Identifier("_serviceProvider"))))
-                    .AddModifiers(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword))
-            };
-
-            var constructor = ConstructorDeclaration(Identifier(decoratorClassName))
-                .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                .AddParameterListParameters(
-                    Parameter(Identifier("decorated")).WithType(ParseTypeName(decoratedInterfaceName)),
-                    Parameter(Identifier("cacheManager")).WithType(ParseTypeName("ICacheManager")),
-                    Parameter(Identifier("methodCacheConfiguration")).WithType(ParseTypeName("MethodCacheConfiguration")),
-                    Parameter(Identifier("serviceProvider")).WithType(ParseTypeName("IServiceProvider")))
-                .WithBody(
-                    Block(
-                        ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName("_decorated"),
-                                IdentifierName("decorated"))),
-                        ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName("_cacheManager"),
-                                IdentifierName("cacheManager"))),
-                        ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName("_methodCacheConfiguration"),
-                                IdentifierName("methodCacheConfiguration"))),
-                        ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName("_serviceProvider"),
-                                IdentifierName("serviceProvider")))));
-
-            var methods = new List<MemberDeclarationSyntax>();
-
-            // Generate methods with caching/invalidation logic
-            foreach (var method in interfaceSymbol.GetMembers().OfType<IMethodSymbol>())
-            {
-                var methodName = method.Name;
-                var parameters = ParameterList(SeparatedList(method.Parameters.Select(p =>
-                    Parameter(Identifier(p.Name)).WithType(ParseTypeName(p.Type.ToDisplayString())))));
-                var parameterNames = ArgumentList(SeparatedList(method.Parameters.Select(p => Argument(IdentifierName(p.Name)))));
-                var returnType = ParseTypeName(method.ReturnType.ToDisplayString());
-
-                var attributes = method.GetAttributes();
-                var cacheAttribute = attributes.FirstOrDefault(ad => IsCacheAttribute(ad.AttributeClass));
-                var invalidateAttribute = attributes.FirstOrDefault(ad => IsCacheInvalidateAttribute(ad.AttributeClass));
-
-                if (cacheAttribute != null)
-                {
-                    // Generate caching implementation
-                    var methodImpl = GenerateCacheMethod(method, methodName, parameters, returnType);
-                    methods.Add(methodImpl);
-                }
-                else if (invalidateAttribute != null)
-                {
-                    // Generate invalidation implementation
-                    var methodImpl = GenerateInvalidateMethod(method, methodName, parameters, returnType, invalidateAttribute);
-                    methods.Add(methodImpl);
-                }
-                else
-                {
-                    // Simple pass-through implementation
-                    var methodImpl = MethodDeclaration(returnType, methodName)
-                        .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                        .WithParameterList(parameters)
-                        .WithBody(Block(
-                            ReturnStatement(
-                                InvocationExpression(
-                                    MemberAccessExpression(
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        IdentifierName("_decorated"),
-                                        IdentifierName(methodName)))
-                                    .WithArgumentList(parameterNames))));
-
-                    methods.Add(methodImpl);
-                }
-            }
-
-            return CompilationUnit()
-                .AddUsings(
-                    UsingDirective(ParseName("System")),
-                    UsingDirective(ParseName("System.Threading.Tasks")),
-                    UsingDirective(ParseName("MethodCache.Core")),
-                    UsingDirective(ParseName("MethodCache.Core.Configuration")),
-                    UsingDirective(ParseName("Microsoft.Extensions.DependencyInjection")),
-                    UsingDirective(ParseName("System.Threading")),
-                    UsingDirective(ParseName("System.Linq")))
-                .AddMembers(
-                    NamespaceDeclaration(ParseName(namespaceName))
-                        .AddMembers(
-                            ClassDeclaration(decoratorClassName)
-                                .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                                .AddBaseListTypes(SimpleBaseType(ParseTypeName(decoratedInterfaceName)))
-                                .AddMembers(fields.ToArray())
-                                .AddMembers(constructor)
-                                .AddMembers(methods.ToArray())));
-        }
-
-        private static MethodDeclarationSyntax GenerateCacheMethod(IMethodSymbol method, string methodName, ParameterListSyntax parameters, TypeSyntax returnType)
-        {
-            // Void methods can't be cached, generate pass-through
-            if (method.ReturnType.SpecialType == SpecialType.System_Void)
-            {
-                var parameterNames = ArgumentList(SeparatedList(method.Parameters.Select(p => Argument(IdentifierName(p.Name)))));
-                return MethodDeclaration(returnType, methodName)
-                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                    .WithParameterList(parameters)
-                    .WithBody(Block(
-                        ExpressionStatement(
-                            InvocationExpression(
-                                MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    IdentifierName("_decorated"),
-                                    IdentifierName(methodName)))
-                                .WithArgumentList(parameterNames))));
-            }
-            
-            var cacheAttribute = method.GetAttributes().FirstOrDefault(ad => IsCacheAttribute(ad.AttributeClass));
-            var requireIdempotent = GetRequireIdempotentValue(cacheAttribute);
-            
-            var paramList = string.Join(", ", method.Parameters.Select(p => p.Name));
-            var argsArrayItems = method.Parameters.Any() ? paramList : "";
-            
-            // Determine if this is an async method
-            var isAsync = method.ReturnType.Name == "Task" && method.ReturnType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
-            
-            // Extract the actual return type for caching
-            string cacheReturnType;
-            if (isAsync)
-            {
-                var namedReturnType = method.ReturnType as INamedTypeSymbol;
-                if (namedReturnType?.IsGenericType == true && namedReturnType.TypeArguments.Length > 0)
-                {
-                    // Task<T> - extract T
-                    cacheReturnType = namedReturnType.TypeArguments[0].ToDisplayString();
-                }
-                else
-                {
-                    // Task - use object
-                    cacheReturnType = "object";
-                }
-            }
-            else
-            {
-                // Synchronous method
-                if (method.ReturnType.SpecialType == SpecialType.System_Void)
-                {
-                    cacheReturnType = "object"; // void methods can't be cached, but we use object as placeholder
-                }
-                else
-                {
-                    cacheReturnType = method.ReturnType.ToDisplayString();
-                }
-            }
-            
-            // Generate the appropriate factory lambda
-            string factoryLambda;
-            if (isAsync)
-            {
-                factoryLambda = $"async () => await _decorated.{methodName}({paramList})";
-            }
-            else
-            {
-                factoryLambda = $"() => Task.FromResult(_decorated.{methodName}({paramList}))";
-            }
-            
-            // Generate the appropriate return statement
-            string returnStatement;
-            if (isAsync)
-            {
-                returnStatement = $"return _cacheManager.GetOrCreateAsync<{cacheReturnType}>(\"{methodName}\", args, {factoryLambda}, settings, keyGenerator, {requireIdempotent.ToString().ToLower()});";
-            }
-            else
-            {
-                returnStatement = $"return _cacheManager.GetOrCreateAsync<{cacheReturnType}>(\"{methodName}\", args, {factoryLambda}, settings, keyGenerator, {requireIdempotent.ToString().ToLower()}).GetAwaiter().GetResult();";
-            }
-            
-            // Generate clean method body with proper formatting
-            var methodBodyCode = $@"{{
-            var args = new object[] {{ {argsArrayItems} }};
-            var settings = _methodCacheConfiguration.GetMethodSettings(""{method.ContainingType.ToDisplayString()}.{methodName}"");
-            var keyGenerator = _serviceProvider.GetRequiredService<ICacheKeyGenerator>();
-            {returnStatement}
-        }}";
-
-            var parsedBody = (BlockSyntax)SyntaxFactory.ParseStatement(methodBodyCode);
-
-            return MethodDeclaration(returnType, methodName)
-                .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                .WithParameterList(parameters)
-                .WithBody(parsedBody);
-        }
-
-        private static MethodDeclarationSyntax GenerateInvalidateMethod(IMethodSymbol method, string methodName, ParameterListSyntax parameters, TypeSyntax returnType, AttributeData invalidateAttribute)
-        {
-            var tags = GetTagsFromInvalidateAttribute(invalidateAttribute);
-            var tagsArray = tags.Any() ? $"new string[] {{ {string.Join(", ", tags.Select(t => $"\"{t}\""))} }}" : "new string[0]";
-            var paramList = string.Join(", ", method.Parameters.Select(p => p.Name));
-
-            // Create the invalidation body with proper formatting
-            string methodBodyCode;
-            if (method.ReturnType.SpecialType == SpecialType.System_Void)
-            {
-                methodBodyCode = $@"{{
-            _cacheManager.InvalidateByTagsAsync({tagsArray}).GetAwaiter().GetResult();
-            _decorated.{methodName}({paramList});
-        }}";
-            }
-            else
-            {
-                methodBodyCode = $@"{{
-            _cacheManager.InvalidateByTagsAsync({tagsArray}).GetAwaiter().GetResult();
-            return _decorated.{methodName}({paramList});
-        }}";
-            }
-
-            var parsedBody = (BlockSyntax)SyntaxFactory.ParseStatement(methodBodyCode);
-
-            return MethodDeclaration(returnType, methodName)
-                .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                .WithParameterList(parameters)
-                .WithBody(parsedBody);
-        }
-
-        private static bool GetRequireIdempotentValue(AttributeData? cacheAttribute)
-        {
-            if (cacheAttribute?.NamedArguments.Any() == true)
-            {
-                var requireIdempotentArg = cacheAttribute.NamedArguments
-                    .FirstOrDefault(arg => arg.Key == "RequireIdempotent");
-                if (requireIdempotentArg.Value.Value is bool value)
-                {
-                    return value;
-                }
+                // Check for ref struct (Span<T>, ReadOnlySpan<T>, etc.)
+                return namedType.IsRefLikeType;
             }
             return false;
         }
 
-        private static List<string> GetTagsFromInvalidateAttribute(AttributeData invalidateAttribute)
+        private static IEnumerable<IMethodSymbol> GetAllInterfaceMethods(INamedTypeSymbol interfaceSymbol)
+        {
+            return interfaceSymbol.GetMembers()
+                .OfType<IMethodSymbol>()
+                .Concat(interfaceSymbol.AllInterfaces.SelectMany(i => i.GetMembers().OfType<IMethodSymbol>()))
+                .Distinct(SymbolEqualityComparer.Default)
+                .Cast<IMethodSymbol>();
+        }
+
+        private static bool IsCacheAttribute(INamedTypeSymbol? attr)
+            => attr?.Name == "CacheAttribute" &&
+               attr.ContainingNamespace?.ToDisplayString() == "MethodCache.Core";
+
+        private static bool IsCacheInvalidateAttribute(INamedTypeSymbol? attr)
+            => attr?.Name == "CacheInvalidateAttribute" &&
+               attr.ContainingNamespace?.ToDisplayString() == "MethodCache.Core";
+
+        private static List<string> ExtractTags(AttributeData attr)
         {
             var tags = new List<string>();
-            
-            if (invalidateAttribute?.NamedArguments.Any() == true)
+            var tagsArg = attr.NamedArguments.FirstOrDefault(a => a.Key == "Tags");
+            if (!tagsArg.Value.Values.IsDefaultOrEmpty)
             {
-                var tagsArg = invalidateAttribute.NamedArguments
-                    .FirstOrDefault(arg => arg.Key == "Tags");
-                if (!tagsArg.Value.Values.IsDefaultOrEmpty)
+                foreach (var value in tagsArg.Value.Values)
                 {
-                    tags.AddRange(tagsArg.Value.Values.Select(v => v.Value?.ToString() ?? ""));
+                    if (value.Value?.ToString() is string tag && !string.IsNullOrWhiteSpace(tag))
+                        tags.Add(tag);
                 }
             }
-            
-            return tags.Where(t => !string.IsNullOrEmpty(t)).ToList();
+            return tags;
+        }
+
+        // ======================== Models ========================
+        private sealed class InterfaceInfo
+        {
+            public INamedTypeSymbol Symbol { get; }
+            public ImmutableArray<MethodModel> CachedMethods { get; }
+            public ImmutableArray<MethodModel> InvalidateMethods { get; }
+            public ImmutableArray<Diagnostic> Diagnostics { get; }
+
+            public InterfaceInfo(INamedTypeSymbol symbol, ImmutableArray<MethodModel> cachedMethods, ImmutableArray<MethodModel> invalidateMethods, ImmutableArray<Diagnostic> diagnostics)
+            {
+                Symbol = symbol;
+                CachedMethods = cachedMethods;
+                InvalidateMethods = invalidateMethods;
+                Diagnostics = diagnostics;
+            }
+        }
+
+        private sealed class MethodModel
+        {
+            public IMethodSymbol Method { get; }
+            public AttributeData? CacheAttr { get; }
+            public AttributeData? InvalidateAttr { get; }
+
+            public MethodModel(IMethodSymbol method, AttributeData? cacheAttr, AttributeData? invalidateAttr)
+            {
+                Method = method;
+                CacheAttr = cacheAttr;
+                InvalidateAttr = invalidateAttr;
+            }
+        }
+
+        // ======================== Utilities ========================
+        private static class Utils
+        {
+            internal static readonly SymbolDisplayFormat FullyQualifiedFormat = new(
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                memberOptions: SymbolDisplayMemberOptions.IncludeParameters | SymbolDisplayMemberOptions.IncludeContainingType,
+                parameterOptions: SymbolDisplayParameterOptions.IncludeType,
+                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included);
+
+            internal static readonly SymbolDisplayFormat MethodIdFormat = new(
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                memberOptions: SymbolDisplayMemberOptions.IncludeContainingType);
+
+            internal static string GetFullyQualifiedName(ITypeSymbol type)
+                => type.ToDisplayString(FullyQualifiedFormat);
+
+            internal static string GetMethodId(IMethodSymbol method)
+                => method.ToDisplayString(MethodIdFormat);
+
+            internal static bool IsCancellationToken(ITypeSymbol type)
+                => type.Name == nameof(CancellationToken) &&
+                   type.ContainingNamespace?.ToDisplayString() == "System.Threading";
+
+            internal static bool IsTask(ITypeSymbol type, out string? typeArg)
+            {
+                typeArg = null;
+                if (type is INamedTypeSymbol nt && nt.Name == "Task" &&
+                    nt.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
+                {
+                    if (nt.IsGenericType && nt.TypeArguments.Length == 1)
+                    {
+                        typeArg = Utils.GetReturnTypeForSignature(nt.TypeArguments[0]);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            internal static bool IsValueTask(ITypeSymbol type, out string? typeArg)
+            {
+                typeArg = null;
+                if (type is INamedTypeSymbol nt && nt.Name == "ValueTask" &&
+                    nt.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
+                {
+                    if (nt.IsGenericType && nt.TypeArguments.Length == 1)
+                    {
+                        typeArg = Utils.GetReturnTypeForSignature(nt.TypeArguments[0]);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            internal static string GetReturnTypeForSignature(ITypeSymbol type)
+            {
+                // Use C# keywords for common types instead of fully qualified names
+                if (type.SpecialType == SpecialType.System_Void) return "void";
+                if (type.SpecialType == SpecialType.System_String) return "string";
+                if (type.SpecialType == SpecialType.System_Int32) return "int";
+                if (type.SpecialType == SpecialType.System_Boolean) return "bool";
+                if (type.SpecialType == SpecialType.System_Double) return "double";
+                if (type.SpecialType == SpecialType.System_Single) return "float";
+                if (type.SpecialType == SpecialType.System_Int64) return "long";
+                if (type.SpecialType == SpecialType.System_Decimal) return "decimal";
+                
+                // Handle common Task types
+                if (type is INamedTypeSymbol namedType)
+                {
+                    if (namedType.Name == "Task" && namedType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
+                    {
+                        if (namedType.TypeArguments.Length == 1)
+                        {
+                            var innerType = Utils.GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            return $"Task<{innerType}>";
+                        }
+                        return "Task";
+                    }
+                }
+                
+                // For complex types, use simple qualified names
+                return type.ToDisplayString(new SymbolDisplayFormat(
+                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                    genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters));
+            }
+        }
+
+        // ======================== Decorator Emitter ========================
+        private static class DecoratorEmitter
+        {
+            internal static string Emit(InterfaceInfo info)
+            {
+                var sb = new StringBuilder();
+                var ns = info.Symbol.ContainingNamespace.ToDisplayString();
+                var interfaceFqn = Utils.GetFullyQualifiedName(info.Symbol);
+                var className = $"{info.Symbol.Name}Decorator";
+                
+                static string GetSimpleInterfaceName(INamedTypeSymbol symbol)
+                {
+                    return symbol.ToDisplayString(new SymbolDisplayFormat(
+                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters));
+                }
+
+                // File header
+                sb.AppendLine("// <auto-generated/>");
+                sb.AppendLine("#nullable enable");
+                sb.AppendLine("#pragma warning disable CS8019 // Unnecessary using directive");
+                sb.AppendLine("using System;");
+                sb.AppendLine("using System.Linq;");
+                sb.AppendLine("using System.Threading;");
+                sb.AppendLine("using System.Threading.Tasks;");
+                sb.AppendLine("using MethodCache.Core;");
+                sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
+                sb.AppendLine();
+                sb.AppendLine($"namespace {ns}");
+                sb.AppendLine("{");
+
+                // Class declaration  
+                sb.AppendLine("    [System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
+                sb.AppendLine("    [System.Diagnostics.DebuggerNonUserCode]");
+                sb.AppendLine($"    public class {className} : {GetSimpleInterfaceName(info.Symbol)}");
+                sb.AppendLine("    {");
+
+                // Fields
+                sb.AppendLine($"        private readonly {interfaceFqn} _decorated;");
+                sb.AppendLine("        private readonly ICacheManager _cacheManager;");
+                sb.AppendLine("        private readonly MethodCacheConfiguration _configuration;");
+                sb.AppendLine("        private readonly IServiceProvider _serviceProvider;");
+                sb.AppendLine("        private readonly ICacheKeyGenerator _keyGenerator;");
+                sb.AppendLine();
+
+                // Constructor
+                EmitConstructor(sb, className, interfaceFqn);
+
+                // Methods
+                var allMethods = info.Symbol.GetMembers()
+                    .OfType<IMethodSymbol>()
+                    .Concat(info.Symbol.AllInterfaces.SelectMany(i => i.GetMembers().OfType<IMethodSymbol>()))
+                    .Distinct(SymbolEqualityComparer.Default)
+                    .Cast<IMethodSymbol>()
+                    .Where(m => m.MethodKind == MethodKind.Ordinary);
+
+                foreach (var method in allMethods)
+                {
+                    var cached = info.CachedMethods.FirstOrDefault(m => SymbolEqualityComparer.Default.Equals(m.Method, method));
+                    var invalidate = info.InvalidateMethods.FirstOrDefault(m => SymbolEqualityComparer.Default.Equals(m.Method, method));
+
+                    if (cached != null)
+                        EmitCachedMethod(sb, cached);
+                    else if (invalidate != null)
+                        EmitInvalidateMethod(sb, invalidate);
+                    else
+                        EmitPassthroughMethod(sb, method);
+                }
+
+                sb.AppendLine("    }");
+                sb.AppendLine("}");
+                sb.AppendLine("#pragma warning restore CS8019");
+
+                return sb.ToString();
+            }
+
+            private static void EmitConstructor(StringBuilder sb, string className, string interfaceFqn)
+            {
+                sb.AppendLine($"        public {className}(");
+                sb.AppendLine($"            {interfaceFqn} decorated,");
+                sb.AppendLine("            ICacheManager cacheManager,");
+                sb.AppendLine("            MethodCacheConfiguration configuration,");
+                sb.AppendLine("            IServiceProvider serviceProvider)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
+                sb.AppendLine("            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));");
+                sb.AppendLine("            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));");
+                sb.AppendLine("            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));");
+                sb.AppendLine("            _keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
+
+            private static void EmitCachedMethod(StringBuilder sb, MethodModel model)
+            {
+                var method = model.Method;
+                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
+                var methodId = Utils.GetMethodId(method);
+
+                // Method signature
+                EmitMethodSignature(sb, method);
+                sb.AppendLine("        {");
+
+                // Get cache configuration
+                var requireIdempotent = model.CacheAttr?.NamedArguments
+                    .FirstOrDefault(a => a.Key == "RequireIdempotent").Value.Value as bool? ?? false;
+
+                // Build cache key parameters (exclude CancellationToken)
+                var keyParams = method.Parameters
+                    .Where(p => !Utils.IsCancellationToken(p.Type))
+                    .ToList();
+
+                // Generate cache key array
+                if (keyParams.Any())
+                {
+                    sb.Append("            var args = new object[] { ");
+                    sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
+                    sb.AppendLine(" };");
+                }
+                else
+                {
+                    sb.AppendLine("            var args = new object[] { };");
+                }
+
+                sb.AppendLine($"            var settings = _configuration.GetMethodSettings(\"{methodId}\");");
+
+                // Handle different return types
+                if (Utils.IsTask(method.ReturnType, out var taskType))
+                {
+                    EmitTaskCaching(sb, method, taskType!, requireIdempotent);
+                }
+                else if (Utils.IsValueTask(method.ReturnType, out var valueTaskType))
+                {
+                    EmitValueTaskCaching(sb, method, valueTaskType!, requireIdempotent);
+                }
+                else
+                {
+                    EmitSyncCaching(sb, method, returnType, requireIdempotent);
+                }
+
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
+
+            private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, bool requireIdempotent)
+            {
+                var call = BuildMethodCall(method);
+                sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{innerType}>(");
+                sb.AppendLine($"                \"{method.Name}\",");
+                sb.AppendLine("                args,");
+                sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
+                sb.AppendLine("                settings,");
+                sb.AppendLine("                _keyGenerator,");
+                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()});");
+            }
+
+            private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, bool requireIdempotent)
+            {
+                var call = BuildMethodCall(method);
+                sb.AppendLine($"            var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
+                sb.AppendLine($"                \"{method.Name}\",");
+                sb.AppendLine("                args,");
+                sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
+                sb.AppendLine("                settings,");
+                sb.AppendLine("                _keyGenerator,");
+                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()});");
+                sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
+            }
+
+            private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType, bool requireIdempotent)
+            {
+                var call = BuildMethodCall(method);
+                sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
+                sb.AppendLine($"                \"{method.Name}\",");
+                sb.AppendLine("                args,");
+                sb.AppendLine($"                () => Task.FromResult({call}),");
+                sb.AppendLine("                settings,");
+                sb.AppendLine("                _keyGenerator,");
+                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()})");
+                sb.AppendLine("                .GetAwaiter().GetResult();");
+            }
+
+            private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
+            {
+                var method = model.Method;
+                EmitMethodSignature(sb, method);
+                sb.AppendLine("        {");
+
+                var tags = ExtractTags(model.InvalidateAttr!);
+                if (tags.Any())
+                {
+                    sb.Append("            var tags = new[] { ");
+                    sb.Append(string.Join(", ", tags.Select(t => $"\"{t}\"")));
+                    sb.AppendLine(" };");
+                    sb.AppendLine("            _cacheManager.InvalidateByTagsAsync(tags).GetAwaiter().GetResult();");
+                }
+
+                var call = BuildMethodCall(method);
+                if (method.ReturnsVoid)
+                    sb.AppendLine($"            {call};");
+                else
+                    sb.AppendLine($"            return {call};");
+
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
+
+            private static void EmitPassthroughMethod(StringBuilder sb, IMethodSymbol method)
+            {
+                EmitMethodSignature(sb, method);
+                sb.AppendLine("        {");
+
+                var call = BuildMethodCall(method);
+                if (method.ReturnsVoid)
+                    sb.AppendLine($"            {call};");
+                else
+                    sb.AppendLine($"            return {call};");
+
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
+
+
+            private static void EmitMethodSignature(StringBuilder sb, IMethodSymbol method)
+            {
+                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
+                var typeParams = method.TypeParameters.Any()
+                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
+                    : string.Empty;
+
+                var parameters = string.Join(", ", method.Parameters.Select(p =>
+                {
+                    var modifier = p.RefKind switch
+                    {
+                        RefKind.Ref => "ref ",
+                        RefKind.Out => "out ",
+                        RefKind.In => "in ",
+                        _ => ""
+                    };
+                    var defaultValue = p.HasExplicitDefaultValue ? $" = {FormatDefaultValue(p.ExplicitDefaultValue)}" : "";
+                    return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {p.Name}{defaultValue}";
+                }));
+
+                sb.AppendLine($"        public {returnType} {method.Name}{typeParams}({parameters})");
+
+                // Add generic constraints if any
+                foreach (var tp in method.TypeParameters)
+                {
+                    var constraints = BuildConstraints(tp);
+                    if (!string.IsNullOrEmpty(constraints))
+                        sb.AppendLine($"            {constraints}");
+                }
+            }
+
+            private static string BuildMethodCall(IMethodSymbol method)
+            {
+                var typeArgs = method.TypeParameters.Any()
+                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
+                    : string.Empty;
+
+                var args = string.Join(", ", method.Parameters.Select(p =>
+                {
+                    var modifier = p.RefKind switch
+                    {
+                        RefKind.Ref => "ref ",
+                        RefKind.Out => "out ",
+                        RefKind.In => "in ",
+                        _ => ""
+                    };
+                    return $"{modifier}{p.Name}";
+                }));
+
+                return $"_decorated.{method.Name}{typeArgs}({args})";
+            }
+
+            private static string BuildConstraints(ITypeParameterSymbol tp)
+            {
+                var constraints = new List<string>();
+
+                if (tp.HasReferenceTypeConstraint)
+                    constraints.Add("class");
+                if (tp.HasValueTypeConstraint)
+                    constraints.Add("struct");
+                if (tp.HasUnmanagedTypeConstraint)
+                    constraints.Add("unmanaged");
+                if (tp.HasNotNullConstraint)
+                    constraints.Add("notnull");
+
+                constraints.AddRange(tp.ConstraintTypes.Select(ct => Utils.GetFullyQualifiedName(ct)));
+
+                if (tp.HasConstructorConstraint && !tp.HasValueTypeConstraint && !tp.HasUnmanagedTypeConstraint)
+                    constraints.Add("new()");
+
+                return constraints.Any()
+                    ? $"where {tp.Name} : {string.Join(", ", constraints)}"
+                    : string.Empty;
+            }
+
+            private static string FormatDefaultValue(object? value)
+            {
+                return value switch
+                {
+                    null => "null",
+                    string s => $"\"{s}\"",
+                    char c => $"'{c}'",
+                    bool b => b.ToString().ToLowerInvariant(),
+                    _ => value.ToString() ?? "default"
+                };
+            }
+        }
+
+        // ======================== Registry Emitter ========================
+        private static class RegistryEmitter
+        {
+            private static string GetSimpleTypeName(ITypeSymbol type)
+            {
+                return type.ToDisplayString(new SymbolDisplayFormat(
+                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                    genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters));
+            }
+
+            private static string GetSimpleParameterType(ITypeSymbol type)
+            {
+                // Use the same logic as return types for consistency
+                if (type.SpecialType == SpecialType.System_String) return "string";
+                if (type.SpecialType == SpecialType.System_Int32) return "int";
+                if (type.SpecialType == SpecialType.System_Boolean) return "bool";
+                if (type.SpecialType == SpecialType.System_Double) return "double";
+                if (type.SpecialType == SpecialType.System_Single) return "float";
+                if (type.SpecialType == SpecialType.System_Int64) return "long";
+                if (type.SpecialType == SpecialType.System_Decimal) return "decimal";
+                
+                return type.ToDisplayString(new SymbolDisplayFormat(
+                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                    genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters));
+            }
+
+            internal static string Emit(List<InterfaceInfo> interfaces)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("// <auto-generated/>");
+                sb.AppendLine("#nullable enable");
+                sb.AppendLine("using System.Runtime.CompilerServices;");
+                sb.AppendLine("using MethodCache.Core;");
+                sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine();
+                sb.AppendLine("namespace MethodCache.Core");
+                sb.AppendLine("{");
+                sb.AppendLine("    internal class GeneratedCacheMethodRegistry : ICacheMethodRegistry");
+                sb.AppendLine("    {");
+                sb.AppendLine("        public void RegisterMethods(IMethodCacheConfiguration config)");
+                sb.AppendLine("        {");
+
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var info in interfaces)
+                {
+                    foreach (var model in info.CachedMethods)
+                    {
+                        var methodId = Utils.GetMethodId(model.Method);
+                        if (!seen.Add(methodId)) continue;
+
+                        var groupArg = model.CacheAttr?.NamedArguments
+                            .FirstOrDefault(a => a.Key == "GroupName").Value.Value as string;
+                        var group = !string.IsNullOrWhiteSpace(groupArg) ? $"\"{groupArg}\"" : "null";
+
+                        // Generate RegisterMethod call that tests expect
+                        var interfaceName = GetSimpleTypeName(model.Method.ContainingType);
+                        var paramList = string.Join(", ", model.Method.Parameters.Select(p => $"Any<{GetSimpleParameterType(p.Type)}>.Value"));
+                        
+                        sb.AppendLine($"            config.RegisterMethod<{interfaceName}>(x => x.{model.Method.Name}({paramList}), \"{methodId}\", {group});");
+                    }
+                }
+
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+                sb.AppendLine();
+                sb.AppendLine("    internal static class ModuleInitializer");
+                sb.AppendLine("    {");
+                sb.AppendLine("        [ModuleInitializer]");
+                sb.AppendLine("        internal static void Initialize()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            CacheMethodRegistry.SetRegistry(new GeneratedCacheMethodRegistry());");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+                sb.AppendLine("}");
+
+                return sb.ToString();
+            }
+        }
+
+        // ======================== DI Extensions Emitter ========================
+        private static class DIExtensionsEmitter
+        {
+            internal static string Emit(List<InterfaceInfo> interfaces)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("// <auto-generated/>");
+                sb.AppendLine("#nullable enable");
+                sb.AppendLine("using System;");
+                sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
+                sb.AppendLine("using MethodCache.Core;");
+                sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine();
+                sb.AppendLine("namespace Microsoft.Extensions.DependencyInjection");
+                sb.AppendLine("{");
+                sb.AppendLine("    public static class MethodCacheServiceCollectionExtensions");
+                sb.AppendLine("    {");
+
+                foreach (var info in interfaces)
+                {
+                    EmitInterfaceExtensions(sb, info);
+                }
+
+                sb.AppendLine("    }");
+                sb.AppendLine("}");
+
+                return sb.ToString();
+            }
+
+            private static void EmitInterfaceExtensions(StringBuilder sb, InterfaceInfo info)
+            {
+                var interfaceFqn = Utils.GetFullyQualifiedName(info.Symbol);
+                var decoratorFqn = $"{info.Symbol.ContainingNamespace.ToDisplayString()}.{info.Symbol.Name}Decorator";
+                var baseName = $"{info.Symbol.Name}WithCaching";
+
+                // Default (Singleton for backward compatibility)
+                sb.AppendLine($"        public static IServiceCollection Add{baseName}(");
+                sb.AppendLine($"            this IServiceCollection services,");
+                sb.AppendLine($"            Func<IServiceProvider, {interfaceFqn}> implementationFactory)");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            return services.AddSingleton<{interfaceFqn}>(sp =>");
+                sb.AppendLine($"                new {decoratorFqn}(");
+                sb.AppendLine("                    implementationFactory(sp),");
+                sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
+                sb.AppendLine("                    sp.GetRequiredService<MethodCacheConfiguration>(),");
+                sb.AppendLine("                    sp));");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+
+                // Explicit lifetime methods
+                var lifetimes = new[] { ("Singleton", "AddSingleton"), ("Scoped", "AddScoped"), ("Transient", "AddTransient") };
+                foreach (var (suffix, method) in lifetimes)
+                {
+                    sb.AppendLine($"        public static IServiceCollection Add{baseName}{suffix}(");
+                    sb.AppendLine($"            this IServiceCollection services,");
+                    sb.AppendLine($"            Func<IServiceProvider, {interfaceFqn}> implementationFactory)");
+                    sb.AppendLine("        {");
+                    sb.AppendLine($"            return services.{method}<{interfaceFqn}>(sp =>");
+                    sb.AppendLine($"                new {decoratorFqn}(");
+                    sb.AppendLine("                    implementationFactory(sp),");
+                    sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
+                    sb.AppendLine("                    sp.GetRequiredService<MethodCacheConfiguration>(),");
+                    sb.AppendLine("                    sp));");
+                    sb.AppendLine("        }");
+                    sb.AppendLine();
+                }
+            }
         }
     }
 }
