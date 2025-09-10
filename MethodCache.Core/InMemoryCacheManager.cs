@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
-using Polly;
-using Polly.CircuitBreaker;
 
 namespace MethodCache.Core
 {
@@ -20,70 +18,63 @@ namespace MethodCache.Core
 
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new ConcurrentDictionary<string, CacheEntry>();
         private readonly ConcurrentDictionary<string, Lazy<Task<object>>> _stampedePrevention = new ConcurrentDictionary<string, Lazy<Task<object>>>();
-        private readonly ResiliencePipeline _circuitBreaker;
         private readonly ICacheMetricsProvider _metricsProvider;
 
         public InMemoryCacheManager(ICacheMetricsProvider metricsProvider)
         {
             _metricsProvider = metricsProvider;
-            _circuitBreaker = new ResiliencePipelineBuilder()
-                .AddCircuitBreaker(new CircuitBreakerStrategyOptions()
-                {
-                    FailureRatio = 0.5,
-                    MinimumThroughput = 2,
-                    BreakDuration = TimeSpan.FromSeconds(5)
-                })
-                .AddTimeout(TimeSpan.FromSeconds(1))
-                .Build();
         }
 
         public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
         {
             var key = keyGenerator.GenerateKey(methodName, args, settings);
 
-            try
+            // Check cache first - fast memory operation
+            if (_cache.TryGetValue(key, out var entry) && entry.AbsoluteExpiration > DateTimeOffset.UtcNow)
             {
-                return await _circuitBreaker.ExecuteAsync(async token =>
+                _metricsProvider.CacheHit(methodName);
+                return (T)entry.Value;
+            }
+
+            // Validate idempotency requirement
+            if (requireIdempotent && !settings.IsIdempotent)
+            {
+                throw new InvalidOperationException($"Method {methodName} is not marked as idempotent, but caching requires it.");
+            }
+
+            // Handle cache miss with stampede prevention
+            var lazyTask = _stampedePrevention.GetOrAdd(key, _ => new Lazy<Task<object>>(async () =>
+            {
+                try
                 {
-                    if (_cache.TryGetValue(key, out var entry) && entry.AbsoluteExpiration > DateTimeOffset.UtcNow)
+                    // Let the factory method run without timeout - service layer handles resilience
+                    var result = await factory().ConfigureAwait(false);
+                    
+                    if (result != null)
                     {
-                        _metricsProvider.CacheHit(methodName);
-                        return (T)entry.Value;
-                    }
-
-                    if (requireIdempotent && !settings.IsIdempotent)
-                    {
-                        throw new InvalidOperationException($"Method {methodName} is not marked as idempotent, but caching requires it.");
-                    }
-
-                    var lazyTask = _stampedePrevention.GetOrAdd(key, _ => new Lazy<Task<object>>(async () =>
-                    {
-                        var result = await factory().ConfigureAwait(false);
-                        if (result != null)
+                        var newEntry = new CacheEntry
                         {
-                            var newEntry = new CacheEntry
-                            {
-                                Value = result,
-                                Tags = new HashSet<string>(settings.Tags),
-                                AbsoluteExpiration = DateTimeOffset.UtcNow.Add(settings.Duration ?? TimeSpan.FromMinutes(5)) // Default duration
-                            };
-                            _cache.TryAdd(key, newEntry);
-                        }
-                        return result!;
-                    }));
+                            Value = result,
+                            Tags = new HashSet<string>(settings.Tags),
+                            AbsoluteExpiration = DateTimeOffset.UtcNow.Add(settings.Duration ?? TimeSpan.FromMinutes(5))
+                        };
+                        _cache.TryAdd(key, newEntry);
+                    }
+                    return result!;
+                }
+                catch (Exception ex)
+                {
+                    // Log the error but let it propagate - service layer should handle retries/fallbacks
+                    _metricsProvider.CacheError(methodName, ex.Message);
+                    throw;
+                }
+            }));
 
-                    var finalResult = await lazyTask.Value.ConfigureAwait(false);
-                    _stampedePrevention.TryRemove(key, out _); // Clean up after task completes
+            var finalResult = await lazyTask.Value.ConfigureAwait(false);
+            _stampedePrevention.TryRemove(key, out _); // Clean up after task completes
 
-                    _metricsProvider.CacheMiss(methodName);
-                    return (T)finalResult;
-                }).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _metricsProvider.CacheError(methodName, ex.Message);
-                return await factory().ConfigureAwait(false);
-            }
+            _metricsProvider.CacheMiss(methodName);
+            return (T)finalResult;
         }
 
         public Task InvalidateByTagsAsync(params string[] tags)

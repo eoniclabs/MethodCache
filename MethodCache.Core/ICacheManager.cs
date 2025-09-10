@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
-using Polly;
 
 namespace MethodCache.Core
 {
