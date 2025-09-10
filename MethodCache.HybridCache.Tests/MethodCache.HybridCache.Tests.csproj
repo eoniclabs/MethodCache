@@ -18,13 +18,12 @@
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.1" />
-    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
     <PackageReference Include="FluentAssertions" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
-    <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
+    <ProjectReference Include="..\MethodCache.HybridCache\MethodCache.HybridCache.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
-using MethodCache.Providers.Redis.Hybrid;
+using MethodCache.HybridCache.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

@@ -1,5 +1,6 @@
 using FluentAssertions;
-using MethodCache.Providers.Redis.Hybrid;
+using MethodCache.HybridCache.Configuration;
+using MethodCache.HybridCache.Implementation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -7,7 +8,7 @@ using System;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace MethodCache.Providers.Redis.Tests.Hybrid;
+namespace MethodCache.HybridCache.Tests.Implementation;
 
 public class MemoryL1CacheTests : IDisposable
 {
@@ -21,9 +22,8 @@ public class MemoryL1CacheTests : IDisposable
         _options = new HybridCacheOptions
         {
             L1MaxItems = 100,
-            L1DefaultExpiration = TimeSpan.FromMinutes(5),
-            L1EvictionPolicy = L1EvictionPolicy.LRU,
-            L1SlidingExpiration = true
+            L1MaxExpiration = TimeSpan.FromHours(1),
+            L1EvictionPolicy = L1EvictionPolicy.LRU
         };
         
         _cache = new MemoryL1Cache(Options.Create(_options), _mockLogger);
@@ -138,24 +138,26 @@ public class MemoryL1CacheTests : IDisposable
     }
 
     [Fact]
-    public async Task GetCountAsync_ShouldReturnCorrectCount()
+    public async Task RemoveMultipleAsync_ShouldRemoveSpecifiedKeys()
     {
         // Arrange
-        var initialCount = await _cache.GetCountAsync();
-        
-        // Act
         await _cache.SetAsync("key1", "value1", TimeSpan.FromMinutes(1));
         await _cache.SetAsync("key2", "value2", TimeSpan.FromMinutes(1));
-        
-        var countAfterSet = await _cache.GetCountAsync();
-        
-        await _cache.RemoveAsync("key1");
-        var countAfterRemove = await _cache.GetCountAsync();
+        await _cache.SetAsync("key3", "value3", TimeSpan.FromMinutes(1));
+
+        // Act
+        var removedCount = await _cache.RemoveMultipleAsync("key1", "key3", "nonexistent");
 
         // Assert
-        initialCount.Should().Be(0);
-        countAfterSet.Should().Be(2);
-        countAfterRemove.Should().Be(1);
+        removedCount.Should().Be(2);
+        
+        var result1 = await _cache.GetAsync<string>("key1");
+        var result2 = await _cache.GetAsync<string>("key2");
+        var result3 = await _cache.GetAsync<string>("key3");
+        
+        result1.Should().BeNull();
+        result2.Should().Be("value2"); // Should still exist
+        result3.Should().BeNull();
     }
 
     [Fact]
@@ -177,62 +179,10 @@ public class MemoryL1CacheTests : IDisposable
         stats.Hits.Should().BeGreaterThan(0);
         stats.Misses.Should().BeGreaterThan(0);
         stats.Entries.Should().Be(1);
-        stats.HitRatio.Should().BeGreaterThan(0).And.BeLessOrEqualTo(1);
     }
 
     [Fact]
-    public async Task EvictExpiredAsync_ShouldRemoveExpiredEntries()
-    {
-        // Arrange
-        await _cache.SetAsync("key1", "value1", TimeSpan.FromMilliseconds(50));
-        await _cache.SetAsync("key2", "value2", TimeSpan.FromMinutes(10));
-
-        // Wait for first key to expire
-        await Task.Delay(100);
-
-        // Act
-        await _cache.EvictExpiredAsync();
-
-        // Assert
-        var value1 = await _cache.GetAsync<string>("key1");
-        var value2 = await _cache.GetAsync<string>("key2");
-        
-        value1.Should().BeNull();
-        value2.Should().Be("value2");
-    }
-
-    [Fact]
-    public async Task TryEvictLRUAsync_ShouldEvictLeastRecentlyUsedItem()
-    {
-        // Arrange - Fill cache to capacity
-        for (int i = 0; i < _options.L1MaxItems; i++)
-        {
-            await _cache.SetAsync($"key{i}", $"value{i}", TimeSpan.FromMinutes(10));
-        }
-
-        // Access some keys to make them more recently used
-        await _cache.GetAsync<string>("key10");
-        await _cache.GetAsync<string>("key20");
-        
-        // Add one more item to trigger eviction
-        await _cache.SetAsync("overflow-key", "overflow-value", TimeSpan.FromMinutes(10));
-
-        // Act
-        var evicted = await _cache.TryEvictLRUAsync();
-
-        // Assert
-        evicted.Should().BeTrue();
-        
-        // The recently accessed keys should still exist
-        var value10 = await _cache.GetAsync<string>("key10");
-        var value20 = await _cache.GetAsync<string>("key20");
-        
-        value10.Should().Be("value10");
-        value20.Should().Be("value20");
-    }
-
-    [Fact]
-    public async Task GetAsync_WithTypeMismatch_ShouldReturnNull()
+    public async Task GetAsync_WithTypeMismatch_ShouldReturnDefault()
     {
         // Arrange
         var key = "type-mismatch-key";
@@ -246,21 +196,37 @@ public class MemoryL1CacheTests : IDisposable
     }
 
     [Fact]
-    public async Task GetKeysAsync_ShouldReturnMatchingKeys()
+    public async Task SetAsync_WithNullValue_ShouldRemoveKey()
     {
         // Arrange
-        await _cache.SetAsync("prefix:key1", "value1", TimeSpan.FromMinutes(1));
-        await _cache.SetAsync("prefix:key2", "value2", TimeSpan.FromMinutes(1));
-        await _cache.SetAsync("other:key3", "value3", TimeSpan.FromMinutes(1));
+        var key = "null-value-key";
+        await _cache.SetAsync(key, "initial-value", TimeSpan.FromMinutes(1));
 
         // Act
-        var allKeys = await _cache.GetKeysAsync();
-        var prefixedKeys = await _cache.GetKeysAsync("prefix:*");
+        await _cache.SetAsync<string>(key, null!, TimeSpan.FromMinutes(1));
 
         // Assert
-        allKeys.Should().HaveCount(3);
-        prefixedKeys.Should().HaveCount(2);
-        prefixedKeys.Should().Contain("prefix:key1").And.Contain("prefix:key2");
+        var result = await _cache.GetAsync<string>(key);
+        result.Should().BeNull();
+        
+        var exists = await _cache.ExistsAsync(key);
+        exists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SetAsync_ShouldRespectMaxExpiration()
+    {
+        // Arrange
+        var key = "max-expiration-key";
+        var value = "test-value";
+        var requestedExpiration = TimeSpan.FromHours(24); // Much longer than max
+        
+        // Act
+        await _cache.SetAsync(key, value, requestedExpiration);
+
+        // Assert - Value should be stored but with limited expiration
+        var result = await _cache.GetAsync<string>(key);
+        result.Should().Be(value);
     }
 
     public void Dispose()

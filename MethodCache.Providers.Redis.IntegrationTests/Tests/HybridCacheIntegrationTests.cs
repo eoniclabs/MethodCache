@@ -2,7 +2,8 @@ using FluentAssertions;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Providers.Redis.Extensions;
-using MethodCache.Providers.Redis.Hybrid;
+using MethodCache.HybridCache.Abstractions;
+using MethodCache.HybridCache.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -292,7 +293,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddHybridRedisCache(hybridOptions =>
         {
             hybridOptions.WithStrategy(HybridStrategy.WriteThrough)
-                         .WithPerformanceSettings(enableStatistics: true);
+                         .WithPerformanceSettings();
         }, redisOptions =>
         {
             redisOptions.ConnectionString = RedisContainer.GetConnectionString();

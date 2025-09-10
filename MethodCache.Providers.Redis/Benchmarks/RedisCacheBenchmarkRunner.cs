@@ -1,5 +1,5 @@
 using MethodCache.Core;
-using MethodCache.Providers.Redis.Hybrid;
+using MethodCache.HybridCache.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;

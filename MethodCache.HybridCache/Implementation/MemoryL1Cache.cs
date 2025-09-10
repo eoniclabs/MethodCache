@@ -1,17 +1,21 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MethodCache.HybridCache.Abstractions;
+using MethodCache.HybridCache.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Providers.Redis.Hybrid
+namespace MethodCache.HybridCache.Implementation
 {
-    public class MemoryL1Cache : IL1Cache, IDisposable
+    /// <summary>
+    /// In-memory implementation of the L1 cache.
+    /// </summary>
+    public class MemoryL1Cache : IL1Cache
     {
-        private readonly ConcurrentDictionary<string, L1CacheEntry<object>> _cache;
+        private readonly ConcurrentDictionary<string, L1CacheEntry> _cache;
         private readonly HybridCacheOptions _options;
         private readonly ILogger<MemoryL1Cache> _logger;
         private readonly Timer _cleanupTimer;
@@ -26,7 +30,7 @@ namespace MethodCache.Providers.Redis.Hybrid
         {
             _options = options.Value;
             _logger = logger;
-            _cache = new ConcurrentDictionary<string, L1CacheEntry<object>>();
+            _cache = new ConcurrentDictionary<string, L1CacheEntry>();
             _evictionSemaphore = new SemaphoreSlim(1, 1);
             
             // Start cleanup timer for expired entries
@@ -75,23 +79,24 @@ namespace MethodCache.Providers.Redis.Hybrid
             // Check if we need to evict entries to stay within limits
             if (_cache.Count >= _options.L1MaxItems)
             {
-                await TryEvictLRUAsync();
+                await TryEvictAsync();
             }
 
-            var entry = new L1CacheEntry<object>
+            var effectiveExpiration = expiration > _options.L1MaxExpiration 
+                ? _options.L1MaxExpiration 
+                : expiration;
+
+            var entry = new L1CacheEntry
             {
-                Value = value,
+                Value = value!,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.Add(expiration),
-                LastAccessedAt = DateTime.UtcNow,
-                AccessCount = 0,
-                SlidingExpiration = _options.L1SlidingExpiration,
-                SlidingWindow = expiration
+                ExpiresAt = DateTime.UtcNow.Add(effectiveExpiration),
+                LastAccessedAt = DateTime.UtcNow
             };
 
             _cache.AddOrUpdate(key, entry, (k, oldEntry) => entry);
             
-            _logger.LogTrace("Set key {Key} in L1 cache with expiration {Expiration}", key, expiration);
+            _logger.LogTrace("Set key {Key} in L1 cache with expiration {Expiration}", key, effectiveExpiration);
         }
 
         public Task<bool> RemoveAsync(string key)
@@ -112,6 +117,39 @@ namespace MethodCache.Providers.Redis.Hybrid
             return Task.CompletedTask;
         }
 
+        public Task<L1CacheStats> GetStatsAsync()
+        {
+            var stats = new L1CacheStats
+            {
+                Hits = _hits,
+                Misses = _misses,
+                Evictions = _evictions,
+                Entries = _cache.Count,
+                MemoryUsage = EstimateMemoryUsage()
+            };
+
+            return Task.FromResult(stats);
+        }
+
+        public Task<int> RemoveMultipleAsync(params string[] keys)
+        {
+            var removed = 0;
+            foreach (var key in keys)
+            {
+                if (_cache.TryRemove(key, out _))
+                {
+                    removed++;
+                }
+            }
+            
+            if (removed > 0)
+            {
+                _logger.LogDebug("Removed {Count} keys from L1 cache", removed);
+            }
+            
+            return Task.FromResult(removed);
+        }
+
         public Task<bool> ExistsAsync(string key)
         {
             if (_cache.TryGetValue(key, out var entry))
@@ -126,64 +164,17 @@ namespace MethodCache.Providers.Redis.Hybrid
             return Task.FromResult(false);
         }
 
-        public Task<IEnumerable<string>> GetKeysAsync(string pattern = "*")
+        public void Dispose()
         {
-            // Simple pattern matching - in production, you might want more sophisticated pattern matching
-            if (pattern == "*")
-            {
-                return Task.FromResult<IEnumerable<string>>(_cache.Keys);
-            }
-
-            var regex = new System.Text.RegularExpressions.Regex(
-                "^" + System.Text.RegularExpressions.Regex.Escape(pattern).Replace("\\*", ".*") + "$");
-            
-            var matchingKeys = _cache.Keys.Where(key => regex.IsMatch(key));
-            return Task.FromResult(matchingKeys);
+            _cleanupTimer?.Dispose();
+            _evictionSemaphore?.Dispose();
+            _cache.Clear();
         }
 
-        public Task<long> GetCountAsync()
-        {
-            return Task.FromResult((long)_cache.Count);
-        }
-
-        public Task<L1CacheStats> GetStatsAsync()
-        {
-            var stats = new L1CacheStats
-            {
-                Hits = _hits,
-                Misses = _misses,
-                Evictions = _evictions,
-                Entries = _cache.Count,
-                MemoryUsageBytes = EstimateMemoryUsage()
-            };
-
-            return Task.FromResult(stats);
-        }
-
-        public Task EvictExpiredAsync()
-        {
-            var expiredKeys = _cache
-                .Where(kvp => kvp.Value.IsExpired)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            foreach (var key in expiredKeys)
-            {
-                _cache.TryRemove(key, out _);
-            }
-
-            if (expiredKeys.Count > 0)
-            {
-                _logger.LogDebug("Evicted {Count} expired entries from L1 cache", expiredKeys.Count);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public async Task<bool> TryEvictLRUAsync()
+        private async Task TryEvictAsync()
         {
             if (!await _evictionSemaphore.WaitAsync(100)) // Don't wait long for eviction lock
-                return false;
+                return;
 
             try
             {
@@ -196,22 +187,14 @@ namespace MethodCache.Providers.Redis.Hybrid
                     _ => GetLRUEntries()
                 };
 
-                var evicted = false;
-                foreach (var (key, _) in entriesToEvict.Take(Math.Max(1, (int)(_options.L1MaxItems / 10)))) // Evict 10% when full
+                var evictCount = Math.Max(1, (int)(_options.L1MaxItems / 10)); // Evict 10% when full
+                foreach (var key in entriesToEvict.Take(evictCount))
                 {
                     if (_cache.TryRemove(key, out _))
                     {
                         Interlocked.Increment(ref _evictions);
-                        evicted = true;
                     }
                 }
-
-                if (evicted)
-                {
-                    _logger.LogDebug("Evicted entries from L1 cache using {Policy} policy", _options.L1EvictionPolicy);
-                }
-
-                return evicted;
             }
             finally
             {
@@ -219,49 +202,86 @@ namespace MethodCache.Providers.Redis.Hybrid
             }
         }
 
-        private IEnumerable<KeyValuePair<string, L1CacheEntry<object>>> GetLRUEntries()
+        private IEnumerable<string> GetLRUEntries()
         {
-            return _cache.OrderBy(kvp => kvp.Value.LastAccessedAt);
+            return _cache
+                .OrderBy(kvp => kvp.Value.LastAccessedAt)
+                .Select(kvp => kvp.Key);
         }
 
-        private IEnumerable<KeyValuePair<string, L1CacheEntry<object>>> GetLFUEntries()
+        private IEnumerable<string> GetLFUEntries()
         {
-            return _cache.OrderBy(kvp => kvp.Value.AccessCount);
+            return _cache
+                .OrderBy(kvp => kvp.Value.AccessCount)
+                .Select(kvp => kvp.Key);
         }
 
-        private IEnumerable<KeyValuePair<string, L1CacheEntry<object>>> GetFIFOEntries()
+        private IEnumerable<string> GetFIFOEntries()
         {
-            return _cache.OrderBy(kvp => kvp.Value.CreatedAt);
+            return _cache
+                .OrderBy(kvp => kvp.Value.CreatedAt)
+                .Select(kvp => kvp.Key);
         }
 
-        private IEnumerable<KeyValuePair<string, L1CacheEntry<object>>> GetTTLEntries()
+        private IEnumerable<string> GetTTLEntries()
         {
-            return _cache.OrderBy(kvp => kvp.Value.ExpiresAt);
+            return _cache
+                .OrderBy(kvp => kvp.Value.ExpiresAt)
+                .Select(kvp => kvp.Key);
+        }
+
+        private void CleanupExpiredEntries(object? state)
+        {
+            try
+            {
+                var expiredKeys = _cache
+                    .Where(kvp => kvp.Value.IsExpired)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                foreach (var key in expiredKeys)
+                {
+                    _cache.TryRemove(key, out _);
+                }
+
+                if (expiredKeys.Count > 0)
+                {
+                    _logger.LogDebug("Cleaned up {Count} expired entries from L1 cache", expiredKeys.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during L1 cache cleanup");
+            }
         }
 
         private long EstimateMemoryUsage()
         {
-            // Rough estimation - in production you might want more accurate measurement
-            return _cache.Count * 1024; // Assume ~1KB per entry on average
+            // This is a rough estimate - in production you might want more accurate measurement
+            const long overheadPerEntry = 100; // Estimated overhead per dictionary entry
+            const long averageKeySize = 50;
+            const long averageValueSize = 500; // This would need to be more sophisticated in production
+            
+            return _cache.Count * (overheadPerEntry + averageKeySize + averageValueSize);
         }
 
-        private async void CleanupExpiredEntries(object? state)
+        private class L1CacheEntry
         {
-            try
-            {
-                await EvictExpiredAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error during L1 cache cleanup");
-            }
-        }
+            private long _accessCount;
+            
+            public object Value { get; init; } = null!;
+            public DateTime CreatedAt { get; init; }
+            public DateTime ExpiresAt { get; init; }
+            public DateTime LastAccessedAt { get; set; }
+            public long AccessCount => _accessCount;
 
-        public void Dispose()
-        {
-            _cleanupTimer?.Dispose();
-            _evictionSemaphore?.Dispose();
-            _cache?.Clear();
+            public bool IsExpired => DateTime.UtcNow > ExpiresAt;
+
+            public void UpdateAccess()
+            {
+                LastAccessedAt = DateTime.UtcNow;
+                Interlocked.Increment(ref _accessCount);
+            }
         }
     }
 }

@@ -3,7 +3,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.Core;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
-using MethodCache.Providers.Redis.Hybrid;
+using MethodCache.Providers.Redis.Backplane;
+using MethodCache.HybridCache.Abstractions;
+using MethodCache.HybridCache.Configuration;
+using MethodCache.HybridCache.Implementation;
+using MethodCache.HybridCache.Extensions;
 using System;
 
 namespace MethodCache.Providers.Redis.Extensions
@@ -42,6 +46,9 @@ namespace MethodCache.Providers.Redis.Extensions
                 return new RedisCacheManager(connectionManager, serializer, tagManager, distributedLock, pubSubInvalidation, metricsProvider, options, logger);
             });
 
+            // Register Redis backplane for hybrid cache
+            services.AddSingleton<ICacheBackplane, RedisCacheBackplane>();
+            
             // Register L1 cache
             services.AddSingleton<IL1Cache, MemoryL1Cache>();
 
@@ -50,11 +57,11 @@ namespace MethodCache.Providers.Redis.Extensions
             {
                 var l1Cache = provider.GetRequiredService<IL1Cache>();
                 var l2Cache = provider.GetRequiredService<RedisCacheManager>(); // Use dedicated Redis instance
+                var backplane = provider.GetRequiredService<ICacheBackplane>();
                 var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();
-                var metricsProvider = provider.GetRequiredService<ICacheMetricsProvider>();
                 var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HybridCacheManager>>();
 
-                return new HybridCacheManager(l1Cache, l2Cache, hybridOptions, metricsProvider, logger);
+                return new HybridCacheManager(l1Cache, l2Cache, backplane, hybridOptions, logger);
             });
 
             // Replace ICacheManager with hybrid implementation
@@ -82,10 +89,20 @@ namespace MethodCache.Providers.Redis.Extensions
             services.AddSingleton<IL1Cache, MemoryL1Cache>();
 
             // Register custom L2 cache
-            services.AddSingleton<ICacheManager, TL2Cache>();
+            services.AddSingleton<TL2Cache>();
+            
+            // Note: For generic L2 cache, backplane would need to be configured separately
+            // Register hybrid cache manager with null backplane
+            services.AddSingleton<IHybridCacheManager>(provider =>
+            {
+                var l1Cache = provider.GetRequiredService<IL1Cache>();
+                var l2Cache = provider.GetRequiredService<TL2Cache>();
+                var backplane = provider.GetService<ICacheBackplane>(); // Optional
+                var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();
+                var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HybridCacheManager>>();
 
-            // Register hybrid cache manager
-            services.AddSingleton<IHybridCacheManager, HybridCacheManager>();
+                return new HybridCacheManager(l1Cache, l2Cache, backplane, hybridOptions, logger);
+            });
 
             // Replace ICacheManager with hybrid implementation
             services.Replace(ServiceDescriptor.Singleton<ICacheManager>(provider =>
@@ -101,13 +118,11 @@ namespace MethodCache.Providers.Redis.Extensions
             this HybridCacheOptions options,
             long maxItems = 10000,
             TimeSpan? defaultExpiration = null,
-            L1EvictionPolicy evictionPolicy = L1EvictionPolicy.LRU,
-            bool slidingExpiration = true)
+            L1EvictionPolicy evictionPolicy = L1EvictionPolicy.LRU)
         {
             options.L1MaxItems = maxItems;
             options.L1DefaultExpiration = defaultExpiration ?? TimeSpan.FromMinutes(5);
             options.L1EvictionPolicy = evictionPolicy;
-            options.L1SlidingExpiration = slidingExpiration;
             return options;
         }
 
@@ -144,13 +159,9 @@ namespace MethodCache.Providers.Redis.Extensions
         /// </summary>
         public static HybridCacheOptions WithPerformanceSettings(
             this HybridCacheOptions options,
-            int maxConcurrentL2Operations = 10,
-            TimeSpan? l2OperationTimeout = null,
-            bool enableStatistics = true)
+            int maxConcurrentL2Operations = 10)
         {
             options.MaxConcurrentL2Operations = maxConcurrentL2Operations;
-            options.L2OperationTimeout = l2OperationTimeout ?? TimeSpan.FromSeconds(5);
-            options.EnableStatistics = enableStatistics;
             return options;
         }
 
@@ -159,13 +170,9 @@ namespace MethodCache.Providers.Redis.Extensions
         /// </summary>
         public static HybridCacheOptions WithAdvancedFeatures(
             this HybridCacheOptions options,
-            bool enableStaleWhileRevalidate = false,
-            TimeSpan? staleWindow = null,
-            bool enableCrossInstanceInvalidation = true)
+            bool enableBackplane = true)
         {
-            options.EnableStaleWhileRevalidate = enableStaleWhileRevalidate;
-            options.StaleWhileRevalidateWindow = staleWindow ?? TimeSpan.FromMinutes(1);
-            options.EnableCrossInstanceInvalidation = enableCrossInstanceInvalidation;
+            options.EnableBackplane = enableBackplane;
             return options;
         }
     }

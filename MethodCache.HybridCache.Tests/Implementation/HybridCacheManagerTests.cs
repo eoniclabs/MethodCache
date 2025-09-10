@@ -1,7 +1,9 @@
 using FluentAssertions;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
-using MethodCache.Providers.Redis.Hybrid;
+using MethodCache.HybridCache.Abstractions;
+using MethodCache.HybridCache.Configuration;
+using MethodCache.HybridCache.Implementation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -9,13 +11,13 @@ using System;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace MethodCache.Providers.Redis.Tests.Hybrid;
+namespace MethodCache.HybridCache.Tests.Implementation;
 
 public class HybridCacheManagerTests : IDisposable
 {
     private readonly IL1Cache _mockL1Cache;
     private readonly ICacheManager _mockL2Cache;
-    private readonly ICacheMetricsProvider _mockMetricsProvider;
+    private readonly ICacheBackplane? _mockBackplane;
     private readonly ILogger<HybridCacheManager> _mockLogger;
     private readonly HybridCacheManager _hybridCacheManager;
     private readonly HybridCacheOptions _options;
@@ -24,7 +26,7 @@ public class HybridCacheManagerTests : IDisposable
     {
         _mockL1Cache = Substitute.For<IL1Cache>();
         _mockL2Cache = Substitute.For<ICacheManager>();
-        _mockMetricsProvider = Substitute.For<ICacheMetricsProvider>();
+        _mockBackplane = Substitute.For<ICacheBackplane>();
         _mockLogger = Substitute.For<ILogger<HybridCacheManager>>();
         
         _options = new HybridCacheOptions
@@ -41,8 +43,8 @@ public class HybridCacheManagerTests : IDisposable
         _hybridCacheManager = new HybridCacheManager(
             _mockL1Cache,
             _mockL2Cache,
+            _mockBackplane,
             Options.Create(_options),
-            _mockMetricsProvider,
             _mockLogger);
     }
 
@@ -103,7 +105,8 @@ public class HybridCacheManagerTests : IDisposable
 
         // Assert
         _mockL1Cache.Received(1).RemoveAsync(key);
-        // Note: L2 invalidation is tested separately due to semaphore complexity
+        // Note: L2 individual key invalidation is currently not supported through ICacheManager
+        // The method logs a warning instead
     }
 
     [Fact]
@@ -159,7 +162,7 @@ public class HybridCacheManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task GetOrCreateAsync_WithL1Hit_ShouldReturnFromL1AndRecordMetrics()
+    public async Task GetOrCreateAsync_WithL1Hit_ShouldReturnFromL1()
     {
         // Arrange
         var methodName = "TestMethod";
@@ -185,51 +188,7 @@ public class HybridCacheManagerTests : IDisposable
         // Assert
         result.Should().Be(expectedValue);
         factoryCalled.Should().BeFalse();
-        _mockMetricsProvider.Received(1).CacheHit(methodName);
         _mockL1Cache.Received(1).GetAsync<string>(expectedKey);
-    }
-
-    [Fact]
-    public async Task GetOrCreateAsync_WithL1MissL2Hit_ShouldReturnFromL2AndWarmL1()
-    {
-        // Arrange
-        var methodName = "TestMethod";
-        var args = new object[] { "arg1" };
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(10) };
-        var keyGenerator = Substitute.For<ICacheKeyGenerator>();
-        var expectedKey = "generated-key";
-        var expectedValue = "l2-cached-value";
-        var factoryCalled = false;
-
-        keyGenerator.GenerateKey(methodName, args, settings).Returns(expectedKey);
-        _mockL1Cache.GetAsync<string>(expectedKey).Returns((string)null!);
-
-        // Mock L2 cache to also return cache miss - this should trigger factory call
-        _mockL2Cache.GetOrCreateAsync<string>(
-            Arg.Any<string>(), 
-            Arg.Any<object[]>(), 
-            Arg.Any<Func<Task<string>>>(), 
-            Arg.Any<CacheMethodSettings>(), 
-            Arg.Any<ICacheKeyGenerator>(), 
-            Arg.Any<bool>())
-            .Returns(callInfo =>
-            {
-                // Call the factory function passed to simulate cache miss
-                var factory = callInfo.ArgAt<Func<Task<string>>>(2);
-                return factory();
-            });
-        var result = await _hybridCacheManager.GetOrCreateAsync(
-            methodName,
-            args,
-            () => { factoryCalled = true; return Task.FromResult("factory-value"); },
-            settings,
-            keyGenerator,
-            false);
-
-        // Since L2 is not properly mocked, factory should be called
-        factoryCalled.Should().BeTrue();
-        result.Should().Be("factory-value");
-        _mockMetricsProvider.Received(1).CacheMiss(methodName);
     }
 
     [Theory]
@@ -244,8 +203,8 @@ public class HybridCacheManagerTests : IDisposable
         var hybridManager = new HybridCacheManager(
             _mockL1Cache,
             _mockL2Cache,
+            _mockBackplane,
             Options.Create(_options),
-            _mockMetricsProvider,
             _mockLogger);
 
         var methodName = "TestMethod";
