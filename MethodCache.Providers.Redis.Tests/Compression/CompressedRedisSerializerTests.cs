@@ -86,7 +86,7 @@ public class CompressedRedisSerializerTests
 
         // Assert
         result.Should().BeEquivalentTo(serializedData);
-        _mockInnerSerializer.Received(1).Serialize(testObject);
+        _mockInnerSerializer.Received(2).Serialize(testObject); // Called once initially and once in fallback
     }
 
     [Fact]

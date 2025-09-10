@@ -204,11 +204,20 @@ public class HybridCacheManagerTests : IDisposable
         keyGenerator.GenerateKey(methodName, args, settings).Returns(expectedKey);
         _mockL1Cache.GetAsync<string>(expectedKey).Returns((string)null!);
 
-        // Mock the private GetFromL2InternalAsync method behavior through GetFromL2Async
-        // This is a simplified test - in practice you'd need to set up the L2 cache mock properly
-
-        // Act & Assert - This test demonstrates the flow but would need proper L2 mocking
-        // For now, we'll just verify the L1 cache miss
+        // Mock L2 cache to also return cache miss - this should trigger factory call
+        _mockL2Cache.GetOrCreateAsync<string>(
+            Arg.Any<string>(), 
+            Arg.Any<object[]>(), 
+            Arg.Any<Func<Task<string>>>(), 
+            Arg.Any<CacheMethodSettings>(), 
+            Arg.Any<ICacheKeyGenerator>(), 
+            Arg.Any<bool>())
+            .Returns(callInfo =>
+            {
+                // Call the factory function passed to simulate cache miss
+                var factory = callInfo.ArgAt<Func<Task<string>>>(2);
+                return factory();
+            });
         var result = await _hybridCacheManager.GetOrCreateAsync(
             methodName,
             args,
@@ -247,6 +256,21 @@ public class HybridCacheManagerTests : IDisposable
 
         keyGenerator.GenerateKey(methodName, args, settings).Returns(expectedKey);
         _mockL1Cache.GetAsync<string>(expectedKey).Returns((string)null!);
+        
+        // Mock L2 cache to return null (cache miss) for any GetOrCreateAsync call
+        _mockL2Cache.GetOrCreateAsync<string>(
+            Arg.Any<string>(), 
+            Arg.Any<object[]>(), 
+            Arg.Any<Func<Task<string>>>(), 
+            Arg.Any<CacheMethodSettings>(), 
+            Arg.Any<ICacheKeyGenerator>(), 
+            Arg.Any<bool>())
+            .Returns(callInfo =>
+            {
+                // Call the factory function passed to simulate cache miss
+                var factory = callInfo.ArgAt<Func<Task<string>>>(2);
+                return factory();
+            });
 
         // Act
         var result = await hybridManager.GetOrCreateAsync(

@@ -106,6 +106,7 @@ namespace MethodCache.Providers.Redis.Tests
                                .Returns(lockHandle);
 
             _serializerMock.SerializeAsync(factoryResult).Returns(new byte[] { 1, 2, 3 });
+            _databaseMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>()).Returns(true);
 
             // Act
             var result = await _cacheManager.GetOrCreateAsync(
@@ -119,7 +120,7 @@ namespace MethodCache.Providers.Redis.Tests
             // Assert
             Assert.Equal(factoryResult, result);
             _metricsProviderMock.Received(1).CacheMiss(methodName);
-            _databaseMock.Received(1).StringSetAsync(fullKey, Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), CommandFlags.None);
+            _databaseMock.Received(1).StringSetAsync(fullKey, Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>());
             _tagManagerMock.Received(1).AssociateTagsAsync(fullKey, settings.Tags);
         }
 

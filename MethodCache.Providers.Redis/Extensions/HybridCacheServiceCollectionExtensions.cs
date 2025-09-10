@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.Core;
 using MethodCache.Providers.Redis.Configuration;
+using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Hybrid;
 using System;
 
@@ -23,8 +24,23 @@ namespace MethodCache.Providers.Redis.Extensions
             // Configure hybrid cache options
             services.Configure(configureHybridOptions);
 
-            // Add Redis as L2 cache (but don't replace ICacheManager yet)
+            // Add Redis infrastructure first
             services.AddRedisCache(configureRedisOptions ?? (_ => { }));
+
+            // Store the original Redis cache manager under a different key
+            services.AddSingleton<RedisCacheManager>(provider =>
+            {
+                var connectionManager = provider.GetRequiredService<IRedisConnectionManager>();
+                var serializer = provider.GetRequiredService<IRedisSerializer>();
+                var tagManager = provider.GetRequiredService<IRedisTagManager>();
+                var distributedLock = provider.GetRequiredService<IDistributedLock>();
+                var pubSubInvalidation = provider.GetRequiredService<IRedisPubSubInvalidation>();
+                var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RedisOptions>>();
+                var metricsProvider = provider.GetRequiredService<ICacheMetricsProvider>();
+                var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RedisCacheManager>>();
+                
+                return new RedisCacheManager(connectionManager, serializer, tagManager, distributedLock, pubSubInvalidation, metricsProvider, options, logger);
+            });
 
             // Register L1 cache
             services.AddSingleton<IL1Cache, MemoryL1Cache>();
@@ -33,7 +49,7 @@ namespace MethodCache.Providers.Redis.Extensions
             services.AddSingleton<IHybridCacheManager>(provider =>
             {
                 var l1Cache = provider.GetRequiredService<IL1Cache>();
-                var l2Cache = provider.GetRequiredService<ICacheManager>(); // This will be RedisCacheManager
+                var l2Cache = provider.GetRequiredService<RedisCacheManager>(); // Use dedicated Redis instance
                 var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();
                 var metricsProvider = provider.GetRequiredService<ICacheMetricsProvider>();
                 var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HybridCacheManager>>();

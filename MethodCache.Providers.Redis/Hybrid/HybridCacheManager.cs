@@ -341,24 +341,85 @@ namespace MethodCache.Providers.Redis.Hybrid
 
         private async Task<T?> GetFromL2InternalAsync<T>(string key)
         {
-            // Return default to avoid infinite recursion
-            // In a full implementation, this would access L2 cache directly via Redis connection
-            // For now, we'll skip L2 operations to prevent the circular dependency issue
-            return default;
+            try
+            {
+                // Use a unique method name to avoid routing back through hybrid cache
+                var methodName = $"__L2Internal_Get_{key}";
+                var args = Array.Empty<object>();
+                var settings = new CacheMethodSettings { Duration = TimeSpan.FromHours(1) };
+                var tempKeyGenerator = new DefaultCacheKeyGenerator();
+                
+                // Check if value exists by calling GetOrCreate with a factory that throws
+                // This way we only get existing values, never create new ones
+                var factoryCalled = false;
+                try
+                {
+                    var result = await _l2Cache.GetOrCreateAsync<T>(
+                        methodName,
+                        args,
+                        () => 
+                        {
+                            factoryCalled = true;
+                            throw new InvalidOperationException("Factory should not be called in L2 internal get");
+                        },
+                        settings,
+                        tempKeyGenerator,
+                        false);
+                    
+                    return factoryCalled ? default : result;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Factory was called, meaning no cached value exists
+                    return default;
+                }
+            }
+            catch
+            {
+                return default;
+            }
         }
 
         private async Task SetInL2InternalAsync<T>(string key, T value, TimeSpan expiration)
         {
-            // Skip L2 operations to avoid infinite recursion
-            // In a full implementation, this would write directly to Redis connection
-            await Task.CompletedTask;
+            try
+            {
+                // Use a unique method name to avoid routing back through hybrid cache
+                var methodName = $"__L2Internal_Set_{key}";
+                var args = Array.Empty<object>();
+                var hybridTag = $"hybrid_{key}";
+                var settings = new CacheMethodSettings 
+                { 
+                    Duration = expiration,
+                    Tags = new List<string> { hybridTag }
+                };
+                var tempKeyGenerator = new DefaultCacheKeyGenerator();
+                
+                // Force set the value by always returning our value from the factory
+                await _l2Cache.GetOrCreateAsync(methodName, args, () => Task.FromResult(value), settings, tempKeyGenerator, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to set value in L2 cache for key: {Key}", key);
+            }
         }
 
         private async Task InvalidateL2InternalAsync(string key)
         {
-            // Skip L2 operations to avoid infinite recursion
-            // In a full implementation, this would invalidate directly in Redis
-            await Task.CompletedTask;
+            try
+            {
+                // For invalidation, we use tag-based invalidation
+                // Since we can't directly invalidate individual keys in the current interface,
+                // we'll create a unique tag for each hybrid cache entry
+                var hybridTag = $"hybrid_{key}";
+                
+                // If L2 cache supports tag invalidation, use that
+                await _l2Cache.InvalidateByTagsAsync(hybridTag);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to invalidate key in L2 cache: {Key}", key);
+            }
         }
 
         private bool IsIdempotent<T>(Func<Task<T>> factory)

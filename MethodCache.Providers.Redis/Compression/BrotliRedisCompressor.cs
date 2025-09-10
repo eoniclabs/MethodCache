@@ -53,9 +53,9 @@ namespace MethodCache.Providers.Redis.Compression
                 brotliStream.CopyTo(output);
                 return output.ToArray();
             }
-            catch (InvalidDataException)
+            catch (Exception)
             {
-                // Data is not Brotli compressed, return as-is
+                // Data is not Brotli compressed or invalid, return as-is
                 return compressedData;
             }
         }
