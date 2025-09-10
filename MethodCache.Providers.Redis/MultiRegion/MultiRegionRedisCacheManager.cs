@@ -184,10 +184,10 @@ namespace MethodCache.Providers.Redis.MultiRegion
             }
         }
 
-        private async Task<string[]> GetKeysByTagAsync(string tag, string region)
+        private Task<string[]> GetKeysByTagAsync(string tag, string region)
         {
             // Simplified implementation - would use Redis SCAN in practice
-            return Array.Empty<string>();
+            return Task.FromResult(Array.Empty<string>());
         }
 
         private bool IsIdempotent<T>(Func<Task<T>> factory)

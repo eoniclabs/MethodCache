@@ -18,12 +18,12 @@ namespace MethodCache.Providers.Redis.Compression
             _compressionLevel = compressionLevel;
         }
 
-        public bool ShouldCompress(byte[] data)
+        public bool ShouldCompress(byte[]? data)
         {
             return data != null && data.Length > _compressionThreshold;
         }
 
-        public byte[] Compress(byte[] data)
+        public byte[]? Compress(byte[]? data)
         {
             if (data == null || data.Length == 0)
                 return data;
@@ -39,7 +39,7 @@ namespace MethodCache.Providers.Redis.Compression
             return output.ToArray();
         }
 
-        public byte[] Decompress(byte[] compressedData)
+        public byte[]? Decompress(byte[]? compressedData)
         {
             if (compressedData == null || compressedData.Length == 0)
                 return compressedData;
@@ -56,12 +56,12 @@ namespace MethodCache.Providers.Redis.Compression
             return output.ToArray();
         }
 
-        public Task<byte[]> CompressAsync(byte[] data)
+        public Task<byte[]?> CompressAsync(byte[]? data)
         {
             return Task.FromResult(Compress(data));
         }
 
-        public Task<byte[]> DecompressAsync(byte[] compressedData)
+        public Task<byte[]?> DecompressAsync(byte[]? compressedData)
         {
             return Task.FromResult(Decompress(compressedData));
         }

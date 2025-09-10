@@ -58,7 +58,7 @@ namespace MethodCache.Providers.Redis.Features
             return Task.CompletedTask;
         }
 
-        public Task RegisterWarmupKeyAsync(string key, Func<Task<object>> factory, TimeSpan refreshInterval, string[] tags = null)
+        public Task RegisterWarmupKeyAsync(string key, Func<Task<object>> factory, TimeSpan refreshInterval, string[]? tags = null)
         {
             if (!_options.EnableCacheWarming)
                 return Task.CompletedTask;

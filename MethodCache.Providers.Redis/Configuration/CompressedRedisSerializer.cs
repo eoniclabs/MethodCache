@@ -30,7 +30,7 @@ namespace MethodCache.Providers.Redis.Configuration
                 if (!_compressor.ShouldCompress(serializedData))
                 {
                     _logger.LogTrace("Skipping compression for data of size {Size} bytes (below threshold)", serializedData?.Length ?? 0);
-                    return serializedData;
+                    return serializedData ?? Array.Empty<byte>();
                 }
 
                 var compressedData = _compressor.Compress(serializedData);
@@ -41,7 +41,7 @@ namespace MethodCache.Providers.Redis.Configuration
                 _logger.LogDebug("Compressed data from {OriginalSize} to {CompressedSize} bytes (ratio: {CompressionRatio:P2}) using {CompressionType}",
                     originalSize, compressedSize, compressionRatio, _compressor.CompressionType);
 
-                return compressedData;
+                return compressedData ?? Array.Empty<byte>();
             }
             catch (Exception ex)
             {
@@ -55,7 +55,7 @@ namespace MethodCache.Providers.Redis.Configuration
             try
             {
                 var decompressedData = _compressor.Decompress(data);
-                return _innerSerializer.Deserialize<T>(decompressedData);
+                return _innerSerializer.Deserialize<T>(decompressedData ?? Array.Empty<byte>());
             }
             catch (Exception ex)
             {
@@ -73,7 +73,7 @@ namespace MethodCache.Providers.Redis.Configuration
                 if (!_compressor.ShouldCompress(serializedData))
                 {
                     _logger.LogTrace("Skipping compression for data of size {Size} bytes (below threshold)", serializedData?.Length ?? 0);
-                    return serializedData;
+                    return serializedData ?? Array.Empty<byte>();
                 }
 
                 var compressedData = await _compressor.CompressAsync(serializedData);
@@ -84,7 +84,7 @@ namespace MethodCache.Providers.Redis.Configuration
                 _logger.LogDebug("Compressed data from {OriginalSize} to {CompressedSize} bytes (ratio: {CompressionRatio:P2}) using {CompressionType}",
                     originalSize, compressedSize, compressionRatio, _compressor.CompressionType);
 
-                return compressedData;
+                return compressedData ?? Array.Empty<byte>();
             }
             catch (Exception ex)
             {
@@ -98,7 +98,7 @@ namespace MethodCache.Providers.Redis.Configuration
             try
             {
                 var decompressedData = await _compressor.DecompressAsync(data);
-                return await _innerSerializer.DeserializeAsync<T>(decompressedData);
+                return await _innerSerializer.DeserializeAsync<T>(decompressedData ?? Array.Empty<byte>());
             }
             catch (Exception ex)
             {

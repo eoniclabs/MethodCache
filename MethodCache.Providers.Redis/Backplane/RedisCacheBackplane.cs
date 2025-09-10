@@ -94,7 +94,7 @@ namespace MethodCache.Providers.Redis.Backplane
             try
             {
                 _subscriber = _connectionManager.GetSubscriber();
-                var channel = new RedisChannel(_channelPrefix + "invalidation", RedisChannel.PatternMode.Literal);
+                var channel = RedisChannel.Literal(_channelPrefix + "invalidation");
                 
                 await _subscriber.SubscribeAsync(channel, async (ch, value) =>
                 {
@@ -119,7 +119,7 @@ namespace MethodCache.Providers.Redis.Backplane
             {
                 if (_subscriber != null)
                 {
-                    var channel = new RedisChannel(_channelPrefix + "invalidation", RedisChannel.PatternMode.Literal);
+                    var channel = RedisChannel.Literal(_channelPrefix + "invalidation");
                     await _subscriber.UnsubscribeAsync(channel);
                 }
 
@@ -153,7 +153,7 @@ namespace MethodCache.Providers.Redis.Backplane
         private async Task PublishMessageAsync(BackplaneMessage message)
         {
             var subscriber = _connectionManager.GetSubscriber();
-            var channel = new RedisChannel(_channelPrefix + "invalidation", RedisChannel.PatternMode.Literal);
+            var channel = RedisChannel.Literal(_channelPrefix + "invalidation");
             var json = JsonSerializer.Serialize(message);
             
             await subscriber.PublishAsync(channel, json);

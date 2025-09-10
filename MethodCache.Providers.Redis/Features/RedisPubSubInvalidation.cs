@@ -50,7 +50,7 @@ namespace MethodCache.Providers.Redis.Features
                 };
 
                 var json = JsonSerializer.Serialize(invalidationEvent);
-                await _subscriber.PublishAsync(_channelName, json);
+                await _subscriber.PublishAsync(RedisChannel.Literal(_channelName), json);
 
                 _logger.LogDebug("Published invalidation event for tags {Tags} from instance {InstanceId}", 
                     string.Join(", ", tags), _instanceId);
@@ -69,7 +69,7 @@ namespace MethodCache.Providers.Redis.Features
             try
             {
                 _subscriber = _connectionManager.GetSubscriber();
-                await _subscriber.SubscribeAsync(_channelName, OnInvalidationMessageReceived);
+                await _subscriber.SubscribeAsync(RedisChannel.Literal(_channelName), OnInvalidationMessageReceived);
                 _isListening = true;
 
                 _logger.LogInformation("Started listening for cache invalidation events on channel {Channel} for instance {InstanceId}", 
@@ -88,7 +88,7 @@ namespace MethodCache.Providers.Redis.Features
 
             try
             {
-                await _subscriber.UnsubscribeAsync(_channelName);
+                await _subscriber.UnsubscribeAsync(RedisChannel.Literal(_channelName));
                 _isListening = false;
 
                 _logger.LogInformation("Stopped listening for cache invalidation events on channel {Channel} for instance {InstanceId}", 

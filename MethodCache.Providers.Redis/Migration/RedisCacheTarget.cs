@@ -76,7 +76,7 @@ namespace MethodCache.Providers.Redis.Migration
                         foreach (var tag in entry.Tags)
                         {
                             var tagIndex = $"tag:{tag}";
-                            tasks.Add(batch.SetAddAsync(tagIndex, (RedisValue)(string)redisKey));
+                            tasks.Add(batch.SetAddAsync(tagIndex, (RedisValue)redisKey.ToString()));
                             if (expiry.HasValue)
                             {
                                 tasks.Add(batch.KeyExpireAsync(tagIndex, expiry));

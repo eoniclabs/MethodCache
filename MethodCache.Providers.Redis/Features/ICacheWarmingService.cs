@@ -6,7 +6,7 @@ namespace MethodCache.Providers.Redis.Features
     {
         Task StartAsync();
         Task StopAsync();
-        Task RegisterWarmupKeyAsync(string key, Func<Task<object>> factory, TimeSpan refreshInterval, string[] tags = null);
+        Task RegisterWarmupKeyAsync(string key, Func<Task<object>> factory, TimeSpan refreshInterval, string[]? tags = null);
         Task UnregisterWarmupKeyAsync(string key);
     }
 

@@ -77,7 +77,6 @@ namespace MethodCache.Providers.Redis.Benchmarks
                     {
                         string methodName;
                         object[] args;
-                        bool shouldHit;
 
                         // Determine if this should be a hit or miss based on hit ratio
                         if (_random.NextDouble() < options.HitRatio && existingKeys.Count > 0)
@@ -87,7 +86,6 @@ namespace MethodCache.Providers.Redis.Benchmarks
                             methodName = $"Method{hitIndex % 10}";
                             var existingKey = GenerateKey(hitIndex, options);
                             args = new object[] { existingKey, hitIndex };
-                            shouldHit = true;
                         }
                         else
                         {
@@ -95,7 +93,6 @@ namespace MethodCache.Providers.Redis.Benchmarks
                             methodName = $"Method{index % 10}";
                             var newKey = GenerateKey(index + hitCount, options);
                             args = new object[] { newKey, index + hitCount };
-                            shouldHit = false;
                         }
 
                         var settings = new CacheMethodSettings 
