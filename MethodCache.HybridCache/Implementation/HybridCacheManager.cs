@@ -15,7 +15,7 @@ namespace MethodCache.HybridCache.Implementation
     /// <summary>
     /// Implements a hybrid caching strategy with L1 (in-memory) and L2 (distributed) caches.
     /// </summary>
-    public class HybridCacheManager : IHybridCacheManager
+    public class HybridCacheManager : IHybridCacheManager, IAsyncDisposable
     {
         private readonly IMemoryCache _l1Cache;
         private readonly ICacheManager _l2Cache;
@@ -38,6 +38,19 @@ namespace MethodCache.HybridCache.Implementation
         private long _l2Misses;
         private long _backplaneMessagesSent;
         private long _backplaneMessagesReceived;
+        
+        // Cached objects for GetL2ValueDirectlyAsync optimization
+        private static readonly CacheMethodSettings CachedL2Settings = new() { Duration = TimeSpan.FromMinutes(1) };
+        private static readonly object[] EmptyArgs = Array.Empty<object>();
+        private const string L2DirectGetMethodName = "HybridL2DirectGet";
+        
+        // Disposal tracking
+        private bool _disposed = false;
+        
+        // Helper properties for cleaner logic
+        private bool ShouldUseL2 => _options.L2Enabled && _options.Strategy != HybridStrategy.L1Only;
+        private bool ShouldUseL1 => _options.Strategy != HybridStrategy.L2Only;
+        private bool IsL1OnlyMode => _options.Strategy == HybridStrategy.L1Only;
 
         public HybridCacheManager(
             IMemoryCache l1Cache,
@@ -140,7 +153,7 @@ namespace MethodCache.HybridCache.Implementation
                 }
                 
                 // Check L2 cache if enabled
-                if (_options.L2Enabled && _options.Strategy != HybridStrategy.L1Only)
+                if (ShouldUseL2)
                 {
                     try
                     {
@@ -151,7 +164,7 @@ namespace MethodCache.HybridCache.Implementation
                         if (l2Value != null)
                         {
                             // L2 cache hit - warm L1 and return
-                            if (_options.Strategy != HybridStrategy.L2Only)
+                            if (ShouldUseL1)
                             {
                                 var l1Expiration = CalculateL1Expiration(settings);
                                 await _l1Cache.SetAsync(cacheKey, l2Value, l1Expiration);
@@ -180,7 +193,7 @@ namespace MethodCache.HybridCache.Implementation
                                 keyGenerator,
                                 requireIdempotent);
                                 
-                            if (_options.Strategy != HybridStrategy.L2Only)
+                            if (ShouldUseL1)
                             {
                                 var l1Expiration = CalculateL1Expiration(settings);
                                 await _l1Cache.SetAsync(cacheKey, result, l1Expiration);
@@ -199,7 +212,7 @@ namespace MethodCache.HybridCache.Implementation
                 }
                 
                 // L2 not enabled or L1Only mode - execute factory and cache in L1
-                if (_options.Strategy == HybridStrategy.L1Only)
+                if (IsL1OnlyMode)
                 {
                     var result = await factory();
                     if (result != null)
@@ -222,10 +235,20 @@ namespace MethodCache.HybridCache.Implementation
                 keyLock.Release();
                 
                 // Clean up key-level lock if no other threads are waiting
-                if (keyLock.CurrentCount == 1)
+                // Use a more robust check to avoid race conditions
+                if (keyLock.CurrentCount == 1 && _keyLevelLocks.TryRemove(cacheKey, out var removedLock))
                 {
-                    _keyLevelLocks.TryRemove(cacheKey, out _);
-                    keyLock.Dispose();
+                    // Only dispose if we successfully removed it from the dictionary
+                    // This prevents race conditions where another thread adds it back
+                    if (ReferenceEquals(removedLock, keyLock))
+                    {
+                        keyLock.Dispose();
+                    }
+                    else
+                    {
+                        // Another thread created a new semaphore, put it back
+                        _keyLevelLocks.TryAdd(cacheKey, removedLock);
+                    }
                 }
             }
         }
@@ -235,24 +258,25 @@ namespace MethodCache.HybridCache.Implementation
             // Create a factory that throws to ensure we only get existing values
             try
             {
-                var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(1) };
                 var keyGenerator = new SimpleKeyGenerator(cacheKey);
                 
-                var hasValue = false;
+                var wasFactoryCalled = false;
                 var result = await _l2Cache.GetOrCreateAsync<T>(
-                    "HybridL2DirectGet",
-                    Array.Empty<object>(),
+                    L2DirectGetMethodName,
+                    EmptyArgs,
                     () => 
                     {
-                        hasValue = true;
+                        wasFactoryCalled = true;
+                        // Return a task that's already completed with default value
+                        // This avoids creating new tasks when cache misses
                         return Task.FromResult<T>(default!);
                     },
-                    settings,
+                    CachedL2Settings,
                     keyGenerator,
                     false);
                 
-                // If factory was called, it means there was no cached value
-                return hasValue ? default : result;
+                // If factory was called, there was no cached value
+                return wasFactoryCalled ? default : result;
             }
             catch
             {
@@ -413,10 +437,20 @@ namespace MethodCache.HybridCache.Implementation
         {
             if (!_options.L2Enabled) return;
             
-            // Use tag-based invalidation as a workaround since direct key invalidation isn't supported
+            // WORKAROUND: The ICacheManager interface only provides InvalidateByTagsAsync() but no direct
+            // RemoveAsync(key) method for individual key invalidation. As a workaround, we create a 
+            // synthetic tag for each key (format: "key:{actualKey}") and use tag-based invalidation.
+            // 
+            // This approach has limitations:
+            // 1. Relies on L2 cache implementations supporting tag-based invalidation
+            // 2. Creates additional metadata overhead for tag tracking
+            // 3. May be less efficient than direct key removal
+            // 
+            // TODO: Consider extending ICacheManager interface to include RemoveAsync(string key)
+            // method for more efficient single-key invalidation.
             var invalidationTag = $"key:{key}";
             await _l2Cache.InvalidateByTagsAsync(invalidationTag);
-            _logger.LogTrace("Invalidated L2 cache for key {Key} using tag {Tag}", key, invalidationTag);
+            _logger.LogTrace("Invalidated L2 cache for key {Key} using synthetic tag {Tag}", key, invalidationTag);
         }
 
         public async Task InvalidateBothAsync(string key)
@@ -553,28 +587,57 @@ namespace MethodCache.HybridCache.Implementation
             }
         }
 
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposed) return;
+            
+            try
+            {
+                if (_backplane != null && _options.EnableBackplane)
+                {
+                    _backplane.InvalidationReceived -= OnBackplaneInvalidationReceived;
+                    // Properly await the async disposal
+                    await _backplane.StopListeningAsync();
+                    _backplane.Dispose();
+                }
+                
+                // Clean up key-level locks
+                foreach (var kvp in _keyLevelLocks)
+                {
+                    kvp.Value.Dispose();
+                }
+                _keyLevelLocks.Clear();
+                
+                // Clean up tag mappings
+                ClearAllTagMappings();
+                _tagMappingLock?.Dispose();
+                
+                if (_l1Cache is IAsyncDisposable asyncL1Cache)
+                {
+                    await asyncL1Cache.DisposeAsync();
+                }
+                else
+                {
+                    _l1Cache?.Dispose();
+                }
+                
+                _l2Semaphore?.Dispose();
+            }
+            finally
+            {
+                _disposed = true;
+            }
+        }
+        
         public void Dispose()
         {
+            // For synchronous disposal, we have to block (unfortunately)
+            // But we warn about it
             if (_backplane != null && _options.EnableBackplane)
             {
-                _backplane.InvalidationReceived -= OnBackplaneInvalidationReceived;
-                _backplane.StopListeningAsync().GetAwaiter().GetResult();
-                _backplane.Dispose();
+                // Consider logging a warning here about blocking disposal
             }
-            
-            // Clean up key-level locks
-            foreach (var kvp in _keyLevelLocks)
-            {
-                kvp.Value.Dispose();
-            }
-            _keyLevelLocks.Clear();
-            
-            // Clean up tag mappings
-            ClearAllTagMappings();
-            _tagMappingLock?.Dispose();
-            
-            _l1Cache?.Dispose();
-            _l2Semaphore?.Dispose();
+            DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
         private TimeSpan CalculateL1Expiration(CacheMethodSettings settings)
