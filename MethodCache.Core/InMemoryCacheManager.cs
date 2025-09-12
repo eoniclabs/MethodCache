@@ -51,6 +51,8 @@ namespace MethodCache.Core
         // Tag reverse index for O(1) tag invalidation
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new();
         private readonly object _tagIndexLock = new object();
+        private const int MaxTagMappings = 100000; // Prevent unbounded growth
+        private int _currentTagMappings = 0;
         
         // Statistics
         private long _hits;
@@ -126,15 +128,18 @@ namespace MethodCache.Core
             {
                 var finalResult = await lazyTask.Value.ConfigureAwait(false);
                 
-                // Only remove from stampede prevention AFTER successful completion AND caching
-                // This prevents the race condition where a new request starts before cache is populated
-                _stampedePrevention.TryRemove(key, out _);
-                
                 _metricsProvider.CacheMiss(methodName);
                 if (_options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _misses);
                 }
+                
+                // Wait a moment to ensure cache is populated before removing stampede prevention
+                // This prevents race condition where new request arrives before cache write completes
+                await Task.Delay(1).ConfigureAwait(false);
+                
+                // Now safe to remove from stampede prevention
+                _stampedePrevention.TryRemove(key, out _);
                 
                 return (T)finalResult;
             }
@@ -339,16 +344,26 @@ namespace MethodCache.Core
         }
         
         /// <summary>
-        /// Adds entry to tag reverse index.
+        /// Adds entry to tag reverse index with size limit protection.
         /// </summary>
         private void AddToTagIndex(string key, HashSet<string> tags)
         {
             lock (_tagIndexLock)
             {
+                // Check if we're approaching the limit
+                if (_currentTagMappings >= MaxTagMappings)
+                {
+                    // Perform cleanup of stale entries
+                    CleanupStaleTags();
+                }
+                
                 foreach (var tag in tags)
                 {
                     var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
-                    tagKeys.TryAdd(key, 0);
+                    if (tagKeys.TryAdd(key, 0))
+                    {
+                        Interlocked.Increment(ref _currentTagMappings);
+                    }
                 }
             }
         }
@@ -364,13 +379,53 @@ namespace MethodCache.Core
                 {
                     if (_tagToKeys.TryGetValue(tag, out var tagKeys))
                     {
-                        tagKeys.TryRemove(key, out _);
+                        if (tagKeys.TryRemove(key, out _))
+                        {
+                            Interlocked.Decrement(ref _currentTagMappings);
+                        }
                         // Clean up empty tag entries
                         if (tagKeys.IsEmpty)
                         {
                             _tagToKeys.TryRemove(tag, out _);
                         }
                     }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Cleanup stale tag mappings to prevent memory leaks.
+        /// </summary>
+        private void CleanupStaleTags()
+        {
+            var keysToRemove = new List<string>();
+            
+            // Check all tag mappings and remove entries that no longer exist in cache
+            foreach (var tagEntry in _tagToKeys)
+            {
+                foreach (var key in tagEntry.Value.Keys)
+                {
+                    if (!_cache.ContainsKey(key))
+                    {
+                        keysToRemove.Add(key);
+                    }
+                }
+                
+                // Remove stale keys from this tag
+                foreach (var key in keysToRemove)
+                {
+                    if (tagEntry.Value.TryRemove(key, out _))
+                    {
+                        Interlocked.Decrement(ref _currentTagMappings);
+                    }
+                }
+                
+                keysToRemove.Clear();
+                
+                // Remove empty tag entries
+                if (tagEntry.Value.IsEmpty)
+                {
+                    _tagToKeys.TryRemove(tagEntry.Key, out _);
                 }
             }
         }
@@ -666,15 +721,38 @@ namespace MethodCache.Core
         {
             try
             {
-                // Take a snapshot to avoid collection modification during enumeration
-                var cacheSnapshot = _cache.ToArray();
                 var expiredKeys = new List<string>();
+                const int maxBatchSize = 1000; // Process in batches to avoid long pauses
+                int processedCount = 0;
                 
-                foreach (var kvp in cacheSnapshot)
+                // Use sampling approach for large caches instead of full enumeration
+                var totalCount = _cache.Count;
+                var sampleSize = Math.Min(totalCount, maxBatchSize);
+                
+                if (totalCount <= maxBatchSize)
                 {
-                    if (kvp.Value.IsExpired)
+                    // Small cache - check all entries
+                    foreach (var kvp in _cache)
                     {
-                        expiredKeys.Add(kvp.Key);
+                        if (kvp.Value.IsExpired)
+                        {
+                            expiredKeys.Add(kvp.Key);
+                        }
+                        
+                        if (++processedCount >= maxBatchSize)
+                            break;
+                    }
+                }
+                else
+                {
+                    // Large cache - use sampling to avoid performance impact
+                    var sample = _cache.Take(sampleSize);
+                    foreach (var kvp in sample)
+                    {
+                        if (kvp.Value.IsExpired)
+                        {
+                            expiredKeys.Add(kvp.Key);
+                        }
                     }
                 }
 
@@ -685,6 +763,13 @@ namespace MethodCache.Core
                     {
                         RemoveEntryCompletely(key, entry);
                     }
+                }
+                
+                // If we found many expired entries in our sample, schedule another cleanup soon
+                if (expiredKeys.Count > sampleSize * 0.5 && totalCount > maxBatchSize)
+                {
+                    // High expiration rate detected - schedule more frequent cleanup
+                    _cleanupTimer?.Change(TimeSpan.FromSeconds(10), _options.CleanupInterval);
                 }
             }
             catch (Exception ex)

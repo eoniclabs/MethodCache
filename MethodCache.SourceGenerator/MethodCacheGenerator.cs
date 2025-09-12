@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -48,6 +49,9 @@ namespace MethodCache.SourceGenerator
     [Generator(LanguageNames.CSharp)]
     public sealed class MethodCacheGenerator : IIncrementalGenerator
     {
+        // ======================== Compiled Regex Patterns ========================
+        private static readonly Regex DynamicTagParameterRegex = new(@"\{(\w+)\}", RegexOptions.Compiled);
+        
         // ======================== Diagnostics ========================
         private static class Diagnostics
         {
@@ -398,7 +402,7 @@ namespace MethodCache.SourceGenerator
                 var template = tag;
                 
                 // Find all {parameterName} patterns in the tag
-                var matches = System.Text.RegularExpressions.Regex.Matches(tag, @"\{(\w+)\}");
+                var matches = DynamicTagParameterRegex.Matches(tag);
                 foreach (System.Text.RegularExpressions.Match match in matches)
                 {
                     var paramName = match.Groups[1].Value;
@@ -431,7 +435,7 @@ namespace MethodCache.SourceGenerator
             
             foreach (var tag in tags)
             {
-                var matches = System.Text.RegularExpressions.Regex.Matches(tag, @"\{(\w+)\}");
+                var matches = DynamicTagParameterRegex.Matches(tag);
                 foreach (System.Text.RegularExpressions.Match match in matches)
                 {
                     var paramName = match.Groups[1].Value;
@@ -458,7 +462,7 @@ namespace MethodCache.SourceGenerator
             // Add static tags
             if (staticTags.Any())
             {
-                var staticTagsWithoutDynamic = staticTags.Where(t => !System.Text.RegularExpressions.Regex.IsMatch(t, @"\{\w+\}")).ToList();
+                var staticTagsWithoutDynamic = staticTags.Where(t => !DynamicTagParameterRegex.IsMatch(t)).ToList();
                 if (staticTagsWithoutDynamic.Any())
                 {
                     sb.Append($"{indent}allTags.AddRange(new[] {{ ");

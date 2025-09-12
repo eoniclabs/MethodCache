@@ -65,20 +65,38 @@ namespace MethodCache.HybridCache.Implementation
             if (_backplane != null && _options.EnableBackplane)
             {
                 _backplane.InvalidationReceived += OnBackplaneInvalidationReceived;
-                StartBackplaneListening();
+                _ = StartBackplaneListeningAsync();
                 _logger.LogInformation("Hybrid cache backplane enabled for instance {InstanceId}", _options.InstanceId);
             }
         }
 
-        private async void StartBackplaneListening()
+        private async Task StartBackplaneListeningAsync()
         {
-            try
+            const int maxRetries = 3;
+            const int baseDelayMs = 1000;
+            
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                await _backplane!.StartListeningAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to start backplane listening");
+                try
+                {
+                    await _backplane!.StartListeningAsync();
+                    _logger.LogInformation("Successfully started backplane listening on attempt {Attempt}", attempt);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (attempt == maxRetries)
+                    {
+                        _logger.LogError(ex, "Failed to start backplane listening after {MaxRetries} attempts", maxRetries);
+                        return;
+                    }
+                    
+                    var delayMs = baseDelayMs * (int)Math.Pow(2, attempt - 1); // Exponential backoff
+                    _logger.LogWarning(ex, "Failed to start backplane listening on attempt {Attempt}, retrying in {DelayMs}ms", 
+                        attempt, delayMs);
+                    
+                    await Task.Delay(delayMs);
+                }
             }
         }
 
