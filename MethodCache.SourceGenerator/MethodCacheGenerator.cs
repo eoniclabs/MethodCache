@@ -11,6 +11,40 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace MethodCache.SourceGenerator
 {
+    /// <summary>
+    /// Source generator for MethodCache that creates decorator classes for interfaces with [Cache] and [CacheInvalidate] attributes.
+    /// 
+    /// Features:
+    /// - Generates async/sync caching decorators for interface methods
+    /// - Supports cache invalidation by tags with dynamic parameter substitution
+    /// - Handles generic methods and complex type constraints
+    /// - Generates dependency injection extensions
+    /// - Creates centralized method registry for configuration
+    /// - Proper async/await patterns for invalidation methods
+    /// - Enhanced nullable type handling (int?, bool?, etc.)
+    /// 
+    /// Dynamic Tag Substitution:
+    /// Use {parameterName} in invalidation tags to dynamically substitute method parameter values:
+    /// [CacheInvalidate(Tags = new[] { "user:{userId}", "tenant:{tenantId}" })]
+    /// This will generate: string.Format("user:{0}", userId?.ToString() ?? "null")
+    /// 
+    /// Async Patterns:
+    /// - Async invalidation methods properly await the decorated method before invalidating
+    /// - Cache invalidation only occurs after successful method execution
+    /// - Proper ConfigureAwait(false) usage throughout generated code
+    /// 
+    /// Sync-over-Async Warnings:
+    /// - Synchronous cached methods receive warnings about potential deadlocks
+    /// - Generated code includes warnings about SynchronizationContext risks
+    /// - Consider using async methods to avoid deadlock potential
+    /// 
+    /// Limitations:
+    /// - Only works on interface methods (not class methods)
+    /// - Does not support ref/out/in parameters  
+    /// - Does not support void return types for caching
+    /// - Does not support non-generic Task/ValueTask returns
+    /// - Sync-over-async pattern may cause deadlocks in certain contexts
+    /// </summary>
     [Generator(LanguageNames.CSharp)]
     public sealed class MethodCacheGenerator : IIncrementalGenerator
     {
@@ -71,6 +105,22 @@ namespace MethodCache.SourceGenerator
                 messageFormat: "[Cache] attribute on method '{0}' with ref struct parameters is not supported",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor SyncOverAsyncWarning = new(
+                id: "MCG008",
+                title: "Synchronous method caching may cause deadlocks",
+                messageFormat: "Method '{0}' is synchronous but uses async caching infrastructure. This may cause deadlocks in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms). Consider making the method async or use with caution.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Info,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor DynamicTagParameterNotFound = new(
+                id: "MCG009",
+                title: "Dynamic tag references unknown parameter",
+                messageFormat: "[CacheInvalidate] tag '{0}' references parameter '{1}' which does not exist on method '{2}'",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
                 isEnabledByDefault: true);
         }
 
@@ -205,6 +255,16 @@ namespace MethodCache.SourceGenerator
                         diagnostics.Add(validation.diagnostic);
                         if (!validation.canProceed) continue;
                     }
+                    
+                    // Check for sync-over-async warning
+                    if (!Utils.IsTask(method.ReturnType, out _) && !Utils.IsValueTask(method.ReturnType, out _))
+                    {
+                        diagnostics.Add(Diagnostic.Create(
+                            Diagnostics.SyncOverAsyncWarning,
+                            method.Locations.FirstOrDefault(),
+                            method.ToDisplayString()));
+                    }
+                    
                     cachedMethods.Add(new MethodModel(method, cacheAttr, null));
                 }
                 else if (invalidateAttr != null)
@@ -216,6 +276,12 @@ namespace MethodCache.SourceGenerator
                             Diagnostics.NoInvalidateTags,
                             method.Locations.FirstOrDefault(),
                             method.ToDisplayString()));
+                    }
+                    else
+                    {
+                        // Validate dynamic tags
+                        var dynamicTagDiagnostics = ValidateDynamicTags(tags, method);
+                        diagnostics.AddRange(dynamicTagDiagnostics);
                     }
                     invalidateMethods.Add(new MethodModel(method, null, invalidateAttr));
                 }
@@ -318,6 +384,101 @@ namespace MethodCache.SourceGenerator
             return tags;
         }
 
+        /// <summary>
+        /// Parses dynamic tags with {parameterName} placeholders and returns both static and dynamic tag lists.
+        /// </summary>
+        private static List<(string template, List<string> paramNames)> ParseDynamicTags(List<string> tags, IMethodSymbol method)
+        {
+            var dynamicTags = new List<(string template, List<string> paramNames)>();
+            var parameterNames = method.Parameters.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
+            
+            foreach (var tag in tags)
+            {
+                var paramNames = new List<string>();
+                var template = tag;
+                
+                // Find all {parameterName} patterns in the tag
+                var matches = System.Text.RegularExpressions.Regex.Matches(tag, @"\{(\w+)\}");
+                foreach (System.Text.RegularExpressions.Match match in matches)
+                {
+                    var paramName = match.Groups[1].Value;
+                    if (parameterNames.ContainsKey(paramName))
+                    {
+                        paramNames.Add(paramName);
+                        // Replace {paramName} with {0}, {1}, etc. for string.Format
+                        template = template.Replace(match.Value, $"{{{paramNames.Count - 1}}}");
+                    }
+                    // Note: We can't emit diagnostics here because we don't have access to the context
+                    // This will be handled in the validation phase
+                }
+                
+                if (paramNames.Any())
+                {
+                    dynamicTags.Add((template, paramNames));
+                }
+            }
+            
+            return dynamicTags;
+        }
+
+        /// <summary>
+        /// Validates dynamic tags and returns diagnostics for unknown parameters.
+        /// </summary>
+        private static List<Diagnostic> ValidateDynamicTags(List<string> tags, IMethodSymbol method)
+        {
+            var diagnostics = new List<Diagnostic>();
+            var parameterNames = new HashSet<string>(method.Parameters.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
+            
+            foreach (var tag in tags)
+            {
+                var matches = System.Text.RegularExpressions.Regex.Matches(tag, @"\{(\w+)\}");
+                foreach (System.Text.RegularExpressions.Match match in matches)
+                {
+                    var paramName = match.Groups[1].Value;
+                    if (!parameterNames.Contains(paramName))
+                    {
+                        diagnostics.Add(Diagnostic.Create(
+                            Diagnostics.DynamicTagParameterNotFound,
+                            method.Locations.FirstOrDefault(),
+                            tag, paramName, method.ToDisplayString()));
+                    }
+                }
+            }
+            
+            return diagnostics;
+        }
+
+        /// <summary>
+        /// Emits code to build both static and dynamic tags for invalidation.
+        /// </summary>
+        private static void EmitTagInvalidation(StringBuilder sb, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags, string indent)
+        {
+            sb.AppendLine($"{indent}var allTags = new List<string>();");
+            
+            // Add static tags
+            if (staticTags.Any())
+            {
+                var staticTagsWithoutDynamic = staticTags.Where(t => !System.Text.RegularExpressions.Regex.IsMatch(t, @"\{\w+\}")).ToList();
+                if (staticTagsWithoutDynamic.Any())
+                {
+                    sb.Append($"{indent}allTags.AddRange(new[] {{ ");
+                    sb.Append(string.Join(", ", staticTagsWithoutDynamic.Select(t => $"\"{t}\"")));
+                    sb.AppendLine(" });");
+                }
+            }
+            
+            // Add dynamic tags
+            foreach (var (template, paramNames) in dynamicTags)
+            {
+                sb.Append($"{indent}allTags.Add(string.Format(\"{template}\"");
+                foreach (var paramName in paramNames)
+                {
+                    sb.Append($", {paramName}?.ToString() ?? \"null\"");
+                }
+                sb.AppendLine("));");
+            }
+        }
+
         // ======================== Models ========================
         private sealed class InterfaceInfo
         {
@@ -406,6 +567,15 @@ namespace MethodCache.SourceGenerator
 
             internal static string GetReturnTypeForSignature(ITypeSymbol type)
             {
+                // Handle nullable value types first (e.g., int?, bool?)
+                if (type is INamedTypeSymbol namedType && namedType.IsGenericType && 
+                    namedType.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T)
+                {
+                    var underlyingType = namedType.TypeArguments[0];
+                    var underlyingTypeName = GetReturnTypeForSignature(underlyingType);
+                    return $"{underlyingTypeName}?";
+                }
+
                 // Use C# keywords for common types instead of fully qualified names
                 if (type.SpecialType == SpecialType.System_Void) return "void";
                 if (type.SpecialType == SpecialType.System_String) return "string";
@@ -415,45 +585,69 @@ namespace MethodCache.SourceGenerator
                 if (type.SpecialType == SpecialType.System_Single) return "float";
                 if (type.SpecialType == SpecialType.System_Int64) return "long";
                 if (type.SpecialType == SpecialType.System_Decimal) return "decimal";
+                if (type.SpecialType == SpecialType.System_Byte) return "byte";
+                if (type.SpecialType == SpecialType.System_SByte) return "sbyte";
+                if (type.SpecialType == SpecialType.System_Int16) return "short";
+                if (type.SpecialType == SpecialType.System_UInt16) return "ushort";
+                if (type.SpecialType == SpecialType.System_UInt32) return "uint";
+                if (type.SpecialType == SpecialType.System_UInt64) return "ulong";
+                if (type.SpecialType == SpecialType.System_Char) return "char";
+                if (type.SpecialType == SpecialType.System_Object) return "object";
                 
                 // Handle generic types
-                if (type is INamedTypeSymbol namedType)
+                if (type is INamedTypeSymbol genericType)
                 {
                     // Handle Task types
-                    if (namedType.Name == "Task" && namedType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
+                    if (genericType.Name == "Task" && genericType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
                     {
-                        if (namedType.TypeArguments.Length == 1)
+                        if (genericType.TypeArguments.Length == 1)
                         {
-                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            var innerType = GetReturnTypeForSignature(genericType.TypeArguments[0]);
                             return $"System.Threading.Tasks.Task<{innerType}>";
                         }
                         return "System.Threading.Tasks.Task";
                     }
                     
+                    // Handle ValueTask types
+                    if (genericType.Name == "ValueTask" && genericType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
+                    {
+                        if (genericType.TypeArguments.Length == 1)
+                        {
+                            var innerType = GetReturnTypeForSignature(genericType.TypeArguments[0]);
+                            return $"System.Threading.Tasks.ValueTask<{innerType}>";
+                        }
+                        return "System.Threading.Tasks.ValueTask";
+                    }
+                    
                     // Handle common generic collection types
-                    var ns = namedType.ContainingNamespace?.ToDisplayString();
+                    var ns = genericType.ContainingNamespace?.ToDisplayString();
                     if (ns == "System.Collections.Generic")
                     {
-                        if (namedType.Name == "List" && namedType.TypeArguments.Length == 1)
+                        if (genericType.Name == "List" && genericType.TypeArguments.Length == 1)
                         {
-                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            var innerType = GetReturnTypeForSignature(genericType.TypeArguments[0]);
                             return $"List<{innerType}>";
                         }
-                        if (namedType.Name == "Dictionary" && namedType.TypeArguments.Length == 2)
+                        if (genericType.Name == "Dictionary" && genericType.TypeArguments.Length == 2)
                         {
-                            var keyType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
-                            var valueType = GetReturnTypeForSignature(namedType.TypeArguments[1]);
+                            var keyType = GetReturnTypeForSignature(genericType.TypeArguments[0]);
+                            var valueType = GetReturnTypeForSignature(genericType.TypeArguments[1]);
                             return $"Dictionary<{keyType}, {valueType}>";
                         }
-                        if (namedType.Name == "IEnumerable" && namedType.TypeArguments.Length == 1)
+                        if (genericType.Name == "IEnumerable" && genericType.TypeArguments.Length == 1)
                         {
-                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            var innerType = GetReturnTypeForSignature(genericType.TypeArguments[0]);
                             return $"IEnumerable<{innerType}>";
                         }
-                        if (namedType.Name == "IList" && namedType.TypeArguments.Length == 1)
+                        if (genericType.Name == "IList" && genericType.TypeArguments.Length == 1)
                         {
-                            var innerType = GetReturnTypeForSignature(namedType.TypeArguments[0]);
+                            var innerType = GetReturnTypeForSignature(genericType.TypeArguments[0]);
                             return $"IList<{innerType}>";
+                        }
+                        if (genericType.Name == "ICollection" && genericType.TypeArguments.Length == 1)
+                        {
+                            var innerType = GetReturnTypeForSignature(genericType.TypeArguments[0]);
+                            return $"ICollection<{innerType}>";
                         }
                     }
                 }
@@ -638,6 +832,12 @@ namespace MethodCache.SourceGenerator
             private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType, bool requireIdempotent)
             {
                 var call = BuildMethodCall(method);
+                
+                // Add warning comment about sync-over-async
+                sb.AppendLine("            // WARNING: This is a sync-over-async pattern that may cause deadlocks");
+                sb.AppendLine("            // in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
+                sb.AppendLine("            // Consider making the method async to avoid potential issues.");
+                
                 sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
                 sb.AppendLine($"                \"{method.Name}\",");
                 sb.AppendLine("                args,");
@@ -645,32 +845,142 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
                 sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()})");
-                sb.AppendLine("                .GetAwaiter().GetResult();");
+                sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
             {
                 var method = model.Method;
-                EmitMethodSignature(sb, method);
+                var tags = ExtractTags(model.InvalidateAttr!);
+                var dynamicTags = ParseDynamicTags(tags, method);
+                
+                // For async methods, we need to emit async method signature
+                if (Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _))
+                {
+                    EmitAsyncInvalidateMethodSignature(sb, method);
+                }
+                else
+                {
+                    EmitMethodSignature(sb, method);
+                }
+                
                 sb.AppendLine("        {");
 
-                var tags = ExtractTags(model.InvalidateAttr!);
-                if (tags.Any())
-                {
-                    sb.Append("            var tags = new[] { ");
-                    sb.Append(string.Join(", ", tags.Select(t => $"\"{t}\"")));
-                    sb.AppendLine(" };");
-                    sb.AppendLine("            _cacheManager.InvalidateByTagsAsync(tags).GetAwaiter().GetResult();");
-                }
-
                 var call = BuildMethodCall(method);
-                if (method.ReturnsVoid)
-                    sb.AppendLine($"            {call};");
+                
+                // Handle async methods differently
+                if (Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _))
+                {
+                    // For async methods, emit async wrapper
+                    EmitAsyncInvalidateMethodBody(sb, method, call, tags, dynamicTags);
+                }
                 else
-                    sb.AppendLine($"            return {call};");
+                {
+                    // For sync methods, emit sync wrapper
+                    EmitSyncInvalidateMethodBody(sb, method, call, tags, dynamicTags);
+                }
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
+            }
+
+            private static void EmitAsyncInvalidateMethodSignature(StringBuilder sb, IMethodSymbol method)
+            {
+                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
+                var typeParams = method.TypeParameters.Any()
+                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
+                    : string.Empty;
+
+                var parameters = string.Join(", ", method.Parameters.Select(p =>
+                {
+                    var modifier = p.RefKind switch
+                    {
+                        RefKind.Ref => "ref ",
+                        RefKind.Out => "out ",
+                        RefKind.In => "in ",
+                        _ => ""
+                    };
+                    var defaultValue = p.HasExplicitDefaultValue ? $" = {FormatDefaultValue(p.ExplicitDefaultValue)}" : "";
+                    return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {p.Name}{defaultValue}";
+                }));
+
+                sb.AppendLine($"        public async {returnType} {method.Name}{typeParams}({parameters})");
+
+                // Add generic constraints if any
+                foreach (var tp in method.TypeParameters)
+                {
+                    var constraints = BuildConstraints(tp);
+                    if (!string.IsNullOrEmpty(constraints))
+                        sb.AppendLine($"            {constraints}");
+                }
+            }
+
+            private static void EmitAsyncInvalidateMethodBody(StringBuilder sb, IMethodSymbol method, string call, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags)
+            {
+                sb.AppendLine("            try");
+                sb.AppendLine("            {");
+                
+                if (method.ReturnsVoid || (method.ReturnType is INamedTypeSymbol nt && nt.Name == "Task" && !nt.IsGenericType))
+                {
+                    sb.AppendLine($"                await {call}.ConfigureAwait(false);");
+                }
+                else
+                {
+                    sb.AppendLine($"                var result = await {call}.ConfigureAwait(false);");
+                }
+                
+                // Invalidate cache AFTER successful execution
+                if (staticTags.Any() || dynamicTags.Any())
+                {
+                    EmitTagInvalidation(sb, staticTags, dynamicTags, "                ");
+                    sb.AppendLine("                await _cacheManager.InvalidateByTagsAsync(allTags.ToArray()).ConfigureAwait(false);");
+                }
+                
+                if (!method.ReturnsVoid && !(method.ReturnType is INamedTypeSymbol nt2 && nt2.Name == "Task" && !nt2.IsGenericType))
+                {
+                    sb.AppendLine("                return result;");
+                }
+                
+                sb.AppendLine("            }");
+                sb.AppendLine("            catch");
+                sb.AppendLine("            {");
+                sb.AppendLine("                // Don't invalidate cache on failure");
+                sb.AppendLine("                throw;");
+                sb.AppendLine("            }");
+            }
+
+            private static void EmitSyncInvalidateMethodBody(StringBuilder sb, IMethodSymbol method, string call, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags)
+            {
+                sb.AppendLine("            try");
+                sb.AppendLine("            {");
+                
+                if (method.ReturnsVoid)
+                {
+                    sb.AppendLine($"                {call};");
+                }
+                else
+                {
+                    sb.AppendLine($"                var result = {call};");
+                }
+                
+                // Invalidate cache AFTER successful execution
+                if (staticTags.Any() || dynamicTags.Any())
+                {
+                    EmitTagInvalidation(sb, staticTags, dynamicTags, "                ");
+                    sb.AppendLine("                _cacheManager.InvalidateByTagsAsync(allTags.ToArray()).GetAwaiter().GetResult();");
+                }
+                
+                if (!method.ReturnsVoid)
+                {
+                    sb.AppendLine("                return result;");
+                }
+                
+                sb.AppendLine("            }");
+                sb.AppendLine("            catch");
+                sb.AppendLine("            {");
+                sb.AppendLine("                // Don't invalidate cache on failure");
+                sb.AppendLine("                throw;");
+                sb.AppendLine("            }");
             }
 
             private static void EmitPassthroughMethod(StringBuilder sb, IMethodSymbol method)
