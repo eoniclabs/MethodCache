@@ -61,6 +61,13 @@ namespace MethodCache.Core.Configuration
         /// How often to recalculate memory usage in accurate mode (in cache operations).
         /// </summary>
         public int AccurateModeRecalculationInterval { get; set; } = 1000;
+        
+        /// <summary>
+        /// Sample size percentage for approximate eviction policies (LFU, TTL).
+        /// Default 10% provides good approximation with much better performance.
+        /// Set to 100% to scan entire cache (equivalent to precise policies).
+        /// </summary>
+        public double EvictionSamplePercentage { get; set; } = 0.1; // 10%
     }
 
     /// <summary>
@@ -70,22 +77,40 @@ namespace MethodCache.Core.Configuration
     {
         /// <summary>
         /// Least Recently Used - evicts the least recently accessed items first.
+        /// Uses O(1) LinkedList operations for precise LRU semantics.
         /// </summary>
         LRU,
 
         /// <summary>
         /// Least Frequently Used - evicts the least frequently accessed items first.
+        /// WARNING: Uses sampling approximation for performance. Not guaranteed to be globally optimal.
+        /// See LFU_Precise for exact semantics with O(N) performance cost.
         /// </summary>
         LFU,
 
         /// <summary>
+        /// Least Frequently Used (Precise) - evicts the globally least frequently used item.
+        /// Guarantees precise LFU semantics but with O(N log N) performance cost on eviction.
+        /// </summary>
+        LFU_Precise,
+
+        /// <summary>
         /// First In First Out - evicts the oldest items first.
+        /// Uses O(1) LinkedList operations for precise FIFO semantics.
         /// </summary>
         FIFO,
 
         /// <summary>
         /// Time To Live - evicts items closest to expiration first.
+        /// WARNING: Uses sampling approximation for performance. Not guaranteed to be globally optimal.
+        /// See TTL_Precise for exact semantics with O(N) performance cost.
         /// </summary>
-        TTL
+        TTL,
+        
+        /// <summary>
+        /// Time To Live (Precise) - evicts the item globally closest to expiration.
+        /// Guarantees precise TTL semantics but with O(N log N) performance cost on eviction.
+        /// </summary>
+        TTL_Precise
     }
 }

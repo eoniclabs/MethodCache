@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace MethodCache.Providers.Redis
 {
-    public class RedisCacheManager : ICacheManager, IDisposable
+    public class RedisCacheManager : ICacheManager, IAsyncDisposable
     {
         private readonly IRedisConnectionManager _connectionManager;
         private readonly IRedisSerializer _serializer;
@@ -57,7 +57,21 @@ namespace MethodCache.Providers.Redis
             if (_options.EnablePubSubInvalidation)
             {
                 _pubSubInvalidation.InvalidationReceived += OnCrossInstanceInvalidationReceived;
-                _ = Task.Run(async () => await _pubSubInvalidation.StartListeningAsync());
+                
+                // Use consistent Task.Run pattern for async startup
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _pubSubInvalidation.StartListeningAsync();
+                        _logger.LogInformation("Redis PubSub invalidation listening started successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to start Redis PubSub invalidation listening");
+                        // Consider implementing retry logic here
+                    }
+                });
             }
         }
 
@@ -110,11 +124,7 @@ namespace MethodCache.Providers.Redis
                             
                             if (result != null)
                             {
-                                await SetToCacheAsync(fullKey, result, settings);
-                                if (settings.Tags.Any())
-                                {
-                                    await _tagManager.AssociateTagsAsync(fullKey, settings.Tags);
-                                }
+                                await SetToCacheWithTagsAsync(fullKey, result, settings);
                             }
 
                             return result;
@@ -134,11 +144,7 @@ namespace MethodCache.Providers.Redis
                         
                         if (result != null)
                         {
-                            await SetToCacheAsync(fullKey, result, settings);
-                            if (settings.Tags.Any())
-                            {
-                                await _tagManager.AssociateTagsAsync(fullKey, settings.Tags);
-                            }
+                            await SetToCacheWithTagsAsync(fullKey, result, settings);
                         }
 
                         return result;
@@ -166,12 +172,7 @@ namespace MethodCache.Providers.Redis
                     var keys = await _tagManager.GetKeysByTagsAsync(tags);
                     if (keys.Any())
                     {
-                        var database = _connectionManager.GetDatabase();
-                        var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
-                        
-                        await database.KeyDeleteAsync(redisKeys);
-                        await _tagManager.RemoveTagAssociationsAsync(keys, tags);
-                        
+                        await InvalidateKeysAtomicallyAsync(keys, tags);
                         _logger.LogDebug("Invalidated {KeyCount} keys for tags {Tags}", keys.Length, string.Join(", ", tags));
                     }
 
@@ -187,42 +188,112 @@ namespace MethodCache.Providers.Redis
                 _logger.LogError(ex, "Error invalidating cache by tags {Tags}", string.Join(", ", tags));
             }
         }
-
-        private async void OnCrossInstanceInvalidationReceived(object? sender, CacheInvalidationEventArgs e)
+        
+        /// <summary>
+        /// Atomically removes cache keys and their tag associations using Redis transactions.
+        /// </summary>
+        private async Task InvalidateKeysAtomicallyAsync(string[] keys, string[] tags)
         {
             try
             {
-                _logger.LogDebug("Received cross-instance invalidation for tags {Tags} from {SourceInstance}", 
-                    string.Join(", ", e.Tags), e.SourceInstanceId);
-
-                // Perform local invalidation without publishing (to avoid infinite loop)
-                var keys = await _tagManager.GetKeysByTagsAsync(e.Tags);
-                if (keys.Any())
+                var database = _connectionManager.GetDatabase();
+                var transaction = database.CreateTransaction();
+                
+                // Delete cache keys
+                var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
+                var deleteKeysTask = transaction.KeyDeleteAsync(redisKeys);
+                
+                // Note: Tag removal will be done after transaction
+                
+                // Execute atomically
+                var committed = await transaction.ExecuteAsync();
+                
+                if (committed)
                 {
-                    var database = _connectionManager.GetDatabase();
-                    var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
+                    // Remove tag associations after successful key deletion
+                    await _tagManager.RemoveTagAssociationsAsync(keys, tags);
+                }
+                else
+                {
+                    _logger.LogWarning("Invalidation transaction failed, falling back to non-atomic operations");
                     
+                    // Fallback to non-atomic operations
                     await database.KeyDeleteAsync(redisKeys);
-                    await _tagManager.RemoveTagAssociationsAsync(keys, e.Tags);
-                    
-                    _logger.LogDebug("Processed cross-instance invalidation for {KeyCount} keys", keys.Length);
+                    await _tagManager.RemoveTagAssociationsAsync(keys, tags);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing cross-instance invalidation for tags {Tags}", 
-                    string.Join(", ", e.Tags));
+                _logger.LogWarning(ex, "Error in atomic invalidation, attempting non-atomic fallback");
+                
+                // Final fallback
+                var database = _connectionManager.GetDatabase();
+                var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
+                await database.KeyDeleteAsync(redisKeys);
+                await _tagManager.RemoveTagAssociationsAsync(keys, tags);
             }
         }
 
-        public void Dispose()
+        private void OnCrossInstanceInvalidationReceived(object? sender, CacheInvalidationEventArgs e)
         {
+            // Handle async operations in fire-and-forget manner with proper error handling
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger.LogDebug("Received cross-instance invalidation for tags {Tags} from {SourceInstance}", 
+                        string.Join(", ", e.Tags), e.SourceInstanceId);
+
+                    // Perform local invalidation without publishing (to avoid infinite loop)
+                    var keys = await _tagManager.GetKeysByTagsAsync(e.Tags);
+                    if (keys.Any())
+                    {
+                        var database = _connectionManager.GetDatabase();
+                        var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
+                        
+                        await database.KeyDeleteAsync(redisKeys);
+                        await _tagManager.RemoveTagAssociationsAsync(keys, e.Tags);
+                        
+                        _logger.LogDebug("Processed cross-instance invalidation for {KeyCount} keys", keys.Length);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing cross-instance invalidation for tags {Tags}", 
+                        string.Join(", ", e.Tags));
+                }
+            });
+        }
+
+        private bool _disposed = false;
+        
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposed) return;
+            
             if (_options.EnablePubSubInvalidation)
             {
                 _pubSubInvalidation.InvalidationReceived -= OnCrossInstanceInvalidationReceived;
-                _pubSubInvalidation?.StopListeningAsync().GetAwaiter().GetResult();
+                
+                try
+                {
+                    await _pubSubInvalidation.StopListeningAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error stopping PubSub listening during disposal");
+                }
+                
                 _pubSubInvalidation?.Dispose();
             }
+            
+            _disposed = true;
+        }
+        
+        // Keep synchronous Dispose for IDisposable compatibility if needed
+        public void Dispose()
+        {
+            DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
         private async Task<(bool HasValue, T Value)> GetFromCacheAsync<T>(string key)
@@ -262,6 +333,66 @@ namespace MethodCache.Providers.Redis
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error caching value for key {Key}", key);
+            }
+        }
+        
+        /// <summary>
+        /// Atomically sets cache value and associates tags using Redis transactions.
+        /// </summary>
+        private async Task SetToCacheWithTagsAsync<T>(string key, T value, CacheMethodSettings settings)
+        {
+            if (!settings.Tags.Any())
+            {
+                await SetToCacheAsync(key, value, settings);
+                return;
+            }
+            
+            try
+            {
+                var database = _connectionManager.GetDatabase();
+                var data = await _serializer.SerializeAsync(value);
+                var expiry = settings.Duration ?? _options.DefaultExpiration;
+                
+                // Use Redis transaction for atomic operation
+                var transaction = database.CreateTransaction();
+                
+                // Set the cache value
+                var setCacheTask = transaction.StringSetAsync(key, data, expiry);
+                
+                // Associate tags - for now, we'll do this after the transaction
+                // In a full implementation, this would be part of the transaction
+                
+                // Execute transaction
+                var committed = await transaction.ExecuteAsync();
+                
+                if (committed)
+                {
+                    // Associate tags after successful cache set
+                    await _tagManager.AssociateTagsAsync(key, settings.Tags);
+                    _logger.LogDebug("Successfully cached value for key {Key} with {TagCount} tags", key, settings.Tags.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to cache value for key {Key} - transaction was not committed", key);
+                    // Fallback: try non-atomic approach
+                    await SetToCacheAsync(key, value, settings);
+                    await _tagManager.AssociateTagsAsync(key, settings.Tags);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error in atomic cache operation for key {Key}, falling back to non-atomic", key);
+                
+                // Fallback: try non-atomic approach
+                try
+                {
+                    await SetToCacheAsync(key, value, settings);
+                    await _tagManager.AssociateTagsAsync(key, settings.Tags);
+                }
+                catch (Exception fallbackEx)
+                {
+                    _logger.LogError(fallbackEx, "Both atomic and fallback cache operations failed for key {Key}", key);
+                }
             }
         }
     }

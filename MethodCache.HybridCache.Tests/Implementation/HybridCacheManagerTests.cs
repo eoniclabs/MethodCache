@@ -146,19 +146,22 @@ public class HybridCacheManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task InvalidateByTagsAsync_ShouldInvalidateByTagsInL2AndClearL1()
+    public async Task InvalidateByTagsAsync_ShouldInvalidateByTagsInL2AndPerformEfficientL1Invalidation()
     {
         // Arrange
         var tags = new[] { "tag1", "tag2" };
         _mockL2Cache.InvalidateByTagsAsync(tags).Returns(Task.CompletedTask);
-        _mockL1Cache.ClearAsync().Returns(Task.CompletedTask);
+        
+        // Since efficient L1 invalidation is enabled by default, the hybrid cache
+        // will perform targeted key removal rather than clearing the entire L1 cache
 
         // Act
         await _hybridCacheManager.InvalidateByTagsAsync(tags);
 
         // Assert
         _mockL2Cache.Received(1).InvalidateByTagsAsync(tags);
-        _mockL1Cache.Received(1).ClearAsync();
+        // L1 cache should not be cleared entirely with efficient invalidation enabled
+        _mockL1Cache.DidNotReceive().ClearAsync();
     }
 
     [Fact]

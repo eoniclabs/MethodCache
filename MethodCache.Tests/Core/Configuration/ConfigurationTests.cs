@@ -98,7 +98,7 @@ namespace MethodCache.Tests
             Assert.NotNull(settings);
             Assert.Equal(TimeSpan.FromMinutes(15), settings.Duration);
             Assert.Contains("method-tag", settings.Tags);
-            Assert.DoesNotContain("group-tag", settings.Tags); // Group tag should not be present if method overrides
+            Assert.Contains("group-tag", settings.Tags); // Group tags should be combined with method tags for consistency
         }
 
         [Fact]
@@ -119,11 +119,9 @@ namespace MethodCache.Tests
             var settings = config.GetMethodSettings("MethodCache.Tests.ConfigurationTests.ITestService.GetValue");
 
             Assert.NotNull(settings);
-            // This assertion will fail because the current implementation of GetMethodSettings doesn't apply group settings.
-            // This needs to be implemented in MethodCacheConfiguration.
-            // Assert.Equal(TimeSpan.FromMinutes(30), settings.Duration);
-            // Assert.Contains("group-tag", settings.Tags);
-            Assert.True(true); // Placeholder assertion
+            // Method inherits group settings when not overridden
+            Assert.Equal(TimeSpan.FromMinutes(30), settings.Duration);
+            Assert.Contains("group-tag", settings.Tags);
         }
     }
 }

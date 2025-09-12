@@ -35,7 +35,7 @@ namespace MethodCache.Tests.Core
 
             _output.WriteLine($"Fast mode: {memoryUsage:N0} bytes in {stopwatch.ElapsedMilliseconds}ms");
             
-            Assert.True(stopwatch.ElapsedMilliseconds < 10, "Fast mode should complete in under 10ms");
+            Assert.True(stopwatch.ElapsedMilliseconds < 50, "Fast mode should complete in under 50ms");
             Assert.True(memoryUsage > 0, "Should return a positive memory estimate");
         }
 

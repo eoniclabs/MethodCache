@@ -13,6 +13,17 @@ namespace MethodCache.Core
 {
     /// <summary>
     /// Calculates memory usage for cache entries using different strategies.
+    /// 
+    /// WARNING: All calculation modes provide approximations only. Actual memory usage
+    /// may vary significantly due to:
+    /// - .NET runtime memory allocation overhead
+    /// - Object reference tracking
+    /// - Garbage collector behavior
+    /// - Memory padding and alignment
+    /// - String interning and other optimizations
+    /// 
+    /// These calculations should be used for relative comparison and trends,
+    /// not absolute memory usage decisions.
     /// </summary>
     public class MemoryUsageCalculator
     {
@@ -44,6 +55,10 @@ namespace MethodCache.Core
 
         /// <summary>
         /// Fast estimation using fixed constants and type-based estimates.
+        /// 
+        /// WARNING: This mode uses hardcoded overhead values and rough type-based
+        /// size estimates. Results may be significantly different from actual memory usage.
+        /// Use only for relative comparisons and performance monitoring trends.
         /// </summary>
         private long CalculateFast<T>(ConcurrentDictionary<string, T> cache)
         {
@@ -64,7 +79,7 @@ namespace MethodCache.Core
                 var totalEstimatedSize = 0L;
                 foreach (var kvp in samples)
                 {
-                    var valueSize = EstimateValueSizeFast(kvp.Value);
+                    var valueSize = EstimateValueSizeFast(kvp.Value!);
                     totalEstimatedSize += valueSize;
                 }
                 averageValueSize = totalEstimatedSize / samples.Count;
@@ -74,7 +89,14 @@ namespace MethodCache.Core
         }
 
         /// <summary>
-        /// Accurate measurement using serialization (with caching and throttling).
+        /// "Accurate" measurement using JSON serialization (with caching and throttling).
+        /// 
+        /// WARNING: This uses JSON serialization size as a proxy for memory usage,
+        /// which is fundamentally flawed. JSON is a text representation and bears
+        /// little resemblance to actual object memory footprint in .NET.
+        /// 
+        /// This mode is more expensive than Fast mode but not significantly more accurate
+        /// for actual memory usage estimation.
         /// </summary>
         private long CalculateAccurate<T>(ConcurrentDictionary<string, T> cache, Func<T, object> valueExtractor)
         {
@@ -106,6 +128,10 @@ namespace MethodCache.Core
 
         /// <summary>
         /// Sampling-based calculation for balance between performance and accuracy.
+        /// 
+        /// WARNING: Inherits the same accuracy limitations as the "Accurate" mode
+        /// but applies them to a sample subset. The sampling adds statistical variance
+        /// on top of the fundamental measurement inaccuracies.
         /// </summary>
         private long CalculateSampling<T>(ConcurrentDictionary<string, T> cache, Func<T, object> valueExtractor)
         {
@@ -169,7 +195,14 @@ namespace MethodCache.Core
         }
 
         /// <summary>
-        /// Accurate size calculation using JSON serialization.
+        /// "Accurate" size calculation using JSON serialization.
+        /// 
+        /// WARNING: This method name is misleading. JSON serialization size
+        /// does NOT accurately represent memory usage:
+        /// - JSON is text-based, memory is binary
+        /// - JSON doesn't include object overhead, references, padding
+        /// - JSON may compress/expand data differently than memory layout
+        /// - Serializable != memory footprint
         /// </summary>
         private long CalculateValueSizeAccurate(object value)
         {

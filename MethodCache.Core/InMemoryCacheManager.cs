@@ -25,6 +25,7 @@ namespace MethodCache.Core
             public DateTime CreatedAt { get; init; }
             public DateTime LastAccessedAt { get; set; }
             public long AccessCount => _accessCount;
+            public LinkedListNode<string>? OrderNode { get; set; } // For O(1) eviction tracking
 
             public bool IsExpired => DateTime.UtcNow > AbsoluteExpiration;
 
@@ -42,6 +43,14 @@ namespace MethodCache.Core
         private readonly Timer? _cleanupTimer;
         private readonly SemaphoreSlim _evictionSemaphore;
         private readonly MemoryUsageCalculator _memoryCalculator;
+        
+        // O(1) eviction tracking
+        private readonly LinkedList<string> _accessOrder = new();
+        private readonly object _accessOrderLock = new object();
+        
+        // Tag reverse index for O(1) tag invalidation
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new();
+        private readonly object _tagIndexLock = new object();
         
         // Statistics
         private long _hits;
@@ -69,22 +78,16 @@ namespace MethodCache.Core
         {
             var key = keyGenerator.GenerateKey(methodName, args, settings);
 
-            // Check cache first - fast memory operation
-            if (_cache.TryGetValue(key, out var entry) && !entry.IsExpired)
+            // Check cache first using internal method to avoid double statistics
+            var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
+            if (cachedResult != null)
             {
-                entry.UpdateAccess();
                 _metricsProvider.CacheHit(methodName);
                 if (_options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
                 }
-                return (T)entry.Value;
-            }
-
-            // Remove expired entry
-            if (entry?.IsExpired == true)
-            {
-                _cache.TryRemove(key, out _);
+                return cachedResult;
             }
 
             // Validate idempotency requirement
@@ -109,38 +112,70 @@ namespace MethodCache.Core
 
                         await SetAsync(key, result, effectiveExpiration, settings.Tags?.ToArray() ?? Array.Empty<string>());
                     }
+                    
                     return result!;
                 }
                 catch (Exception ex)
                 {
-                    // Log the error but let it propagate - service layer should handle retries/fallbacks
                     _metricsProvider.CacheError(methodName, ex.Message);
                     throw;
                 }
             }));
 
-            var finalResult = await lazyTask.Value.ConfigureAwait(false);
-            _stampedePrevention.TryRemove(key, out _); // Clean up after task completes
-
-            _metricsProvider.CacheMiss(methodName);
-            if (_options.EnableStatistics)
+            try
             {
-                Interlocked.Increment(ref _misses);
+                var finalResult = await lazyTask.Value.ConfigureAwait(false);
+                
+                // Only remove from stampede prevention AFTER successful completion AND caching
+                // This prevents the race condition where a new request starts before cache is populated
+                _stampedePrevention.TryRemove(key, out _);
+                
+                _metricsProvider.CacheMiss(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _misses);
+                }
+                
+                return (T)finalResult;
             }
-            
-            return (T)finalResult;
+            catch
+            {
+                // On any error, remove the failed task to allow retries
+                _stampedePrevention.TryRemove(key, out _);
+                throw;
+            }
         }
 
         public Task InvalidateByTagsAsync(params string[] tags)
         {
-            foreach (var tag in tags)
+            if (tags == null || !tags.Any()) return Task.CompletedTask;
+            
+            var keysToRemove = new HashSet<string>();
+            
+            // Use O(1) reverse index lookup instead of iterating entire cache
+            lock (_tagIndexLock)
             {
-                var keysToRemove = _cache.Where(kvp => kvp.Value.Tags.Contains(tag)).Select(kvp => kvp.Key).ToList();
-                foreach (var key in keysToRemove)
+                foreach (var tag in tags)
                 {
-                    _cache.TryRemove(key, out _);
+                    if (_tagToKeys.TryGetValue(tag, out var tagKeys))
+                    {
+                        foreach (var key in tagKeys.Keys)
+                        {
+                            keysToRemove.Add(key);
+                        }
+                    }
                 }
             }
+            
+            // Remove all collected keys completely
+            foreach (var key in keysToRemove)
+            {
+                if (_cache.TryGetValue(key, out var entry))
+                {
+                    RemoveEntryCompletely(key, entry);
+                }
+            }
+            
             return Task.CompletedTask;
         }
 
@@ -150,20 +185,28 @@ namespace MethodCache.Core
 
         public Task<T?> GetAsync<T>(string key)
         {
+            return GetAsyncInternal<T>(key, updateStatistics: true);
+        }
+        
+        private Task<T?> GetAsyncInternal<T>(string key, bool updateStatistics)
+        {
             if (_cache.TryGetValue(key, out var entry))
             {
                 if (entry.IsExpired)
                 {
-                    _cache.TryRemove(key, out _);
-                    if (_options.EnableStatistics)
+                    RemoveEntryCompletely(key, entry);
+                    if (updateStatistics && _options.EnableStatistics)
                     {
                         Interlocked.Increment(ref _misses);
                     }
                     return Task.FromResult<T?>(default);
                 }
 
+                // Update access tracking with O(1) LinkedList operation
                 entry.UpdateAccess();
-                if (_options.EnableStatistics)
+                UpdateAccessOrder(key, entry);
+                
+                if (updateStatistics && _options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
                 }
@@ -174,25 +217,72 @@ namespace MethodCache.Core
                 }
                 catch (InvalidCastException)
                 {
-                    // Type mismatch - treat as miss
-                    if (_options.EnableStatistics)
+                    // Type mismatch - treat as miss but don't double count
+                    if (updateStatistics && _options.EnableStatistics)
                     {
                         Interlocked.Increment(ref _misses);
+                        // Compensate for the hit we incorrectly incremented
+                        Interlocked.Decrement(ref _hits);
                     }
                     return Task.FromResult<T?>(default);
                 }
             }
 
-            if (_options.EnableStatistics)
+            if (updateStatistics && _options.EnableStatistics)
             {
                 Interlocked.Increment(ref _misses);
             }
             return Task.FromResult<T?>(default);
         }
+        
+        /// <summary>
+        /// Updates access order for eviction policies with O(1) LinkedList operations.
+        /// </summary>
+        private void UpdateAccessOrder(string key, EnhancedCacheEntry entry)
+        {
+            // Only update order for LRU policy (FIFO doesn't move on access)
+            if (_options.EvictionPolicy != MemoryCacheEvictionPolicy.LRU) return;
+            
+            lock (_accessOrderLock)
+            {
+                if (entry.OrderNode != null)
+                {
+                    // Move existing node to head (most recently used)
+                    _accessOrder.Remove(entry.OrderNode);
+                    _accessOrder.AddFirst(entry.OrderNode);
+                }
+                else
+                {
+                    // Add new node to head
+                    entry.OrderNode = _accessOrder.AddFirst(key);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Completely removes an entry from all data structures.
+        /// </summary>
+        private void RemoveEntryCompletely(string key, EnhancedCacheEntry entry)
+        {
+            _cache.TryRemove(key, out _);
+            
+            // Remove from access order tracking
+            lock (_accessOrderLock)
+            {
+                if (entry.OrderNode != null)
+                {
+                    _accessOrder.Remove(entry.OrderNode);
+                    entry.OrderNode = null;
+                }
+            }
+            
+            // Remove from tag index
+            RemoveFromTagIndex(key, entry.Tags);
+        }
 
         public async Task SetAsync<T>(string key, T value, TimeSpan expiration)
         {
-            await SetAsync(key, value, expiration, new string[0]);
+            await SetAsync(key, value, expiration, Array.Empty<string>());
         }
 
         private async Task SetAsync<T>(string key, T value, TimeSpan expiration, string[] tags)
@@ -201,12 +291,6 @@ namespace MethodCache.Core
             {
                 await RemoveAsync(key);
                 return;
-            }
-
-            // Check if we need to evict entries to stay within limits
-            if (_cache.Count >= _options.MaxItems)
-            {
-                await TryEvictAsync();
             }
 
             var effectiveExpiration = expiration > _options.MaxExpiration 
@@ -222,19 +306,100 @@ namespace MethodCache.Core
                 LastAccessedAt = DateTime.UtcNow
             };
 
-            _cache.AddOrUpdate(key, entry, (k, oldEntry) => entry);
+            // Check if this is an update to existing entry
+            var isUpdate = _cache.TryGetValue(key, out var oldEntry);
+            
+            // Only evict if this is a new entry and we're at capacity
+            if (!isUpdate && _cache.Count >= _options.MaxItems)
+            {
+                await TryEvictAsync();
+            }
+            
+            // Remove old entry completely if updating
+            if (isUpdate && oldEntry != null)
+            {
+                RemoveEntryCompletely(key, oldEntry);
+            }
+            
+            // Add the new entry to all data structures
+            _cache[key] = entry;
+            AddToAccessOrder(key, entry);
+            AddToTagIndex(key, entry.Tags);
+        }
+        
+        /// <summary>
+        /// Adds entry to access order tracking with O(1) operation.
+        /// </summary>
+        private void AddToAccessOrder(string key, EnhancedCacheEntry entry)
+        {
+            lock (_accessOrderLock)
+            {
+                entry.OrderNode = _accessOrder.AddFirst(key);
+            }
+        }
+        
+        /// <summary>
+        /// Adds entry to tag reverse index.
+        /// </summary>
+        private void AddToTagIndex(string key, HashSet<string> tags)
+        {
+            lock (_tagIndexLock)
+            {
+                foreach (var tag in tags)
+                {
+                    var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
+                    tagKeys.TryAdd(key, 0);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Removes entry from tag reverse index.
+        /// </summary>
+        private void RemoveFromTagIndex(string key, HashSet<string> tags)
+        {
+            lock (_tagIndexLock)
+            {
+                foreach (var tag in tags)
+                {
+                    if (_tagToKeys.TryGetValue(tag, out var tagKeys))
+                    {
+                        tagKeys.TryRemove(key, out _);
+                        // Clean up empty tag entries
+                        if (tagKeys.IsEmpty)
+                        {
+                            _tagToKeys.TryRemove(tag, out _);
+                        }
+                    }
+                }
+            }
         }
 
         public Task<bool> RemoveAsync(string key)
         {
-            var removed = _cache.TryRemove(key, out _);
-            return Task.FromResult(removed);
+            if (_cache.TryGetValue(key, out var entry))
+            {
+                RemoveEntryCompletely(key, entry);
+                return Task.FromResult(true);
+            }
+            return Task.FromResult(false);
         }
 
         public Task ClearAsync()
         {
             _cache.Clear();
             _stampedePrevention.Clear();
+            
+            // Clear all tracking structures
+            lock (_accessOrderLock)
+            {
+                _accessOrder.Clear();
+            }
+            
+            lock (_tagIndexLock)
+            {
+                _tagToKeys.Clear();
+            }
             
             // Reset statistics
             if (_options.EnableStatistics)
@@ -266,8 +431,9 @@ namespace MethodCache.Core
             var removed = 0;
             foreach (var key in keys)
             {
-                if (_cache.TryRemove(key, out _))
+                if (_cache.TryGetValue(key, out var entry))
                 {
+                    RemoveEntryCompletely(key, entry);
                     removed++;
                 }
             }
@@ -281,7 +447,7 @@ namespace MethodCache.Core
             {
                 if (entry.IsExpired)
                 {
-                    _cache.TryRemove(key, out _);
+                    RemoveEntryCompletely(key, entry);
                     return Task.FromResult(false);
                 }
                 return Task.FromResult(true);
@@ -300,25 +466,51 @@ namespace MethodCache.Core
 
             try
             {
-                var entriesToEvict = _options.EvictionPolicy switch
+                var currentCount = _cache.Count;
+                if (currentCount <= _options.MaxItems)
                 {
-                    MemoryCacheEvictionPolicy.LRU => GetLRUEntries(),
-                    MemoryCacheEvictionPolicy.LFU => GetLFUEntries(),
-                    MemoryCacheEvictionPolicy.FIFO => GetFIFOEntries(),
-                    MemoryCacheEvictionPolicy.TTL => GetTTLEntries(),
-                    _ => GetLRUEntries()
-                };
-
-                var evictCount = Math.Max(1, (int)(_options.MaxItems / 10)); // Evict 10% when full
-                foreach (var key in entriesToEvict.Take(evictCount))
+                    return; // No eviction needed
+                }
+                
+                // Calculate how many entries to evict
+                var targetCount = (int)(_options.MaxItems * 0.9); // Target 90% capacity
+                var evictCount = Math.Max(1, currentCount - targetCount);
+                evictCount = Math.Min(evictCount, (int)(_options.MaxItems * 0.2)); // Never evict more than 20%
+                
+                int actualEvicted = 0;
+                
+                // Use appropriate eviction algorithm based on policy
+                switch (_options.EvictionPolicy)
                 {
-                    if (_cache.TryRemove(key, out _))
-                    {
-                        if (_options.EnableStatistics)
-                        {
-                            Interlocked.Increment(ref _evictions);
-                        }
-                    }
+                    case MemoryCacheEvictionPolicy.LRU:
+                    case MemoryCacheEvictionPolicy.FIFO:
+                        actualEvicted = EvictFromAccessOrderO1(evictCount);
+                        break;
+                        
+                    case MemoryCacheEvictionPolicy.LFU:
+                        actualEvicted = EvictLFUApproximate(evictCount);
+                        break;
+                        
+                    case MemoryCacheEvictionPolicy.LFU_Precise:
+                        actualEvicted = EvictLFUPrecise(evictCount);
+                        break;
+                        
+                    case MemoryCacheEvictionPolicy.TTL:
+                        actualEvicted = EvictTTLApproximate(evictCount);
+                        break;
+                        
+                    case MemoryCacheEvictionPolicy.TTL_Precise:
+                        actualEvicted = EvictTTLPrecise(evictCount);
+                        break;
+                        
+                    default:
+                        actualEvicted = EvictFromAccessOrderO1(evictCount);
+                        break;
+                }
+                
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Add(ref _evictions, actualEvicted);
                 }
             }
             finally
@@ -326,52 +518,180 @@ namespace MethodCache.Core
                 _evictionSemaphore.Release();
             }
         }
-
-        private IEnumerable<string> GetLRUEntries()
+        
+        /// <summary>
+        /// O(1) eviction for LRU and FIFO policies using LinkedList.
+        /// </summary>
+        private int EvictFromAccessOrderO1(int maxEvictions)
         {
-            return _cache
-                .OrderBy(kvp => kvp.Value.LastAccessedAt)
-                .Select(kvp => kvp.Key);
+            int evicted = 0;
+            
+            lock (_accessOrderLock)
+            {
+                for (int i = 0; i < maxEvictions && _accessOrder.Count > 0; i++)
+                {
+                    var lastNode = _accessOrder.Last;
+                    if (lastNode == null) break;
+                    
+                    var keyToEvict = lastNode.Value;
+                    
+                    // Remove from access order first
+                    _accessOrder.RemoveLast();
+                    
+                    // Try to remove from cache
+                    if (_cache.TryRemove(keyToEvict, out var entry))
+                    {
+                        entry.OrderNode = null; // Clear the reference
+                        RemoveFromTagIndex(keyToEvict, entry.Tags);
+                        evicted++;
+                    }
+                }
+            }
+            
+            return evicted;
         }
-
-        private IEnumerable<string> GetLFUEntries()
+        
+        /// <summary>
+        /// Approximate LFU eviction using sampling for better performance.
+        /// Trades precision for speed - may not evict the globally least frequently used item.
+        /// </summary>
+        private int EvictLFUApproximate(int maxEvictions)
         {
-            return _cache
+            var totalItems = _cache.Count;
+            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * _options.EvictionSamplePercentage));
+            sampleSize = Math.Min(sampleSize, totalItems);
+            
+            var candidates = _cache.Take(sampleSize)
                 .OrderBy(kvp => kvp.Value.AccessCount)
-                .Select(kvp => kvp.Key);
+                .Take(maxEvictions)
+                .Select(kvp => kvp.Key)
+                .ToList();
+            
+            int evicted = 0;
+            foreach (var key in candidates)
+            {
+                if (_cache.TryGetValue(key, out var entry))
+                {
+                    RemoveEntryCompletely(key, entry);
+                    evicted++;
+                }
+            }
+            
+            return evicted;
         }
-
-        private IEnumerable<string> GetFIFOEntries()
+        
+        /// <summary>
+        /// Precise LFU eviction - guarantees eviction of globally least frequently used items.
+        /// WARNING: O(N log N) performance - expensive for large caches.
+        /// </summary>
+        private int EvictLFUPrecise(int maxEvictions)
         {
-            return _cache
-                .OrderBy(kvp => kvp.Value.CreatedAt)
-                .Select(kvp => kvp.Key);
+            var candidates = _cache
+                .OrderBy(kvp => kvp.Value.AccessCount)
+                .ThenBy(kvp => kvp.Value.LastAccessedAt) // Tiebreaker: older access wins
+                .Take(maxEvictions)
+                .Select(kvp => kvp.Key)
+                .ToList();
+            
+            int evicted = 0;
+            foreach (var key in candidates)
+            {
+                if (_cache.TryGetValue(key, out var entry))
+                {
+                    RemoveEntryCompletely(key, entry);
+                    evicted++;
+                }
+            }
+            
+            return evicted;
         }
-
-        private IEnumerable<string> GetTTLEntries()
+        
+        /// <summary>
+        /// Approximate TTL eviction using sampling for better performance.
+        /// Trades precision for speed - may not evict the item globally closest to expiration.
+        /// </summary>
+        private int EvictTTLApproximate(int maxEvictions)
         {
-            return _cache
+            var totalItems = _cache.Count;
+            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * _options.EvictionSamplePercentage));
+            sampleSize = Math.Min(sampleSize, totalItems);
+            
+            var candidates = _cache.Take(sampleSize)
                 .OrderBy(kvp => kvp.Value.AbsoluteExpiration)
-                .Select(kvp => kvp.Key);
+                .Take(maxEvictions)
+                .Select(kvp => kvp.Key)
+                .ToList();
+            
+            int evicted = 0;
+            foreach (var key in candidates)
+            {
+                if (_cache.TryGetValue(key, out var entry))
+                {
+                    RemoveEntryCompletely(key, entry);
+                    evicted++;
+                }
+            }
+            
+            return evicted;
         }
+        
+        /// <summary>
+        /// Precise TTL eviction - guarantees eviction of items globally closest to expiration.
+        /// WARNING: O(N log N) performance - expensive for large caches.
+        /// </summary>
+        private int EvictTTLPrecise(int maxEvictions)
+        {
+            var candidates = _cache
+                .OrderBy(kvp => kvp.Value.AbsoluteExpiration)
+                .ThenBy(kvp => kvp.Value.CreatedAt) // Tiebreaker: older creation wins
+                .Take(maxEvictions)
+                .Select(kvp => kvp.Key)
+                .ToList();
+            
+            int evicted = 0;
+            foreach (var key in candidates)
+            {
+                if (_cache.TryGetValue(key, out var entry))
+                {
+                    RemoveEntryCompletely(key, entry);
+                    evicted++;
+                }
+            }
+            
+            return evicted;
+        }
+
 
         private void CleanupExpiredEntries(object? state)
         {
             try
             {
-                var expiredKeys = _cache
-                    .Where(kvp => kvp.Value.IsExpired)
-                    .Select(kvp => kvp.Key)
-                    .ToList();
+                // Take a snapshot to avoid collection modification during enumeration
+                var cacheSnapshot = _cache.ToArray();
+                var expiredKeys = new List<string>();
+                
+                foreach (var kvp in cacheSnapshot)
+                {
+                    if (kvp.Value.IsExpired)
+                    {
+                        expiredKeys.Add(kvp.Key);
+                    }
+                }
 
+                // Use proper removal method that cleans up all data structures
                 foreach (var key in expiredKeys)
                 {
-                    _cache.TryRemove(key, out _);
+                    if (_cache.TryGetValue(key, out var entry) && entry.IsExpired)
+                    {
+                        RemoveEntryCompletely(key, entry);
+                    }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Swallow exceptions in background cleanup to avoid crashing the application
+                // Log the exception if possible, but don't crash the application
+                // In a real implementation, we'd want to log this
+                System.Diagnostics.Debug.WriteLine($"Error in background cleanup: {ex.Message}");
             }
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace MethodCache.Core.Configuration
@@ -69,12 +70,14 @@ namespace MethodCache.Core.Configuration
                 // Apply group settings only if method-specific settings don't override them
                 if (!finalSettings.Duration.HasValue) finalSettings.Duration = groupSettings.Duration;
 
-                // For tags: if method has no tags, inherit from group; if method has tags, use only method tags
-                if (!currentMethodSettings.Tags.Any())
-                {
-                    finalSettings.Tags.AddRange(groupSettings.Tags);
-                }
-                // Note: If method has tags, we keep only the method tags (no group tags added)
+                // For tags: combine method and group tags (union behavior)
+                // This ensures consistent behavior where group tags are always included
+                // unless explicitly overridden by method-specific configuration
+                var groupTagsToAdd = groupSettings.Tags.Where(groupTag => 
+                    !finalSettings.Tags.Contains(groupTag)).ToArray();
+                finalSettings.Tags.AddRange(groupTagsToAdd);
+                
+                // Note: Method tags are preserved, group tags are added unless already present
 
                 if (!finalSettings.Version.HasValue) finalSettings.Version = groupSettings.Version;
                 if (finalSettings.KeyGeneratorType == null) finalSettings.KeyGeneratorType = groupSettings.KeyGeneratorType;
