@@ -46,6 +46,21 @@ namespace MethodCache.Core.Configuration
         /// Whether to enable detailed statistics tracking.
         /// </summary>
         public bool EnableStatistics { get; set; } = true;
+
+        /// <summary>
+        /// Memory usage calculation mode.
+        /// </summary>
+        public MemoryUsageCalculationMode MemoryCalculationMode { get; set; } = MemoryUsageCalculationMode.Fast;
+
+        /// <summary>
+        /// Sample size for sampling mode (percentage of entries to measure).
+        /// </summary>
+        public double SamplingPercentage { get; set; } = 0.1; // 10%
+
+        /// <summary>
+        /// How often to recalculate memory usage in accurate mode (in cache operations).
+        /// </summary>
+        public int AccurateModeRecalculationInterval { get; set; } = 1000;
     }
 
     /// <summary>

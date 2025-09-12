@@ -11,7 +11,7 @@ namespace MethodCache.Core
 {
     /// <summary>
     /// Enhanced in-memory cache manager that implements both ICacheManager and IMemoryCache interfaces.
-    /// Provides advanced features like eviction policies, statistics, and background cleanup.
+    /// Provides advanced features like eviction policies, statistics, and configurable memory usage calculation.
     /// </summary>
     public class InMemoryCacheManager : ICacheManager, IMemoryCache
     {
@@ -35,12 +35,13 @@ namespace MethodCache.Core
             }
         }
 
-        private readonly ConcurrentDictionary<string, EnhancedCacheEntry> _cache = new ConcurrentDictionary<string, EnhancedCacheEntry>();
-        private readonly ConcurrentDictionary<string, Lazy<Task<object>>> _stampedePrevention = new ConcurrentDictionary<string, Lazy<Task<object>>>();
+        private readonly ConcurrentDictionary<string, EnhancedCacheEntry> _cache = new();
+        private readonly ConcurrentDictionary<string, Lazy<Task<object>>> _stampedePrevention = new();
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly MemoryCacheOptions _options;
         private readonly Timer? _cleanupTimer;
         private readonly SemaphoreSlim _evictionSemaphore;
+        private readonly MemoryUsageCalculator _memoryCalculator;
         
         // Statistics
         private long _hits;
@@ -53,6 +54,7 @@ namespace MethodCache.Core
             _metricsProvider = metricsProvider;
             _options = options?.Value ?? new MemoryCacheOptions();
             _evictionSemaphore = new SemaphoreSlim(1, 1);
+            _memoryCalculator = new MemoryUsageCalculator(_options);
             
             // Start cleanup timer for expired entries if enabled
             if (_options.EnableBackgroundCleanup)
@@ -96,7 +98,6 @@ namespace MethodCache.Core
             {
                 try
                 {
-                    // Let the factory method run without timeout - service layer handles resilience
                     var result = await factory().ConfigureAwait(false);
                     
                     if (result != null)
@@ -374,14 +375,12 @@ namespace MethodCache.Core
             }
         }
 
+        /// <summary>
+        /// Estimates memory usage using the configured calculation mode.
+        /// </summary>
         private long EstimateMemoryUsage()
         {
-            // This is a rough estimate - in production you might want more accurate measurement
-            const long overheadPerEntry = 100; // Estimated overhead per dictionary entry
-            const long averageKeySize = 50;
-            const long averageValueSize = 500; // This would need to be more sophisticated in production
-            
-            return _cache.Count * (overheadPerEntry + averageKeySize + averageValueSize);
+            return _memoryCalculator.CalculateMemoryUsage(_cache, entry => entry.Value);
         }
 
         #endregion
