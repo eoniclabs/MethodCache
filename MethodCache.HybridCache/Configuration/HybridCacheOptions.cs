@@ -81,6 +81,19 @@ namespace MethodCache.HybridCache.Configuration
         /// Retry policy for L2 operations.
         /// </summary>
         public RetryOptions L2RetryPolicy { get; set; } = new RetryOptions();
+
+        /// <summary>
+        /// Whether to enable efficient tag-based L1 invalidation.
+        /// When enabled, tracks tag-to-key mappings for surgical invalidations.
+        /// When disabled, falls back to clearing entire L1 cache on tag invalidation.
+        /// </summary>
+        public bool EnableEfficientL1TagInvalidation { get; set; } = true;
+
+        /// <summary>
+        /// Maximum number of tag-to-key mappings to keep in memory.
+        /// Prevents memory bloat from excessive tag tracking.
+        /// </summary>
+        public int MaxTagMappings { get; set; } = 50000;
     }
 
     /// <summary>

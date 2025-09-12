@@ -137,5 +137,20 @@ namespace MethodCache.HybridCache.Abstractions
                 return totalRequests > 0 ? (double)totalHits / totalRequests : 0;
             }
         }
+        
+        /// <summary>
+        /// Number of tag-to-key mappings being tracked.
+        /// </summary>
+        public int TagMappingCount { get; init; }
+        
+        /// <summary>
+        /// Number of unique tags being tracked.
+        /// </summary>
+        public int UniqueTagCount { get; init; }
+        
+        /// <summary>
+        /// Whether efficient tag-based L1 invalidation is enabled.
+        /// </summary>
+        public bool EfficientTagInvalidationEnabled { get; init; }
     }
 }
