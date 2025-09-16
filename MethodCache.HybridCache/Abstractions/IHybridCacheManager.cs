@@ -1,5 +1,6 @@
 using MethodCache.Core;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace MethodCache.HybridCache.Abstractions
@@ -23,6 +24,11 @@ namespace MethodCache.HybridCache.Abstractions
         /// Sets a value in the L1 cache only.
         /// </summary>
         Task SetInL1Async<T>(string key, T value, TimeSpan expiration);
+
+        /// <summary>
+        /// Sets a value in the L1 cache only with tags.
+        /// </summary>
+        Task SetInL1Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags);
 
         /// <summary>
         /// Sets a value in the L2 cache only.
