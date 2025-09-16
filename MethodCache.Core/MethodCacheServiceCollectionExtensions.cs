@@ -15,9 +15,14 @@ namespace MethodCache.Core
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure = null)
         {
             var configuration = new MethodCacheConfiguration();
-            configure?.Invoke(configuration);
-
-            services.AddSingleton<IMethodCacheConfiguration>(configuration);
+            
+            // Store the configure action to apply AFTER attribute registration
+            services.AddSingleton<IMethodCacheConfiguration>(provider => {
+                // At this point, all attributes should be registered
+                configure?.Invoke(configuration);
+                return configuration;
+            });
+            
             services.AddSingleton<ICacheManager, InMemoryCacheManager>(); // Default cache manager
             services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>(); // Default key generator
             services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
@@ -34,11 +39,21 @@ namespace MethodCache.Core
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure = null, params Assembly[]? assemblies)
         {
-            // Add core MethodCache services
-            services.AddMethodCache(configure);
+            var configuration = new MethodCacheConfiguration();
+            
+            // 1. Register core services first (without configuration)
+            services.AddSingleton<ICacheManager, InMemoryCacheManager>();
+            services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+            services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
 
-            // Auto-register services with cache attributes
-            services.AddMethodCacheServices(assemblies);
+            // 2. Auto-register services with cache attributes (loads attribute config)
+            services.AddMethodCacheServices(assemblies ?? new[] { Assembly.GetCallingAssembly() }, configuration);
+
+            // 3. Apply programmatic configuration (can override attributes)
+            configure?.Invoke(configuration);
+            
+            // 4. Register final configuration
+            services.AddSingleton<IMethodCacheConfiguration>(configuration);
 
             return services;
         }
@@ -52,11 +67,21 @@ namespace MethodCache.Core
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure, MethodCacheRegistrationOptions options)
         {
-            // Add core MethodCache services
-            services.AddMethodCache(configure);
+            var configuration = new MethodCacheConfiguration();
+            
+            // 1. Register core services first
+            services.AddSingleton<ICacheManager, InMemoryCacheManager>();
+            services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+            services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
 
-            // Auto-register services with cache attributes using options
-            services.AddMethodCacheServices(options);
+            // 2. Auto-register services with cache attributes using options
+            services.AddMethodCacheServices(options, configuration);
+
+            // 3. Apply programmatic configuration (can override attributes) 
+            configure?.Invoke(configuration);
+            
+            // 4. Register final configuration
+            services.AddSingleton<IMethodCacheConfiguration>(configuration);
 
             return services;
         }
@@ -66,15 +91,16 @@ namespace MethodCache.Core
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="assemblies">Assemblies to scan. If null, scans the calling assembly.</param>
+        /// <param name="configuration">Optional configuration to populate with attribute settings</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, params Assembly[]? assemblies)
+        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, Assembly[]? assemblies, IMethodCacheConfiguration? configuration = null)
         {
             var options = new MethodCacheRegistrationOptions
             {
                 Assemblies = assemblies?.Length > 0 ? assemblies : new[] { Assembly.GetCallingAssembly() }
             };
 
-            return services.AddMethodCacheServices(options);
+            return services.AddMethodCacheServices(options, configuration);
         }
 
         /// <summary>
@@ -82,15 +108,16 @@ namespace MethodCache.Core
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="options">Registration options</param>
+        /// <param name="configuration">Optional configuration to populate with attribute settings</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, MethodCacheRegistrationOptions options)
+        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, MethodCacheRegistrationOptions options, IMethodCacheConfiguration? configuration = null)
         {
             var assembliesToScan = GetAssembliesToScan(options);
             var interfacesWithCacheAttributes = FindInterfacesWithCacheAttributes(assembliesToScan, options);
 
             foreach (var interfaceType in interfacesWithCacheAttributes)
             {
-                RegisterServiceWithCaching(services, interfaceType, options);
+                RegisterServiceWithCaching(services, interfaceType, options, configuration);
             }
 
             return services;
@@ -154,7 +181,7 @@ namespace MethodCache.Core
                          m.GetCustomAttributes(typeof(CacheInvalidateAttribute), false).Any());
         }
 
-        private static void RegisterServiceWithCaching(IServiceCollection services, Type interfaceType, MethodCacheRegistrationOptions options)
+        private static void RegisterServiceWithCaching(IServiceCollection services, Type interfaceType, MethodCacheRegistrationOptions options, IMethodCacheConfiguration? configuration = null)
         {
             // Find concrete implementation
             var implementationType = FindImplementationType(interfaceType, options);
@@ -170,6 +197,12 @@ namespace MethodCache.Core
                 // Log warning (for now, just skip - in a real implementation we'd use ILogger)
                 Console.WriteLine($"Warning: {message}");
                 return;
+            }
+
+            // Load cache attributes into configuration
+            if (configuration != null)
+            {
+                LoadCacheAttributesIntoConfiguration(interfaceType, configuration);
             }
 
             // Register the concrete implementation if requested
@@ -293,6 +326,51 @@ namespace MethodCache.Core
             // Fallback: Log that we couldn't find the generated method
             Console.WriteLine($"Warning: Could not find generated extension method {methodName} for {interfaceType.FullName}. " +
                             "Make sure the source generator has run and the interface has cache attributes.");
+        }
+
+        private static void LoadCacheAttributesIntoConfiguration(Type interfaceType, IMethodCacheConfiguration configuration)
+        {
+            var methods = interfaceType.GetMethods();
+            
+            foreach (var method in methods)
+            {
+                var cacheAttribute = method.GetCustomAttribute<CacheAttribute>();
+                if (cacheAttribute != null)
+                {
+                    var methodKey = $"{interfaceType.FullName}.{method.Name}";
+                    
+                    var settings = new CacheMethodSettings
+                    {
+                        Duration = string.IsNullOrEmpty(cacheAttribute.Duration) 
+                            ? TimeSpan.FromMinutes(15) 
+                            : TimeSpan.Parse(cacheAttribute.Duration),
+                        Tags = cacheAttribute.Tags?.ToList() ?? new List<string>()
+                    };
+                    
+                    // Check for ETag attribute and configure ETag settings
+                    var etagAttribute = method.GetCustomAttribute(Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags"));
+                    if (etagAttribute != null)
+                    {
+                        settings.ETag = new ETagSettings
+                        {
+                            Strategy = (ETagGenerationStrategy)etagAttribute.GetType().GetProperty("Strategy")?.GetValue(etagAttribute) ?? ETagGenerationStrategy.ContentHash,
+                            IncludeParametersInETag = (bool)(etagAttribute.GetType().GetProperty("IncludeParametersInETag")?.GetValue(etagAttribute) ?? true),
+                            ETagGeneratorType = (Type?)etagAttribute.GetType().GetProperty("ETagGeneratorType")?.GetValue(etagAttribute),
+                            Metadata = (string[]?)etagAttribute.GetType().GetProperty("Metadata")?.GetValue(etagAttribute),
+                            UseWeakETag = (bool)(etagAttribute.GetType().GetProperty("UseWeakETag")?.GetValue(etagAttribute) ?? false),
+                            CacheDuration = null // Will be set from CacheDurationMinutes if available
+                        };
+                        
+                        var cacheDurationMinutes = etagAttribute.GetType().GetProperty("CacheDurationMinutes")?.GetValue(etagAttribute) as int?;
+                        if (cacheDurationMinutes.HasValue)
+                        {
+                            settings.ETag.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
+                        }
+                    }
+                    
+                    configuration.AddMethod(methodKey, settings);
+                }
+            }
         }
     }
 }
