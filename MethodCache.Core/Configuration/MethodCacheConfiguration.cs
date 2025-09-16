@@ -110,5 +110,21 @@ namespace MethodCache.Core.Configuration
         {
             return _groupSettings.TryGetValue(groupName, out var settings) ? settings : new CacheMethodSettings();
         }
+        
+        /// <summary>
+        /// Adds method configuration by key
+        /// </summary>
+        public void AddMethod(string methodKey, CacheMethodSettings settings)
+        {
+            _methodSettings[methodKey] = settings;
+        }
+        
+        /// <summary>
+        /// Clears all method configurations
+        /// </summary>
+        public void ClearAllMethods()
+        {
+            _methodSettings.Clear();
+        }
     }
 }

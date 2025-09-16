@@ -13,28 +13,37 @@ using MethodCache.ETags.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add MethodCache with hybrid L1/L2 caching
-builder.Services.AddMethodCache()
-    .AddHybridCache(options => {
-        options.L1CacheSize = 1000;
-        options.L2ConnectionString = "localhost:6379";
-    })
-    .AddETagSupport(options => {
-        // Configure ETag middleware
-        options.CacheableContentTypes = new[] { "application/json", "text/html" };
-        options.MaxResponseBodySize = 10 * 1024 * 1024; // 10MB limit
-        options.DefaultCacheMaxAge = TimeSpan.FromHours(1);
-        
-        // Add user-specific caching
-        options.PersonalizationHeaders = new[] { "Authorization", "X-Tenant-Id" };
-        
-        // Custom key personalization
-        options.KeyPersonalizer = context => {
-            var userId = context.User?.FindFirst("sub")?.Value;
-            var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
-            return $"{userId}:{tenantId}";
-        };
-    });
+// Add MethodCache with multiple configuration sources
+builder.Services.AddMethodCacheWithSources(cache => {
+    // Attributes for development defaults
+    cache.AddAttributeSource();
+    
+    // JSON configuration for operations
+    cache.AddJsonConfiguration(builder.Configuration);
+    
+    // Runtime configuration for dynamic updates
+    cache.AddRuntimeConfiguration();
+})
+.AddHybridCache(options => {
+    options.L1CacheSize = 1000;
+    options.L2ConnectionString = "localhost:6379";
+})
+.AddETagSupport(options => {
+    // Configure ETag middleware
+    options.CacheableContentTypes = new[] { "application/json", "text/html" };
+    options.MaxResponseBodySize = 10 * 1024 * 1024; // 10MB limit
+    options.DefaultCacheMaxAge = TimeSpan.FromHours(1);
+    
+    // Add user-specific caching
+    options.PersonalizationHeaders = new[] { "Authorization", "X-Tenant-Id" };
+    
+    // Custom key personalization
+    options.KeyPersonalizer = context => {
+        var userId = context.User?.FindFirst("sub")?.Value;
+        var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+        return $"{userId}:{tenantId}";
+    };
+});
 
 var app = builder.Build();
 
@@ -43,6 +52,70 @@ app.UseETagMiddleware();
 app.MapControllers();
 
 app.Run();
+```
+
+## Configuration Files
+
+### appsettings.json
+```json
+{
+  "MethodCache": {
+    "DefaultDuration": "00:15:00",
+    "GlobalTags": ["api"],
+    "Services": {
+      "MyApp.Services.IDataService": {
+        "Methods": {
+          "GetData": {
+            "Duration": "01:00:00",
+            "Tags": ["data"],
+            "ETag": {
+              "Strategy": "ContentHash",
+              "IncludeParametersInETag": true,
+              "UseWeakETag": false
+            }
+          },
+          "GetDetailedData": {
+            "Duration": "00:30:00",
+            "Tags": ["data", "detailed"],
+            "ETag": {
+              "Strategy": "LastModified",
+              "CacheDuration": "02:00:00"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### cache-config.yaml
+```yaml
+defaults:
+  duration: "00:15:00"
+  tags:
+    - "api"
+  etag:
+    strategy: "ContentHash"
+    includeParametersInETag: true
+
+services:
+  "MyApp.Services.IDataService.GetData":
+    duration: "01:00:00"
+    tags:
+      - "data"
+    etag:
+      strategy: "ContentHash"
+      useWeakETag: false
+  
+  "MyApp.Services.IDataService.GetDetailedData":
+    duration: "00:30:00"
+    tags:
+      - "data"
+      - "detailed"
+    etag:
+      strategy: "LastModified"
+      cacheDuration: "02:00:00"
 ```
 
 ## Controller Examples
