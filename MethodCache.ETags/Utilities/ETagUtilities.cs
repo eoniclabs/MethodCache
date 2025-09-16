@@ -21,7 +21,8 @@ namespace MethodCache.ETags.Utilities
             var hash = sha256.ComputeHash(content);
             var etag = Convert.ToBase64String(hash);
             
-            return useWeakETag ? $"W/\"{etag}\"" : $"\"{etag}\"";
+            // Return the ETag value without quotes - middleware will add them
+            return useWeakETag ? $"W/{etag}" : etag;
         }
 
         /// <summary>
@@ -63,7 +64,8 @@ namespace MethodCache.ETags.Utilities
             var ticks = lastModified.Ticks.ToString();
             var etag = Convert.ToBase64String(Encoding.UTF8.GetBytes(ticks));
             
-            return useWeakETag ? $"W/\"{etag}\"" : $"\"{etag}\"";
+            // Return the ETag value without quotes - middleware will add them
+            return useWeakETag ? $"W/{etag}" : etag;
         }
 
         /// <summary>
@@ -75,7 +77,8 @@ namespace MethodCache.ETags.Utilities
         public static string GenerateETagFromVersion(long version, bool useWeakETag = false)
         {
             var etag = Convert.ToBase64String(Encoding.UTF8.GetBytes(version.ToString()));
-            return useWeakETag ? $"W/\"{etag}\"" : $"\"{etag}\"";
+            // Return the ETag value without quotes - middleware will add them
+            return useWeakETag ? $"W/{etag}" : etag;
         }
 
         /// <summary>
@@ -114,28 +117,34 @@ namespace MethodCache.ETags.Utilities
         /// <summary>
         /// Extracts the ETag value without quotes and weak indicator.
         /// </summary>
-        /// <param name="etag">Full ETag string</param>
+        /// <param name="etag">Full ETag string (may be quoted or unquoted)</param>
         /// <returns>ETag value without formatting</returns>
         public static string? ExtractETagValue(string? etag)
         {
             if (string.IsNullOrEmpty(etag))
                 return null;
 
+            var value = etag;
+
             // Remove W/ prefix if present
-            if (etag.StartsWith("W/"))
-                etag = etag.Substring(2);
+            if (value.StartsWith("W/"))
+            {
+                value = value.Substring(2);
+            }
 
-            // Remove quotes
-            if (etag.StartsWith("\"") && etag.EndsWith("\""))
-                etag = etag.Substring(1, etag.Length - 2);
+            // Remove quotes if present
+            if (value.StartsWith("\"") && value.EndsWith("\""))
+            {
+                value = value.Substring(1, value.Length - 2);
+            }
 
-            return etag;
+            return value;
         }
 
         /// <summary>
         /// Checks if an ETag is weak.
         /// </summary>
-        /// <param name="etag">ETag to check</param>
+        /// <param name="etag">ETag to check (may be quoted or unquoted)</param>
         /// <returns>True if weak ETag</returns>
         public static bool IsWeakETag(string? etag)
         {
@@ -143,7 +152,7 @@ namespace MethodCache.ETags.Utilities
         }
 
         /// <summary>
-        /// Compares two ETags for equality, handling weak/strong comparison rules.
+        /// Compares two ETags for equality using constant-time comparison to prevent timing attacks.
         /// </summary>
         /// <param name="etag1">First ETag</param>
         /// <param name="etag2">Second ETag</param>
@@ -158,11 +167,36 @@ namespace MethodCache.ETags.Utilities
             if (strongComparison && (IsWeakETag(etag1) || IsWeakETag(etag2)))
                 return false;
 
-            // Compare the actual values
+            // Compare the actual values using constant-time comparison
             var value1 = ExtractETagValue(etag1);
             var value2 = ExtractETagValue(etag2);
 
-            return string.Equals(value1, value2, StringComparison.Ordinal);
+            return ConstantTimeEquals(value1, value2);
+        }
+
+        /// <summary>
+        /// Performs a constant-time comparison of two strings to prevent timing attacks.
+        /// </summary>
+        /// <param name="a">First string</param>
+        /// <param name="b">Second string</param>
+        /// <returns>True if strings are equal</returns>
+        private static bool ConstantTimeEquals(string? a, string? b)
+        {
+            if (a == null && b == null) return true;
+            if (a == null || b == null) return false;
+            
+            var aBytes = Encoding.UTF8.GetBytes(a);
+            var bBytes = Encoding.UTF8.GetBytes(b);
+            
+            if (aBytes.Length != bBytes.Length) return false;
+            
+            int result = 0;
+            for (int i = 0; i < aBytes.Length; i++)
+            {
+                result |= aBytes[i] ^ bBytes[i];
+            }
+            
+            return result == 0;
         }
 
         /// <summary>

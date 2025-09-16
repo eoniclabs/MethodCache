@@ -16,10 +16,11 @@ namespace MethodCache.ETags.Tests.Utilities
             var etag = ETagUtilities.GenerateETag(content);
 
             // Assert
-            etag.Should().StartWith("\"");
-            etag.Should().EndWith("\"");
+            etag.Should().NotBeEmpty();
             etag.Should().NotStartWith("W/");
-            etag.Length.Should().BeGreaterThan(2);
+            etag.Should().NotStartWith("\"");
+            etag.Should().NotEndWith("\"");
+            etag.Length.Should().BeGreaterThan(0);
         }
 
         [Fact]
@@ -91,9 +92,10 @@ namespace MethodCache.ETags.Tests.Utilities
             var etag = ETagUtilities.GenerateETagFromTimestamp(timestamp);
 
             // Assert
-            etag.Should().StartWith("\"");
-            etag.Should().EndWith("\"");
+            etag.Should().NotBeEmpty();
             etag.Should().NotStartWith("W/");
+            etag.Should().NotStartWith("\"");
+            etag.Should().NotEndWith("\"");
         }
 
         [Fact]

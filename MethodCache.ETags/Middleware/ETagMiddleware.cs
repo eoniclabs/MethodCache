@@ -110,6 +110,18 @@ namespace MethodCache.ETags.Middleware
                 }
             }
 
+            // Include Accept header for content negotiation
+            if (request.Headers.TryGetValue("Accept", out var acceptValues))
+            {
+                keyBuilder.Append($"|Accept:{string.Join(",", acceptValues.ToArray())}");
+            }
+
+            // Include Accept-Encoding for compression negotiation
+            if (request.Headers.TryGetValue("Accept-Encoding", out var encodingValues))
+            {
+                keyBuilder.Append($"|Accept-Encoding:{string.Join(",", encodingValues.ToArray())}");
+            }
+
             // Hash the key if it's too long
             var key = keyBuilder.ToString();
             if (key.Length > 250)
@@ -125,7 +137,11 @@ namespace MethodCache.ETags.Middleware
         private static string? GetIfNoneMatchHeader(HttpRequest request)
         {
             var ifNoneMatch = request.Headers["If-None-Match"].ToString();
-            return string.IsNullOrEmpty(ifNoneMatch) ? null : ifNoneMatch.Trim('"');
+            if (string.IsNullOrEmpty(ifNoneMatch))
+                return null;
+
+            // Extract the raw ETag value for comparison
+            return ETagUtilities.ExtractETagValue(ifNoneMatch.Trim());
         }
 
         private async Task<ETagCacheEntry<ResponseCacheEntry>> CaptureResponseAsync(HttpContext context)
@@ -172,8 +188,8 @@ namespace MethodCache.ETags.Middleware
             // Restore original stream and write response
             context.Response.Body = originalBodyStream;
 
-            // Add Vary header
-            context.Response.Headers["Vary"] = "Accept";
+            // Add Vary header based on headers that influence caching
+            AddVaryHeaders(context.Response);
 
             return ETagCacheEntry<ResponseCacheEntry>.WithValue(cacheEntry, etag);
         }
@@ -205,6 +221,7 @@ namespace MethodCache.ETags.Middleware
                 }
             }
 
+            // Return raw ETag value without quotes
             return Convert.ToBase64String(contentHash);
         }
 
@@ -235,14 +252,15 @@ namespace MethodCache.ETags.Middleware
                 return;
             }
 
-            // Set ETag header
-            context.Response.Headers["ETag"] = result.ETag;
+            // Set ETag header with proper quoting
+            var formattedETag = FormatETagHeader(result.ETag);
+            context.Response.Headers["ETag"] = formattedETag;
 
             if (result.ShouldReturn304)
             {
                 // Return 304 Not Modified
                 context.Response.StatusCode = 304;
-                _logger.LogDebug("Returning 304 Not Modified for ETag {ETag}", result.ETag);
+                _logger.LogDebug("Returning 304 Not Modified for ETag {ETag}", formattedETag);
                 return;
             }
 
@@ -281,7 +299,48 @@ namespace MethodCache.ETags.Middleware
             await context.Response.Body.WriteAsync(entry.Body);
 
             var statusText = result.Status == ETagCacheStatus.Hit ? "cache hit" : "cache miss";
-            _logger.LogDebug("Served response with ETag {ETag} ({Status})", result.ETag, statusText);
+            _logger.LogDebug("Served response with ETag {ETag} ({Status})", formattedETag, statusText);
+        }
+
+        private void AddVaryHeaders(HttpResponse response)
+        {
+            var varyHeaders = new List<string> { "Accept" };
+
+            // Add headers that are included in cache key generation
+            if (_options.HeadersToIncludeInKey?.Length > 0)
+            {
+                varyHeaders.AddRange(_options.HeadersToIncludeInKey);
+            }
+
+            // Add headers that influence ETag generation
+            if (_options.HeadersToIncludeInETag?.Length > 0)
+            {
+                varyHeaders.AddRange(_options.HeadersToIncludeInETag);
+            }
+
+            // Always include Accept-Encoding for compression
+            if (!varyHeaders.Contains("Accept-Encoding"))
+            {
+                varyHeaders.Add("Accept-Encoding");
+            }
+
+            response.Headers["Vary"] = string.Join(", ", varyHeaders.Distinct());
+        }
+
+        private static string FormatETagHeader(string etag)
+        {
+            if (string.IsNullOrEmpty(etag))
+                return string.Empty;
+
+            // If it's already a weak ETag, just add quotes around the value
+            if (etag.StartsWith("W/"))
+            {
+                var value = etag.Substring(2);
+                return $"W/\"{value}\"";
+            }
+
+            // Strong ETag - just add quotes
+            return $"\"{etag}\"";
         }
     }
 }
