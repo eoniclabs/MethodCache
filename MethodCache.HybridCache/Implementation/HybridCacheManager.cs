@@ -18,7 +18,7 @@ namespace MethodCache.HybridCache.Implementation
     public class HybridCacheManager : IHybridCacheManager, IAsyncDisposable
     {
         private readonly IMemoryCache _l1Cache;
-        private readonly ICacheManager _l2Cache;
+        private readonly ICacheManager? _l2Cache;
         private readonly ICacheBackplane? _backplane;
         private readonly HybridCacheOptions _options;
         private readonly ILogger<HybridCacheManager> _logger;
@@ -54,16 +54,22 @@ namespace MethodCache.HybridCache.Implementation
 
         public HybridCacheManager(
             IMemoryCache l1Cache,
-            ICacheManager l2Cache,
+            ICacheManager? l2Cache,
             ICacheBackplane? backplane,
             IOptions<HybridCacheOptions> options,
             ILogger<HybridCacheManager> logger)
         {
             _l1Cache = l1Cache ?? throw new ArgumentNullException(nameof(l1Cache));
-            _l2Cache = l2Cache ?? throw new ArgumentNullException(nameof(l2Cache));
+            _l2Cache = l2Cache; // Null is acceptable for L1-only scenarios
             _backplane = backplane;
             _options = options.Value;
             _logger = logger;
+            
+            // Validate L2Cache dependency based on configuration
+            if (_options.L2Enabled && _l2Cache == null)
+            {
+                throw new InvalidOperationException("L2 cache is enabled but no ICacheManager was provided for L2 operations.");
+            }
             
             _l2Semaphore = new SemaphoreSlim(_options.MaxConcurrentL2Operations, _options.MaxConcurrentL2Operations);
             _keyLevelLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
@@ -152,7 +158,7 @@ namespace MethodCache.HybridCache.Implementation
                     return l1Value;
                 }
                 
-                // Check L2 cache if enabled
+                // Try L2 cache if enabled
                 if (ShouldUseL2)
                 {
                     try
@@ -160,50 +166,19 @@ namespace MethodCache.HybridCache.Implementation
                         await _l2Semaphore.WaitAsync();
                         
                         // Check if value exists in L2 first
-                        var l2Value = await GetL2ValueDirectlyAsync<T>(cacheKey);
-                        if (l2Value != null)
+                        var (l2Exists, l2Value) = await GetL2ValueDirectlyAsync<T>(cacheKey);
+                        if (l2Exists)
                         {
                             // L2 cache hit - warm L1 and return
-                            if (ShouldUseL1)
-                            {
-                                var l1Expiration = CalculateL1Expiration(settings);
-                                await _l1Cache.SetAsync(cacheKey, l2Value, l1Expiration);
-                                
-                                // Track tags for efficient invalidation
-                                TrackKeyTags(cacheKey, settings.Tags);
-                            }
+                            await StoreInL1IfEnabled(cacheKey, l2Value, settings);
                             
                             Interlocked.Increment(ref _l2Hits);
                             _logger.LogTrace("L2 cache hit for key {Key}, warmed L1 cache", cacheKey);
                             return l2Value;
                         }
                         
-                        // L2 cache miss - execute factory and cache in both layers
+                        // L2 cache miss - fall through to factory execution
                         Interlocked.Increment(ref _l2Misses);
-                        var result = await factory();
-                        
-                        if (result != null)
-                        {
-                            // Store in both L2 and L1 caches
-                            await _l2Cache.GetOrCreateAsync(
-                                methodName,
-                                args,
-                                () => Task.FromResult(result),
-                                settings,
-                                keyGenerator,
-                                requireIdempotent);
-                                
-                            if (ShouldUseL1)
-                            {
-                                var l1Expiration = CalculateL1Expiration(settings);
-                                await _l1Cache.SetAsync(cacheKey, result, l1Expiration);
-                                
-                                // Track tags for efficient invalidation
-                                TrackKeyTags(cacheKey, settings.Tags);
-                            }
-                        }
-                        
-                        return result;
                     }
                     finally
                     {
@@ -211,54 +186,93 @@ namespace MethodCache.HybridCache.Implementation
                     }
                 }
                 
-                // L2 not enabled or L1Only mode - execute factory and cache in L1
-                if (IsL1OnlyMode)
-                {
-                    var result = await factory();
-                    if (result != null)
-                    {
-                        var l1Expiration = CalculateL1Expiration(settings);
-                        await _l1Cache.SetAsync(cacheKey, result, l1Expiration);
-                        
-                        // Track tags for efficient invalidation
-                        TrackKeyTags(cacheKey, settings.Tags);
-                    }
-                    return result;
-                }
-                
-                // This shouldn't happen if properly configured
-                _logger.LogWarning("Hybrid cache misconfiguration - executing factory without caching");
-                return await factory();
+                // Execute factory and store in appropriate cache layers
+                // This handles: L2 miss, L1-only mode, and L2-disabled scenarios
+                return await ExecuteFactoryAndCache(methodName, args, factory, settings, keyGenerator, requireIdempotent, cacheKey);
             }
             finally
             {
                 keyLock.Release();
                 
                 // Clean up key-level lock if no other threads are waiting
-                // Use a more robust check to avoid race conditions
-                if (keyLock.CurrentCount == 1 && _keyLevelLocks.TryRemove(cacheKey, out var removedLock))
+                // Use atomic operations to safely remove and dispose the semaphore
+                if (keyLock.CurrentCount == 1)
                 {
-                    // Only dispose if we successfully removed it from the dictionary
-                    // This prevents race conditions where another thread adds it back
-                    if (ReferenceEquals(removedLock, keyLock))
+                    // Use CompareExchange-style removal to prevent race conditions
+                    // Only remove if the semaphore in the dictionary is still the same instance
+                    var keyValuePair = new KeyValuePair<string, SemaphoreSlim>(cacheKey, keyLock);
+                    if (((ICollection<KeyValuePair<string, SemaphoreSlim>>)_keyLevelLocks).Remove(keyValuePair))
                     {
+                        // Successfully removed the exact semaphore we were using
                         keyLock.Dispose();
                     }
-                    else
-                    {
-                        // Another thread created a new semaphore, put it back
-                        _keyLevelLocks.TryAdd(cacheKey, removedLock);
-                    }
+                    // If removal failed, another thread replaced the semaphore, so leave it alone
                 }
             }
         }
         
-        private async Task<T?> GetL2ValueDirectlyAsync<T>(string cacheKey)
+        /// <summary>
+        /// Helper method to store a value in L1 cache if enabled by strategy.
+        /// </summary>
+        private async Task StoreInL1IfEnabled<T>(string cacheKey, T value, CacheMethodSettings settings)
         {
-            // Create a factory that throws to ensure we only get existing values
+            if (ShouldUseL1 && value != null)
+            {
+                var l1Expiration = CalculateL1Expiration(settings);
+                await _l1Cache.SetAsync(cacheKey, value, l1Expiration);
+                
+                // Track tags for efficient invalidation
+                TrackKeyTags(cacheKey, settings.Tags);
+            }
+        }
+        
+        /// <summary>
+        /// Helper method to execute factory and store result in appropriate cache layers.
+        /// Handles L2 miss, L1-only mode, and L2-disabled scenarios.
+        /// </summary>
+        private async Task<T> ExecuteFactoryAndCache<T>(
+            string methodName, 
+            object[] args, 
+            Func<Task<T>> factory, 
+            CacheMethodSettings settings, 
+            ICacheKeyGenerator keyGenerator, 
+            bool requireIdempotent, 
+            string cacheKey)
+        {
+            var result = await factory();
+            
+            if (result != null)
+            {
+                // Store in L2 cache if using hybrid mode
+                if (ShouldUseL2)
+                {
+                    await _l2Cache.GetOrCreateAsync(
+                        methodName,
+                        args,
+                        () => Task.FromResult(result),
+                        settings,
+                        keyGenerator,
+                        requireIdempotent);
+                }
+                
+                // Store in L1 cache if enabled
+                await StoreInL1IfEnabled(cacheKey, result, settings);
+            }
+            
+            return result;
+        }
+        
+        private async Task<(bool Exists, T? Value)> GetL2ValueDirectlyAsync<T>(string cacheKey)
+        {
+            // Optimized version: reuse cached objects and simplify logic
             try
             {
                 var keyGenerator = new SimpleKeyGenerator(cacheKey);
+                
+                if (_l2Cache == null)
+                {
+                    return (false, default(T));
+                }
                 
                 var wasFactoryCalled = false;
                 var result = await _l2Cache.GetOrCreateAsync<T>(
@@ -276,11 +290,11 @@ namespace MethodCache.HybridCache.Implementation
                     false);
                 
                 // If factory was called, there was no cached value
-                return wasFactoryCalled ? default : result;
+                return wasFactoryCalled ? (false, default(T)) : (true, result);
             }
             catch
             {
-                return default;
+                return (false, default(T));
             }
         }
 
@@ -358,7 +372,17 @@ namespace MethodCache.HybridCache.Implementation
             try
             {
                 await _l2Semaphore.WaitAsync();
-                return await GetL2ValueDirectlyAsync<T>(key);
+                var (exists, value) = await GetL2ValueDirectlyAsync<T>(key);
+                if (!exists)
+                {
+                    _logger.LogDebug("L2 cache miss for key {Key}", key);
+                }
+                return exists ? value : default;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error retrieving key {Key} from L2 cache", key);
+                return default;
             }
             finally
             {
@@ -441,13 +465,31 @@ namespace MethodCache.HybridCache.Implementation
             // RemoveAsync(key) method for individual key invalidation. As a workaround, we create a 
             // synthetic tag for each key (format: "key:{actualKey}") and use tag-based invalidation.
             // 
-            // This approach has limitations:
-            // 1. Relies on L2 cache implementations supporting tag-based invalidation
-            // 2. Creates additional metadata overhead for tag tracking
-            // 3. May be less efficient than direct key removal
+            // This approach has significant limitations and trade-offs:
+            // 1. DEPENDENCY: Relies on L2 cache implementations supporting tag-based invalidation
+            //    - If the L2 provider doesn't support tags, this silently fails
+            //    - Some providers may have different tag invalidation semantics
+            // 2. PERFORMANCE: Creates additional metadata overhead for tag tracking
+            //    - Each cached item gets an extra synthetic tag
+            //    - Tag indexes consume additional memory and processing time
+            // 3. EFFICIENCY: May be less efficient than direct key removal
+            //    - Tag-based invalidation often scans tag indexes rather than direct hash lookups
+            //    - Some implementations may clear multiple items when only one is needed
+            // 4. CONSISTENCY: Different L2 providers may handle tag invalidation differently
+            //    - Redis: Uses SET operations and key scanning
+            //    - SQL Server: May use table joins and WHERE clauses
+            //    - Memory caches: May use dictionary lookups
+            // 5. ERROR HANDLING: Failed invalidations are not easily detectable
+            //    - InvalidateByTagsAsync typically returns void, hiding failures
+            //    - Stale data may persist in L2 cache without indication
             // 
-            // TODO: Consider extending ICacheManager interface to include RemoveAsync(string key)
-            // method for more efficient single-key invalidation.
+            // RECOMMENDED SOLUTIONS:
+            // - Extend ICacheManager interface to include RemoveAsync(string key) method
+            // - Add TryRemoveAsync(string key) : Task<bool> for failure detection
+            // - Consider using cache provider-specific interfaces when available
+            // 
+            // IMPACT: This workaround affects cache consistency guarantees and performance
+            // characteristics, making it unsuitable for scenarios requiring strict consistency.
             var invalidationTag = $"key:{key}";
             await _l2Cache.InvalidateByTagsAsync(invalidationTag);
             _logger.LogTrace("Invalidated L2 cache for key {Key} using synthetic tag {Tag}", key, invalidationTag);
