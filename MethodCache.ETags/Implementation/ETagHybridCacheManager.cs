@@ -87,12 +87,22 @@ namespace MethodCache.ETags.Implementation
                     return ETagCacheResult<T>.NotModified(l2ETag);
                 }
 
-                // Atomically warm L1 with both value and ETag
+                // Atomically warm L1 with both value and ETag, preserving tags
                 var l1Expiration = CalculateL1Expiration(settings);
-                await Task.WhenAll(
-                    _hybridCache.SetInL1Async(key, l2Value, l1Expiration),
-                    _hybridCache.SetInL1Async(etagKey, l2ETag, l1Expiration)
-                );
+                if (settings.Tags?.Any() == true)
+                {
+                    await Task.WhenAll(
+                        _hybridCache.SetInL1Async(key, l2Value, l1Expiration, settings.Tags),
+                        _hybridCache.SetInL1Async(etagKey, l2ETag, l1Expiration, settings.Tags)
+                    );
+                }
+                else
+                {
+                    await Task.WhenAll(
+                        _hybridCache.SetInL1Async(key, l2Value, l1Expiration),
+                        _hybridCache.SetInL1Async(etagKey, l2ETag, l1Expiration)
+                    );
+                }
 
                 _logger.LogDebug("Cache hit in L2 for key {Key} with ETag {ETag}, warmed L1", key, l2ETag);
                 return ETagCacheResult<T>.Hit(l2Value, l2ETag);
@@ -202,19 +212,19 @@ namespace MethodCache.ETags.Implementation
             // Store in both L1 and L2 caches
             var tasks = new List<Task>();
             
-            // L1 cache
+            // L1 cache - apply tags to both value and ETag keys
             if (settings.Tags?.Any() == true)
             {
                 tasks.Add(_hybridCache.SetInL1Async(key, entry.Value, l1Expiration, settings.Tags));
+                tasks.Add(_hybridCache.SetInL1Async(etagKey, entry.ETag, l1Expiration, settings.Tags));
             }
             else
             {
                 tasks.Add(_hybridCache.SetInL1Async(key, entry.Value, l1Expiration));
+                tasks.Add(_hybridCache.SetInL1Async(etagKey, entry.ETag, l1Expiration));
             }
-            
-            tasks.Add(_hybridCache.SetInL1Async(etagKey, entry.ETag, l1Expiration));
 
-            // L2 cache  
+            // L2 cache - L2 doesn't support tags in current implementation
             tasks.Add(_hybridCache.SetInL2Async(key, entry.Value, l2Expiration));
             tasks.Add(_hybridCache.SetInL2Async(etagKey, entry.ETag, l2Expiration));
 

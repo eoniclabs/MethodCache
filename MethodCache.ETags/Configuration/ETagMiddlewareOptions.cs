@@ -74,6 +74,24 @@ namespace MethodCache.ETags.Middleware
         public string[]? DefaultTags { get; set; }
 
         /// <summary>
+        /// Maximum response body size to buffer for caching (in bytes).
+        /// Responses larger than this will not be cached.
+        /// Default: 10MB
+        /// </summary>
+        public long MaxResponseBodySize { get; set; } = 10 * 1024 * 1024;
+
+        /// <summary>
+        /// Content types that should never be cached due to their streaming nature.
+        /// </summary>
+        public string[]? StreamingContentTypes { get; set; } = new[] 
+        {
+            "text/event-stream",
+            "application/octet-stream",
+            "video/",
+            "audio/"
+        };
+
+        /// <summary>
         /// Gets the cache settings for storing ETag entries.
         /// </summary>
         internal CacheMethodSettings GetCacheSettings()
@@ -105,6 +123,11 @@ namespace MethodCache.ETags.Middleware
         /// The response content type.
         /// </summary>
         public string? ContentType { get; set; }
+
+        /// <summary>
+        /// The original Last-Modified timestamp.
+        /// </summary>
+        public DateTime? LastModified { get; set; }
 
         /// <summary>
         /// Additional headers to restore with the response.

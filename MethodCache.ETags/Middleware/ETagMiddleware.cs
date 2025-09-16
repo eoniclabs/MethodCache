@@ -55,7 +55,7 @@ namespace MethodCache.ETags.Middleware
                     ifNoneMatch,
                     _options.GetCacheSettings());
 
-                await HandleETagResult(context, result);
+                await HandleETagResult(context, result, ifNoneMatch);
             }
             catch (Exception ex)
             {
@@ -137,11 +137,24 @@ namespace MethodCache.ETags.Middleware
         private static string? GetIfNoneMatchHeader(HttpRequest request)
         {
             var ifNoneMatch = request.Headers["If-None-Match"].ToString();
-            if (string.IsNullOrEmpty(ifNoneMatch))
-                return null;
+            return string.IsNullOrEmpty(ifNoneMatch) ? null : ifNoneMatch.Trim();
+        }
 
-            // Extract the raw ETag value for comparison
-            return ETagUtilities.ExtractETagValue(ifNoneMatch.Trim());
+        private static bool MatchesIfNoneMatch(string currentETag, string? ifNoneMatch)
+        {
+            if (string.IsNullOrEmpty(ifNoneMatch) || string.IsNullOrEmpty(currentETag))
+                return false;
+
+            // Handle "*" wildcard
+            if (ifNoneMatch.Trim() == "*")
+                return true;
+
+            // Parse multiple ETags and check for matches
+            var clientETags = ETagUtilities.ParseIfNoneMatch(ifNoneMatch);
+            var formattedCurrentETag = FormatETagHeader(currentETag);
+            
+            return clientETags.Any(clientETag => 
+                ETagUtilities.ETagsMatch(formattedCurrentETag, clientETag));
         }
 
         private async Task<ETagCacheEntry<ResponseCacheEntry>> CaptureResponseAsync(HttpContext context)
@@ -155,18 +168,47 @@ namespace MethodCache.ETags.Middleware
             // Execute the rest of the pipeline
             await _next(context);
 
+            // Only cache successful 2xx responses
+            if (context.Response.StatusCode < 200 || context.Response.StatusCode >= 300)
+            {
+                // Don't cache error responses, just pass through
+                responseBodyStream.Seek(0, SeekOrigin.Begin);
+                await responseBodyStream.CopyToAsync(originalBodyStream);
+                context.Response.Body = originalBodyStream;
+                return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
+            }
+
+            // Check for streaming or large content that shouldn't be cached
+            var contentType = context.Response.ContentType;
+            if (IsStreamingContent(contentType) || responseBodyStream.Length > _options.MaxResponseBodySize)
+            {
+                // Don't cache streaming content or large responses
+                responseBodyStream.Seek(0, SeekOrigin.Begin);
+                await responseBodyStream.CopyToAsync(originalBodyStream);
+                context.Response.Body = originalBodyStream;
+                return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
+            }
+
             // Check content type eligibility
             if (_options.CacheableContentTypes?.Length > 0)
             {
-                var contentType = context.Response.ContentType;
                 if (contentType == null || !_options.CacheableContentTypes.Any(ct => contentType.StartsWith(ct)))
                 {
                     // Not a cacheable content type, so just write the response back and return null
                     responseBodyStream.Seek(0, SeekOrigin.Begin);
                     await responseBodyStream.CopyToAsync(originalBodyStream);
                     context.Response.Body = originalBodyStream;
-                    return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty); // Indicate not to cache
+                    return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
                 }
+            }
+
+            // Don't cache empty responses (204 No Content, etc.)
+            if (responseBodyStream.Length == 0 && context.Response.StatusCode == 204)
+            {
+                responseBodyStream.Seek(0, SeekOrigin.Begin);
+                await responseBodyStream.CopyToAsync(originalBodyStream);
+                context.Response.Body = originalBodyStream;
+                return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
             }
 
             // Read the response
@@ -177,11 +219,13 @@ namespace MethodCache.ETags.Middleware
             var etag = GenerateETag(responseBody, context.Response.Headers);
 
             // Capture response metadata
+            var lastModified = GetLastModifiedFromResponse(context.Response);
             var cacheEntry = new ResponseCacheEntry
             {
                 Body = responseBody,
                 StatusCode = context.Response.StatusCode,
                 ContentType = context.Response.ContentType,
+                LastModified = lastModified,
                 Headers = CaptureHeaders(context.Response)
             };
 
@@ -244,7 +288,7 @@ namespace MethodCache.ETags.Middleware
             return headers;
         }
 
-        private async Task HandleETagResult(HttpContext context, ETagCacheResult<ResponseCacheEntry> result)
+        private async Task HandleETagResult(HttpContext context, ETagCacheResult<ResponseCacheEntry> result, string? ifNoneMatch)
         {
             if (result.Status == ETagCacheStatus.NotModified && string.IsNullOrEmpty(result.ETag))
             {
@@ -256,7 +300,8 @@ namespace MethodCache.ETags.Middleware
             var formattedETag = FormatETagHeader(result.ETag);
             context.Response.Headers["ETag"] = formattedETag;
 
-            if (result.ShouldReturn304)
+            // Check for 304 Not Modified using proper If-None-Match handling
+            if (MatchesIfNoneMatch(result.ETag, ifNoneMatch))
             {
                 // Return 304 Not Modified
                 context.Response.StatusCode = 304;
@@ -292,19 +337,56 @@ namespace MethodCache.ETags.Middleware
 
             if (_options.AddLastModifiedHeader)
             {
-                context.Response.Headers["Last-Modified"] = result.LastModified.ToString("R");
+                var lastModified = entry.LastModified ?? result.LastModified;
+                context.Response.Headers["Last-Modified"] = lastModified.ToString("R");
             }
 
-            // Write response body
-            await context.Response.Body.WriteAsync(entry.Body);
+            // Write response body (skip for HEAD requests)
+            if (!HttpMethods.IsHead(context.Request.Method))
+            {
+                await context.Response.Body.WriteAsync(entry.Body);
+            }
 
             var statusText = result.Status == ETagCacheStatus.Hit ? "cache hit" : "cache miss";
             _logger.LogDebug("Served response with ETag {ETag} ({Status})", formattedETag, statusText);
         }
 
+        private bool IsStreamingContent(string? contentType)
+        {
+            if (string.IsNullOrEmpty(contentType) || _options.StreamingContentTypes?.Length == 0)
+                return false;
+
+            return _options.StreamingContentTypes?.Any(streamingType =>
+                contentType.StartsWith(streamingType, StringComparison.OrdinalIgnoreCase)) == true;
+        }
+
+        private static DateTime? GetLastModifiedFromResponse(HttpResponse response)
+        {
+            if (response.Headers.TryGetValue("Last-Modified", out var lastModifiedValues))
+            {
+                var lastModifiedString = lastModifiedValues.FirstOrDefault();
+                if (DateTime.TryParse(lastModifiedString, out var lastModified))
+                {
+                    return lastModified;
+                }
+            }
+            return DateTime.UtcNow;
+        }
+
         private void AddVaryHeaders(HttpResponse response)
         {
-            var varyHeaders = new List<string> { "Accept" };
+            var varyHeaders = new List<string>();
+            
+            // Preserve existing Vary headers
+            if (response.Headers.TryGetValue("Vary", out var existingVary))
+            {
+                var existing = existingVary.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(h => h.Trim());
+                varyHeaders.AddRange(existing);
+            }
+            
+            // Add our standard headers
+            varyHeaders.Add("Accept");
 
             // Add headers that are included in cache key generation
             if (_options.HeadersToIncludeInKey?.Length > 0)
@@ -332,14 +414,21 @@ namespace MethodCache.ETags.Middleware
             if (string.IsNullOrEmpty(etag))
                 return string.Empty;
 
-            // If it's already a weak ETag, just add quotes around the value
+            // If it's already quoted, return as-is
+            if ((etag.StartsWith("\"") && etag.EndsWith("\"")) ||
+                (etag.StartsWith("W/\"") && etag.EndsWith("\"")))
+            {
+                return etag;
+            }
+
+            // If it's a weak ETag marker without quotes
             if (etag.StartsWith("W/"))
             {
                 var value = etag.Substring(2);
                 return $"W/\"{value}\"";
             }
 
-            // Strong ETag - just add quotes
+            // Strong ETag - add quotes
             return $"\"{etag}\"";
         }
     }
