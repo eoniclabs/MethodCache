@@ -92,6 +92,19 @@ namespace MethodCache.ETags.Models
         }
 
         /// <summary>
+        /// Creates a bypass result when content should not be cached.
+        /// </summary>
+        /// <returns>A bypass cache result</returns>
+        public static ETagCacheResult<T> Bypass()
+        {
+            return new ETagCacheResult<T>(
+                default,
+                string.Empty,
+                ETagCacheStatus.Bypass,
+                DateTime.UtcNow);
+        }
+
+        /// <summary>
         /// Creates a result from an ETagCacheEntry.
         /// </summary>
         /// <param name="entry">The cache entry</param>
@@ -108,6 +121,7 @@ namespace MethodCache.ETags.Models
             {
                 ETagCacheStatus.Hit => Hit(entry.Value!, entry.ETag, entry.LastModified, entry.Metadata),
                 ETagCacheStatus.Miss => Miss(entry.Value!, entry.ETag, entry.LastModified, entry.Metadata),
+                ETagCacheStatus.Bypass => Bypass(),
                 _ => throw new ArgumentException($"Invalid status {status} for non-modified entry", nameof(status))
             };
         }
@@ -121,6 +135,11 @@ namespace MethodCache.ETags.Models
         /// Indicates whether the client should receive a 304 Not Modified response.
         /// </summary>
         public bool ShouldReturn304 => Status == ETagCacheStatus.NotModified;
+
+        /// <summary>
+        /// Indicates whether caching should be bypassed for this response.
+        /// </summary>
+        public bool ShouldBypass => Status == ETagCacheStatus.Bypass;
     }
 
     /// <summary>
@@ -141,6 +160,11 @@ namespace MethodCache.ETags.Models
         /// <summary>
         /// Cache miss - value created by factory function.
         /// </summary>
-        Miss
+        Miss,
+
+        /// <summary>
+        /// Bypass - response should not be cached (error, streaming content, etc.).
+        /// </summary>
+        Bypass
     }
 }

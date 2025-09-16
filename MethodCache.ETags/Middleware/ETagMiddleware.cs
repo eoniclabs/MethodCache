@@ -43,17 +43,40 @@ namespace MethodCache.ETags.Middleware
 
             var cacheKey = GenerateCacheKey(context.Request);
             var ifNoneMatch = GetIfNoneMatchHeader(context.Request);
+            var mustRevalidate = ShouldRevalidateOnly(context.Request);
 
-            _logger.LogDebug("Processing ETag request for key {CacheKey} with If-None-Match: {IfNoneMatch}", 
-                cacheKey, ifNoneMatch ?? "null");
+            _logger.LogDebug("Processing ETag request for key {CacheKey} with If-None-Match: {IfNoneMatch}, MustRevalidate: {MustRevalidate}", 
+                cacheKey, ifNoneMatch ?? "null", mustRevalidate);
 
             try
             {
-                var result = await _etagCache.GetOrCreateWithETagAsync<ResponseCacheEntry>(
-                    cacheKey,
-                    async () => await CaptureResponseAsync(context),
-                    ifNoneMatch,
-                    _options.GetCacheSettings());
+                ETagCacheResult<ResponseCacheEntry> result;
+                
+                if (mustRevalidate)
+                {
+                    // For no-cache/must-revalidate: always execute factory but still check ETag
+                    result = await _etagCache.GetOrCreateWithETagAsync<ResponseCacheEntry>(
+                        cacheKey,
+                        async () => await CaptureResponseAsync(context),
+                        ifNoneMatch,
+                        _options.GetCacheSettings(),
+                        forceRefresh: true);
+                }
+                else
+                {
+                    // Normal caching behavior
+                    result = await _etagCache.GetOrCreateWithETagAsync<ResponseCacheEntry>(
+                        cacheKey,
+                        async () => await CaptureResponseAsync(context),
+                        ifNoneMatch,
+                        _options.GetCacheSettings());
+                }
+
+                // Handle bypass results early
+                if (result.ShouldBypass)
+                {
+                    return;
+                }
 
                 await HandleETagResult(context, result, ifNoneMatch);
             }
@@ -77,12 +100,17 @@ namespace MethodCache.ETags.Middleware
             if (_options.SkipPaths?.Any(path => request.Path.StartsWithSegments(path)) == true)
                 return false;
 
-            // Skip if request has Cache-Control: no-cache
-            var cacheControl = request.Headers["Cache-Control"].ToString();
-            if (cacheControl.Contains("no-cache", StringComparison.OrdinalIgnoreCase))
-                return false;
-
+            // Cache-Control: no-cache allows revalidation but not serving from cache without validation
+            // We'll handle this in the cache logic, not skip ETag processing entirely
+            
             return true;
+        }
+
+        private bool ShouldRevalidateOnly(HttpRequest request)
+        {
+            var cacheControl = request.Headers["Cache-Control"].ToString();
+            return cacheControl.Contains("no-cache", StringComparison.OrdinalIgnoreCase) ||
+                   cacheControl.Contains("must-revalidate", StringComparison.OrdinalIgnoreCase);
         }
 
         private string GenerateCacheKey(HttpRequest request)
@@ -122,13 +150,20 @@ namespace MethodCache.ETags.Middleware
                 keyBuilder.Append($"|Accept-Encoding:{string.Join(",", encodingValues.ToArray())}");
             }
 
+            // Add personalization context (user/tenant)
+            var personalization = GetPersonalizationContext(request);
+            if (!string.IsNullOrEmpty(personalization))
+            {
+                keyBuilder.Append($"|User:{personalization}");
+            }
+
             // Hash the key if it's too long
             var key = keyBuilder.ToString();
             if (key.Length > 250)
             {
                 using var sha256 = SHA256.Create();
                 var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(key));
-                key = Convert.ToBase64String(hash);
+                key = ToBase64UrlString(hash);
             }
 
             return $"etag:{key}";
@@ -175,7 +210,7 @@ namespace MethodCache.ETags.Middleware
                 responseBodyStream.Seek(0, SeekOrigin.Begin);
                 await responseBodyStream.CopyToAsync(originalBodyStream);
                 context.Response.Body = originalBodyStream;
-                return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
+                return ETagCacheEntry<ResponseCacheEntry>.Bypass();
             }
 
             // Check for streaming or large content that shouldn't be cached
@@ -186,7 +221,7 @@ namespace MethodCache.ETags.Middleware
                 responseBodyStream.Seek(0, SeekOrigin.Begin);
                 await responseBodyStream.CopyToAsync(originalBodyStream);
                 context.Response.Body = originalBodyStream;
-                return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
+                return ETagCacheEntry<ResponseCacheEntry>.Bypass();
             }
 
             // Check content type eligibility
@@ -198,7 +233,7 @@ namespace MethodCache.ETags.Middleware
                     responseBodyStream.Seek(0, SeekOrigin.Begin);
                     await responseBodyStream.CopyToAsync(originalBodyStream);
                     context.Response.Body = originalBodyStream;
-                    return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
+                    return ETagCacheEntry<ResponseCacheEntry>.Bypass();
                 }
             }
 
@@ -208,7 +243,7 @@ namespace MethodCache.ETags.Middleware
                 responseBodyStream.Seek(0, SeekOrigin.Begin);
                 await responseBodyStream.CopyToAsync(originalBodyStream);
                 context.Response.Body = originalBodyStream;
-                return ETagCacheEntry<ResponseCacheEntry>.NotModified(string.Empty);
+                return ETagCacheEntry<ResponseCacheEntry>.Bypass();
             }
 
             // Read the response
@@ -290,9 +325,9 @@ namespace MethodCache.ETags.Middleware
 
         private async Task HandleETagResult(HttpContext context, ETagCacheResult<ResponseCacheEntry> result, string? ifNoneMatch)
         {
-            if (result.Status == ETagCacheStatus.NotModified && string.IsNullOrEmpty(result.ETag))
+            if (result.ShouldBypass)
             {
-                // This indicates the content type was not cacheable, so we do nothing.
+                // Bypass caching - response was already written during CaptureResponseAsync
                 return;
             }
 
@@ -360,6 +395,42 @@ namespace MethodCache.ETags.Middleware
                 contentType.StartsWith(streamingType, StringComparison.OrdinalIgnoreCase)) == true;
         }
 
+        private string? GetPersonalizationContext(HttpRequest request)
+        {
+            // Use custom personalizer if provided
+            if (_options.KeyPersonalizer != null)
+            {
+                try
+                {
+                    return _options.KeyPersonalizer(request.HttpContext);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error in key personalizer function");
+                }
+            }
+
+            // Use personalization headers if configured
+            if (_options.PersonalizationHeaders?.Length > 0)
+            {
+                var personalizationParts = new List<string>();
+                foreach (var header in _options.PersonalizationHeaders)
+                {
+                    if (request.Headers.TryGetValue(header, out var values))
+                    {
+                        personalizationParts.Add($"{header}:{string.Join(",", values.ToArray())}");
+                    }
+                }
+                
+                if (personalizationParts.Count > 0)
+                {
+                    return string.Join("|", personalizationParts);
+                }
+            }
+
+            return null;
+        }
+
         private static DateTime? GetLastModifiedFromResponse(HttpResponse response)
         {
             if (response.Headers.TryGetValue("Last-Modified", out var lastModifiedValues))
@@ -407,6 +478,12 @@ namespace MethodCache.ETags.Middleware
             }
 
             response.Headers["Vary"] = string.Join(", ", varyHeaders.Distinct());
+        }
+
+        private static string ToBase64UrlString(byte[] input)
+        {
+            var base64 = Convert.ToBase64String(input);
+            return base64.Replace('+', '-').Replace('/', '_').TrimEnd('=');
         }
 
         private static string FormatETagHeader(string etag)

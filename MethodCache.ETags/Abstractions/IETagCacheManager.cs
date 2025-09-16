@@ -17,12 +17,14 @@ namespace MethodCache.ETags.Abstractions
         /// <param name="factory">Factory function to create the value and ETag</param>
         /// <param name="ifNoneMatch">Client's If-None-Match header value</param>
         /// <param name="settings">Cache settings</param>
+        /// <param name="forceRefresh">Whether to bypass cache and always execute factory</param>
         /// <returns>ETag cache result indicating hit, miss, or not modified</returns>
         Task<ETagCacheResult<T>> GetOrCreateWithETagAsync<T>(
             string key,
             Func<Task<ETagCacheEntry<T>>> factory,
             string? ifNoneMatch = null,
-            CacheMethodSettings? settings = null);
+            CacheMethodSettings? settings = null,
+            bool forceRefresh = false);
 
         /// <summary>
         /// Gets or creates a cached value with context-aware ETag generation.
@@ -33,12 +35,14 @@ namespace MethodCache.ETags.Abstractions
         /// <param name="factory">Factory function that receives current ETag and returns new entry</param>
         /// <param name="ifNoneMatch">Client's If-None-Match header value</param>
         /// <param name="settings">Cache settings</param>
+        /// <param name="forceRefresh">Whether to bypass cache and always execute factory</param>
         /// <returns>ETag cache result</returns>
         Task<ETagCacheResult<T>> GetOrCreateWithETagAsync<T>(
             string key,
             Func<string?, Task<ETagCacheEntry<T>>> factory,
             string? ifNoneMatch = null,
-            CacheMethodSettings? settings = null);
+            CacheMethodSettings? settings = null,
+            bool forceRefresh = false);
 
         /// <summary>
         /// Invalidates a cached entry and its ETag from all cache layers.

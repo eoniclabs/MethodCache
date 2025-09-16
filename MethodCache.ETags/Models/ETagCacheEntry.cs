@@ -33,6 +33,12 @@ namespace MethodCache.ETags.Models
         public bool IsNotModified { get; set; }
 
         /// <summary>
+        /// Indicates whether caching should be bypassed for this entry.
+        /// Used for responses that shouldn't be cached.
+        /// </summary>
+        public bool IsBypass { get; set; }
+
+        /// <summary>
         /// Creates a cache entry with a value and ETag.
         /// </summary>
         /// <param name="value">The value to cache</param>
@@ -45,7 +51,8 @@ namespace MethodCache.ETags.Models
                 Value = value,
                 ETag = etag,
                 LastModified = DateTime.UtcNow,
-                IsNotModified = false
+                IsNotModified = false,
+                IsBypass = false
             };
         }
 
@@ -62,7 +69,25 @@ namespace MethodCache.ETags.Models
                 Value = default,
                 ETag = etag,
                 LastModified = DateTime.UtcNow,
-                IsNotModified = true
+                IsNotModified = true,
+                IsBypass = false
+            };
+        }
+
+        /// <summary>
+        /// Creates a bypass cache entry.
+        /// Used when the response should not be cached.
+        /// </summary>
+        /// <returns>A bypass cache entry</returns>
+        public static ETagCacheEntry<T> Bypass()
+        {
+            return new ETagCacheEntry<T>
+            {
+                Value = default,
+                ETag = string.Empty,
+                LastModified = DateTime.UtcNow,
+                IsNotModified = false,
+                IsBypass = true
             };
         }
 

@@ -1,4 +1,5 @@
 using MethodCache.Core.Configuration;
+using Microsoft.AspNetCore.Http;
 
 namespace MethodCache.ETags.Middleware
 {
@@ -90,6 +91,18 @@ namespace MethodCache.ETags.Middleware
             "video/",
             "audio/"
         };
+
+        /// <summary>
+        /// Function to extract user/tenant context for cache key personalization.
+        /// Takes HttpContext and returns a string to include in cache keys.
+        /// </summary>
+        public Func<HttpContext, string?>? KeyPersonalizer { get; set; }
+
+        /// <summary>
+        /// Headers to use for user/tenant identification in cache keys.
+        /// Common examples: "Authorization", "X-Tenant-Id", "X-User-Id"
+        /// </summary>
+        public string[]? PersonalizationHeaders { get; set; }
 
         /// <summary>
         /// Gets the cache settings for storing ETag entries.
