@@ -37,7 +37,7 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
         redisCheck.Data.Should().ContainKey("get_success");
         redisCheck.Data.Should().ContainKey("delete_success");
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
         redisCheck.Data["pubsub_invalidation_enabled"].Should().Be(true);
         redisCheck.Data["cache_warming_enabled"].Should().Be(true);
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -98,6 +98,6 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
         result.Entries.Should().ContainKey(customName);
         result.Entries[customName].Status.Should().Be(HealthStatus.Healthy);
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 }

@@ -46,13 +46,13 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         await cacheManager2.GetOrCreateAsync("SharedMethod", new object[] { "key" }, async () => "value2", settings, keyGenerator2, false);
 
         // Allow pub/sub to initialize
-        await Task.Delay(1000);
+        await Task.Delay(2000);
 
         // Act - Invalidate by tags from instance 1
         await cacheManager1.InvalidateByTagsAsync("test-tag");
         
         // Allow pub/sub message to propagate
-        await Task.Delay(500);
+        await Task.Delay(2000);
 
         // Assert - Both instances should have cache invalidated
         var callCount = 0;
@@ -65,8 +65,8 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         callCount.Should().Be(0);
 
         // Cleanup
-        serviceProvider1.Dispose();
-        serviceProvider2.Dispose();
+        await serviceProvider1.DisposeAsync();
+        await serviceProvider2.DisposeAsync();
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         {
             options.ConnectionString = RedisContainer.GetConnectionString();
             options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = "tag-test1:";
+            options.KeyPrefix = "pubsub-test:";
         });
         var serviceProvider1 = services1.BuildServiceProvider();
         var cacheManager1 = serviceProvider1.GetRequiredService<ICacheManager>();
@@ -91,7 +91,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         {
             options.ConnectionString = RedisContainer.GetConnectionString();
             options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = "tag-test2:";
+            options.KeyPrefix = "pubsub-test:";
         });
         var serviceProvider2 = services2.BuildServiceProvider();
         var cacheManager2 = serviceProvider2.GetRequiredService<ICacheManager>();
@@ -108,13 +108,13 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         await cacheManager2.GetOrCreateAsync("GetUserData", new object[] { 2 }, async () => "data2", settings, keyGenerator2, false);
 
         // Allow pub/sub to initialize
-        await Task.Delay(1000);
+        await Task.Delay(2000);
 
         // Act - Invalidate by tag from instance 1
         await cacheManager1.InvalidateByTagsAsync("user:123");
         
         // Allow pub/sub message to propagate
-        await Task.Delay(500);
+        await Task.Delay(2000);
 
         // Assert - Both instances should have tagged entries invalidated
         var callCount = 0;
@@ -126,7 +126,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         callCount.Should().Be(2); // Both entries were invalidated and re-created
 
         // Cleanup
-        serviceProvider1.Dispose();
-        serviceProvider2.Dispose();
+        await serviceProvider1.DisposeAsync();
+        await serviceProvider2.DisposeAsync();
     }
 }

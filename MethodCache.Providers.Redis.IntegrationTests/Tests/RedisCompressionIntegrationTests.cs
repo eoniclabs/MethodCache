@@ -73,7 +73,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         cachedResult.Should().BeEquivalentTo(result);
         callCount.Should().Be(0); // Should not call factory
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         result.Tags.Should().BeEquivalentTo(largeData.Tags);
         result.Metadata.Should().BeEquivalentTo(largeData.Metadata);
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         result.Should().NotBeNull();
         result.Description.Length.Should().Be(1000);
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     public class TestLargeObject

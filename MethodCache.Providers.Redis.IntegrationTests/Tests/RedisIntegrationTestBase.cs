@@ -39,7 +39,9 @@ public abstract class RedisIntegrationTestBase : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (ServiceProvider is IDisposable disposable)
+        if (ServiceProvider is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeAsync();
+        else if (ServiceProvider is IDisposable disposable)
             disposable.Dispose();
         
         if (RedisContainer != null)

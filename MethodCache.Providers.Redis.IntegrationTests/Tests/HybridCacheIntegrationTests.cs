@@ -72,7 +72,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var l1Value = await hybridManager.GetFromL1Async<string>(cacheKey);
         l1Value.Should().Be("Result-1");
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         result2.Should().Be("Original-1"); // Same result from L2
         callCount.Should().Be(1); // Factory called only once
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         result.Should().Be("WriteBackValue");
         l1Value.Should().Be("WriteBackValue");
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         l1Value.Should().Be("L1OnlyValue");
         l2Value.Should().BeNull(); // L2 should not have the value
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -280,7 +280,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var l1ValueAfter = await hybridManager.GetFromL1Async<string>(cacheKey);
         l1ValueAfter.Should().BeNull();
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -326,7 +326,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         stats.L1HitRatio.Should().BeGreaterThan(0);
         stats.OverallHitRatio.Should().BeGreaterThan(0);
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact] 
@@ -377,6 +377,6 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         l1Value4.Should().Be("Value4"); // Newly added, should be present
         // Method2 might be evicted due to LRU policy
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 }

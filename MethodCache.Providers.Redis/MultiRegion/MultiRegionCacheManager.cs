@@ -55,7 +55,8 @@ namespace MethodCache.Providers.Redis.MultiRegion
                     return default;
 
                 var database = connection.GetDatabase();
-                var value = await database.StringGetAsync(key);
+                var regionKey = $"region:{region}:{key}";
+                var value = await database.StringGetAsync(regionKey);
                 
                 if (!value.HasValue)
                     return default;
@@ -80,8 +81,9 @@ namespace MethodCache.Providers.Redis.MultiRegion
 
                 var database = connection.GetDatabase();
                 var serializedValue = System.Text.Json.JsonSerializer.Serialize(value);
+                var regionKey = $"region:{region}:{key}";
                 
-                await database.StringSetAsync(key, serializedValue, expiration);
+                await database.StringSetAsync(regionKey, serializedValue, expiration);
                 
                 _logger.LogDebug("Set key {Key} in region {Region} with expiration {Expiration}", key, region, expiration);
 
@@ -107,7 +109,8 @@ namespace MethodCache.Providers.Redis.MultiRegion
                     return;
 
                 var database = connection.GetDatabase();
-                await database.KeyDeleteAsync(key);
+                var regionKey = $"region:{region}:{key}";
+                await database.KeyDeleteAsync(regionKey);
                 
                 _logger.LogDebug("Invalidated key {Key} in region {Region}", key, region);
             }
@@ -152,19 +155,22 @@ namespace MethodCache.Providers.Redis.MultiRegion
                 var sourceDb = sourceConnection.GetDatabase();
                 var targetDb = targetConnection.GetDatabase();
 
+                var sourceKey = $"region:{sourceRegion}:{key}";
+                var targetKey = $"region:{targetRegion}:{key}";
+
                 // Get value from source
-                var value = await sourceDb.StringGetAsync(key);
+                var value = await sourceDb.StringGetAsync(sourceKey);
                 if (!value.HasValue)
                     return;
 
                 // Get TTL from source
-                var ttl = await sourceDb.KeyTimeToLiveAsync(key);
+                var ttl = await sourceDb.KeyTimeToLiveAsync(sourceKey);
                 
                 // Set in target with same TTL
                 if (ttl.HasValue)
-                    await targetDb.StringSetAsync(key, value, ttl);
+                    await targetDb.StringSetAsync(targetKey, value, ttl);
                 else
-                    await targetDb.StringSetAsync(key, value);
+                    await targetDb.StringSetAsync(targetKey, value);
 
                 _logger.LogDebug("Synced key {Key} from {SourceRegion} to {TargetRegion}", key, sourceRegion, targetRegion);
             }
@@ -260,7 +266,8 @@ namespace MethodCache.Providers.Redis.MultiRegion
             {
                 try
                 {
-                    var connection = ConnectionMultiplexer.Connect(region.ConnectionString);
+                    var config = ConfigurationOptions.Parse(region.ConnectionString);
+                    var connection = ConnectionMultiplexer.Connect(config);
                     _connections[region.Name] = connection;
                     _logger.LogInformation("Connected to region {Region}", region.Name);
                 }
