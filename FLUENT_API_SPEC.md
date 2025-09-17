@@ -413,11 +413,10 @@ cacheManager.GetOrCreateAsync(
 .Returns(new ValueTask<User>(user));
 ```
 
-## Migration Strategy
-1. **Dual Support**: Attribute-based configuration continues to work. Internally, attributes build fluent configuration objects to reduce duplication.
-2. **Source Generator Update**: The generator emits fluent configuration calls for decorated methods while preserving existing public APIs.
-3. **Incremental Adoption**: Consumers can opt-in method-by-method by replacing attribute usage with fluent calls backed by DI-injected `ICacheManager`.
-4. **Documentation**: Provide side-by-side guides showing attribute vs. fluent approaches and migration tips for distributed locking and stampede protection.
+## Implementation Strategy
+1. **Dual Support**: Implement both attribute-based and fluent APIs. Internally, attributes build fluent configuration objects to reduce code duplication.
+2. **Source Generator Integration**: Update the generator to emit fluent configuration calls for decorated methods while maintaining clean public APIs.
+3. **Documentation**: Provide comprehensive guides showing both attribute and fluent approaches with best practices for distributed locking and stampede protection.
 
 ## Validation & Testing
 - Add xUnit coverage for each fluent builder path, ensuring configuration maps to existing runtime behaviors.
@@ -438,11 +437,51 @@ cacheManager.GetOrCreateAsync(
 - **Metrics Hooks**: Metrics integration is centralized via `ICacheMetrics` and `WithMetrics`, avoiding ad-hoc hooks in high-level APIs.
 - **Tag Wildcards**: `InvalidateByTagPatternAsync` provides pattern-based invalidation aligned with provider capabilities.
 
+## Additional Recommendations
+
+### OpenTelemetry Integration
+Extend `ICacheMetrics` with dimension/tag support for richer observability:
+
+```csharp
+public interface ICacheMetrics
+{
+    void RecordHit(string key, TimeSpan duration, CacheLayer layer, IReadOnlyDictionary<string, object?>? tags = null);
+    void RecordMiss(string key, TimeSpan duration, IReadOnlyDictionary<string, object?>? tags = null);
+    void RecordEviction(string key, EvictionReason reason, IReadOnlyDictionary<string, object?>? tags = null);
+}
+```
+
+This enables rich telemetry with tenant IDs, service names, and custom dimensions for monitoring dashboards.
+
+### Streaming Results for Large Bulk Operations
+Consider adding streaming overload for `GetOrCreateManyAsync` to handle very large result sets:
+
+```csharp
+public static IAsyncEnumerable<(string Key, T Value)> GetOrCreateManyStreamAsync<T>(
+    this ICacheManager cacheManager,
+    IAsyncEnumerable<string> keys,
+    Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
+    Action<CacheEntryOptions.Builder>? configure = null,
+    CancellationToken cancellationToken = default);
+```
+
+### Tenant-Aware Cascading Invalidation
+Add prefix-based dependency graphs for multi-tenant scenarios:
+
+```csharp
+public Builder DependsOnPrefix(string keyPrefix);
+public Builder InvalidatesPrefix(string keyPrefix);
+```
+
+### Compile-Time Configuration Validation
+Add analyzer rules to validate distributed lock configurations:
+- Warn when `WithDistributedLock` is used without a distributed provider
+- Validate timeout values are reasonable
+- Check for circular dependency graphs
+
 ## Open Questions
-- Should `GetOrCreateManyAsync` expose streaming results (`IAsyncEnumerable<(string Key, T Value)>`) to avoid materializing dictionaries for large result sets?
 - How should stampede protection interact with streaming results (buffering vs. partial invalidation)?
-- Do we need additional primitives for tenant-aware cascading (e.g., prefix-based dependency graphs)?
-- Should `ICacheMetrics` include tagging or dimension metadata for richer observability integrations (e.g., OpenTelemetry)?
+- Should dependency tracking support regex patterns for complex invalidation scenarios?
 
 ## Implementation Plan Checklist
 - [ ] Implement supporting types and builder pooling.

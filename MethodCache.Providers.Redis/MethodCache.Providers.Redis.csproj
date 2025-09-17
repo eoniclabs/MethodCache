@@ -4,11 +4,9 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
     <PackageId>MethodCache.Providers.Redis</PackageId>
-    <PackageDescription>Redis distributed cache provider for MethodCache</PackageDescription>
-    <PackageVersion>1.0.0</PackageVersion>
-    <Authors>MethodCache</Authors>
+    <Description>Redis distributed cache provider for MethodCache</Description>
   </PropertyGroup>
 
   <ItemGroup>

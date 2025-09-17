@@ -5,20 +5,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    
+    <IsPackable>true</IsPackable>
     <PackageId>MethodCache.ETags</PackageId>
     <Title>MethodCache ETag Support</Title>
     <Description>HTTP ETag caching support for MethodCache with hybrid L1/L2 cache integration</Description>
-    <Authors>MethodCache Team</Authors>
     <PackageTags>cache;etag;http;hybrid;performance;distributed</PackageTags>
-    <PackageProjectUrl>https://github.com/methodcache/methodcache</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/methodcache/methodcache</RepositoryUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../MethodCache.Core/MethodCache.Core.csproj" />
-    <ProjectReference Include="../MethodCache.HybridCache/MethodCache.HybridCache.csproj" />
+    <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\MethodCache.HybridCache\MethodCache.HybridCache.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.ETags", "Method
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.ETags.Tests", "MethodCache.ETags.Tests\MethodCache.ETags.Tests.csproj", "{F59594A0-E0DD-446F-A214-F81933EBB456}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache", "MethodCache\MethodCache.csproj", "{D4E75222-B23B-491C-908E-1E4ED09E18FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -181,6 +183,18 @@ Global
 		{F59594A0-E0DD-446F-A214-F81933EBB456}.Release|x64.Build.0 = Release|Any CPU
 		{F59594A0-E0DD-446F-A214-F81933EBB456}.Release|x86.ActiveCfg = Release|Any CPU
 		{F59594A0-E0DD-446F-A214-F81933EBB456}.Release|x86.Build.0 = Release|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Debug|x64.Build.0 = Debug|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Debug|x86.Build.0 = Debug|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Release|x64.ActiveCfg = Release|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Release|x64.Build.0 = Release|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Release|x86.ActiveCfg = Release|Any CPU
+		{D4E75222-B23B-491C-908E-1E4ED09E18FD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

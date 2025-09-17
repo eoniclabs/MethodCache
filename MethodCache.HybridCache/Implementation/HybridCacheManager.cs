@@ -140,7 +140,7 @@ namespace MethodCache.HybridCache.Implementation
                 {
                     _logger.LogTrace("L1 cache hit for key {Key}", cacheKey);
                 }
-                return l1Value;
+                return l1Value!;
             }
             
             Interlocked.Increment(ref _l1Misses);
@@ -158,7 +158,7 @@ namespace MethodCache.HybridCache.Implementation
                     {
                         _logger.LogTrace("L1 cache hit after lock for key {Key}", cacheKey);
                     }
-                    return l1Value;
+                    return l1Value!;
                 }
                 
                 // Try L2 cache if enabled
@@ -180,7 +180,7 @@ namespace MethodCache.HybridCache.Implementation
                             {
                                 _logger.LogTrace("L2 cache hit for key {Key}, warmed L1 cache", cacheKey);
                             }
-                            return l2Value;
+                            return l2Value!;
                         }
                         
                         // L2 cache miss - fall through to factory execution
@@ -231,7 +231,7 @@ namespace MethodCache.HybridCache.Implementation
             if (result != null)
             {
                 // Store in L2 cache if using hybrid mode
-                if (ShouldUseL2)
+                if (ShouldUseL2 && _l2Cache != null)
                 {
                     await _l2Cache.GetOrCreateAsync(
                         methodName,
@@ -246,7 +246,7 @@ namespace MethodCache.HybridCache.Implementation
                 await StoreInL1IfEnabled(cacheKey, result, settings).ConfigureAwait(false);
             }
             
-            return result;
+            return result!;
         }
         
         private async Task<(bool Exists, T? Value)> GetL2ValueDirectlyAsync<T>(string cacheKey)
@@ -305,7 +305,7 @@ namespace MethodCache.HybridCache.Implementation
             }
             
             // Invalidate L2 cache
-            if (_options.L2Enabled)
+            if (_options.L2Enabled && _l2Cache != null)
             {
                 await _l2Cache.InvalidateByTagsAsync(tags).ConfigureAwait(false);
             }
@@ -338,11 +338,11 @@ namespace MethodCache.HybridCache.Implementation
             {
                 try
                 {
-                    var l2Value = await _l2Cache.TryGetAsync<T>(methodName, args, settings, keyGenerator).ConfigureAwait(false);
-                    if (l2Value != null)
-                    {
-                        // Warm L1 cache with L2 result
-                        await StoreInL1IfEnabled(cacheKey, l2Value, settings).ConfigureAwait(false);
+                var l2Value = await _l2Cache.TryGetAsync<T>(methodName, args, settings, keyGenerator).ConfigureAwait(false);
+                if (l2Value != null)
+                {
+                    // Warm L1 cache with L2 result
+                    await StoreInL1IfEnabled(cacheKey, l2Value, settings).ConfigureAwait(false);
                         
                         if (_logger.IsEnabled(LogLevel.Trace))
                         {
@@ -401,7 +401,7 @@ namespace MethodCache.HybridCache.Implementation
 
         public async Task<T?> GetFromL2Async<T>(string key)
         {
-            if (!_options.L2Enabled) return default;
+            if (!_options.L2Enabled || _l2Cache == null) return default;
             
             try
             {
@@ -451,7 +451,7 @@ namespace MethodCache.HybridCache.Implementation
 
         public async Task SetInL2Async<T>(string key, T value, TimeSpan expiration)
         {
-            if (!_options.L2Enabled || _options.Strategy == HybridStrategy.L1Only) return;
+            if (!_options.L2Enabled || _options.Strategy == HybridStrategy.L1Only || _l2Cache == null) return;
             
             try
             {
@@ -493,7 +493,7 @@ namespace MethodCache.HybridCache.Implementation
 
         public async Task InvalidateL2Async(string key)
         {
-            if (!_options.L2Enabled) return;
+            if (!_options.L2Enabled || _l2Cache == null) return;
             
             // WORKAROUND: The ICacheManager interface only provides InvalidateByTagsAsync() but no direct
             // RemoveAsync(key) method for individual key invalidation. As a workaround, we create a 

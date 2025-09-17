@@ -16,6 +16,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <NoWarn>MCG001;MCG002;MCG003;MCG004;MCG005;MCG006;MCG007;MCG008;MCG009;CS8613;CS8603</NoWarn>
   </PropertyGroup>
 
 </Project>
