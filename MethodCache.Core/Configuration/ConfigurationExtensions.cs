@@ -22,7 +22,7 @@ namespace MethodCache.Core.Configuration
             IConfiguration configuration,
             string sectionName = "MethodCache")
         {
-            services.AddSingleton<IConfigurationSource>(provider =>
+            services.AddSingleton<Sources.IConfigurationSource>(provider =>
                 new JsonConfigurationSource(configuration, sectionName));
             
             return services;
@@ -40,7 +40,7 @@ namespace MethodCache.Core.Configuration
                 throw new FileNotFoundException($"YAML configuration file not found: {yamlFilePath}");
             }
             
-            services.AddSingleton<IConfigurationSource>(provider =>
+            services.AddSingleton<Sources.IConfigurationSource>(provider =>
                 new YamlConfigurationSource(yamlFilePath));
             
             return services;
@@ -65,7 +65,7 @@ namespace MethodCache.Core.Configuration
             optionsBuilder.BindConfiguration("MethodCache");
             
             // Add as configuration source
-            services.AddSingleton<IConfigurationSource>(provider =>
+            services.AddSingleton<Sources.IConfigurationSource>(provider =>
             {
                 var monitor = provider.GetRequiredService<IOptionsMonitor<MethodCacheOptions>>();
                 var manager = provider.GetService<IMethodCacheConfigurationManager>();
@@ -101,7 +101,7 @@ namespace MethodCache.Core.Configuration
                 var manager = new ConfigurationManager(null);
                 
                 // Add all registered sources
-                var sources = provider.GetServices<IConfigurationSource>();
+                var sources = provider.GetServices<Sources.IConfigurationSource>();
                 foreach (var source in sources)
                 {
                     manager.AddSource(source);
@@ -146,7 +146,7 @@ namespace MethodCache.Core.Configuration
         /// </summary>
         public MethodCacheBuilder AddAttributeSource(params Assembly[] assemblies)
         {
-            _services.AddSingleton<IConfigurationSource>(new AttributeConfigurationSource(assemblies));
+            _services.AddSingleton<Sources.IConfigurationSource>(new AttributeConfigurationSource(assemblies));
             return this;
         }
         
@@ -185,7 +185,7 @@ namespace MethodCache.Core.Configuration
             var source = new ProgrammaticConfigurationSource();
             var builder = new ProgrammaticConfigurationBuilder(source);
             configure(builder);
-            _services.AddSingleton<IConfigurationSource>(source);
+            _services.AddSingleton<Sources.IConfigurationSource>(source);
             return this;
         }
     }

@@ -18,6 +18,7 @@ namespace MethodCache.Core
         void DefaultDuration(TimeSpan duration);
         void DefaultKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator, new();
         IGroupConfiguration ForGroup(string groupName);
+        void AddMethod(string methodKey, CacheMethodSettings settings);
     }
 
     /// <summary>

@@ -26,7 +26,7 @@ namespace MethodCache.Tests.Analyzers
             var analyzer = new MethodCacheAnalyzer();
             var supportedDiagnostics = analyzer.SupportedDiagnostics;
 
-            Assert.Equal(2, supportedDiagnostics.Length);
+            Assert.Equal(3, supportedDiagnostics.Length);
 
             var cacheRule = supportedDiagnostics.FirstOrDefault(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             var invalidateRule = supportedDiagnostics.FirstOrDefault(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
@@ -207,7 +207,7 @@ namespace TestApp
             // that the analyzer doesn't throw when analyzing multiple files concurrently
             // The actual concurrent execution test would be in the analyzer initialization
             Assert.NotNull(analyzer);
-            Assert.Equal(2, analyzer.SupportedDiagnostics.Length);
+            Assert.Equal(3, analyzer.SupportedDiagnostics.Length);
         }
 
         [Fact]
@@ -220,7 +220,7 @@ namespace TestApp
             
             // We can't directly test the GeneratedCodeAnalysisFlags.None setting,
             // but we can verify the analyzer initializes without errors
-            Assert.Equal(2, analyzer.SupportedDiagnostics.Length);
+            Assert.Equal(3, analyzer.SupportedDiagnostics.Length);
         }
 
         private static async Task<AnalysisResult> AnalyzeAsync(string source)

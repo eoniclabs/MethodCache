@@ -8,6 +8,8 @@ namespace MethodCache.Core
     {
         public string? GroupName { get; }
         public bool RequireIdempotent { get; set; }
+        public string? Duration { get; set; }
+        public string[]? Tags { get; set; }
 
         public CacheAttribute(string? groupName = null)
         {

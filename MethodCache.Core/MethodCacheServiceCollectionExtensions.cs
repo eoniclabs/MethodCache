@@ -348,23 +348,27 @@ namespace MethodCache.Core
                     };
                     
                     // Check for ETag attribute and configure ETag settings
-                    var etagAttribute = method.GetCustomAttribute(Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags"));
-                    if (etagAttribute != null)
+                    var etagAttributeType = Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags");
+                    if (etagAttributeType != null)
                     {
-                        settings.ETag = new ETagSettings
+                        var etagAttribute = method.GetCustomAttribute(etagAttributeType);
+                        if (etagAttribute != null)
                         {
-                            Strategy = (ETagGenerationStrategy)etagAttribute.GetType().GetProperty("Strategy")?.GetValue(etagAttribute) ?? ETagGenerationStrategy.ContentHash,
-                            IncludeParametersInETag = (bool)(etagAttribute.GetType().GetProperty("IncludeParametersInETag")?.GetValue(etagAttribute) ?? true),
-                            ETagGeneratorType = (Type?)etagAttribute.GetType().GetProperty("ETagGeneratorType")?.GetValue(etagAttribute),
-                            Metadata = (string[]?)etagAttribute.GetType().GetProperty("Metadata")?.GetValue(etagAttribute),
-                            UseWeakETag = (bool)(etagAttribute.GetType().GetProperty("UseWeakETag")?.GetValue(etagAttribute) ?? false),
-                            CacheDuration = null // Will be set from CacheDurationMinutes if available
-                        };
-                        
-                        var cacheDurationMinutes = etagAttribute.GetType().GetProperty("CacheDurationMinutes")?.GetValue(etagAttribute) as int?;
-                        if (cacheDurationMinutes.HasValue)
-                        {
-                            settings.ETag.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
+                            settings.ETag = new ETagSettings
+                            {
+                                Strategy = (ETagGenerationStrategy)(etagAttribute.GetType().GetProperty("Strategy")?.GetValue(etagAttribute) ?? (int)ETagGenerationStrategy.ContentHash),
+                                IncludeParametersInETag = (bool)(etagAttribute.GetType().GetProperty("IncludeParametersInETag")?.GetValue(etagAttribute) ?? true),
+                                ETagGeneratorType = (Type?)etagAttribute.GetType().GetProperty("ETagGeneratorType")?.GetValue(etagAttribute),
+                                Metadata = (string[]?)etagAttribute.GetType().GetProperty("Metadata")?.GetValue(etagAttribute),
+                                UseWeakETag = (bool)(etagAttribute.GetType().GetProperty("UseWeakETag")?.GetValue(etagAttribute) ?? false),
+                                CacheDuration = null // Will be set from CacheDurationMinutes if available
+                            };
+                            
+                            var cacheDurationMinutes = etagAttribute.GetType().GetProperty("CacheDurationMinutes")?.GetValue(etagAttribute) as int?;
+                            if (cacheDurationMinutes.HasValue)
+                            {
+                                settings.ETag.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
+                            }
                         }
                     }
                     

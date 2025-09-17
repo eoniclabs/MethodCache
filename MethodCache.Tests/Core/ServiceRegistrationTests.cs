@@ -98,7 +98,7 @@ namespace MethodCache.Tests.Core
 
             // Act - This will attempt to register services, but may not find the generated decorators
             // That's okay for this test - we're testing the registration logic
-            services.AddMethodCacheServices(Assembly.GetExecutingAssembly());
+            services.AddMethodCacheServices(new[] { Assembly.GetExecutingAssembly() });
 
             // Assert
             var serviceProvider = services.BuildServiceProvider();
