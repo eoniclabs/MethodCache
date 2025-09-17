@@ -9,6 +9,9 @@
 
 MethodCache is a production-ready caching library that adds caching capabilities to your methods with minimal code changes and zero business logic pollution. Using compile-time code generation for optimal performance while providing complete runtime configuration flexibility.
 
+### 🎯 **Unique Capability: Cache Third-Party Libraries**
+**Add caching to external libraries without modifying their code!** Use runtime configuration to cache expensive API calls from NuGet packages, SDKs, and external dependencies. [Learn more →](#-add-caching-to-third-party-libraries)
+
 ---
 
 ## ✨ Quick Start
@@ -74,6 +77,154 @@ services.AddMethodCache(config =>
 - **Multi-region support** - Global scale with region failover
 - **Compression** - Automatic compression for large cached values
 - **Distributed locking** - Cache stampede prevention across instances
+
+---
+
+## 🔥 Add Caching to Third-Party Libraries
+
+**One of MethodCache's most powerful features:** You can add caching behavior to third-party libraries without modifying their code! Using runtime configuration with the highest priority, you can cache expensive external API calls, database queries, and more.
+
+### Quick Example: Cache External API Calls
+
+```csharp
+// Third-party weather API client (from NuGet)
+public interface IWeatherApiClient
+{
+    Task<WeatherData> GetCurrentWeatherAsync(string city);
+    Task<Forecast> GetForecastAsync(string city, int days);
+}
+
+// Add caching via configuration - no code changes to the library!
+{
+  "MethodCache": {
+    "Services": {
+      "WeatherApi.Client.IWeatherApiClient": {
+        "Methods": {
+          "GetCurrentWeatherAsync": {
+            "Duration": "00:05:00",  // Cache for 5 minutes
+            "Tags": ["weather", "external-api"]
+          },
+          "GetForecastAsync": {
+            "Duration": "01:00:00",  // Cache forecasts for 1 hour
+            "Tags": ["weather", "forecast"]
+          }
+        }
+      }
+    }
+  }
+}
+
+// That's it! The third-party library calls are now cached
+var weather = await weatherClient.GetCurrentWeatherAsync("Seattle"); // First call: hits API
+weather = await weatherClient.GetCurrentWeatherAsync("Seattle");     // Second call: from cache!
+```
+
+### Supported Scenarios
+
+✅ **Interface-based libraries** - Any library that uses interfaces  
+✅ **HTTP/REST clients** - RestSharp, Refit, Flurl, HttpClient wrappers  
+✅ **Database libraries** - Dapper, Entity Framework, MongoDB drivers  
+✅ **Cloud SDKs** - AWS SDK, Azure SDK, Google Cloud  
+✅ **GraphQL clients** - GraphQL.Client, Hot Chocolate  
+✅ **Payment gateways** - Stripe, PayPal, Square SDKs  
+
+### Real-World Examples
+
+#### 1. **Stripe Payment SDK**
+```csharp
+// Expensive Stripe API calls can be cached
+{
+  "MethodCache": {
+    "Services": {
+      "Stripe.IStripeClient": {
+        "Methods": {
+          "GetCustomerAsync": { "Duration": "00:30:00" },     // Cache customer data
+          "GetInvoicesAsync": { "Duration": "00:15:00" },     // Cache invoice lists
+          "ProcessPaymentAsync": { "Enabled": false }         // Never cache payments!
+        }
+      }
+    }
+  }
+}
+```
+
+#### 2. **AWS S3 SDK**
+```csharp
+// Cache S3 metadata to reduce API calls
+{
+  "MethodCache": {
+    "Services": {
+      "Amazon.S3.IAmazonS3": {
+        "Methods": {
+          "GetObjectMetadataAsync": { "Duration": "01:00:00" },  // Metadata rarely changes
+          "ListObjectsV2Async": { "Duration": "00:05:00" },      // Lists change more often
+          "PutObjectAsync": { "Enabled": false }                 // Never cache writes
+        }
+      }
+    }
+  }
+}
+```
+
+#### 3. **Entity Framework DbContext**
+```csharp
+// Cache read-only queries
+{
+  "MethodCache": {
+    "Services": {
+      "*Repository": {  // Pattern matching for all repositories
+        "Methods": {
+          "GetByIdAsync": { "Duration": "00:05:00" },
+          "GetAllAsync": { "Duration": "00:01:00" },
+          "SaveAsync": { "Enabled": false }  // Never cache writes
+        }
+      }
+    }
+  }
+}
+```
+
+### Management Interface Control
+
+Since runtime configuration has the **highest priority**, you can control third-party library caching from your management interface:
+
+```csharp
+[ApiController]
+[Route("api/admin/third-party-cache")]
+public class ThirdPartyCacheController : ControllerBase
+{
+    [HttpPost("configure")]
+    public async Task<IActionResult> ConfigureThirdPartyCache(
+        [FromBody] ThirdPartyCacheRequest request)
+    {
+        // Dynamically control third-party library caching
+        var key = $"MethodCache:Services:{request.LibraryInterface}:Methods:{request.Method}";
+        
+        await _configService.UpdateAsync(key + ":Duration", request.Duration.ToString());
+        await _configService.UpdateAsync(key + ":Enabled", request.Enabled.ToString());
+        
+        return Ok($"Third-party cache configured: {request.LibraryInterface}.{request.Method}");
+    }
+    
+    [HttpPost("emergency-disable")]
+    public async Task<IActionResult> DisableAllThirdPartyCaching()
+    {
+        // Emergency disable all external API caching
+        await _configService.UpdateAsync("MethodCache:Services:*External*:Methods:*:Enabled", "false");
+        return Ok("All third-party caching disabled");
+    }
+}
+```
+
+### Best Practices for Third-Party Caching
+
+1. **Start Conservative** - Use short cache durations initially
+2. **Monitor Performance** - Track cache hit rates and API usage reduction
+3. **Never Cache Writes** - Only cache idempotent read operations
+4. **Use Tags** - Group related third-party calls for easy invalidation
+5. **Test Thoroughly** - Ensure cached data freshness meets requirements
+
+[See full third-party caching documentation →](THIRD_PARTY_CACHING.md)
 
 ---
 
