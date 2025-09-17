@@ -1,59 +1,48 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MethodCache.HybridCache.Abstractions;
+using MethodCache.Providers.Redis.Backplane;
 using MethodCache.Providers.Redis.Configuration;
-using StackExchange.Redis;
 using System;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace MethodCache.Providers.Redis.Features
 {
+    /// <summary>
+    /// Legacy wrapper around RedisCacheBackplane for backward compatibility.
+    /// This provides the old IRedisPubSubInvalidation interface while delegating to the more comprehensive backplane.
+    /// </summary>
     public class RedisPubSubInvalidation : IRedisPubSubInvalidation, IDisposable
     {
-        private readonly IRedisConnectionManager _connectionManager;
-        private readonly RedisOptions _options;
+        private readonly ICacheBackplane _backplane;
         private readonly ILogger<RedisPubSubInvalidation> _logger;
-        private readonly string _instanceId;
-        private readonly string _channelName;
-        private ISubscriber? _subscriber;
-        private bool _isListening;
         private bool _disposed;
 
         public event EventHandler<CacheInvalidationEventArgs>? InvalidationReceived;
 
         public RedisPubSubInvalidation(
-            IRedisConnectionManager connectionManager,
-            IOptions<RedisOptions> options,
+            ICacheBackplane backplane,
             ILogger<RedisPubSubInvalidation> logger)
         {
-            _connectionManager = connectionManager;
-            _options = options.Value;
+            _backplane = backplane;
             _logger = logger;
-            _instanceId = Environment.MachineName + "-" + Environment.ProcessId;
-            _channelName = $"{_options.KeyPrefix}invalidation";
+            
+            // Forward backplane events to our legacy event
+            _backplane.InvalidationReceived += OnBackplaneInvalidationReceived;
         }
 
         public async Task PublishInvalidationEventAsync(string[] tags)
         {
-            if (_disposed || !_options.EnablePubSubInvalidation || !tags.Any())
+            if (_disposed || !tags.Any())
                 return;
 
             try
             {
-                _subscriber ??= _connectionManager.GetSubscriber();
-
-                var invalidationEvent = new InvalidationEvent
-                {
-                    Tags = tags,
-                    SourceInstanceId = _instanceId,
-                    Timestamp = DateTimeOffset.UtcNow
-                };
-
-                var json = JsonSerializer.Serialize(invalidationEvent);
-                await _subscriber.PublishAsync(RedisChannel.Literal(_channelName), json);
-
-                _logger.LogDebug("Published invalidation event for tags {Tags} from instance {InstanceId}", 
-                    string.Join(", ", tags), _instanceId);
+                // Delegate to the more comprehensive backplane
+                await _backplane.PublishInvalidationAsync(tags);
+                
+                _logger.LogDebug("Published invalidation event for tags {Tags} via backplane", 
+                    string.Join(", ", tags));
             }
             catch (Exception ex)
             {
@@ -63,36 +52,34 @@ namespace MethodCache.Providers.Redis.Features
 
         public async Task StartListeningAsync()
         {
-            if (_disposed || !_options.EnablePubSubInvalidation || _isListening)
+            if (_disposed)
                 return;
 
             try
             {
-                _subscriber = _connectionManager.GetSubscriber();
-                await _subscriber.SubscribeAsync(RedisChannel.Literal(_channelName), OnInvalidationMessageReceived);
-                _isListening = true;
-
-                _logger.LogInformation("Started listening for cache invalidation events on channel {Channel} for instance {InstanceId}", 
-                    _channelName, _instanceId);
+                // Delegate to the backplane for listening
+                await _backplane.StartListeningAsync();
+                
+                _logger.LogInformation("Started listening for cache invalidation events via backplane");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error starting pub/sub invalidation listener");
+                throw; // Re-throw for consistency with original behavior
             }
         }
 
         public async Task StopListeningAsync()
         {
-            if (_disposed || !_isListening || _subscriber == null)
+            if (_disposed)
                 return;
 
             try
             {
-                await _subscriber.UnsubscribeAsync(RedisChannel.Literal(_channelName));
-                _isListening = false;
-
-                _logger.LogInformation("Stopped listening for cache invalidation events on channel {Channel} for instance {InstanceId}", 
-                    _channelName, _instanceId);
+                // Delegate to the backplane for stopping
+                await _backplane.StopListeningAsync();
+                
+                _logger.LogInformation("Stopped listening for cache invalidation events via backplane");
             }
             catch (Exception ex)
             {
@@ -100,39 +87,28 @@ namespace MethodCache.Providers.Redis.Features
             }
         }
 
-        private void OnInvalidationMessageReceived(RedisChannel channel, RedisValue message)
+        /// <summary>
+        /// Forwards backplane invalidation events to legacy event handlers.
+        /// Converts the comprehensive backplane event format to the legacy tags-only format.
+        /// </summary>
+        private void OnBackplaneInvalidationReceived(object? sender, MethodCache.HybridCache.Abstractions.CacheInvalidationEventArgs e)
         {
             try
             {
-                var json = message.ToString();
-                var invalidationEvent = JsonSerializer.Deserialize<InvalidationEvent>(json);
+                // Convert from comprehensive backplane format to legacy tags-only format
+                var legacyEventArgs = new Features.CacheInvalidationEventArgs(
+                    e.Tags,
+                    e.SourceInstanceId,
+                    new DateTimeOffset(e.Timestamp));
 
-                if (invalidationEvent == null)
-                {
-                    _logger.LogWarning("Received invalid invalidation event message: {Message}", json);
-                    return;
-                }
+                InvalidationReceived?.Invoke(this, legacyEventArgs);
 
-                // Ignore events from this instance to prevent infinite loops
-                if (invalidationEvent.SourceInstanceId == _instanceId)
-                {
-                    _logger.LogDebug("Ignoring invalidation event from same instance {InstanceId}", _instanceId);
-                    return;
-                }
-
-                var eventArgs = new CacheInvalidationEventArgs(
-                    invalidationEvent.Tags,
-                    invalidationEvent.SourceInstanceId,
-                    invalidationEvent.Timestamp);
-
-                InvalidationReceived?.Invoke(this, eventArgs);
-
-                _logger.LogDebug("Received and processed invalidation event for tags {Tags} from instance {SourceInstance}", 
-                    string.Join(", ", invalidationEvent.Tags), invalidationEvent.SourceInstanceId);
+                _logger.LogDebug("Forwarded backplane invalidation event for tags {Tags} from instance {SourceInstance}", 
+                    string.Join(", ", e.Tags), e.SourceInstanceId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing invalidation message: {Message}", message.ToString());
+                _logger.LogError(ex, "Error forwarding backplane invalidation event");
             }
         }
 
@@ -143,21 +119,25 @@ namespace MethodCache.Providers.Redis.Features
 
             try
             {
-                StopListeningAsync().GetAwaiter().GetResult();
+                // Unregister from backplane events
+                _backplane.InvalidationReceived -= OnBackplaneInvalidationReceived;
+                
+                // Use timeout to prevent deadlock during synchronous disposal
+                var stopTask = StopListeningAsync();
+                if (!stopTask.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    _logger.LogWarning("StopListeningAsync timed out during disposal, forcing cleanup");
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during disposal of pub/sub invalidation service");
             }
-
-            _disposed = true;
+            finally
+            {
+                _disposed = true;
+            }
         }
 
-        private class InvalidationEvent
-        {
-            public string[] Tags { get; set; } = Array.Empty<string>();
-            public string SourceInstanceId { get; set; } = string.Empty;
-            public DateTimeOffset Timestamp { get; set; }
-        }
     }
 }

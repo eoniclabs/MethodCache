@@ -1,10 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
+using MethodCache.HybridCache.Abstractions;
+using MethodCache.Providers.Redis.Backplane;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Compression;
+using MethodCache.Providers.Redis.Services;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System;
@@ -26,15 +30,24 @@ namespace MethodCache.Providers.Redis.Extensions
                 services.Configure(configureOptions);
             }
             
-            // Register Redis connection
+            // Register Redis connection service (async initialization)
+            services.AddSingleton<RedisConnectionService>();
+            services.AddHostedService<RedisConnectionService>(provider => 
+                provider.GetRequiredService<RedisConnectionService>());
+            
+            // Register connection multiplexer that waits for async initialization with timeout
             services.AddSingleton<IConnectionMultiplexer>(provider =>
             {
-                var options = provider.GetRequiredService<IOptions<RedisOptions>>().Value;
-                var config = ConfigurationOptions.Parse(options.ConnectionString);
-                config.ConnectTimeout = (int)options.ConnectTimeout.TotalMilliseconds;
-                config.SyncTimeout = (int)options.SyncTimeout.TotalMilliseconds;
+                var connectionService = provider.GetRequiredService<RedisConnectionService>();
+                var connectionTask = connectionService.GetConnectionAsync();
                 
-                return ConnectionMultiplexer.Connect(config);
+                // Use a timeout to prevent indefinite blocking during DI resolution
+                if (connectionTask.Wait(TimeSpan.FromSeconds(30)))
+                {
+                    return connectionTask.Result;
+                }
+                
+                throw new TimeoutException("Redis connection initialization timed out during service resolution");
             });
             
             // Register Redis-specific services
@@ -62,14 +75,31 @@ namespace MethodCache.Providers.Redis.Extensions
             });
             services.AddSingleton<IRedisTagManager, RedisTagManager>();
             services.AddSingleton<IDistributedLock, RedisDistributedLock>();
+            
+            // Register the comprehensive backplane for invalidation (replaces duplicate pub/sub mechanism)
+            services.AddSingleton<ICacheBackplane, RedisCacheBackplane>();
+            
+            // Register legacy pub/sub interface as wrapper around backplane for backward compatibility
             services.AddSingleton<IRedisPubSubInvalidation, RedisPubSubInvalidation>();
+            
             services.AddSingleton<ICacheWarmingService, RedisCacheWarmingService>();
             
-            // Register cache warming as hosted service if enabled
+            // Register cache warming as hosted service only if enabled
             services.AddSingleton<RedisCacheWarmingService>(provider => 
                 (RedisCacheWarmingService)provider.GetRequiredService<ICacheWarmingService>());
-            services.AddHostedService<RedisCacheWarmingService>(provider => 
-                provider.GetRequiredService<RedisCacheWarmingService>());
+            
+            // Conditionally register hosted service based on configuration
+            services.AddSingleton<IHostedService>(provider =>
+            {
+                var options = provider.GetRequiredService<IOptions<RedisOptions>>().Value;
+                if (options.EnableCacheWarming)
+                {
+                    return provider.GetRequiredService<RedisCacheWarmingService>();
+                }
+                
+                // Return a no-op hosted service when warming is disabled
+                return new NoOpHostedService();
+            });
             
             // Replace the default cache manager with Redis implementation
             services.Replace(ServiceDescriptor.Singleton<ICacheManager, RedisCacheManager>());

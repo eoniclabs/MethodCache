@@ -32,9 +32,17 @@ namespace MethodCache.Providers.Redis.Backplane
         { 
             get 
             {
+                if (!_isListening) return false;
+                
                 try 
-                { 
-                    return _isListening && _connectionManager.IsConnectedAsync().GetAwaiter().GetResult(); 
+                {
+                    // Use a very short timeout to prevent blocking in property getters
+                    var connectTask = _connectionManager.IsConnectedAsync();
+                    if (connectTask.Wait(TimeSpan.FromMilliseconds(100)))
+                    {
+                        return connectTask.Result;
+                    }
+                    return false; // Assume disconnected if check takes too long
                 } 
                 catch 
                 { 

@@ -50,21 +50,26 @@ namespace MethodCache.Providers.Redis.Features
             if (!tags.Any()) return Array.Empty<string>();
 
             var database = _connectionManager.GetDatabase();
-            var allKeys = new HashSet<string>();
-
-            foreach (var tag in tags)
+            
+            if (tags.Length == 1)
             {
-                var tagKey = GetTagKey(tag);
+                // Single tag - use SMEMBERS directly
+                var tagKey = GetTagKey(tags[0]);
                 var keys = await database.SetMembersAsync(tagKey);
-                
-                foreach (var key in keys)
-                {
-                    allKeys.Add(key!);
-                }
+                var result = keys.Select(k => k.ToString()).ToArray();
+                _logger.LogDebug("Found {KeyCount} keys for single tag {Tag}", result.Length, tags[0]);
+                return result;
             }
-
-            _logger.LogDebug("Found {KeyCount} keys for {TagCount} tags", allKeys.Count, tags.Length);
-            return allKeys.ToArray();
+            
+            // Multiple tags - use efficient server-side SUNION for union operation
+            var tagKeys = tags.Select(tag => (RedisKey)GetTagKey(tag)).ToArray();
+            var unionKeys = await database.SetCombineAsync(SetOperation.Union, tagKeys);
+            
+            var resultKeys = unionKeys.Select(k => k.ToString()).ToArray();
+            _logger.LogDebug("Found {KeyCount} keys for {TagCount} tags using server-side SUNION", 
+                resultKeys.Length, tags.Length);
+                
+            return resultKeys;
         }
 
         public async Task RemoveTagAssociationsAsync(IEnumerable<string> keys, string[] tags)

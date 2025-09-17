@@ -6,8 +6,12 @@ using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using Polly;
 using Polly.CircuitBreaker;
+using Polly.Retry;
 using StackExchange.Redis;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MethodCache.Providers.Redis
@@ -44,6 +48,23 @@ namespace MethodCache.Providers.Redis
             _logger = logger;
 
             _resilience = new ResiliencePipelineBuilder()
+                .AddRetry(new RetryStrategyOptions()
+                {
+                    MaxRetryAttempts = _options.Retry.MaxRetries,
+                    BackoffType = _options.Retry.BackoffType switch
+                    {
+                        RetryBackoffType.Linear => DelayBackoffType.Linear,
+                        RetryBackoffType.Exponential => DelayBackoffType.Exponential,
+                        _ => DelayBackoffType.Exponential
+                    },
+                    Delay = _options.Retry.BaseDelay,
+                    OnRetry = args =>
+                    {
+                        _logger.LogWarning("Redis operation retry attempt {AttemptNumber}: {Exception}",
+                            args.AttemptNumber, args.Outcome.Exception?.Message);
+                        return ValueTask.CompletedTask;
+                    }
+                })
                 .AddCircuitBreaker(new CircuitBreakerStrategyOptions()
                 {
                     FailureRatio = _options.CircuitBreaker.FailureRatio,
@@ -116,11 +137,11 @@ namespace MethodCache.Providers.Redis
                                 return cachedValue.Value;
                             }
 
-                            // Execute factory and cache result
+                            // Execute factory and cache result with automatic lock renewal
                             _metricsProvider.CacheMiss(methodName);
                             _logger.LogDebug("Cache miss, executing factory for key {Key}", fullKey);
                             
-                            var result = await factory();
+                            var result = await ExecuteFactoryWithLockRenewalAsync(factory, lockHandle);
                             
                             if (result != null)
                             {
@@ -158,9 +179,9 @@ namespace MethodCache.Providers.Redis
                                     return cachedValue.Value;
                                 }
                                 
-                                // Execute factory and cache result (retry path)
+                                // Execute factory and cache result (retry path) with automatic lock renewal
                                 _metricsProvider.CacheMiss(methodName);
-                                var result = await factory();
+                                var result = await ExecuteFactoryWithLockRenewalAsync(factory, retryLockHandle);
                                 
                                 if (result != null)
                                 {
@@ -331,54 +352,79 @@ namespace MethodCache.Providers.Redis
             _disposed = true;
         }
         
-        // Keep synchronous Dispose for IDisposable compatibility if needed
+        // Keep synchronous Dispose for IDisposable compatibility - use non-blocking pattern
         public void Dispose()
         {
-            DisposeAsync().AsTask().GetAwaiter().GetResult();
+            if (_disposed) return;
+            
+            try
+            {
+                // Use a timeout to prevent blocking indefinitely
+                var disposeTask = DisposeAsync().AsTask();
+                if (!disposeTask.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    _logger.LogWarning("DisposeAsync timed out during synchronous disposal, continuing with forced cleanup");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during synchronous disposal");
+            }
+            finally
+            {
+                _disposed = true;
+            }
         }
 
         private async Task<(bool HasValue, T Value)> GetFromCacheAsync<T>(string key)
         {
-            var database = _connectionManager.GetDatabase();
-            var data = await database.StringGetAsync(key);
-            
-            if (!data.HasValue)
+            return await _resilience.ExecuteAsync(async _ =>
             {
-                return (false, default(T)!);
-            }
+                var database = _connectionManager.GetDatabase();
+                var data = await database.StringGetAsync(key);
+                
+                if (!data.HasValue)
+                {
+                    return (false, default(T)!);
+                }
 
-            try
-            {
-                var value = await _serializer.DeserializeAsync<T>(data!);
-                return (true, value);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error deserializing cached value for key {Key}", key);
-                await database.KeyDeleteAsync(key); // Remove corrupted data
-                return (false, default(T)!);
-            }
+                try
+                {
+                    var value = await _serializer.DeserializeAsync<T>(data!);
+                    return (true, value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error deserializing cached value for key {Key}", key);
+                    await database.KeyDeleteAsync(key); // Remove corrupted data
+                    return (false, default(T)!);
+                }
+            });
         }
 
         private async Task SetToCacheAsync<T>(string key, T value, CacheMethodSettings settings)
         {
-            try
+            await _resilience.ExecuteAsync(async _ =>
             {
-                var database = _connectionManager.GetDatabase();
-                var data = await _serializer.SerializeAsync(value);
-                var expiry = settings.Duration ?? _options.DefaultExpiration;
-                
-                await database.StringSetAsync(key, data, expiry);
-                _logger.LogDebug("Cached value for key {Key} with expiry {Expiry}", key, expiry);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error caching value for key {Key}", key);
-            }
+                try
+                {
+                    var database = _connectionManager.GetDatabase();
+                    var data = await _serializer.SerializeAsync(value);
+                    var expiry = settings.Duration ?? _options.DefaultExpiration;
+                    
+                    await database.StringSetAsync(key, data, expiry);
+                    _logger.LogDebug("Cached value for key {Key} with expiry {Expiry}", key, expiry);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error caching value for key {Key}", key);
+                    throw; // Re-throw to allow retry policy to handle it
+                }
+            });
         }
         
         /// <summary>
-        /// Atomically sets cache value and associates tags using Redis transactions.
+        /// Atomically sets cache value and associates tags using a Lua script for true atomicity.
         /// </summary>
         private async Task SetToCacheWithTagsAsync<T>(string key, T value, CacheMethodSettings settings)
         {
@@ -394,31 +440,11 @@ namespace MethodCache.Providers.Redis
                 var data = await _serializer.SerializeAsync(value);
                 var expiry = settings.Duration ?? _options.DefaultExpiration;
                 
-                // Use Redis transaction for atomic operation
-                var transaction = database.CreateTransaction();
+                // Use Lua script for truly atomic cache set + tag association
+                await SetCacheWithTagsAtomicallyAsync(database, key, data, expiry, settings.Tags);
                 
-                // Set the cache value
-                var setCacheTask = transaction.StringSetAsync(key, data, expiry);
-                
-                // Associate tags - for now, we'll do this after the transaction
-                // In a full implementation, this would be part of the transaction
-                
-                // Execute transaction
-                var committed = await transaction.ExecuteAsync();
-                
-                if (committed)
-                {
-                    // Associate tags after successful cache set
-                    await _tagManager.AssociateTagsAsync(key, settings.Tags);
-                    _logger.LogDebug("Successfully cached value for key {Key} with {TagCount} tags", key, settings.Tags.Count);
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to cache value for key {Key} - transaction was not committed", key);
-                    // Fallback: try non-atomic approach
-                    await SetToCacheAsync(key, value, settings);
-                    await _tagManager.AssociateTagsAsync(key, settings.Tags);
-                }
+                _logger.LogDebug("Successfully cached value for key {Key} with {TagCount} tags atomically", 
+                    key, settings.Tags.Count);
             }
             catch (Exception ex)
             {
@@ -434,6 +460,152 @@ namespace MethodCache.Providers.Redis
                 {
                     _logger.LogError(fallbackEx, "Both atomic and fallback cache operations failed for key {Key}", key);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Atomically sets cache value and associates tags using a Lua script.
+        /// This ensures that either both operations succeed or both fail, preventing partial state.
+        /// </summary>
+        private async Task SetCacheWithTagsAtomicallyAsync(IDatabase database, string cacheKey, byte[] data, 
+            TimeSpan expiry, IEnumerable<string> tags)
+        {
+            var tagArray = tags.ToArray();
+            if (tagArray.Length == 0) return;
+
+            // Lua script that atomically performs:
+            // 1. SET the cache value with expiry
+            // 2. SADD key to each tag set  
+            // 3. SADD each tag to key's reverse lookup set
+            const string luaScript = @"
+                -- Set the cache value with expiry
+                redis.call('SETEX', KEYS[1], ARGV[1], ARGV[2])
+                
+                -- Associate tags (forward mapping: tag -> keys)
+                for i = 3, #ARGV do
+                    if ARGV[i] ~= '' then
+                        local tagKey = KEYS[2] .. 'tags:' .. ARGV[i]
+                        redis.call('SADD', tagKey, KEYS[1])
+                        -- Set TTL on tag set to prevent memory leaks
+                        redis.call('EXPIRE', tagKey, ARGV[1] * 2)
+                    end
+                end
+                
+                -- Reverse mapping: key -> tags (for cleanup)
+                if #ARGV > 2 then
+                    local keyTagsKey = KEYS[2] .. 'key-tags:' .. KEYS[1]
+                    for i = 3, #ARGV do
+                        if ARGV[i] ~= '' then
+                            redis.call('SADD', keyTagsKey, ARGV[i])
+                        end
+                    end
+                    -- Set TTL on reverse mapping
+                    redis.call('EXPIRE', keyTagsKey, ARGV[1] * 2)
+                end
+                
+                return 1";
+
+            // Prepare arguments: expiry (seconds), serialized data, then all tags
+            var scriptArgs = new List<RedisValue>
+            {
+                (int)expiry.TotalSeconds,  // ARGV[1] - expiry in seconds
+                data                       // ARGV[2] - serialized cache data
+            };
+            scriptArgs.AddRange(tagArray.Select(tag => (RedisValue)tag)); // ARGV[3+] - tags
+
+            var keys = new RedisKey[] 
+            { 
+                cacheKey,           // KEYS[1] - cache key
+                _options.KeyPrefix  // KEYS[2] - key prefix for tag keys
+            };
+
+            await _resilience.ExecuteAsync(async _ =>
+            {
+                await database.ScriptEvaluateAsync(luaScript, keys, scriptArgs.ToArray());
+            });
+        }
+
+        /// <summary>
+        /// Executes a factory method with automatic lock renewal to prevent locks from expiring
+        /// during long-running operations, which would cause cache stampedes.
+        /// </summary>
+        private async Task<T> ExecuteFactoryWithLockRenewalAsync<T>(Func<Task<T>> factory, ILockHandle lockHandle)
+        {
+            if (!lockHandle.IsAcquired)
+            {
+                return await factory();
+            }
+
+            const int renewalIntervalSeconds = 10; // Renew every 10 seconds
+            const int lockExpirySeconds = 30;      // Keep 30-second expiry
+            
+            using var cts = new CancellationTokenSource();
+            
+            // Start background renewal task
+            var renewalTask = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!cts.Token.IsCancellationRequested && lockHandle.IsAcquired)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(renewalIntervalSeconds), cts.Token);
+                        
+                        if (!cts.Token.IsCancellationRequested && lockHandle.IsAcquired)
+                        {
+                            try
+                            {
+                                await lockHandle.RenewAsync(TimeSpan.FromSeconds(lockExpirySeconds));
+                                _logger.LogDebug("Lock renewed for resource {Resource}", lockHandle.Resource);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to renew lock for resource {Resource}", lockHandle.Resource);
+                                break; // Stop renewal attempts if one fails
+                            }
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when factory completes
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in lock renewal task for resource {Resource}", lockHandle.Resource);
+                }
+            }, cts.Token);
+
+            try
+            {
+                // Execute the factory method
+                var result = await factory();
+                
+                // Cancel renewal and wait for it to complete
+                cts.Cancel();
+                try
+                {
+                    await renewalTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected
+                }
+
+                return result;
+            }
+            catch
+            {
+                // Ensure renewal is cancelled even if factory throws
+                cts.Cancel();
+                try
+                {
+                    await renewalTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected
+                }
+                throw;
             }
         }
     }
