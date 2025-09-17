@@ -94,7 +94,7 @@ namespace MethodCache.Providers.Redis.Tests.Configuration
             Assert.Equal(testObject.Name, result.Name);
         }
 
-        private class TestData
+        public class TestData
         {
             public int Id { get; set; }
             public string Name { get; set; } = string.Empty;

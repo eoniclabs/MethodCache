@@ -163,53 +163,49 @@ namespace MethodCache.Providers.Redis.MultiRegion
 
         public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
         {
+            var cacheKey = $"{_redisOptions.KeyPrefix}{keyGenerator.GenerateKey(methodName, args, settings)}";
+            
             try
             {
-                // Try primary region first
-                var primaryRegion = await _regionSelector.SelectRegionAsync();
-                var cacheManager = await _multiRegionManager.GetCacheManagerAsync(primaryRegion);
+                // Select region for read operation
+                var availableRegions = await _multiRegionManager.GetAvailableRegionsAsync();
+                var selectedRegion = await _regionSelector.SelectRegionForReadAsync(cacheKey, availableRegions);
+
+                // Try to get from selected region first
+                var cachedValue = await _multiRegionManager.GetFromRegionAsync<T>(cacheKey, selectedRegion);
                 
-                if (cacheManager != null)
+                if (cachedValue != null)
                 {
-                    var result = await cacheManager.TryGetAsync<T>(methodName, args, settings, keyGenerator);
-                    if (result != null)
-                    {
-                        return result;
-                    }
+                    _logger.LogDebug("Cache hit for key {Key} in region {Region}", cacheKey, selectedRegion);
+                    return cachedValue;
                 }
-                
-                // Try fallback regions if enabled
-                if (_options.EnableRegionFailover)
+
+                // If region affinity is disabled, try other regions
+                if (!_options.EnableRegionAffinity)
                 {
-                    var availableRegions = await _multiRegionManager.GetAvailableRegionsAsync();
-                    foreach (var region in availableRegions)
+                    var otherRegions = availableRegions.Except(new[] { selectedRegion });
+                    foreach (var region in otherRegions)
                     {
-                        if (region == primaryRegion) continue; // Already tried
-                        
-                        try
+                        cachedValue = await _multiRegionManager.GetFromRegionAsync<T>(cacheKey, region);
+                        if (cachedValue != null)
                         {
-                            var fallbackManager = await _multiRegionManager.GetCacheManagerAsync(region);
-                            if (fallbackManager != null)
-                            {
-                                var result = await fallbackManager.TryGetAsync<T>(methodName, args, settings, keyGenerator);
-                                if (result != null)
-                                {
-                                    return result;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Error during TryGetAsync in fallback region {Region}", region);
+                            _logger.LogDebug("Cache hit for key {Key} in fallback region {Region}", cacheKey, region);
+                            
+                            // Optionally sync back to preferred region in background
+                            _ = Task.Run(() => _multiRegionManager.SyncToRegionAsync(cacheKey, region, selectedRegion));
+                            
+                            return cachedValue;
                         }
                     }
                 }
-                
+
+                // Cache miss - return default
+                _logger.LogDebug("Cache miss for key {Key} across all available regions", cacheKey);
                 return default(T);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error during multi-region TryGetAsync for method {Method}", methodName);
+                _logger.LogError(ex, "Error in TryGetAsync for key {Key}", cacheKey);
                 return default(T);
             }
         }

@@ -21,13 +21,14 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         
         services.AddRedisCache(options =>
         {
-            options.ConnectionString = RedisContainer.GetConnectionString();
+            options.ConnectionString = RedisConnectionString;
             options.Compression = RedisCompressionType.Gzip;
             options.CompressionThreshold = 100; // Low threshold for testing
-            options.KeyPrefix = "gzip-test:";
+            options.KeyPrefix = CreateKeyPrefix("gzip-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
@@ -73,7 +74,8 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         cachedResult.Should().BeEquivalentTo(result);
         callCount.Should().Be(0); // Should not call factory
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -85,13 +87,14 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         
         services.AddRedisCache(options =>
         {
-            options.ConnectionString = RedisContainer.GetConnectionString();
+            options.ConnectionString = RedisConnectionString;
             options.Compression = RedisCompressionType.Brotli;
             options.CompressionThreshold = 100;
-            options.KeyPrefix = "brotli-test:";
+            options.KeyPrefix = CreateKeyPrefix("brotli-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
@@ -124,7 +127,8 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         result.Tags.Should().BeEquivalentTo(largeData.Tags);
         result.Metadata.Should().BeEquivalentTo(largeData.Metadata);
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -166,13 +170,14 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         
         services.AddRedisCache(options =>
         {
-            options.ConnectionString = RedisContainer.GetConnectionString();
+            options.ConnectionString = RedisConnectionString;
             options.Compression = RedisCompressionType.Gzip;
             options.CompressionThreshold = 5000; // High threshold
-            options.KeyPrefix = "threshold-test:";
+            options.KeyPrefix = CreateKeyPrefix("threshold-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
@@ -201,7 +206,8 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         result.Should().NotBeNull();
         result.Description.Length.Should().Be(1000);
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     public class TestLargeObject

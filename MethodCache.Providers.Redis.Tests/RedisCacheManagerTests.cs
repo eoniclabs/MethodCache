@@ -9,6 +9,7 @@ using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using StackExchange.Redis;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace MethodCache.Providers.Redis.Tests
 {
@@ -16,6 +17,7 @@ namespace MethodCache.Providers.Redis.Tests
     {
         private readonly IRedisConnectionManager _connectionManagerMock;
         private readonly IDatabase _databaseMock;
+        private readonly ITransaction _transactionMock;
         private readonly IRedisSerializer _serializerMock;
         private readonly IRedisTagManager _tagManagerMock;
         private readonly IDistributedLock _distributedLockMock;
@@ -30,6 +32,7 @@ namespace MethodCache.Providers.Redis.Tests
         {
             _connectionManagerMock = Substitute.For<IRedisConnectionManager>();
             _databaseMock = Substitute.For<IDatabase>();
+            _transactionMock = Substitute.For<ITransaction>();
             _serializerMock = Substitute.For<IRedisSerializer>();
             _tagManagerMock = Substitute.For<IRedisTagManager>();
             _distributedLockMock = Substitute.For<IDistributedLock>();
@@ -45,6 +48,14 @@ namespace MethodCache.Providers.Redis.Tests
             };
 
             _connectionManagerMock.GetDatabase().Returns(_databaseMock);
+            _databaseMock.CreateTransaction().Returns(_transactionMock);
+            _transactionMock.ExecuteAsync().Returns(true);
+            
+            // Mock transaction operations to return completed tasks
+            _transactionMock.KeyDeleteAsync(Arg.Any<RedisKey[]>())
+                           .Returns(Task.FromResult(1L));
+            _transactionMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>())
+                           .Returns(Task.FromResult(true));
 
             _cacheManager = new RedisCacheManager(
                 _connectionManagerMock,
@@ -113,6 +124,10 @@ namespace MethodCache.Providers.Redis.Tests
             _databaseMock.CreateTransaction().Returns(transactionMock);
             transactionMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>()).Returns(Task.FromResult(true));
             transactionMock.ExecuteAsync().Returns(true);
+            
+            // Mock successful Lua script execution for atomic operations
+            _databaseMock.ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>())
+                         .Returns(Task.FromResult(RedisResult.Create(1)));
 
             // Act
             var result = await _cacheManager.GetOrCreateAsync(
@@ -130,14 +145,14 @@ namespace MethodCache.Providers.Redis.Tests
             // Debug: Verify that the distributed lock was actually called
             _distributedLockMock.Received(1).AcquireAsync($"lock:{fullKey}", TimeSpan.FromSeconds(30), default);
             
-            // Debug: Verify serializer was called once (not twice)
+            // Debug: Verify serializer was called once (for atomic operation)
             _serializerMock.Received(1).SerializeAsync(factoryResult);
             
-            // Debug: Verify tag manager was called
-            _tagManagerMock.Received(1).AssociateTagsAsync(fullKey, settings.Tags);
+            // Debug: Verify atomic Lua script was used instead of tag manager
+            _databaseMock.Received(1).ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>());
             
-            // Verify transaction was used
-            transactionMock.Received(1).ExecuteAsync();
+            // Tag manager should NOT be called since atomic approach succeeded
+            _tagManagerMock.DidNotReceive().AssociateTagsAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>());
         }
 
         [Fact]
@@ -153,10 +168,12 @@ namespace MethodCache.Providers.Redis.Tests
             await _cacheManager.InvalidateByTagsAsync(tags);
 
             // Assert
+            _databaseMock.Received(1).CreateTransaction();
             var expectedRedisKeys = keys.Select(k => (RedisKey)k).ToArray();
-            _databaseMock.Received(1).KeyDeleteAsync(Arg.Is<RedisKey[]>(rk => 
+            _transactionMock.Received(1).KeyDeleteAsync(Arg.Is<RedisKey[]>(rk => 
                 rk.Length == expectedRedisKeys.Length && 
-                rk.All(key => expectedRedisKeys.Contains(key))), CommandFlags.None);
+                rk.All(key => expectedRedisKeys.Contains(key))));
+            _transactionMock.Received(1).ExecuteAsync();
             _tagManagerMock.Received(1).RemoveTagAssociationsAsync(keys, tags);
         }
 

@@ -77,6 +77,22 @@ namespace MethodCache.SampleApp.Infrastructure
             }
         }
 
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        {
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            
+            if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
+            {
+                _metricsProvider.CacheHit(methodName);
+                Console.WriteLine($"[CACHE HIT] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
+                return new ValueTask<T?>((T)entry.Value);
+            }
+            
+            _metricsProvider.CacheMiss(methodName);
+            Console.WriteLine($"[CACHE MISS] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
+            return new ValueTask<T?>(default(T));
+        }
+
         public async Task InvalidateByTagsAsync(params string[] tags)
         {
             var invalidatedCount = 0;

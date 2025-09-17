@@ -81,33 +81,39 @@ namespace MethodCache.Providers.Redis.Features
             return Task.CompletedTask;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
             if (!_options.EnableCacheWarming)
-                return;
+                return Task.CompletedTask;
 
             _logger.LogInformation("Cache warming background service started");
 
-            try
+            // Run the warming loop in the background without blocking startup
+            _ = Task.Run(async () =>
             {
-                while (!stoppingToken.IsCancellationRequested)
+                try
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-                    
-                    if (!stoppingToken.IsCancellationRequested)
+                    while (!stoppingToken.IsCancellationRequested)
                     {
-                        await ProcessWarmupEntriesAsync();
+                        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                        
+                        if (!stoppingToken.IsCancellationRequested)
+                        {
+                            await ProcessWarmupEntriesAsync();
+                        }
                     }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when cancellation is requested
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in cache warming background service");
-            }
+                catch (OperationCanceledException)
+                {
+                    // Expected when cancellation is requested
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in cache warming background service");
+                }
+            }, stoppingToken);
+
+            return Task.CompletedTask;
         }
 
         private void ProcessWarmupEntries(object? state)

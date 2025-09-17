@@ -59,7 +59,7 @@ namespace MethodCache.Providers.Redis.Backplane
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
             _options = options.Value;
             _logger = logger;
-            _channelPrefix = _options.KeyPrefix + "backplane:";
+            _channelPrefix = _options.BackplaneChannel + ":";
             _instanceId = Guid.NewGuid().ToString();
         }
 

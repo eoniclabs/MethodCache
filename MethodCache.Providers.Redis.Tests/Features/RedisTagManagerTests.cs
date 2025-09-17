@@ -13,6 +13,7 @@ namespace MethodCache.Providers.Redis.Tests.Features
     {
         private readonly IRedisConnectionManager _connectionManagerMock;
         private readonly IDatabase _databaseMock;
+        private readonly IBatch _batchMock;
         private readonly ILogger<RedisTagManager> _loggerMock;
         private readonly RedisOptions _options;
         private readonly RedisTagManager _tagManager;
@@ -21,6 +22,7 @@ namespace MethodCache.Providers.Redis.Tests.Features
         {
             _connectionManagerMock = Substitute.For<IRedisConnectionManager>();
             _databaseMock = Substitute.For<IDatabase>();
+            _batchMock = Substitute.For<IBatch>();
             _loggerMock = Substitute.For<ILogger<RedisTagManager>>();
             
             _options = new RedisOptions 
@@ -29,6 +31,15 @@ namespace MethodCache.Providers.Redis.Tests.Features
             };
 
             _connectionManagerMock.GetDatabase().Returns(_databaseMock);
+            _databaseMock.CreateBatch().Returns(_batchMock);
+            
+            // Mock batch operations to return completed tasks
+            _batchMock.SetAddAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<CommandFlags>())
+                      .Returns(Task.FromResult(true));
+            _batchMock.SetRemoveAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<CommandFlags>())
+                      .Returns(Task.FromResult(true));
+            _batchMock.KeyDeleteAsync(Arg.Any<RedisKey>(), Arg.Any<CommandFlags>())
+                      .Returns(Task.FromResult(true));
 
             _tagManager = new RedisTagManager(
                 _connectionManagerMock,
@@ -47,9 +58,13 @@ namespace MethodCache.Providers.Redis.Tests.Features
             await _tagManager.AssociateTagsAsync(key, tags);
 
             // Assert
+            _databaseMock.Received(1).CreateBatch();
+            _batchMock.Received(1).Execute();
+            
             foreach (var tag in tags)
             {
-                _databaseMock.Received(1).SetAddAsync($"test:tags:{tag}", key, CommandFlags.None);
+                _batchMock.Received(1).SetAddAsync($"test:tags:{tag}", key, CommandFlags.None);
+                _batchMock.Received(1).SetAddAsync($"test:key-tags:{key}", tag, CommandFlags.None);
             }
         }
 
@@ -72,13 +87,14 @@ namespace MethodCache.Providers.Redis.Tests.Features
         {
             // Arrange
             var tags = new[] { "tag1", "tag2" };
-            var tag1Keys = new RedisValue[] { "key1", "key2" };
-            var tag2Keys = new RedisValue[] { "key2", "key3" };
+            var expectedKeys = new RedisValue[] { "key1", "key2", "key3" };
+            var tagKeys = new RedisKey[] { "test:tags:tag1", "test:tags:tag2" };
 
-            _databaseMock.SetMembersAsync("test:tags:tag1", CommandFlags.None)
-                         .Returns(tag1Keys);
-            _databaseMock.SetMembersAsync("test:tags:tag2", CommandFlags.None)
-                         .Returns(tag2Keys);
+            _databaseMock.SetCombineAsync(SetOperation.Union, 
+                Arg.Is<RedisKey[]>(keys => keys.Length == 2 && 
+                    keys.Contains("test:tags:tag1") && 
+                    keys.Contains("test:tags:tag2")))
+                .Returns(expectedKeys);
 
             // Act
             var result = await _tagManager.GetKeysByTagsAsync(tags);
@@ -91,6 +107,26 @@ namespace MethodCache.Providers.Redis.Tests.Features
         }
 
         [Fact]
+        public async Task GetKeysByTagsAsync_WithSingleTag_UseSetMembers()
+        {
+            // Arrange
+            var tags = new[] { "tag1" };
+            var expectedKeys = new RedisValue[] { "key1", "key2" };
+
+            _databaseMock.SetMembersAsync("test:tags:tag1", CommandFlags.None)
+                         .Returns(expectedKeys);
+
+            // Act
+            var result = await _tagManager.GetKeysByTagsAsync(tags);
+
+            // Assert
+            Assert.Contains("key1", result);
+            Assert.Contains("key2", result);
+            Assert.Equal(2, result.Length);
+            _databaseMock.Received(1).SetMembersAsync("test:tags:tag1", CommandFlags.None);
+        }
+
+        [Fact]
         public async Task GetKeysByTagsAsync_WithEmptyTags_ReturnsEmptyArray()
         {
             // Act
@@ -99,6 +135,7 @@ namespace MethodCache.Providers.Redis.Tests.Features
             // Assert
             Assert.Empty(result);
             _databaseMock.DidNotReceive().SetMembersAsync(Arg.Any<RedisKey>(), Arg.Any<CommandFlags>());
+            _databaseMock.DidNotReceive().SetCombineAsync(Arg.Any<SetOperation>(), Arg.Any<RedisKey[]>());
         }
 
         [Fact]
@@ -112,11 +149,15 @@ namespace MethodCache.Providers.Redis.Tests.Features
             await _tagManager.RemoveTagAssociationsAsync(keys, tags);
 
             // Assert
+            _databaseMock.Received(1).CreateBatch();
+            _batchMock.Received(1).Execute();
+            
             foreach (var key in keys)
             {
                 foreach (var tag in tags)
                 {
-                    _databaseMock.Received(1).SetRemoveAsync($"test:tags:{tag}", key, CommandFlags.None);
+                    _batchMock.Received(1).SetRemoveAsync($"test:tags:{tag}", key, CommandFlags.None);
+                    _batchMock.Received(1).SetRemoveAsync($"test:key-tags:{key}", tag, CommandFlags.None);
                 }
             }
         }
@@ -129,7 +170,9 @@ namespace MethodCache.Providers.Redis.Tests.Features
             await _tagManager.RemoveTagAssociationsAsync(new[] { "key1" }, Array.Empty<string>());
 
             // Assert
-            _databaseMock.DidNotReceive().SetRemoveAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<CommandFlags>());
+            _databaseMock.DidNotReceive().CreateBatch();
+            _batchMock.DidNotReceive().Execute();
+            _batchMock.DidNotReceive().SetRemoveAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<CommandFlags>());
         }
     }
 }

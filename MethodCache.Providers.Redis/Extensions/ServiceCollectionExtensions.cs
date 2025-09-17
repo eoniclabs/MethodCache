@@ -41,13 +41,15 @@ namespace MethodCache.Providers.Redis.Extensions
                 var connectionService = provider.GetRequiredService<RedisConnectionService>();
                 var connectionTask = connectionService.GetConnectionAsync();
                 
-                // Use a timeout to prevent indefinite blocking during DI resolution
-                if (connectionTask.Wait(TimeSpan.FromSeconds(30)))
+                // Use GetAwaiter().GetResult() for better async context handling and longer timeout
+                try
                 {
-                    return connectionTask.Result;
+                    return connectionTask.GetAwaiter().GetResult();
                 }
-                
-                throw new TimeoutException("Redis connection initialization timed out during service resolution");
+                catch (Exception ex)
+                {
+                    throw new TimeoutException("Redis connection initialization failed during service resolution", ex);
+                }
             });
             
             // Register Redis-specific services

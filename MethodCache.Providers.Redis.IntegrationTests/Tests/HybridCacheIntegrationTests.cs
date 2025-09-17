@@ -30,11 +30,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
                          .WithPerformanceSettings(maxConcurrentL2Operations: 5);
         }, redisOptions =>
         {
-            redisOptions.ConnectionString = RedisContainer.GetConnectionString();
-            redisOptions.KeyPrefix = "hybrid-test:";
+            redisOptions.ConnectionString = RedisConnectionString;
+            redisOptions.KeyPrefix = CreateKeyPrefix("hybrid-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -72,7 +73,8 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var l1Value = await hybridManager.GetFromL1Async<string>(cacheKey);
         l1Value.Should().Be("Result-1");
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -89,11 +91,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
                          .WithL2Configuration(defaultExpiration: TimeSpan.FromMinutes(10));
         }, redisOptions =>
         {
-            redisOptions.ConnectionString = RedisContainer.GetConnectionString();
-            redisOptions.KeyPrefix = "l1miss-test:";
+            redisOptions.ConnectionString = RedisConnectionString;
+            redisOptions.KeyPrefix = CreateKeyPrefix("l1miss-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -129,7 +132,8 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         result2.Should().Be("Original-1"); // Same result from L2
         callCount.Should().Be(1); // Factory called only once
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -146,11 +150,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
                          .WithL2Configuration(defaultExpiration: TimeSpan.FromMinutes(10));
         }, redisOptions =>
         {
-            redisOptions.ConnectionString = RedisContainer.GetConnectionString();
-            redisOptions.KeyPrefix = "writeback-test:";
+            redisOptions.ConnectionString = RedisConnectionString;
+            redisOptions.KeyPrefix = CreateKeyPrefix("writeback-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -179,7 +184,8 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         result.Should().Be("WriteBackValue");
         l1Value.Should().Be("WriteBackValue");
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -195,11 +201,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
                          .WithL1Configuration(maxItems: 1000);
         }, redisOptions =>
         {
-            redisOptions.ConnectionString = RedisContainer.GetConnectionString();
-            redisOptions.KeyPrefix = "l1only-test:";
+            redisOptions.ConnectionString = RedisConnectionString;
+            redisOptions.KeyPrefix = CreateKeyPrefix("l1only-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -226,7 +233,8 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         l1Value.Should().Be("L1OnlyValue");
         l2Value.Should().BeNull(); // L2 should not have the value
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -241,11 +249,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             hybridOptions.WithStrategy(HybridStrategy.WriteThrough);
         }, redisOptions =>
         {
-            redisOptions.ConnectionString = RedisContainer.GetConnectionString();
-            redisOptions.KeyPrefix = "invalidate-test:";
+            redisOptions.ConnectionString = RedisConnectionString;
+            redisOptions.KeyPrefix = CreateKeyPrefix("invalidate-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -280,7 +289,8 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var l1ValueAfter = await hybridManager.GetFromL1Async<string>(cacheKey);
         l1ValueAfter.Should().BeNull();
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -296,11 +306,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
                          .WithPerformanceSettings();
         }, redisOptions =>
         {
-            redisOptions.ConnectionString = RedisContainer.GetConnectionString();
-            redisOptions.KeyPrefix = "stats-test:";
+            redisOptions.ConnectionString = RedisConnectionString;
+            redisOptions.KeyPrefix = CreateKeyPrefix("stats-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -326,7 +337,8 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         stats.L1HitRatio.Should().BeGreaterThan(0);
         stats.OverallHitRatio.Should().BeGreaterThan(0);
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact] 
@@ -342,11 +354,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
                          .WithStrategy(HybridStrategy.WriteThrough);
         }, redisOptions =>
         {
-            redisOptions.ConnectionString = RedisContainer.GetConnectionString();
-            redisOptions.KeyPrefix = "eviction-test:";
+            redisOptions.ConnectionString = RedisConnectionString;
+            redisOptions.KeyPrefix = CreateKeyPrefix("eviction-test");
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -377,6 +390,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         l1Value4.Should().Be("Value4"); // Newly added, should be present
         // Method2 might be evicted due to LRU policy
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 }

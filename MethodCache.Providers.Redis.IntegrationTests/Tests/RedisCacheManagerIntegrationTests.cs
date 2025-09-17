@@ -81,7 +81,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         result.Metadata.Should().BeEquivalentTo(complexObject.Metadata);
     }
 
-    private class TestComplexObject
+    public class TestComplexObject
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;

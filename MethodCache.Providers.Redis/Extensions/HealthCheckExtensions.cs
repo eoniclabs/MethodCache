@@ -9,6 +9,7 @@ namespace MethodCache.Providers.Redis.Extensions
     {
         public static IServiceCollection AddRedisHealthChecks(this IServiceCollection services, string name = "redis_cache")
         {
+            services.AddSingleton<RedisHealthCheck>();
             services.AddHealthChecks()
                 .AddCheck<RedisHealthCheck>(
                     name: name,
@@ -24,6 +25,7 @@ namespace MethodCache.Providers.Redis.Extensions
             TimeSpan timeout,
             params string[] tags)
         {
+            services.AddSingleton<RedisHealthCheck>();
             services.AddHealthChecks()
                 .AddCheck<RedisHealthCheck>(
                     name: name,

@@ -28,6 +28,9 @@ namespace MethodCache.Providers.Redis.Configuration
         public bool EnablePubSubInvalidation { get; set; } = false;
         public bool EnableCacheWarming { get; set; } = false;
         
+        // Cross-Instance Communication
+        public string BackplaneChannel { get; set; } = "methodcache-shared";
+        
         // Monitoring
         public bool EnableDetailedMetrics { get; set; } = true;
         public bool EnableSlowLogMonitoring { get; set; } = false;

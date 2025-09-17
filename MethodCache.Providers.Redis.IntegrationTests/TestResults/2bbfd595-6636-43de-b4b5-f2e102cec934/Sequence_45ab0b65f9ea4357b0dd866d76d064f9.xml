@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<TestSequence>
+  <Test Name="MethodCache.Providers.Redis.IntegrationTests.Tests.RedisPubSubIntegrationTests.PubSub_ShouldInvalidateAcrossInstances" DisplayName="MethodCache.Providers.Redis.IntegrationTests.Tests.RedisPubSubIntegrationTests.PubSub_ShouldInvalidateAcrossInstances" Source="/Users/johan/dev/MethodCache/MethodCache.Providers.Redis.IntegrationTests/bin/Debug/net9.0/MethodCache.Providers.Redis.IntegrationTests.dll" Completed="False" />
+</TestSequence>

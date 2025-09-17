@@ -1,15 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet test:*)",
-      "Bash(dotnet build:*)",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(dir:*)",
-      "Bash(dotnet clean:*)",
-      "Bash(find:*)",
-      "Bash(dotnet run:*)",
-      "Bash(dotnet restore:*)"
+      "Bash(timeout 30s dotnet test:*)",
+      "Bash(gtimeout 30s dotnet test MethodCache.Providers.Redis.IntegrationTests --filter \"RedisHealthCheck_ShouldReturnHealthy_WhenRedisIsAvailable\" --verbosity normal)"
     ],
     "deny": [],
     "ask": []

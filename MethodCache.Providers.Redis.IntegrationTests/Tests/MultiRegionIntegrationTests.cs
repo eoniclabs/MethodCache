@@ -23,7 +23,7 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         services.AddMultiRegionRedisCache(options =>
         {
             // Use the same Redis connection for all regions (since we're testing multi-region logic, not actual Redis separation)
-            var baseConnectionString = RedisContainer.GetConnectionString();
+            var baseConnectionString = RedisConnectionString;
             options.AddRegion("us-east-1", baseConnectionString, isPrimary: true, priority: 10, replicationStrategy: RegionReplicationStrategy.None)
                    .AddRegion("us-west-2", baseConnectionString, priority: 8, replicationStrategy: RegionReplicationStrategy.None)
                    .AddRegion("eu-west-1", baseConnectionString, priority: 5, replicationStrategy: RegionReplicationStrategy.None)
@@ -32,10 +32,11 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var multiRegionManager = serviceProvider.GetRequiredService<IMultiRegionCacheManager>();
 
         var testData = new TestObject { Id = 123, Name = "Multi-Region Test", Value = "Test Data" };
-        var key = "multi-region-test-key";
+        var key = CreateKey("multi-region-test-key");
         var expiration = TimeSpan.FromMinutes(5);
 
         // Act - Set data in specific region
@@ -57,7 +58,8 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         resultWest.Should().BeNull();
         resultEu.Should().BeNull();
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -69,16 +71,17 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         
         services.AddMultiRegionRedisCache(options =>
         {
-            var baseConnectionString = RedisContainer.GetConnectionString();
+            var baseConnectionString = RedisConnectionString;
             options.AddRegion("region-1", baseConnectionString, isPrimary: true, replicationStrategy: RegionReplicationStrategy.None)
                    .AddRegion("region-2", baseConnectionString, replicationStrategy: RegionReplicationStrategy.None)
                    .AddRegion("region-3", baseConnectionString, replicationStrategy: RegionReplicationStrategy.None);
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var multiRegionManager = serviceProvider.GetRequiredService<IMultiRegionCacheManager>();
 
-        var key = "multi-region-query-key";
+        var key = CreateKey("multi-region-query-key");
         var expiration = TimeSpan.FromMinutes(5);
 
         // Set different data in different regions
@@ -96,7 +99,8 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         results["region-2"].Should().Be("Data from Region 2");
         results["region-3"].Should().BeNull();
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -108,16 +112,17 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         
         services.AddMultiRegionRedisCache(options =>
         {
-            var baseConnectionString = RedisContainer.GetConnectionString();
+            var baseConnectionString = RedisConnectionString;
             options.AddRegion("invalidate-1", baseConnectionString, replicationStrategy: RegionReplicationStrategy.None)
                    .AddRegion("invalidate-2", baseConnectionString, replicationStrategy: RegionReplicationStrategy.None)
                    .AddRegion("invalidate-3", baseConnectionString, replicationStrategy: RegionReplicationStrategy.None);
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var multiRegionManager = serviceProvider.GetRequiredService<IMultiRegionCacheManager>();
 
-        var key = "global-invalidation-key";
+        var key = CreateKey("global-invalidation-key");
         var testData = "Test data for global invalidation";
         var expiration = TimeSpan.FromMinutes(5);
 
@@ -141,7 +146,8 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         
         afterInvalidation.Values.Should().AllSatisfy(v => v.Should().BeNull());
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -153,15 +159,16 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         
         services.AddMultiRegionRedisCache(options =>
         {
-            var baseConnectionString = RedisContainer.GetConnectionString();
+            var baseConnectionString = RedisConnectionString;
             options.AddRegion("sync-source", baseConnectionString, replicationStrategy: RegionReplicationStrategy.None)
                    .AddRegion("sync-target", baseConnectionString, replicationStrategy: RegionReplicationStrategy.None);
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var multiRegionManager = serviceProvider.GetRequiredService<IMultiRegionCacheManager>();
 
-        var key = "sync-test-key";
+        var key = CreateKey("sync-test-key");
         var testData = "Data to be synced";
         var expiration = TimeSpan.FromMinutes(5);
 
@@ -182,7 +189,8 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         var targetDataAfter = await multiRegionManager.GetFromRegionAsync<string>(key, "sync-target");
         targetDataAfter.Should().Be(testData);
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -194,11 +202,12 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         
         services.AddMultiRegionRedisCache(options =>
         {
-            var baseConnectionString = RedisContainer.GetConnectionString();
+            var baseConnectionString = RedisConnectionString;
             options.AddRegion("health-test", baseConnectionString, isPrimary: true);
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var multiRegionManager = serviceProvider.GetRequiredService<IMultiRegionCacheManager>();
 
         // Allow time for connection initialization
@@ -215,7 +224,8 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         healthStatus.LastChecked.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
         healthStatus.Metrics.Should().NotBeEmpty();
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
 
     [Fact]
@@ -227,13 +237,14 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         
         services.AddMultiRegionRedisCache(options =>
         {
-            var baseConnectionString = RedisContainer.GetConnectionString();
+            var baseConnectionString = RedisConnectionString;
             options.AddRegion("available-1", baseConnectionString)
                    .AddRegion("available-2", baseConnectionString)
                    .AddRegion("available-3", baseConnectionString);
         });
 
         var serviceProvider = services.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider);
         var multiRegionManager = serviceProvider.GetRequiredService<IMultiRegionCacheManager>();
 
         // Act
@@ -245,8 +256,11 @@ public class MultiRegionIntegrationTests : RedisIntegrationTestBase
         availableRegions.Should().Contain("available-3");
         availableRegions.Should().HaveCount(3);
 
-        await serviceProvider.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider);
+        await DisposeServiceProviderAsync(serviceProvider);
     }
+
+    private static string CreateKey(string prefix) => $"{prefix}:{Guid.NewGuid():N}";
 
     public class TestObject
     {

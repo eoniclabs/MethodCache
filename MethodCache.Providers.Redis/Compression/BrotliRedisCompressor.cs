@@ -69,23 +69,12 @@ namespace MethodCache.Providers.Redis.Compression
             if (!ShouldCompress(data))
                 return data;
 
-            // Use ArrayPool for better memory efficiency
-            var buffer = ArrayPool<byte>.Shared.Rent(data.Length);
-            try
+            using var output = new MemoryStream();
+            using (var brotliStream = new BrotliStream(output, _compressionLevel))
             {
-                using var output = new MemoryStream();
-                using (var brotliStream = new BrotliStream(output, _compressionLevel, leaveOpen: true))
-                {
-                    // Use async write for true async operation
-                    await brotliStream.WriteAsync(data, 0, data.Length);
-                    await brotliStream.FlushAsync();
-                }
-                return output.ToArray();
+                await brotliStream.WriteAsync(data, 0, data.Length);
             }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
-            }
+            return output.ToArray();
         }
 
         public async Task<byte[]?> DecompressAsync(byte[]? compressedData)

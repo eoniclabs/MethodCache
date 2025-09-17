@@ -4,6 +4,7 @@ using MethodCache.Core.Configuration;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -19,22 +20,24 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         services1.AddLogging();
         services1.AddRedisCache(options =>
         {
-            options.ConnectionString = RedisContainer.GetConnectionString();
+            options.ConnectionString = RedisConnectionString;
             options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = "instance1:";
+            options.KeyPrefix = CreateKeyPrefix("instance1");
         });
         var serviceProvider1 = services1.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider1);
         var cacheManager1 = serviceProvider1.GetRequiredService<ICacheManager>();
 
         var services2 = new ServiceCollection();
         services2.AddLogging();
         services2.AddRedisCache(options =>
         {
-            options.ConnectionString = RedisContainer.GetConnectionString();
+            options.ConnectionString = RedisConnectionString;
             options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = "instance2:";
+            options.KeyPrefix = CreateKeyPrefix("instance2");
         });
         var serviceProvider2 = services2.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider2);
         var cacheManager2 = serviceProvider2.GetRequiredService<ICacheManager>();
 
         // Set up data in both instances
@@ -65,8 +68,10 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         callCount.Should().Be(0);
 
         // Cleanup
-        await serviceProvider1.DisposeAsync();
-        await serviceProvider2.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider1);
+        await StopHostedServicesAsync(serviceProvider2);
+        await DisposeServiceProviderAsync(serviceProvider1);
+        await DisposeServiceProviderAsync(serviceProvider2);
     }
 
     [Fact]
@@ -77,11 +82,12 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         services1.AddLogging();
         services1.AddRedisCache(options =>
         {
-            options.ConnectionString = RedisContainer.GetConnectionString();
+            options.ConnectionString = RedisConnectionString;
             options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = "pubsub-test:";
+            options.KeyPrefix = CreateKeyPrefix("pubsub-test-instance1");
         });
         var serviceProvider1 = services1.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider1);
         var cacheManager1 = serviceProvider1.GetRequiredService<ICacheManager>();
         var tagManager1 = serviceProvider1.GetRequiredService<IRedisTagManager>();
 
@@ -89,11 +95,12 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         services2.AddLogging();
         services2.AddRedisCache(options =>
         {
-            options.ConnectionString = RedisContainer.GetConnectionString();
+            options.ConnectionString = RedisConnectionString;
             options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = "pubsub-test:";
+            options.KeyPrefix = CreateKeyPrefix("pubsub-test-instance2");
         });
         var serviceProvider2 = services2.BuildServiceProvider();
+        await StartHostedServicesAsync(serviceProvider2);
         var cacheManager2 = serviceProvider2.GetRequiredService<ICacheManager>();
 
         // Set up tagged data in both instances
@@ -126,7 +133,9 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         callCount.Should().Be(2); // Both entries were invalidated and re-created
 
         // Cleanup
-        await serviceProvider1.DisposeAsync();
-        await serviceProvider2.DisposeAsync();
+        await StopHostedServicesAsync(serviceProvider1);
+        await StopHostedServicesAsync(serviceProvider2);
+        await DisposeServiceProviderAsync(serviceProvider1);
+        await DisposeServiceProviderAsync(serviceProvider2);
     }
 }
