@@ -161,6 +161,59 @@ namespace MethodCache.Providers.Redis.MultiRegion
             }
         }
 
+        public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        {
+            try
+            {
+                // Try primary region first
+                var primaryRegion = await _regionSelector.SelectRegionAsync();
+                var cacheManager = await _multiRegionManager.GetCacheManagerAsync(primaryRegion);
+                
+                if (cacheManager != null)
+                {
+                    var result = await cacheManager.TryGetAsync<T>(methodName, args, settings, keyGenerator);
+                    if (result != null)
+                    {
+                        return result;
+                    }
+                }
+                
+                // Try fallback regions if enabled
+                if (_options.EnableRegionFailover)
+                {
+                    var availableRegions = await _multiRegionManager.GetAvailableRegionsAsync();
+                    foreach (var region in availableRegions)
+                    {
+                        if (region == primaryRegion) continue; // Already tried
+                        
+                        try
+                        {
+                            var fallbackManager = await _multiRegionManager.GetCacheManagerAsync(region);
+                            if (fallbackManager != null)
+                            {
+                                var result = await fallbackManager.TryGetAsync<T>(methodName, args, settings, keyGenerator);
+                                if (result != null)
+                                {
+                                    return result;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Error during TryGetAsync in fallback region {Region}", region);
+                        }
+                    }
+                }
+                
+                return default(T);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error during multi-region TryGetAsync for method {Method}", methodName);
+                return default(T);
+            }
+        }
+
         /// <summary>
         /// Efficiently invalidates multiple tags in a single region with batched operations.
         /// </summary>

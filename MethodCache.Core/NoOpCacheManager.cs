@@ -17,5 +17,11 @@ namespace MethodCache.Core
             // No operation for invalidation
             return Task.CompletedTask;
         }
+
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        {
+            // Always return cache miss for no-op cache
+            return new ValueTask<T?>(default(T));
+        }
     }
 }

@@ -14,7 +14,7 @@ namespace MethodCache.Core
         /// <typeparam name="T">Type of the cached value</typeparam>
         /// <param name="key">Cache key</param>
         /// <returns>The cached value or null if not found</returns>
-        Task<T?> GetAsync<T>(string key);
+        ValueTask<T?> GetAsync<T>(string key);
 
         /// <summary>
         /// Sets a value in the memory cache.
@@ -30,30 +30,30 @@ namespace MethodCache.Core
         /// </summary>
         /// <param name="key">Cache key</param>
         /// <returns>True if the item was removed, false otherwise</returns>
-        Task<bool> RemoveAsync(string key);
+        ValueTask<bool> RemoveAsync(string key);
 
         /// <summary>
         /// Clears all items from the memory cache.
         /// </summary>
-        Task ClearAsync();
+        ValueTask ClearAsync();
 
         /// <summary>
         /// Gets statistics about the memory cache.
         /// </summary>
-        Task<ICacheStats> GetStatsAsync();
+        ValueTask<ICacheStats> GetStatsAsync();
 
         /// <summary>
         /// Removes multiple keys from the memory cache.
         /// </summary>
         /// <param name="keys">Keys to remove</param>
         /// <returns>Number of items removed</returns>
-        Task<int> RemoveMultipleAsync(params string[] keys);
+        ValueTask<int> RemoveMultipleAsync(params string[] keys);
 
         /// <summary>
         /// Checks if a key exists in the memory cache.
         /// </summary>
         /// <param name="key">Cache key</param>
         /// <returns>True if the key exists, false otherwise</returns>
-        Task<bool> ExistsAsync(string key);
+        ValueTask<bool> ExistsAsync(string key);
     }
 }

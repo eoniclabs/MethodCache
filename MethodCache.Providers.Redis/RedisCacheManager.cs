@@ -250,6 +250,31 @@ namespace MethodCache.Providers.Redis
                 _logger.LogError(ex, "Error invalidating cache by tags {Tags}", string.Join(", ", tags));
             }
         }
+
+        public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        {
+            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            
+            try
+            {
+                return await _resilience.ExecuteAsync(async _ =>
+                {
+                    var database = _connectionManager.GetDatabase();
+                    var data = await database.StringGetAsync(key).ConfigureAwait(false);
+                    
+                    if (!data.HasValue)
+                        return default(T);
+                    
+                    // Deserialize (serializer handles decompression internally)
+                    return _serializer.Deserialize<T>(data!);
+                });
+            }
+            catch (Exception)
+            {
+                // For read-only operations, return default on any error
+                return default(T);
+            }
+        }
         
         /// <summary>
         /// Atomically removes cache keys and their tag associations using Redis transactions.

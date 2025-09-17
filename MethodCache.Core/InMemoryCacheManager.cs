@@ -37,7 +37,7 @@ namespace MethodCache.Core
         }
 
         private readonly ConcurrentDictionary<string, EnhancedCacheEntry> _cache = new();
-        private readonly ConcurrentDictionary<string, Lazy<Task<object>>> _stampedePrevention = new();
+        private readonly ConcurrentDictionary<string, TaskCompletionSource<object>> _singleFlightGates = new();
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly MemoryCacheOptions _options;
         private readonly Timer? _cleanupTimer;
@@ -98,35 +98,20 @@ namespace MethodCache.Core
                 throw new InvalidOperationException($"Method {methodName} is not marked as idempotent, but caching requires it.");
             }
 
-            // Handle cache miss with stampede prevention
-            var lazyTask = _stampedePrevention.GetOrAdd(key, _ => new Lazy<Task<object>>(async () =>
+            // Handle cache miss with proper single-flight pattern
+            return await ExecuteWithSingleFlight(key, async () =>
             {
-                try
+                var result = await factory().ConfigureAwait(false);
+                
+                if (result != null)
                 {
-                    var result = await factory().ConfigureAwait(false);
-                    
-                    if (result != null)
-                    {
-                        var expiration = settings.Duration ?? _options.DefaultExpiration;
-                        var effectiveExpiration = expiration > _options.MaxExpiration 
-                            ? _options.MaxExpiration 
-                            : expiration;
+                    var expiration = settings.Duration ?? _options.DefaultExpiration;
+                    var effectiveExpiration = expiration > _options.MaxExpiration 
+                        ? _options.MaxExpiration 
+                        : expiration;
 
-                        await SetAsync(key, result, effectiveExpiration, settings.Tags?.ToArray() ?? Array.Empty<string>());
-                    }
-                    
-                    return result!;
+                    await SetAsync(key, result, effectiveExpiration, settings.Tags?.ToArray() ?? Array.Empty<string>());
                 }
-                catch (Exception ex)
-                {
-                    _metricsProvider.CacheError(methodName, ex.Message);
-                    throw;
-                }
-            }));
-
-            try
-            {
-                var finalResult = await lazyTask.Value.ConfigureAwait(false);
                 
                 _metricsProvider.CacheMiss(methodName);
                 if (_options.EnableStatistics)
@@ -134,21 +119,8 @@ namespace MethodCache.Core
                     Interlocked.Increment(ref _misses);
                 }
                 
-                // Wait a moment to ensure cache is populated before removing stampede prevention
-                // This prevents race condition where new request arrives before cache write completes
-                await Task.Delay(1).ConfigureAwait(false);
-                
-                // Now safe to remove from stampede prevention
-                _stampedePrevention.TryRemove(key, out _);
-                
-                return (T)finalResult;
-            }
-            catch
-            {
-                // On any error, remove the failed task to allow retries
-                _stampedePrevention.TryRemove(key, out _);
-                throw;
-            }
+                return result!;
+            }, methodName);
         }
 
         public Task InvalidateByTagsAsync(params string[] tags)
@@ -184,16 +156,84 @@ namespace MethodCache.Core
             return Task.CompletedTask;
         }
 
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        {
+            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            return GetAsyncInternal<T>(key, updateStatistics: false); // Skip statistics for direct reads
+        }
+
+        /// <summary>
+        /// Executes a factory function with single-flight pattern to prevent duplicate concurrent executions for the same key.
+        /// Multiple concurrent requests for the same key will wait for the single execution to complete.
+        /// </summary>
+        private async Task<T> ExecuteWithSingleFlight<T>(string key, Func<Task<T>> factory, string methodName)
+        {
+            TaskCompletionSource<object>? tcs = null;
+            var isFirstRequest = false;
+            
+            try
+            {
+                // Try to add a new TaskCompletionSource for this key
+                tcs = _singleFlightGates.GetOrAdd(key, _ => 
+                {
+                    isFirstRequest = true;
+                    return new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+                });
+                
+                if (isFirstRequest)
+                {
+                    // This is the first request - execute the factory
+                    try
+                    {
+                        var result = await factory().ConfigureAwait(false);
+                        tcs.SetResult(result!);
+                        return result;
+                    }
+                    catch (Exception ex)
+                    {
+                        _metricsProvider.CacheError(methodName, ex.Message);
+                        tcs.SetException(ex);
+                        throw;
+                    }
+                    finally
+                    {
+                        // Clean up the gate after completion (success or failure)
+                        _singleFlightGates.TryRemove(key, out _);
+                    }
+                }
+                else
+                {
+                    // This is a duplicate request - wait for the original to complete
+                    var result = await tcs.Task.ConfigureAwait(false);
+                    
+                    // Update statistics for the duplicate request
+                    _metricsProvider.CacheMiss(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _misses);
+                    }
+                    
+                    return (T)result;
+                }
+            }
+            catch (Exception ex) when (!isFirstRequest)
+            {
+                // For duplicate requests, wrap in a more specific exception
+                _metricsProvider.CacheError(methodName, $"Single-flight execution failed: {ex.Message}");
+                throw;
+            }
+        }
+
         #endregion
 
         #region IMemoryCache Implementation
 
-        public Task<T?> GetAsync<T>(string key)
+        public ValueTask<T?> GetAsync<T>(string key)
         {
             return GetAsyncInternal<T>(key, updateStatistics: true);
         }
         
-        private Task<T?> GetAsyncInternal<T>(string key, bool updateStatistics)
+        private ValueTask<T?> GetAsyncInternal<T>(string key, bool updateStatistics)
         {
             if (_cache.TryGetValue(key, out var entry))
             {
@@ -204,7 +244,7 @@ namespace MethodCache.Core
                     {
                         Interlocked.Increment(ref _misses);
                     }
-                    return Task.FromResult<T?>(default);
+                    return new ValueTask<T?>(default(T));
                 }
 
                 // Update access tracking with O(1) LinkedList operation
@@ -218,7 +258,7 @@ namespace MethodCache.Core
                 
                 try
                 {
-                    return Task.FromResult<T?>((T)entry.Value);
+                    return new ValueTask<T?>((T)entry.Value);
                 }
                 catch (InvalidCastException)
                 {
@@ -229,7 +269,7 @@ namespace MethodCache.Core
                         // Compensate for the hit we incorrectly incremented
                         Interlocked.Decrement(ref _hits);
                     }
-                    return Task.FromResult<T?>(default);
+                    return new ValueTask<T?>(default(T));
                 }
             }
 
@@ -237,7 +277,7 @@ namespace MethodCache.Core
             {
                 Interlocked.Increment(ref _misses);
             }
-            return Task.FromResult<T?>(default);
+            return new ValueTask<T?>(default(T));
         }
         
         /// <summary>
@@ -430,20 +470,20 @@ namespace MethodCache.Core
             }
         }
 
-        public Task<bool> RemoveAsync(string key)
+        public ValueTask<bool> RemoveAsync(string key)
         {
             if (_cache.TryGetValue(key, out var entry))
             {
                 RemoveEntryCompletely(key, entry);
-                return Task.FromResult(true);
+                return new ValueTask<bool>(true);
             }
-            return Task.FromResult(false);
+            return new ValueTask<bool>(false);
         }
 
-        public Task ClearAsync()
+        public ValueTask ClearAsync()
         {
             _cache.Clear();
-            _stampedePrevention.Clear();
+            _singleFlightGates.Clear();
             
             // Clear all tracking structures
             lock (_accessOrderLock)
@@ -464,10 +504,10 @@ namespace MethodCache.Core
                 Interlocked.Exchange(ref _evictions, 0);
             }
             
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
 
-        public Task<ICacheStats> GetStatsAsync()
+        public ValueTask<ICacheStats> GetStatsAsync()
         {
             var stats = new CacheStats
             {
@@ -478,10 +518,10 @@ namespace MethodCache.Core
                 MemoryUsage = EstimateMemoryUsage()
             };
 
-            return Task.FromResult<ICacheStats>(stats);
+            return new ValueTask<ICacheStats>(stats);
         }
 
-        public Task<int> RemoveMultipleAsync(params string[] keys)
+        public ValueTask<int> RemoveMultipleAsync(params string[] keys)
         {
             var removed = 0;
             foreach (var key in keys)
@@ -493,21 +533,21 @@ namespace MethodCache.Core
                 }
             }
             
-            return Task.FromResult(removed);
+            return new ValueTask<int>(removed);
         }
 
-        public Task<bool> ExistsAsync(string key)
+        public ValueTask<bool> ExistsAsync(string key)
         {
             if (_cache.TryGetValue(key, out var entry))
             {
                 if (entry.IsExpired)
                 {
                     RemoveEntryCompletely(key, entry);
-                    return Task.FromResult(false);
+                    return new ValueTask<bool>(false);
                 }
-                return Task.FromResult(true);
+                return new ValueTask<bool>(true);
             }
-            return Task.FromResult(false);
+            return new ValueTask<bool>(false);
         }
 
         #endregion
@@ -799,7 +839,7 @@ namespace MethodCache.Core
                 _cleanupTimer?.Dispose();
                 _evictionSemaphore?.Dispose();
                 _cache.Clear();
-                _stampedePrevention.Clear();
+                _singleFlightGates.Clear();
                 _disposed = true;
             }
         }

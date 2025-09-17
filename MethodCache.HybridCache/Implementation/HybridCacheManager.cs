@@ -23,7 +23,7 @@ namespace MethodCache.HybridCache.Implementation
         private readonly HybridCacheOptions _options;
         private readonly ILogger<HybridCacheManager> _logger;
         private readonly SemaphoreSlim _l2Semaphore;
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _keyLevelLocks;
+        private readonly StripedLockPool _keyLevelLocks;
         
         // Tag tracking infrastructure for efficient L1 invalidation
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys;
@@ -72,7 +72,7 @@ namespace MethodCache.HybridCache.Implementation
             }
             
             _l2Semaphore = new SemaphoreSlim(_options.MaxConcurrentL2Operations, _options.MaxConcurrentL2Operations);
-            _keyLevelLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
+            _keyLevelLocks = new StripedLockPool(128); // 128 stripes for good distribution
             
             // Initialize tag tracking infrastructure
             _tagToKeys = new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>();
@@ -132,29 +132,32 @@ namespace MethodCache.HybridCache.Implementation
             var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
             
             // Check L1 cache first
-            var l1Value = await _l1Cache.GetAsync<T>(cacheKey);
+            var l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
             if (l1Value != null)
             {
                 Interlocked.Increment(ref _l1Hits);
-                _logger.LogTrace("L1 cache hit for key {Key}", cacheKey);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("L1 cache hit for key {Key}", cacheKey);
+                }
                 return l1Value;
             }
             
             Interlocked.Increment(ref _l1Misses);
             
-            // Use key-level locking to prevent multiple threads from executing the same factory
-            var keyLock = _keyLevelLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
-            
-            await keyLock.WaitAsync();
-            try
+            // Use striped locking to prevent multiple threads from executing the same factory
+            return await _keyLevelLocks.ExecuteWithLockAsync(cacheKey, async () =>
             {
                 // Double-check L1 cache after acquiring lock
-                l1Value = await _l1Cache.GetAsync<T>(cacheKey);
+                l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
                 if (l1Value != null)
                 {
                     Interlocked.Increment(ref _l1Hits);
                     Interlocked.Decrement(ref _l1Misses); // Adjust since we incremented above
-                    _logger.LogTrace("L1 cache hit after lock for key {Key}", cacheKey);
+                    if (_logger.IsEnabled(LogLevel.Trace))
+                    {
+                        _logger.LogTrace("L1 cache hit after lock for key {Key}", cacheKey);
+                    }
                     return l1Value;
                 }
                 
@@ -163,17 +166,20 @@ namespace MethodCache.HybridCache.Implementation
                 {
                     try
                     {
-                        await _l2Semaphore.WaitAsync();
+                        await _l2Semaphore.WaitAsync().ConfigureAwait(false);
                         
                         // Check if value exists in L2 first
-                        var (l2Exists, l2Value) = await GetL2ValueDirectlyAsync<T>(cacheKey);
+                        var (l2Exists, l2Value) = await GetL2ValueDirectlyAsync<T>(cacheKey).ConfigureAwait(false);
                         if (l2Exists)
                         {
                             // L2 cache hit - warm L1 and return
-                            await StoreInL1IfEnabled(cacheKey, l2Value, settings);
+                            await StoreInL1IfEnabled(cacheKey, l2Value, settings).ConfigureAwait(false);
                             
                             Interlocked.Increment(ref _l2Hits);
-                            _logger.LogTrace("L2 cache hit for key {Key}, warmed L1 cache", cacheKey);
+                            if (_logger.IsEnabled(LogLevel.Trace))
+                            {
+                                _logger.LogTrace("L2 cache hit for key {Key}, warmed L1 cache", cacheKey);
+                            }
                             return l2Value;
                         }
                         
@@ -189,26 +195,7 @@ namespace MethodCache.HybridCache.Implementation
                 // Execute factory and store in appropriate cache layers
                 // This handles: L2 miss, L1-only mode, and L2-disabled scenarios
                 return await ExecuteFactoryAndCache(methodName, args, factory, settings, keyGenerator, requireIdempotent, cacheKey);
-            }
-            finally
-            {
-                keyLock.Release();
-                
-                // Clean up key-level lock if no other threads are waiting
-                // Use atomic operations to safely remove and dispose the semaphore
-                if (keyLock.CurrentCount == 1)
-                {
-                    // Use CompareExchange-style removal to prevent race conditions
-                    // Only remove if the semaphore in the dictionary is still the same instance
-                    var keyValuePair = new KeyValuePair<string, SemaphoreSlim>(cacheKey, keyLock);
-                    if (((ICollection<KeyValuePair<string, SemaphoreSlim>>)_keyLevelLocks).Remove(keyValuePair))
-                    {
-                        // Successfully removed the exact semaphore we were using
-                        keyLock.Dispose();
-                    }
-                    // If removal failed, another thread replaced the semaphore, so leave it alone
-                }
-            }
+            });
         }
         
         /// <summary>
@@ -219,7 +206,7 @@ namespace MethodCache.HybridCache.Implementation
             if (ShouldUseL1 && value != null)
             {
                 var l1Expiration = CalculateL1Expiration(settings);
-                await _l1Cache.SetAsync(cacheKey, value, l1Expiration);
+                await _l1Cache.SetAsync(cacheKey, value, l1Expiration).ConfigureAwait(false);
                 
                 // Track tags for efficient invalidation
                 TrackKeyTags(cacheKey, settings.Tags);
@@ -239,7 +226,7 @@ namespace MethodCache.HybridCache.Implementation
             bool requireIdempotent, 
             string cacheKey)
         {
-            var result = await factory();
+            var result = await factory().ConfigureAwait(false);
             
             if (result != null)
             {
@@ -256,7 +243,7 @@ namespace MethodCache.HybridCache.Implementation
                 }
                 
                 // Store in L1 cache if enabled
-                await StoreInL1IfEnabled(cacheKey, result, settings);
+                await StoreInL1IfEnabled(cacheKey, result, settings).ConfigureAwait(false);
             }
             
             return result;
@@ -307,7 +294,7 @@ namespace MethodCache.HybridCache.Implementation
             // Efficient L1 invalidation if enabled
             if (_options.EnableEfficientL1TagInvalidation)
             {
-                await InvalidateL1ByTagsEfficientlyAsync(tags);
+                await InvalidateL1ByTagsEfficientlyAsync(tags).ConfigureAwait(false);
             }
             else
             {
@@ -320,15 +307,62 @@ namespace MethodCache.HybridCache.Implementation
             // Invalidate L2 cache
             if (_options.L2Enabled)
             {
-                await _l2Cache.InvalidateByTagsAsync(tags);
+                await _l2Cache.InvalidateByTagsAsync(tags).ConfigureAwait(false);
             }
             
             // Notify other instances via backplane
             if (_backplane != null && _options.EnableBackplane)
             {
-                await _backplane.PublishInvalidationAsync(tags);
+                await _backplane.PublishInvalidationAsync(tags).ConfigureAwait(false);
                 Interlocked.Increment(ref _backplaneMessagesSent);
             }
+        }
+
+        public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        {
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            
+            // First try L1 cache (fast path)
+            var l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
+            if (l1Value != null)
+            {
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("L1 cache hit for direct read: {Key}", cacheKey);
+                }
+                return l1Value;
+            }
+            
+            // Try L2 cache if enabled (direct read without factory plumbing)
+            if (ShouldUseL2 && _l2Cache != null)
+            {
+                try
+                {
+                    var l2Value = await _l2Cache.TryGetAsync<T>(methodName, args, settings, keyGenerator).ConfigureAwait(false);
+                    if (l2Value != null)
+                    {
+                        // Warm L1 cache with L2 result
+                        await StoreInL1IfEnabled(cacheKey, l2Value, settings).ConfigureAwait(false);
+                        
+                        if (_logger.IsEnabled(LogLevel.Trace))
+                        {
+                            _logger.LogTrace("L2 cache hit for direct read: {Key}", cacheKey);
+                        }
+                        
+                        return l2Value;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                    {
+                        _logger.LogDebug(ex, "L2 cache error during direct read for key: {Key}", cacheKey);
+                    }
+                }
+            }
+            
+            // Cache miss on both layers
+            return default(T);
         }
         
         /// <summary>
@@ -643,12 +677,7 @@ namespace MethodCache.HybridCache.Implementation
                     _backplane.Dispose();
                 }
                 
-                // Clean up key-level locks
-                foreach (var kvp in _keyLevelLocks)
-                {
-                    kvp.Value.Dispose();
-                }
-                _keyLevelLocks.Clear();
+                // Clean up key-level locks (striped lock pool handles its own disposal)
                 
                 // Clean up tag mappings
                 ClearAllTagMappings();
@@ -664,6 +693,7 @@ namespace MethodCache.HybridCache.Implementation
                 }
                 
                 _l2Semaphore?.Dispose();
+                _keyLevelLocks?.Dispose();
             }
             finally
             {

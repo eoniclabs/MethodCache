@@ -1,4 +1,5 @@
 using MethodCache.Core.Configuration;
+using MethodCache.Core;
 using MethodCache.ETags.Abstractions;
 using MethodCache.ETags.Models;
 using MethodCache.ETags.Utilities;
@@ -18,7 +19,7 @@ namespace MethodCache.ETags.Implementation
         private readonly IETagCacheBackplane? _backplane;
         private readonly ILogger<ETagHybridCacheManager> _logger;
         private readonly SemaphoreSlim _semaphore = new(1, 1);
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _keyLocks = new();
+        private readonly StripedLockPool _keyLocks = new(64); // 64 stripes for ETag operations
         private bool _disposed;
 
         public ETagHybridCacheManager(
@@ -71,7 +72,7 @@ namespace MethodCache.ETags.Implementation
                 // 1. Atomically check L1 cache for both ETag and value
                 var l1ETagTask = _hybridCache.GetFromL1Async<string>(etagKey);
                 var l1ValueTask = _hybridCache.GetFromL1Async<T>(key);
-                await Task.WhenAll(l1ETagTask, l1ValueTask);
+                await Task.WhenAll(l1ETagTask, l1ValueTask).ConfigureAwait(false);
 
                 var l1ETag = l1ETagTask.Result;
                 var l1Value = l1ValueTask.Result;
@@ -96,7 +97,7 @@ namespace MethodCache.ETags.Implementation
                 // 2. Atomically check L2 cache for both ETag and value
                 var l2ETagTask = _hybridCache.GetFromL2Async<string>(etagKey);
                 var l2ValueTask = _hybridCache.GetFromL2Async<T>(key);
-                await Task.WhenAll(l2ETagTask, l2ValueTask);
+                await Task.WhenAll(l2ETagTask, l2ValueTask).ConfigureAwait(false);
 
                 var l2ETag = l2ETagTask.Result;
                 var l2Value = l2ValueTask.Result;
@@ -137,17 +138,14 @@ namespace MethodCache.ETags.Implementation
             var logMessage = forceRefresh ? "Force refresh for key {Key}, executing factory" : "Cache miss for key {Key}, executing factory";
             _logger.LogDebug(logMessage, key);
             
-            // Use per-key semaphore to prevent stampeding herd
-            var keyLock = _keyLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-            
-            await keyLock.WaitAsync();
-            try
+            // Use striped locking to prevent stampeding herd
+            return await _keyLocks.ExecuteWithLockAsync(key, async () =>
             {
                 // Double-check cache after acquiring lock (another thread might have populated it)
                 if (!forceRefresh)
                 {
-                    var reCheckETag = await _hybridCache.GetFromL1Async<string>(etagKey);
-                    var reCheckValue = await _hybridCache.GetFromL1Async<T>(key);
+                    var reCheckETag = await _hybridCache.GetFromL1Async<string>(etagKey).ConfigureAwait(false);
+                    var reCheckValue = await _hybridCache.GetFromL1Async<T>(key).ConfigureAwait(false);
                     
                     if (reCheckETag != null && reCheckValue != null)
                     {
@@ -162,7 +160,7 @@ namespace MethodCache.ETags.Implementation
                     }
                 }
                 
-                var newEntry = await factory(currentETag);
+                var newEntry = await factory(currentETag).ConfigureAwait(false);
 
                 // Handle "not modified" response from factory
                 if (newEntry.IsNotModified)
@@ -179,21 +177,11 @@ namespace MethodCache.ETags.Implementation
                 }
 
                 // 4. Atomically store both value and ETag in both cache layers
-                await StoreInBothLayers(key, newEntry, settings);
+                await StoreInBothLayers(key, newEntry, settings).ConfigureAwait(false);
 
                 _logger.LogDebug("Cached new value for key {Key} with ETag {ETag}", key, newEntry.ETag);
                 return ETagCacheResult<T>.Miss(newEntry.Value!, newEntry.ETag, newEntry.LastModified, newEntry.Metadata);
-            }
-            finally
-            {
-                keyLock.Release();
-                
-                // Clean up unused semaphores periodically to prevent memory leaks
-                if (_keyLocks.Count > 1000)
-                {
-                    _ = Task.Run(() => CleanupUnusedLocks());
-                }
-            }
+            });
         }
 
         public async Task InvalidateETagAsync(string key)
@@ -216,7 +204,7 @@ namespace MethodCache.ETags.Implementation
             {
                 try
                 {
-                    await _backplane.PublishETagInvalidationAsync(key);
+                    await _backplane.PublishETagInvalidationAsync(key).ConfigureAwait(false);
                     _logger.LogDebug("Published ETag invalidation to backplane for key {Key}", key);
                 }
                 catch (Exception ex)
@@ -247,7 +235,7 @@ namespace MethodCache.ETags.Implementation
                 try
                 {
                     var invalidations = keys.Select(key => new KeyValuePair<string, string?>(key, null));
-                    await _backplane.PublishETagInvalidationBatchAsync(invalidations);
+                    await _backplane.PublishETagInvalidationBatchAsync(invalidations).ConfigureAwait(false);
                     _logger.LogDebug("Published batch ETag invalidation to backplane for {Count} keys", keys.Length);
                 }
                 catch (Exception ex)
@@ -355,37 +343,6 @@ namespace MethodCache.ETags.Implementation
             }
         }
 
-        private void CleanupUnusedLocks()
-        {
-            try
-            {
-                var locksToRemove = new List<string>();
-                
-                foreach (var kvp in _keyLocks)
-                {
-                    if (kvp.Value.CurrentCount == 1) // Not in use
-                    {
-                        locksToRemove.Add(kvp.Key);
-                    }
-                }
-                
-                // Remove up to half of unused locks
-                var removeCount = Math.Min(locksToRemove.Count, _keyLocks.Count / 2);
-                for (int i = 0; i < removeCount; i++)
-                {
-                    if (_keyLocks.TryRemove(locksToRemove[i], out var semaphore))
-                    {
-                        semaphore.Dispose();
-                    }
-                }
-                
-                _logger.LogDebug("Cleaned up {Count} unused key locks", removeCount);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error during key lock cleanup");
-            }
-        }
 
         public void Dispose()
         {
@@ -397,12 +354,8 @@ namespace MethodCache.ETags.Implementation
                 _backplane.ETagInvalidationReceived -= OnETagInvalidationReceived;
             }
 
-            // Dispose all key locks
-            foreach (var kvp in _keyLocks)
-            {
-                kvp.Value.Dispose();
-            }
-            _keyLocks.Clear();
+            // Dispose striped lock pool
+            _keyLocks.Dispose();
 
             _semaphore.Dispose();
             _disposed = true;

@@ -39,6 +39,18 @@ namespace MethodCache.Core
             return Task.CompletedTask;
         }
 
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        {
+            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            
+            if (ForceCacheMiss || !_cache.TryGetValue(key, out var value))
+            {
+                return new ValueTask<T?>(default(T));
+            }
+            
+            return new ValueTask<T?>((T)value);
+        }
+
         public void Clear()
         {
             _cache.Clear();
