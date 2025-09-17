@@ -2,6 +2,18 @@
 
 This guide covers all the ways you can configure MethodCache, from simple attribute-based configuration to complex multi-source configurations with runtime updates.
 
+## 🔥 Key Feature: Runtime Management Interface
+
+**MethodCache supports runtime configuration overrides with the highest priority**, enabling powerful management interfaces that can override ALL other configuration sources (including code). This allows operations teams to:
+
+- **🚨 Emergency disable** problematic caches instantly
+- **⚡ Live tune** performance during incidents  
+- **🔬 A/B test** different caching strategies
+- **🛡️ Override** developer settings for compliance
+- **📊 Dynamically optimize** based on real usage
+
+[Jump to Management Interface Examples →](#management-interface--runtime-overrides)
+
 ## Table of Contents
 
 1. [Configuration Overview](#configuration-overview)
@@ -10,9 +22,10 @@ This guide covers all the ways you can configure MethodCache, from simple attrib
 4. [JSON Configuration](#json-configuration)
 5. [YAML Configuration](#yaml-configuration)
 6. [Runtime Configuration](#runtime-configuration)
-7. [Multi-Source Configuration](#multi-source-configuration)
-8. [Configuration Priorities](#configuration-priorities)
-9. [Examples](#examples)
+7. [Management Interface & Runtime Overrides](#management-interface--runtime-overrides)
+8. [Multi-Source Configuration](#multi-source-configuration)
+9. [Configuration Priorities](#configuration-priorities)
+10. [Examples](#examples)
 
 ## Configuration Overview
 
@@ -204,6 +217,226 @@ builder.Services.AddMethodCacheWithSources(cache => {
 
 // Configuration will automatically reload when appsettings.json changes
 ```
+
+## Management Interface & Runtime Overrides
+
+**🔥 CRITICAL FEATURE:** Runtime configuration has the **highest priority** and can override ALL other configuration sources. This enables powerful management interfaces for operational control.
+
+### Why Runtime Has Highest Priority
+
+Runtime configuration is designed to be the **ultimate override mechanism** for operational scenarios:
+
+- **🚨 Emergency Response**: Instantly disable problematic caches during incidents
+- **⚡ Live Performance Tuning**: Adjust cache durations based on real-time metrics  
+- **🔬 A/B Testing**: Override code settings for experiments
+- **🛡️ Compliance**: Disable caching for sensitive data on demand
+- **📊 Dynamic Optimization**: Adjust settings based on usage patterns
+
+### Building Management Interfaces
+
+Since runtime configuration overrides everything, you can build powerful admin interfaces:
+
+#### Emergency Cache Control
+```csharp
+[ApiController]
+[Route("api/admin/cache")]
+public class CacheManagementController : ControllerBase
+{
+    private readonly IConfiguration _configuration;
+    
+    [HttpPost("emergency-disable")]
+    public async Task<IActionResult> EmergencyDisableCache(
+        [FromBody] EmergencyDisableRequest request)
+    {
+        // This OVERRIDES all other configuration sources including code!
+        var key = $"MethodCache:Services:{request.ServiceName}:Methods:{request.MethodName}";
+        
+        // Update configuration source (Azure App Configuration, etc.)
+        await _configurationService.UpdateAsync(key + ":Enabled", "false");
+        await _configurationService.UpdateAsync(key + ":Duration", "00:00:01");
+        
+        // IOptionsMonitor automatically picks up changes
+        return Ok($"Cache disabled for {request.ServiceName}.{request.MethodName}");
+    }
+    
+    [HttpPost("tune-performance")]
+    public async Task<IActionResult> TunePerformance(
+        [FromBody] PerformanceTuningRequest request)
+    {
+        var key = $"MethodCache:Services:{request.ServiceName}:Methods:{request.MethodName}";
+        
+        // Override programmatic duration settings
+        await _configurationService.UpdateAsync(key + ":Duration", request.Duration.ToString());
+        await _configurationService.UpdateAsync(key + ":Tags", 
+            JsonSerializer.Serialize(new[] { "performance-tuned", $"admin-{DateTime.UtcNow:yyyyMMdd}" }));
+        
+        return Ok($"Performance tuned: {request.ServiceName}.{request.MethodName} -> {request.Duration}");
+    }
+    
+    [HttpPost("ab-test")]
+    public async Task<IActionResult> SetupABTest([FromBody] ABTestRequest request)
+    {
+        var settings = request.Variant switch
+        {
+            "aggressive" => new { 
+                Duration = "01:00:00", 
+                Tags = new[] { "ab-test", "aggressive" },
+                Enabled = true
+            },
+            "conservative" => new { 
+                Duration = "00:05:00", 
+                Tags = new[] { "ab-test", "conservative" },
+                Enabled = true
+            },
+            "disabled" => new { 
+                Enabled = false,
+                Tags = new[] { "ab-test", "disabled" }
+            },
+            _ => throw new ArgumentException("Invalid variant")
+        };
+        
+        var key = $"MethodCache:Services:{request.ServiceName}:Methods:{request.MethodName}";
+        await _configurationService.UpdateAsync(key, JsonSerializer.Serialize(settings));
+        
+        return Ok($"A/B test configured: {request.ServiceName}.{request.MethodName} -> {request.Variant}");
+    }
+}
+
+public record EmergencyDisableRequest(string ServiceName, string MethodName);
+public record PerformanceTuningRequest(string ServiceName, string MethodName, TimeSpan Duration);
+public record ABTestRequest(string ServiceName, string MethodName, string Variant);
+```
+
+#### Real-Time Configuration Dashboard
+```csharp
+[HttpGet("status")]
+public async Task<IActionResult> GetCacheStatus()
+{
+    var manager = _serviceProvider.GetRequiredService<IMethodCacheConfigurationManager>();
+    var allConfigs = manager.GetAllConfigurations();
+    
+    var status = allConfigs.Select(kvp => new
+    {
+        Method = kvp.Key,
+        Duration = kvp.Value.Duration?.ToString(),
+        Tags = kvp.Value.Tags,
+        Enabled = kvp.Value.Enabled ?? true,
+        ETag = kvp.Value.ETag != null ? new
+        {
+            Strategy = kvp.Value.ETag.Strategy.ToString(),
+            UseWeakETag = kvp.Value.ETag.UseWeakETag
+        } : null,
+        LastModified = DateTime.UtcNow // Would track actual modification time
+    });
+    
+    return Ok(status);
+}
+```
+
+### Integration with External Configuration Stores
+
+Runtime configuration works seamlessly with external configuration providers:
+
+#### Azure App Configuration
+```csharp
+builder.Configuration.AddAzureAppConfiguration(options =>
+{
+    options.Connect(connectionString)
+           .Select(KeyFilter.Any, "MethodCache")
+           .ConfigureRefresh(refreshOptions =>
+           {
+               refreshOptions.Register("MethodCache:RefreshKey", refreshAll: true)
+                           .SetCacheExpiration(TimeSpan.FromSeconds(30));
+           });
+});
+
+// Runtime configuration automatically picks up Azure App Config changes
+builder.Services.AddMethodCacheWithSources(cache => {
+    cache.AddRuntimeConfiguration(); // Gets Azure App Config changes automatically
+});
+```
+
+#### Redis Configuration Store
+```csharp
+public class RedisConfigurationService
+{
+    private readonly IDatabase _redis;
+    private readonly IConfiguration _configuration;
+    
+    public async Task UpdateCacheSettingAsync(string methodKey, object settings)
+    {
+        var configKey = $"MethodCache:Services:{methodKey}";
+        var json = JsonSerializer.Serialize(settings);
+        
+        // Update Redis
+        await _redis.StringSetAsync(configKey, json);
+        
+        // Trigger configuration reload
+        _configuration.GetReloadToken().ActiveChangeCallback?.Invoke(null);
+    }
+}
+```
+
+### Monitoring Configuration Changes
+
+```csharp
+public class ConfigurationChangeMonitor
+{
+    private readonly IOptionsMonitor<MethodCacheOptions> _optionsMonitor;
+    private readonly ILogger<ConfigurationChangeMonitor> _logger;
+    
+    public ConfigurationChangeMonitor(
+        IOptionsMonitor<MethodCacheOptions> optionsMonitor,
+        ILogger<ConfigurationChangeMonitor> logger)
+    {
+        _optionsMonitor = optionsMonitor;
+        _logger = logger;
+        
+        // Monitor for changes
+        _optionsMonitor.OnChange((options, name) =>
+        {
+            _logger.LogInformation("Cache configuration changed for {ConfigName} at {Timestamp}", 
+                name, DateTime.UtcNow);
+            
+            // Log specific changes
+            foreach (var service in options.Services)
+            {
+                foreach (var method in service.Value.Methods)
+                {
+                    _logger.LogInformation("Method {Service}.{Method} configured: Duration={Duration}, Enabled={Enabled}",
+                        service.Key, method.Key, method.Value.Duration, method.Value.Enabled);
+                }
+            }
+        });
+    }
+}
+```
+
+### Configuration Override Examples
+
+To demonstrate the power of runtime overrides:
+
+```csharp
+// 1. Code says cache for 1 hour
+[Cache("user-profile", Duration = "01:00:00")]
+public async Task<UserProfile> GetUserProfileAsync(int userId) { ... }
+
+// 2. JSON config says cache for 30 minutes  
+// appsettings.json: "Duration": "00:30:00"
+
+// 3. Programmatic config says cache for 2 hours
+config.ForService<IUserService>()
+      .Method(x => x.GetUserProfileAsync(default))
+      .Duration(TimeSpan.FromHours(2));
+
+// 4. 🔥 RUNTIME CONFIG WINS - Management interface sets 5 minutes
+// POST /api/admin/cache/emergency-tune
+// { "Duration": "00:05:00" }
+
+// ✅ Result: 5 minutes (runtime override wins!)
+```
+
+This architecture ensures that **operations teams have ultimate control** over caching behavior, which is essential for production systems.
 
 ## Multi-Source Configuration
 
@@ -442,3 +675,24 @@ public async Task SetupABTest(string service, string method, string variant)
 7. **Validate Configuration** - Use built-in validation to catch errors early
 
 This layered approach gives you maximum flexibility while maintaining simplicity where possible!
+
+## Quick Reference: Configuration Priority
+
+| Priority | Source | Can Override | Runtime Updates | Best For |
+|----------|--------|--------------|-----------------|----------|
+| **40** 🔥 | **Runtime (IOptionsMonitor)** | **Everything** | ✅ Yes | Management interfaces, emergency overrides |
+| **30** | **Programmatic (Code)** | JSON/YAML/Attributes | ❌ No | Application logic, business rules |
+| **20** | **JSON/YAML** | Attributes only | ✅ Yes | Environment configs, operations |
+| **10** | **Attributes** | Nothing | ❌ No | Development defaults |
+
+### 🚨 Emergency Override Example
+
+```bash
+# Emergency: Disable all user profile caching via management API
+curl -X POST /api/admin/cache/emergency-disable \
+  -d '{"ServiceName": "IUserService", "MethodName": "GetUserProfile"}'
+
+# ✅ Instantly overrides ALL other configuration sources!
+```
+
+**Remember: Runtime configuration = Ultimate operational control** 🎯
