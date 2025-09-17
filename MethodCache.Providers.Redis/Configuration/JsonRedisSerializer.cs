@@ -35,14 +35,23 @@ namespace MethodCache.Providers.Redis.Configuration
             return JsonSerializer.Deserialize<T>(data, _options)!;
         }
 
-        public Task<byte[]> SerializeAsync<T>(T value)
+        public async Task<byte[]> SerializeAsync<T>(T value)
         {
-            return Task.FromResult(Serialize(value));
+            if (value == null)
+                return Array.Empty<byte>();
+
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync(stream, value, _options);
+            return stream.ToArray();
         }
 
-        public Task<T> DeserializeAsync<T>(byte[] data)
+        public async Task<T> DeserializeAsync<T>(byte[] data)
         {
-            return Task.FromResult(Deserialize<T>(data));
+            if (data == null || data.Length == 0)
+                return default(T)!;
+
+            using var stream = new MemoryStream(data, writable: false);
+            return (await JsonSerializer.DeserializeAsync<T>(stream, _options))!;
         }
     }
 }

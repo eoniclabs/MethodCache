@@ -277,10 +277,13 @@ namespace MethodCache.Providers.Redis
                 }
                 else
                 {
-                    _logger.LogWarning("Invalidation transaction failed, falling back to non-atomic operations");
+                    _logger.LogWarning("Invalidation transaction failed, falling back to pipelined operations");
                     
-                    // Fallback to non-atomic operations
-                    await database.KeyDeleteAsync(redisKeys);
+                    // Fallback using pipelining for better performance
+                    var batch = database.CreateBatch();
+                    var deleteTask = batch.KeyDeleteAsync(redisKeys);
+                    batch.Execute();
+                    await deleteTask;
                     await _tagManager.RemoveTagAssociationsAsync(keys, tags);
                 }
             }

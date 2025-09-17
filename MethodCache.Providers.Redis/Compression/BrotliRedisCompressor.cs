@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.IO;
 using System.IO.Compression;
 using System.Threading.Tasks;
@@ -60,14 +61,53 @@ namespace MethodCache.Providers.Redis.Compression
             }
         }
 
-        public Task<byte[]?> CompressAsync(byte[]? data)
+        public async Task<byte[]?> CompressAsync(byte[]? data)
         {
-            return Task.FromResult(Compress(data));
+            if (data == null || data.Length == 0)
+                return data;
+
+            if (!ShouldCompress(data))
+                return data;
+
+            // Use ArrayPool for better memory efficiency
+            var buffer = ArrayPool<byte>.Shared.Rent(data.Length);
+            try
+            {
+                using var output = new MemoryStream();
+                using (var brotliStream = new BrotliStream(output, _compressionLevel, leaveOpen: true))
+                {
+                    // Use async write for true async operation
+                    await brotliStream.WriteAsync(data, 0, data.Length);
+                    await brotliStream.FlushAsync();
+                }
+                return output.ToArray();
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+            }
         }
 
-        public Task<byte[]?> DecompressAsync(byte[]? compressedData)
+        public async Task<byte[]?> DecompressAsync(byte[]? compressedData)
         {
-            return Task.FromResult(Decompress(compressedData));
+            if (compressedData == null || compressedData.Length == 0)
+                return compressedData;
+
+            try
+            {
+                using var input = new MemoryStream(compressedData);
+                using var brotliStream = new BrotliStream(input, CompressionMode.Decompress);
+                using var output = new MemoryStream();
+                
+                // Use async copy for true async operation
+                await brotliStream.CopyToAsync(output, bufferSize: 81920); // 80KB buffer
+                return output.ToArray();
+            }
+            catch (Exception)
+            {
+                // Data is not Brotli compressed or invalid, return as-is
+                return compressedData;
+            }
         }
     }
 }

@@ -29,20 +29,27 @@ namespace MethodCache.Providers.Redis.Features
             if (!tags.Any()) return;
 
             var database = _connectionManager.GetDatabase();
-            var tasks = new List<Task>();
             var keyTagsKey = GetKeyTagsKey(key);
+            var tagArray = tags.ToArray();
+            
+            // Use pipelining via batch for efficient batch operations
+            var batch = database.CreateBatch();
+            var tasks = new List<Task>(tagArray.Length * 2);
 
-            foreach (var tag in tags)
+            foreach (var tag in tagArray)
             {
                 var tagKey = GetTagKey(tag);
-                // Add key to tag set
-                tasks.Add(database.SetAddAsync(tagKey, key));
-                // Add tag to key's tag set (for reverse lookup)
-                tasks.Add(database.SetAddAsync(keyTagsKey, tag));
+                // Pipeline these operations - they'll be sent in a single batch
+                tasks.Add(batch.SetAddAsync(tagKey, key));
+                tasks.Add(batch.SetAddAsync(keyTagsKey, tag));
             }
 
+            // Execute the batch (sends all commands at once)
+            batch.Execute();
+            
+            // Wait for all operations to complete
             await Task.WhenAll(tasks);
-            _logger.LogDebug("Associated {TagCount} tags with key {Key}", tags.Count(), key);
+            _logger.LogDebug("Associated {TagCount} tags with key {Key} using pipelining", tagArray.Length, key);
         }
 
         public async Task<string[]> GetKeysByTagsAsync(string[] tags)
@@ -77,23 +84,31 @@ namespace MethodCache.Providers.Redis.Features
             if (!keys.Any() || !tags.Any()) return;
 
             var database = _connectionManager.GetDatabase();
-            var tasks = new List<Task>();
+            var keyArray = keys.ToArray();
+            
+            // Use pipelining via batch for efficient bulk removal
+            var batch = database.CreateBatch();
+            var tasks = new List<Task>(keyArray.Length * tags.Length * 2);
 
             foreach (var tag in tags)
             {
                 var tagKey = GetTagKey(tag);
-                foreach (var key in keys)
+                foreach (var key in keyArray)
                 {
-                    // Remove key from tag set
-                    tasks.Add(database.SetRemoveAsync(tagKey, key));
-                    // Remove tag from key's tag set
+                    // Pipeline these operations - they'll be sent in a single batch
+                    tasks.Add(batch.SetRemoveAsync(tagKey, key));
                     var keyTagsKey = GetKeyTagsKey(key);
-                    tasks.Add(database.SetRemoveAsync(keyTagsKey, tag));
+                    tasks.Add(batch.SetRemoveAsync(keyTagsKey, tag));
                 }
             }
 
+            // Execute the batch (sends all commands at once)
+            batch.Execute();
+            
+            // Wait for all operations to complete
             await Task.WhenAll(tasks);
-            _logger.LogDebug("Removed associations for {KeyCount} keys and {TagCount} tags", keys.Count(), tags.Length);
+            _logger.LogDebug("Removed associations for {KeyCount} keys and {TagCount} tags using pipelining", 
+                keyArray.Length, tags.Length);
         }
 
         public async Task RemoveAllTagAssociationsAsync(string key)
@@ -110,20 +125,27 @@ namespace MethodCache.Providers.Redis.Features
                 return;
             }
 
-            var tasks = new List<Task>();
+            // Use pipelining via batch for efficient bulk removal
+            var batch = database.CreateBatch();
+            var tasks = new List<Task>(associatedTags.Length + 1);
             
-            // Remove the key from each tag set
+            // Pipeline all removal operations
             foreach (var tag in associatedTags)
             {
                 var tagKey = GetTagKey(tag!);
-                tasks.Add(database.SetRemoveAsync(tagKey, key));
+                tasks.Add(batch.SetRemoveAsync(tagKey, key));
             }
             
             // Remove the key's tag association set
-            tasks.Add(database.KeyDeleteAsync(keyTagsKey));
+            tasks.Add(batch.KeyDeleteAsync(keyTagsKey));
 
+            // Execute the batch (sends all commands at once)
+            batch.Execute();
+            
+            // Wait for all operations to complete
             await Task.WhenAll(tasks);
-            _logger.LogDebug("Removed all tag associations for key {Key} from {TagCount} tags", key, associatedTags.Length);
+            _logger.LogDebug("Removed all tag associations for key {Key} from {TagCount} tags using pipelining", 
+                key, associatedTags.Length);
         }
 
         private string GetTagKey(string tag)
