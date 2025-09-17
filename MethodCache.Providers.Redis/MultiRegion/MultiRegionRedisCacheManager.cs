@@ -4,6 +4,8 @@ using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Providers.Redis.Configuration;
 using System;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MethodCache.Providers.Redis.MultiRegion
@@ -129,31 +131,28 @@ namespace MethodCache.Providers.Redis.MultiRegion
             try
             {
                 var availableRegions = await _multiRegionManager.GetAvailableRegionsAsync();
-                var invalidationTasks = new List<Task>();
-
-                foreach (var tag in tags)
+                
+                if (_options.EnableCrossRegionInvalidation)
                 {
-                    if (_options.EnableCrossRegionInvalidation)
+                    // Efficient parallel invalidation: batch all tags per region
+                    var regionInvalidationTasks = availableRegions.Select(region => 
+                        InvalidateMultipleTagsInRegionAsync(tags, region));
+                    
+                    await Task.WhenAll(regionInvalidationTasks);
+                }
+                else
+                {
+                    // Invalidate only in primary region with all tags batched
+                    var primaryRegion = _options.PrimaryRegion;
+                    if (!string.IsNullOrEmpty(primaryRegion))
                     {
-                        // Invalidate across all regions
-                        foreach (var region in availableRegions)
-                        {
-                            invalidationTasks.Add(InvalidateTagInRegionAsync(tag, region));
-                        }
-                    }
-                    else
-                    {
-                        // Invalidate only in primary region
-                        var primaryRegion = _options.PrimaryRegion;
-                        if (!string.IsNullOrEmpty(primaryRegion))
-                        {
-                            invalidationTasks.Add(InvalidateTagInRegionAsync(tag, primaryRegion));
-                        }
+                        await InvalidateMultipleTagsInRegionAsync(tags, primaryRegion);
                     }
                 }
 
-                await Task.WhenAll(invalidationTasks);
-                _logger.LogDebug("Invalidated tags: {Tags}", string.Join(", ", tags));
+                _logger.LogDebug("Invalidated tags: {Tags} across {RegionCount} regions", 
+                    string.Join(", ", tags), 
+                    _options.EnableCrossRegionInvalidation ? availableRegions.Count() : 1);
             }
             catch (Exception ex)
             {
@@ -162,25 +161,57 @@ namespace MethodCache.Providers.Redis.MultiRegion
             }
         }
 
-        private async Task InvalidateTagInRegionAsync(string tag, string region)
+        /// <summary>
+        /// Efficiently invalidates multiple tags in a single region with batched operations.
+        /// </summary>
+        private async Task InvalidateMultipleTagsInRegionAsync(string[] tags, string region)
         {
-            // This is a simplified implementation
-            // In practice, you'd maintain a proper tag -> keys mapping
-            var tagPattern = $"tag:{tag}:*";
-            
             try
             {
-                // Get all keys for this tag (this is simplified - would need proper Redis SCAN)
-                var keysToInvalidate = await GetKeysByTagAsync(tag, region);
+                // Get all keys for all tags in parallel
+                var keyDiscoveryTasks = tags.Select(tag => GetKeysByTagAsync(tag, region));
+                var keyArrays = await Task.WhenAll(keyDiscoveryTasks);
                 
-                var invalidationTasks = keysToInvalidate.Select(key => 
-                    _multiRegionManager.InvalidateInRegionAsync(key, region));
+                // Flatten and deduplicate keys across all tags
+                var allKeysToInvalidate = keyArrays
+                    .SelectMany(keys => keys)
+                    .Distinct()
+                    .ToArray();
                 
+                if (allKeysToInvalidate.Length == 0)
+                {
+                    _logger.LogDebug("No keys found to invalidate for tags {Tags} in region {Region}", 
+                        string.Join(", ", tags), region);
+                    return;
+                }
+
+                // Batch invalidate all keys in parallel with controlled concurrency
+                const int maxConcurrency = 10; // Prevent overwhelming the region
+                var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+                
+                var invalidationTasks = allKeysToInvalidate.Select(async key =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        await _multiRegionManager.InvalidateInRegionAsync(key, region);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
                 await Task.WhenAll(invalidationTasks);
+                
+                _logger.LogDebug("Invalidated {KeyCount} keys for tags {Tags} in region {Region}", 
+                    allKeysToInvalidate.Length, string.Join(", ", tags), region);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invalidating tag {Tag} in region {Region}", tag, region);
+                _logger.LogError(ex, "Error invalidating tags {Tags} in region {Region}", 
+                    string.Join(", ", tags), region);
+                throw;
             }
         }
 

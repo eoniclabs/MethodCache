@@ -15,7 +15,7 @@ namespace MethodCache.Providers.Redis.Configuration
             {
                 RedisSerializerType.MessagePack => new MessagePackRedisSerializer(),
                 RedisSerializerType.Json => new JsonRedisSerializer(),
-                RedisSerializerType.Binary => new BinaryRedisSerializer(),
+                RedisSerializerType.Binary => new JsonRedisSerializer(),
                 _ => throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null)
             };
         }

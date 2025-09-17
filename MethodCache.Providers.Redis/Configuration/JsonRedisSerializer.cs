@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -23,8 +22,8 @@ namespace MethodCache.Providers.Redis.Configuration
             if (value == null)
                 return Array.Empty<byte>();
 
-            var json = JsonSerializer.Serialize(value, _options);
-            return Encoding.UTF8.GetBytes(json);
+            // Use more efficient UTF8 byte serialization
+            return JsonSerializer.SerializeToUtf8Bytes(value, _options);
         }
 
         public T Deserialize<T>(byte[] data)
@@ -32,8 +31,8 @@ namespace MethodCache.Providers.Redis.Configuration
             if (data == null || data.Length == 0)
                 return default(T)!;
 
-            var json = Encoding.UTF8.GetString(data);
-            return JsonSerializer.Deserialize<T>(json, _options)!;
+            // Use more efficient UTF8 byte deserialization
+            return JsonSerializer.Deserialize<T>(data, _options)!;
         }
 
         public Task<byte[]> SerializeAsync<T>(T value)

@@ -1,16 +1,20 @@
 using MessagePack;
+using MessagePack.Resolvers;
 using System.Threading.Tasks;
 
 namespace MethodCache.Providers.Redis.Configuration
 {
     public class MessagePackRedisSerializer : IRedisSerializer
     {
+        private static readonly MessagePackSerializerOptions _secureOptions = 
+            MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance);
+
         public byte[] Serialize<T>(T value)
         {
             if (value == null)
                 return Array.Empty<byte>();
 
-            return MessagePackSerializer.Typeless.Serialize(value);
+            return MessagePackSerializer.Serialize(value, _secureOptions);
         }
 
         public T Deserialize<T>(byte[] data)
@@ -18,8 +22,7 @@ namespace MethodCache.Providers.Redis.Configuration
             if (data == null || data.Length == 0)
                 return default(T)!;
 
-            var result = MessagePackSerializer.Typeless.Deserialize(data);
-            return result is T typedResult ? typedResult : default(T)!;
+            return MessagePackSerializer.Deserialize<T>(data, _secureOptions);
         }
 
         public Task<byte[]> SerializeAsync<T>(T value)

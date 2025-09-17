@@ -30,11 +30,15 @@ namespace MethodCache.Providers.Redis.Features
 
             var database = _connectionManager.GetDatabase();
             var tasks = new List<Task>();
+            var keyTagsKey = GetKeyTagsKey(key);
 
             foreach (var tag in tags)
             {
                 var tagKey = GetTagKey(tag);
+                // Add key to tag set
                 tasks.Add(database.SetAddAsync(tagKey, key));
+                // Add tag to key's tag set (for reverse lookup)
+                tasks.Add(database.SetAddAsync(keyTagsKey, tag));
             }
 
             await Task.WhenAll(tasks);
@@ -75,7 +79,11 @@ namespace MethodCache.Providers.Redis.Features
                 var tagKey = GetTagKey(tag);
                 foreach (var key in keys)
                 {
+                    // Remove key from tag set
                     tasks.Add(database.SetRemoveAsync(tagKey, key));
+                    // Remove tag from key's tag set
+                    var keyTagsKey = GetKeyTagsKey(key);
+                    tasks.Add(database.SetRemoveAsync(keyTagsKey, tag));
                 }
             }
 
@@ -85,16 +93,42 @@ namespace MethodCache.Providers.Redis.Features
 
         public async Task RemoveAllTagAssociationsAsync(string key)
         {
-            // This is a simplified implementation
-            // In a production system, you might want to track which tags a key belongs to
-            // For now, we'll rely on the expiration of the tag sets themselves
-            _logger.LogDebug("Removing all tag associations for key {Key}", key);
-            await Task.CompletedTask;
+            var database = _connectionManager.GetDatabase();
+            var keyTagsKey = GetKeyTagsKey(key);
+
+            // Get all tags associated with this key
+            var associatedTags = await database.SetMembersAsync(keyTagsKey);
+            
+            if (!associatedTags.Any())
+            {
+                _logger.LogDebug("No tag associations found for key {Key}", key);
+                return;
+            }
+
+            var tasks = new List<Task>();
+            
+            // Remove the key from each tag set
+            foreach (var tag in associatedTags)
+            {
+                var tagKey = GetTagKey(tag!);
+                tasks.Add(database.SetRemoveAsync(tagKey, key));
+            }
+            
+            // Remove the key's tag association set
+            tasks.Add(database.KeyDeleteAsync(keyTagsKey));
+
+            await Task.WhenAll(tasks);
+            _logger.LogDebug("Removed all tag associations for key {Key} from {TagCount} tags", key, associatedTags.Length);
         }
 
         private string GetTagKey(string tag)
         {
             return $"{_options.KeyPrefix}tags:{tag}";
+        }
+
+        private string GetKeyTagsKey(string key)
+        {
+            return $"{_options.KeyPrefix}key-tags:{key}";
         }
     }
 }

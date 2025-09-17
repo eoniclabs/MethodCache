@@ -131,9 +131,50 @@ namespace MethodCache.Providers.Redis
                         }
                         else
                         {
-                            // Could not acquire lock, fallback to direct execution
-                            _logger.LogWarning("Could not acquire lock for key {Key}, executing factory without caching", fullKey);
-                            return await factory();
+                            // Could not acquire lock, wait and retry to get cached value
+                            _logger.LogDebug("Could not acquire lock for key {Key}, waiting for other thread to complete", fullKey);
+                            
+                            // Wait briefly for the lock holder to complete and cache the result
+                            await Task.Delay(100);
+                            
+                            // Retry getting from cache
+                            cachedValue = await GetFromCacheAsync<T>(fullKey);
+                            if (cachedValue.HasValue)
+                            {
+                                _metricsProvider.CacheHit(methodName);
+                                _logger.LogDebug("Cache hit after waiting for lock release for key {Key}", fullKey);
+                                return cachedValue.Value;
+                            }
+                            
+                            // If still no cached value, try to acquire lock one more time
+                            using var retryLockHandle = await _distributedLock.AcquireAsync(lockKey, TimeSpan.FromSeconds(10));
+                            if (retryLockHandle.IsAcquired)
+                            {
+                                // Final double-check after retry lock acquisition
+                                cachedValue = await GetFromCacheAsync<T>(fullKey);
+                                if (cachedValue.HasValue)
+                                {
+                                    _metricsProvider.CacheHit(methodName);
+                                    return cachedValue.Value;
+                                }
+                                
+                                // Execute factory and cache result (retry path)
+                                _metricsProvider.CacheMiss(methodName);
+                                var result = await factory();
+                                
+                                if (result != null)
+                                {
+                                    await SetToCacheWithTagsAsync(fullKey, result, settings);
+                                }
+                                
+                                return result;
+                            }
+                            else
+                            {
+                                // Final fallback - execute without caching but log warning
+                                _logger.LogWarning("Could not acquire lock after retry for key {Key}, executing factory without caching", fullKey);
+                                return await factory();
+                            }
                         }
                     }
                     else
