@@ -768,9 +768,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        {");
 
                 // Get cache configuration
-                var requireIdempotent = model.CacheAttr?.NamedArguments
-                    .FirstOrDefault(a => a.Key == "RequireIdempotent").Value.Value as bool? ?? false;
-
                 // Build cache key parameters (exclude CancellationToken)
                 var keyParams = method.Parameters
                     .Where(p => !Utils.IsCancellationToken(p.Type))
@@ -793,22 +790,22 @@ namespace MethodCache.SourceGenerator
                 // Handle different return types
                 if (Utils.IsTask(method.ReturnType, out var taskType))
                 {
-                    EmitTaskCaching(sb, method, taskType!, requireIdempotent);
+                    EmitTaskCaching(sb, method, taskType!);
                 }
                 else if (Utils.IsValueTask(method.ReturnType, out var valueTaskType))
                 {
-                    EmitValueTaskCaching(sb, method, valueTaskType!, requireIdempotent);
+                    EmitValueTaskCaching(sb, method, valueTaskType!);
                 }
                 else
                 {
-                    EmitSyncCaching(sb, method, returnType, requireIdempotent);
+                    EmitSyncCaching(sb, method, returnType);
                 }
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
 
-            private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, bool requireIdempotent)
+            private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType)
             {
                 var call = BuildMethodCall(method);
                 sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{innerType}>(");
@@ -817,10 +814,10 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()});");
+                sb.AppendLine("                settings.IsIdempotent);");
             }
 
-            private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, bool requireIdempotent)
+            private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType)
             {
                 var call = BuildMethodCall(method);
                 sb.AppendLine($"            var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
@@ -829,11 +826,11 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()});");
+                sb.AppendLine("                settings.IsIdempotent);");
                 sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
             }
 
-            private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType, bool requireIdempotent)
+            private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType)
             {
                 var call = BuildMethodCall(method);
                 
@@ -848,7 +845,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                () => Task.FromResult({call}),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()})");
+                sb.AppendLine("                settings.IsIdempotent)");
                 sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 

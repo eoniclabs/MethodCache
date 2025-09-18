@@ -178,7 +178,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(_decorated.GetValue(id))");
-            AssertContainsIgnoreWhitespace(decoratorSource, "keyGenerator, false");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_keyGenerator, settings.IsIdempotent");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
 
@@ -245,7 +245,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValueAsync\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "async () => await _decorated.GetValueAsync(id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "keyGenerator, true");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_keyGenerator, settings.IsIdempotent");
             // Async methods return Task directly, no GetAwaiter().GetResult()
         }
 
@@ -294,8 +294,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> GetValueAsync(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearUserCache()");
-            AssertContainsIgnoreWhitespace(decoratorSource, "keyGenerator, false"); // GetValue has RequireIdempotent = false
-            AssertContainsIgnoreWhitespace(decoratorSource, "keyGenerator, true");  // GetValueAsync has RequireIdempotent = true
+            AssertContainsIgnoreWhitespace(decoratorSource, "_keyGenerator, settings.IsIdempotent");
             AssertContainsIgnoreWhitespace(decoratorSource, "InvalidateByTagsAsync");
         }
 
