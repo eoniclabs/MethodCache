@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
@@ -14,6 +15,7 @@ namespace MethodCache.Core.Extensions
     public static class CacheManagerExtensions
     {
         private const string FluentMethodName = "MethodCache.Fluent";
+        private const string BulkMethodName = "MethodCache.Fluent.Bulk";
         private static readonly object[] EmptyArgs = Array.Empty<object>();
 
         /// <summary>
@@ -68,6 +70,72 @@ namespace MethodCache.Core.Extensions
             return value is null
                 ? CacheLookupResult<T>.Miss
                 : CacheLookupResult<T>.Hit(value);
+        }
+
+        /// <summary>
+        /// Gets multiple cache values or creates them using the provided batch factory.
+        /// </summary>
+        public static async ValueTask<IDictionary<string, T>> GetOrCreateManyAsync<T>(
+            this ICacheManager cacheManager,
+            IEnumerable<string> keys,
+            Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
+            Action<CacheEntryOptions.Builder>? configure = null,
+            IServiceProvider? services = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
+            if (keys == null) throw new ArgumentNullException(nameof(keys));
+            if (factory == null) throw new ArgumentNullException(nameof(factory));
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var keyList = keys as IList<string> ?? keys.ToList();
+            var results = new Dictionary<string, T>(keyList.Count);
+            var missingKeys = new List<string>();
+
+            foreach (var key in keyList)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentException("Keys must not contain null or whitespace entries.", nameof(keys));
+                }
+
+                var lookup = await cacheManager.TryGetAsync<T>(key, cancellationToken).ConfigureAwait(false);
+                if (lookup.Found)
+                {
+                    results[key] = lookup.Value!;
+                }
+                else
+                {
+                    missingKeys.Add(key);
+                }
+            }
+
+            if (missingKeys.Count > 0)
+            {
+                var bulkContext = new CacheContext(BulkMethodName, services);
+                var produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false);
+
+                foreach (var key in missingKeys)
+                {
+                    if (!produced.TryGetValue(key, out var value))
+                    {
+                        throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
+                    }
+
+                    var capturedValue = value!;
+                    results[key] = capturedValue;
+
+                    await cacheManager.GetOrCreateAsync(
+                        key,
+                        (_, _) => new ValueTask<T>(capturedValue),
+                        configure,
+                        services,
+                        cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            return results;
         }
 
         private static Task<T> InvokeFactoryAsync<T>(
