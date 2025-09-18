@@ -247,6 +247,16 @@ namespace MethodCache.Core.Configuration.Fluent
                     builder.WithTags(defaultOptions.Tags.ToArray());
                 }
 
+                if (defaultOptions?.SlidingExpiration is TimeSpan sliding)
+                {
+                    builder.WithSlidingExpiration(sliding);
+                }
+
+                if (defaultOptions?.RefreshAhead is TimeSpan refresh)
+                {
+                    builder.RefreshAhead(refresh);
+                }
+
                 foreach (var configure in _configurations)
                 {
                     configure(builder);

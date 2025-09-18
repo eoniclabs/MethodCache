@@ -14,7 +14,10 @@ namespace MethodCache.Core.Configuration.Fluent
                 Tags = new List<string>(options.Tags),
                 IsIdempotent = false,
                 SlidingExpiration = options.SlidingExpiration ?? options.Duration,
-                RefreshAhead = options.RefreshAhead
+                RefreshAhead = options.RefreshAhead,
+                StampedeProtection = options.StampedeProtection,
+                DistributedLock = options.DistributedLock,
+                Metrics = options.Metrics
             };
 
             if (settings.SlidingExpiration == null && options.SlidingExpiration != null)

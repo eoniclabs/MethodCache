@@ -81,6 +81,18 @@ namespace MethodCache.Core.Configuration
                 if (!finalSettings.Duration.HasValue) finalSettings.Duration = groupSettings.Duration;
                 if (!finalSettings.SlidingExpiration.HasValue) finalSettings.SlidingExpiration = groupSettings.SlidingExpiration;
                 if (!finalSettings.RefreshAhead.HasValue) finalSettings.RefreshAhead = groupSettings.RefreshAhead;
+                if (finalSettings.StampedeProtection == null && groupSettings.StampedeProtection != null)
+                {
+                    finalSettings.StampedeProtection = groupSettings.StampedeProtection;
+                }
+                if (finalSettings.DistributedLock == null && groupSettings.DistributedLock != null)
+                {
+                    finalSettings.DistributedLock = groupSettings.DistributedLock;
+                }
+                if (finalSettings.Metrics == null && groupSettings.Metrics != null)
+                {
+                    finalSettings.Metrics = groupSettings.Metrics;
+                }
 
                 // For tags: combine method and group tags (union behavior)
                 // This ensures consistent behavior where group tags are always included

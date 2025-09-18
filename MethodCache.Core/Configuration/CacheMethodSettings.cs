@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using MethodCache.Core.Metrics;
+using MethodCache.Core.Options;
 
 namespace MethodCache.Core.Configuration
 {
@@ -15,7 +17,10 @@ namespace MethodCache.Core.Configuration
         public bool IsIdempotent { get; set; }
         public TimeSpan? SlidingExpiration { get; set; }
         public TimeSpan? RefreshAhead { get; set; }
-    
+        public StampedeProtectionOptions? StampedeProtection { get; set; }
+        public DistributedLockOptions? DistributedLock { get; set; }
+        public ICacheMetrics? Metrics { get; set; }
+
         // ETag-specific settings
         public ETagSettings? ETag { get; set; }
     }

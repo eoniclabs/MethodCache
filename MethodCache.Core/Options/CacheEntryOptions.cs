@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Metrics;
 
 namespace MethodCache.Core.Options
 {
@@ -16,7 +17,10 @@ namespace MethodCache.Core.Options
             TimeSpan? refreshAhead,
             IReadOnlyList<string> tags,
             IReadOnlyList<Action<CacheContext>> onHitCallbacks,
-            IReadOnlyList<Action<CacheContext>> onMissCallbacks)
+            IReadOnlyList<Action<CacheContext>> onMissCallbacks,
+            StampedeProtectionOptions? stampedeProtection,
+            DistributedLockOptions? distributedLock,
+            ICacheMetrics? metrics)
         {
             Duration = duration;
             SlidingExpiration = slidingExpiration;
@@ -24,6 +28,9 @@ namespace MethodCache.Core.Options
             Tags = tags;
             OnHitCallbacks = onHitCallbacks;
             OnMissCallbacks = onMissCallbacks;
+            StampedeProtection = stampedeProtection;
+            DistributedLock = distributedLock;
+            Metrics = metrics;
         }
 
         /// <summary>
@@ -55,6 +62,9 @@ namespace MethodCache.Core.Options
         /// Gets callbacks executed when the cache entry is resolved from the factory.
         /// </summary>
         public IReadOnlyList<Action<CacheContext>> OnMissCallbacks { get; }
+        public StampedeProtectionOptions? StampedeProtection { get; }
+        public DistributedLockOptions? DistributedLock { get; }
+        public ICacheMetrics? Metrics { get; }
 
         /// <summary>
         /// Builder for <see cref="CacheEntryOptions"/> instances.
@@ -67,6 +77,9 @@ namespace MethodCache.Core.Options
             private readonly List<string> _tags = new();
             private readonly List<Action<CacheContext>> _onHitCallbacks = new();
             private readonly List<Action<CacheContext>> _onMissCallbacks = new();
+            private StampedeProtectionOptions? _stampedeProtection;
+            private DistributedLockOptions? _distributedLock;
+            private ICacheMetrics? _metrics;
 
             /// <summary>
             /// Sets the cache duration.
@@ -151,6 +164,30 @@ namespace MethodCache.Core.Options
                 return this;
             }
 
+            public Builder WithStampedeProtection(StampedeProtectionOptions options)
+            {
+                _stampedeProtection = options ?? throw new ArgumentNullException(nameof(options));
+                return this;
+            }
+
+            public Builder WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0, TimeSpan? refreshAheadWindow = null)
+            {
+                _stampedeProtection = new StampedeProtectionOptions(mode, beta, refreshAheadWindow);
+                return this;
+            }
+
+            public Builder WithDistributedLock(TimeSpan timeout, int maxConcurrency = 1)
+            {
+                _distributedLock = new DistributedLockOptions(timeout, maxConcurrency);
+                return this;
+            }
+
+            public Builder WithMetrics(ICacheMetrics metrics)
+            {
+                _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+                return this;
+            }
+
             /// <summary>
             /// Builds an immutable <see cref="CacheEntryOptions"/> instance.
             /// </summary>
@@ -162,7 +199,10 @@ namespace MethodCache.Core.Options
                     _refreshAhead,
                     new ReadOnlyCollection<string>(_tags),
                     new ReadOnlyCollection<Action<CacheContext>>(_onHitCallbacks),
-                    new ReadOnlyCollection<Action<CacheContext>>(_onMissCallbacks));
+                    new ReadOnlyCollection<Action<CacheContext>>(_onMissCallbacks),
+                    _stampedeProtection,
+                    _distributedLock,
+                    _metrics);
             }
         }
     }
