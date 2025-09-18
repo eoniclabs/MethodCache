@@ -12,7 +12,7 @@ namespace MethodCache.Core.Configuration.Fluent
             {
                 Duration = options.Duration,
                 Tags = new List<string>(options.Tags),
-                IsIdempotent = true
+                IsIdempotent = false
             };
 
             return settings;

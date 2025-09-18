@@ -28,7 +28,8 @@ namespace MethodCache.Tests.Core.Configuration.Fluent
 
                 fluent.ForService<IUserService>()
                     .Method(s => s.GetUser(default))
-                    .Configure(options => options.WithDuration(TimeSpan.FromMinutes(1)).WithTags("users"));
+                    .Configure(options => options.WithDuration(TimeSpan.FromMinutes(1)).WithTags("users"))
+                    .RequireIdempotent();
 
                 fluent.ForService<IUserService>()
                     .Method(s => s.GetAll())
@@ -41,11 +42,13 @@ namespace MethodCache.Tests.Core.Configuration.Fluent
             // Assert default applied before overrides
             Assert.Equal(TimeSpan.FromMinutes(1), getUserSettings.Duration);
             Assert.Contains("users", getUserSettings.Tags);
+            Assert.True(getUserSettings.IsIdempotent);
 
             // Method without explicit duration inherits default
             Assert.Equal(TimeSpan.FromMinutes(10), getAllSettings.Duration);
             Assert.Contains("users", getAllSettings.Tags);
             Assert.Contains("list", getAllSettings.Tags);
+            Assert.False(getAllSettings.IsIdempotent);
         }
 
         [Fact]

@@ -29,6 +29,7 @@ namespace MethodCache.Core.Configuration.Fluent
     {
         IFluentMethodConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
         IFluentMethodConfiguration WithGroup(string groupName);
+        IFluentMethodConfiguration RequireIdempotent(bool enabled = true);
     }
 
     public interface IFluentGroupConfiguration

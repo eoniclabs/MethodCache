@@ -282,7 +282,8 @@ namespace TestApp
             Assert.Contains("config.ApplyFluent(fluent =>", registrySource);
             Assert.Contains("fluent.ForService<TestApp.ITestService>()", registrySource);
             Assert.Contains(".Method(x => x.GetValue(Any<int>.Value));", registrySource);
-            Assert.Contains(".Method(x => x.GetValueAsync(Any<int>.Value));", registrySource);
+            AssertContainsIgnoreWhitespace(registrySource, ".Method(x => x.GetValueAsync(Any<int>.Value))");
+            Assert.Contains(".RequireIdempotent(true);", registrySource);
 
             // Should generate cache decorator with both methods
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("public class ITestServiceDecorator"));

@@ -1199,10 +1199,30 @@ namespace MethodCache.SourceGenerator
                                 .FirstOrDefault(a => a.Key == "GroupName").Value.Value as string;
                             var hasGroup = !string.IsNullOrWhiteSpace(groupArg);
 
+                            var requireIdempotent = false;
+                            if (model.CacheAttr != null &&
+                                TryGetNamedArgument(model.CacheAttr, "RequireIdempotent", out var idempotentArg) &&
+                                idempotentArg.Value is bool b && b)
+                            {
+                                requireIdempotent = true;
+                            }
+
                             sb.AppendLine($"                fluent.ForService<{interfaceName}>()");
 
                             var methodLine = $"                    .Method(x => x.{model.Method.Name}({paramList}))";
-                            if (!hasConfigure && !hasGroup)
+                            var trailingCalls = new List<string>();
+                            if (hasGroup)
+                            {
+                                trailingCalls.Add($".WithGroup(\"{groupArg}\")");
+                            }
+                            if (requireIdempotent)
+                            {
+                                trailingCalls.Add(".RequireIdempotent(true)");
+                            }
+
+                            var hasAdditional = hasConfigure || trailingCalls.Count > 0;
+
+                            if (!hasAdditional)
                             {
                                 sb.AppendLine(methodLine + ";");
                                 continue;
@@ -1218,12 +1238,24 @@ namespace MethodCache.SourceGenerator
                                 {
                                     sb.AppendLine($"                        {statement}");
                                 }
-                                sb.AppendLine(hasGroup ? "                    })" : "                    });");
+                                sb.AppendLine(trailingCalls.Count > 0 ? "                    })" : "                    });");
                             }
 
-                            if (hasGroup)
+                            for (var i = 0; i < trailingCalls.Count; i++)
                             {
-                                sb.AppendLine($"                    .WithGroup(\"{groupArg}\");");
+                                var call = trailingCalls[i];
+                                var suffix = i == trailingCalls.Count - 1 ? ";" : string.Empty;
+                                sb.AppendLine($"                    {call}{suffix}");
+                            }
+
+                            if (!hasConfigure && trailingCalls.Count > 0)
+                            {
+                                // The loop above added calls but no semicolon on the last line if there was only one entry.
+                                if (trailingCalls.Count == 1)
+                                {
+                                    // Ensure the single entry ends with semicolon.
+                                    // The loop already added suffix; no additional work needed.
+                                }
                             }
                         }
                     }

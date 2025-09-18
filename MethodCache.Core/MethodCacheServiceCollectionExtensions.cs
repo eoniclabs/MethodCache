@@ -359,7 +359,8 @@ namespace MethodCache.Core
                         Duration = string.IsNullOrEmpty(cacheAttribute.Duration) 
                             ? TimeSpan.FromMinutes(15) 
                             : TimeSpan.Parse(cacheAttribute.Duration),
-                        Tags = cacheAttribute.Tags?.ToList() ?? new List<string>()
+                        Tags = cacheAttribute.Tags?.ToList() ?? new List<string>(),
+                        IsIdempotent = cacheAttribute.RequireIdempotent
                     };
                     
                     // Check for ETag attribute and configure ETag settings

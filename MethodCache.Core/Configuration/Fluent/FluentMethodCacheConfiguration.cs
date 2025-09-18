@@ -132,6 +132,10 @@ namespace MethodCache.Core.Configuration.Fluent
                     {
                         targetConfiguration.SetMethodGroup(methodKey, methodConfiguration.GroupName);
                     }
+                    if (methodConfiguration.IsIdempotent.HasValue)
+                    {
+                        settings.IsIdempotent = methodConfiguration.IsIdempotent.Value;
+                    }
                 }
             }
 
@@ -195,6 +199,7 @@ namespace MethodCache.Core.Configuration.Fluent
             private readonly string _methodKey;
             private readonly List<Action<CacheEntryOptions.Builder>> _configurations = new();
             private string? _groupName;
+            private bool? _isIdempotent;
 
             public FluentMethodConfiguration(string methodKey)
             {
@@ -220,6 +225,13 @@ namespace MethodCache.Core.Configuration.Fluent
             }
 
             public string? GroupName => _groupName;
+            public bool? IsIdempotent => _isIdempotent;
+
+            public IFluentMethodConfiguration RequireIdempotent(bool enabled = true)
+            {
+                _isIdempotent = enabled;
+                return this;
+            }
 
             public CacheEntryOptions BuildOptions(CacheEntryOptions? defaultOptions)
             {
