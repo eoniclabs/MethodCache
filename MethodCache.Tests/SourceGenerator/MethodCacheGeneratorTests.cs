@@ -143,7 +143,9 @@ namespace TestApp
             var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
             Assert.NotNull(registrySource);
             Assert.Contains("internal class GeneratedCacheMethodRegistry : ICacheMethodRegistry", registrySource);
-            Assert.Contains("config.RegisterMethod<TestApp.ITestService>(x => x.GetValue(Any<int>.Value), \"TestApp.ITestService.GetValue\", null);", registrySource);
+            Assert.Contains("config.ApplyFluent(fluent =>", registrySource);
+            Assert.Contains("fluent.ForService<TestApp.ITestService>()", registrySource);
+            Assert.Contains(".Method(x => x.GetValue(Any<int>.Value));", registrySource);
         }
 
         [Fact]
@@ -277,8 +279,10 @@ namespace TestApp
             // Should generate registry with both cached methods
             var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
             Assert.NotNull(registrySource);
-            Assert.Contains("config.RegisterMethod<TestApp.ITestService>(x => x.GetValue(Any<int>.Value), \"TestApp.ITestService.GetValue\", null);", registrySource);
-            Assert.Contains("config.RegisterMethod<TestApp.ITestService>(x => x.GetValueAsync(Any<int>.Value), \"TestApp.ITestService.GetValueAsync\", null);", registrySource);
+            Assert.Contains("config.ApplyFluent(fluent =>", registrySource);
+            Assert.Contains("fluent.ForService<TestApp.ITestService>()", registrySource);
+            Assert.Contains(".Method(x => x.GetValue(Any<int>.Value));", registrySource);
+            Assert.Contains(".Method(x => x.GetValueAsync(Any<int>.Value));", registrySource);
 
             // Should generate cache decorator with both methods
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("public class ITestServiceDecorator"));
@@ -323,8 +327,11 @@ namespace TestApp
             // Should generate registry with both interfaces
             var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
             Assert.NotNull(registrySource);
-            Assert.Contains("config.RegisterMethod<TestApp.IUserService>(x => x.GetUser(Any<int>.Value), \"TestApp.IUserService.GetUser\", null);", registrySource);
-            Assert.Contains("config.RegisterMethod<TestApp.IProductService>(x => x.GetProduct(Any<int>.Value), \"TestApp.IProductService.GetProduct\", null);", registrySource);
+            Assert.Contains("config.ApplyFluent(fluent =>", registrySource);
+            Assert.Contains("fluent.ForService<TestApp.IUserService>()", registrySource);
+            Assert.Contains(".Method(x => x.GetUser(Any<int>.Value));", registrySource);
+            Assert.Contains("fluent.ForService<TestApp.IProductService>()", registrySource);
+            Assert.Contains(".Method(x => x.GetProduct(Any<int>.Value));", registrySource);
 
             // Should generate separate decorators
             var userDecoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("IUserServiceDecorator"));

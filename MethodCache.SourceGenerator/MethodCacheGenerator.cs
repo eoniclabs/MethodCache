@@ -1115,6 +1115,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using System.Runtime.CompilerServices;");
                 sb.AppendLine("using MethodCache.Core;");
                 sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine("using MethodCache.Core.Configuration.Fluent;");
                 sb.AppendLine();
                 sb.AppendLine("namespace MethodCache.Core");
                 sb.AppendLine("{");
@@ -1124,23 +1125,45 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        {");
 
                 var seen = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var info in interfaces)
+                var cachedInterfaces = interfaces.Where(i => i.CachedMethods.Length > 0).ToList();
+
+                if (cachedInterfaces.Count > 0)
                 {
-                    foreach (var model in info.CachedMethods)
+                    sb.AppendLine("            config.ApplyFluent(fluent =>");
+                    sb.AppendLine("            {");
+
+                    foreach (var info in cachedInterfaces)
                     {
-                        var methodId = Utils.GetMethodId(model.Method);
-                        if (!seen.Add(methodId)) continue;
+                        var interfaceName = GetSimpleTypeName(info.Symbol);
 
-                        var groupArg = model.CacheAttr?.NamedArguments
-                            .FirstOrDefault(a => a.Key == "GroupName").Value.Value as string;
-                        var group = !string.IsNullOrWhiteSpace(groupArg) ? $"\"{groupArg}\"" : "null";
+                        foreach (var model in info.CachedMethods)
+                        {
+                            var methodId = Utils.GetMethodId(model.Method);
+                            if (!seen.Add(methodId))
+                            {
+                                continue;
+                            }
 
-                        // Generate RegisterMethod call that tests expect
-                        var interfaceName = GetSimpleTypeName(model.Method.ContainingType);
-                        var paramList = string.Join(", ", model.Method.Parameters.Select(p => $"Any<{GetSimpleParameterType(p.Type)}>.Value"));
-                        
-                        sb.AppendLine($"            config.RegisterMethod<{interfaceName}>(x => x.{model.Method.Name}({paramList}), \"{methodId}\", {group});");
+                            var paramList = string.Join(", ", model.Method.Parameters.Select(p => $"Any<{GetSimpleParameterType(p.Type)}>.Value"));
+                            sb.AppendLine($"                fluent.ForService<{interfaceName}>()");
+                            var methodInvocationLine = $"                    .Method(x => x.{model.Method.Name}({paramList}))";
+
+                            var groupArg = model.CacheAttr?.NamedArguments
+                                .FirstOrDefault(a => a.Key == "GroupName").Value.Value as string;
+
+                            if (!string.IsNullOrWhiteSpace(groupArg))
+                            {
+                                sb.AppendLine(methodInvocationLine);
+                                sb.AppendLine($"                    .WithGroup(\"{groupArg}\");");
+                            }
+                            else
+                            {
+                                sb.AppendLine(methodInvocationLine + ";");
+                            }
+                        }
                     }
+
+                    sb.AppendLine("            });");
                 }
 
                 sb.AppendLine("        }");

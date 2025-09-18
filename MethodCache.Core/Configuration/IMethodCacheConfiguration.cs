@@ -19,6 +19,7 @@ namespace MethodCache.Core
         void DefaultKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator, new();
         IGroupConfiguration ForGroup(string groupName);
         void AddMethod(string methodKey, CacheMethodSettings settings);
+        void SetMethodGroup(string methodKey, string? groupName);
     }
 
     /// <summary>
@@ -63,4 +64,3 @@ namespace MethodCache.Core
         }
     }
 }
-

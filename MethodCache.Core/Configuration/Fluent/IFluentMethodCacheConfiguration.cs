@@ -28,6 +28,7 @@ namespace MethodCache.Core.Configuration.Fluent
     public interface IFluentMethodConfiguration
     {
         IFluentMethodConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
+        IFluentMethodConfiguration WithGroup(string groupName);
     }
 
     public interface IFluentGroupConfiguration

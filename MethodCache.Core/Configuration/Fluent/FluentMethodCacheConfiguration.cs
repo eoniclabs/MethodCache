@@ -128,6 +128,10 @@ namespace MethodCache.Core.Configuration.Fluent
                     var options = methodConfiguration.BuildOptions(defaultOptions);
                     var settings = CacheEntryOptionsMapper.ToCacheMethodSettings(options);
                     targetConfiguration.AddMethod(methodKey, settings);
+                    if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName))
+                    {
+                        targetConfiguration.SetMethodGroup(methodKey, methodConfiguration.GroupName);
+                    }
                 }
             }
 
@@ -190,6 +194,7 @@ namespace MethodCache.Core.Configuration.Fluent
         {
             private readonly string _methodKey;
             private readonly List<Action<CacheEntryOptions.Builder>> _configurations = new();
+            private string? _groupName;
 
             public FluentMethodConfiguration(string methodKey)
             {
@@ -202,6 +207,19 @@ namespace MethodCache.Core.Configuration.Fluent
                 _configurations.Add(configure);
                 return this;
             }
+
+            public IFluentMethodConfiguration WithGroup(string groupName)
+            {
+                if (string.IsNullOrWhiteSpace(groupName))
+                {
+                    throw new ArgumentException("Group name must be provided.", nameof(groupName));
+                }
+
+                _groupName = groupName;
+                return this;
+            }
+
+            public string? GroupName => _groupName;
 
             public CacheEntryOptions BuildOptions(CacheEntryOptions? defaultOptions)
             {

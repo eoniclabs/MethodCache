@@ -41,6 +41,16 @@ namespace MethodCache.Core.Configuration
 
         void IMethodCacheConfiguration.RegisterMethod<T>(Expression<Action<T>> method, string methodId, string? groupName)
         {
+            SetMethodGroup(methodId, groupName);
+        }
+
+        public void SetMethodGroup(string methodId, string? groupName)
+        {
+            if (string.IsNullOrEmpty(methodId))
+            {
+                throw new ArgumentException("Method id must be provided.", nameof(methodId));
+            }
+
             _methodGroupMap[methodId] = groupName;
         }
 
