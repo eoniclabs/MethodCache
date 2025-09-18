@@ -21,7 +21,7 @@ namespace MethodCache.Core.Extensions
         /// <summary>
         /// Gets a cache value or creates it using the provided factory, using a fluent configuration surface.
         /// </summary>
-        public static ValueTask<T> GetOrCreateAsync<T>(
+        public static async ValueTask<T> GetOrCreateAsync<T>(
             this ICacheManager cacheManager,
             string key,
             Func<CacheContext, CancellationToken, ValueTask<T>> factory,
@@ -38,14 +38,29 @@ namespace MethodCache.Core.Extensions
             var options = BuildOptions(configure);
             var settings = ToMethodSettings(options);
             var context = new CacheContext(key, services);
+            var factoryExecuted = false;
 
-            return new ValueTask<T>(cacheManager.GetOrCreateAsync(
+            async Task<T> WrappedFactory()
+            {
+                factoryExecuted = true;
+                InvokeMissCallbacks(options, context);
+                return await factory(context, cancellationToken).ConfigureAwait(false);
+            }
+
+            var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
-                () => InvokeFactoryAsync(factory, context, cancellationToken),
+                () => WrappedFactory(),
                 settings,
                 new FixedKeyGenerator(key),
-                requireIdempotent: true));
+                requireIdempotent: true).ConfigureAwait(false);
+
+            if (!factoryExecuted)
+            {
+                InvokeHitCallbacks(options, context);
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -138,15 +153,6 @@ namespace MethodCache.Core.Extensions
             return results;
         }
 
-        private static Task<T> InvokeFactoryAsync<T>(
-            Func<CacheContext, CancellationToken, ValueTask<T>> factory,
-            CacheContext context,
-            CancellationToken cancellationToken)
-        {
-            var task = factory(context, cancellationToken);
-            return task.AsTask();
-        }
-
         private static CacheEntryOptions BuildOptions(Action<CacheEntryOptions.Builder>? configure)
         {
             var builder = new CacheEntryOptions.Builder();
@@ -160,10 +166,28 @@ namespace MethodCache.Core.Extensions
             {
                 Duration = options.Duration,
                 IsIdempotent = true,
-                Tags = new List<string>(options.Tags)
+                Tags = new List<string>(options.Tags),
+                SlidingExpiration = options.SlidingExpiration,
+                RefreshAhead = options.RefreshAhead
             };
 
             return settings;
+        }
+
+        private static void InvokeHitCallbacks(CacheEntryOptions options, CacheContext context)
+        {
+            foreach (var callback in options.OnHitCallbacks)
+            {
+                callback(context);
+            }
+        }
+
+        private static void InvokeMissCallbacks(CacheEntryOptions options, CacheContext context)
+        {
+            foreach (var callback in options.OnMissCallbacks)
+            {
+                callback(context);
+            }
         }
 
         private sealed class FixedKeyGenerator : ICacheKeyGenerator

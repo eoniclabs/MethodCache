@@ -12,8 +12,15 @@ namespace MethodCache.Core.Configuration.Fluent
             {
                 Duration = options.Duration,
                 Tags = new List<string>(options.Tags),
-                IsIdempotent = false
+                IsIdempotent = false,
+                SlidingExpiration = options.SlidingExpiration ?? options.Duration,
+                RefreshAhead = options.RefreshAhead
             };
+
+            if (settings.SlidingExpiration == null && options.SlidingExpiration != null)
+            {
+                settings.SlidingExpiration = options.SlidingExpiration;
+            }
 
             return settings;
         }

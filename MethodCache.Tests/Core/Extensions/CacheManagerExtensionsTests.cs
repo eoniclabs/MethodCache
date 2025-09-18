@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
@@ -134,17 +135,53 @@ namespace MethodCache.Tests.Core.Extensions
         }
 
         [Fact]
+        public async Task GetOrCreateAsync_InvokesOnHitAndOnMissCallbacks()
+        {
+            // Arrange
+            var cacheManager = new MockCacheManager();
+            var hitCount = 0;
+            var missCount = 0;
+
+            ValueTask<string> Factory(CacheContext context, CancellationToken token)
+                => new("value");
+
+            // Act - initial miss populates cache
+            await cacheManager.GetOrCreateAsync(
+                "users:1",
+                Factory,
+                options => options.OnHit(_ => hitCount++).OnMiss(_ => missCount++));
+
+            // Second call should use cache
+            await cacheManager.GetOrCreateAsync(
+                "users:1",
+                Factory,
+                options => options.OnHit(_ => hitCount++).OnMiss(_ => missCount++));
+
+            // Assert
+            Assert.Equal(1, missCount);
+            Assert.Equal(1, hitCount);
+        }
+
+        [Fact]
         public async Task GetOrCreateAsync_MapsOptionsToLegacySettings()
         {
             // Arrange
             var cacheManager = new CapturingCacheManager();
             var duration = TimeSpan.FromMinutes(5);
+            var builtOptions = new CacheEntryOptions.Builder()
+                .WithDuration(duration)
+                .WithSlidingExpiration(TimeSpan.FromMinutes(2))
+                .Build();
+            Assert.Equal(TimeSpan.FromMinutes(2), builtOptions.SlidingExpiration);
 
             // Act
             var result = await cacheManager.GetOrCreateAsync(
                 "report:monthly",
                 static (_, _) => new ValueTask<int>(99),
-                options => options.WithDuration(duration).WithTags("reports", "metrics"));
+                options => options
+                    .WithDuration(duration)
+                    .WithSlidingExpiration(TimeSpan.FromMinutes(2))
+                    .WithTags("reports", "metrics"));
 
             // Assert runtime result
             Assert.Equal(99, result);
@@ -159,6 +196,7 @@ namespace MethodCache.Tests.Core.Extensions
             Assert.Contains("reports", cacheManager.LastSettings.Tags);
             Assert.Contains("metrics", cacheManager.LastSettings.Tags);
             Assert.True(cacheManager.LastSettings.IsIdempotent);
+            Assert.Equal(TimeSpan.FromMinutes(2), cacheManager.LastSettings.SlidingExpiration);
 
             // Ensure the fixed key generator preserves the fluent key
             Assert.NotNull(cacheManager.LastKeyGenerator);

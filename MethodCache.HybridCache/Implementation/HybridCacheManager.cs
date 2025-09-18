@@ -38,6 +38,7 @@ namespace MethodCache.HybridCache.Implementation
         private long _l2Misses;
         private long _backplaneMessagesSent;
         private long _backplaneMessagesReceived;
+        private readonly ConcurrentDictionary<string, CancellationTokenSource> _refreshAheadTokens = new();
         
         // Cached objects for GetL2ValueDirectlyAsync optimization
         private static readonly CacheMethodSettings CachedL2Settings = new() { Duration = TimeSpan.FromMinutes(1) };
@@ -130,11 +131,18 @@ namespace MethodCache.HybridCache.Implementation
             if (factory == null) throw new ArgumentNullException(nameof(factory));
             
             var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            var executionContext = (CacheExecutionContext?)null;
+            var needContext = NeedsExecutionContext(settings);
             
             // Check L1 cache first
             var l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
             if (l1Value != null)
             {
+                await TouchSlidingExpirationAsync(cacheKey, l1Value, settings).ConfigureAwait(false);
+                if (needContext)
+                {
+                    InvokeHitCallbacks(settings, ref executionContext, methodName, args);
+                }
                 Interlocked.Increment(ref _l1Hits);
                 if (_logger.IsEnabled(LogLevel.Trace))
                 {
@@ -152,6 +160,11 @@ namespace MethodCache.HybridCache.Implementation
                 l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
                 if (l1Value != null)
                 {
+                    await TouchSlidingExpirationAsync(cacheKey, l1Value, settings).ConfigureAwait(false);
+                    if (needContext)
+                    {
+                        InvokeHitCallbacks(settings, ref executionContext, methodName, args);
+                    }
                     Interlocked.Increment(ref _l1Hits);
                     Interlocked.Decrement(ref _l1Misses); // Adjust since we incremented above
                     if (_logger.IsEnabled(LogLevel.Trace))
@@ -174,6 +187,10 @@ namespace MethodCache.HybridCache.Implementation
                         {
                             // L2 cache hit - warm L1 and return
                             await StoreInL1IfEnabled(cacheKey, l2Value, settings).ConfigureAwait(false);
+                            if (needContext)
+                            {
+                                InvokeHitCallbacks(settings, ref executionContext, methodName, args);
+                            }
                             
                             Interlocked.Increment(ref _l2Hits);
                             if (_logger.IsEnabled(LogLevel.Trace))
@@ -212,6 +229,15 @@ namespace MethodCache.HybridCache.Implementation
                 TrackKeyTags(cacheKey, settings.Tags);
             }
         }
+
+        private async Task TouchSlidingExpirationAsync<T>(string cacheKey, T value, CacheMethodSettings settings)
+        {
+            if (!ShouldUseL1) return;
+            if (!settings.SlidingExpiration.HasValue) return;
+
+            var expiration = CalculateL1Expiration(settings);
+            await _l1Cache.SetAsync(cacheKey, value, expiration).ConfigureAwait(false);
+        }
         
         /// <summary>
         /// Helper method to execute factory and store result in appropriate cache layers.
@@ -226,10 +252,26 @@ namespace MethodCache.HybridCache.Implementation
             bool requireIdempotent, 
             string cacheKey)
         {
+            CacheExecutionContext? executionContext = null;
+            if (settings.OnMissAction != null)
+            {
+                var ctx = EnsureExecutionContext(ref executionContext, methodName, args);
+                SafeInvoke(settings.OnMissAction, ctx);
+            }
+
             var result = await factory().ConfigureAwait(false);
             
             if (result != null)
             {
+                if (settings.Condition != null)
+                {
+                    var ctx = EnsureExecutionContext(ref executionContext, methodName, args);
+                    if (!settings.Condition(ctx))
+                    {
+                        return result!;
+                    }
+                }
+
                 // Store in L2 cache if using hybrid mode
                 if (ShouldUseL2 && _l2Cache != null)
                 {
@@ -244,8 +286,9 @@ namespace MethodCache.HybridCache.Implementation
                 
                 // Store in L1 cache if enabled
                 await StoreInL1IfEnabled(cacheKey, result, settings).ConfigureAwait(false);
+                ScheduleRefreshAhead(cacheKey, settings, factory, methodName, args, keyGenerator, requireIdempotent);
             }
-            
+
             return result!;
         }
         
@@ -388,6 +431,7 @@ namespace MethodCache.HybridCache.Implementation
             foreach (var key in keysToInvalidate)
             {
                 UntrackKeyTags(key);
+                CancelRefreshAhead(key);
             }
             
             _logger.LogTrace("Successfully invalidated {RemovedCount}/{TotalCount} keys", 
@@ -489,6 +533,7 @@ namespace MethodCache.HybridCache.Implementation
             
             // Clean up tag mappings
             UntrackKeyTags(key);
+            CancelRefreshAhead(key);
         }
 
         public async Task InvalidateL2Async(string key)
@@ -527,6 +572,7 @@ namespace MethodCache.HybridCache.Implementation
             var invalidationTag = $"key:{key}";
             await _l2Cache.InvalidateByTagsAsync(invalidationTag);
             _logger.LogTrace("Invalidated L2 cache for key {Key} using synthetic tag {Tag}", key, invalidationTag);
+            CancelRefreshAhead(key);
         }
 
         public async Task InvalidateBothAsync(string key)
@@ -682,7 +728,7 @@ namespace MethodCache.HybridCache.Implementation
                 // Clean up tag mappings
                 ClearAllTagMappings();
                 _tagMappingLock?.Dispose();
-                
+
                 if (_l1Cache is IAsyncDisposable asyncL1Cache)
                 {
                     await asyncL1Cache.DisposeAsync();
@@ -691,7 +737,14 @@ namespace MethodCache.HybridCache.Implementation
                 {
                     _l1Cache?.Dispose();
                 }
-                
+
+                foreach (var registration in _refreshAheadTokens.Values)
+                {
+                    registration.Cancel();
+                    registration.Dispose();
+                }
+                _refreshAheadTokens.Clear();
+
                 _l2Semaphore?.Dispose();
                 _keyLevelLocks?.Dispose();
             }
@@ -714,10 +767,134 @@ namespace MethodCache.HybridCache.Implementation
 
         private TimeSpan CalculateL1Expiration(CacheMethodSettings settings)
         {
-            var requestedExpiration = settings.Duration ?? _options.L1DefaultExpiration;
+            var requestedExpiration = settings.SlidingExpiration ?? settings.Duration ?? _options.L1DefaultExpiration;
             return requestedExpiration > _options.L1MaxExpiration 
                 ? _options.L1MaxExpiration 
                 : requestedExpiration;
+        }
+
+        private static bool NeedsExecutionContext(CacheMethodSettings settings)
+            => settings.Condition != null || settings.OnHitAction != null || settings.OnMissAction != null;
+
+        private CacheExecutionContext EnsureExecutionContext(ref CacheExecutionContext? context, string methodName, object[] args)
+        {
+            if (context != null)
+            {
+                return context;
+            }
+
+            var serviceType = typeof(object);
+            var separator = methodName.LastIndexOf('.');
+            if (separator > 0)
+            {
+                var typeName = methodName.Substring(0, separator);
+                serviceType = Type.GetType(typeName) ?? typeof(object);
+            }
+
+            context = new CacheExecutionContext(methodName, serviceType, args, null, CancellationToken.None);
+            return context;
+        }
+
+        private void InvokeHitCallbacks(CacheMethodSettings settings, ref CacheExecutionContext? context, string methodName, object[] args)
+        {
+            if (settings.OnHitAction == null)
+            {
+                return;
+            }
+
+            var ctx = EnsureExecutionContext(ref context, methodName, args);
+            SafeInvoke(settings.OnHitAction, ctx);
+        }
+
+        private void InvokeMissCallbacks(CacheMethodSettings settings, ref CacheExecutionContext? context, string methodName, object[] args)
+        {
+            if (settings.OnMissAction == null)
+            {
+                return;
+            }
+
+            var ctx = EnsureExecutionContext(ref context, methodName, args);
+            SafeInvoke(settings.OnMissAction, ctx);
+        }
+
+        private void SafeInvoke(Action<CacheExecutionContext> callback, CacheExecutionContext context)
+        {
+            try
+            {
+                callback(context);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing cache callback for {Method}", context.MethodName);
+            }
+        }
+
+        private void ScheduleRefreshAhead<T>(
+            string cacheKey,
+            CacheMethodSettings settings,
+            Func<Task<T>> factory,
+            string methodName,
+            object[] args,
+            ICacheKeyGenerator keyGenerator,
+            bool requireIdempotent)
+        {
+            if (!settings.RefreshAhead.HasValue || !settings.Duration.HasValue)
+            {
+                return;
+            }
+
+            var delay = settings.Duration.Value - settings.RefreshAhead.Value;
+            if (delay < TimeSpan.Zero)
+            {
+                delay = TimeSpan.Zero;
+            }
+
+            var cts = new CancellationTokenSource();
+            var previous = _refreshAheadTokens.AddOrUpdate(cacheKey, cts, (_, existing) =>
+            {
+                existing.Cancel();
+                existing.Dispose();
+                return cts;
+            });
+
+            if (!ReferenceEquals(previous, cts))
+            {
+                // previous was disposed in delegate
+            }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delay, cts.Token).ConfigureAwait(false);
+                    await _keyLevelLocks.ExecuteWithLockAsync(cacheKey, async () =>
+                    {
+                        await ExecuteFactoryAndCache(methodName, args, factory, settings, keyGenerator, requireIdempotent, cacheKey).ConfigureAwait(false);
+                        return true;
+                    }).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error executing refresh-ahead for key {Key}", cacheKey);
+                }
+                finally
+                {
+                    _refreshAheadTokens.TryRemove(cacheKey, out _);
+                    cts.Dispose();
+                }
+            });
+        }
+
+        private void CancelRefreshAhead(string cacheKey)
+        {
+            if (_refreshAheadTokens.TryRemove(cacheKey, out var cts))
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }
         }
 
         private void OnBackplaneInvalidationReceived(object? sender, CacheInvalidationEventArgs e)

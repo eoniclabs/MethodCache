@@ -79,6 +79,8 @@ namespace MethodCache.Core.Configuration
             {
                 // Apply group settings only if method-specific settings don't override them
                 if (!finalSettings.Duration.HasValue) finalSettings.Duration = groupSettings.Duration;
+                if (!finalSettings.SlidingExpiration.HasValue) finalSettings.SlidingExpiration = groupSettings.SlidingExpiration;
+                if (!finalSettings.RefreshAhead.HasValue) finalSettings.RefreshAhead = groupSettings.RefreshAhead;
 
                 // For tags: combine method and group tags (union behavior)
                 // This ensures consistent behavior where group tags are always included
@@ -92,8 +94,14 @@ namespace MethodCache.Core.Configuration
                 if (!finalSettings.Version.HasValue) finalSettings.Version = groupSettings.Version;
                 if (finalSettings.KeyGeneratorType == null) finalSettings.KeyGeneratorType = groupSettings.KeyGeneratorType;
                 if (finalSettings.Condition == null) finalSettings.Condition = groupSettings.Condition;
-                if (finalSettings.OnHitAction == null) finalSettings.OnHitAction = groupSettings.OnHitAction;
-                if (finalSettings.OnMissAction == null) finalSettings.OnMissAction = groupSettings.OnMissAction;
+                if (finalSettings.OnHitAction == null && groupSettings.OnHitAction != null)
+                {
+                    finalSettings.OnHitAction = groupSettings.OnHitAction;
+                }
+                if (finalSettings.OnMissAction == null && groupSettings.OnMissAction != null)
+                {
+                    finalSettings.OnMissAction = groupSettings.OnMissAction;
+                }
                 // Only apply group idempotent if method-specific didn't set it
                 if (!currentMethodSettings.IsIdempotent) finalSettings.IsIdempotent = groupSettings.IsIdempotent;
             }

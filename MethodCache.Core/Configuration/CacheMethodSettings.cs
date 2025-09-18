@@ -13,7 +13,9 @@ namespace MethodCache.Core.Configuration
         public Action<CacheExecutionContext>? OnHitAction { get; set; }
         public Action<CacheExecutionContext>? OnMissAction { get; set; }
         public bool IsIdempotent { get; set; }
-        
+        public TimeSpan? SlidingExpiration { get; set; }
+        public TimeSpan? RefreshAhead { get; set; }
+    
         // ETag-specific settings
         public ETagSettings? ETag { get; set; }
     }
