@@ -1,4 +1,5 @@
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Fluent;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -84,6 +85,20 @@ namespace MethodCache.Core
             services.AddSingleton<IMethodCacheConfiguration>(configuration);
 
             return services;
+        }
+
+        /// <summary>
+        /// Adds MethodCache services configured via the fluent API.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configure">Fluent configuration delegate.</param>
+        /// <returns>The service collection.</returns>
+        public static IServiceCollection AddMethodCacheFluent(this IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            return services.AddMethodCache(config => config.ApplyFluent(configure));
         }
 
         /// <summary>

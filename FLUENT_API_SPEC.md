@@ -491,3 +491,9 @@ Add analyzer rules to validate distributed lock configurations:
 - [ ] Update analyzers and source generator logic to emit fluent API calls.
 - [ ] Refresh documentation, samples, and add benchmarking harnesses.
 - [ ] Gather beta feedback from sample apps and integration tests; iterate before general release.
+
+## Implementation Status & Next Steps
+- ✅ Fluent runtime entry points (`CacheManagerExtensions.GetOrCreateAsync` / `TryGetAsync`) plus supporting `CacheEntryOptions`, `CacheLookupResult`, and `CacheContext` types now wrap the existing `ICacheManager` without altering its contract.
+- ✅ Fluent configuration adapter (`configuration.ApplyFluent`, `AddMethodCacheFluent`) maps the new builders onto `CacheMethodSettings`, with tests covering default policies, per-method overrides, and DI integration.
+- 🔄 Upcoming work focuses on flowing fluent settings into the source generator/analyzers so generated proxies emit the new API surface.
+- ⏳ Bulk operations, streaming helpers, and advanced policies (locks, stampede protection, metrics) remain queued until configuration plumbing lands.
