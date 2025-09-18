@@ -342,6 +342,33 @@ namespace TestApp
         }
 
         [Fact]
+        public async Task GeneratesFluentConfigurationWithAttributeOptions()
+        {
+            var source = @"using MethodCache.Core;
+
+namespace TestApp
+{
+    public interface IUserService
+    {
+        [Cache(Duration = ""00:20:00"", Tags = new[] { ""users"", ""profile"" })]
+        string GetProfile(int id);
+    }
+}";
+
+            var result = await GetGeneratedSources(source);
+            LogGeneratedSources(result);
+
+            Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
+            Assert.NotNull(registrySource);
+            Assert.Contains("fluent.ForService<TestApp.IUserService>()", registrySource);
+            Assert.Contains(".Method(x => x.GetProfile(Any<int>.Value))", registrySource);
+            Assert.Contains("options.WithDuration(System.TimeSpan.Parse(\"00:20:00\"));", registrySource);
+            Assert.Contains("options.WithTags(\"users\", \"profile\");", registrySource);
+        }
+
+        [Fact]
         public async Task HandlesMethodsWithComplexParameters()
         {
             var source = @"using MethodCache.Core;

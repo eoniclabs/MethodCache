@@ -1107,6 +1107,53 @@ namespace MethodCache.SourceGenerator
                 return Utils.GetReturnTypeForSignature(type);
             }
 
+            private static List<string> BuildConfigureStatements(AttributeData? cacheAttr)
+            {
+                var statements = new List<string>();
+
+                if (cacheAttr == null)
+                {
+                    return statements;
+                }
+
+                if (TryGetNamedArgument(cacheAttr, "Duration", out var durationArg) &&
+                    durationArg.Value is string duration && !string.IsNullOrWhiteSpace(duration))
+                {
+                    statements.Add($"options.WithDuration(System.TimeSpan.Parse(\"{duration}\"));");
+                }
+
+                if (TryGetNamedArgument(cacheAttr, "Tags", out var tagsArg) && tagsArg.Kind == TypedConstantKind.Array)
+                {
+                    var tagValues = tagsArg.Values
+                        .Select(v => v.Value as string)
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Select(s => $"\"{s}\"")
+                        .ToArray();
+
+                    if (tagValues.Length > 0)
+                    {
+                        statements.Add($"options.WithTags({string.Join(", ", tagValues)});");
+                    }
+                }
+
+                return statements;
+            }
+
+            private static bool TryGetNamedArgument(AttributeData attribute, string name, out TypedConstant value)
+            {
+                foreach (var argument in attribute.NamedArguments)
+                {
+                    if (argument.Key == name)
+                    {
+                        value = argument.Value;
+                        return true;
+                    }
+                }
+
+                value = default;
+                return false;
+            }
+
             internal static string Emit(List<InterfaceInfo> interfaces)
             {
                 var sb = new StringBuilder();
@@ -1145,20 +1192,38 @@ namespace MethodCache.SourceGenerator
                             }
 
                             var paramList = string.Join(", ", model.Method.Parameters.Select(p => $"Any<{GetSimpleParameterType(p.Type)}>.Value"));
-                            sb.AppendLine($"                fluent.ForService<{interfaceName}>()");
-                            var methodInvocationLine = $"                    .Method(x => x.{model.Method.Name}({paramList}))";
+                            var configureStatements = BuildConfigureStatements(model.CacheAttr);
+                            var hasConfigure = configureStatements.Count > 0;
 
                             var groupArg = model.CacheAttr?.NamedArguments
                                 .FirstOrDefault(a => a.Key == "GroupName").Value.Value as string;
+                            var hasGroup = !string.IsNullOrWhiteSpace(groupArg);
 
-                            if (!string.IsNullOrWhiteSpace(groupArg))
+                            sb.AppendLine($"                fluent.ForService<{interfaceName}>()");
+
+                            var methodLine = $"                    .Method(x => x.{model.Method.Name}({paramList}))";
+                            if (!hasConfigure && !hasGroup)
                             {
-                                sb.AppendLine(methodInvocationLine);
-                                sb.AppendLine($"                    .WithGroup(\"{groupArg}\");");
+                                sb.AppendLine(methodLine + ";");
+                                continue;
                             }
-                            else
+
+                            sb.AppendLine(methodLine);
+
+                            if (hasConfigure)
                             {
-                                sb.AppendLine(methodInvocationLine + ";");
+                                sb.AppendLine("                    .Configure(options =>");
+                                sb.AppendLine("                    {");
+                                foreach (var statement in configureStatements)
+                                {
+                                    sb.AppendLine($"                        {statement}");
+                                }
+                                sb.AppendLine(hasGroup ? "                    })" : "                    });");
+                            }
+
+                            if (hasGroup)
+                            {
+                                sb.AppendLine($"                    .WithGroup(\"{groupArg}\");");
                             }
                         }
                     }
