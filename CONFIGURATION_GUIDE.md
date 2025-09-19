@@ -92,7 +92,13 @@ builder.Services.AddMethodCache(config => {
 public sealed class StableUserKeyGenerator : ICacheKeyGenerator
 {
     public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
-        => $"{methodName}:{args[0]}";
+    {
+        if (args.Length == 0)
+        {
+            throw new ArgumentException("Key generation requires at least one argument for this generator.", nameof(args));
+        }
+        return $"{methodName}:{args[0]}";
+    }
 }
 ```
 

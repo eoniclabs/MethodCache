@@ -32,11 +32,6 @@ namespace MethodCache.Core.Configuration.Fluent
                 OnMissAction = WrapCallbacks(options.OnMissCallbacks)
             };
 
-            if (settings.SlidingExpiration == null && options.SlidingExpiration != null)
-            {
-                settings.SlidingExpiration = options.SlidingExpiration;
-            }
-
             return settings;
         }
 

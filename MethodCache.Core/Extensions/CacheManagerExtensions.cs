@@ -173,6 +173,10 @@ namespace MethodCache.Core.Extensions
                 var bulkContext = new CacheContext(BulkMethodName, services);
                 var produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false);
 
+                // Build the cache settings once for efficiency
+                var cacheOptions = BuildOptions(configure);
+                var settings = ToMethodSettings(cacheOptions);
+
                 foreach (var key in missingKeys)
                 {
                     if (!produced.TryGetValue(key, out var value))
@@ -188,12 +192,15 @@ namespace MethodCache.Core.Extensions
                         continue;
                     }
 
+                    // Use the more direct cache manager method with pre-built settings
+                    var effectiveKeyGenerator = new FixedKeyGenerator(key, cacheOptions.Version);
                     await cacheManager.GetOrCreateAsync(
-                        key,
-                        (_, _) => new ValueTask<T>(capturedValue),
-                        configure,
-                        services,
-                        cancellationToken).ConfigureAwait(false);
+                        FluentMethodName,
+                        EmptyArgs,
+                        () => Task.FromResult(capturedValue),
+                        settings,
+                        effectiveKeyGenerator,
+                        requireIdempotent: true).ConfigureAwait(false);
                 }
             }
 

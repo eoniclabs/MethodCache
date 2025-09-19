@@ -1259,16 +1259,6 @@ namespace MethodCache.SourceGenerator
                                 var suffix = i == trailingCalls.Count - 1 ? ";" : string.Empty;
                                 sb.AppendLine($"                    {call}{suffix}");
                             }
-
-                            if (!hasConfigure && trailingCalls.Count > 0)
-                            {
-                                // The loop above added calls but no semicolon on the last line if there was only one entry.
-                                if (trailingCalls.Count == 1)
-                                {
-                                    // Ensure the single entry ends with semicolon.
-                                    // The loop already added suffix; no additional work needed.
-                                }
-                            }
                         }
                     }
 

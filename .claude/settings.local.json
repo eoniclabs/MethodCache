@@ -8,7 +8,10 @@
       "Bash(python pr_comments.py:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet run:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(python3:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr comment:*)"
     ],
     "deny": [],
     "ask": []
