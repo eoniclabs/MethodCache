@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System;
 using Xunit.Abstractions;
 
-namespace MethodCache.Tests.SourceGenerator
+namespace MethodCache.SourceGenerator.Tests
 {
     public class MethodCacheGeneratorTests
     {

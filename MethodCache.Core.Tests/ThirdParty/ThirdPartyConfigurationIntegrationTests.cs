@@ -8,7 +8,7 @@ using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Sources;
 
-namespace MethodCache.Tests.ThirdParty
+namespace MethodCache.Core.Tests.ThirdParty
 {
     /// <summary>
     /// Integration tests for third-party library caching approaches from CONFIGURATION_GUIDE.md

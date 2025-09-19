@@ -1,7 +1,7 @@
 using Xunit;
 using MethodCache.Core;
 
-namespace MethodCache.Tests
+namespace MethodCache.Core.Tests.Core
 {
     public class CacheAttributeTests
     {

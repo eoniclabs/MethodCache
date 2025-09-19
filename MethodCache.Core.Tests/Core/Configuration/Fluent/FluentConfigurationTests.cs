@@ -8,7 +8,7 @@ using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
 using Xunit;
 
-namespace MethodCache.Tests.Core.Configuration.Fluent
+namespace MethodCache.Core.Tests.Configuration.Fluent
 {
     public class FluentConfigurationTests
     {

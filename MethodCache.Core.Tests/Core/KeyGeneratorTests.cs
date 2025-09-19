@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MethodCache.Core.KeyGenerators;
 
-namespace MethodCache.Tests
+namespace MethodCache.Core.Tests
 {
     public class KeyGeneratorTests
     {

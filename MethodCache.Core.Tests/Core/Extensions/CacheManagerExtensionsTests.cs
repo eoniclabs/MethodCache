@@ -11,7 +11,7 @@ using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
 using Xunit;
 
-namespace MethodCache.Tests.Core.Extensions
+namespace MethodCache.Core.Tests.Extensions
 {
     public class CacheManagerExtensionsTests
     {

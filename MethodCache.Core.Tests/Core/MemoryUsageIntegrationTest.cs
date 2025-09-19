@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace MethodCache.Tests.Core
+namespace MethodCache.Core.Tests.Core
 {
     /// <summary>
     /// Integration test demonstrating the new memory usage calculation functionality.

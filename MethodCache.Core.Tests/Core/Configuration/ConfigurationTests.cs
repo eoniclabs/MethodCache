@@ -4,7 +4,7 @@ using MethodCache.Core;
 using System;
 using System.Linq;
 
-namespace MethodCache.Tests
+namespace MethodCache.Core.Tests.Configuration
 {
     public class ConfigurationTests
     {
@@ -46,14 +46,14 @@ namespace MethodCache.Tests
         public void MethodCacheConfiguration_ForService_Method_ConfiguresMethodSettings()
         {
             var config = new MethodCacheConfiguration();
-            ((IMethodCacheConfiguration)config).RegisterMethod<ITestService>(x => x.GetValue(Any<int>.Value), "MethodCache.Tests.ConfigurationTests.ITestService.GetValue", null);
+            ((IMethodCacheConfiguration)config).RegisterMethod<ITestService>(x => x.GetValue(Any<int>.Value), "MethodCache.Core.Tests.Configuration.ConfigurationTests.ITestService.GetValue", null);
             config.ForService<ITestService>()
                   .Method(x => x.GetValue(Any<int>.Value))
                   .Duration(TimeSpan.FromHours(1))
                   .TagWith("test-tag")
                   .Version(2);
 
-            var settings = config.GetMethodSettings("MethodCache.Tests.ConfigurationTests.ITestService.GetValue");
+            var settings = config.GetMethodSettings("MethodCache.Core.Tests.Configuration.ConfigurationTests.ITestService.GetValue");
 
             Assert.NotNull(settings);
             Assert.Equal(TimeSpan.FromHours(1), settings.Duration);
@@ -80,7 +80,7 @@ namespace MethodCache.Tests
         public void MethodCacheConfiguration_MethodSettingsPrecedenceOverGroupSettings()
         {
             var config = new MethodCacheConfiguration();
-            ((IMethodCacheConfiguration)config).RegisterMethod<ITestService>(x => x.GetAnotherValue(Any<string>.Value), "MethodCache.Tests.ConfigurationTests.ITestService.GetAnotherValue", "my-group");
+            ((IMethodCacheConfiguration)config).RegisterMethod<ITestService>(x => x.GetAnotherValue(Any<string>.Value), "MethodCache.Core.Tests.Configuration.ConfigurationTests.ITestService.GetAnotherValue", "my-group");
 
             // Configure group
             config.ForGroup("my-group")
@@ -93,7 +93,7 @@ namespace MethodCache.Tests
                   .Duration(TimeSpan.FromMinutes(15))
                   .TagWith("method-tag");
 
-            var settings = config.GetMethodSettings("MethodCache.Tests.ConfigurationTests.ITestService.GetAnotherValue");
+            var settings = config.GetMethodSettings("MethodCache.Core.Tests.Configuration.ConfigurationTests.ITestService.GetAnotherValue");
 
             Assert.NotNull(settings);
             Assert.Equal(TimeSpan.FromMinutes(15), settings.Duration);
@@ -105,7 +105,7 @@ namespace MethodCache.Tests
         public void MethodCacheConfiguration_MethodSettingsInheritFromGroupSettings()
         {
             var config = new MethodCacheConfiguration();
-            ((IMethodCacheConfiguration)config).RegisterMethod<ITestService>(x => x.GetValue(Any<int>.Value), "MethodCache.Tests.ConfigurationTests.ITestService.GetValue", "my-group");
+            ((IMethodCacheConfiguration)config).RegisterMethod<ITestService>(x => x.GetValue(Any<int>.Value), "MethodCache.Core.Tests.Configuration.ConfigurationTests.ITestService.GetValue", "my-group");
 
             // Configure group
             config.ForGroup("my-group")
@@ -116,7 +116,7 @@ namespace MethodCache.Tests
             config.ForService<ITestService>()
                   .Method(x => x.GetValue(Any<int>.Value));
 
-            var settings = config.GetMethodSettings("MethodCache.Tests.ConfigurationTests.ITestService.GetValue");
+            var settings = config.GetMethodSettings("MethodCache.Core.Tests.Configuration.ConfigurationTests.ITestService.GetValue");
 
             Assert.NotNull(settings);
             // Method inherits group settings when not overridden

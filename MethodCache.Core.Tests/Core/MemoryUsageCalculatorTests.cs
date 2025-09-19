@@ -9,7 +9,7 @@ using MethodCache.Core.Configuration;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace MethodCache.Tests.Core
+namespace MethodCache.Core.Tests.Core
 {
     public class MemoryUsageCalculatorTests
     {

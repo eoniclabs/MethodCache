@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
-namespace MethodCache.Tests.Core
+namespace MethodCache.Core.Tests.Core
 {
     public class ServiceRegistrationTests
     {

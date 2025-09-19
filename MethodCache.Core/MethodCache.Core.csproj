@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="MethodCache.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
   </ItemGroup>
 
 </Project>

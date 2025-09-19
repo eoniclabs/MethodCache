@@ -9,7 +9,7 @@ using Xunit;
 using Xunit.Abstractions;
 using MethodCache.Analyzers;
 
-namespace MethodCache.Tests.Analyzers
+namespace MethodCache.Analyzers.Tests
 {
     public class MethodCacheAnalyzerTests
     {

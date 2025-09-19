@@ -7,7 +7,7 @@ using MethodCache.Core.Configuration.Runtime;
 using MethodCache.Core.Configuration.Sources;
 using Xunit;
 
-namespace MethodCache.Tests.Core.Configuration
+namespace MethodCache.Core.Tests.Configuration
 {
     public class RuntimeCacheConfiguratorTests
     {
