@@ -10,7 +10,7 @@ using MethodCache.Core.Metrics;
 using MethodCache.Core.Options;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Runtime.Defaults
 {
     /// <summary>
     /// Enhanced in-memory cache manager that implements both ICacheManager and IMemoryCache interfaces.

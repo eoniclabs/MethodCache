@@ -3,7 +3,7 @@ using System.Text;
 using MessagePack;
 using MethodCache.Core.KeyGenerators;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Runtime.Defaults
 {
     public class DefaultCacheKeyGenerator : MessagePackKeyGenerator
     {

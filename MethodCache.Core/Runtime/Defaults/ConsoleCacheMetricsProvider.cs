@@ -1,6 +1,6 @@
 using System;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Runtime.Defaults
 {
     public class ConsoleCacheMetricsProvider : ICacheMetricsProvider
     {

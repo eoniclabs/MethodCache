@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace MethodCache.Core.Configuration.RuntimeConfiguration
+namespace MethodCache.Core.Configuration.Runtime
 {
     /// <summary>
     /// Options for MethodCache that can be configured via IOptions pattern

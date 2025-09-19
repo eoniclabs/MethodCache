@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration.Sources;
 
-namespace MethodCache.Core.Configuration.RuntimeConfiguration
+namespace MethodCache.Core.Configuration.Runtime
 {
     /// <summary>
     /// Configuration source that monitors IOptions changes for runtime reconfiguration

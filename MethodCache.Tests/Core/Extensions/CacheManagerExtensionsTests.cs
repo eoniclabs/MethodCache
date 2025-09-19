@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
+using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Extensions;
 using MethodCache.Core.Options;

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Sources;
 
-namespace MethodCache.Core.Configuration.RuntimeConfiguration
+namespace MethodCache.Core.Configuration.Runtime
 {
     internal sealed class RuntimeOverrideConfigurationSource : IConfigurationSource
     {

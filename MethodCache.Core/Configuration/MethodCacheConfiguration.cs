@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using MethodCache.Core.Configuration.Sources;
+using MethodCache.Core.Runtime.Defaults;
 
 namespace MethodCache.Core.Configuration
 {

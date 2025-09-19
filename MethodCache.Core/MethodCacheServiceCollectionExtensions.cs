@@ -1,5 +1,6 @@
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Runtime.Defaults;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 

@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using MethodCache.Core;
+using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

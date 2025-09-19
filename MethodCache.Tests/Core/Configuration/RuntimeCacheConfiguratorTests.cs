@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Configuration.RuntimeConfiguration;
+using MethodCache.Core.Configuration.Runtime;
 using MethodCache.Core.Configuration.Sources;
 using Xunit;
 

@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Runtime.Defaults
 {
     public class MockCacheManager : ICacheManager
     {

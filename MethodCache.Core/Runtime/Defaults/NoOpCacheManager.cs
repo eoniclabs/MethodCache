@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Runtime.Defaults
 {
     public class NoOpCacheManager : ICacheManager
     {
