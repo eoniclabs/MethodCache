@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(timeout 30s dotnet test:*)",
-      "Bash(gtimeout 30s dotnet test MethodCache.Providers.Redis.IntegrationTests --filter \"RedisHealthCheck_ShouldReturnHealthy_WhenRedisIsAvailable\" --verbosity normal)"
+      "Bash(gtimeout 30s dotnet test MethodCache.Providers.Redis.IntegrationTests --filter \"RedisHealthCheck_ShouldReturnHealthy_WhenRedisIsAvailable\" --verbosity normal)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(python pr_comments.py:*)"
     ],
     "deny": [],
     "ask": []

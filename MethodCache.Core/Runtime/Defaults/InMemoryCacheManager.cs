@@ -18,6 +18,8 @@ namespace MethodCache.Core.Runtime.Defaults
     /// </summary>
     public class InMemoryCacheManager : ICacheManager, IMemoryCache
     {
+        // Thread-local Random to avoid contention in hot paths
+        private static readonly ThreadLocal<Random> ThreadLocalRandom = new ThreadLocal<Random>(() => new Random(Guid.NewGuid().GetHashCode()));
         private class EnhancedCacheEntry
         {
             private long _accessCount;
@@ -433,7 +435,7 @@ namespace MethodCache.Core.Runtime.Defaults
                     var beta = stampede.Beta <= 0 ? 1d : stampede.Beta;
                     var ratio = Math.Min(1d, age.TotalSeconds / duration.TotalSeconds);
                     var probability = Math.Exp(-beta * ratio);
-                    var sample = Random.Shared.NextDouble();
+                    var sample = ThreadLocalRandom.Value!.NextDouble();
                     return sample > probability;
                 }
                 case StampedeProtectionMode.DistributedLock:
@@ -1055,6 +1057,7 @@ namespace MethodCache.Core.Runtime.Defaults
                 _evictionSemaphore?.Dispose();
                 _cache.Clear();
                 _singleFlightGates.Clear();
+                ThreadLocalRandom?.Dispose();
                 _disposed = true;
             }
         }

@@ -324,14 +324,23 @@ namespace MethodCache.Providers.Redis
 
                     foreach (var endpoint in multiplexer.GetEndPoints())
                     {
-                        var server = multiplexer.GetServer(endpoint);
-                        if (!server.IsConnected)
+                        try
                         {
-                            continue;
-                        }
+                            var server = multiplexer.GetServer(endpoint);
+                            if (!server.IsConnected)
+                            {
+                                _logger.LogWarning("Redis server at endpoint {Endpoint} is not connected. Skipping.", endpoint);
+                                continue;
+                            }
 
-                        var scan = server.Keys(database.Database, pattern: prefixedPattern);
-                        keysToDelete.AddRange(scan);
+                            var scan = server.Keys(database.Database, pattern: prefixedPattern);
+                            keysToDelete.AddRange(scan);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error scanning keys on endpoint {Endpoint}. Continuing with other endpoints.", endpoint);
+                            // Continue with other endpoints even if one fails
+                        }
                     }
 
                     if (keysToDelete.Count == 0)

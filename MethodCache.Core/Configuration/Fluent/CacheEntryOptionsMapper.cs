@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Options;
@@ -9,10 +10,15 @@ namespace MethodCache.Core.Configuration.Fluent
     {
         public static CacheMethodSettings ToCacheMethodSettings(CacheEntryOptions options)
         {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             var settings = new CacheMethodSettings
             {
                 Duration = options.Duration,
-                Tags = new List<string>(options.Tags),
+                Tags = options.Tags != null ? new List<string>(options.Tags) : new List<string>(),
                 IsIdempotent = false,
                 SlidingExpiration = options.SlidingExpiration ?? options.Duration,
                 RefreshAhead = options.RefreshAhead,
@@ -41,22 +47,34 @@ namespace MethodCache.Core.Configuration.Fluent
                 return null;
             }
 
-            return context => predicate(new CacheContext(context.MethodName, context.Services));
+            return context =>
+            {
+                if (context == null)
+                {
+                    throw new ArgumentNullException(nameof(context));
+                }
+                return predicate(new CacheContext(context.MethodName, context.Services));
+            };
         }
 
-        private static Action<CacheExecutionContext>? WrapCallbacks(IReadOnlyList<Action<CacheContext>> callbacks)
+        private static Action<CacheExecutionContext>? WrapCallbacks(IReadOnlyList<Action<CacheContext>>? callbacks)
         {
-            if (callbacks.Count == 0)
+            if (callbacks == null || callbacks.Count == 0)
             {
                 return null;
             }
 
             return context =>
             {
+                if (context == null)
+                {
+                    throw new ArgumentNullException(nameof(context));
+                }
+
                 var cacheContext = new CacheContext(context.MethodName, context.Services);
                 foreach (var callback in callbacks)
                 {
-                    callback(cacheContext);
+                    callback?.Invoke(cacheContext);
                 }
             };
         }

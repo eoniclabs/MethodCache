@@ -218,36 +218,125 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var streamOptions = BuildStreamOptions(configure);
-            var segmentCapacity = streamOptions.SegmentSize > 0 ? streamOptions.SegmentSize : 0;
+            var segmentSize = streamOptions.SegmentSize > 0 ? streamOptions.SegmentSize : 100;
+            var maxMemorySize = streamOptions.MaxMemorySize > 0 ? streamOptions.MaxMemorySize : 10_000;
 
-            var items = await cacheManager.GetOrCreateAsync<IReadOnlyList<T>>(
-                key,
-                async (context, token) =>
-                {
-                    var buffer = segmentCapacity > 0 ? new List<T>(segmentCapacity) : new List<T>();
-                    await foreach (var item in factory(context, token).WithCancellation(token).ConfigureAwait(false))
-                    {
-                        buffer.Add(item);
-                    }
+            // Try to get cached segments
+            var segmentIndex = 0;
+            var hasMoreSegments = true;
+            var totalItemsRetrieved = 0;
 
-                    return (IReadOnlyList<T>)buffer.ToArray();
-                },
-                builder =>
-                {
-                    if (streamOptions.Duration.HasValue)
-                    {
-                        builder.WithDuration(streamOptions.Duration.Value);
-                    }
-                },
-                services,
-                cancellationToken).ConfigureAwait(false);
-
-            foreach (var item in items)
+            while (hasMoreSegments && totalItemsRetrieved < maxMemorySize)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return item;
+                var segmentKey = $"{key}:segment:{segmentIndex}";
+                var segment = await cacheManager.TryGetAsync<StreamSegment<T>>(
+                    segmentKey,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (segment.Found && segment.Value != null)
+                {
+                    // Yield items from cached segment
+                    foreach (var item in segment.Value.Items)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        yield return item;
+                        totalItemsRetrieved++;
+                        if (totalItemsRetrieved >= maxMemorySize)
+                        {
+                            yield break;
+                        }
+                    }
+                    hasMoreSegments = segment.Value.HasMore;
+                    segmentIndex++;
+                }
+                else
+                {
+                    // No cached segment found, need to generate from factory
+                    hasMoreSegments = false;
+                }
+            }
+
+            // If we didn't find any cached segments, generate from factory
+            if (segmentIndex == 0)
+            {
+                segmentIndex = 0;
+                var buffer = new List<T>(segmentSize);
+                var totalItemsGenerated = 0;
+
+                await foreach (var item in factory(new CacheContext(key, services), cancellationToken)
+                    .WithCancellation(cancellationToken).ConfigureAwait(false))
+                {
+                    buffer.Add(item);
+                    totalItemsGenerated++;
+
+                    // When buffer is full or we hit memory limit, cache the segment
+                    if (buffer.Count >= segmentSize || totalItemsGenerated >= maxMemorySize)
+                    {
+                        var hasMore = totalItemsGenerated < maxMemorySize;
+                        var segment = new StreamSegment<T>(buffer.ToArray(), hasMore);
+                        var segmentKey = $"{key}:segment:{segmentIndex}";
+
+                        // Cache this segment
+                        await cacheManager.GetOrCreateAsync(
+                            segmentKey,
+                            (_, _) => new ValueTask<StreamSegment<T>>(segment),
+                            builder =>
+                            {
+                                if (streamOptions.Duration.HasValue)
+                                {
+                                    builder.WithDuration(streamOptions.Duration.Value);
+                                }
+                            },
+                            services,
+                            cancellationToken).ConfigureAwait(false);
+
+                        // Yield items from this segment
+                        foreach (var bufferedItem in buffer)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            yield return bufferedItem;
+                        }
+
+                        buffer.Clear();
+                        segmentIndex++;
+
+                        if (totalItemsGenerated >= maxMemorySize)
+                        {
+                            yield break;
+                        }
+                    }
+                }
+
+                // Cache any remaining items in the buffer
+                if (buffer.Count > 0)
+                {
+                    var segment = new StreamSegment<T>(buffer.ToArray(), false);
+                    var segmentKey = $"{key}:segment:{segmentIndex}";
+
+                    await cacheManager.GetOrCreateAsync(
+                        segmentKey,
+                        (_, _) => new ValueTask<StreamSegment<T>>(segment),
+                        builder =>
+                        {
+                            if (streamOptions.Duration.HasValue)
+                            {
+                                builder.WithDuration(streamOptions.Duration.Value);
+                            }
+                        },
+                        services,
+                        cancellationToken).ConfigureAwait(false);
+
+                    // Yield remaining items
+                    foreach (var bufferedItem in buffer)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        yield return bufferedItem;
+                    }
+                }
             }
         }
+
+        private sealed record StreamSegment<T>(IReadOnlyList<T> Items, bool HasMore);
 
         private static CacheEntryOptions BuildOptions(Action<CacheEntryOptions.Builder>? configure)
         {

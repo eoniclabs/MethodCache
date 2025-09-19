@@ -147,9 +147,9 @@ namespace MethodCache.Core.Options
             /// </summary>
             public Builder RefreshAhead(TimeSpan window)
             {
-                if (window < TimeSpan.Zero)
+                if (window <= TimeSpan.Zero)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(window), "Refresh window must be non-negative.");
+                    throw new ArgumentOutOfRangeException(nameof(window), "Refresh window must be positive.");
                 }
 
                 _refreshAhead = window;
@@ -184,12 +184,30 @@ namespace MethodCache.Core.Options
 
             public Builder WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0, TimeSpan? refreshAheadWindow = null)
             {
+                if (beta <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(beta), "Beta must be positive.");
+                }
+                if (refreshAheadWindow.HasValue && refreshAheadWindow.Value <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(refreshAheadWindow), "Refresh ahead window must be positive.");
+                }
+
                 _stampedeProtection = new StampedeProtectionOptions(mode, beta, refreshAheadWindow);
                 return this;
             }
 
             public Builder WithDistributedLock(TimeSpan timeout, int maxConcurrency = 1)
             {
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive.");
+                }
+                if (maxConcurrency <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(maxConcurrency), "Max concurrency must be positive.");
+                }
+
                 _distributedLock = new DistributedLockOptions(timeout, maxConcurrency);
                 return this;
             }

@@ -25,7 +25,8 @@ This guide covers all the ways you can configure MethodCache, from simple attrib
 7. [Management Interface & Runtime Overrides](#management-interface--runtime-overrides)
 8. [Multi-Source Configuration](#multi-source-configuration)
 9. [Configuration Priorities](#configuration-priorities)
-10. [Examples](#examples)
+10. [Configuration Validation](#configuration-validation)
+11. [Examples](#examples)
 
 ## Configuration Overview
 
@@ -496,6 +497,89 @@ When multiple sources configure the same method, priority determines the winner:
 
 // Runtime (highest priority - management interface)
 "Duration": "00:30:00"         // ✅ This wins!
+```
+
+## Configuration Validation
+
+MethodCache performs comprehensive validation to ensure configuration integrity:
+
+### Built-in Validation Rules
+
+| Parameter | Validation Rule | Error Message |
+|-----------|----------------|---------------|
+| Duration | Must be positive (> 0) | "Duration must be positive" |
+| SlidingExpiration | Must be positive (> 0) | "Sliding expiration must be positive" |
+| RefreshAhead | Must be positive (> 0) | "Refresh window must be positive" |
+| StampedeProtection.Beta | Must be positive (> 0) | "Beta must be positive" |
+| StampedeProtection.RefreshAheadWindow | Must be positive (> 0) | "Refresh ahead window must be positive" |
+| DistributedLock.Timeout | Must be positive (> 0) | "Timeout must be positive" |
+| DistributedLock.MaxConcurrency | Must be positive (> 0) | "Max concurrency must be positive" |
+| Version | Must be non-negative (>= 0) | "Version must be non-negative" |
+| SegmentSize | Must be positive (> 0) | "Segment size must be positive" |
+| MaxMemorySize | Must be positive (> 0) | "Max memory size must be positive" |
+
+### Validation Examples
+
+```csharp
+// ✅ Valid configuration
+config.ForService<IUserService>()
+    .Method(x => x.GetData(default))
+    .Configure(options =>
+    {
+        options.WithDuration(TimeSpan.FromMinutes(30));     // ✅ Positive
+        options.RefreshAhead(TimeSpan.FromSeconds(10));     // ✅ Positive
+        options.WithVersion(1);                             // ✅ Non-negative
+    });
+
+// ❌ Invalid configuration - throws ArgumentOutOfRangeException
+config.ForService<IUserService>()
+    .Method(x => x.GetData(default))
+    .Configure(options =>
+    {
+        options.WithDuration(TimeSpan.Zero);                // ❌ Not positive
+        options.RefreshAhead(TimeSpan.FromSeconds(-1));     // ❌ Negative
+        options.WithVersion(-1);                           // ❌ Negative
+    });
+```
+
+### Custom Validation
+
+You can add custom validation logic:
+
+```csharp
+builder.Services.AddMethodCache(config =>
+{
+    config.OnConfiguring(settings =>
+    {
+        // Custom validation
+        if (settings.Duration > TimeSpan.FromDays(7))
+        {
+            throw new InvalidOperationException("Cache duration cannot exceed 7 days");
+        }
+
+        if (settings.Tags.Contains("temp") && settings.Duration > TimeSpan.FromHours(1))
+        {
+            throw new InvalidOperationException("Temporary caches cannot exceed 1 hour");
+        }
+    });
+});
+```
+
+### Idempotency Validation
+
+Methods marked with `RequireIdempotent` enforce idempotency at runtime:
+
+```csharp
+[Cache(RequireIdempotent = true)]
+Task<Data> GetDataAsync(int id); // Must be marked as idempotent in config
+
+// Configuration
+config.ForService<IService>()
+    .Method(x => x.GetDataAsync(default))
+    .RequireIdempotent(true); // ✅ Matches requirement
+
+// Runtime error if not idempotent:
+// InvalidOperationException: Method GetDataAsync is not marked as idempotent, but caching requires it.
 ```
 
 ## Examples

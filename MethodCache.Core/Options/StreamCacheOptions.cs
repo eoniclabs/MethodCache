@@ -7,10 +7,11 @@ namespace MethodCache.Core.Options
     /// </summary>
     public sealed class StreamCacheOptions
     {
-        internal StreamCacheOptions(TimeSpan? duration, int segmentSize, bool enableWindowing)
+        internal StreamCacheOptions(TimeSpan? duration, int segmentSize, int maxMemorySize, bool enableWindowing)
         {
             Duration = duration;
             SegmentSize = segmentSize;
+            MaxMemorySize = maxMemorySize;
             EnableWindowing = enableWindowing;
         }
 
@@ -25,6 +26,11 @@ namespace MethodCache.Core.Options
         public int SegmentSize { get; }
 
         /// <summary>
+        /// Gets the maximum number of items to cache in memory for a stream.
+        /// </summary>
+        public int MaxMemorySize { get; }
+
+        /// <summary>
         /// Indicates whether windowing is enabled for large streams.
         /// </summary>
         public bool EnableWindowing { get; }
@@ -33,6 +39,7 @@ namespace MethodCache.Core.Options
         {
             private TimeSpan? _duration;
             private int _segmentSize = 256;
+            private int _maxMemorySize = 10_000;
             private bool _enableWindowing;
 
             public Builder WithDuration(TimeSpan duration)
@@ -57,6 +64,17 @@ namespace MethodCache.Core.Options
                 return this;
             }
 
+            public Builder WithMaxMemorySize(int maxMemorySize)
+            {
+                if (maxMemorySize <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(maxMemorySize), "Max memory size must be positive.");
+                }
+
+                _maxMemorySize = maxMemorySize;
+                return this;
+            }
+
             public Builder EnableWindowing(bool enabled = true)
             {
                 _enableWindowing = enabled;
@@ -65,7 +83,7 @@ namespace MethodCache.Core.Options
 
             public StreamCacheOptions Build()
             {
-                return new StreamCacheOptions(_duration, _segmentSize, _enableWindowing);
+                return new StreamCacheOptions(_duration, _segmentSize, _maxMemorySize, _enableWindowing);
             }
         }
     }

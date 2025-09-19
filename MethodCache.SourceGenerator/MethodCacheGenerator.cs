@@ -805,6 +805,8 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
             }
 
+            private const string IsIdempotentProperty = "settings.IsIdempotent";
+
             private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType)
             {
                 var call = BuildMethodCall(method);
@@ -814,7 +816,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine("                settings.IsIdempotent);");
+                sb.AppendLine($"                {IsIdempotentProperty});");
             }
 
             private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType)
@@ -826,26 +828,26 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine("                settings.IsIdempotent);");
+                sb.AppendLine($"                {IsIdempotentProperty});");
                 sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
             }
 
             private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType)
             {
                 var call = BuildMethodCall(method);
-                
+
                 // Add warning comment about sync-over-async
                 sb.AppendLine("            // WARNING: This is a sync-over-async pattern that may cause deadlocks");
                 sb.AppendLine("            // in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
                 sb.AppendLine("            // Consider making the method async to avoid potential issues.");
-                
+
                 sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
                 sb.AppendLine($"                \"{method.Name}\",");
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                () => Task.FromResult({call}),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine("                settings.IsIdempotent)");
+                sb.AppendLine($"                {IsIdempotentProperty})");
                 sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 
