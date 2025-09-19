@@ -231,118 +231,114 @@ builder.Services.AddMethodCacheWithSources(cache => {
 
 ## Management Interface & Runtime Overrides
 
-**🔥 CRITICAL FEATURE:** Runtime configuration has the **highest priority** and can override ALL other configuration sources. This enables powerful management interfaces for operational control.
+**🔥 CRITICAL FEATURE:** The runtime layer has the **highest priority** and overrides every other configuration surface. The DI container exposes `IRuntimeCacheConfigurator`, giving you a single entry point for management UIs, incident tooling, or scripting.
 
-### Why Runtime Has Highest Priority
+### Runtime management API surface
 
-Runtime configuration is designed to be the **ultimate override mechanism** for operational scenarios:
+| Method | What it does |
+|--------|---------------|
+| `ApplyFluentAsync(Action<IFluentMethodCacheConfiguration>)` | Reuses the fluent builders you already use at startup. Great for strongly typed overrides. |
+| `ApplyOverridesAsync(IEnumerable<MethodCacheConfigEntry>)` | Accepts raw method keys/settings – perfect for UI forms or persisted runtime rules. |
+| `GetOverridesAsync()` | Returns every live override (cloned so callers can edit safely). |
+| `RemoveOverrideAsync(serviceType, methodName)` | Removes a single method override; returns `false` if nothing was there. |
+| `ClearOverridesAsync()` | Drops the runtime layer entirely. |
+| `GetEffectiveConfigurationAsync()` | Provides the fully merged view after attributes, config files, and runtime overrides. |
 
-- **🚨 Emergency Response**: Instantly disable problematic caches during incidents
-- **⚡ Live Performance Tuning**: Adjust cache durations based on real-time metrics  
-- **🔬 A/B Testing**: Override code settings for experiments
-- **🛡️ Compliance**: Disable caching for sensitive data on demand
-- **📊 Dynamic Optimization**: Adjust settings based on usage patterns
+### Example: Cache management endpoints
 
-### Building Management Interfaces
-
-Since runtime configuration overrides everything, you can build powerful admin interfaces:
-
-#### Emergency Cache Control
 ```csharp
 [ApiController]
 [Route("api/admin/cache")]
-public class CacheManagementController : ControllerBase
+public sealed class CacheManagementController : ControllerBase
 {
-    private readonly IConfiguration _configuration;
-    
-    [HttpPost("emergency-disable")]
-    public async Task<IActionResult> EmergencyDisableCache(
-        [FromBody] EmergencyDisableRequest request)
+    private readonly IRuntimeCacheConfigurator _configurator;
+
+    public CacheManagementController(IRuntimeCacheConfigurator configurator)
+        => _configurator = configurator;
+
+    // Strongly-typed override (great for known hotspots)
+    [HttpPost("orders/boost")]
+    public async Task<IActionResult> BoostOrdersAsync([FromBody] TimeSpan duration)
     {
-        // This OVERRIDES all other configuration sources including code!
-        var key = $"MethodCache:Services:{request.ServiceName}:Methods:{request.MethodName}";
-        
-        // Update configuration source (Azure App Configuration, etc.)
-        await _configurationService.UpdateAsync(key + ":Enabled", "false");
-        await _configurationService.UpdateAsync(key + ":Duration", "00:00:01");
-        
-        // IOptionsMonitor automatically picks up changes
-        return Ok($"Cache disabled for {request.ServiceName}.{request.MethodName}");
-    }
-    
-    [HttpPost("tune-performance")]
-    public async Task<IActionResult> TunePerformance(
-        [FromBody] PerformanceTuningRequest request)
-    {
-        var key = $"MethodCache:Services:{request.ServiceName}:Methods:{request.MethodName}";
-        
-        // Override programmatic duration settings
-        await _configurationService.UpdateAsync(key + ":Duration", request.Duration.ToString());
-        await _configurationService.UpdateAsync(key + ":Tags", 
-            JsonSerializer.Serialize(new[] { "performance-tuned", $"admin-{DateTime.UtcNow:yyyyMMdd}" }));
-        
-        return Ok($"Performance tuned: {request.ServiceName}.{request.MethodName} -> {request.Duration}");
-    }
-    
-    [HttpPost("ab-test")]
-    public async Task<IActionResult> SetupABTest([FromBody] ABTestRequest request)
-    {
-        var settings = request.Variant switch
+        await _configurator.ApplyFluentAsync(fluent =>
         {
-            "aggressive" => new { 
-                Duration = "01:00:00", 
-                Tags = new[] { "ab-test", "aggressive" },
-                Enabled = true
-            },
-            "conservative" => new { 
-                Duration = "00:05:00", 
-                Tags = new[] { "ab-test", "conservative" },
-                Enabled = true
-            },
-            "disabled" => new { 
-                Enabled = false,
-                Tags = new[] { "ab-test", "disabled" }
-            },
-            _ => throw new ArgumentException("Invalid variant")
+            fluent.ForService<IOrdersService>()
+                  .Method(s => s.GetAsync(default))
+                  .Configure(o => o
+                      .WithDuration(duration)
+                      .WithTags("runtime", "orders"));
+        });
+
+        return Ok();
+    }
+
+    // Dynamic override driven by UI form input
+    [HttpPost("overrides")]
+    public async Task<IActionResult> UpsertOverride([FromBody] CacheOverrideRequest request)
+    {
+        var entry = new MethodCacheConfigEntry
+        {
+            ServiceType = request.ServiceType,
+            MethodName = request.MethodName,
+            Settings = new CacheMethodSettings
+            {
+                Duration = request.Duration,
+                Tags = request.Tags?.ToList() ?? new List<string>(),
+                IsIdempotent = request.RequireIdempotency
+            }
         };
-        
-        var key = $"MethodCache:Services:{request.ServiceName}:Methods:{request.MethodName}";
-        await _configurationService.UpdateAsync(key, JsonSerializer.Serialize(settings));
-        
-        return Ok($"A/B test configured: {request.ServiceName}.{request.MethodName} -> {request.Variant}");
+
+        await _configurator.ApplyOverridesAsync(new[] { entry });
+        return Ok();
+    }
+
+    [HttpDelete("overrides")]
+    public async Task<IActionResult> RemoveOverride([FromQuery] string service, [FromQuery] string method)
+    {
+        var removed = await _configurator.RemoveOverrideAsync(service, method);
+        return removed ? NoContent() : NotFound();
+    }
+
+    [HttpDelete("overrides/all")]
+    public async Task<IActionResult> ClearOverrides()
+    {
+        await _configurator.ClearOverridesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("overrides")]
+    public async Task<IReadOnlyList<MethodCacheConfigEntry>> GetOverrides()
+        => await _configurator.GetOverridesAsync();
+
+    [HttpGet("effective")]
+    public async Task<IActionResult> GetEffectiveConfiguration()
+    {
+        var entries = await _configurator.GetEffectiveConfigurationAsync();
+        return Ok(entries.Select(e => new
+        {
+            e.ServiceType,
+            e.MethodName,
+            Duration = e.Settings.Duration,
+            Tags = e.Settings.Tags,
+            e.Priority
+        }));
     }
 }
 
-public record EmergencyDisableRequest(string ServiceName, string MethodName);
-public record PerformanceTuningRequest(string ServiceName, string MethodName, TimeSpan Duration);
-public record ABTestRequest(string ServiceName, string MethodName, string Variant);
+public sealed record CacheOverrideRequest(
+    string ServiceType,
+    string MethodName,
+    TimeSpan? Duration,
+    string[]? Tags,
+    bool RequireIdempotency);
 ```
 
-#### Real-Time Configuration Dashboard
-```csharp
-[HttpGet("status")]
-public async Task<IActionResult> GetCacheStatus()
-{
-    var manager = _serviceProvider.GetRequiredService<IMethodCacheConfigurationManager>();
-    var allConfigs = manager.GetAllConfigurations();
-    
-    var status = allConfigs.Select(kvp => new
-    {
-        Method = kvp.Key,
-        Duration = kvp.Value.Duration?.ToString(),
-        Tags = kvp.Value.Tags,
-        Enabled = kvp.Value.Enabled ?? true,
-        ETag = kvp.Value.ETag != null ? new
-        {
-            Strategy = kvp.Value.ETag.Strategy.ToString(),
-            UseWeakETag = kvp.Value.ETag.UseWeakETag
-        } : null,
-        LastModified = DateTime.UtcNow // Would track actual modification time
-    });
-    
-    return Ok(status);
-}
-```
+With these endpoints you can build dashboards that:
+
+- **🚨 Kill a cache** during incidents (`ClearOverridesAsync` or `RemoveOverrideAsync`).
+- **⚡ Tune durations** on the fly (`ApplyOverridesAsync`).
+- **🔬 Run experiments** by applying different overrides and comparing metrics.
+- **📊 Visualize the truth** with `GetEffectiveConfigurationAsync` – what the system is actually using right now.
 
 ### Integration with External Configuration Stores
 
@@ -637,12 +633,19 @@ With runtime configuration having the highest priority, you can build powerful m
 public async Task EmergencyDisableCache(string service, string method)
 {
     // This will override ALL other configuration sources
-    await _configurationService.UpdateCacheSettingAsync($"{service}.{method}", new {
-        Enabled = false,
-        Duration = "00:00:01" // Minimal cache
+    await _configurator.ApplyOverridesAsync(new[]
+    {
+        new MethodCacheConfigEntry
+        {
+            ServiceType = service,
+            MethodName = method,
+            Settings = new CacheMethodSettings
+            {
+                Duration = TimeSpan.Zero,
+                Tags = new List<string> { "emergency-disable" }
+            }
+        }
     });
-    
-    // Configuration automatically reloads via IOptionsMonitor
 }
 ```
 
@@ -652,9 +655,18 @@ public async Task EmergencyDisableCache(string service, string method)
 public async Task TunePerformance(string service, string method, TimeSpan duration)
 {
     // Override programmatic settings for live tuning
-    await _configurationService.UpdateCacheSettingAsync($"{service}.{method}", new {
-        Duration = duration.ToString(),
-        Tags = new[] { "performance-tuned" }
+    await _configurator.ApplyOverridesAsync(new[]
+    {
+        new MethodCacheConfigEntry
+        {
+            ServiceType = service,
+            MethodName = method,
+            Settings = new CacheMethodSettings
+            {
+                Duration = duration,
+                Tags = new List<string> { "performance-tuned" }
+            }
+        }
     });
 }
 ```
@@ -666,12 +678,24 @@ public async Task SetupABTest(string service, string method, string variant)
 {
     var settings = variant switch
     {
-        "aggressive" => new { Duration = "01:00:00", Tags = new[] { "ab-test", "aggressive" } },
-        "conservative" => new { Duration = "00:05:00", Tags = new[] { "ab-test", "conservative" } },
+        "aggressive" => (Duration: TimeSpan.FromHours(1), Tags: new[] { "ab-test", "aggressive" }),
+        "conservative" => (Duration: TimeSpan.FromMinutes(5), Tags: new[] { "ab-test", "conservative" }),
         _ => throw new ArgumentException("Invalid variant")
     };
-    
-    await _configurationService.UpdateCacheSettingAsync($"{service}.{method}", settings);
+
+    await _configurator.ApplyOverridesAsync(new[]
+    {
+        new MethodCacheConfigEntry
+        {
+            ServiceType = service,
+            MethodName = method,
+            Settings = new CacheMethodSettings
+            {
+                Duration = settings.Duration,
+                Tags = settings.Tags.ToList()
+            }
+        }
+    });
 }
 ```
 

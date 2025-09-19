@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using MethodCache.Core.Metrics;
 using MethodCache.Core.Options;
 
@@ -23,8 +24,29 @@ namespace MethodCache.Core.Configuration
 
         // ETag-specific settings
         public ETagSettings? ETag { get; set; }
+
+        public CacheMethodSettings Clone()
+        {
+            return new CacheMethodSettings
+            {
+                Duration = Duration,
+                Tags = new List<string>(Tags),
+                Version = Version,
+                KeyGeneratorType = KeyGeneratorType,
+                Condition = Condition,
+                OnHitAction = OnHitAction,
+                OnMissAction = OnMissAction,
+                IsIdempotent = IsIdempotent,
+                SlidingExpiration = SlidingExpiration,
+                RefreshAhead = RefreshAhead,
+                StampedeProtection = StampedeProtection,
+                DistributedLock = DistributedLock,
+                Metrics = Metrics,
+                ETag = ETag?.Clone()
+            };
+        }
     }
-    
+
     public class ETagSettings
     {
         /// <summary>
@@ -56,6 +78,19 @@ namespace MethodCache.Core.Configuration
         /// Custom cache duration for ETag entries (if different from method cache duration)
         /// </summary>
         public TimeSpan? CacheDuration { get; set; }
+
+        public ETagSettings Clone()
+        {
+            return new ETagSettings
+            {
+                Strategy = Strategy,
+                IncludeParametersInETag = IncludeParametersInETag,
+                ETagGeneratorType = ETagGeneratorType,
+                Metadata = Metadata?.ToArray(),
+                UseWeakETag = UseWeakETag,
+                CacheDuration = CacheDuration
+            };
+        }
     }
     
     /// <summary>

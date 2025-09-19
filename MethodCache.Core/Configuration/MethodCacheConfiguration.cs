@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using MethodCache.Core.Configuration.Sources;
 
 namespace MethodCache.Core.Configuration
 {
@@ -58,20 +59,9 @@ namespace MethodCache.Core.Configuration
         {
             // Get the method-specific settings. If not found, start with an empty settings object.
             _methodSettings.TryGetValue(methodId, out var methodSpecificSettings);
-            var currentMethodSettings = methodSpecificSettings ?? new CacheMethodSettings();
 
             // Create a mutable copy to build the final effective settings
-            var finalSettings = new CacheMethodSettings
-            {
-                Duration = currentMethodSettings.Duration,
-                Tags = new List<string>(currentMethodSettings.Tags), // Ensure tags are copied
-                Version = currentMethodSettings.Version,
-                KeyGeneratorType = currentMethodSettings.KeyGeneratorType,
-                Condition = currentMethodSettings.Condition,
-                OnHitAction = currentMethodSettings.OnHitAction,
-                OnMissAction = currentMethodSettings.OnMissAction,
-                IsIdempotent = currentMethodSettings.IsIdempotent
-            };
+            var finalSettings = methodSpecificSettings?.Clone() ?? new CacheMethodSettings();
 
             // Apply group settings if available and not overridden by method-specific settings
             var groupName = GetGroupNameForMethod(methodId);
@@ -115,7 +105,10 @@ namespace MethodCache.Core.Configuration
                     finalSettings.OnMissAction = groupSettings.OnMissAction;
                 }
                 // Only apply group idempotent if method-specific didn't set it
-                if (!currentMethodSettings.IsIdempotent) finalSettings.IsIdempotent = groupSettings.IsIdempotent;
+                if (methodSpecificSettings == null || !methodSpecificSettings.IsIdempotent)
+                {
+                    finalSettings.IsIdempotent = groupSettings.IsIdempotent;
+                }
             }
 
             // Apply global defaults if not overridden by method or group settings
@@ -155,6 +148,34 @@ namespace MethodCache.Core.Configuration
         public void ClearAllMethods()
         {
             _methodSettings.Clear();
+        }
+
+        internal IEnumerable<MethodCacheConfigEntry> ToConfigEntries()
+        {
+            foreach (var kvp in _methodSettings)
+            {
+                var key = kvp.Key;
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                var separator = key.LastIndexOf('.');
+                if (separator <= 0)
+                {
+                    continue;
+                }
+
+                var serviceType = key.Substring(0, separator);
+                var methodName = key.Substring(separator + 1);
+
+                yield return new MethodCacheConfigEntry
+                {
+                    ServiceType = serviceType,
+                    MethodName = methodName,
+                    Settings = kvp.Value.Clone()
+                };
+            }
         }
     }
 }

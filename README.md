@@ -145,10 +145,32 @@ Environment‑specific configuration without recompiling.
 Runtime sources carry the highest precedence – perfect for management UIs and incident response.
 
 ```csharp
-await cacheConfig.UpdateAsync(
-    "MethodCache:Services:MyApp.Services.IOrdersService:GetAsync:Duration",
-    TimeSpan.FromMinutes(1).ToString());
+var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
+
+// Apply a live override using the same fluent API you use at startup
+await configurator.ApplyFluentAsync(fluent =>
+{
+    fluent.ForService<IOrdersService>()
+          .Method(s => s.GetAsync(default))
+          .Configure(o => o
+              .WithDuration(TimeSpan.FromMinutes(1))
+              .WithTags("runtime-override"));
+});
+
+// Surface overrides to your management UI
+var overrides = await configurator.GetOverridesAsync();
+
+// Roll back specific overrides without touching attributes or JSON
+await configurator.RemoveOverrideAsync(typeof(IOrdersService).FullName!, nameof(IOrdersService.GetAsync));
+
+// Or reset the runtime layer completely
+await configurator.ClearOverridesAsync();
+
+// Need the full effective picture (after attributes/config/runtime)?
+var effectiveConfig = await configurator.GetEffectiveConfigurationAsync();
 ```
+
+> `IRuntimeCacheConfigurator` is registered automatically when you call `AddMethodCacheWithSources(...)`, making it trivial to plug a UI or management API on top of the fluent builders you already use at startup.
 
 ---
 

@@ -18,4 +18,8 @@
     <PackageReference Include="YamlDotNet" Version="16.1.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.Tests" />
+  </ItemGroup>
+
 </Project>

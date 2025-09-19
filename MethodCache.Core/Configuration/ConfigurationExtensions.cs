@@ -87,6 +87,10 @@ namespace MethodCache.Core.Configuration
             this IServiceCollection services,
             Action<MethodCacheBuilder>? configure = null)
         {
+            services.AddSingleton<RuntimeOverrideConfigurationSource>();
+            services.AddSingleton<Sources.IConfigurationSource>(provider => provider.GetRequiredService<RuntimeOverrideConfigurationSource>());
+            services.AddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
+
             var builder = new MethodCacheBuilder(services);
             
             // Add default attribute source

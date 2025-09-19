@@ -32,7 +32,8 @@ namespace MethodCache.Core.Configuration.Sources
         public string ServiceType { get; set; } = string.Empty;
         public string MethodName { get; set; } = string.Empty;
         public CacheMethodSettings Settings { get; set; } = new();
-        
+        public int Priority { get; set; }
+
         /// <summary>
         /// Gets the fully qualified method key
         /// </summary>
