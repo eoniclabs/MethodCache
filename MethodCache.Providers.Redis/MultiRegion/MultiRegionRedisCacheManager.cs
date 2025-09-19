@@ -161,6 +161,35 @@ namespace MethodCache.Providers.Redis.MultiRegion
             }
         }
 
+        public async Task InvalidateByKeysAsync(params string[] keys)
+        {
+            if (keys == null || keys.Length == 0)
+            {
+                return;
+            }
+
+            var normalizedKeys = keys
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Select(k => $"{_redisOptions.KeyPrefix}{k}")
+                .ToArray();
+
+            if (normalizedKeys.Length == 0)
+            {
+                return;
+            }
+
+            var invalidateTasks = normalizedKeys.Select(key => _multiRegionManager.InvalidateGloballyAsync(key));
+            await Task.WhenAll(invalidateTasks);
+
+            _logger.LogDebug("Invalidated {KeyCount} keys globally", normalizedKeys.Length);
+        }
+
+        public Task InvalidateByTagPatternAsync(string pattern)
+        {
+            // Pattern-based invalidation is not supported in the multi-region cache yet.
+            return Task.CompletedTask;
+        }
+
         public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
         {
             var cacheKey = $"{_redisOptions.KeyPrefix}{keyGenerator.GenerateKey(methodName, args, settings)}";

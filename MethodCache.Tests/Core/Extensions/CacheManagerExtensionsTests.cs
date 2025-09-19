@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
@@ -204,6 +205,54 @@ namespace MethodCache.Tests.Core.Extensions
             Assert.Equal("report:monthly", generatedKey);
         }
 
+        [Fact]
+        public async Task GetOrCreateStreamAsync_MaterializesAndCachesSequence()
+        {
+            var cacheManager = new MockCacheManager();
+            var enumerations = 0;
+
+            async IAsyncEnumerable<int> Factory(CacheContext context, [EnumeratorCancellation] CancellationToken token)
+            {
+                enumerations++;
+                yield return 1;
+                await Task.Delay(1, token);
+                yield return 2;
+            }
+
+            var first = new List<int>();
+            await foreach (var item in cacheManager.GetOrCreateStreamAsync("stream:users", Factory))
+            {
+                first.Add(item);
+            }
+
+            Assert.Equal(new[] { 1, 2 }, first);
+            Assert.Equal(1, enumerations);
+
+            var second = new List<int>();
+            await foreach (var item in cacheManager.GetOrCreateStreamAsync("stream:users", Factory))
+            {
+                second.Add(item);
+            }
+
+            Assert.Equal(new[] { 1, 2 }, second);
+            Assert.Equal(1, enumerations); // Cached sequence reused
+        }
+
+        [Fact]
+        public async Task InvalidateByKeysAsync_RemovesCachedEntry()
+        {
+            var cacheManager = new MockCacheManager();
+
+            await cacheManager.GetOrCreateAsync(
+                "user:invalidate",
+                static (_, _) => new ValueTask<string>("cached"));
+
+            await cacheManager.InvalidateByKeysAsync("user:invalidate");
+
+            var lookup = await cacheManager.TryGetAsync<string>("user:invalidate");
+            Assert.False(lookup.Found);
+        }
+
         private sealed class CapturingCacheManager : ICacheManager
         {
             public string? LastMethodName { get; private set; }
@@ -230,6 +279,10 @@ namespace MethodCache.Tests.Core.Extensions
             }
 
             public Task InvalidateByTagsAsync(params string[] tags) => Task.CompletedTask;
+
+            public Task InvalidateByKeysAsync(params string[] keys) => Task.CompletedTask;
+
+            public Task InvalidateByTagPatternAsync(string pattern) => Task.CompletedTask;
         }
     }
 }

@@ -80,7 +80,8 @@ namespace MethodCache.Providers.Redis.Tests
             var settings = new CacheMethodSettings();
 
             _keyGeneratorMock.GenerateKey(methodName, args, settings).Returns(cacheKey);
-            _databaseMock.StringGetAsync(fullKey, CommandFlags.None).Returns(new RedisValue("serialized-data"));
+            _databaseMock.StringGetAsync(fullKey, CommandFlags.None).Returns((RedisValue)new byte[] { 1, 2, 3 });
+            _databaseMock.KeyTimeToLiveAsync(fullKey, CommandFlags.None).Returns(TimeSpan.FromMinutes(5));
             _serializerMock.DeserializeAsync<string>(Arg.Any<byte[]>()).Returns(cachedValue);
 
             // Act

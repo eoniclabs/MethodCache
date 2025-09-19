@@ -18,6 +18,16 @@ namespace MethodCache.Core
             return Task.CompletedTask;
         }
 
+        public Task InvalidateByKeysAsync(params string[] keys)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task InvalidateByTagPatternAsync(string pattern)
+        {
+            return Task.CompletedTask;
+        }
+
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
         {
             // Always return cache miss for no-op cache

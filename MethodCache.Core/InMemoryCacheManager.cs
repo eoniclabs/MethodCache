@@ -2,9 +2,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Metrics;
+using MethodCache.Core.Options;
 using Microsoft.Extensions.Options;
 
 namespace MethodCache.Core
@@ -21,11 +24,12 @@ namespace MethodCache.Core
             
             public object Value { get; init; } = null!;
             public HashSet<string> Tags { get; init; } = new HashSet<string>();
-            public DateTimeOffset AbsoluteExpiration { get; init; }
+            public DateTimeOffset AbsoluteExpiration { get; set; }
             public DateTime CreatedAt { get; init; }
             public DateTime LastAccessedAt { get; set; }
             public long AccessCount => _accessCount;
             public LinkedListNode<string>? OrderNode { get; set; } // For O(1) eviction tracking
+            public CacheEntryPolicy Policy { get; init; } = CacheEntryPolicy.Empty;
 
             public bool IsExpired => DateTime.UtcNow > AbsoluteExpiration;
 
@@ -36,8 +40,32 @@ namespace MethodCache.Core
             }
         }
 
+        private sealed record CacheEntryPolicy(
+            TimeSpan? Duration,
+            TimeSpan? SlidingExpiration,
+            TimeSpan? RefreshAhead,
+            StampedeProtectionOptions? StampedeProtection,
+            DistributedLockOptions? DistributedLock,
+            ICacheMetrics? Metrics)
+        {
+            internal static readonly CacheEntryPolicy Empty = new(null, null, null, null, null, null);
+        }
+
+        private sealed class DistributedLockState
+        {
+            public DistributedLockState(SemaphoreSlim semaphore, int maxConcurrency)
+            {
+                Semaphore = semaphore;
+                MaxConcurrency = maxConcurrency;
+            }
+
+            public SemaphoreSlim Semaphore { get; }
+            public int MaxConcurrency { get; }
+        }
+
         private readonly ConcurrentDictionary<string, EnhancedCacheEntry> _cache = new();
         private readonly ConcurrentDictionary<string, TaskCompletionSource<object>> _singleFlightGates = new();
+        private readonly ConcurrentDictionary<string, DistributedLockState> _distributedLocks = new();
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly MemoryCacheOptions _options;
         private readonly Timer? _cleanupTimer;
@@ -79,6 +107,7 @@ namespace MethodCache.Core
         public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
         {
             var key = keyGenerator.GenerateKey(methodName, args, settings);
+            var policy = CreatePolicy(settings);
 
             // Check cache first using internal method to avoid double statistics
             var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
@@ -109,10 +138,9 @@ namespace MethodCache.Core
                     var effectiveExpiration = expiration > _options.MaxExpiration 
                         ? _options.MaxExpiration 
                         : expiration;
-
-                    await SetAsync(key, result, effectiveExpiration, settings.Tags?.ToArray() ?? Array.Empty<string>());
+                    await SetAsync(key, result, effectiveExpiration, settings.Tags?.ToArray() ?? Array.Empty<string>(), policy);
                 }
-                
+
                 _metricsProvider.CacheMiss(methodName);
                 if (_options.EnableStatistics)
                 {
@@ -120,7 +148,7 @@ namespace MethodCache.Core
                 }
                 
                 return result!;
-            }, methodName);
+            }, methodName, policy);
         }
 
         public Task InvalidateByTagsAsync(params string[] tags)
@@ -156,6 +184,55 @@ namespace MethodCache.Core
             return Task.CompletedTask;
         }
 
+        public Task InvalidateByKeysAsync(params string[] keys)
+        {
+            if (keys == null || keys.Length == 0)
+            {
+                return Task.CompletedTask;
+            }
+
+            foreach (var key in keys)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                if (_cache.TryGetValue(key, out var entry))
+                {
+                    RemoveEntryCompletely(key, entry);
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public async Task InvalidateByTagPatternAsync(string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                return;
+            }
+
+            Regex regex;
+            try
+            {
+                regex = WildcardToRegex(pattern);
+            }
+            catch (ArgumentException)
+            {
+                return; // Invalid pattern - no-op to avoid throwing in hot path
+            }
+
+            var matchingTags = _tagToKeys.Keys.Where(tag => regex.IsMatch(tag)).ToArray();
+            if (matchingTags.Length == 0)
+            {
+                return;
+            }
+
+            await InvalidateByTagsAsync(matchingTags).ConfigureAwait(false);
+        }
+
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
         {
             var key = keyGenerator.GenerateKey(methodName, args, settings);
@@ -166,11 +243,13 @@ namespace MethodCache.Core
         /// Executes a factory function with single-flight pattern to prevent duplicate concurrent executions for the same key.
         /// Multiple concurrent requests for the same key will wait for the single execution to complete.
         /// </summary>
-        private async Task<T> ExecuteWithSingleFlight<T>(string key, Func<Task<T>> factory, string methodName)
+        private async Task<T> ExecuteWithSingleFlight<T>(string key, Func<Task<T>> factory, string methodName, CacheEntryPolicy policy)
         {
+            using var lease = await AcquireDistributedSemaphoreAsync(key, policy).ConfigureAwait(false);
+
             TaskCompletionSource<object>? tcs = null;
             var isFirstRequest = false;
-            
+
             try
             {
                 // Try to add a new TaskCompletionSource for this key
@@ -226,6 +305,22 @@ namespace MethodCache.Core
 
         #endregion
 
+        private static CacheEntryPolicy CreatePolicy(CacheMethodSettings settings)
+        {
+            if (settings == null)
+            {
+                return CacheEntryPolicy.Empty;
+            }
+
+            return new CacheEntryPolicy(
+                settings.Duration,
+                settings.SlidingExpiration,
+                settings.RefreshAhead,
+                settings.StampedeProtection,
+                settings.DistributedLock,
+                settings.Metrics);
+        }
+
         #region IMemoryCache Implementation
 
         public ValueTask<T?> GetAsync<T>(string key)
@@ -237,7 +332,7 @@ namespace MethodCache.Core
         {
             if (_cache.TryGetValue(key, out var entry))
             {
-                if (entry.IsExpired)
+                if (entry.IsExpired || ShouldForceRefresh(entry))
                 {
                     RemoveEntryCompletely(key, entry);
                     if (updateStatistics && _options.EnableStatistics)
@@ -246,6 +341,8 @@ namespace MethodCache.Core
                     }
                     return new ValueTask<T?>(default(T));
                 }
+
+                ApplySlidingExpiration(entry);
 
                 // Update access tracking with O(1) LinkedList operation
                 entry.UpdateAccess();
@@ -278,6 +375,121 @@ namespace MethodCache.Core
                 Interlocked.Increment(ref _misses);
             }
             return new ValueTask<T?>(default(T));
+        }
+
+        private static void ApplySlidingExpiration(EnhancedCacheEntry entry)
+        {
+            if (entry.Policy.SlidingExpiration is TimeSpan sliding && sliding > TimeSpan.Zero)
+            {
+                entry.AbsoluteExpiration = DateTimeOffset.UtcNow.Add(sliding);
+            }
+        }
+
+        private bool ShouldForceRefresh(EnhancedCacheEntry entry)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            if (entry.Policy.RefreshAhead is TimeSpan refreshAhead && refreshAhead > TimeSpan.Zero)
+            {
+                var remaining = entry.AbsoluteExpiration - now;
+                if (remaining <= refreshAhead)
+                {
+                    return true;
+                }
+            }
+
+            var stampede = entry.Policy.StampedeProtection;
+            if (stampede == null)
+            {
+                return false;
+            }
+
+            switch (stampede.Mode)
+            {
+                case StampedeProtectionMode.RefreshAhead:
+                    if (stampede.RefreshAheadWindow is TimeSpan stampedeWindow && stampedeWindow > TimeSpan.Zero)
+                    {
+                        var remaining = entry.AbsoluteExpiration - now;
+                        if (remaining <= stampedeWindow)
+                        {
+                            return true;
+                        }
+                    }
+                    break;
+                case StampedeProtectionMode.Probabilistic:
+                {
+                    var duration = entry.Policy.Duration ?? _options.DefaultExpiration;
+                    if (duration <= TimeSpan.Zero)
+                    {
+                        return false;
+                    }
+
+                    var age = now - entry.CreatedAt;
+                    if (age <= TimeSpan.Zero)
+                    {
+                        return false;
+                    }
+
+                    var beta = stampede.Beta <= 0 ? 1d : stampede.Beta;
+                    var ratio = Math.Min(1d, age.TotalSeconds / duration.TotalSeconds);
+                    var probability = Math.Exp(-beta * ratio);
+                    var sample = Random.Shared.NextDouble();
+                    return sample > probability;
+                }
+                case StampedeProtectionMode.DistributedLock:
+                case StampedeProtectionMode.None:
+                default:
+                    break;
+            }
+
+            return false;
+        }
+
+        private async Task<SemaphoreReleaser> AcquireDistributedSemaphoreAsync(string key, CacheEntryPolicy policy)
+        {
+            var requiresLock = policy.DistributedLock != null || policy.StampedeProtection?.Mode == StampedeProtectionMode.DistributedLock;
+            if (!requiresLock)
+            {
+                return SemaphoreReleaser.None;
+            }
+
+            var options = policy.DistributedLock ?? new DistributedLockOptions(TimeSpan.FromSeconds(30), 1);
+            var timeout = options.Timeout > TimeSpan.Zero ? options.Timeout : TimeSpan.FromSeconds(30);
+            var maxConcurrency = options.MaxConcurrency > 0 ? options.MaxConcurrency : 1;
+
+            var state = _distributedLocks.GetOrAdd(key, _ => new DistributedLockState(new SemaphoreSlim(maxConcurrency, maxConcurrency), maxConcurrency));
+
+            if (!await state.Semaphore.WaitAsync(timeout).ConfigureAwait(false))
+            {
+                throw new TimeoutException($"Timed out acquiring distributed lock for key '{key}'.");
+            }
+
+            return new SemaphoreReleaser(state.Semaphore);
+        }
+
+        private static Regex WildcardToRegex(string pattern)
+        {
+            var escaped = Regex.Escape(pattern)
+                .Replace("\\*", ".*")
+                .Replace("\\?", ".");
+            return new Regex($"^{escaped}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        }
+
+        private sealed class SemaphoreReleaser : IDisposable
+        {
+            public static readonly SemaphoreReleaser None = new(null);
+
+            private readonly SemaphoreSlim? _semaphore;
+
+            public SemaphoreReleaser(SemaphoreSlim? semaphore)
+            {
+                _semaphore = semaphore;
+            }
+
+            public void Dispose()
+            {
+                _semaphore?.Release();
+            }
         }
         
         /// <summary>
@@ -323,6 +535,8 @@ namespace MethodCache.Core
             
             // Remove from tag index
             RemoveFromTagIndex(key, entry.Tags);
+
+            _distributedLocks.TryRemove(key, out _);
         }
 
         public async Task SetAsync<T>(string key, T value, TimeSpan expiration)
@@ -330,7 +544,7 @@ namespace MethodCache.Core
             await SetAsync(key, value, expiration, Array.Empty<string>());
         }
 
-        private async Task SetAsync<T>(string key, T value, TimeSpan expiration, string[] tags)
+        private async Task SetAsync<T>(string key, T value, TimeSpan expiration, string[] tags, CacheEntryPolicy? policy = null)
         {
             if (value == null)
             {
@@ -348,7 +562,8 @@ namespace MethodCache.Core
                 Tags = new HashSet<string>(tags),
                 CreatedAt = DateTime.UtcNow,
                 AbsoluteExpiration = DateTimeOffset.UtcNow.Add(effectiveExpiration),
-                LastAccessedAt = DateTime.UtcNow
+                LastAccessedAt = DateTime.UtcNow,
+                Policy = policy ?? CacheEntryPolicy.Empty
             };
 
             // Check if this is an update to existing entry

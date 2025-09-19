@@ -39,6 +39,32 @@ namespace MethodCache.Core
             return Task.CompletedTask;
         }
 
+        public Task InvalidateByKeysAsync(params string[] keys)
+        {
+            if (keys == null)
+            {
+                return Task.CompletedTask;
+            }
+
+            foreach (var key in keys)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                _cache.TryRemove(key, out _);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task InvalidateByTagPatternAsync(string pattern)
+        {
+            // Pattern invalidation not required for lightweight mock
+            return Task.CompletedTask;
+        }
+
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
         {
             var key = keyGenerator.GenerateKey(methodName, args, settings);

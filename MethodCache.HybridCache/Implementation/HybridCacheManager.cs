@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
@@ -359,6 +360,71 @@ namespace MethodCache.HybridCache.Implementation
                 await _backplane.PublishInvalidationAsync(tags).ConfigureAwait(false);
                 Interlocked.Increment(ref _backplaneMessagesSent);
             }
+        }
+
+        public async Task InvalidateByKeysAsync(params string[] keys)
+        {
+            if (keys == null || keys.Length == 0)
+            {
+                return;
+            }
+
+            var normalizedKeys = keys
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Distinct()
+                .ToArray();
+
+            if (normalizedKeys.Length == 0)
+            {
+                return;
+            }
+
+            if (ShouldUseL1)
+            {
+                foreach (var key in normalizedKeys)
+                {
+                    await InvalidateL1Async(key).ConfigureAwait(false);
+                }
+            }
+
+            if (ShouldUseL2 && _l2Cache != null)
+            {
+                await _l2Cache.InvalidateByKeysAsync(normalizedKeys).ConfigureAwait(false);
+            }
+
+            if (_backplane != null && _options.EnableBackplane)
+            {
+                await _backplane.PublishKeyInvalidationAsync(normalizedKeys).ConfigureAwait(false);
+                Interlocked.Increment(ref _backplaneMessagesSent);
+            }
+        }
+
+        public async Task InvalidateByTagPatternAsync(string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                return;
+            }
+
+            Regex regex;
+            try
+            {
+                regex = new Regex(WildcardToRegex(pattern), RegexOptions.Compiled | RegexOptions.CultureInvariant);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid tag pattern supplied for invalidation: {Pattern}", pattern);
+                return;
+            }
+
+            var matchingTags = _tagToKeys.Keys.Where(tag => regex.IsMatch(tag)).ToArray();
+            if (matchingTags.Length == 0)
+            {
+                _logger.LogDebug("No tags matched pattern {Pattern} for invalidation", pattern);
+                return;
+            }
+
+            await InvalidateByTagsAsync(matchingTags).ConfigureAwait(false);
         }
 
         public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
@@ -1102,7 +1168,14 @@ namespace MethodCache.HybridCache.Implementation
                 _tagMappingLock.ExitWriteLock();
             }
         }
-        
+
+        private static string WildcardToRegex(string pattern)
+        {
+            return "^" + Regex.Escape(pattern)
+                .Replace("\\*", ".*")
+                .Replace("\\?", ".") + "$";
+        }
+
         #endregion
         
         // Simple key generator for internal use

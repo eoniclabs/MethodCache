@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
@@ -39,12 +41,24 @@ namespace MethodCache.Core.Extensions
             var settings = ToMethodSettings(options);
             var context = new CacheContext(key, services);
             var factoryExecuted = false;
+            var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
 
             async Task<T> WrappedFactory()
             {
                 factoryExecuted = true;
                 InvokeMissCallbacks(options, context);
-                return await factory(context, cancellationToken).ConfigureAwait(false);
+
+                try
+                {
+                    var result = await factory(context, cancellationToken).ConfigureAwait(false);
+                    options.Metrics?.RecordMiss(context.Key);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    options.Metrics?.RecordError(context.Key, ex);
+                    throw;
+                }
             }
 
             var result = await cacheManager.GetOrCreateAsync(
@@ -58,7 +72,10 @@ namespace MethodCache.Core.Extensions
             if (!factoryExecuted)
             {
                 InvokeHitCallbacks(options, context);
+                options.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
             }
+
+            stopwatch?.Stop();
 
             return result;
         }
@@ -153,9 +170,65 @@ namespace MethodCache.Core.Extensions
             return results;
         }
 
+        /// <summary>
+        /// Gets a cached stream or materialises it using the provided factory.
+        /// </summary>
+        public static async IAsyncEnumerable<T> GetOrCreateStreamAsync<T>(
+            this ICacheManager cacheManager,
+            string key,
+            Func<CacheContext, CancellationToken, IAsyncEnumerable<T>> factory,
+            Action<StreamCacheOptions.Builder>? configure = null,
+            IServiceProvider? services = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key must be provided.", nameof(key));
+            if (factory == null) throw new ArgumentNullException(nameof(factory));
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var streamOptions = BuildStreamOptions(configure);
+            var segmentCapacity = streamOptions.SegmentSize > 0 ? streamOptions.SegmentSize : 0;
+
+            var items = await cacheManager.GetOrCreateAsync<IReadOnlyList<T>>(
+                key,
+                async (context, token) =>
+                {
+                    var buffer = segmentCapacity > 0 ? new List<T>(segmentCapacity) : new List<T>();
+                    await foreach (var item in factory(context, token).WithCancellation(token).ConfigureAwait(false))
+                    {
+                        buffer.Add(item);
+                    }
+
+                    return (IReadOnlyList<T>)buffer.ToArray();
+                },
+                builder =>
+                {
+                    if (streamOptions.Duration.HasValue)
+                    {
+                        builder.WithDuration(streamOptions.Duration.Value);
+                    }
+                },
+                services,
+                cancellationToken).ConfigureAwait(false);
+
+            foreach (var item in items)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return item;
+            }
+        }
+
         private static CacheEntryOptions BuildOptions(Action<CacheEntryOptions.Builder>? configure)
         {
             var builder = new CacheEntryOptions.Builder();
+            configure?.Invoke(builder);
+            return builder.Build();
+        }
+
+        private static StreamCacheOptions BuildStreamOptions(Action<StreamCacheOptions.Builder>? configure)
+        {
+            var builder = new StreamCacheOptions.Builder();
             configure?.Invoke(builder);
             return builder.Build();
         }
@@ -168,7 +241,10 @@ namespace MethodCache.Core.Extensions
                 IsIdempotent = true,
                 Tags = new List<string>(options.Tags),
                 SlidingExpiration = options.SlidingExpiration,
-                RefreshAhead = options.RefreshAhead
+                RefreshAhead = options.RefreshAhead,
+                StampedeProtection = options.StampedeProtection,
+                DistributedLock = options.DistributedLock,
+                Metrics = options.Metrics
             };
 
             return settings;

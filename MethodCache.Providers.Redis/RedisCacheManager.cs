@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Options;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using Polly;
@@ -106,6 +107,16 @@ namespace MethodCache.Providers.Redis
         {
             var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
             var fullKey = _options.KeyPrefix + cacheKey;
+            var stampede = settings.StampedeProtection;
+            var distributedLockOptions = settings.DistributedLock;
+
+            if (distributedLockOptions == null && stampede?.Mode == StampedeProtectionMode.DistributedLock)
+            {
+                distributedLockOptions = new DistributedLockOptions(stampede.RefreshAheadWindow ?? TimeSpan.FromSeconds(30), 1);
+            }
+
+            var useDistributedLock = distributedLockOptions != null || _options.EnableDistributedLocking;
+            var lockTimeout = distributedLockOptions?.Timeout ?? TimeSpan.FromSeconds(30);
 
             try
             {
@@ -113,7 +124,7 @@ namespace MethodCache.Providers.Redis
                 {
                     // Try get from cache first
                     var cachedValue = await GetFromCacheAsync<T>(fullKey);
-                    if (cachedValue.HasValue)
+                    if (cachedValue.HasValue && !ShouldRefreshAhead(cachedValue.TimeToLive, settings))
                     {
                         _metricsProvider.CacheHit(methodName);
                         _logger.LogDebug("Cache hit for key {Key}", fullKey);
@@ -121,16 +132,21 @@ namespace MethodCache.Providers.Redis
                     }
 
                     // Prevent cache stampede with distributed locking if enabled
-                    if (_options.EnableDistributedLocking)
+                    if (useDistributedLock)
                     {
                         var lockKey = $"lock:{fullKey}";
-                        using var lockHandle = await _distributedLock.AcquireAsync(lockKey, TimeSpan.FromSeconds(30));
+                        if (distributedLockOptions?.MaxConcurrency > 1)
+                        {
+                            _logger.LogWarning("Redis distributed lock currently supports a single writer. MaxConcurrency {MaxConcurrency} will be treated as 1.", distributedLockOptions.MaxConcurrency);
+                        }
+
+                        using var lockHandle = await _distributedLock.AcquireAsync(lockKey, lockTimeout);
 
                         if (lockHandle.IsAcquired)
                         {
                             // Double-check cache after acquiring lock
                             cachedValue = await GetFromCacheAsync<T>(fullKey);
-                            if (cachedValue.HasValue)
+                            if (cachedValue.HasValue && !ShouldRefreshAhead(cachedValue.TimeToLive, settings))
                             {
                                 _metricsProvider.CacheHit(methodName);
                                 _logger.LogDebug("Cache hit after lock acquisition for key {Key}", fullKey);
@@ -141,7 +157,7 @@ namespace MethodCache.Providers.Redis
                             _metricsProvider.CacheMiss(methodName);
                             _logger.LogDebug("Cache miss, executing factory for key {Key}", fullKey);
                             
-                            var result = await ExecuteFactoryWithLockRenewalAsync(factory, lockHandle);
+                            var result = await ExecuteFactoryWithLockRenewalAsync(factory, lockHandle, lockTimeout);
                             
                             if (result != null)
                             {
@@ -160,7 +176,7 @@ namespace MethodCache.Providers.Redis
                             
                             // Retry getting from cache
                             cachedValue = await GetFromCacheAsync<T>(fullKey);
-                            if (cachedValue.HasValue)
+                            if (cachedValue.HasValue && !ShouldRefreshAhead(cachedValue.TimeToLive, settings))
                             {
                                 _metricsProvider.CacheHit(methodName);
                                 _logger.LogDebug("Cache hit after waiting for lock release for key {Key}", fullKey);
@@ -168,12 +184,12 @@ namespace MethodCache.Providers.Redis
                             }
                             
                             // If still no cached value, try to acquire lock one more time
-                            using var retryLockHandle = await _distributedLock.AcquireAsync(lockKey, TimeSpan.FromSeconds(10));
+                            using var retryLockHandle = await _distributedLock.AcquireAsync(lockKey, lockTimeout);
                             if (retryLockHandle.IsAcquired)
                             {
                                 // Final double-check after retry lock acquisition
                                 cachedValue = await GetFromCacheAsync<T>(fullKey);
-                                if (cachedValue.HasValue)
+                                if (cachedValue.HasValue && !ShouldRefreshAhead(cachedValue.TimeToLive, settings))
                                 {
                                     _metricsProvider.CacheHit(methodName);
                                     return cachedValue.Value;
@@ -181,7 +197,7 @@ namespace MethodCache.Providers.Redis
                                 
                                 // Execute factory and cache result (retry path) with automatic lock renewal
                                 _metricsProvider.CacheMiss(methodName);
-                                var result = await ExecuteFactoryWithLockRenewalAsync(factory, retryLockHandle);
+                                var result = await ExecuteFactoryWithLockRenewalAsync(factory, retryLockHandle, lockTimeout);
                                 
                                 if (result != null)
                                 {
@@ -248,6 +264,90 @@ namespace MethodCache.Providers.Redis
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error invalidating cache by tags {Tags}", string.Join(", ", tags));
+            }
+        }
+
+        public async Task InvalidateByKeysAsync(params string[] keys)
+        {
+            if (keys == null || keys.Length == 0)
+            {
+                return;
+            }
+
+            var normalizedKeys = keys
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Select(k => _options.KeyPrefix + k)
+                .ToArray();
+
+            if (normalizedKeys.Length == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await _resilience.ExecuteAsync(async _ =>
+                {
+                    var database = _connectionManager.GetDatabase();
+                    var redisKeys = normalizedKeys.Select(k => (RedisKey)k).ToArray();
+                    if (redisKeys.Length > 0)
+                    {
+                        await database.KeyDeleteAsync(redisKeys).ConfigureAwait(false);
+                    }
+
+                    var tagTasks = normalizedKeys.Select(key => _tagManager.RemoveAllTagAssociationsAsync(key));
+                    await Task.WhenAll(tagTasks).ConfigureAwait(false);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invalidating cache by keys {Keys}", string.Join(", ", keys));
+                throw;
+            }
+        }
+
+        public async Task InvalidateByTagPatternAsync(string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                return;
+            }
+
+            try
+            {
+                await _resilience.ExecuteAsync(async _ =>
+                {
+                    var database = _connectionManager.GetDatabase();
+                    var prefixedPattern = _options.KeyPrefix + pattern;
+                    var keysToDelete = new List<RedisKey>();
+                    var multiplexer = database.Multiplexer;
+
+                    foreach (var endpoint in multiplexer.GetEndPoints())
+                    {
+                        var server = multiplexer.GetServer(endpoint);
+                        if (!server.IsConnected)
+                        {
+                            continue;
+                        }
+
+                        var scan = server.Keys(database.Database, pattern: prefixedPattern);
+                        keysToDelete.AddRange(scan);
+                    }
+
+                    if (keysToDelete.Count == 0)
+                    {
+                        return;
+                    }
+
+                    await database.KeyDeleteAsync(keysToDelete.ToArray()).ConfigureAwait(false);
+                    var tagTasks = keysToDelete.Select(key => _tagManager.RemoveAllTagAssociationsAsync(key!));
+                    await Task.WhenAll(tagTasks).ConfigureAwait(false);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invalidating cache by pattern {Pattern}", pattern);
+                throw;
             }
         }
 
@@ -404,30 +504,75 @@ namespace MethodCache.Providers.Redis
             }
         }
 
-        private async Task<(bool HasValue, T Value)> GetFromCacheAsync<T>(string key)
+        private async Task<(bool HasValue, T Value, TimeSpan? TimeToLive)> GetFromCacheAsync<T>(string key)
         {
             return await _resilience.ExecuteAsync(async _ =>
             {
                 var database = _connectionManager.GetDatabase();
-                var data = await database.StringGetAsync(key);
-                
+                var data = await database.StringGetAsync(key).ConfigureAwait(false);
+
                 if (!data.HasValue)
                 {
-                    return (false, default(T)!);
+                    return (false, default(T)!, null);
                 }
 
                 try
                 {
-                    var value = await _serializer.DeserializeAsync<T>(data!);
-                    return (true, value);
+                    var bytes = (byte[])data;
+                    var value = await _serializer.DeserializeAsync<T>(bytes).ConfigureAwait(false);
+                    var ttl = await database.KeyTimeToLiveAsync(key).ConfigureAwait(false);
+                    return (true, value, ttl);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error deserializing cached value for key {Key}", key);
                     await database.KeyDeleteAsync(key); // Remove corrupted data
-                    return (false, default(T)!);
+                    return (false, default(T)!, null);
                 }
             });
+        }
+
+        private static bool ShouldRefreshAhead(TimeSpan? timeToLive, CacheMethodSettings settings)
+        {
+            if (timeToLive == null)
+            {
+                return false;
+            }
+
+            var configuredRefreshAhead = settings.RefreshAhead;
+            if (configuredRefreshAhead is TimeSpan refreshAhead && refreshAhead > TimeSpan.Zero && timeToLive <= refreshAhead)
+            {
+                return true;
+            }
+
+            var stampede = settings.StampedeProtection;
+            if (stampede == null)
+            {
+                return false;
+            }
+
+            switch (stampede.Mode)
+            {
+                case StampedeProtectionMode.RefreshAhead:
+                    var window = stampede.RefreshAheadWindow ?? configuredRefreshAhead;
+                    return window.HasValue && window.Value > TimeSpan.Zero && timeToLive <= window;
+                case StampedeProtectionMode.Probabilistic:
+                {
+                    var duration = settings.Duration ?? TimeSpan.Zero;
+                    if (duration <= TimeSpan.Zero)
+                    {
+                        return false;
+                    }
+
+                    var remainingRatio = Math.Clamp(timeToLive.Value.TotalSeconds / duration.TotalSeconds, 0d, 1d);
+                    var beta = stampede.Beta <= 0 ? 1d : stampede.Beta;
+                    var probability = Math.Exp(-beta * (1 - remainingRatio));
+                    var sample = Random.Shared.NextDouble();
+                    return sample > probability;
+                }
+                default:
+                    return false;
+            }
         }
 
         private async Task SetToCacheAsync<T>(string key, T value, CacheMethodSettings settings)
@@ -557,15 +702,15 @@ namespace MethodCache.Providers.Redis
         /// Executes a factory method with automatic lock renewal to prevent locks from expiring
         /// during long-running operations, which would cause cache stampedes.
         /// </summary>
-        private async Task<T> ExecuteFactoryWithLockRenewalAsync<T>(Func<Task<T>> factory, ILockHandle lockHandle)
+        private async Task<T> ExecuteFactoryWithLockRenewalAsync<T>(Func<Task<T>> factory, ILockHandle lockHandle, TimeSpan lockDuration)
         {
             if (!lockHandle.IsAcquired)
             {
                 return await factory();
             }
 
-            const int renewalIntervalSeconds = 10; // Renew every 10 seconds
-            const int lockExpirySeconds = 30;      // Keep 30-second expiry
+            var effectiveLockDuration = lockDuration > TimeSpan.Zero ? lockDuration : TimeSpan.FromSeconds(30);
+            var renewalInterval = TimeSpan.FromSeconds(Math.Max(1, effectiveLockDuration.TotalSeconds / 3));
             
             using var cts = new CancellationTokenSource();
             
@@ -576,13 +721,13 @@ namespace MethodCache.Providers.Redis
                 {
                     while (!cts.Token.IsCancellationRequested && lockHandle.IsAcquired)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(renewalIntervalSeconds), cts.Token);
+                        await Task.Delay(renewalInterval, cts.Token);
                         
                         if (!cts.Token.IsCancellationRequested && lockHandle.IsAcquired)
                         {
                             try
                             {
-                                await lockHandle.RenewAsync(TimeSpan.FromSeconds(lockExpirySeconds));
+                                await lockHandle.RenewAsync(effectiveLockDuration);
                                 _logger.LogDebug("Lock renewed for resource {Resource}", lockHandle.Resource);
                             }
                             catch (Exception ex)
