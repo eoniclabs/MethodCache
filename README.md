@@ -5,9 +5,15 @@
 [![Coverage](https://img.shields.io/codecov/c/github/yourusername/methodcache)](https://codecov.io/gh/yourusername/methodcache)
 [![License](https://img.shields.io/github/license/yourusername/methodcache)](LICENSE)
 
-> **Unobtrusive, high‑performance method caching for .NET** – compile‑time decorators, runtime configuration, first‑class metrics, and production‑ready Redis/ETag integrations.
+> **Switch caching on in minutes, run it safely in production, and stay in control at runtime.**
 
-MethodCache lets you switch on caching with a single attribute, tune behaviour via a fluent API or configuration files, and even retrofit caching onto third‑party interfaces without touching their code. The Roslyn source generator produces zero‑reflection proxies, while the analyzers keep your usage safe and consistent.
+MethodCache gives teams the three things they crave most from caching:
+
+- **Immediate productivity** – decorate a method or call the fluent API and the source generator emits zero-reflection decorators for you.
+- **Operational control** – runtime overrides, analyzers, and metrics keep caches observable and tweakable without redeploying.
+- **Scale without lock-in** – plug in in-memory, Redis, hybrid, and ETag layers while reusing the same configuration surfaces.
+
+Whether you are wrapping your own services or slapping caching onto third-party SDKs, MethodCache keeps business code clean, deploys safely, and gives operations a kill switch when they need it.
 
 ---
 
