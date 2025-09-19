@@ -65,23 +65,17 @@ namespace MethodCache.Core.Configuration.Runtime
                             methodOptions.Tags),
                         Version = methodOptions.Version
                     };
-                    
-                    // Apply ETag settings
-                    var etagOptions = methodOptions.ETag ?? options.ETag;
-                    if (etagOptions != null)
+
+                    var metadata = MergeMetadata(
+                        options.ETag,
+                        serviceOptions.ETag,
+                        methodOptions.ETag);
+
+                    if (metadata != null)
                     {
-                        settings.ETag = new ETagSettings
-                        {
-                            Strategy = Enum.TryParse<ETagGenerationStrategy>(etagOptions.Strategy, out var strategy)
-                                ? strategy
-                                : ETagGenerationStrategy.ContentHash,
-                            IncludeParametersInETag = etagOptions.IncludeParametersInETag,
-                            UseWeakETag = etagOptions.UseWeakETag,
-                            Metadata = etagOptions.Metadata?.ToArray(),
-                            CacheDuration = etagOptions.CacheDuration
-                        };
+                        settings.SetETagMetadata(metadata);
                     }
-                    
+
                     entries.Add(new MethodCacheConfigEntry
                     {
                         ServiceType = serviceName,
@@ -107,6 +101,84 @@ namespace MethodCache.Core.Configuration.Runtime
             }
             
             return combined.ToList();
+        }
+
+        private static ETagMetadata ConvertToMetadata(ETagOptions options)
+        {
+            var metadata = new ETagMetadata
+            {
+                Strategy = options.Strategy,
+                IncludeParametersInETag = options.IncludeParametersInETag,
+                UseWeakETag = options.UseWeakETag,
+                Metadata = options.Metadata?.Count > 0 ? options.Metadata.ToArray() : null,
+                CacheDuration = options.CacheDuration
+            };
+
+            if (!string.IsNullOrWhiteSpace(options.ETagGeneratorType))
+            {
+                metadata.ETagGeneratorType = Type.GetType(options.ETagGeneratorType!);
+            }
+
+            return metadata;
+        }
+
+        private static ETagMetadata? MergeMetadata(ETagOptions? global, ETagOptions? service, ETagOptions? method)
+        {
+            ETagMetadata? current = null;
+
+            if (global != null)
+            {
+                current = ConvertToMetadata(global);
+            }
+
+            if (service != null)
+            {
+                current = Merge(current, ConvertToMetadata(service));
+            }
+
+            if (method != null)
+            {
+                current = Merge(current, ConvertToMetadata(method));
+            }
+
+            return current;
+        }
+
+        private static ETagMetadata Merge(ETagMetadata? baseline, ETagMetadata overlay)
+        {
+            var result = baseline != null ? (ETagMetadata)baseline.Clone() : new ETagMetadata();
+
+            if (!string.IsNullOrWhiteSpace(overlay.Strategy))
+            {
+                result.Strategy = overlay.Strategy;
+            }
+
+            if (overlay.IncludeParametersInETag.HasValue)
+            {
+                result.IncludeParametersInETag = overlay.IncludeParametersInETag;
+            }
+
+            if (overlay.ETagGeneratorType != null)
+            {
+                result.ETagGeneratorType = overlay.ETagGeneratorType;
+            }
+
+            if (overlay.Metadata != null && overlay.Metadata.Length > 0)
+            {
+                result.Metadata = (string[])overlay.Metadata.Clone();
+            }
+
+            if (overlay.UseWeakETag.HasValue)
+            {
+                result.UseWeakETag = overlay.UseWeakETag;
+            }
+
+            if (overlay.CacheDuration.HasValue)
+            {
+                result.CacheDuration = overlay.CacheDuration;
+            }
+
+            return result;
         }
         
         public void Dispose()

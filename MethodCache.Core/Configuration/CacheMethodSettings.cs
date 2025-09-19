@@ -21,9 +21,7 @@ namespace MethodCache.Core.Configuration
         public StampedeProtectionOptions? StampedeProtection { get; set; }
         public DistributedLockOptions? DistributedLock { get; set; }
         public ICacheMetrics? Metrics { get; set; }
-
-        // ETag-specific settings
-        public ETagSettings? ETag { get; set; }
+        public Dictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
 
         public CacheMethodSettings Clone()
         {
@@ -42,80 +40,39 @@ namespace MethodCache.Core.Configuration
                 StampedeProtection = StampedeProtection,
                 DistributedLock = DistributedLock,
                 Metrics = Metrics,
-                ETag = ETag?.Clone()
+                Metadata = CloneMetadata(Metadata)
             };
         }
-    }
 
-    public class ETagSettings
-    {
-        /// <summary>
-        /// ETag generation strategy to use
-        /// </summary>
-        public ETagGenerationStrategy Strategy { get; set; } = ETagGenerationStrategy.ContentHash;
-        
-        /// <summary>
-        /// Whether to include method parameters in ETag generation
-        /// </summary>
-        public bool IncludeParametersInETag { get; set; } = true;
-        
-        /// <summary>
-        /// Custom ETag generator type (must implement IETagGenerator)
-        /// </summary>
-        public Type? ETagGeneratorType { get; set; }
-        
-        /// <summary>
-        /// Additional metadata to include in ETag calculation
-        /// </summary>
-        public string[]? Metadata { get; set; }
-        
-        /// <summary>
-        /// Whether to use weak ETags (W/ prefix)
-        /// </summary>
-        public bool UseWeakETag { get; set; } = false;
-        
-        /// <summary>
-        /// Custom cache duration for ETag entries (if different from method cache duration)
-        /// </summary>
-        public TimeSpan? CacheDuration { get; set; }
-
-        public ETagSettings Clone()
+        private static Dictionary<string, object?> CloneMetadata(Dictionary<string, object?> metadata)
         {
-            return new ETagSettings
+            if (metadata.Count == 0)
             {
-                Strategy = Strategy,
-                IncludeParametersInETag = IncludeParametersInETag,
-                ETagGeneratorType = ETagGeneratorType,
-                Metadata = Metadata?.ToArray(),
-                UseWeakETag = UseWeakETag,
-                CacheDuration = CacheDuration
-            };
+                return new Dictionary<string, object?>();
+            }
+
+            var clone = new Dictionary<string, object?>(metadata.Count, metadata.Comparer);
+            foreach (var (key, value) in metadata)
+            {
+                clone[key] = CloneMetadataValue(value);
+            }
+
+            return clone;
         }
-    }
-    
-    /// <summary>
-    /// Defines strategies for ETag generation.
-    /// </summary>
-    public enum ETagGenerationStrategy
-    {
-        /// <summary>
-        /// Generate ETag based on content hash (default).
-        /// </summary>
-        ContentHash,
-        
-        /// <summary>
-        /// Generate ETag based on last modified timestamp.
-        /// </summary>
-        LastModified,
-        
-        /// <summary>
-        /// Generate ETag based on version number.
-        /// </summary>
-        Version,
-        
-        /// <summary>
-        /// Use custom ETag generator.
-        /// </summary>
-        Custom
+
+        private static object? CloneMetadataValue(object? value)
+        {
+            switch (value)
+            {
+                case null:
+                    return null;
+                case Array array:
+                    return array.Clone();
+                case ICloneable cloneable:
+                    return cloneable.Clone();
+                default:
+                    return value;
+            }
+        }
     }
 }

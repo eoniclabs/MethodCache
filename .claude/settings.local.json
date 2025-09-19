@@ -5,7 +5,10 @@
       "Bash(gtimeout 30s dotnet test MethodCache.Providers.Redis.IntegrationTests --filter \"RedisHealthCheck_ShouldReturnHealthy_WhenRedisIsAvailable\" --verbosity normal)",
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
-      "Bash(python pr_comments.py:*)"
+      "Bash(python pr_comments.py:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet test:*)"
     ],
     "deny": [],
     "ask": []
