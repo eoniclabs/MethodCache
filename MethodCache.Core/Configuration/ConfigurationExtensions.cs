@@ -5,7 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration.Sources;
-using MethodCache.Core.Configuration.RuntimeConfiguration;
+using MethodCache.Core.Configuration.Runtime;
+using MethodCache.Core.Runtime.Defaults;
 
 namespace MethodCache.Core.Configuration
 {
@@ -87,6 +88,10 @@ namespace MethodCache.Core.Configuration
             this IServiceCollection services,
             Action<MethodCacheBuilder>? configure = null)
         {
+            services.AddSingleton<RuntimeOverrideConfigurationSource>();
+            services.AddSingleton<Sources.IConfigurationSource>(provider => provider.GetRequiredService<RuntimeOverrideConfigurationSource>());
+            services.AddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
+
             var builder = new MethodCacheBuilder(services);
             
             // Add default attribute source

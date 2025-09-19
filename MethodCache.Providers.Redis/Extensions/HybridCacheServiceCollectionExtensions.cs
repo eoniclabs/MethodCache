@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.Core;
+using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Backplane;

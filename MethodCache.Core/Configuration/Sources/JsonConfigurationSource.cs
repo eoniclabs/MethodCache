@@ -88,25 +88,8 @@ namespace MethodCache.Core.Configuration.Sources
             {
                 settings.Version = version.Value;
             }
-            
-            // Load ETag settings
-            var etagSection = section.GetSection("ETag");
-            if (etagSection.Exists())
-            {
-                settings.ETag = new ETagSettings
-                {
-                    Strategy = etagSection.GetValue("Strategy", ETagGenerationStrategy.ContentHash),
-                    IncludeParametersInETag = etagSection.GetValue("IncludeParametersInETag", true),
-                    UseWeakETag = etagSection.GetValue("UseWeakETag", false),
-                    Metadata = etagSection.GetSection("Metadata").Get<string[]>()
-                };
-                
-                var etagDuration = etagSection["CacheDuration"];
-                if (!string.IsNullOrEmpty(etagDuration))
-                {
-                    settings.ETag.CacheDuration = TimeSpan.Parse(etagDuration);
-                }
-            }
+
+            ApplyETagSettings(section.GetSection("ETag"), settings);
             
             return settings;
         }
@@ -120,18 +103,52 @@ namespace MethodCache.Core.Configuration.Sources
             {
                 settings.Tags = new List<string>(defaults.Tags);
             }
-            
-            if (settings.ETag == null && defaults.ETag != null)
+
+            var defaultEtag = defaults.GetETagMetadata();
+            if (defaultEtag != null)
             {
-                settings.ETag = new ETagSettings
-                {
-                    Strategy = defaults.ETag.Strategy,
-                    IncludeParametersInETag = defaults.ETag.IncludeParametersInETag,
-                    UseWeakETag = defaults.ETag.UseWeakETag,
-                    Metadata = defaults.ETag.Metadata,
-                    CacheDuration = defaults.ETag.CacheDuration
-                };
+                settings.MergeWithDefaultETagMetadata(defaultEtag);
             }
+        }
+
+        private static void ApplyETagSettings(IConfigurationSection etagSection, CacheMethodSettings settings)
+        {
+            if (etagSection == null || !etagSection.Exists())
+            {
+                return;
+            }
+
+            var metadata = new ETagMetadata
+            {
+                Strategy = etagSection.GetValue<string>("Strategy"),
+                IncludeParametersInETag = etagSection.GetValue<bool?>("IncludeParametersInETag"),
+                UseWeakETag = etagSection.GetValue<bool?>("UseWeakETag"),
+                Metadata = etagSection.GetSection("Metadata").Get<string[]>(),
+                CacheDuration = TryParseTimeSpan(etagSection["CacheDuration"]),
+                ETagGeneratorType = ParseType(etagSection.GetValue<string>("ETagGeneratorType"))
+            };
+
+            settings.SetETagMetadata(metadata);
+        }
+
+        private static TimeSpan? TryParseTimeSpan(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return TimeSpan.TryParse(value, out var duration) ? duration : null;
+        }
+
+        private static Type? ParseType(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return Type.GetType(value, throwOnError: false);
         }
     }
     
@@ -149,7 +166,6 @@ namespace MethodCache.Core.Configuration.Sources
         public string? Duration { get; set; }
         public string[]? Tags { get; set; }
         public int? Version { get; set; }
-        public ETagConfiguration? ETag { get; set; }
     }
     
     public class ServiceMethodConfiguration
@@ -157,15 +173,5 @@ namespace MethodCache.Core.Configuration.Sources
         public string? Duration { get; set; }
         public string[]? Tags { get; set; }
         public int? Version { get; set; }
-        public ETagConfiguration? ETag { get; set; }
-    }
-    
-    public class ETagConfiguration
-    {
-        public string? Strategy { get; set; }
-        public bool? IncludeParametersInETag { get; set; }
-        public bool? UseWeakETag { get; set; }
-        public string[]? Metadata { get; set; }
-        public string? CacheDuration { get; set; }
     }
 }

@@ -768,9 +768,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        {");
 
                 // Get cache configuration
-                var requireIdempotent = model.CacheAttr?.NamedArguments
-                    .FirstOrDefault(a => a.Key == "RequireIdempotent").Value.Value as bool? ?? false;
-
                 // Build cache key parameters (exclude CancellationToken)
                 var keyParams = method.Parameters
                     .Where(p => !Utils.IsCancellationToken(p.Type))
@@ -793,22 +790,24 @@ namespace MethodCache.SourceGenerator
                 // Handle different return types
                 if (Utils.IsTask(method.ReturnType, out var taskType))
                 {
-                    EmitTaskCaching(sb, method, taskType!, requireIdempotent);
+                    EmitTaskCaching(sb, method, taskType!);
                 }
                 else if (Utils.IsValueTask(method.ReturnType, out var valueTaskType))
                 {
-                    EmitValueTaskCaching(sb, method, valueTaskType!, requireIdempotent);
+                    EmitValueTaskCaching(sb, method, valueTaskType!);
                 }
                 else
                 {
-                    EmitSyncCaching(sb, method, returnType, requireIdempotent);
+                    EmitSyncCaching(sb, method, returnType);
                 }
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
 
-            private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, bool requireIdempotent)
+            private const string IsIdempotentProperty = "settings.IsIdempotent";
+
+            private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType)
             {
                 var call = BuildMethodCall(method);
                 sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{innerType}>(");
@@ -817,10 +816,10 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()});");
+                sb.AppendLine($"                {IsIdempotentProperty});");
             }
 
-            private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, bool requireIdempotent)
+            private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType)
             {
                 var call = BuildMethodCall(method);
                 sb.AppendLine($"            var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
@@ -829,26 +828,26 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()});");
+                sb.AppendLine($"                {IsIdempotentProperty});");
                 sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
             }
 
-            private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType, bool requireIdempotent)
+            private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType)
             {
                 var call = BuildMethodCall(method);
-                
+
                 // Add warning comment about sync-over-async
                 sb.AppendLine("            // WARNING: This is a sync-over-async pattern that may cause deadlocks");
                 sb.AppendLine("            // in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
                 sb.AppendLine("            // Consider making the method async to avoid potential issues.");
-                
+
                 sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
                 sb.AppendLine($"                \"{method.Name}\",");
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                () => Task.FromResult({call}),");
                 sb.AppendLine("                settings,");
                 sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {requireIdempotent.ToString().ToLowerInvariant()})");
+                sb.AppendLine($"                {IsIdempotentProperty})");
                 sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 
@@ -1107,6 +1106,66 @@ namespace MethodCache.SourceGenerator
                 return Utils.GetReturnTypeForSignature(type);
             }
 
+            private static List<string> BuildConfigureStatements(AttributeData? cacheAttr)
+            {
+                var statements = new List<string>();
+
+                if (cacheAttr == null)
+                {
+                    return statements;
+                }
+
+                if (TryGetNamedArgument(cacheAttr, "Duration", out var durationArg) &&
+                    durationArg.Value is string duration && !string.IsNullOrWhiteSpace(duration))
+                {
+                    statements.Add($"options.WithDuration(System.TimeSpan.Parse(\"{duration}\"));");
+                }
+
+                if (TryGetNamedArgument(cacheAttr, "Tags", out var tagsArg) && tagsArg.Kind == TypedConstantKind.Array)
+                {
+                    var tagValues = tagsArg.Values
+                        .Select(v => v.Value as string)
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Select(s => $"\"{s}\"")
+                        .ToArray();
+
+                    if (tagValues.Length > 0)
+                    {
+                        statements.Add($"options.WithTags({string.Join(", ", tagValues)});");
+                    }
+                }
+
+                if (TryGetNamedArgument(cacheAttr, "Version", out var versionArg) &&
+                    versionArg.Value is int versionValue && versionValue >= 0)
+                {
+                    statements.Add($"options.WithVersion({versionValue});");
+                }
+
+                if (TryGetNamedArgument(cacheAttr, "KeyGeneratorType", out var keyGenArg) &&
+                    keyGenArg.Value is INamedTypeSymbol keyGenType)
+                {
+                    var generatorName = GetSimpleTypeName(keyGenType);
+                    statements.Add($"options.WithKeyGenerator<{generatorName}>();");
+                }
+
+                return statements;
+            }
+
+            private static bool TryGetNamedArgument(AttributeData attribute, string name, out TypedConstant value)
+            {
+                foreach (var argument in attribute.NamedArguments)
+                {
+                    if (argument.Key == name)
+                    {
+                        value = argument.Value;
+                        return true;
+                    }
+                }
+
+                value = default;
+                return false;
+            }
+
             internal static string Emit(List<InterfaceInfo> interfaces)
             {
                 var sb = new StringBuilder();
@@ -1115,6 +1174,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using System.Runtime.CompilerServices;");
                 sb.AppendLine("using MethodCache.Core;");
                 sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine("using MethodCache.Core.Configuration.Fluent;");
                 sb.AppendLine();
                 sb.AppendLine("namespace MethodCache.Core");
                 sb.AppendLine("{");
@@ -1124,23 +1184,85 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        {");
 
                 var seen = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var info in interfaces)
+                var cachedInterfaces = interfaces.Where(i => i.CachedMethods.Length > 0).ToList();
+
+                if (cachedInterfaces.Count > 0)
                 {
-                    foreach (var model in info.CachedMethods)
+                    sb.AppendLine("            config.ApplyFluent(fluent =>");
+                    sb.AppendLine("            {");
+
+                    foreach (var info in cachedInterfaces)
                     {
-                        var methodId = Utils.GetMethodId(model.Method);
-                        if (!seen.Add(methodId)) continue;
+                        var interfaceName = GetSimpleTypeName(info.Symbol);
 
-                        var groupArg = model.CacheAttr?.NamedArguments
-                            .FirstOrDefault(a => a.Key == "GroupName").Value.Value as string;
-                        var group = !string.IsNullOrWhiteSpace(groupArg) ? $"\"{groupArg}\"" : "null";
+                        foreach (var model in info.CachedMethods)
+                        {
+                            var methodId = Utils.GetMethodId(model.Method);
+                            if (!seen.Add(methodId))
+                            {
+                                continue;
+                            }
 
-                        // Generate RegisterMethod call that tests expect
-                        var interfaceName = GetSimpleTypeName(model.Method.ContainingType);
-                        var paramList = string.Join(", ", model.Method.Parameters.Select(p => $"Any<{GetSimpleParameterType(p.Type)}>.Value"));
-                        
-                        sb.AppendLine($"            config.RegisterMethod<{interfaceName}>(x => x.{model.Method.Name}({paramList}), \"{methodId}\", {group});");
+                            var paramList = string.Join(", ", model.Method.Parameters.Select(p => $"Any<{GetSimpleParameterType(p.Type)}>.Value"));
+                            var configureStatements = BuildConfigureStatements(model.CacheAttr);
+                            var hasConfigure = configureStatements.Count > 0;
+
+                            var groupArg = model.CacheAttr?.NamedArguments
+                                .FirstOrDefault(a => a.Key == "GroupName").Value.Value as string;
+                            var hasGroup = !string.IsNullOrWhiteSpace(groupArg);
+
+                            var requireIdempotent = false;
+                            if (model.CacheAttr != null &&
+                                TryGetNamedArgument(model.CacheAttr, "RequireIdempotent", out var idempotentArg) &&
+                                idempotentArg.Value is bool b && b)
+                            {
+                                requireIdempotent = true;
+                            }
+
+                            sb.AppendLine($"                fluent.ForService<{interfaceName}>()");
+
+                            var methodLine = $"                    .Method(x => x.{model.Method.Name}({paramList}))";
+                            var trailingCalls = new List<string>();
+                            if (hasGroup)
+                            {
+                                trailingCalls.Add($".WithGroup(\"{groupArg}\")");
+                            }
+                            if (requireIdempotent)
+                            {
+                                trailingCalls.Add(".RequireIdempotent(true)");
+                            }
+
+                            var hasAdditional = hasConfigure || trailingCalls.Count > 0;
+
+                            if (!hasAdditional)
+                            {
+                                sb.AppendLine(methodLine + ";");
+                                continue;
+                            }
+
+                            sb.AppendLine(methodLine);
+
+                            if (hasConfigure)
+                            {
+                                sb.AppendLine("                    .Configure(options =>");
+                                sb.AppendLine("                    {");
+                                foreach (var statement in configureStatements)
+                                {
+                                    sb.AppendLine($"                        {statement}");
+                                }
+                                sb.AppendLine(trailingCalls.Count > 0 ? "                    })" : "                    });");
+                            }
+
+                            for (var i = 0; i < trailingCalls.Count; i++)
+                            {
+                                var call = trailingCalls[i];
+                                var suffix = i == trailingCalls.Count - 1 ? ";" : string.Empty;
+                                sb.AppendLine($"                    {call}{suffix}");
+                            }
+                        }
                     }
+
+                    sb.AppendLine("            });");
                 }
 
                 sb.AppendLine("        }");

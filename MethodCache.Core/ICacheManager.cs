@@ -7,6 +7,8 @@ namespace MethodCache.Core
     {
         Task<T> GetOrCreateAsync<T>(string methodName, object[] args, System.Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent);
         Task InvalidateByTagsAsync(params string[] tags);
+        Task InvalidateByKeysAsync(params string[] keys);
+        Task InvalidateByTagPatternAsync(string pattern);
         
         /// <summary>
         /// Directly tries to get a value from the cache without factory execution.

@@ -47,10 +47,15 @@ namespace MethodCache.Core.Configuration
             {
                 try
                 {
-                    var entries = await source.LoadAsync();
-                    allEntries.AddRange(entries);
+                    var rawEntries = await source.LoadAsync();
+                    var entryList = rawEntries as IList<MethodCacheConfigEntry> ?? rawEntries.ToList();
+                    foreach (var entry in entryList)
+                    {
+                        entry.Priority = source.Priority;
+                        allEntries.Add(entry);
+                    }
                     
-                    _logger?.LogDebug($"Loaded {entries.Count()} entries from {source.GetType().Name}");
+                    _logger?.LogDebug($"Loaded {entryList.Count} entries from {source.GetType().Name}");
                 }
                 catch (Exception ex)
                 {
@@ -64,11 +69,12 @@ namespace MethodCache.Core.Configuration
             {
                 _mergedConfiguration.Clear();
                 
-                foreach (var entry in allEntries.OrderBy(e => GetSourcePriority(e)))
+                foreach (var entry in allEntries.OrderBy(GetSourcePriority))
                 {
-                    if (!string.IsNullOrEmpty(entry.MethodKey))
+                    var methodKey = NormalizeMethodKey(entry.MethodKey);
+                    if (!string.IsNullOrEmpty(methodKey))
                     {
-                        _mergedConfiguration[entry.MethodKey] = entry.Settings;
+                        _mergedConfiguration[methodKey] = entry.Settings;
                     }
                 }
                 
@@ -88,7 +94,7 @@ namespace MethodCache.Core.Configuration
         /// </summary>
         public CacheMethodSettings? GetMethodConfiguration(string serviceType, string methodName)
         {
-            var key = $"{serviceType}.{methodName}";
+            var key = $"{NormalizeServiceType(serviceType)}.{methodName}";
             
             _lock.EnterReadLock();
             try
@@ -117,12 +123,17 @@ namespace MethodCache.Core.Configuration
             }
         }
         
-        private int GetSourcePriority(MethodCacheConfigEntry entry)
-        {
-            // This would track which source the entry came from
-            // For now, return 0
-            return 0;
-        }
+        private static int GetSourcePriority(MethodCacheConfigEntry entry) => entry.Priority;
+
+        private static string NormalizeMethodKey(string methodKey) =>
+            string.IsNullOrEmpty(methodKey)
+                ? string.Empty
+                : methodKey.Replace('+', '.');
+
+        private static string NormalizeServiceType(string serviceType) =>
+            string.IsNullOrEmpty(serviceType)
+                ? string.Empty
+                : serviceType.Replace('+', '.');
         
         public void Dispose()
         {

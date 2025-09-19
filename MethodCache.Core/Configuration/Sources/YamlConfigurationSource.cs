@@ -95,25 +95,22 @@ namespace MethodCache.Core.Configuration.Sources
             {
                 settings.Version = config.Version.Value;
             }
-            
+
             if (config.ETag != null)
             {
-                settings.ETag = new ETagSettings
+                var metadata = new ETagMetadata
                 {
-                    Strategy = Enum.TryParse<ETagGenerationStrategy>(config.ETag.Strategy, out var strategy) 
-                        ? strategy 
-                        : ETagGenerationStrategy.ContentHash,
-                    IncludeParametersInETag = config.ETag.IncludeParametersInETag ?? true,
-                    UseWeakETag = config.ETag.UseWeakETag ?? false,
-                    Metadata = config.ETag.Metadata
+                    Strategy = config.ETag.Strategy,
+                    IncludeParametersInETag = config.ETag.IncludeParametersInETag,
+                    UseWeakETag = config.ETag.UseWeakETag,
+                    Metadata = config.ETag.Metadata,
+                    CacheDuration = TryParseTimeSpan(config.ETag.CacheDuration),
+                    ETagGeneratorType = ParseType(config.ETag.ETagGeneratorType)
                 };
-                
-                if (!string.IsNullOrEmpty(config.ETag.CacheDuration))
-                {
-                    settings.ETag.CacheDuration = TimeSpan.Parse(config.ETag.CacheDuration);
-                }
+
+                settings.SetETagMetadata(metadata);
             }
-            
+
             return settings;
         }
         
@@ -126,18 +123,32 @@ namespace MethodCache.Core.Configuration.Sources
             {
                 settings.Tags = new List<string>(defaults.Tags);
             }
-            
-            if (settings.ETag == null && defaults.ETag != null)
+
+            var defaultEtag = defaults.GetETagMetadata();
+            if (defaultEtag != null)
             {
-                settings.ETag = new ETagSettings
-                {
-                    Strategy = defaults.ETag.Strategy,
-                    IncludeParametersInETag = defaults.ETag.IncludeParametersInETag,
-                    UseWeakETag = defaults.ETag.UseWeakETag,
-                    Metadata = defaults.ETag.Metadata,
-                    CacheDuration = defaults.ETag.CacheDuration
-                };
+                settings.MergeWithDefaultETagMetadata(defaultEtag);
             }
+        }
+
+        private static TimeSpan? TryParseTimeSpan(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return TimeSpan.TryParse(value, out var duration) ? duration : null;
+        }
+
+        private static Type? ParseType(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return Type.GetType(value, throwOnError: false);
         }
     }
     
@@ -157,7 +168,7 @@ namespace MethodCache.Core.Configuration.Sources
         public int? Version { get; set; }
         public YamlETagConfiguration? ETag { get; set; }
     }
-    
+
     public class YamlETagConfiguration
     {
         public string? Strategy { get; set; }
@@ -165,5 +176,6 @@ namespace MethodCache.Core.Configuration.Sources
         public bool? UseWeakETag { get; set; }
         public string[]? Metadata { get; set; }
         public string? CacheDuration { get; set; }
+        public string? ETagGeneratorType { get; set; }
     }
 }

@@ -7,7 +7,7 @@
 - `MethodCache.Providers.Redis`: Redis L2 provider (+ compression, tags, locks).
 - `MethodCache.HybridCache`: L1/L2 orchestration and policies.
 - `MethodCache.ETags`: HTTP ETag support layered on MethodCache.
-- `MethodCache.Tests`, `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed Redis tests.
+- `MethodCache.Core.Tests`, `MethodCache.SourceGenerator.Tests`, `MethodCache.Analyzers.Tests`, other `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed Redis tests.
 - `MethodCache.SampleApp` and `MethodCache.Demo`: runnable examples.
 
 ## Build, Test, Run
@@ -39,4 +39,3 @@
 - Prefer dependency injection over statics; validate options (`IOptions<T>`) and fail fast on misconfiguration.
 
 Tip: When adding a new module, follow the `MethodCache.*` naming, add it to `MethodCache.sln`, and provide minimal tests and a README or example usage.
-

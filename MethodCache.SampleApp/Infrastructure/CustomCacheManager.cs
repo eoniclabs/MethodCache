@@ -1,6 +1,7 @@
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 
 namespace MethodCache.SampleApp.Infrastructure
 {
@@ -116,6 +117,63 @@ namespace MethodCache.SampleApp.Infrastructure
 
             Console.WriteLine($"[CACHE INVALIDATE] Removed {invalidatedCount} entries for tags: {string.Join(", ", tags)}");
             await Task.CompletedTask;
+        }
+
+        public Task InvalidateByKeysAsync(params string[] keys)
+        {
+            if (keys == null || keys.Length == 0)
+            {
+                return Task.CompletedTask;
+            }
+
+            foreach (var key in keys)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                _cache.TryRemove(key, out _);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task InvalidateByTagPatternAsync(string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                return Task.CompletedTask;
+            }
+
+            Regex regex;
+            try
+            {
+                regex = new Regex("^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$", RegexOptions.Compiled);
+            }
+            catch (ArgumentException)
+            {
+                return Task.CompletedTask;
+            }
+
+            var matchingTags = _cache
+                .SelectMany(kvp => kvp.Value.Tags.Select(tag => (Key: kvp.Key, Tag: tag)))
+                .Where(pair => regex.IsMatch(pair.Tag))
+                .Select(pair => pair.Key)
+                .Distinct()
+                .ToList();
+
+            foreach (var key in matchingTags)
+            {
+                _cache.TryRemove(key, out _);
+            }
+
+            if (matchingTags.Count > 0)
+            {
+                Console.WriteLine($"[CACHE INVALIDATE] Removed {matchingTags.Count} entries for pattern: {pattern}");
+            }
+
+            return Task.CompletedTask;
         }
 
         public void ClearAll()

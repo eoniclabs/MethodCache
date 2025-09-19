@@ -307,5 +307,32 @@ namespace MethodCache.ETags.Tests.Integration
             _expiry.Clear();
             return Task.CompletedTask;
         }
+
+        public Task InvalidateByKeysAsync(params string[] keys)
+        {
+            if (keys == null)
+            {
+                return Task.CompletedTask;
+            }
+
+            foreach (var key in keys)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                _cache.Remove(key);
+                _expiry.Remove(key);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task InvalidateByTagPatternAsync(string pattern)
+        {
+            // Tag pattern invalidation not required for integration tests
+            return Task.CompletedTask;
+        }
     }
 }

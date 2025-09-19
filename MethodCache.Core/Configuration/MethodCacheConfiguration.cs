@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using MethodCache.Core.Configuration.Sources;
+using MethodCache.Core.Runtime.Defaults;
 
 namespace MethodCache.Core.Configuration
 {
@@ -41,6 +43,16 @@ namespace MethodCache.Core.Configuration
 
         void IMethodCacheConfiguration.RegisterMethod<T>(Expression<Action<T>> method, string methodId, string? groupName)
         {
+            SetMethodGroup(methodId, groupName);
+        }
+
+        public void SetMethodGroup(string methodId, string? groupName)
+        {
+            if (string.IsNullOrEmpty(methodId))
+            {
+                throw new ArgumentException("Method id must be provided.", nameof(methodId));
+            }
+
             _methodGroupMap[methodId] = groupName;
         }
 
@@ -48,20 +60,9 @@ namespace MethodCache.Core.Configuration
         {
             // Get the method-specific settings. If not found, start with an empty settings object.
             _methodSettings.TryGetValue(methodId, out var methodSpecificSettings);
-            var currentMethodSettings = methodSpecificSettings ?? new CacheMethodSettings();
 
             // Create a mutable copy to build the final effective settings
-            var finalSettings = new CacheMethodSettings
-            {
-                Duration = currentMethodSettings.Duration,
-                Tags = new List<string>(currentMethodSettings.Tags), // Ensure tags are copied
-                Version = currentMethodSettings.Version,
-                KeyGeneratorType = currentMethodSettings.KeyGeneratorType,
-                Condition = currentMethodSettings.Condition,
-                OnHitAction = currentMethodSettings.OnHitAction,
-                OnMissAction = currentMethodSettings.OnMissAction,
-                IsIdempotent = currentMethodSettings.IsIdempotent
-            };
+            var finalSettings = methodSpecificSettings?.Clone() ?? new CacheMethodSettings();
 
             // Apply group settings if available and not overridden by method-specific settings
             var groupName = GetGroupNameForMethod(methodId);
@@ -69,6 +70,20 @@ namespace MethodCache.Core.Configuration
             {
                 // Apply group settings only if method-specific settings don't override them
                 if (!finalSettings.Duration.HasValue) finalSettings.Duration = groupSettings.Duration;
+                if (!finalSettings.SlidingExpiration.HasValue) finalSettings.SlidingExpiration = groupSettings.SlidingExpiration;
+                if (!finalSettings.RefreshAhead.HasValue) finalSettings.RefreshAhead = groupSettings.RefreshAhead;
+                if (finalSettings.StampedeProtection == null && groupSettings.StampedeProtection != null)
+                {
+                    finalSettings.StampedeProtection = groupSettings.StampedeProtection;
+                }
+                if (finalSettings.DistributedLock == null && groupSettings.DistributedLock != null)
+                {
+                    finalSettings.DistributedLock = groupSettings.DistributedLock;
+                }
+                if (finalSettings.Metrics == null && groupSettings.Metrics != null)
+                {
+                    finalSettings.Metrics = groupSettings.Metrics;
+                }
 
                 // For tags: combine method and group tags (union behavior)
                 // This ensures consistent behavior where group tags are always included
@@ -82,10 +97,19 @@ namespace MethodCache.Core.Configuration
                 if (!finalSettings.Version.HasValue) finalSettings.Version = groupSettings.Version;
                 if (finalSettings.KeyGeneratorType == null) finalSettings.KeyGeneratorType = groupSettings.KeyGeneratorType;
                 if (finalSettings.Condition == null) finalSettings.Condition = groupSettings.Condition;
-                if (finalSettings.OnHitAction == null) finalSettings.OnHitAction = groupSettings.OnHitAction;
-                if (finalSettings.OnMissAction == null) finalSettings.OnMissAction = groupSettings.OnMissAction;
+                if (finalSettings.OnHitAction == null && groupSettings.OnHitAction != null)
+                {
+                    finalSettings.OnHitAction = groupSettings.OnHitAction;
+                }
+                if (finalSettings.OnMissAction == null && groupSettings.OnMissAction != null)
+                {
+                    finalSettings.OnMissAction = groupSettings.OnMissAction;
+                }
                 // Only apply group idempotent if method-specific didn't set it
-                if (!currentMethodSettings.IsIdempotent) finalSettings.IsIdempotent = groupSettings.IsIdempotent;
+                if (methodSpecificSettings == null || !methodSpecificSettings.IsIdempotent)
+                {
+                    finalSettings.IsIdempotent = groupSettings.IsIdempotent;
+                }
             }
 
             // Apply global defaults if not overridden by method or group settings
@@ -125,6 +149,34 @@ namespace MethodCache.Core.Configuration
         public void ClearAllMethods()
         {
             _methodSettings.Clear();
+        }
+
+        internal IEnumerable<MethodCacheConfigEntry> ToConfigEntries()
+        {
+            foreach (var kvp in _methodSettings)
+            {
+                var key = kvp.Key;
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                var separator = key.LastIndexOf('.');
+                if (separator <= 0)
+                {
+                    continue;
+                }
+
+                var serviceType = key.Substring(0, separator);
+                var methodName = key.Substring(separator + 1);
+
+                yield return new MethodCacheConfigEntry
+                {
+                    ServiceType = serviceType,
+                    MethodName = methodName,
+                    Settings = kvp.Value.Clone()
+                };
+            }
         }
     }
 }

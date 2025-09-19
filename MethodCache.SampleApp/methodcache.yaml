@@ -1,0 +1,11 @@
+defaults:
+  duration: "00:01:30"
+  tags:
+    - yaml-default
+services:
+  MethodCache.SampleApp.Configuration.ICacheConfigurationShowcase.GetInventoryLevelAsync:
+    duration: "00:04:00"
+    tags:
+      - yaml
+      - inventory
+    version: 5

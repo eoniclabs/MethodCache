@@ -1,5 +1,6 @@
 using System;
 using MethodCache.Core;
+using MethodCache.Core.Runtime.Defaults;
 using MethodCache.HybridCache.Abstractions;
 using MethodCache.HybridCache.Configuration;
 using MethodCache.HybridCache.Implementation;

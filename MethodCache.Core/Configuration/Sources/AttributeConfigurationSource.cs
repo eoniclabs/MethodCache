@@ -55,10 +55,9 @@ namespace MethodCache.Core.Configuration.Sources
                                         Tags = cacheAttribute.Tags?.ToList() ?? new List<string>()
                                     }
                                 };
-                                
-                                // Check for ETag attribute
+
                                 LoadETagSettings(method, entry.Settings);
-                                
+
                                 entries.Add(entry);
                             }
                         }
@@ -78,26 +77,62 @@ namespace MethodCache.Core.Configuration.Sources
         private void LoadETagSettings(MethodInfo method, CacheMethodSettings settings)
         {
             var etagAttributeType = Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags");
-            if (etagAttributeType == null) return;
-            
-            var etagAttribute = method.GetCustomAttribute(etagAttributeType);
-            if (etagAttribute != null)
+            if (etagAttributeType == null)
             {
-                settings.ETag = new ETagSettings
-                {
-                    Strategy = (ETagGenerationStrategy)(etagAttributeType.GetProperty("Strategy")?.GetValue(etagAttribute) ?? ETagGenerationStrategy.ContentHash),
-                    IncludeParametersInETag = (bool)(etagAttributeType.GetProperty("IncludeParametersInETag")?.GetValue(etagAttribute) ?? true),
-                    ETagGeneratorType = (Type?)etagAttributeType.GetProperty("ETagGeneratorType")?.GetValue(etagAttribute),
-                    Metadata = (string[]?)etagAttributeType.GetProperty("Metadata")?.GetValue(etagAttribute),
-                    UseWeakETag = (bool)(etagAttributeType.GetProperty("UseWeakETag")?.GetValue(etagAttribute) ?? false)
-                };
-                
-                var cacheDurationMinutes = etagAttributeType.GetProperty("CacheDurationMinutes")?.GetValue(etagAttribute) as int?;
-                if (cacheDurationMinutes.HasValue)
-                {
-                    settings.ETag.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
-                }
+                return;
             }
+
+            var etagAttribute = method.GetCustomAttribute(etagAttributeType);
+            if (etagAttribute == null)
+            {
+                return;
+            }
+
+            var metadata = new ETagMetadata
+            {
+                Strategy = etagAttributeType.GetProperty("Strategy")?.GetValue(etagAttribute)?.ToString(),
+                IncludeParametersInETag = GetNullableValue<bool>(etagAttributeType, etagAttribute, "IncludeParametersInETag"),
+                ETagGeneratorType = etagAttributeType.GetProperty("ETagGeneratorType")?.GetValue(etagAttribute) as Type,
+                Metadata = etagAttributeType.GetProperty("Metadata")?.GetValue(etagAttribute) as string[],
+                UseWeakETag = GetNullableValue<bool>(etagAttributeType, etagAttribute, "UseWeakETag")
+            };
+
+            var cacheDurationMinutes = GetNullableValue<int>(etagAttributeType, etagAttribute, "CacheDurationMinutes");
+            if (cacheDurationMinutes.HasValue)
+            {
+                metadata.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
+            }
+
+            settings.SetETagMetadata(metadata);
+        }
+
+        private static T? GetNullableValue<T>(Type attributeType, object attribute, string propertyName) where T : struct
+        {
+            var property = attributeType.GetProperty(propertyName);
+            if (property == null)
+            {
+                return null;
+            }
+
+            var value = property.GetValue(attribute);
+            if (value == null)
+            {
+                return null;
+            }
+
+            if (value is T typed)
+            {
+                return typed;
+            }
+
+            // Handle nullable value types
+            if (value.GetType() == typeof(T?))
+            {
+                var nullable = (T?)value;
+                return nullable.HasValue ? nullable.Value : null;
+            }
+
+            return null;
         }
     }
 }
