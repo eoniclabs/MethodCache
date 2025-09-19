@@ -2,6 +2,7 @@ using System;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using MethodCache.Core.Options;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.Configuration.Fluent
 {
@@ -30,6 +31,9 @@ namespace MethodCache.Core.Configuration.Fluent
         IFluentMethodConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
         IFluentMethodConfiguration WithGroup(string groupName);
         IFluentMethodConfiguration RequireIdempotent(bool enabled = true);
+        IFluentMethodConfiguration WithVersion(int version);
+        IFluentMethodConfiguration WithKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator, new();
+        IFluentMethodConfiguration When(Func<CacheContext, bool> predicate);
     }
 
     public interface IFluentGroupConfiguration

@@ -5,7 +5,9 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Metrics;
 using MethodCache.Core.Options;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.Configuration.Fluent
 {
@@ -233,6 +235,25 @@ namespace MethodCache.Core.Configuration.Fluent
                 return this;
             }
 
+            public IFluentMethodConfiguration WithVersion(int version)
+            {
+                _configurations.Add(builder => builder.WithVersion(version));
+                return this;
+            }
+
+            public IFluentMethodConfiguration WithKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator, new()
+            {
+                _configurations.Add(builder => builder.WithKeyGenerator<TGenerator>());
+                return this;
+            }
+
+            public IFluentMethodConfiguration When(Func<CacheContext, bool> predicate)
+            {
+                if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+                _configurations.Add(builder => builder.When(predicate));
+                return this;
+            }
+
             public CacheEntryOptions BuildOptions(CacheEntryOptions? defaultOptions)
             {
                 var builder = new CacheEntryOptions.Builder();
@@ -255,6 +276,36 @@ namespace MethodCache.Core.Configuration.Fluent
                 if (defaultOptions?.RefreshAhead is TimeSpan refresh)
                 {
                     builder.RefreshAhead(refresh);
+                }
+
+                if (defaultOptions?.StampedeProtection is StampedeProtectionOptions stampede)
+                {
+                    builder.WithStampedeProtection(stampede);
+                }
+
+                if (defaultOptions?.DistributedLock is DistributedLockOptions distributedLock)
+                {
+                    builder.WithDistributedLock(distributedLock.Timeout, distributedLock.MaxConcurrency);
+                }
+
+                if (defaultOptions?.Metrics is ICacheMetrics metrics)
+                {
+                    builder.WithMetrics(metrics);
+                }
+
+                if (defaultOptions?.Version is int version)
+                {
+                    builder.WithVersion(version);
+                }
+
+                if (defaultOptions?.KeyGeneratorType is Type generatorType)
+                {
+                    builder.WithKeyGenerator(generatorType);
+                }
+
+                if (defaultOptions?.Predicate is Func<CacheContext, bool> predicate)
+                {
+                    builder.WithPredicate(predicate);
                 }
 
                 foreach (var configure in _configurations)

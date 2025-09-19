@@ -1,9 +1,11 @@
 using System;
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Fluent;
 using MethodCache.Core.Options;
+using MethodCache.Core.Runtime;
 using Xunit;
 
 namespace MethodCache.Tests.Core.Configuration.Fluent
@@ -87,6 +89,44 @@ namespace MethodCache.Tests.Core.Configuration.Fluent
             var settings = configuration.GetMethodSettings(MethodKey(nameof(IUserService.GetUser)));
 
             Assert.Contains("users", settings.Tags);
+        }
+
+        [Fact]
+        public void ApplyFluent_ConfiguresAdvancedOptions()
+        {
+            var configuration = new MethodCacheConfiguration();
+
+            configuration.ApplyFluent(fluent =>
+            {
+                fluent.ForService<IUserService>()
+                    .Method(s => s.GetUser(default))
+                    .WithVersion(5)
+                    .WithKeyGenerator<CustomKeyGenerator>()
+                    .When(ctx => ctx.Key.Contains("GetUser"));
+            });
+
+            var settings = configuration.GetMethodSettings(MethodKey(nameof(IUserService.GetUser)));
+
+            Assert.Equal(5, settings.Version);
+            Assert.Equal(typeof(CustomKeyGenerator), settings.KeyGeneratorType);
+            Assert.NotNull(settings.Condition);
+
+            var executionContext = new CacheExecutionContext(
+                MethodKey(nameof(IUserService.GetUser)),
+                typeof(IUserService),
+                Array.Empty<object>(),
+                null,
+                CancellationToken.None);
+
+            Assert.True(settings.Condition!(executionContext));
+        }
+
+        private sealed class CustomKeyGenerator : ICacheKeyGenerator
+        {
+            public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+            {
+                return $"custom:{methodName}";
+            }
         }
 
         private static string MethodKey(string methodName)

@@ -253,6 +253,32 @@ namespace MethodCache.Tests.Core.Extensions
             Assert.False(lookup.Found);
         }
 
+        [Fact]
+        public async Task GetOrCreateAsync_WhenPredicateBlocksCaching_DoesNotStoreValue()
+        {
+            var cacheManager = new MockCacheManager();
+            var calls = 0;
+
+            ValueTask<string> Factory(CacheContext context, CancellationToken token)
+            {
+                calls++;
+                return new ValueTask<string>("value" + calls);
+            }
+
+            var first = await cacheManager.GetOrCreateAsync(
+                "user:predicate",
+                Factory,
+                options => options.When(_ => false));
+
+            var second = await cacheManager.GetOrCreateAsync(
+                "user:predicate",
+                Factory,
+                options => options.When(_ => false));
+
+            Assert.Equal("value1", first);
+            Assert.Equal("value2", second);
+        }
+
         private sealed class CapturingCacheManager : ICacheManager
         {
             public string? LastMethodName { get; private set; }

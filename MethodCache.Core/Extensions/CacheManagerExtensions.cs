@@ -43,6 +43,13 @@ namespace MethodCache.Core.Extensions
             var factoryExecuted = false;
             var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
 
+            if (options.Predicate != null && !options.Predicate(context))
+            {
+                var bypassResult = await factory(context, cancellationToken).ConfigureAwait(false);
+                options.Metrics?.RecordMiss(context.Key);
+                return bypassResult;
+            }
+
             async Task<T> WrappedFactory()
             {
                 factoryExecuted = true;
@@ -121,9 +128,15 @@ namespace MethodCache.Core.Extensions
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            var options = BuildOptions(configure);
             var keyList = keys as IList<string> ?? keys.ToList();
             var results = new Dictionary<string, T>(keyList.Count);
             var missingKeys = new List<string>();
+            HashSet<string>? skipCacheKeys = null;
+            if (options.Predicate != null)
+            {
+                skipCacheKeys = new HashSet<string>(StringComparer.Ordinal);
+            }
 
             foreach (var key in keyList)
             {
@@ -132,15 +145,24 @@ namespace MethodCache.Core.Extensions
                     throw new ArgumentException("Keys must not contain null or whitespace entries.", nameof(keys));
                 }
 
-                var lookup = await cacheManager.TryGetAsync<T>(key, cancellationToken).ConfigureAwait(false);
-                if (lookup.Found)
+                var singleContext = new CacheContext(key, services);
+                var predicateAllowsCaching = options.Predicate == null || options.Predicate(singleContext);
+
+                if (predicateAllowsCaching)
                 {
-                    results[key] = lookup.Value!;
+                    var lookup = await cacheManager.TryGetAsync<T>(key, cancellationToken).ConfigureAwait(false);
+                    if (lookup.Found)
+                    {
+                        results[key] = lookup.Value!;
+                        continue;
+                    }
                 }
                 else
                 {
-                    missingKeys.Add(key);
+                    skipCacheKeys?.Add(key);
                 }
+
+                missingKeys.Add(key);
             }
 
             if (missingKeys.Count > 0)
@@ -157,6 +179,11 @@ namespace MethodCache.Core.Extensions
 
                     var capturedValue = value!;
                     results[key] = capturedValue;
+
+                    if (skipCacheKeys != null && skipCacheKeys.Contains(key))
+                    {
+                        continue;
+                    }
 
                     await cacheManager.GetOrCreateAsync(
                         key,

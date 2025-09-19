@@ -20,7 +20,10 @@ namespace MethodCache.Core.Options
             IReadOnlyList<Action<CacheContext>> onMissCallbacks,
             StampedeProtectionOptions? stampedeProtection,
             DistributedLockOptions? distributedLock,
-            ICacheMetrics? metrics)
+            ICacheMetrics? metrics,
+            int? version,
+            Type? keyGeneratorType,
+            Func<CacheContext, bool>? predicate)
         {
             Duration = duration;
             SlidingExpiration = slidingExpiration;
@@ -31,6 +34,9 @@ namespace MethodCache.Core.Options
             StampedeProtection = stampedeProtection;
             DistributedLock = distributedLock;
             Metrics = metrics;
+            Version = version;
+            KeyGeneratorType = keyGeneratorType;
+            Predicate = predicate;
         }
 
         /// <summary>
@@ -65,6 +71,9 @@ namespace MethodCache.Core.Options
         public StampedeProtectionOptions? StampedeProtection { get; }
         public DistributedLockOptions? DistributedLock { get; }
         public ICacheMetrics? Metrics { get; }
+        public int? Version { get; }
+        public Type? KeyGeneratorType { get; }
+        public Func<CacheContext, bool>? Predicate { get; }
 
         /// <summary>
         /// Builder for <see cref="CacheEntryOptions"/> instances.
@@ -80,6 +89,9 @@ namespace MethodCache.Core.Options
             private StampedeProtectionOptions? _stampedeProtection;
             private DistributedLockOptions? _distributedLock;
             private ICacheMetrics? _metrics;
+            private int? _version;
+            private Type? _keyGeneratorType;
+            private Func<CacheContext, bool>? _predicate;
 
             /// <summary>
             /// Sets the cache duration.
@@ -188,6 +200,41 @@ namespace MethodCache.Core.Options
                 return this;
             }
 
+            public Builder WithVersion(int version)
+            {
+                if (version < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(version), "Version must be non-negative.");
+                }
+
+                _version = version;
+                return this;
+            }
+
+            public Builder WithKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator, new()
+            {
+                _keyGeneratorType = typeof(TGenerator);
+                return this;
+            }
+
+            internal Builder WithKeyGenerator(Type generatorType)
+            {
+                _keyGeneratorType = generatorType ?? throw new ArgumentNullException(nameof(generatorType));
+                return this;
+            }
+
+            public Builder When(Func<CacheContext, bool> predicate)
+            {
+                _predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
+                return this;
+            }
+
+            internal Builder WithPredicate(Func<CacheContext, bool>? predicate)
+            {
+                _predicate = predicate;
+                return this;
+            }
+
             /// <summary>
             /// Builds an immutable <see cref="CacheEntryOptions"/> instance.
             /// </summary>
@@ -202,7 +249,10 @@ namespace MethodCache.Core.Options
                     new ReadOnlyCollection<Action<CacheContext>>(_onMissCallbacks),
                     _stampedeProtection,
                     _distributedLock,
-                    _metrics);
+                    _metrics,
+                    _version,
+                    _keyGeneratorType,
+                    _predicate);
             }
         }
     }
