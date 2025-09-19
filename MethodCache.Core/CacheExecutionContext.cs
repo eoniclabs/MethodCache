@@ -10,12 +10,12 @@ namespace MethodCache.Core
         public IServiceProvider Services { get; }
         public CancellationToken CancellationToken { get; }
 
-        public CacheExecutionContext(string methodName, Type serviceType, object[] args, IServiceProvider services, CancellationToken cancellationToken)
+        public CacheExecutionContext(string methodName, Type serviceType, object[] args, IServiceProvider? services, CancellationToken cancellationToken)
         {
             MethodName = methodName;
             ServiceType = serviceType;
             Args = args;
-            Services = services;
+            Services = services ?? NullServiceProvider.Instance;
             CancellationToken = cancellationToken;
         }
 
@@ -27,6 +27,13 @@ namespace MethodCache.Core
         public T GetService<T>() where T : notnull
         {
             return (T)Services.GetService(typeof(T))!;
+        }
+
+        private sealed class NullServiceProvider : IServiceProvider
+        {
+            public static readonly NullServiceProvider Instance = new();
+
+            public object? GetService(Type serviceType) => null;
         }
     }
 }

@@ -82,17 +82,30 @@ config.ForService<IUserService>()
 ```csharp
 [ApiController]
 [Route("api/admin/cache")]
-public class CacheManagementController : ControllerBase
+public sealed class CacheManagementController : ControllerBase
 {
+    private readonly IRuntimeCacheConfigurator _configurator;
+
+    public CacheManagementController(IRuntimeCacheConfigurator configurator)
+        => _configurator = configurator;
+
     [HttpPost("emergency-disable")]
     public async Task<IActionResult> EmergencyDisableCache([FromBody] DisableRequest request)
     {
-        // Update configuration store (Azure App Config, Redis, etc.)
-        await _configurationService.UpdateAsync(
-            $"MethodCache:Services:{request.Service}:Methods:{request.Method}:Enabled", 
-            "false");
-        
-        // IOptionsMonitor automatically picks up changes
+        await _configurator.ApplyOverridesAsync(new[]
+        {
+            new MethodCacheConfigEntry
+            {
+                ServiceType = request.Service,
+                MethodName = request.Method,
+                Settings = new CacheMethodSettings
+                {
+                    Duration = TimeSpan.Zero,
+                    Tags = new List<string> { "disabled" }
+                }
+            }
+        });
+
         return Ok("Cache disabled - effective immediately");
     }
 }

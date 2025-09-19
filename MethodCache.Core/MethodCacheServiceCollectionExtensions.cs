@@ -1,4 +1,6 @@
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Runtime.Defaults;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -84,6 +86,20 @@ namespace MethodCache.Core
             services.AddSingleton<IMethodCacheConfiguration>(configuration);
 
             return services;
+        }
+
+        /// <summary>
+        /// Adds MethodCache services configured via the fluent API.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configure">Fluent configuration delegate.</param>
+        /// <returns>The service collection.</returns>
+        public static IServiceCollection AddMethodCacheFluent(this IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            return services.AddMethodCache(config => config.ApplyFluent(configure));
         }
 
         /// <summary>
@@ -344,37 +360,76 @@ namespace MethodCache.Core
                         Duration = string.IsNullOrEmpty(cacheAttribute.Duration) 
                             ? TimeSpan.FromMinutes(15) 
                             : TimeSpan.Parse(cacheAttribute.Duration),
-                        Tags = cacheAttribute.Tags?.ToList() ?? new List<string>()
+                        Tags = cacheAttribute.Tags?.ToList() ?? new List<string>(),
+                        IsIdempotent = cacheAttribute.RequireIdempotent
                     };
-                    
-                    // Check for ETag attribute and configure ETag settings
-                    var etagAttributeType = Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags");
-                    if (etagAttributeType != null)
-                    {
-                        var etagAttribute = method.GetCustomAttribute(etagAttributeType);
-                        if (etagAttribute != null)
-                        {
-                            settings.ETag = new ETagSettings
-                            {
-                                Strategy = (ETagGenerationStrategy)(etagAttribute.GetType().GetProperty("Strategy")?.GetValue(etagAttribute) ?? (int)ETagGenerationStrategy.ContentHash),
-                                IncludeParametersInETag = (bool)(etagAttribute.GetType().GetProperty("IncludeParametersInETag")?.GetValue(etagAttribute) ?? true),
-                                ETagGeneratorType = (Type?)etagAttribute.GetType().GetProperty("ETagGeneratorType")?.GetValue(etagAttribute),
-                                Metadata = (string[]?)etagAttribute.GetType().GetProperty("Metadata")?.GetValue(etagAttribute),
-                                UseWeakETag = (bool)(etagAttribute.GetType().GetProperty("UseWeakETag")?.GetValue(etagAttribute) ?? false),
-                                CacheDuration = null // Will be set from CacheDurationMinutes if available
-                            };
-                            
-                            var cacheDurationMinutes = etagAttribute.GetType().GetProperty("CacheDurationMinutes")?.GetValue(etagAttribute) as int?;
-                            if (cacheDurationMinutes.HasValue)
-                            {
-                                settings.ETag.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
-                            }
-                        }
-                    }
-                    
+
+                    ApplyETagAttribute(method, settings);
+
                     configuration.AddMethod(methodKey, settings);
                 }
             }
+        }
+
+        private static void ApplyETagAttribute(MethodInfo method, CacheMethodSettings settings)
+        {
+            var etagAttributeType = Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags");
+            if (etagAttributeType == null)
+            {
+                return;
+            }
+
+            var etagAttribute = method.GetCustomAttribute(etagAttributeType);
+            if (etagAttribute == null)
+            {
+                return;
+            }
+
+            var metadata = new ETagMetadata
+            {
+                Strategy = etagAttributeType.GetProperty("Strategy")?.GetValue(etagAttribute)?.ToString(),
+                IncludeParametersInETag = GetNullableValue<bool>(etagAttributeType, etagAttribute, "IncludeParametersInETag"),
+                ETagGeneratorType = etagAttributeType.GetProperty("ETagGeneratorType")?.GetValue(etagAttribute) as Type,
+                Metadata = etagAttributeType.GetProperty("Metadata")?.GetValue(etagAttribute) as string[],
+                UseWeakETag = GetNullableValue<bool>(etagAttributeType, etagAttribute, "UseWeakETag")
+            };
+
+            var cacheDurationMinutes = GetNullableValue<int>(etagAttributeType, etagAttribute, "CacheDurationMinutes");
+            if (cacheDurationMinutes.HasValue)
+            {
+                metadata.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
+            }
+
+            settings.SetETagMetadata(metadata);
+        }
+
+        private static T? GetNullableValue<T>(Type attributeType, object attribute, string propertyName) where T : struct
+        {
+            var property = attributeType.GetProperty(propertyName);
+            if (property == null)
+            {
+                return null;
+            }
+
+            var value = property.GetValue(attribute);
+            if (value == null)
+            {
+                return null;
+            }
+
+            if (value is T typed)
+            {
+                return typed;
+            }
+
+            // Handle nullable value types
+            if (value.GetType() == typeof(T?))
+            {
+                var nullable = (T?)value;
+                return nullable.HasValue ? nullable.Value : null;
+            }
+
+            return null;
         }
     }
 }

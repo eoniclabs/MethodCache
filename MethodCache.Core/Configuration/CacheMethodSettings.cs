@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using MethodCache.Core.Metrics;
+using MethodCache.Core.Options;
 
 namespace MethodCache.Core.Configuration
 {
@@ -13,67 +16,63 @@ namespace MethodCache.Core.Configuration
         public Action<CacheExecutionContext>? OnHitAction { get; set; }
         public Action<CacheExecutionContext>? OnMissAction { get; set; }
         public bool IsIdempotent { get; set; }
-        
-        // ETag-specific settings
-        public ETagSettings? ETag { get; set; }
-    }
-    
-    public class ETagSettings
-    {
-        /// <summary>
-        /// ETag generation strategy to use
-        /// </summary>
-        public ETagGenerationStrategy Strategy { get; set; } = ETagGenerationStrategy.ContentHash;
-        
-        /// <summary>
-        /// Whether to include method parameters in ETag generation
-        /// </summary>
-        public bool IncludeParametersInETag { get; set; } = true;
-        
-        /// <summary>
-        /// Custom ETag generator type (must implement IETagGenerator)
-        /// </summary>
-        public Type? ETagGeneratorType { get; set; }
-        
-        /// <summary>
-        /// Additional metadata to include in ETag calculation
-        /// </summary>
-        public string[]? Metadata { get; set; }
-        
-        /// <summary>
-        /// Whether to use weak ETags (W/ prefix)
-        /// </summary>
-        public bool UseWeakETag { get; set; } = false;
-        
-        /// <summary>
-        /// Custom cache duration for ETag entries (if different from method cache duration)
-        /// </summary>
-        public TimeSpan? CacheDuration { get; set; }
-    }
-    
-    /// <summary>
-    /// Defines strategies for ETag generation.
-    /// </summary>
-    public enum ETagGenerationStrategy
-    {
-        /// <summary>
-        /// Generate ETag based on content hash (default).
-        /// </summary>
-        ContentHash,
-        
-        /// <summary>
-        /// Generate ETag based on last modified timestamp.
-        /// </summary>
-        LastModified,
-        
-        /// <summary>
-        /// Generate ETag based on version number.
-        /// </summary>
-        Version,
-        
-        /// <summary>
-        /// Use custom ETag generator.
-        /// </summary>
-        Custom
+        public TimeSpan? SlidingExpiration { get; set; }
+        public TimeSpan? RefreshAhead { get; set; }
+        public StampedeProtectionOptions? StampedeProtection { get; set; }
+        public DistributedLockOptions? DistributedLock { get; set; }
+        public ICacheMetrics? Metrics { get; set; }
+        public Dictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
+
+        public CacheMethodSettings Clone()
+        {
+            return new CacheMethodSettings
+            {
+                Duration = Duration,
+                Tags = new List<string>(Tags),
+                Version = Version,
+                KeyGeneratorType = KeyGeneratorType,
+                Condition = Condition,
+                OnHitAction = OnHitAction,
+                OnMissAction = OnMissAction,
+                IsIdempotent = IsIdempotent,
+                SlidingExpiration = SlidingExpiration,
+                RefreshAhead = RefreshAhead,
+                StampedeProtection = StampedeProtection,
+                DistributedLock = DistributedLock,
+                Metrics = Metrics,
+                Metadata = CloneMetadata(Metadata)
+            };
+        }
+
+        private static Dictionary<string, object?> CloneMetadata(Dictionary<string, object?> metadata)
+        {
+            if (metadata.Count == 0)
+            {
+                return new Dictionary<string, object?>();
+            }
+
+            var clone = new Dictionary<string, object?>(metadata.Count, metadata.Comparer);
+            foreach (var (key, value) in metadata)
+            {
+                clone[key] = CloneMetadataValue(value);
+            }
+
+            return clone;
+        }
+
+        private static object? CloneMetadataValue(object? value)
+        {
+            switch (value)
+            {
+                case null:
+                    return null;
+                case Array array:
+                    return array.Clone();
+                case ICloneable cloneable:
+                    return cloneable.Clone();
+                default:
+                    return value;
+            }
+        }
     }
 }

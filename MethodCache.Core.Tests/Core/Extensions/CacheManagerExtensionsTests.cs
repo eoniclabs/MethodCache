@@ -1,0 +1,330 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using MethodCache.Core;
+using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Extensions;
+using MethodCache.Core.Options;
+using MethodCache.Core.Runtime;
+using Xunit;
+
+namespace MethodCache.Core.Tests.Extensions
+{
+    public class CacheManagerExtensionsTests
+    {
+        [Fact]
+        public async Task GetOrCreateAsync_UsesFactoryOnceAndCachesValue()
+        {
+            // Arrange
+            var cacheManager = new MockCacheManager();
+            var factoryCallCount = 0;
+
+            ValueTask<string> Factory(CacheContext context, CancellationToken token)
+            {
+                factoryCallCount++;
+                return new ValueTask<string>($"value:{context.Key}");
+            }
+
+            // Act
+            var first = await cacheManager.GetOrCreateAsync("user:42", Factory);
+            var second = await cacheManager.GetOrCreateAsync("user:42", Factory);
+
+            // Assert
+            Assert.Equal("value:user:42", first);
+            Assert.Equal(first, second); // Same cached value
+            Assert.Equal(1, factoryCallCount); // Factory invoked only once thanks to caching
+        }
+
+        [Fact]
+        public async Task TryGetAsync_ReturnsMissThenHit()
+        {
+            // Arrange
+            var cacheManager = new MockCacheManager();
+
+            // Act - miss
+            var miss = await cacheManager.TryGetAsync<string>("orders:active");
+
+            // Populate cache via fluent helper
+            await cacheManager.GetOrCreateAsync("orders:active", static (_, _) => new ValueTask<string>("cached"));
+
+            // Act - hit
+            var hit = await cacheManager.TryGetAsync<string>("orders:active");
+
+            // Assert
+            Assert.False(miss.Found);
+            Assert.True(hit.Found);
+            Assert.Equal("cached", hit.Value);
+        }
+
+        [Fact]
+        public async Task GetOrCreateManyAsync_UsesBatchFactoryForMissingKeys()
+        {
+            // Arrange
+            var cacheManager = new MockCacheManager();
+            await cacheManager.GetOrCreateAsync("user:existing", static (_, _) => new ValueTask<string>("cached"));
+
+            var factoryCalls = 0;
+            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CacheContext context, CancellationToken token)
+            {
+                factoryCalls++;
+                Assert.Equal(new[] { "user:missing", "user:another" }, missing);
+                Assert.Equal("MethodCache.Fluent.Bulk", context.Key);
+
+                IDictionary<string, string> results = new Dictionary<string, string>
+                {
+                    ["user:missing"] = "value-missing",
+                    ["user:another"] = "value-another"
+                };
+
+                return new ValueTask<IDictionary<string, string>>(results);
+            }
+
+            // Act
+            var values = await cacheManager.GetOrCreateManyAsync(
+                new[] { "user:existing", "user:missing", "user:another" },
+                Factory);
+
+            // Assert
+            Assert.Equal(3, values.Count);
+            Assert.Equal("cached", values["user:existing"]);
+            Assert.Equal("value-missing", values["user:missing"]);
+            Assert.Equal("value-another", values["user:another"]);
+            Assert.Equal(1, factoryCalls);
+
+            var lookup = await cacheManager.TryGetAsync<string>("user:missing");
+            Assert.True(lookup.Found);
+            Assert.Equal("value-missing", lookup.Value);
+        }
+
+        [Fact]
+        public async Task GetOrCreateManyAsync_AppliesConfigureToNewEntries()
+        {
+            var cacheManager = new CapturingCacheManager();
+
+            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CacheContext context, CancellationToken token)
+            {
+                IDictionary<string, string> results = new Dictionary<string, string>
+                {
+                    ["report:1"] = "cached-report"
+                };
+
+                return new ValueTask<IDictionary<string, string>>(results);
+            }
+
+            await cacheManager.GetOrCreateManyAsync(
+                new[] { "report:1" },
+                Factory,
+                options => options.WithDuration(TimeSpan.FromMinutes(5)).WithTags("reports"));
+
+            Assert.Equal("MethodCache.Fluent", cacheManager.LastMethodName);
+            Assert.NotNull(cacheManager.LastSettings);
+            Assert.Equal(TimeSpan.FromMinutes(5), cacheManager.LastSettings!.Duration);
+            Assert.Contains("reports", cacheManager.LastSettings.Tags);
+        }
+
+        [Fact]
+        public async Task GetOrCreateManyAsync_ThrowsWhenFactoryOmitsKey()
+        {
+            var cacheManager = new MockCacheManager();
+
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await cacheManager.GetOrCreateManyAsync(
+                    new[] { "missing" },
+                    (missing, _, _) => new ValueTask<IDictionary<string, string>>(new Dictionary<string, string>())));
+        }
+
+        [Fact]
+        public async Task GetOrCreateAsync_InvokesOnHitAndOnMissCallbacks()
+        {
+            // Arrange
+            var cacheManager = new MockCacheManager();
+            var hitCount = 0;
+            var missCount = 0;
+
+            ValueTask<string> Factory(CacheContext context, CancellationToken token)
+                => new("value");
+
+            // Act - initial miss populates cache
+            await cacheManager.GetOrCreateAsync(
+                "users:1",
+                Factory,
+                options => options.OnHit(_ => hitCount++).OnMiss(_ => missCount++));
+
+            // Second call should use cache
+            await cacheManager.GetOrCreateAsync(
+                "users:1",
+                Factory,
+                options => options.OnHit(_ => hitCount++).OnMiss(_ => missCount++));
+
+            // Assert
+            Assert.Equal(1, missCount);
+            Assert.Equal(1, hitCount);
+        }
+
+        [Fact]
+        public async Task GetOrCreateAsync_MapsOptionsToLegacySettings()
+        {
+            // Arrange
+            var cacheManager = new CapturingCacheManager();
+            var duration = TimeSpan.FromMinutes(5);
+            var builtOptions = new CacheEntryOptions.Builder()
+                .WithDuration(duration)
+                .WithSlidingExpiration(TimeSpan.FromMinutes(2))
+                .Build();
+            Assert.Equal(TimeSpan.FromMinutes(2), builtOptions.SlidingExpiration);
+
+            // Act
+            var result = await cacheManager.GetOrCreateAsync(
+                "report:monthly",
+                static (_, _) => new ValueTask<int>(99),
+                options => options
+                    .WithDuration(duration)
+                    .WithSlidingExpiration(TimeSpan.FromMinutes(2))
+                    .WithTags("reports", "metrics"));
+
+            // Assert runtime result
+            Assert.Equal(99, result);
+
+            // Assert legacy pipeline mapping
+            Assert.Equal("MethodCache.Fluent", cacheManager.LastMethodName);
+            Assert.NotNull(cacheManager.LastArgs);
+            Assert.Empty(cacheManager.LastArgs!);
+
+            Assert.NotNull(cacheManager.LastSettings);
+            Assert.Equal(duration, cacheManager.LastSettings!.Duration);
+            Assert.Contains("reports", cacheManager.LastSettings.Tags);
+            Assert.Contains("metrics", cacheManager.LastSettings.Tags);
+            Assert.True(cacheManager.LastSettings.IsIdempotent);
+            Assert.Equal(TimeSpan.FromMinutes(2), cacheManager.LastSettings.SlidingExpiration);
+
+            // Ensure the fixed key generator preserves the fluent key
+            Assert.NotNull(cacheManager.LastKeyGenerator);
+            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), new CacheMethodSettings());
+            Assert.Equal("report:monthly", generatedKey);
+        }
+
+        [Fact]
+        public async Task GetOrCreateStreamAsync_MaterializesAndCachesSequence()
+        {
+            var cacheManager = new MockCacheManager();
+            var enumerations = 0;
+
+            async IAsyncEnumerable<int> Factory(CacheContext context, [EnumeratorCancellation] CancellationToken token)
+            {
+                enumerations++;
+                yield return 1;
+                await Task.Delay(1, token);
+                yield return 2;
+            }
+
+            var first = new List<int>();
+            await foreach (var item in cacheManager.GetOrCreateStreamAsync("stream:users", Factory))
+            {
+                first.Add(item);
+            }
+
+            Assert.Equal(new[] { 1, 2 }, first);
+            Assert.Equal(1, enumerations);
+
+            var second = new List<int>();
+            await foreach (var item in cacheManager.GetOrCreateStreamAsync("stream:users", Factory))
+            {
+                second.Add(item);
+            }
+
+            Assert.Equal(new[] { 1, 2 }, second);
+            Assert.Equal(1, enumerations); // Cached sequence reused
+        }
+
+        [Fact]
+        public async Task InvalidateByKeysAsync_RemovesCachedEntry()
+        {
+            var cacheManager = new MockCacheManager();
+
+            await cacheManager.GetOrCreateAsync(
+                "user:invalidate",
+                static (_, _) => new ValueTask<string>("cached"));
+
+            await cacheManager.InvalidateByKeysAsync("user:invalidate");
+
+            var lookup = await cacheManager.TryGetAsync<string>("user:invalidate");
+            Assert.False(lookup.Found);
+        }
+
+        [Fact]
+        public async Task GetOrCreateAsync_WhenPredicateBlocksCaching_DoesNotStoreValue()
+        {
+            var cacheManager = new MockCacheManager();
+            var calls = 0;
+
+            ValueTask<string> Factory(CacheContext context, CancellationToken token)
+            {
+                calls++;
+                return new ValueTask<string>("value" + calls);
+            }
+
+            var first = await cacheManager.GetOrCreateAsync(
+                "user:predicate",
+                Factory,
+                options => options.When(_ => false));
+
+            var second = await cacheManager.GetOrCreateAsync(
+                "user:predicate",
+                Factory,
+                options => options.When(_ => false));
+
+            Assert.Equal("value1", first);
+            Assert.Equal("value2", second);
+        }
+
+        [Fact]
+        public async Task GetOrCreateAsync_WithVersion_AppendsVersionToKey()
+        {
+            var cacheManager = new CapturingCacheManager();
+
+            await cacheManager.GetOrCreateAsync(
+                "user:version",
+                static (_, _) => new ValueTask<int>(42),
+                options => options.WithVersion(3));
+
+            Assert.NotNull(cacheManager.LastKeyGenerator);
+            var generated = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), new CacheMethodSettings());
+            Assert.Equal("user:version::v3", generated);
+        }
+
+        private sealed class CapturingCacheManager : ICacheManager
+        {
+            public string? LastMethodName { get; private set; }
+            public object[]? LastArgs { get; private set; }
+            public CacheMethodSettings? LastSettings { get; private set; }
+            public ICacheKeyGenerator? LastKeyGenerator { get; private set; }
+
+            public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+            {
+                LastMethodName = methodName;
+                LastArgs = args;
+                LastSettings = settings;
+                LastKeyGenerator = keyGenerator;
+                return factory();
+            }
+
+            public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+            {
+                LastMethodName = methodName;
+                LastArgs = args;
+                LastSettings = settings;
+                LastKeyGenerator = keyGenerator;
+                return new ValueTask<T?>(default(T));
+            }
+
+            public Task InvalidateByTagsAsync(params string[] tags) => Task.CompletedTask;
+
+            public Task InvalidateByKeysAsync(params string[] keys) => Task.CompletedTask;
+
+            public Task InvalidateByTagPatternAsync(string pattern) => Task.CompletedTask;
+        }
+    }
+}

@@ -1,241 +1,161 @@
 # MethodCache.Providers.Redis
 
-A Redis distributed cache provider for MethodCache framework.
+Distributed Redis provider for MethodCache with hybrid L1/L2 orchestration, distributed locking, and tag-based invalidation.
 
-## Features
+## Highlights
 
-- **Distributed Caching**: Share cache across multiple application instances
-- **Circuit Breaker**: Resilient handling of Redis failures with automatic fallback
-- **Distributed Locking**: Prevent cache stampede using RedLock algorithm
-- **Tag-based Invalidation**: Efficient cache invalidation using Redis Sets
-- **Multiple Serializers**: MessagePack (default), JSON, and custom serializers
-- **Comprehensive Configuration**: Flexible options for production deployments
+- **Drop-in replacement** for the default in-memory cache manager – a single registration swaps providers.
+- **Hybrid-ready**: integrates with `MethodCache.HybridCache` for L1/L2 strategies, compression, and multi-region replication.
+- **Resilience built-in**: retry policies, circuit breaker options, and distributed locks mitigate downstream hiccups.
+- **Tag invalidation** via Redis sets with efficient reverse indexing for bulk purges.
+- **Serializer flexibility**: MessagePack (default), JSON, or plug your own serializer/compressor.
+- **Fluent-friendly**: works seamlessly with the expanded fluent API (`WithVersion`, `WithKeyGenerator<T>`, predicates, etc.).
 
 ## Quick Start
 
-### Installation
+### 1. Install packages
 
 ```bash
-dotnet add package StackExchange.Redis
-# Then reference the MethodCache.Providers.Redis project
+dotnet add package MethodCache.Providers.Redis
 ```
 
-### Basic Usage
+### 2. Register the provider and your caching rules
 
 ```csharp
-// Program.cs
 using MethodCache.Providers.Redis.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Replace in-memory caching with Redis
-builder.Services.AddRedisCache("localhost:6379");
+builder.Services.AddRedisCache(options =>
+{
+    options.ConnectionString = "localhost:6379";
+    options.KeyPrefix = "myapp:";
+});
 
-// Register your services
-builder.Services.AddSingleton<IUserService, UserService>();
-
-var app = builder.Build();
+builder.Services.AddMethodCacheFluent(fluent =>
+{
+    fluent.ForService<IUserService>()
+          .Method(s => s.GetUserAsync(default))
+          .Configure(o => o
+              .WithDuration(TimeSpan.FromMinutes(10))
+              .WithTags("users"))
+          .RequireIdempotent();
+});
 ```
 
-### Service Interface (no changes needed!)
+Existing interfaces, attributes, and configuration files continue to work—only the service registration changes.
+
+### 3. (Optional) Hybrid cache in one call
 
 ```csharp
-public interface IUserService
+builder.Services.AddHybridRedisCache(options =>
 {
-    Task<User> GetUserAsync(int userId);
-    Task UpdateUserAsync(User user);
-}
-
-public class UserService : IUserService
-{
-    [Cache] // Same attribute, now backed by Redis!
-    public async Task<User> GetUserAsync(int userId)
-    {
-        return await _repository.GetByIdAsync(userId);
-    }
-
-    [CacheInvalidate(Tags = new[] { "users" })]
-    public async Task UpdateUserAsync(User user)
-    {
-        await _repository.UpdateAsync(user);
-    }
-}
+    options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+    options.EnableBackplane = true;
+});
 ```
 
 ## Configuration
 
-### Basic Configuration
+### Basic options
 
 ```csharp
 services.AddRedisCache(options =>
 {
-    options.ConnectionString = "localhost:6379";
+    options.ConnectionString = "redis:6379";
     options.DatabaseNumber = 1;
-    options.KeyPrefix = "myapp:cache:";
+    options.KeyPrefix = "prod:";
     options.DefaultExpiration = TimeSpan.FromHours(1);
 });
 ```
 
-### Advanced Configuration
+### Advanced options
 
 ```csharp
 services.AddRedisCache(options =>
 {
-    options.ConnectionString = "redis-cluster:6379,redis-cluster:6380";
-    options.DatabaseNumber = 0;
-    options.KeyPrefix = "production:cache:";
-    
-    // Connection settings
+    options.ConnectionString = "redis-1:6379,redis-2:6379";
     options.ConnectTimeout = TimeSpan.FromSeconds(5);
     options.SyncTimeout = TimeSpan.FromSeconds(5);
-    
-    // Serialization
+
     options.DefaultSerializer = RedisSerializerType.MessagePack;
     options.Compression = CompressionType.None;
-    
-    // Resilience
-    options.CircuitBreaker = new CircuitBreakerOptions
-    {
-        FailureRatio = 0.3,
-        MinimumThroughput = 10,
-        BreakDuration = TimeSpan.FromMinutes(2)
-    };
-    
+
     options.Retry = new RetryOptions
     {
         MaxRetries = 3,
         BaseDelay = TimeSpan.FromMilliseconds(100),
         BackoffType = RetryBackoffType.ExponentialWithJitter
     };
-    
-    // Advanced features
+
+    options.CircuitBreaker = new CircuitBreakerOptions
+    {
+        FailureRatio = 0.3,
+        MinimumThroughput = 10,
+        BreakDuration = TimeSpan.FromMinutes(2)
+    };
+
     options.EnableDistributedLocking = true;
-    options.EnablePubSubInvalidation = false;
+    options.EnablePubSubInvalidation = true;
     options.EnableDetailedMetrics = true;
 });
 ```
 
 ## Architecture
 
-The Redis provider implements the same `ICacheManager` interface as the in-memory provider, ensuring complete compatibility:
-
 ```mermaid
 graph TB
-    A[Your Service] --> B[Generated Decorator]
-    B --> C[RedisCacheManager]
-    C --> D[Redis Connection Pool]
-    C --> E[Distributed Lock]
-    C --> F[Tag Manager]
-    C --> G[Circuit Breaker]
-    
-    D --> H[Redis Instance/Cluster]
-    E --> H
-    F --> H
-```
-
-## Key Components
-
-### RedisCacheManager
-- Core cache operations (get/set/invalidate)
-- Circuit breaker protection
-- Automatic fallback to direct execution on failures
-
-### RedisTagManager
-- Efficient tag-to-key mapping using Redis Sets
-- Bulk invalidation operations
-- Automatic cleanup of orphaned associations
-
-### RedisDistributedLock
-- RedLock algorithm implementation
-- Cache stampede prevention
-- Automatic lock renewal for long-running operations
-
-### MessagePackRedisSerializer
-- High-performance binary serialization
-- Type-safe serialization/deserialization
-- Minimal memory footprint
-
-## Production Considerations
-
-### Redis Setup
-- Use Redis Cluster for high availability
-- Configure persistence (AOF + RDB)
-- Monitor memory usage and key expiration
-- Set up Redis Sentinel for automatic failover
-
-### Application Configuration
-- Tune circuit breaker thresholds based on your SLA
-- Configure appropriate retry policies
-- Enable detailed metrics for monitoring
-- Use connection pooling for better performance
-
-### Security
-- Use Redis AUTH for authentication
-- Enable TLS encryption for data in transit
-- Configure firewall rules for Redis access
-- Regular security updates for Redis server
-
-## Monitoring
-
-The Redis provider integrates with the existing metrics system:
-
-```csharp
-// Custom metrics provider
-public class RedisMetricsProvider : ICacheMetricsProvider
-{
-    public void CacheHit(string methodName)
-    {
-        // Track Redis cache hits
-        _metrics.Increment("redis.cache.hits", new[] { ("method", methodName) });
-    }
-    
-    public void CacheError(string methodName, string error)
-    {
-        // Track Redis errors
-        _logger.LogError("Redis cache error for {Method}: {Error}", methodName, error);
-    }
-}
+    A[Your Service / Decorator] --> B[RedisCacheManager]
+    B --> C[Redis Connection]
+    B --> D[Distributed Lock]
+    B --> E[Tag Manager]
+    B --> F[Circuit Breaker]
+    C --> G[Redis Instance/Cluster]
+    D --> G
+    E --> G
 ```
 
 ## Migration from In-Memory
 
-Migrating from in-memory to Redis cache requires only configuration changes:
-
 ```csharp
-// Before (in-memory)
+// Was
 services.AddMethodCache();
 
-// After (Redis)
-services.AddRedisCache("redis-connection-string");
+// Now
+services.AddRedisCache("redis:6379");
 ```
 
-All your existing `[Cache]` and `[CacheInvalidate]` attributes continue to work unchanged!
+All attributes, fluent rules, and configuration files continue to apply without modification.
 
-## Performance
+## Production Tips
 
-Expected performance characteristics:
+- **Redis setup**: use clustering/Sentinel for HA, enable persistence, monitor memory/evictions.
+- **Security**: enable AUTH/TLS, restrict network access, keep Redis patched.
+- **Observability**: plug in an `ICacheMetricsProvider` to forward hits/misses/errors to your telemetry stack.
 
-- **Latency**: 1-3ms for local Redis, 5-10ms for remote Redis
-- **Throughput**: 100K+ operations/sec per Redis instance  
-- **Memory**: Shared across instances, reduced per-application memory
-- **Scalability**: Horizontal scaling with Redis Cluster
+```csharp
+public sealed class RedisMetricsProvider : ICacheMetricsProvider
+{
+    public void CacheHit(string method) => _metrics.Increment("redis.cache.hit", new[] { ("method", method) });
+    public void CacheError(string method, string error) => _logger.LogError("Redis error for {Method}: {Error}", method, error);
+    // ...
+}
+```
+
+## Performance Snapshot
+
+| Scenario | Notes |
+|----------|-------|
+| Latency | 1–3 ms with local Redis, ~5–10 ms over the network |
+| Throughput | 100k+ ops/sec per node with pooling/pipelining |
+| Stampede protection | Distributed lock + probabilistic refresh-ahead |
 
 ## Troubleshooting
 
-### Connection Issues
-- Verify Redis server is running and accessible
-- Check firewall and network connectivity
-- Validate connection string format
-- Monitor connection pool metrics
+- **Connection failures**: verify connection string, Docker port mapping, firewalls, and TLS settings.
+- **High latency**: check network distance, retry policy tuning, Redis CPU, and command pipelining.
+- **Cache misses**: confirm key generation (versioning/prefix), expiration settings, and tag invalidation logic.
 
-### Performance Issues
-- Review circuit breaker configuration
-- Check Redis memory usage and eviction policies
-- Monitor network latency between app and Redis
-- Consider using Redis pipelining for bulk operations
+---
 
-### Cache Misses
-- Verify key generation consistency
-- Check cache expiration settings
-- Monitor Redis memory and key eviction
-- Review tag-based invalidation logic
+Need deeper diving? See the [Redis provider docs](../CONFIGURATION_GUIDE.md) or the [integration test suite](../MethodCache.Providers.Redis.IntegrationTests/README.md).
