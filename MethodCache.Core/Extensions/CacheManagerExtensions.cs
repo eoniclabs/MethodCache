@@ -68,12 +68,14 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
+            var effectiveKeyGenerator = new FixedKeyGenerator(key, options.Version);
+
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
                 settings,
-                new FixedKeyGenerator(key),
+                effectiveKeyGenerator,
                 requireIdempotent: true).ConfigureAwait(false);
 
             if (!factoryExecuted)
@@ -154,6 +156,7 @@ namespace MethodCache.Core.Extensions
                     if (lookup.Found)
                     {
                         results[key] = lookup.Value!;
+                        InvokeHitCallbacks(options, singleContext);
                         continue;
                     }
                 }
@@ -296,13 +299,23 @@ namespace MethodCache.Core.Extensions
         private sealed class FixedKeyGenerator : ICacheKeyGenerator
         {
             private readonly string _key;
+            private readonly int? _version;
 
-            public FixedKeyGenerator(string key)
+            public FixedKeyGenerator(string key, int? version = null)
             {
                 _key = key ?? throw new ArgumentNullException(nameof(key));
+                _version = version;
             }
 
-            public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings) => _key;
+            public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+            {
+                if (_version.HasValue)
+                {
+                    return $"{_key}::v{_version.Value}";
+                }
+
+                return _key;
+            }
         }
     }
 }

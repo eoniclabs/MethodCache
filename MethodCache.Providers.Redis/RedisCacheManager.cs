@@ -518,7 +518,12 @@ namespace MethodCache.Providers.Redis
 
                 try
                 {
-                    var bytes = (byte[])data;
+                    var bytes = (byte[])data!;
+                    if (bytes == null)
+                    {
+                        return (false, default(T)!, null);
+                    }
+
                     var value = await _serializer.DeserializeAsync<T>(bytes).ConfigureAwait(false);
                     var ttl = await database.KeyTimeToLiveAsync(key).ConfigureAwait(false);
                     return (true, value, ttl);

@@ -75,6 +75,9 @@ builder.Services.AddMethodCache(config => {
           .Method(x => x.GetUserProfileAsync(default))
           .Duration(TimeSpan.FromHours(1))
           .Tags("user", "profile")
+          .Version(5)
+          .KeyGenerator<StableUserKeyGenerator>()
+          .When(ctx => ctx.GetArg<int>(0) != 0)
           .OnHit(ctx => Console.WriteLine("Cache hit!"));
           
     // Group configuration
@@ -82,6 +85,14 @@ builder.Services.AddMethodCache(config => {
           .Duration(TimeSpan.FromMinutes(30))
           .Tags("user");
 });
+```
+
+```csharp
+public sealed class StableUserKeyGenerator : ICacheKeyGenerator
+{
+    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        => $"{methodName}:{args[0]}";
+}
 ```
 
 ## JSON Configuration

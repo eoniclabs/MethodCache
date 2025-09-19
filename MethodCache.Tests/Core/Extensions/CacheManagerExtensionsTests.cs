@@ -279,6 +279,21 @@ namespace MethodCache.Tests.Core.Extensions
             Assert.Equal("value2", second);
         }
 
+        [Fact]
+        public async Task GetOrCreateAsync_WithVersion_AppendsVersionToKey()
+        {
+            var cacheManager = new CapturingCacheManager();
+
+            await cacheManager.GetOrCreateAsync(
+                "user:version",
+                static (_, _) => new ValueTask<int>(42),
+                options => options.WithVersion(3));
+
+            Assert.NotNull(cacheManager.LastKeyGenerator);
+            var generated = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), new CacheMethodSettings());
+            Assert.Equal("user:version::v3", generated);
+        }
+
         private sealed class CapturingCacheManager : ICacheManager
         {
             public string? LastMethodName { get; private set; }

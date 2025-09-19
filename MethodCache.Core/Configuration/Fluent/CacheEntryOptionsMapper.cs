@@ -21,7 +21,9 @@ namespace MethodCache.Core.Configuration.Fluent
                 Metrics = options.Metrics,
                 Version = options.Version,
                 KeyGeneratorType = options.KeyGeneratorType,
-                Condition = options.Predicate != null ? ctx => options.Predicate(new CacheContext(ctx.MethodName, ctx.Services)) : null
+                Condition = WrapPredicate(options.Predicate),
+                OnHitAction = WrapCallbacks(options.OnHitCallbacks),
+                OnMissAction = WrapCallbacks(options.OnMissCallbacks)
             };
 
             if (settings.SlidingExpiration == null && options.SlidingExpiration != null)
@@ -32,5 +34,31 @@ namespace MethodCache.Core.Configuration.Fluent
             return settings;
         }
 
+        private static Func<CacheExecutionContext, bool>? WrapPredicate(Func<CacheContext, bool>? predicate)
+        {
+            if (predicate == null)
+            {
+                return null;
+            }
+
+            return context => predicate(new CacheContext(context.MethodName, context.Services));
+        }
+
+        private static Action<CacheExecutionContext>? WrapCallbacks(IReadOnlyList<Action<CacheContext>> callbacks)
+        {
+            if (callbacks.Count == 0)
+            {
+                return null;
+            }
+
+            return context =>
+            {
+                var cacheContext = new CacheContext(context.MethodName, context.Services);
+                foreach (var callback in callbacks)
+                {
+                    callback(cacheContext);
+                }
+            };
+        }
     }
 }
