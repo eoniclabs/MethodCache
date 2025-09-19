@@ -13,6 +13,7 @@ namespace MethodCache.Analyzers
         public const string CacheDiagnosticId = "MC0001";
         public const string InvalidateDiagnosticId = "MC0002";
         public const string ConfigurationOverrideDiagnosticId = "MC0003";
+        public const string CacheKeyGeneratorDiagnosticId = "MC0004";
 
         private static readonly LocalizableString CacheTitle = "MethodCache Analyzer";
         private static readonly LocalizableString CacheMessageFormat = "Method '{0}' is marked with [Cache] but is not virtual, abstract, or an interface implementation. Caching may not work as expected.";
@@ -26,13 +27,18 @@ namespace MethodCache.Analyzers
         private static readonly LocalizableString ConfigurationOverrideMessageFormat = "Method '{0}' has a [Cache] attribute, but programmatic configuration can override these settings. Consider using configuration-only approach for consistency.";
         private static readonly LocalizableString ConfigurationOverrideDescription = "When using AddMethodCache with a configuration delegate, programmatic settings will override attribute-based cache settings. This may cause confusion when the attribute specifies different values than what is actually used at runtime.";
 
+        private static readonly LocalizableString CacheKeyGeneratorTitle = "Invalid Key Generator";
+        private static readonly LocalizableString CacheKeyGeneratorMessageFormat = "Type '{0}' specified as KeyGeneratorType must implement ICacheKeyGenerator";
+        private static readonly LocalizableString CacheKeyGeneratorDescription = "When using the KeyGeneratorType property on [Cache], the provided type must implement MethodCache.Core.ICacheKeyGenerator.";
+
         private const string Category = "Usage";
 
         private static readonly DiagnosticDescriptor CacheRule = new DiagnosticDescriptor(CacheDiagnosticId, CacheTitle, CacheMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: CacheDescription);
         private static readonly DiagnosticDescriptor InvalidateRule = new DiagnosticDescriptor(InvalidateDiagnosticId, InvalidateTitle, InvalidateMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: InvalidateDescription);
         internal static readonly DiagnosticDescriptor ConfigurationOverrideRule = new DiagnosticDescriptor(ConfigurationOverrideDiagnosticId, ConfigurationOverrideTitle, ConfigurationOverrideMessageFormat, Category, DiagnosticSeverity.Info, isEnabledByDefault: true, description: ConfigurationOverrideDescription);
+        private static readonly DiagnosticDescriptor CacheKeyGeneratorRule = new DiagnosticDescriptor(CacheKeyGeneratorDiagnosticId, CacheKeyGeneratorTitle, CacheKeyGeneratorMessageFormat, Category, DiagnosticSeverity.Error, isEnabledByDefault: true, description: CacheKeyGeneratorDescription);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(CacheRule, InvalidateRule, ConfigurationOverrideRule); } }
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(CacheRule, InvalidateRule, ConfigurationOverrideRule, CacheKeyGeneratorRule); } }
 
         public override void Initialize(AnalysisContext context)
         {
@@ -70,6 +76,16 @@ namespace MethodCache.Analyzers
                     if (!implementsInterfaceMethod)
                     {
                         context.ReportDiagnostic(Diagnostic.Create(CacheRule, methodSymbol.Locations[0], methodSymbol.Name));
+                    }
+                }
+
+                if (TryGetNamedArgument(cacheAttribute, "KeyGeneratorType", out var keyGenArg) &&
+                    keyGenArg.Value is INamedTypeSymbol keyGenType)
+                {
+                    var expectedInterface = context.Compilation.GetTypeByMetadataName("MethodCache.Core.ICacheKeyGenerator");
+                    if (expectedInterface != null && !keyGenType.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, expectedInterface)))
+                    {
+                        ReportDiagnostic(context, cacheAttribute, CacheKeyGeneratorRule, keyGenType.ToDisplayString());
                     }
                 }
             }
@@ -111,6 +127,30 @@ namespace MethodCache.Analyzers
             return attributeClass?.Name == "CacheInvalidateAttribute" &&
                    (attributeClass.ContainingNamespace?.ToDisplayString() == "MethodCache.Core" ||
                     attributeClass.ToDisplayString() == "MethodCache.Core.CacheInvalidateAttribute");
+        }
+
+        private static bool TryGetNamedArgument(AttributeData attribute, string name, out TypedConstant value)
+        {
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (argument.Key == name)
+                {
+                    value = argument.Value;
+                    return true;
+                }
+            }
+
+            value = default;
+            return false;
+        }
+
+        private static void ReportDiagnostic(SymbolAnalysisContext context, AttributeData attribute, DiagnosticDescriptor descriptor, params object[] messageArgs)
+        {
+            var location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? context.Symbol.Locations.FirstOrDefault();
+            if (location != null)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(descriptor, location, messageArgs));
+            }
         }
     }
     

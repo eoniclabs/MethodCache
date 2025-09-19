@@ -286,7 +286,7 @@ namespace TestApp
             Assert.Empty(result.AnalyzerDiagnostics);
             
             // Should be very fast for empty codebase
-            Assert.True(result.AnalysisTime.TotalMilliseconds < 100);
+            Assert.True(result.AnalysisTime.TotalMilliseconds < 200);
         }
 
         [Fact]

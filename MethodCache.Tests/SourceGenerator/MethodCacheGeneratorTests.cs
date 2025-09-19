@@ -149,6 +149,38 @@ namespace TestApp
         }
 
         [Fact]
+        public async Task GeneratorIncludesAdvancedFluentOptionsFromAttributes()
+        {
+            var source = @"using MethodCache.Core;
+using MethodCache.Core.Configuration;
+
+namespace TestApp
+{
+    public class CustomKeyGenerator : ICacheKeyGenerator
+    {
+        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+            => $""custom:{methodName}:{args.Length}"";
+    }
+
+    public interface ITestService
+    {
+        [Cache(Duration = ""00:10:00"", Tags = new[] { ""users"" }, Version = 7, KeyGeneratorType = typeof(CustomKeyGenerator))]
+        string GetValue(int id);
+    }
+}";
+
+            var result = await GetGeneratedSources(source);
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
+            Assert.NotNull(registrySource);
+
+            AssertContainsIgnoreWhitespace(registrySource!, ".Configure(options =>");
+            AssertContainsIgnoreWhitespace(registrySource!, "options.WithDuration(System.TimeSpan.Parse(\"00:10:00\"));");
+            AssertContainsIgnoreWhitespace(registrySource!, "options.WithTags(\"users\");");
+            AssertContainsIgnoreWhitespace(registrySource!, "options.WithVersion(7);");
+            AssertContainsIgnoreWhitespace(registrySource!, "options.WithKeyGenerator<TestApp.CustomKeyGenerator>();");
+        }
+
+        [Fact]
         public async Task GeneratesCacheDecoratorForCachedInterfaceMethod()
         {
             var source = @"using MethodCache.Core;

@@ -1133,6 +1133,19 @@ namespace MethodCache.SourceGenerator
                     }
                 }
 
+                if (TryGetNamedArgument(cacheAttr, "Version", out var versionArg) &&
+                    versionArg.Value is int versionValue && versionValue >= 0)
+                {
+                    statements.Add($"options.WithVersion({versionValue});");
+                }
+
+                if (TryGetNamedArgument(cacheAttr, "KeyGeneratorType", out var keyGenArg) &&
+                    keyGenArg.Value is INamedTypeSymbol keyGenType)
+                {
+                    var generatorName = GetSimpleTypeName(keyGenType);
+                    statements.Add($"options.WithKeyGenerator<{generatorName}>();");
+                }
+
                 return statements;
             }
 

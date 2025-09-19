@@ -10,6 +10,8 @@ namespace MethodCache.Core
         public bool RequireIdempotent { get; set; }
         public string? Duration { get; set; }
         public string[]? Tags { get; set; }
+        public int Version { get; set; } = -1;
+        public Type? KeyGeneratorType { get; set; }
 
         public CacheAttribute(string? groupName = null)
         {

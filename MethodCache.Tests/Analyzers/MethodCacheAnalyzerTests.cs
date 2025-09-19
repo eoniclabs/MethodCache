@@ -20,6 +20,56 @@ namespace MethodCache.Tests.Analyzers
             _output = output;
         }
 
+        [Fact]
+        public async Task CacheAttribute_WithInvalidKeyGeneratorType_ShouldReportDiagnostic()
+        {
+            var source = @"
+using MethodCache.Core;
+
+namespace TestApp
+{
+    public class InvalidKeyGenerator {}
+
+    public interface IService
+    {
+        [Cache(KeyGeneratorType = typeof(InvalidKeyGenerator))]
+        string Get(int id);
+    }
+}";
+
+            var result = await AnalyzeAsync(source);
+            LogDiagnostics(result);
+
+            Assert.Contains(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheKeyGeneratorDiagnosticId);
+        }
+
+        [Fact]
+        public async Task CacheAttribute_WithValidKeyGeneratorType_ShouldNotReportDiagnostic()
+        {
+            var source = @"
+using MethodCache.Core;
+using MethodCache.Core.Configuration;
+
+namespace TestApp
+{
+    public class ValidKeyGenerator : ICacheKeyGenerator
+    {
+        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings) => methodName;
+    }
+
+    public interface IService
+    {
+        [Cache(KeyGeneratorType = typeof(ValidKeyGenerator))]
+        string Get(int id);
+    }
+}";
+
+            var result = await AnalyzeAsync(source);
+            LogDiagnostics(result);
+
+            Assert.DoesNotContain(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheKeyGeneratorDiagnosticId);
+        }
+
         private static async Task<AnalysisResult> AnalyzeAsync(string source)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(source);
