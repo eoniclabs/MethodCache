@@ -70,12 +70,29 @@ jobs:
 
     - name: Run performance benchmarks
       run: |
+        set -e  # Exit on error
+        set -x  # Print commands for debugging
+
         cd MethodCache.Benchmarks
+
+        # Check if the benchmark script exists and is executable
+        if [ ! -f "run-benchmarks.sh" ]; then
+          echo "❌ run-benchmarks.sh not found in MethodCache.Benchmarks directory"
+          ls -la
+          exit 1
+        fi
+
+        if [ ! -x "run-benchmarks.sh" ]; then
+          echo "Making run-benchmarks.sh executable..."
+          chmod +x run-benchmarks.sh
+        fi
 
         CATEGORY="${{ github.event.inputs.benchmark_category || 'basic' }}"
         if [ "${{ github.event_name }}" == "schedule" ]; then
           CATEGORY="all"
         fi
+
+        echo "Running benchmarks with category: $CATEGORY"
 
         # Run benchmarks with optimized settings for CI
         ./run-benchmarks.sh $CATEGORY \
@@ -86,7 +103,19 @@ jobs:
 
     - name: Process benchmark results
       run: |
+        set -e  # Exit on error
+
         cd MethodCache.Benchmarks
+
+        # Check if benchmark results exist
+        if [ ! -d "BenchmarkDotNet.Artifacts" ]; then
+          echo "⚠️ No benchmark artifacts found - benchmarks may have failed"
+          echo "Directory contents:"
+          ls -la
+          exit 0  # Don't fail the workflow, just skip processing
+        fi
+
+        echo "Found benchmark artifacts, processing results..."
 
         # Create results processor script
         cat > process-results.py << 'EOF'
@@ -177,13 +206,20 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
-        git add .performance-data/
+        # Only add performance data if the directory exists and has files
+        if [ -d ".performance-data" ] && ls .performance-data/*.json 1> /dev/null 2>&1; then
+          git add .performance-data/
+        else
+          echo "No performance data directory or files found"
+          exit 0
+        fi
 
         if git diff --staged --quiet; then
           echo "No performance data changes to commit"
         else
-          git commit -m "📊 Update performance data for ${{ env.VERSION }}"
-          git push
+          echo "Committing performance data..."
+          git commit -m "📊 Update performance data for ${{ env.VERSION }}" || echo "Commit failed but continuing..."
+          git push || echo "Push failed but continuing..."
         fi
 
     - name: Generate performance report
@@ -317,13 +353,23 @@ jobs:
     - name: Update README with performance data
       if: github.ref == 'refs/heads/main'
       run: |
-        # Generate performance charts
+        # Generate performance charts (only if data exists)
         cd .performance-data
-        python3 generate-charts.py --output-dir .
+        if [ -f "generate-charts.py" ] && ls benchmark-*.json 1> /dev/null 2>&1; then
+          echo "Generating performance charts..."
+          python3 generate-charts.py --output-dir . || echo "Chart generation failed but continuing..."
+        else
+          echo "No performance data or chart generator found, skipping chart generation"
+        fi
 
-        # Update README performance section
+        # Update README performance section (only if data exists)
         cd ..
-        python3 .github/scripts/update-readme-performance.py
+        if ls .performance-data/benchmark-*.json 1> /dev/null 2>&1; then
+          echo "Updating README performance section..."
+          python3 .github/scripts/update-readme-performance.py || echo "README update failed but continuing..."
+        else
+          echo "No performance data found, skipping README update"
+        fi
 
     - name: Commit README updates
       if: github.ref == 'refs/heads/main'
@@ -331,13 +377,21 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
-        git add README.md PERFORMANCE.md .performance-data/*.svg
+        # Only add files that exist
+        [ -f "README.md" ] && git add README.md || echo "README.md not found"
+        [ -f "PERFORMANCE.md" ] && git add PERFORMANCE.md || echo "PERFORMANCE.md not found"
+        if ls .performance-data/*.svg 1> /dev/null 2>&1; then
+          git add .performance-data/*.svg
+        else
+          echo "No SVG files found to commit"
+        fi
 
         if git diff --staged --quiet; then
           echo "No README changes to commit"
         else
-          git commit -m "📊 Update README performance section for ${{ env.VERSION }}"
-          git push
+          echo "Committing README updates..."
+          git commit -m "📊 Update README performance section for ${{ env.VERSION }}" || echo "Commit failed but continuing..."
+          git push || echo "Push failed but continuing..."
         fi
 
     - name: Upload performance artifacts
