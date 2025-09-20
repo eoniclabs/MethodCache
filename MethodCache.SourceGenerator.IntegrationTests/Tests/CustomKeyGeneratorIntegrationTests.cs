@@ -135,6 +135,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.ICustomKeyService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -279,6 +280,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IParameterTestService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 

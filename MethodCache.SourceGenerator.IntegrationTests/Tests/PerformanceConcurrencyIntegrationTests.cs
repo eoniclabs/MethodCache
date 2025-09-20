@@ -96,6 +96,7 @@ public class PerformanceConcurrencyIntegrationTests
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IConcurrentService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.ConcurrentService");
         
@@ -215,6 +216,7 @@ public class PerformanceConcurrencyIntegrationTests
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IHighVolumeService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.HighVolumeService");
         
@@ -370,6 +372,7 @@ public class PerformanceConcurrencyIntegrationTests
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IBatchService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.BatchService");
         

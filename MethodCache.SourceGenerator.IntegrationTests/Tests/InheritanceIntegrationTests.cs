@@ -96,6 +96,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IUserService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -267,6 +268,10 @@ namespace TestNamespace
         var readerType = testAssembly.Assembly.GetType("TestNamespace.IDocumentReader");
         var writerType = testAssembly.Assembly.GetType("TestNamespace.IDocumentWriter");
         var processorType = testAssembly.Assembly.GetType("TestNamespace.IDocumentProcessor");
+
+        Assert.NotNull(readerType);
+        Assert.NotNull(writerType);
+        Assert.NotNull(processorType);
 
         var readerService = serviceProvider.GetService(readerType);
         var writerService = serviceProvider.GetService(writerType);

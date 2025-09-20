@@ -207,18 +207,18 @@ namespace TestNamespace
             
             // Manually register generic interfaces since they're excluded from automatic DI generation
             var userRepoImplType = testAssembly.Assembly.GetType("TestNamespace.UserRepository")!;
-            var userRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
-                .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
+        var userRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
+        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
                 
             var productRepoImplType = testAssembly.Assembly.GetType("TestNamespace.ProductRepository")!;
-            var productRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
-                .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
+        var productRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
+        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
                 
             // Register with caching decorators
             services.AddSingleton(userRepoInterfaceType, sp =>
             {
                 var userRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
-                    .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
+        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
                 var userRepoImpl = Activator.CreateInstance(userRepoImplType)!;
                 return Activator.CreateInstance(userRepoDecoratorType, 
                     userRepoImpl,
@@ -230,7 +230,7 @@ namespace TestNamespace
             services.AddSingleton(productRepoInterfaceType, sp =>
             {
                 var productRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
-                    .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
+        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
                 var productRepoImpl = Activator.CreateInstance(productRepoImplType)!;
                 return Activator.CreateInstance(productRepoDecoratorType, 
                     productRepoImpl,
@@ -242,12 +242,14 @@ namespace TestNamespace
 
         // Test User repository (generic interface with User type)
         var userRepoType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")?.MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
-        var userService = serviceProvider.GetService(userRepoType!);
+        Assert.NotNull(userRepoType);
+        var userService = serviceProvider.GetService(userRepoType);
         Assert.NotNull(userService);
 
-        // Test Product repository (generic interface with Product type)  
+        // Test Product repository (generic interface with Product type)
         var productRepoType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")?.MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
-        var productService = serviceProvider.GetService(productRepoType!);
+        Assert.NotNull(productRepoType);
+        var productService = serviceProvider.GetService(productRepoType);
         Assert.NotNull(productService);
 
         // Reset counters
@@ -259,11 +261,13 @@ namespace TestNamespace
 
         var userType = testAssembly.Assembly.GetType("TestNamespace.User");
         var productType = testAssembly.Assembly.GetType("TestNamespace.Product");
+        Assert.NotNull(userType);
+        Assert.NotNull(productType);
 
         // Test User repository caching
         var userGetByIdMethod = userRepoType!.GetMethod("GetByIdAsync");
         var userTask1 = (Task)userGetByIdMethod!.Invoke(userService, new object[] { 1 })!;
-        var user1 = await GetTaskResult(userTask1, userType!);
+        var user1 = await GetTaskResult(userTask1, userType);
         
         var userTask2 = (Task)userGetByIdMethod.Invoke(userService, new object[] { 1 })!;
         var user2 = await GetTaskResult(userTask2, userType);
@@ -271,7 +275,7 @@ namespace TestNamespace
         // Test Product repository caching (should be independent)
         var productGetByIdMethod = productRepoType!.GetMethod("GetByIdAsync");
         var productTask1 = (Task)productGetByIdMethod!.Invoke(productService, new object[] { 1 })!;
-        var product1 = await GetTaskResult(productTask1, productType!);
+        var product1 = await GetTaskResult(productTask1, productType);
         
         var productTask2 = (Task)productGetByIdMethod.Invoke(productService, new object[] { 1 })!;
         var product2 = await GetTaskResult(productTask2, productType);
@@ -398,6 +402,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IGenericService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -408,7 +413,7 @@ namespace TestNamespace
 
         var sortableEntityType = testAssembly.Assembly.GetType("TestNamespace.SortableEntity");
         var resultClassType = testAssembly.Assembly.GetType("TestNamespace.ResultClass");
-
+        
         // Create test entities
         var entity1 = Activator.CreateInstance(sortableEntityType!)!;
         sortableEntityType!.GetProperty("Id")!.SetValue(entity1, 1);

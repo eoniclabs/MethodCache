@@ -101,6 +101,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IValueTaskService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -245,6 +246,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.ICollectionService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -355,6 +357,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.INullableService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 

@@ -72,6 +72,7 @@ public class ConfigurationIntegrationTests
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.ICustomKeyService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.CustomKeyService");
         

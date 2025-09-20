@@ -155,6 +155,8 @@ public class AdvancedCachingIntegrationTests
         // Get both services
         var orderServiceType = testAssembly.Assembly.GetType("TestNamespace.IOrderService");
         var inventoryServiceType = testAssembly.Assembly.GetType("TestNamespace.IInventoryService");
+        Assert.NotNull(orderServiceType);
+        Assert.NotNull(inventoryServiceType);
         var orderService = serviceProvider.GetService(orderServiceType);
         var inventoryService = serviceProvider.GetService(inventoryServiceType);
 
@@ -266,6 +268,7 @@ public class AdvancedCachingIntegrationTests
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.ITimeBasedService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.TimeBasedService");
         

@@ -91,6 +91,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IErrorService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.ErrorService");
         
@@ -217,6 +218,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.INullableService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.NullableService");
         
@@ -416,6 +418,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.ILargeObjectService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.LargeObjectService");
         
@@ -481,16 +484,37 @@ namespace TestNamespace
 
         await task.ConfigureAwait(false);
 
-        // Use reflection to safely extract result from Task<T>
-        if (task.GetType().IsGenericType &&
-            task.GetType().GetGenericTypeDefinition() == typeof(Task<>))
+        // Use reflection to safely extract result from any Task type
+        var resultProperty = task.GetType().GetProperty("Result");
+        if (resultProperty != null)
         {
-            var result = ((dynamic)task).Result;
-            return (T)result;
+            var result = resultProperty.GetValue(task);
+            if (result is T typedResult)
+            {
+                return typedResult;
+            }
+            if (result != null)
+            {
+                // Try to convert if possible
+                try
+                {
+                    return (T)result;
+                }
+                catch (InvalidCastException)
+                {
+                    throw new InvalidOperationException(
+                        $"Task result type {result.GetType().Name} cannot be cast to expected type {typeof(T).Name}");
+                }
+            }
+            // Handle null result
+            if (default(T) == null)
+            {
+                return default(T)!;
+            }
         }
 
         throw new InvalidOperationException(
-            $"Task type {task.GetType()} is not compatible with expected type Task<{typeof(T).Name}>");
+            $"Task type {task.GetType()} does not have a Result property or result is incompatible with expected type Task<{typeof(T).Name}>");
     }
     
     private static async Task<object> GetTaskResult(Task task, Type expectedType)

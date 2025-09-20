@@ -166,6 +166,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IPrimitiveParameterService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -175,7 +176,7 @@ namespace TestNamespace
         metricsProvider.Reset();
 
         var priorityType = testAssembly.Assembly.GetType("TestNamespace.Priority");
-
+        
         // Test various primitive types
         var processIntMethod = serviceType!.GetMethod("ProcessIntAsync");
         var intTask1 = (Task)processIntMethod!.Invoke(service, new object[] { 42 })!;
@@ -353,6 +354,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IComplexParameterService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -363,7 +365,7 @@ namespace TestNamespace
 
         var personType = testAssembly.Assembly.GetType("TestNamespace.Person");
         var addressType = testAssembly.Assembly.GetType("TestNamespace.Address");
-
+        
         // Create test objects
         var address = Activator.CreateInstance(addressType!)!;
         addressType!.GetProperty("Street")!.SetValue(address, "123 Main St");
@@ -491,6 +493,7 @@ namespace TestNamespace
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IOptionalParameterService");
+        Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         Assert.NotNull(service);
 
@@ -514,9 +517,9 @@ namespace TestNamespace
 
         // Test nullable parameters
         var processNullableMethod = serviceType.GetMethod("ProcessWithNullableAsync");
-        var nullableTask1 = (Task)processNullableMethod!.Invoke(service, new object[] { 1, null, null })!;
+        var nullableTask1 = (Task)processNullableMethod!.Invoke(service, new object?[] { 1, default(string), default(DateTime?) })!;
         var nullableResult1 = await GetTaskResult<string>(nullableTask1);
-        var nullableTask2 = (Task)processNullableMethod.Invoke(service, new object[] { 1, null, null })!;
+        var nullableTask2 = (Task)processNullableMethod.Invoke(service, new object?[] { 1, default(string), default(DateTime?) })!;
         var nullableResult2 = await GetTaskResult<string>(nullableTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 3);

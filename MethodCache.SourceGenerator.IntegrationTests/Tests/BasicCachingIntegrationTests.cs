@@ -301,6 +301,7 @@ namespace TestNamespace
         });
 
         var productServiceType = testAssembly.Assembly.GetType("TestNamespace.IProductService");
+        Assert.NotNull(productServiceType);
         var productService = serviceProvider.GetService(productServiceType);
         
         // Reset state
