@@ -5,6 +5,16 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>cache;caching;performance;method-caching;source-generator;roslyn-analyzer</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Common package versions -->
+    <MicrosoftExtensionsVersion>9.0.7</MicrosoftExtensionsVersion>
+    <SystemTextJsonVersion>9.0.7</SystemTextJsonVersion>
+    <BenchmarkDotNetVersion>0.14.0</BenchmarkDotNetVersion>
+    <XunitVersion>2.8.2</XunitVersion>
+    <XunitRunnerVersion>2.8.2</XunitRunnerVersion>
+    <MicrosoftTestSdkVersion>17.11.1</MicrosoftTestSdkVersion>
+    <FluentAssertionsVersion>6.12.1</FluentAssertionsVersion>
+    <StackExchangeRedisVersion>2.8.12</StackExchangeRedisVersion>
   </PropertyGroup>
 
   <ItemGroup>

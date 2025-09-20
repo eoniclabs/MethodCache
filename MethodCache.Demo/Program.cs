@@ -53,7 +53,7 @@ namespace MethodCache.Demo
             DemonstrateRegistrationOptions();
         }
 
-        static async Task DemonstrateSimplifiedRegistration()
+        static Task DemonstrateSimplifiedRegistration()
         {
             Console.WriteLine("1. Simplified Registration Demo");
             Console.WriteLine("-------------------------------");
@@ -96,9 +96,10 @@ namespace MethodCache.Demo
             // Note: The cached interface would be registered by the source generator
             // which isn't working in this demo, but the registration logic is there
             Console.WriteLine("\nNote: Cached interface registration depends on source generator");
+            return Task.CompletedTask;
         }
 
-        static async Task DemonstrateRegistrationWithOptions()
+        static Task DemonstrateRegistrationWithOptions()
         {
             Console.WriteLine("2. Registration with Custom Options Demo");
             Console.WriteLine("----------------------------------------");
@@ -132,6 +133,7 @@ namespace MethodCache.Demo
             // Verify registration
             var demoService = serviceProvider.GetService<DemoService>();
             Console.WriteLine($"\nDemoService registered: {(demoService != null ? "✓" : "✗")}");
+            return Task.CompletedTask;
         }
 
         static void DemonstrateRegistrationOptions()

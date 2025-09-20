@@ -61,7 +61,7 @@ public class HybridCacheManagerTests : IDisposable
 
         // Assert
         result.Should().Be(expectedValue);
-        _mockL1Cache.Received(1).GetAsync<string>(key);
+        _ = _mockL1Cache.Received(1).GetAsync<string>(key);
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class HybridCacheManagerTests : IDisposable
         await _hybridCacheManager.SetInL1Async(key, value, expiration);
 
         // Assert
-        _mockL1Cache.Received(1).SetAsync(key, value, Arg.Is<TimeSpan>(t => t <= _options.L1MaxExpiration));
+        _ = _mockL1Cache.Received(1).SetAsync(key, value, Arg.Is<TimeSpan>(t => t <= _options.L1MaxExpiration));
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class HybridCacheManagerTests : IDisposable
         await _hybridCacheManager.InvalidateL1Async(key);
 
         // Assert
-        _mockL1Cache.Received(1).RemoveAsync(key);
+        _ = _mockL1Cache.Received(1).RemoveAsync(key);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class HybridCacheManagerTests : IDisposable
         await _hybridCacheManager.InvalidateBothAsync(key);
 
         // Assert
-        _mockL1Cache.Received(1).RemoveAsync(key);
+        _ = _mockL1Cache.Received(1).RemoveAsync(key);
         // Note: L2 individual key invalidation is currently not supported through ICacheManager
         // The method logs a warning instead
     }
@@ -142,7 +142,7 @@ public class HybridCacheManagerTests : IDisposable
         await _hybridCacheManager.EvictFromL1Async(key);
 
         // Assert
-        _mockL1Cache.Received(1).RemoveAsync(key);
+        _ = _mockL1Cache.Received(1).RemoveAsync(key);
     }
 
     [Fact]
@@ -159,9 +159,9 @@ public class HybridCacheManagerTests : IDisposable
         await _hybridCacheManager.InvalidateByTagsAsync(tags);
 
         // Assert
-        _mockL2Cache.Received(1).InvalidateByTagsAsync(tags);
+        _ = _mockL2Cache.Received(1).InvalidateByTagsAsync(tags);
         // L1 cache should not be cleared entirely with efficient invalidation enabled
-        _mockL1Cache.DidNotReceive().ClearAsync();
+        _ = _mockL1Cache.DidNotReceive().ClearAsync();
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class HybridCacheManagerTests : IDisposable
         // Assert
         result.Should().Be(expectedValue);
         factoryCalled.Should().BeFalse();
-        _mockL1Cache.Received(1).GetAsync<string>(expectedKey);
+        _ = _mockL1Cache.Received(1).GetAsync<string>(expectedKey);
     }
 
     [Theory]
@@ -250,11 +250,11 @@ public class HybridCacheManagerTests : IDisposable
         switch (strategy)
         {
             case HybridStrategy.L2Only:
-                _mockL1Cache.DidNotReceive().SetAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TimeSpan>());
+                _ = _mockL1Cache.DidNotReceive().SetAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TimeSpan>());
                 break;
             default:
                 // Other strategies should interact with L1
-                _mockL1Cache.Received(1).SetAsync(expectedKey, "factory-value", Arg.Any<TimeSpan>());
+                _ = _mockL1Cache.Received(1).SetAsync(expectedKey, "factory-value", Arg.Any<TimeSpan>());
                 break;
         }
     }

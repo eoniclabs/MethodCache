@@ -33,8 +33,9 @@ public class BrotliRedisCompressorTests
         var result = compressor.Compress(largeData);
 
         // Assert
+        result.Should().NotBeNull();
         result.Should().NotBeEquivalentTo(largeData);
-        result.Length.Should().BeLessThan(largeData.Length);
+        result!.Length.Should().BeLessThan(largeData.Length);
         compressor.ShouldCompress(largeData).Should().BeTrue();
     }
 
@@ -50,8 +51,9 @@ public class BrotliRedisCompressorTests
         var decompressed = compressor.Decompress(compressed);
 
         // Assert
+        decompressed.Should().NotBeNull();
         decompressed.Should().BeEquivalentTo(originalData);
-        Encoding.UTF8.GetString(decompressed).Should().Be(Encoding.UTF8.GetString(originalData));
+        Encoding.UTF8.GetString(decompressed!).Should().Be(Encoding.UTF8.GetString(originalData));
     }
 
     [Fact]

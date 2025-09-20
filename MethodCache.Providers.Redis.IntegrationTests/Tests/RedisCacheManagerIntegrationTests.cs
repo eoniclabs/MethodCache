@@ -22,7 +22,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         var result1 = await CacheManager.GetOrCreateAsync(
             methodName, 
             args, 
-            async () => { callCount++; return "generated-value"; }, 
+            () => { callCount++; return Task.FromResult("generated-value"); }, 
             settings, 
             keyGenerator, 
             requireIdempotent: false);
@@ -31,7 +31,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         var result2 = await CacheManager.GetOrCreateAsync(
             methodName, 
             args, 
-            async () => { callCount++; return "should-not-be-called"; }, 
+            () => { callCount++; return Task.FromResult("should-not-be-called"); }, 
             settings, 
             keyGenerator, 
             requireIdempotent: false);
@@ -68,7 +68,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         var result = await CacheManager.GetOrCreateAsync(
             methodName, 
             args, 
-            async () => complexObject, 
+            () => Task.FromResult(complexObject), 
             settings, 
             keyGenerator, 
             requireIdempotent: false);

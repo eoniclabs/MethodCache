@@ -48,7 +48,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var result = await cacheManager.GetOrCreateAsync(
             "GetLargeData",
             new object[] { largeData.Id },
-            async () => largeData,
+            () => Task.FromResult(largeData),
             settings,
             keyGenerator,
             false);
@@ -66,7 +66,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var cachedResult = await cacheManager.GetOrCreateAsync(
             "GetLargeData",
             new object[] { largeData.Id },
-            async () => { callCount++; return new TestLargeObject(); },
+            () => { callCount++; return Task.FromResult(new TestLargeObject()); },
             settings,
             keyGenerator,
             false);
@@ -114,7 +114,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var result = await cacheManager.GetOrCreateAsync(
             "GetBrotliData",
             new object[] { largeData.Id },
-            async () => largeData,
+            () => Task.FromResult(largeData),
             settings,
             keyGenerator,
             false);
@@ -149,7 +149,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var result = await CacheManager.GetOrCreateAsync(
             "GetSmallData",
             new object[] { smallData.Id },
-            async () => smallData,
+            () => Task.FromResult(smallData),
             settings,
             keyGenerator,
             false);
@@ -197,7 +197,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var result = await cacheManager.GetOrCreateAsync(
             "GetMediumData",
             new object[] { mediumData.Id },
-            async () => mediumData,
+            () => Task.FromResult(mediumData),
             settings,
             keyGenerator,
             false);

@@ -146,9 +146,11 @@ public class CompressedRedisSerializerTests
 
         // Assert
         result.Should().BeEquivalentTo(compressedData);
+#pragma warning disable CS4014
         _mockInnerSerializer.Received(1).SerializeAsync(testObject);
         _mockCompressor.Received(1).ShouldCompress(serializedData);
         _mockCompressor.Received(1).CompressAsync(serializedData);
+#pragma warning restore CS4014
     }
 
     [Fact]
@@ -167,7 +169,9 @@ public class CompressedRedisSerializerTests
 
         // Assert
         result.Should().Be(deserializedObject);
+#pragma warning disable CS4014
         _mockCompressor.Received(1).DecompressAsync(compressedData);
         _mockInnerSerializer.Received(1).DeserializeAsync<string>(decompressedData);
+#pragma warning restore CS4014
     }
 }
