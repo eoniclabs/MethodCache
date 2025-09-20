@@ -285,12 +285,15 @@ Built with ❤️ for the .NET community.
 
 
 
+
 ## 🚀 Performance Benchmarks
 
-Last updated: 2025-09-20_19-55-00 (commit: `abc1234`)
+Last updated: 2025-09-20_20-21-42 (commit: `ca506ea`)
 
 | Benchmark | Mean | Error | Allocated |
 |-----------|------|-------|-----------|
-| CacheHit | 145.23 ns | ±1.23 | 128 B |
-| CacheMiss | 1245.67 ns | ±7.61 | 2048 B |
-| NoCaching | 1189.34 ns | ±6.39 | 1920 B |
+| CacheHit | 2345125.11 ns | ±0.00 | 1408 B |
+| CacheHitCold | 2405730.52 ns | ±0.00 | 1512 B |
+| CacheMiss | 1196128.26 ns | ±0.00 | 891 B |
+| NoCaching | 1171394.60 ns | ±0.00 | 786 B |
+

@@ -54,7 +54,11 @@ public class Program
             case "serialization":
                 BenchmarkRunner.Run<SerializationBenchmarks>(config);
                 break;
-                
+
+            case "quick":
+                BenchmarkRunner.Run<QuickCachingBenchmarks>(config);
+                break;
+
             case "all":
                 RunAllBenchmarks(config);
                 break;
@@ -78,6 +82,7 @@ public class Program
         Console.WriteLine("  realworld    - Real-world application scenarios");
         Console.WriteLine("  generic      - Generic interface performance");
         Console.WriteLine("  serialization - Serialization performance comparison");
+        Console.WriteLine("  quick        - Quick benchmarks for development (minimal parameters)");
         Console.WriteLine("  all          - Run all benchmark categories");
         Console.WriteLine("");
         Console.WriteLine("Examples:");
@@ -105,6 +110,13 @@ public class Program
                 .WithWarmupCount(1)
                 .WithIterationCount(3)
                 .WithMaxRelativeError(0.10); // Allow higher variance for speed
+
+            // Only use the quick job in quick mode
+            return ManualConfig.Create(DefaultConfig.Instance)
+                .AddJob(job)
+                .AddExporter(JsonExporter.Full)
+                .AddExporter(MarkdownExporter.GitHub)
+                .WithOptions(ConfigOptions.DisableOptimizationsValidator);
         }
 
         return ManualConfig.Create(DefaultConfig.Instance)

@@ -45,8 +45,13 @@ run_benchmarks() {
 
     cd ..
 
-    # Find JSON result
-    local json_file=$(find "$RESULTS_DIR/artifacts-$timestamp" -name "*-report-full.json" -type f | head -1)
+    # Find JSON result - check both custom artifacts path and default BenchmarkDotNet location
+    local json_file=$(find "$RESULTS_DIR/artifacts-$timestamp" -name "*-report-full.json" -type f 2>/dev/null | head -1)
+
+    if [ -z "$json_file" ]; then
+        # Fallback to default BenchmarkDotNet location
+        json_file=$(find "MethodCache.Benchmarks/BenchmarkDotNet.Artifacts" -name "*-report-full.json" -type f 2>/dev/null | head -1)
+    fi
 
     if [ -n "$json_file" ]; then
         # Process results with Python
