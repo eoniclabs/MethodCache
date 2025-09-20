@@ -37,6 +37,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.SampleApp", "Me
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Demo", "MethodCache.Demo\MethodCache.Demo.csproj", "{CE64968F-56B6-41B4-9DE7-8724DE57F627}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.SourceGenerator.IntegrationTests", "MethodCache.SourceGenerator.IntegrationTests\MethodCache.SourceGenerator.IntegrationTests.csproj", "{33708EE0-DC35-4A95-8216-CF5F6348DD16}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -239,6 +241,18 @@ Global
 		{CE64968F-56B6-41B4-9DE7-8724DE57F627}.Release|x64.Build.0 = Release|Any CPU
 		{CE64968F-56B6-41B4-9DE7-8724DE57F627}.Release|x86.ActiveCfg = Release|Any CPU
 		{CE64968F-56B6-41B4-9DE7-8724DE57F627}.Release|x86.Build.0 = Release|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Debug|x64.Build.0 = Debug|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Debug|x86.Build.0 = Debug|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Release|x64.ActiveCfg = Release|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Release|x64.Build.0 = Release|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Release|x86.ActiveCfg = Release|Any CPU
+		{33708EE0-DC35-4A95-8216-CF5F6348DD16}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

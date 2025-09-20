@@ -11,7 +11,11 @@
       "Bash(dotnet test:*)",
       "Bash(python3:*)",
       "Bash(gh api:*)",
-      "Bash(gh pr comment:*)"
+      "Bash(gh pr comment:*)",
+      "Bash(find:*)",
+      "Bash(dotnet sln add:*)",
+      "Bash(grep:*)",
+      "Bash(dotnet sln remove:*)"
     ],
     "deny": [],
     "ask": []
