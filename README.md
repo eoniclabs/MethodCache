@@ -286,14 +286,16 @@ Built with ❤️ for the .NET community.
 
 
 
+
 ## 🚀 Performance Benchmarks
 
-Last updated: 2025-09-20_20-21-42 (commit: `ca506ea`)
+Last updated: 2025-09-20_20-23-44 (commit: `ffc8b75`)
 
 | Benchmark | Mean | Error | Allocated |
 |-----------|------|-------|-----------|
-| CacheHit | 2345125.11 ns | ±0.00 | 1408 B |
-| CacheHitCold | 2405730.52 ns | ±0.00 | 1512 B |
-| CacheMiss | 1196128.26 ns | ±0.00 | 891 B |
-| NoCaching | 1171394.60 ns | ±0.00 | 786 B |
+| CacheHit | 2392263.67 ns | ±0.00 | 1408 B |
+| CacheHitCold | 2382623.43 ns | ±0.00 | 1510 B |
+| CacheMiss | 1173469.39 ns | ±0.00 | 891 B |
+| NoCaching | 1420264.04 ns | ±0.00 | 786 B |
+
 
