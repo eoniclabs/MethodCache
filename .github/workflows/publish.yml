@@ -8,6 +8,11 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -33,9 +38,11 @@ jobs:
 
       - name: Test
         run: dotnet test --configuration Release --no-build
+        env:
+          MethodCache_Redis_ConnectionString: "localhost:6379"
 
       - name: Pack
         run: dotnet pack --configuration Release --no-build -o ./artifacts
 
       - name: Publish to GitHub Packages
-        run: dotnet nuget push "./artifacts/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "https://nuget.pkg.github.com/eoniclabs/index.json" --skip-duplicate
+        run: dotnet nuget push "./artifacts/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "https://nuget.pkg.github.com/eoniclabs/index.json"
