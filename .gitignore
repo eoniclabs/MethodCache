@@ -28,3 +28,14 @@ packages/
 *.ipr
 *.iws
 .DS_Store
+
+# BenchmarkDotNet artifacts
+BenchmarkDotNet.Artifacts/
+**/BenchmarkDotNet.Artifacts/
+
+# Performance data (should be generated)
+.performance-data/results/
+.performance-data/charts/
+
+# Other generated files
+*.Generated.cs

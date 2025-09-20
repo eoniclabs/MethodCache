@@ -12,6 +12,15 @@ import argparse
 from datetime import datetime
 from typing import Optional
 
+# Configuration constants
+DEFAULT_DATA_SIZE = 1
+DEFAULT_MODEL_TYPE = 'Small'
+PERFORMANCE_METRICS = ['CacheHit', 'CacheMiss', 'CacheHitCold', 'CacheInvalidation', 'NoCaching']
+BENCHMARK_PARAMETERS = {
+    'DataSize': DEFAULT_DATA_SIZE,
+    'ModelType': DEFAULT_MODEL_TYPE
+}
+
 
 def load_latest_performance_data() -> Optional[dict]:
     """Load the most recent performance data"""
@@ -23,7 +32,7 @@ def load_latest_performance_data() -> Optional[dict]:
     try:
         with open(data_files[0], 'r') as f:
             return json.load(f)
-    except Exception as e:
+    except (IOError, json.JSONDecodeError) as e:
         print(f"Error loading performance data: {e}")
         return None
 
@@ -38,7 +47,8 @@ def generate_performance_badges(data: dict) -> str:
 
     for benchmark in data['benchmarks']:
         params = benchmark['parameters']
-        if params.get('DataSize') == 1 and params.get('ModelType') == 'Small':
+        if (params.get('DataSize') == BENCHMARK_PARAMETERS['DataSize'] and
+            params.get('ModelType') == BENCHMARK_PARAMETERS['ModelType']):
             if benchmark['method'] == 'CacheHit':
                 cache_hit_small = benchmark['statistics']['mean']
             elif benchmark['method'] == 'CacheMiss':
@@ -140,7 +150,8 @@ def generate_performance_section(data: dict) -> str:
 
     for benchmark in data['benchmarks']:
         params = benchmark['parameters']
-        if params.get('DataSize') == 1 and params.get('ModelType') == 'Small':
+        if (params.get('DataSize') == BENCHMARK_PARAMETERS['DataSize'] and
+            params.get('ModelType') == BENCHMARK_PARAMETERS['ModelType']):
             if benchmark['method'] == 'CacheHit':
                 cache_hit_time = benchmark['statistics']['mean']
             elif benchmark['method'] == 'NoCaching':
@@ -213,7 +224,7 @@ def update_readme_performance(readme_path: str, performance_section: str) -> boo
 
         return True
 
-    except Exception as e:
+    except IOError as e:
         print(f"Error updating README: {e}")
         return False
 

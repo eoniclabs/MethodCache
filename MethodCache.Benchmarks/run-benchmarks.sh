@@ -168,14 +168,16 @@ run_benchmarks() {
     local log_file="$output_dir/benchmark-$category-$timestamp.log"
     
     if [[ "$VERBOSE" == true ]]; then
-        dotnet run -c "$CONFIGURATION" --no-build -- "${benchmark_args[@]}"
+        dotnet run -c "$CONFIGURATION" --no-build -- "${benchmark_args[@]}" 2>&1 | tee "$log_file"
+        status=$?
     else
-        dotnet run -c "$CONFIGURATION" --no-build -- "${benchmark_args[@]}" | tee "$log_file"
+        dotnet run -c "$CONFIGURATION" --no-build -- "${benchmark_args[@]}" > "$log_file" 2>&1
+        status=$?
     fi
-    
-    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-        print_error "Benchmark execution failed"
-        exit 1
+
+    if [[ $status -ne 0 ]]; then
+        print_error "Benchmark execution failed with exit code $status"
+        exit $status
     fi
     
     print_success "Benchmarks completed successfully"

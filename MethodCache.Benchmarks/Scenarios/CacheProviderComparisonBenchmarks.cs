@@ -222,16 +222,8 @@ public class CacheProviderTestService : ICacheProviderTestService
     [Cache(Duration = "00:05:00", Tags = new[] { "items" })]
     public virtual async Task<object> GetItemAsync(int id, string dataType)
     {
-        var settings = _configuration.GetMethodSettings("CacheProviderTestService.GetItemAsync");
-        var args = new object[] { id, dataType };
-
-        return await _cacheManager.GetOrCreateAsync<object>(
-            "GetItemAsync",
-            args,
-            async () => await CreateItemAsync(id, dataType),
-            settings,
-            _keyGenerator,
-            true);
+        // Source generator handles caching - just call the business logic
+        return await CreateItemAsync(id, dataType);
     }
 
     [CacheInvalidate(Tags = new[] { "items" })]

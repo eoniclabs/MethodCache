@@ -4,6 +4,7 @@ using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
+using System.Runtime.CompilerServices;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
@@ -123,16 +124,15 @@ public class BasicCacheService : IBasicCacheService
     [Cache(Duration = "00:10:00", RequireIdempotent = false)]
     public virtual async Task<object> GetDataAsync(int size, string modelType)
     {
-        var settings = _configuration.GetMethodSettings("BasicCacheService.GetDataAsync");
-        var args = new object[] { size, modelType };
+        // Source generator handles caching - just call the business logic
+        return await CreateDataAsync(size, modelType);
+    }
 
-        return await _cacheManager.GetOrCreateAsync<object>(
-            "GetDataAsync",
-            args,
-            async () => await CreateDataAsync(size, modelType),
-            settings,
-            _keyGenerator,
-            false);
+    // No-caching baseline for benchmarks
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public async Task<object> GetDataNoCachingAsync(int size, string modelType)
+    {
+        return await CreateDataAsync(size, modelType);
     }
 
     [CacheInvalidate(Tags = new[] { "data" })]

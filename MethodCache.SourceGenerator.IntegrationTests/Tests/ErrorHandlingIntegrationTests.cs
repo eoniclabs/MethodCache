@@ -477,15 +477,26 @@ namespace TestNamespace
 
     private static async Task<T> GetTaskResult<T>(Task task)
     {
-        await task;
-        var property = task.GetType().GetProperty("Result");
-        return (T)property!.GetValue(task)!;
+        ArgumentNullException.ThrowIfNull(task);
+
+        await task.ConfigureAwait(false);
+
+        // Use reflection to safely extract result from Task<T>
+        if (task.GetType().IsGenericType &&
+            task.GetType().GetGenericTypeDefinition() == typeof(Task<>))
+        {
+            var result = ((dynamic)task).Result;
+            return (T)result;
+        }
+
+        throw new InvalidOperationException(
+            $"Task type {task.GetType()} is not compatible with expected type Task<{typeof(T).Name}>");
     }
     
     private static async Task<object> GetTaskResult(Task task, Type expectedType)
     {
-        if (task == null) throw new ArgumentNullException(nameof(task));
-        if (expectedType == null) throw new ArgumentNullException(nameof(expectedType));
+        ArgumentNullException.ThrowIfNull(task);
+        ArgumentNullException.ThrowIfNull(expectedType);
         
         await task;
         var property = task.GetType().GetProperty("Result");

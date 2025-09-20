@@ -330,5 +330,150 @@ def main():
     print(f"Individual charts saved in: {args.output_dir}/")
 
 
+# Helper functions for create_svg_chart refactoring
+def _create_svg_header(width: int, height: int) -> str:
+    """Create SVG header with styles"""
+    return f'''<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <style>
+            .chart-grid {{ stroke: #e0e0e0; stroke-width: 1; }}
+            .chart-axis {{ stroke: #333; stroke-width: 2; }}
+            .chart-line {{ fill: none; stroke: #007acc; stroke-width: 3; }}
+            .chart-point {{ fill: #007acc; r: 4; }}
+            .chart-text {{ font-family: Arial, sans-serif; font-size: 12px; fill: #333; }}
+            .chart-title {{ font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; fill: #333; }}
+        </style>
+    </defs>'''
+
+def _create_chart_grid(width: int, height: int, margin: int, points, min_mean: float, max_mean: float, min_time, max_time) -> list:
+    """Create chart grid lines"""
+    elements = []
+    chart_width = width - 2 * margin
+    chart_height = height - 2 * margin
+
+    # Horizontal grid lines (for mean values)
+    for i in range(5):
+        y = margin + i * (chart_height / 4)
+        elements.append(f'<line x1="{margin}" y1="{y}" x2="{width - margin}" y2="{y}" class="chart-grid" />')
+
+    # Vertical grid lines (for time)
+    for i in range(5):
+        x = margin + i * (chart_width / 4)
+        elements.append(f'<line x1="{x}" y1="{margin}" x2="{x}" y2="{height - margin}" class="chart-grid" />')
+
+    return elements
+
+def _create_chart_axes(width: int, height: int, margin: int) -> list:
+    """Create chart axes"""
+    return [
+        f'<line x1="{margin}" y1="{margin}" x2="{margin}" y2="{height - margin}" class="chart-axis" />',
+        f'<line x1="{margin}" y1="{height - margin}" x2="{width - margin}" y2="{height - margin}" class="chart-axis" />'
+    ]
+
+def _plot_data_points(points, width: int, height: int, margin: int, min_mean: float, max_mean: float, min_time, max_time) -> list:
+    """Plot the actual data points and line"""
+    elements = []
+    chart_width = width - 2 * margin
+    chart_height = height - 2 * margin
+    time_range = (max_time - min_time).total_seconds()
+    mean_range = max_mean - min_mean if max_mean != min_mean else max_mean * 0.1
+
+    # Calculate coordinates
+    coords = []
+    for point in points:
+        time_offset = (point['timestamp'] - min_time).total_seconds()
+        x = margin + (time_offset / time_range) * chart_width
+        y = height - margin - ((point['mean'] - min_mean) / mean_range) * chart_height
+        coords.append((x, y))
+
+    # Create line path
+    if len(coords) > 1:
+        path_data = f"M {coords[0][0]} {coords[0][1]}"
+        for x, y in coords[1:]:
+            path_data += f" L {x} {y}"
+        elements.append(f'<path d="{path_data}" class="chart-line" />')
+
+    # Add data points
+    for x, y in coords:
+        elements.append(f'<circle cx="{x}" cy="{y}" class="chart-point" />')
+
+    return elements
+
+def _create_chart_labels(title: str, width: int, height: int, margin: int, points, min_mean: float, max_mean: float) -> list:
+    """Create chart title and axis labels"""
+    elements = []
+
+    # Title
+    elements.append(f'<text x="{width // 2}" y="25" text-anchor="middle" class="chart-title">{title}</text>')
+
+    # Y-axis labels
+    mean_range = max_mean - min_mean if max_mean != min_mean else max_mean * 0.1
+    for i in range(5):
+        y = margin + i * ((height - 2 * margin) / 4)
+        value = max_mean - (i * mean_range / 4)
+        if value >= 1000:
+            label = f"{value/1000:.1f}μs"
+        else:
+            label = f"{value:.0f}ns"
+        elements.append(f'<text x="{margin - 10}" y="{y + 4}" text-anchor="end" class="chart-text">{label}</text>')
+
+    # X-axis labels (simplified)
+    if points:
+        elements.append(f'<text x="{margin}" y="{height - 10}" text-anchor="start" class="chart-text">{points[0]["date"]}</text>')
+        elements.append(f'<text x="{width - margin}" y="{height - 10}" text-anchor="end" class="chart-text">{points[-1]["date"]}</text>')
+
+    # Axis titles
+    elements.append(f'<text x="{width // 2}" y="{height - 5}" text-anchor="middle" class="chart-text">Date</text>')
+    elements.append(f'<text x="15" y="{height // 2}" text-anchor="middle" transform="rotate(-90, 15, {height // 2})" class="chart-text">Mean Time (ns)</text>')
+
+    return elements
+
+# Refactored create_svg_chart function
+def create_svg_chart_refactored(data: List[Dict], method: str, title: str, width: int = 800, height: int = 400) -> str:
+    """Create an SVG line chart for a specific benchmark method - refactored version"""
+
+    # Extract data points for the method
+    points = []
+    for entry in data:
+        for benchmark in entry['benchmarks']:
+            if (benchmark['method'] == method and
+                benchmark['parameters'].get('DataSize') == 1 and
+                benchmark['parameters'].get('ModelType') == 'Small'):
+
+                timestamp = datetime.fromisoformat(entry['metadata']['timestamp'].replace('Z', '+00:00'))
+                mean = benchmark['statistics']['mean']
+                version = entry['metadata']['version']
+
+                if mean > 0:  # Only include valid measurements
+                    points.append({
+                        'timestamp': timestamp,
+                        'mean': mean,
+                        'version': version,
+                        'date': timestamp.strftime('%Y-%m-%d')
+                    })
+                break
+
+    if len(points) < 2:
+        return f"<!-- Not enough data points for {method} chart -->"
+
+    # Calculate chart dimensions and scales
+    margin = 60
+    min_time = min(p['timestamp'] for p in points)
+    max_time = max(p['timestamp'] for p in points)
+    min_mean = min(p['mean'] for p in points)
+    max_mean = max(p['mean'] for p in points)
+
+    # Build SVG
+    svg_parts = []
+    svg_parts.append(_create_svg_header(width, height))
+    svg_parts.extend(_create_chart_grid(width, height, margin, points, min_mean, max_mean, min_time, max_time))
+    svg_parts.extend(_create_chart_axes(width, height, margin))
+    svg_parts.extend(_plot_data_points(points, width, height, margin, min_mean, max_mean, min_time, max_time))
+    svg_parts.extend(_create_chart_labels(title, width, height, margin, points, min_mean, max_mean))
+    svg_parts.append('</svg>')
+
+    return '\n'.join(svg_parts)
+
+
 if __name__ == '__main__':
     main()

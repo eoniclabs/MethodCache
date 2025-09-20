@@ -757,8 +757,45 @@ namespace MethodCache.SourceGenerator
 
             private static void EmitGenericConstraints(StringBuilder sb, INamedTypeSymbol symbol, string indent)
             {
-                // Temporarily disabled - will implement properly later
-                return;
+                if (!symbol.IsGenericType || symbol.TypeParameters.Length == 0)
+                    return;
+
+                foreach (var typeParam in symbol.TypeParameters)
+                {
+                    var constraints = new List<string>();
+
+                    // Reference type constraint
+                    if (typeParam.HasReferenceTypeConstraint)
+                        constraints.Add("class");
+
+                    // Value type constraint
+                    if (typeParam.HasValueTypeConstraint)
+                        constraints.Add("struct");
+
+                    // Notnull constraint (C# 8.0+)
+                    if (typeParam.HasNotNullConstraint)
+                        constraints.Add("notnull");
+
+                    // Unmanaged constraint (C# 7.3+)
+                    if (typeParam.HasUnmanagedTypeConstraint)
+                        constraints.Add("unmanaged");
+
+                    // Specific base types or interfaces
+                    foreach (var constraintType in typeParam.ConstraintTypes)
+                    {
+                        constraints.Add(constraintType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+                    }
+
+                    // Constructor constraint
+                    if (typeParam.HasConstructorConstraint)
+                        constraints.Add("new()");
+
+                    if (constraints.Count > 0)
+                    {
+                        sb.Append(indent);
+                        sb.AppendLine($"where {typeParam.Name} : {string.Join(", ", constraints)}");
+                    }
+                }
             }
 
             private static void EmitConstructor(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol)
@@ -1267,10 +1304,21 @@ namespace MethodCache.SourceGenerator
 
                         foreach (var model in info.CachedMethods)
                         {
-                            // Skip generic methods - they can't be configured statically in the registry
-                            // because their type parameters are only known at runtime
+                            // NOTE: Generic methods are currently not supported by the source generator.
+                            // This is due to runtime type parameter resolution limitations - we cannot
+                            // generate cache keys for generic type parameters that are only known at runtime.
+                            //
+                            // Potential alternatives:
+                            // 1. Use non-generic wrapper methods that call generic implementations
+                            // 2. Implement runtime key generation (performance impact)
+                            // 3. Use manual caching with ICacheManager for generic scenarios
+                            //
+                            // Example workaround:
+                            // [Cache] public Task<T> GetData<T>(int id) => GetDataInternal<T>(id);
+                            // private Task<T> GetDataInternal<T>(int id) { /* implementation */ }
                             if (model.Method.IsGenericMethod)
                             {
+                                // Skip generic methods - see documentation above
                                 continue;
                             }
                             

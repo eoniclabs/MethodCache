@@ -38,7 +38,7 @@ jobs:
         dotnet-version: '9.0.x'
 
     - name: Cache NuGet packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
@@ -341,7 +341,7 @@ jobs:
         fi
 
     - name: Upload performance artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-results-${{ env.TIMESTAMP }}
         path: |
@@ -379,7 +379,7 @@ jobs:
         fetch-depth: 0
 
     - name: Download performance artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: performance-results-${{ env.TIMESTAMP || github.run_id }}
 

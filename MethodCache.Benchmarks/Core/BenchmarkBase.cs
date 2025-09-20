@@ -8,6 +8,7 @@ using MethodCache.Core.Runtime.Defaults;
 using MethodCache.HybridCache.Implementation;
 using MethodCache.HybridCache.Configuration;
 using MethodCache.Providers.Redis;
+using System.Linq;
 using MethodCache.Providers.Redis.Configuration;
 
 namespace MethodCache.Benchmarks.Core;
@@ -110,8 +111,17 @@ public abstract class BenchmarkBase
         var services = new ServiceCollection();
         ConfigureServices(services);
         
-        // Replace the default cache manager
-        services.Remove(services.First(s => s.ServiceType == typeof(ICacheManager)));
+        // Remove all existing ICacheManager registrations safely
+        var descriptors = services
+            .Where(d => d.ServiceType == typeof(ICacheManager))
+            .ToList();
+
+        foreach (var descriptor in descriptors)
+        {
+            services.Remove(descriptor);
+        }
+
+        // Add the specific cache manager for this benchmark
         services.AddSingleton<ICacheManager, TCacheManager>();
         
         return services.BuildServiceProvider();
