@@ -2,9 +2,9 @@ name: Performance Tracking
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, fluent-v2 ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, fluent-v2 ]
   schedule:
     # Run weekly performance benchmarks
     - cron: '0 2 * * 0'
@@ -73,11 +73,21 @@ jobs:
         set -e  # Exit on error
         set -x  # Print commands for debugging
 
+        # Check if MethodCache.Benchmarks directory exists
+        if [ ! -d "MethodCache.Benchmarks" ]; then
+          echo "❌ MethodCache.Benchmarks directory not found"
+          echo "Available directories:"
+          ls -la
+          echo "This branch may not have the benchmark infrastructure yet."
+          exit 1
+        fi
+
         cd MethodCache.Benchmarks
 
         # Check if the benchmark script exists and is executable
         if [ ! -f "run-benchmarks.sh" ]; then
           echo "❌ run-benchmarks.sh not found in MethodCache.Benchmarks directory"
+          echo "Directory contents:"
           ls -la
           exit 1
         fi
