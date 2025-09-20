@@ -21,7 +21,8 @@
       "Bash(chmod:*)",
       "Read(//Users/johan/.nuget/packages/benchmarkdotnet/**)",
       "Bash(./run-benchmarks.sh:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(dotnet clean:*)"
     ],
     "deny": [],
     "ask": []
