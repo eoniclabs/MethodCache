@@ -3,6 +3,8 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Toolchains.InProcess.Emit;
+using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Exporters.Json;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Benchmarks.Scenarios;
 
@@ -86,13 +88,29 @@ public class Program
 
     private static IConfig CreateBenchmarkConfig()
     {
+        // Check if we're in quick mode for development
+        var isQuickMode = Environment.GetEnvironmentVariable("BENCHMARK_QUICK") == "true";
+
+        var job = Job.Default
+            .WithPlatform(Platform.X64)
+            .WithGcServer(true)
+            .WithGcConcurrent(true)
+            .WithGcRetainVm(true)
+            .WithToolchain(InProcessEmitToolchain.Instance);
+
+        if (isQuickMode)
+        {
+            // Quick mode: fewer warmup iterations and actual runs
+            job = job
+                .WithWarmupCount(1)
+                .WithIterationCount(3)
+                .WithMaxRelativeError(0.10); // Allow higher variance for speed
+        }
+
         return ManualConfig.Create(DefaultConfig.Instance)
-            .AddJob(Job.Default
-                .WithPlatform(Platform.X64)
-                .WithGcServer(true)
-                .WithGcConcurrent(true)
-                .WithGcRetainVm(true)
-                .WithToolchain(InProcessEmitToolchain.Instance))
+            .AddJob(job)
+            .AddExporter(JsonExporter.Full)
+            .AddExporter(MarkdownExporter.GitHub)
             .WithOptions(ConfigOptions.DisableOptimizationsValidator);
     }
 

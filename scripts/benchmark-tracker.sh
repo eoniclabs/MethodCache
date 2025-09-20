@@ -22,21 +22,26 @@ initialize_benchmark_dir() {
 }
 
 run_benchmarks() {
-    local filter="${1:-*}"
+    local category="${1:-basic}"
 
-    echo -e "${CYAN}🚀 Running benchmarks with filter: $filter${NC}"
+    echo -e "${CYAN}🚀 Running benchmarks with category: $category${NC}"
 
     local timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
     local commit_hash=$(git rev-parse --short HEAD)
     local branch=$(git branch --show-current)
+    local artifacts_dir="../$RESULTS_DIR/artifacts-$timestamp"
+
+    # Create artifacts directory
+    mkdir -p "$artifacts_dir"
 
     # Run benchmarks
     cd MethodCache.Benchmarks
 
-    dotnet run -c Release -- \
-        --filter "$filter" \
-        --exporters json \
-        --artifacts "../$RESULTS_DIR/artifacts-$timestamp"
+    # Set environment variable for BenchmarkDotNet to export to our directory
+    export BenchmarkDotNet_ArtifactsPath="$artifacts_dir"
+    export BENCHMARK_QUICK="true"
+
+    dotnet run -c Release -- "$category"
 
     cd ..
 
@@ -239,10 +244,15 @@ EOF
 show_usage() {
     echo "Usage: ./benchmark-tracker.sh [command] [options]"
     echo "Commands:"
-    echo "  run [filter]     - Run benchmarks with optional filter"
+    echo "  run [category]   - Run benchmarks (basic, providers, concurrent, memory, realworld, generic, serialization, all)"
     echo "  compare [file]   - Compare with baseline (default: previous)"
     echo "  update-readme    - Update README with latest results"
     echo "  history          - Show benchmark history"
+    echo ""
+    echo "Examples:"
+    echo "  ./benchmark-tracker.sh run basic"
+    echo "  ./benchmark-tracker.sh run all --update-readme"
+    echo "  ./benchmark-tracker.sh compare previous"
 }
 
 # Main script

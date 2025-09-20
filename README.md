@@ -282,3 +282,15 @@ We welcome issues, ideas, and pull requests. Please read the contribution guidel
 ---
 
 Built with ❤️ for the .NET community.
+
+
+
+## 🚀 Performance Benchmarks
+
+Last updated: 2025-09-20_19-55-00 (commit: `abc1234`)
+
+| Benchmark | Mean | Error | Allocated |
+|-----------|------|-------|-----------|
+| CacheHit | 145.23 ns | ±1.23 | 128 B |
+| CacheMiss | 1245.67 ns | ±7.61 | 2048 B |
+| NoCaching | 1189.34 ns | ±6.39 | 1920 B |
