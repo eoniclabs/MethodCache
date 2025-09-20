@@ -70,26 +70,28 @@ jobs:
 
     - name: Run performance benchmarks
       run: |
-        set -e  # Exit on error
         set -x  # Print commands for debugging
 
         # Check if MethodCache.Benchmarks directory exists
         if [ ! -d "MethodCache.Benchmarks" ]; then
-          echo "❌ MethodCache.Benchmarks directory not found"
+          echo "⚠️ MethodCache.Benchmarks directory not found"
           echo "Available directories:"
           ls -la
-          echo "This branch may not have the benchmark infrastructure yet."
-          exit 1
+          echo "This branch does not have benchmark infrastructure - skipping benchmarks"
+          echo "BENCHMARKS_SKIPPED=true" >> $GITHUB_ENV
+          exit 0
         fi
 
         cd MethodCache.Benchmarks
 
         # Check if the benchmark script exists and is executable
         if [ ! -f "run-benchmarks.sh" ]; then
-          echo "❌ run-benchmarks.sh not found in MethodCache.Benchmarks directory"
+          echo "⚠️ run-benchmarks.sh not found in MethodCache.Benchmarks directory"
           echo "Directory contents:"
           ls -la
-          exit 1
+          echo "Benchmark script missing - skipping benchmarks"
+          echo "BENCHMARKS_SKIPPED=true" >> $GITHUB_ENV
+          exit 0
         fi
 
         if [ ! -x "run-benchmarks.sh" ]; then
@@ -112,6 +114,7 @@ jobs:
           --config Release
 
     - name: Process benchmark results
+      if: env.BENCHMARKS_SKIPPED != 'true'
       run: |
         set -e  # Exit on error
 
@@ -211,7 +214,7 @@ jobs:
         python3 process-results.py
 
     - name: Commit performance data
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/main' && env.BENCHMARKS_SKIPPED != 'true'
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
