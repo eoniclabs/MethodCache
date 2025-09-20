@@ -49,7 +49,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var result1 = await cacheManager.GetOrCreateAsync(
             methodName,
             args,
-            async () => { callCount++; return $"Result-{callCount}"; },
+            () => { callCount++; return Task.FromResult($"Result-{callCount}"); },
             settings,
             keyGenerator,
             false);
@@ -58,7 +58,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var result2 = await cacheManager.GetOrCreateAsync(
             methodName,
             args,
-            async () => { callCount++; return $"Result-{callCount}"; },
+            () => { callCount++; return Task.FromResult($"Result-{callCount}"); },
             settings,
             keyGenerator,
             false);
@@ -110,7 +110,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var result1 = await cacheManager.GetOrCreateAsync(
             methodName,
             args,
-            async () => { callCount++; return $"Original-{callCount}"; },
+            () => { callCount++; return Task.FromResult($"Original-{callCount}"); },
             settings,
             keyGenerator,
             false);
@@ -122,7 +122,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var result2 = await cacheManager.GetOrCreateAsync(
             methodName,
             args,
-            async () => { callCount++; return $"ShouldNotBeCalled-{callCount}"; },
+            () => { callCount++; return Task.FromResult($"ShouldNotBeCalled-{callCount}"); },
             settings,
             keyGenerator,
             false);
@@ -168,7 +168,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var result = await cacheManager.GetOrCreateAsync(
             methodName,
             args,
-            async () => "WriteBackValue",
+            () => Task.FromResult("WriteBackValue"),
             settings,
             keyGenerator,
             false);
@@ -219,7 +219,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var result = await cacheManager.GetOrCreateAsync(
             methodName,
             args,
-            async () => "L1OnlyValue",
+            () => Task.FromResult("L1OnlyValue"),
             settings,
             keyGenerator,
             false);
@@ -271,7 +271,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         await cacheManager.GetOrCreateAsync(
             methodName,
             args,
-            async () => "TaggedValue",
+            () => Task.FromResult("TaggedValue"),
             settings,
             keyGenerator,
             false);
@@ -320,13 +320,13 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
         
         // Cache miss
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, async () => "Value1", settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator, false);
         
         // Cache hit
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, async () => "ShouldNotBeCalled", settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("ShouldNotBeCalled"), settings, keyGenerator, false);
         
         // Another cache miss
-        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, async () => "Value2", settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, () => Task.FromResult("Value2"), settings, keyGenerator, false);
 
         var stats = await hybridManager.GetStatsAsync();
 
@@ -367,15 +367,15 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
 
         // Act - Fill cache beyond capacity
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, async () => "Value1", settings, keyGenerator, false);
-        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, async () => "Value2", settings, keyGenerator, false);
-        await cacheManager.GetOrCreateAsync("Method3", new object[] { 3 }, async () => "Value3", settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, () => Task.FromResult("Value2"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method3", new object[] { 3 }, () => Task.FromResult("Value3"), settings, keyGenerator, false);
         
         // Access Method1 to make it more recently used
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, async () => "ShouldNotBeCalled", settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("ShouldNotBeCalled"), settings, keyGenerator, false);
         
         // Add another item to trigger eviction
-        await cacheManager.GetOrCreateAsync("Method4", new object[] { 4 }, async () => "Value4", settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method4", new object[] { 4 }, () => Task.FromResult("Value4"), settings, keyGenerator, false);
 
         // Assert - Method1 (recently used) and Method4 (new) should still be in L1
         var key1 = keyGenerator.GenerateKey("Method1", new object[] { 1 }, settings);

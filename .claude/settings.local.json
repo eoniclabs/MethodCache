@@ -22,7 +22,8 @@
       "Read(//Users/johan/.nuget/packages/benchmarkdotnet/**)",
       "Bash(./run-benchmarks.sh:*)",
       "Bash(tee:*)",
-      "Bash(dotnet clean:*)"
+      "Bash(dotnet clean:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
