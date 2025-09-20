@@ -33,6 +33,9 @@ packages/
 BenchmarkDotNet.Artifacts/
 **/BenchmarkDotNet.Artifacts/
 
+# Local benchmark tracking
+.benchmark-results/
+
 # Performance data (should be generated)
 .performance-data/results/
 .performance-data/charts/

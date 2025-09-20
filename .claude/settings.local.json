@@ -23,7 +23,10 @@
       "Bash(./run-benchmarks.sh:*)",
       "Bash(tee:*)",
       "Bash(dotnet clean:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
