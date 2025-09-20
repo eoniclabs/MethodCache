@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -6,6 +7,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.SourceGenerator;
 using MethodCache.Core;
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime.Defaults;
+using Microsoft.Extensions.Options;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
@@ -94,15 +98,28 @@ public class SourceGeneratorTestEngine
     /// <summary>
     /// Creates a service provider with MethodCache configured for testing
     /// </summary>
-    public IServiceProvider CreateTestServiceProvider(GeneratedTestAssembly testAssembly, Action<IServiceCollection>? configureServices = null)
+    public IServiceProvider CreateTestServiceProvider(GeneratedTestAssembly testAssembly, Action<IServiceCollection>? configureServices = null, Action<string>? logger = null)
     {
         var services = new ServiceCollection();
 
-        // Add basic MethodCache services without scanning assemblies
+        // Add all required MethodCache infrastructure for testing
+        services.AddSingleton<ICacheManager, TestMockCacheManager>();
+        services.AddSingleton<MethodCacheConfiguration>(provider => 
+        {
+            var config = new MethodCacheConfiguration();
+            // Set default duration for testing
+            config.DefaultDuration(TimeSpan.FromMinutes(5));
+            return config;
+        });
+        
+        // Add additional dependencies that might be needed
+        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+        
+        // Add default metrics provider (will be overridden by tests)
         services.AddSingleton<ICacheMetricsProvider, TestCacheMetricsProvider>();
 
         // Register generated services using reflection
-        RegisterGeneratedServices(services, testAssembly.Assembly);
+        RegisterGeneratedServices(services, testAssembly.Assembly, logger);
 
         // Allow additional service configuration
         configureServices?.Invoke(services);
@@ -110,18 +127,27 @@ public class SourceGeneratorTestEngine
         return services.BuildServiceProvider();
     }
 
-    private void RegisterGeneratedServices(IServiceCollection services, Assembly assembly)
+    private void RegisterGeneratedServices(IServiceCollection services, Assembly assembly, Action<string>? logger = null)
     {
         // Look for generated extension methods like AddITestServiceWithCaching
         var extensionTypes = assembly.GetTypes()
             .Where(t => t.IsStatic() && t.Name.Contains("Extensions"))
             .ToList();
 
+        logger?.Invoke($"Found {extensionTypes.Count} extension types: {string.Join(", ", extensionTypes.Select(t => t.Name))}");
+
         foreach (var extensionType in extensionTypes)
         {
             var methods = extensionType.GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .Where(m => m.Name.StartsWith("Add") && m.Name.EndsWith("WithCaching"))
                 .ToList();
+
+            logger?.Invoke($"Found {methods.Count} registration methods in {extensionType.Name}: {string.Join(", ", methods.Select(m => m.Name))}");
+            
+            foreach (var method in methods)
+            {
+                logger?.Invoke($"Method: {method.Name}, Parameters: {string.Join(", ", method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))}");
+            }
 
             foreach (var method in methods)
             {
@@ -138,29 +164,79 @@ public class SourceGeneratorTestEngine
                         if (serviceType != null)
                         {
                             var mockImplementation = CreateMockImplementation(assembly, serviceType);
-                            Func<IServiceProvider, object> factory = _ => mockImplementation;
+                            logger?.Invoke($"Created mock implementation for {serviceType.Name}");
                             
-                            method.Invoke(null, new object[] { services, factory });
+                            // Create factory delegate using reflection to avoid type coercion issues
+                            var factoryType = parameters[1].ParameterType; // Should be Func<IServiceProvider, ServiceType>
+                            var createFactoryMethod = typeof(SourceGeneratorTestEngine)
+                                .GetMethod(nameof(CreateTypedFactory), BindingFlags.NonPublic | BindingFlags.Instance)!
+                                .MakeGenericMethod(serviceType);
+                            
+                            var factoryDelegate = createFactoryMethod.Invoke(this, new object[] { mockImplementation });
+                            
+                            method.Invoke(null, new object[] { services, factoryDelegate });
+                            logger?.Invoke($"Successfully registered {method.Name}");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     // Log but don't fail - some generated methods might have different signatures
-                    Console.WriteLine($"Warning: Could not register {method.Name}: {ex.Message}");
+                    logger?.Invoke($"Warning: Could not register {method.Name}: {ex.Message}");
+                    logger?.Invoke($"Stack trace: {ex.StackTrace}");
                 }
             }
         }
     }
 
+    /// <summary>
+    /// Creates a typed factory delegate for service registration
+    /// </summary>
+    private Func<IServiceProvider, T> CreateTypedFactory<T>(T implementation) where T : class
+    {
+        return _ => implementation;
+    }
+
+    /// <summary>
+    /// Helper method to create standardized test source code
+    /// </summary>
+    public static string CreateTestSourceCode(string interfaceAndImplementation, string namespaceName = "TestNamespace")
+    {
+        return $@"{UniversalTestModels.GetRequiredUsings()}
+
+namespace {namespaceName}
+{{
+{UniversalTestModels.GetCompleteModelDefinitions()}
+
+{interfaceAndImplementation}
+}}";
+    }
+
     private Type? GetServiceTypeFromMethod(MethodInfo method)
     {
-        // Extract interface type from method name like AddITestServiceWithCaching
+        // Extract interface type from method name like AddIUserServiceWithCaching
         var serviceName = method.Name.Substring(3); // Remove "Add"
         serviceName = serviceName.Substring(0, serviceName.Length - 12); // Remove "WithCaching"
         
-        return method.DeclaringType?.Assembly.GetType(serviceName) ?? 
-               method.DeclaringType?.Assembly.GetTypes().FirstOrDefault(t => t.Name == serviceName);
+        // The service type should be in the test assembly, not the extension assembly
+        // Look at the method's parameter types to find the correct type
+        var parameters = method.GetParameters();
+        if (parameters.Length >= 2)
+        {
+            var factoryParam = parameters[1];
+            if (factoryParam.ParameterType.IsGenericType && 
+                factoryParam.ParameterType.GetGenericTypeDefinition() == typeof(Func<,>))
+            {
+                // Get the return type of the Func<IServiceProvider, ServiceType>
+                var genericArgs = factoryParam.ParameterType.GetGenericArguments();
+                if (genericArgs.Length == 2)
+                {
+                    return genericArgs[1]; // ServiceType
+                }
+            }
+        }
+        
+        return null;
     }
 
     private object CreateMockImplementation(Assembly assembly, Type serviceType)
@@ -275,3 +351,4 @@ public static class TypeExtensions
         return type.IsAbstract && type.IsSealed;
     }
 }
+

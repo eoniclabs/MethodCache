@@ -685,6 +685,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#nullable enable");
                 sb.AppendLine("#pragma warning disable CS8019 // Unnecessary using directive");
                 sb.AppendLine("using System;");
+                sb.AppendLine("using System.Collections.Generic;");
                 sb.AppendLine("using System.Linq;");
                 sb.AppendLine("using System.Threading;");
                 sb.AppendLine("using System.Threading.Tasks;");
