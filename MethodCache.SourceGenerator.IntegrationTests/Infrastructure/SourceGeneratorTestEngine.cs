@@ -173,8 +173,11 @@ public class SourceGeneratorTestEngine
                                 .MakeGenericMethod(serviceType);
                             
                             var factoryDelegate = createFactoryMethod.Invoke(this, new object[] { mockImplementation });
-                            
-                            method.Invoke(null, new object[] { services, factoryDelegate });
+
+                            if (factoryDelegate != null)
+                            {
+                                method.Invoke(null, new object[] { services, factoryDelegate });
+                            }
                             logger?.Invoke($"Successfully registered {method.Name}");
                         }
                     }

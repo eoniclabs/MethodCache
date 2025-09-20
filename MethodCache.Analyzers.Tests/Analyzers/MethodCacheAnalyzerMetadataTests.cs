@@ -97,7 +97,7 @@ namespace TestApp
 }";
 
             var result = await AnalyzeAsync(source);
-            var diagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var diagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
 
             // Check message content
             var message = diagnostic.GetMessage();
@@ -139,7 +139,7 @@ namespace TestApp
 }";
 
             var result = await AnalyzeAsync(source);
-            var diagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId));
+            var diagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
 
             // Check message content
             var message = diagnostic.GetMessage();
