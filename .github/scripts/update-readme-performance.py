@@ -15,7 +15,6 @@ from typing import Optional
 # Configuration constants
 DEFAULT_DATA_SIZE = 1
 DEFAULT_MODEL_TYPE = 'Small'
-PERFORMANCE_METRICS = ['CacheHit', 'CacheMiss', 'CacheHitCold', 'CacheInvalidation', 'NoCaching']
 BENCHMARK_PARAMETERS = {
     'DataSize': DEFAULT_DATA_SIZE,
     'ModelType': DEFAULT_MODEL_TYPE

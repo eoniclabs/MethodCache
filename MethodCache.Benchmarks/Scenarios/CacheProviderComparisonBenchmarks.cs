@@ -151,19 +151,13 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
     private async Task<List<object>> RunCacheHitsTest(ICacheProviderTestService service)
     {
         var results = new List<object>();
-        
-        // Warm up cache
-        for (int i = 0; i < ItemCount; i++)
-        {
-            await service.GetItemAsync(i, DataType);
-        }
-        
-        // Measure cache hits
+
+        // Measure cache hits (cache should already be warm from previous benchmark iterations)
         for (int i = 0; i < ItemCount; i++)
         {
             results.Add(await service.GetItemAsync(i, DataType));
         }
-        
+
         return results;
     }
 
