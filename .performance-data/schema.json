@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MethodCache Performance Data Schema",
+  "description": "Schema for MethodCache benchmark performance data",
+  "type": "object",
+  "required": ["metadata", "benchmarks"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["version", "commit", "branch", "timestamp"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Git version tag or commit"
+        },
+        "commit": {
+          "type": "string",
+          "description": "Full commit SHA"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Git branch name"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp"
+        },
+        "environment": {
+          "type": "object",
+          "properties": {
+            "os": {"type": "string"},
+            "dotnet": {"type": "string"},
+            "runtime": {"type": "string"},
+            "cpu": {"type": "string"}
+          }
+        }
+      }
+    },
+    "benchmarks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "method", "statistics"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Full benchmark display name"
+          },
+          "method": {
+            "type": "string",
+            "description": "Benchmark method name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Benchmark parameters"
+          },
+          "statistics": {
+            "type": "object",
+            "required": ["mean"],
+            "properties": {
+              "mean": {"type": "number"},
+              "error": {"type": "number"},
+              "stdDev": {"type": "number"},
+              "median": {"type": "number"},
+              "min": {"type": "number"},
+              "max": {"type": "number"}
+            }
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "allocated": {"type": "number"},
+              "gen0": {"type": "number"},
+              "gen1": {"type": "number"},
+              "gen2": {"type": "number"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

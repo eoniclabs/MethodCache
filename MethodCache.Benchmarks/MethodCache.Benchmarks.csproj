@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <RetainVMGarbageCollection>true</RetainVMGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.14.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.1" />
+    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+    <PackageReference Include="MessagePack" Version="3.1.4" />
+    <PackageReference Include="System.Text.Json" Version="9.0.7" />
+    <PackageReference Include="NBomber" Version="6.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\MethodCache.HybridCache\MethodCache.HybridCache.csproj" />
+    <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
+    <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" />
+    <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" />
+  </ItemGroup>
+
+</Project>

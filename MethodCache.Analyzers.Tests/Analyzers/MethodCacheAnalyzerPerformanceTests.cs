@@ -259,8 +259,8 @@ namespace TestApp
             // 2. ClearCache2 (non-void, non-async method with CacheInvalidate)
             Assert.Equal(2, result.AnalyzerDiagnostics.Count);
 
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
-            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
+            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
 
             Assert.Contains("GetNonInterfaceValue", cacheDiagnostic.GetMessage());
             Assert.Contains("ClearCache2", invalidateDiagnostic.GetMessage());

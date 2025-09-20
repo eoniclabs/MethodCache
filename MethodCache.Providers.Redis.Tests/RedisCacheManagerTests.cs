@@ -144,16 +144,18 @@ namespace MethodCache.Providers.Redis.Tests
             _metricsProviderMock.Received(1).CacheMiss(methodName);
             
             // Debug: Verify that the distributed lock was actually called
+#pragma warning disable CS4014
             _distributedLockMock.Received(1).AcquireAsync($"lock:{fullKey}", TimeSpan.FromSeconds(30), default);
-            
+
             // Debug: Verify serializer was called once (for atomic operation)
             _serializerMock.Received(1).SerializeAsync(factoryResult);
-            
+
             // Debug: Verify atomic Lua script was used instead of tag manager
             _databaseMock.Received(1).ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>());
-            
+
             // Tag manager should NOT be called since atomic approach succeeded
             _tagManagerMock.DidNotReceive().AssociateTagsAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>());
+#pragma warning restore CS4014
         }
 
         [Fact]
@@ -171,11 +173,13 @@ namespace MethodCache.Providers.Redis.Tests
             // Assert
             _databaseMock.Received(1).CreateTransaction();
             var expectedRedisKeys = keys.Select(k => (RedisKey)k).ToArray();
-            _transactionMock.Received(1).KeyDeleteAsync(Arg.Is<RedisKey[]>(rk => 
-                rk.Length == expectedRedisKeys.Length && 
+#pragma warning disable CS4014
+            _transactionMock.Received(1).KeyDeleteAsync(Arg.Is<RedisKey[]>(rk =>
+                rk.Length == expectedRedisKeys.Length &&
                 rk.All(key => expectedRedisKeys.Contains(key))));
             _transactionMock.Received(1).ExecuteAsync();
             _tagManagerMock.Received(1).RemoveTagAssociationsAsync(keys, tags);
+#pragma warning restore CS4014
         }
 
         [Fact]
@@ -185,8 +189,10 @@ namespace MethodCache.Providers.Redis.Tests
             await _cacheManager.InvalidateByTagsAsync();
 
             // Assert
+#pragma warning disable CS4014
             _tagManagerMock.DidNotReceive().GetKeysByTagsAsync(Arg.Any<string[]>());
             _databaseMock.DidNotReceive().KeyDeleteAsync(Arg.Any<RedisKey[]>(), Arg.Any<CommandFlags>());
+#pragma warning restore CS4014
         }
     }
 }

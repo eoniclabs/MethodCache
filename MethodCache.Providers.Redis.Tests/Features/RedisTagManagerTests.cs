@@ -60,12 +60,14 @@ namespace MethodCache.Providers.Redis.Tests.Features
             // Assert
             _databaseMock.Received(1).CreateBatch();
             _batchMock.Received(1).Execute();
-            
+
+#pragma warning disable CS4014
             foreach (var tag in tags)
             {
                 _batchMock.Received(1).SetAddAsync($"test:tags:{tag}", key, CommandFlags.None);
                 _batchMock.Received(1).SetAddAsync($"test:key-tags:{key}", tag, CommandFlags.None);
             }
+#pragma warning restore CS4014
         }
 
         [Fact]
@@ -79,7 +81,9 @@ namespace MethodCache.Providers.Redis.Tests.Features
             await _tagManager.AssociateTagsAsync(key, tags);
 
             // Assert
+#pragma warning disable CS4014
             _databaseMock.DidNotReceive().SetAddAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<CommandFlags>());
+#pragma warning restore CS4014
         }
 
         [Fact]
@@ -123,7 +127,9 @@ namespace MethodCache.Providers.Redis.Tests.Features
             Assert.Contains("key1", result);
             Assert.Contains("key2", result);
             Assert.Equal(2, result.Length);
+#pragma warning disable CS4014
             _databaseMock.Received(1).SetMembersAsync("test:tags:tag1", CommandFlags.None);
+#pragma warning restore CS4014
         }
 
         [Fact]
@@ -134,8 +140,10 @@ namespace MethodCache.Providers.Redis.Tests.Features
 
             // Assert
             Assert.Empty(result);
+#pragma warning disable CS4014
             _databaseMock.DidNotReceive().SetMembersAsync(Arg.Any<RedisKey>(), Arg.Any<CommandFlags>());
             _databaseMock.DidNotReceive().SetCombineAsync(Arg.Any<SetOperation>(), Arg.Any<RedisKey[]>());
+#pragma warning restore CS4014
         }
 
         [Fact]
@@ -151,7 +159,8 @@ namespace MethodCache.Providers.Redis.Tests.Features
             // Assert
             _databaseMock.Received(1).CreateBatch();
             _batchMock.Received(1).Execute();
-            
+
+#pragma warning disable CS4014
             foreach (var key in keys)
             {
                 foreach (var tag in tags)
@@ -160,6 +169,7 @@ namespace MethodCache.Providers.Redis.Tests.Features
                     _batchMock.Received(1).SetRemoveAsync($"test:key-tags:{key}", tag, CommandFlags.None);
                 }
             }
+#pragma warning restore CS4014
         }
 
         [Fact]
@@ -172,7 +182,9 @@ namespace MethodCache.Providers.Redis.Tests.Features
             // Assert
             _databaseMock.DidNotReceive().CreateBatch();
             _batchMock.DidNotReceive().Execute();
+#pragma warning disable CS4014
             _batchMock.DidNotReceive().SetRemoveAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<CommandFlags>());
+#pragma warning restore CS4014
         }
     }
 }

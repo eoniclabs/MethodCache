@@ -33,8 +33,9 @@ public class GzipRedisCompressorTests
         var result = compressor.Compress(largeData);
 
         // Assert
+        result.Should().NotBeNull();
         result.Should().NotBeEquivalentTo(largeData);
-        result.Length.Should().BeLessThan(largeData.Length);
+        result!.Length.Should().BeLessThan(largeData.Length);
         compressor.ShouldCompress(largeData).Should().BeTrue();
     }
 
@@ -51,7 +52,8 @@ public class GzipRedisCompressorTests
 
         // Assert
         decompressed.Should().BeEquivalentTo(originalData);
-        Encoding.UTF8.GetString(decompressed).Should().Be(Encoding.UTF8.GetString(originalData));
+        decompressed.Should().NotBeNull();
+        Encoding.UTF8.GetString(decompressed!).Should().Be(Encoding.UTF8.GetString(originalData));
     }
 
     [Fact]

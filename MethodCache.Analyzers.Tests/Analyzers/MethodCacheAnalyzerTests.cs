@@ -279,7 +279,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("GetValue", cacheDiagnostic.GetMessage());
             Assert.Equal(DiagnosticSeverity.Warning, cacheDiagnostic.Severity);
         }
@@ -306,7 +306,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("GetValue", cacheDiagnostic.GetMessage());
         }
 
@@ -332,7 +332,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("GetValue", cacheDiagnostic.GetMessage());
         }
 
@@ -441,7 +441,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId));
+            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
             Assert.Contains("ClearUserCache", invalidateDiagnostic.GetMessage());
             Assert.Equal(DiagnosticSeverity.Warning, invalidateDiagnostic.Severity);
         }
@@ -469,7 +469,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId));
+            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
             Assert.Contains("ClearUserCache", invalidateDiagnostic.GetMessage());
         }
 
@@ -553,10 +553,10 @@ namespace TestApp
 
             Assert.Empty(result.CompilationDiagnostics);
 
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("ProcessData", cacheDiagnostic.GetMessage());
 
-            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId));
+            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
             Assert.Contains("ProcessData", invalidateDiagnostic.GetMessage());
         }
 
@@ -648,7 +648,7 @@ namespace TestApp
             Assert.Empty(result.CompilationDiagnostics);
 
             // Should report diagnostic only for the non-virtual generic method
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("GetValue", cacheDiagnostic.GetMessage());
         }
 
@@ -679,7 +679,7 @@ namespace TestApp
             Assert.Empty(result.CompilationDiagnostics);
 
             // Should report diagnostic only for the non-virtual method in nested class
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("GetValue", cacheDiagnostic.GetMessage());
         }
 

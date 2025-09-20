@@ -4,7 +4,7 @@ namespace MethodCache.Providers.Redis.Configuration
 {
     public class RedisOptions
     {
-        public string ConnectionString { get; set; } = "localhost:6379";
+        public string ConnectionString { get; set; } = Environment.GetEnvironmentVariable("MethodCache_Redis_ConnectionString") ?? "localhost:6379";
         public int DatabaseNumber { get; set; } = 0;
         public string KeyPrefix { get; set; } = "methodcache:";
         public TimeSpan DefaultExpiration { get; set; } = TimeSpan.FromMinutes(30);

@@ -284,7 +284,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("GetValue", cacheDiagnostic.GetMessage());
         }
 
@@ -345,7 +345,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId));
+            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
             Assert.Contains("ClearCacheAsync", invalidateDiagnostic.GetMessage());
         }
 
@@ -381,7 +381,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId));
+            var cacheDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             Assert.Contains("GetValue", cacheDiagnostic.GetMessage());
         }
 
@@ -413,7 +413,7 @@ namespace TestApp
             LogDiagnostics(result);
 
             Assert.Empty(result.CompilationDiagnostics);
-            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics.Where(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId));
+            var invalidateDiagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
             Assert.Contains("ClearMultipleCache", invalidateDiagnostic.GetMessage());
         }
 

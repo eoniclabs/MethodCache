@@ -51,7 +51,7 @@ namespace MethodCache.Core.Tests.ThirdParty
         {
             // Arrange - Simulate production JSON configuration for multiple third-party services
             var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
+                .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     // Stripe API Configuration - Cache read operations, never cache writes
                     ["MethodCache:Services:IStripeClient.GetCustomerAsync:Duration"] = "01:00:00",
@@ -147,7 +147,7 @@ namespace MethodCache.Core.Tests.ThirdParty
         {
             // Arrange - Test the priority system: Runtime (40) > Programmatic (30) > JSON (20)
             var jsonConfig = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
+                .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["MethodCache:Services:IStripeClient.GetCustomerAsync:Duration"] = "01:00:00", // JSON says 1 hour
                     ["MethodCache:Services:IStripeClient.GetCustomerAsync:Tags:0"] = "json-config"
@@ -195,7 +195,7 @@ namespace MethodCache.Core.Tests.ThirdParty
         {
             // Arrange - Simulate emergency disable scenario from CONFIGURATION_GUIDE.md
             var baseConfig = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
+                .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["MethodCache:Services:IStripeClient.GetCustomerAsync:Duration"] = "02:00:00"
                 })
@@ -229,7 +229,7 @@ namespace MethodCache.Core.Tests.ThirdParty
         {
             // Arrange - Test tag-based invalidation for third-party services
             var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
+                .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     // All Stripe operations get 'stripe' tag for bulk invalidation
                     ["MethodCache:Services:IStripeClient.GetCustomerAsync:Tags:0"] = "stripe",
