@@ -15,7 +15,9 @@
       "Bash(find:*)",
       "Bash(dotnet sln add:*)",
       "Bash(grep:*)",
-      "Bash(dotnet sln remove:*)"
+      "Bash(dotnet sln remove:*)",
+      "Bash(dotnet script:*)",
+      "Bash(dotnet new:*)"
     ],
     "deny": [],
     "ask": []

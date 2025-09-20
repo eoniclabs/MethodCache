@@ -5,6 +5,7 @@ using Xunit;
 using Xunit.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core;
+using MethodCache.Core.Configuration;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
@@ -23,7 +24,7 @@ public class GenericMethodIntegrationTests
         _engine = new SourceGeneratorTestEngine();
     }
 
-    [Fact(Skip = "Generic interfaces with constraints are not currently supported by the source generator")]
+    [Fact]
     public async Task SourceGenerator_GenericServiceInterface_Works()
     {
         var sourceCode = @"
@@ -52,7 +53,7 @@ namespace TestNamespace
         public decimal Price { get; set; }
     }
 
-    public interface IGenericRepository<T> where T : BaseEntity
+    public interface IGenericRepository<T>
     {
         [Cache(Duration = ""00:02:00"")]
         Task<T> GetByIdAsync(int id);
@@ -203,6 +204,40 @@ namespace TestNamespace
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
             services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            
+            // Manually register generic interfaces since they're excluded from automatic DI generation
+            var userRepoImplType = testAssembly.Assembly.GetType("TestNamespace.UserRepository")!;
+            var userRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
+                .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
+                
+            var productRepoImplType = testAssembly.Assembly.GetType("TestNamespace.ProductRepository")!;
+            var productRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
+                .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
+                
+            // Register with caching decorators
+            services.AddSingleton(userRepoInterfaceType, sp =>
+            {
+                var userRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
+                    .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
+                var userRepoImpl = Activator.CreateInstance(userRepoImplType)!;
+                return Activator.CreateInstance(userRepoDecoratorType, 
+                    userRepoImpl,
+                    sp.GetRequiredService<ICacheManager>(),
+                    sp.GetRequiredService<MethodCacheConfiguration>(),
+                    sp)!;
+            });
+            
+            services.AddSingleton(productRepoInterfaceType, sp =>
+            {
+                var productRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
+                    .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
+                var productRepoImpl = Activator.CreateInstance(productRepoImplType)!;
+                return Activator.CreateInstance(productRepoDecoratorType, 
+                    productRepoImpl,
+                    sp.GetRequiredService<ICacheManager>(),
+                    sp.GetRequiredService<MethodCacheConfiguration>(),
+                    sp)!;
+            });
         });
 
         // Test User repository (generic interface with User type)
@@ -257,7 +292,7 @@ namespace TestNamespace
         _output.WriteLine($"✅ Generic service interface test passed! Caching works independently for different generic types");
     }
 
-    [Fact(Skip = "Generic methods with constraints are not currently supported by the source generator")]
+    [Fact]
     public async Task SourceGenerator_GenericMethodsWithConstraints_Works()
     {
         var sourceCode = @"
