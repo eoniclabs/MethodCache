@@ -697,8 +697,23 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"namespace {ns}");
                 sb.AppendLine("{");
 
-                // Class declaration with generic parameters  
+                // Class declaration with generic parameters
                 var genericParams = GetClassGenericParameters(info.Symbol);
+
+                // Add XML documentation for generic interface limitations
+                if (info.Symbol.IsGenericType)
+                {
+                    sb.AppendLine("    /// <summary>");
+                    sb.AppendLine("    /// Cached implementation of " + GetSimpleInterfaceName(info.Symbol) + ".");
+                    sb.AppendLine("    /// </summary>");
+                    sb.AppendLine("    /// <remarks>");
+                    sb.AppendLine("    /// This generic interface implementation provides type safety and convenience,");
+                    sb.AppendLine("    /// but may have slight performance overhead compared to the non-generic interface");
+                    sb.AppendLine("    /// for high-throughput scenarios due to runtime type resolution for cache keys.");
+                    sb.AppendLine("    /// For maximum performance in critical paths, consider using non-generic interfaces.");
+                    sb.AppendLine("    /// </remarks>");
+                }
+
                 sb.AppendLine("    [System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
                 sb.AppendLine("    [System.Diagnostics.DebuggerNonUserCode]");
                 sb.AppendLine($"    public class {className}{genericParams} : {GetSimpleInterfaceName(info.Symbol)}");

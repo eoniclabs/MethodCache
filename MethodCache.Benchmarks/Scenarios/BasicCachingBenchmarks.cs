@@ -56,9 +56,7 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
     [Benchmark]
     public async Task<object> CacheHit()
     {
-        // Warm up cache
-        await _cacheService.GetDataAsync(DataSize, ModelType);
-        // Now measure hit
+        // Measure hit performance (cache should already be warm from previous iterations)
         return await _cacheService.GetDataAsync(DataSize, ModelType);
     }
 

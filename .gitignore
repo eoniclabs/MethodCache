@@ -32,6 +32,10 @@ packages/
 # BenchmarkDotNet artifacts
 BenchmarkDotNet.Artifacts/
 **/BenchmarkDotNet.Artifacts/
+artifacts/
+*-report-*.md
+*-report.html
+*-report.csv
 
 # Local benchmark tracking
 .benchmark-results/
