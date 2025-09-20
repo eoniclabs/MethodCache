@@ -17,7 +17,10 @@
       "Bash(grep:*)",
       "Bash(dotnet sln remove:*)",
       "Bash(dotnet script:*)",
-      "Bash(dotnet new:*)"
+      "Bash(dotnet new:*)",
+      "Bash(chmod:*)",
+      "Read(//Users/johan/.nuget/packages/benchmarkdotnet/**)",
+      "Bash(./run-benchmarks.sh:*)"
     ],
     "deny": [],
     "ask": []

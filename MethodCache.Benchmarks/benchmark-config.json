@@ -1,0 +1,53 @@
+{
+  "BenchmarkConfiguration": {
+    "OutputDirectory": "./BenchmarkDotNet.Artifacts",
+    "ArtifactsPath": "./BenchmarkDotNet.Artifacts",
+    "KeepBenchmarkFiles": false,
+    "StatisticalTestThreshold": 0.05,
+    "Orderer": "DefaultOrderer",
+    "SummaryStyle": "Default"
+  },
+  "CacheProviders": {
+    "InMemory": {
+      "Enabled": true,
+      "MaxSize": 10000
+    },
+    "Hybrid": {
+      "Enabled": true,
+      "L1CacheSize": 1000,
+      "L2Expiration": "00:30:00",
+      "EnableL1Cache": true
+    },
+    "Redis": {
+      "Enabled": true,
+      "ConnectionString": "localhost:6379",
+      "KeyPrefix": "benchmark:",
+      "DefaultExpiration": "00:10:00",
+      "Database": 0
+    }
+  },
+  "TestDataConfiguration": {
+    "SmallObjectSizeBytes": 100,
+    "MediumObjectSizeBytes": 1000,
+    "LargeObjectSizeBytes": 10000,
+    "MaxTestItems": 10000,
+    "RandomSeed": 12345
+  },
+  "ConcurrencyConfiguration": {
+    "MaxThreads": 16,
+    "DefaultThreadCount": 4,
+    "ThreadSafetyTestDuration": "00:01:00"
+  },
+  "MemoryConfiguration": {
+    "EnableMemoryDiagnostics": true,
+    "ForceGCCollection": true,
+    "MemoryPressureTestSize": 100000
+  },
+  "ReportingConfiguration": {
+    "GenerateHtmlReport": true,
+    "GenerateCsvExport": true,
+    "GenerateJsonExport": true,
+    "IncludeSourceCode": false,
+    "ShowPerformanceRatios": true
+  }
+}
