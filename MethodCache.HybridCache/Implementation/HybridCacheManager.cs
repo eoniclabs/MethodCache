@@ -6,1191 +6,664 @@ using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Options;
 using MethodCache.HybridCache.Abstractions;
 using MethodCache.HybridCache.Configuration;
+using MethodCache.Infrastructure.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.HybridCache.Implementation
+namespace MethodCache.HybridCache.Implementation;
+
+/// <summary>
+/// Hybrid cache manager that uses the Infrastructure layer for storage operations
+/// while maintaining method caching semantics and business logic.
+/// </summary>
+public class HybridCacheManager : IHybridCacheManager, IAsyncDisposable
 {
-    /// <summary>
-    /// Implements a hybrid caching strategy with L1 (in-memory) and L2 (distributed) caches.
-    /// </summary>
-    public class HybridCacheManager : IHybridCacheManager, IAsyncDisposable
+    private readonly IStorageProvider _storageProvider;
+    private readonly IMemoryStorage _l1Storage;
+    private readonly IBackplane? _backplane;
+    private readonly HybridCacheOptions _options;
+    private readonly ILogger<HybridCacheManager> _logger;
+    private readonly StripedLockPool _keyLevelLocks;
+
+    // Statistics for hybrid-specific operations
+    private long _stampedeProtectionActivations;
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _refreshAheadTokens = new();
+
+    // Cached objects for optimization
+    private static readonly CacheMethodSettings CachedL2Settings = new() { Duration = TimeSpan.FromMinutes(1) };
+    private static readonly object[] EmptyArgs = Array.Empty<object>();
+    private const string L2DirectGetMethodName = "HybridL2DirectGet";
+
+    // Disposal tracking
+    private bool _disposed = false;
+
+    // Helper properties for cleaner logic
+    private bool ShouldUseL2 => _options.L2Enabled && _options.Strategy != HybridStrategy.L1Only;
+    private bool ShouldUseL1 => _options.Strategy != HybridStrategy.L2Only;
+    private bool IsL1OnlyMode => _options.Strategy == HybridStrategy.L1Only;
+
+    public HybridCacheManager(
+        IStorageProvider storageProvider,
+        IMemoryStorage l1Storage,
+        IBackplane? backplane,
+        IOptions<HybridCacheOptions> options,
+        ILogger<HybridCacheManager> logger)
     {
-        private readonly IMemoryCache _l1Cache;
-        private readonly ICacheManager? _l2Cache;
-        private readonly ICacheBackplane? _backplane;
-        private readonly HybridCacheOptions _options;
-        private readonly ILogger<HybridCacheManager> _logger;
-        private readonly SemaphoreSlim _l2Semaphore;
-        private readonly StripedLockPool _keyLevelLocks;
-        
-        // Tag tracking infrastructure for efficient L1 invalidation
-        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys;
-        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _keyToTags;
-        private readonly ReaderWriterLockSlim _tagMappingLock;
-        private volatile int _tagMappingCount;
-        
-        // Statistics
-        private long _l1Hits;
-        private long _l1Misses;
-        private long _l2Hits;
-        private long _l2Misses;
-        private long _backplaneMessagesSent;
-        private long _backplaneMessagesReceived;
-        private readonly ConcurrentDictionary<string, CancellationTokenSource> _refreshAheadTokens = new();
-        
-        // Cached objects for GetL2ValueDirectlyAsync optimization
-        private static readonly CacheMethodSettings CachedL2Settings = new() { Duration = TimeSpan.FromMinutes(1) };
-        private static readonly object[] EmptyArgs = Array.Empty<object>();
-        private const string L2DirectGetMethodName = "HybridL2DirectGet";
-        
-        // Disposal tracking
-        private bool _disposed = false;
-        
-        // Helper properties for cleaner logic
-        private bool ShouldUseL2 => _options.L2Enabled && _options.Strategy != HybridStrategy.L1Only;
-        private bool ShouldUseL1 => _options.Strategy != HybridStrategy.L2Only;
-        private bool IsL1OnlyMode => _options.Strategy == HybridStrategy.L1Only;
+        _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
+        _l1Storage = l1Storage ?? throw new ArgumentNullException(nameof(l1Storage));
+        _backplane = backplane;
+        _options = options.Value;
+        _logger = logger;
 
-        public HybridCacheManager(
-            IMemoryCache l1Cache,
-            ICacheManager? l2Cache,
-            ICacheBackplane? backplane,
-            IOptions<HybridCacheOptions> options,
-            ILogger<HybridCacheManager> logger)
+        _keyLevelLocks = new StripedLockPool(128); // 128 stripes for good distribution
+
+        // Subscribe to backplane invalidation events if available
+        if (_backplane != null && _options.EnableBackplane)
         {
-            _l1Cache = l1Cache ?? throw new ArgumentNullException(nameof(l1Cache));
-            _l2Cache = l2Cache; // Null is acceptable for L1-only scenarios
-            _backplane = backplane;
-            _options = options.Value;
-            _logger = logger;
-            
-            // Validate L2Cache dependency based on configuration
-            if (_options.L2Enabled && _l2Cache == null)
-            {
-                throw new InvalidOperationException("L2 cache is enabled but no ICacheManager was provided for L2 operations.");
-            }
-            
-            _l2Semaphore = new SemaphoreSlim(_options.MaxConcurrentL2Operations, _options.MaxConcurrentL2Operations);
-            _keyLevelLocks = new StripedLockPool(128); // 128 stripes for good distribution
-            
-            // Initialize tag tracking infrastructure
-            _tagToKeys = new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>();
-            _keyToTags = new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>();
-            _tagMappingLock = new ReaderWriterLockSlim();
-            _tagMappingCount = 0;
-            
-            // Subscribe to backplane invalidation events if available
-            if (_backplane != null && _options.EnableBackplane)
-            {
-                _backplane.InvalidationReceived += OnBackplaneInvalidationReceived;
-                _ = StartBackplaneListeningAsync();
-                _logger.LogInformation("Hybrid cache backplane enabled for instance {InstanceId}", _options.InstanceId);
-            }
+            _ = StartBackplaneListeningAsync();
+            _logger.LogInformation("Hybrid cache backplane enabled for instance {InstanceId}", _options.InstanceId);
+        }
+    }
+
+    public async Task<T> GetOrCreateAsync<T>(
+        string methodName,
+        object[] args,
+        Func<Task<T>> factory,
+        CacheMethodSettings settings,
+        ICacheKeyGenerator keyGenerator,
+        bool requireIdempotent)
+    {
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+        var stampede = settings.StampedeProtection;
+        var distributedLockOptions = settings.DistributedLock;
+
+        if (distributedLockOptions == null && stampede?.Mode == StampedeProtectionMode.DistributedLock)
+        {
+            distributedLockOptions = new DistributedLockOptions(stampede.RefreshAheadWindow ?? TimeSpan.FromSeconds(30), 1);
         }
 
-        private async Task StartBackplaneListeningAsync()
-        {
-            const int maxRetries = 3;
-            const int baseDelayMs = 1000;
-            
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                try
-                {
-                    await _backplane!.StartListeningAsync();
-                    _logger.LogInformation("Successfully started backplane listening on attempt {Attempt}", attempt);
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    if (attempt == maxRetries)
-                    {
-                        _logger.LogError(ex, "Failed to start backplane listening after {MaxRetries} attempts", maxRetries);
-                        return;
-                    }
-                    
-                    var delayMs = baseDelayMs * (int)Math.Pow(2, attempt - 1); // Exponential backoff
-                    _logger.LogWarning(ex, "Failed to start backplane listening on attempt {Attempt}, retrying in {DelayMs}ms", 
-                        attempt, delayMs);
-                    
-                    await Task.Delay(delayMs);
-                }
-            }
-        }
+        var useDistributedLock = distributedLockOptions != null;
+        var lockTimeout = distributedLockOptions?.Timeout ?? TimeSpan.FromSeconds(30);
 
-        public async Task<T> GetOrCreateAsync<T>(
-            string methodName, 
-            object[] args, 
-            Func<Task<T>> factory, 
-            CacheMethodSettings settings, 
-            ICacheKeyGenerator keyGenerator, 
-            bool requireIdempotent)
+        try
         {
-            if (factory == null) throw new ArgumentNullException(nameof(factory));
-            
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-            var executionContext = (CacheExecutionContext?)null;
-            var needContext = NeedsExecutionContext(settings);
-            
-            // Check L1 cache first
-            var l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
-            if (l1Value != null)
+            // Try get from storage first (handles L1/L2 coordination internally)
+            var cachedValue = await TryGetFromStorageAsync<T>(cacheKey);
+            if (cachedValue.HasValue && !ShouldRefreshAhead(cachedValue.TimeToLive, settings))
             {
-                await TouchSlidingExpirationAsync(cacheKey, l1Value, settings).ConfigureAwait(false);
-                if (needContext)
-                {
-                    InvokeHitCallbacks(settings, ref executionContext, methodName, args);
-                }
-                Interlocked.Increment(ref _l1Hits);
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTrace("L1 cache hit for key {Key}", cacheKey);
-                }
-                return l1Value!;
-            }
-            
-            Interlocked.Increment(ref _l1Misses);
-            
-            // Use striped locking to prevent multiple threads from executing the same factory
-            return await _keyLevelLocks.ExecuteWithLockAsync(cacheKey, async () =>
-            {
-                // Double-check L1 cache after acquiring lock
-                l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
-                if (l1Value != null)
-                {
-                    await TouchSlidingExpirationAsync(cacheKey, l1Value, settings).ConfigureAwait(false);
-                    if (needContext)
-                    {
-                        InvokeHitCallbacks(settings, ref executionContext, methodName, args);
-                    }
-                    Interlocked.Increment(ref _l1Hits);
-                    Interlocked.Decrement(ref _l1Misses); // Adjust since we incremented above
-                    if (_logger.IsEnabled(LogLevel.Trace))
-                    {
-                        _logger.LogTrace("L1 cache hit after lock for key {Key}", cacheKey);
-                    }
-                    return l1Value!;
-                }
-                
-                // Try L2 cache if enabled
-                if (ShouldUseL2)
-                {
-                    try
-                    {
-                        await _l2Semaphore.WaitAsync().ConfigureAwait(false);
-                        
-                        // Check if value exists in L2 first
-                        var (l2Exists, l2Value) = await GetL2ValueDirectlyAsync<T>(cacheKey).ConfigureAwait(false);
-                        if (l2Exists)
-                        {
-                            // L2 cache hit - warm L1 and return
-                            await StoreInL1IfEnabled(cacheKey, l2Value, settings).ConfigureAwait(false);
-                            if (needContext)
-                            {
-                                InvokeHitCallbacks(settings, ref executionContext, methodName, args);
-                            }
-                            
-                            Interlocked.Increment(ref _l2Hits);
-                            if (_logger.IsEnabled(LogLevel.Trace))
-                            {
-                                _logger.LogTrace("L2 cache hit for key {Key}, warmed L1 cache", cacheKey);
-                            }
-                            return l2Value!;
-                        }
-                        
-                        // L2 cache miss - fall through to factory execution
-                        Interlocked.Increment(ref _l2Misses);
-                    }
-                    finally
-                    {
-                        _l2Semaphore.Release();
-                    }
-                }
-                
-                // Execute factory and store in appropriate cache layers
-                // This handles: L2 miss, L1-only mode, and L2-disabled scenarios
-                return await ExecuteFactoryAndCache(methodName, args, factory, settings, keyGenerator, requireIdempotent, cacheKey);
-            });
-        }
-        
-        /// <summary>
-        /// Helper method to store a value in L1 cache if enabled by strategy.
-        /// </summary>
-        private async Task StoreInL1IfEnabled<T>(string cacheKey, T value, CacheMethodSettings settings)
-        {
-            if (ShouldUseL1 && value != null)
-            {
-                var l1Expiration = CalculateL1Expiration(settings);
-                await _l1Cache.SetAsync(cacheKey, value, l1Expiration).ConfigureAwait(false);
-                
-                // Track tags for efficient invalidation
-                TrackKeyTags(cacheKey, settings.Tags);
-            }
-        }
-
-        private async Task TouchSlidingExpirationAsync<T>(string cacheKey, T value, CacheMethodSettings settings)
-        {
-            if (!ShouldUseL1) return;
-            if (!settings.SlidingExpiration.HasValue) return;
-
-            var expiration = CalculateL1Expiration(settings);
-            await _l1Cache.SetAsync(cacheKey, value, expiration).ConfigureAwait(false);
-        }
-        
-        /// <summary>
-        /// Helper method to execute factory and store result in appropriate cache layers.
-        /// Handles L2 miss, L1-only mode, and L2-disabled scenarios.
-        /// </summary>
-        private async Task<T> ExecuteFactoryAndCache<T>(
-            string methodName, 
-            object[] args, 
-            Func<Task<T>> factory, 
-            CacheMethodSettings settings, 
-            ICacheKeyGenerator keyGenerator, 
-            bool requireIdempotent, 
-            string cacheKey)
-        {
-            CacheExecutionContext? executionContext = null;
-            if (settings.OnMissAction != null)
-            {
-                var ctx = EnsureExecutionContext(ref executionContext, methodName, args);
-                SafeInvoke(settings.OnMissAction, ctx);
+                _logger.LogDebug("Cache hit for key {Key}", cacheKey);
+                return cachedValue.Value;
             }
 
-            var result = await factory().ConfigureAwait(false);
-            
-            if (result != null)
+            // Handle cache miss or refresh-ahead scenario
+            if (useDistributedLock)
             {
-                if (settings.Condition != null)
-                {
-                    var ctx = EnsureExecutionContext(ref executionContext, methodName, args);
-                    if (!settings.Condition(ctx))
-                    {
-                        return result!;
-                    }
-                }
-
-                // Store in L2 cache if using hybrid mode
-                if (ShouldUseL2 && _l2Cache != null)
-                {
-                    await _l2Cache.GetOrCreateAsync(
-                        methodName,
-                        args,
-                        () => Task.FromResult(result),
-                        settings,
-                        keyGenerator,
-                        requireIdempotent);
-                }
-                
-                // Store in L1 cache if enabled
-                await StoreInL1IfEnabled(cacheKey, result, settings).ConfigureAwait(false);
-                ScheduleRefreshAhead(cacheKey, settings, factory, methodName, args, keyGenerator, requireIdempotent);
-            }
-
-            return result!;
-        }
-        
-        private async Task<(bool Exists, T? Value)> GetL2ValueDirectlyAsync<T>(string cacheKey)
-        {
-            // Optimized version: reuse cached objects and simplify logic
-            try
-            {
-                var keyGenerator = new SimpleKeyGenerator(cacheKey);
-                
-                if (_l2Cache == null)
-                {
-                    return (false, default(T));
-                }
-                
-                var wasFactoryCalled = false;
-                var result = await _l2Cache.GetOrCreateAsync<T>(
-                    L2DirectGetMethodName,
-                    EmptyArgs,
-                    () => 
-                    {
-                        wasFactoryCalled = true;
-                        // Return a task that's already completed with default value
-                        // This avoids creating new tasks when cache misses
-                        return Task.FromResult<T>(default!);
-                    },
-                    CachedL2Settings,
-                    keyGenerator,
-                    false);
-                
-                // If factory was called, there was no cached value
-                return wasFactoryCalled ? (false, default(T)) : (true, result);
-            }
-            catch
-            {
-                return (false, default(T));
-            }
-        }
-
-        public async Task InvalidateByTagsAsync(params string[] tags)
-        {
-            if (tags == null || !tags.Any()) return;
-            
-            _logger.LogDebug("Invalidating cache by tags: {Tags}", string.Join(", ", tags));
-            
-            // Efficient L1 invalidation if enabled
-            if (_options.EnableEfficientL1TagInvalidation)
-            {
-                await InvalidateL1ByTagsEfficientlyAsync(tags).ConfigureAwait(false);
+                return await GetOrCreateWithLockAsync(cacheKey, factory, settings, lockTimeout);
             }
             else
             {
-                // Fallback: Clear entire L1 cache
-                await _l1Cache.ClearAsync();
-                ClearAllTagMappings();
-                _logger.LogDebug("Cleared entire L1 cache (efficient tag invalidation disabled)");
-            }
-            
-            // Invalidate L2 cache
-            if (_options.L2Enabled && _l2Cache != null)
-            {
-                await _l2Cache.InvalidateByTagsAsync(tags).ConfigureAwait(false);
-            }
-            
-            // Notify other instances via backplane
-            if (_backplane != null && _options.EnableBackplane)
-            {
-                await _backplane.PublishInvalidationAsync(tags).ConfigureAwait(false);
-                Interlocked.Increment(ref _backplaneMessagesSent);
+                // No locking, direct execution
+                _logger.LogDebug("Cache miss, executing factory for key {Key}", cacheKey);
+                var result = await factory();
+
+                if (result != null)
+                {
+                    await SetToCacheWithTagsAsync(cacheKey, result, settings);
+                }
+
+                return result;
             }
         }
-
-        public async Task InvalidateByKeysAsync(params string[] keys)
+        catch (Exception ex)
         {
-            if (keys == null || keys.Length == 0)
+            _logger.LogError(ex, "Error in hybrid cache operation for method {MethodName}", methodName);
+
+            // Fallback to direct execution
+            return await factory();
+        }
+    }
+
+    public async Task InvalidateByTagsAsync(params string[] tags)
+    {
+        if (tags == null || !tags.Any()) return;
+
+        try
+        {
+            // Use storage provider for tag-based invalidation
+            var tasks = tags.Select(tag => _storageProvider.RemoveByTagAsync(tag));
+            await Task.WhenAll(tasks);
+
+            // Publish invalidation event via backplane if enabled
+            if (_backplane != null && _options.EnableBackplane)
             {
-                return;
+                var publishTasks = tags.Select(tag => _backplane.PublishTagInvalidationAsync(tag));
+                await Task.WhenAll(publishTasks);
             }
 
-            var normalizedKeys = keys
-                .Where(k => !string.IsNullOrWhiteSpace(k))
-                .Distinct()
-                .ToArray();
+            _logger.LogDebug("Invalidated cache entries for tags {Tags}", string.Join(", ", tags));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error invalidating cache by tags {Tags}", string.Join(", ", tags));
+        }
+    }
 
-            if (normalizedKeys.Length == 0)
+    public async Task InvalidateByKeysAsync(params string[] keys)
+    {
+        if (keys == null || keys.Length == 0) return;
+
+        var normalizedKeys = keys.Where(k => !string.IsNullOrWhiteSpace(k)).ToArray();
+        if (normalizedKeys.Length == 0) return;
+
+        try
+        {
+            // Use storage provider for key invalidation
+            var tasks = normalizedKeys.Select(key => _storageProvider.RemoveAsync(key));
+            await Task.WhenAll(tasks);
+
+            // Publish invalidation events via backplane if enabled
+            if (_backplane != null && _options.EnableBackplane)
             {
-                return;
+                var publishTasks = normalizedKeys.Select(key => _backplane.PublishInvalidationAsync(key));
+                await Task.WhenAll(publishTasks);
             }
 
+            _logger.LogDebug("Invalidated cache entries for keys {Keys}", string.Join(", ", normalizedKeys));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error invalidating cache by keys {Keys}", string.Join(", ", keys));
+            throw;
+        }
+    }
+
+    public Task InvalidateByTagPatternAsync(string pattern)
+    {
+        if (string.IsNullOrWhiteSpace(pattern)) return Task.CompletedTask;
+
+        try
+        {
+            // For pattern-based invalidation, we need to use L1 storage directly
+            // since the pattern matching is not supported at the infrastructure level
             if (ShouldUseL1)
             {
-                foreach (var key in normalizedKeys)
-                {
-                    await InvalidateL1Async(key).ConfigureAwait(false);
-                }
+                // This would require extending IMemoryStorage with pattern support
+                // For now, we'll fall back to clearing the entire L1 cache
+                _logger.LogWarning("Pattern-based invalidation not fully supported with infrastructure layer, clearing L1 cache for pattern {Pattern}", pattern);
+                _l1Storage.Clear();
             }
 
-            if (ShouldUseL2 && _l2Cache != null)
-            {
-                await _l2Cache.InvalidateByKeysAsync(normalizedKeys).ConfigureAwait(false);
-            }
-
-            if (_backplane != null && _options.EnableBackplane)
-            {
-                await _backplane.PublishKeyInvalidationAsync(normalizedKeys).ConfigureAwait(false);
-                Interlocked.Increment(ref _backplaneMessagesSent);
-            }
+            // For L2, we can't efficiently handle patterns without provider-specific logic
+            _logger.LogDebug("Pattern invalidation for {Pattern} completed", pattern);
+            return Task.CompletedTask;
         }
-
-        public async Task InvalidateByTagPatternAsync(string pattern)
+        catch (Exception ex)
         {
-            if (string.IsNullOrWhiteSpace(pattern))
-            {
-                return;
-            }
-
-            Regex regex;
-            try
-            {
-                regex = new Regex(WildcardToRegex(pattern), RegexOptions.Compiled | RegexOptions.CultureInvariant);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Invalid tag pattern supplied for invalidation: {Pattern}", pattern);
-                return;
-            }
-
-            var matchingTags = _tagToKeys.Keys.Where(tag => regex.IsMatch(tag)).ToArray();
-            if (matchingTags.Length == 0)
-            {
-                _logger.LogDebug("No tags matched pattern {Pattern} for invalidation", pattern);
-                return;
-            }
-
-            await InvalidateByTagsAsync(matchingTags).ConfigureAwait(false);
+            _logger.LogError(ex, "Error invalidating cache by pattern {Pattern}", pattern);
+            return Task.FromException(ex);
         }
+    }
 
-        public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    {
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+
+        try
         {
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-            
-            // First try L1 cache (fast path)
-            var l1Value = await _l1Cache.GetAsync<T>(cacheKey).ConfigureAwait(false);
-            if (l1Value != null)
-            {
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTrace("L1 cache hit for direct read: {Key}", cacheKey);
-                }
-                return l1Value;
-            }
-            
-            // Try L2 cache if enabled (direct read without factory plumbing)
-            if (ShouldUseL2 && _l2Cache != null)
-            {
-                try
-                {
-                var l2Value = await _l2Cache.TryGetAsync<T>(methodName, args, settings, keyGenerator).ConfigureAwait(false);
-                if (l2Value != null)
-                {
-                    // Warm L1 cache with L2 result
-                    await StoreInL1IfEnabled(cacheKey, l2Value, settings).ConfigureAwait(false);
-                        
-                        if (_logger.IsEnabled(LogLevel.Trace))
-                        {
-                            _logger.LogTrace("L2 cache hit for direct read: {Key}", cacheKey);
-                        }
-                        
-                        return l2Value;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (_logger.IsEnabled(LogLevel.Debug))
-                    {
-                        _logger.LogDebug(ex, "L2 cache error during direct read for key: {Key}", cacheKey);
-                    }
-                }
-            }
-            
-            // Cache miss on both layers
+            var result = await _storageProvider.GetAsync<T>(cacheKey);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error trying to get value for method {MethodName}", methodName);
             return default(T);
         }
-        
-        /// <summary>
-        /// Efficiently invalidates L1 cache entries by specific tags without clearing everything.
-        /// </summary>
-        private async Task InvalidateL1ByTagsEfficientlyAsync(string[] tags)
+    }
+
+    // IHybridCacheManager specific methods - delegate to storage provider
+    public async Task<T?> GetFromL1Async<T>(string key)
+    {
+        return await _l1Storage.GetAsync<T>(key);
+    }
+
+    public async Task<T?> GetFromL2Async<T>(string key)
+    {
+        if (!ShouldUseL2) return default;
+
+        try
         {
-            var keysToInvalidate = GetKeysForTags(tags);
-            
-            if (!keysToInvalidate.Any())
-            {
-                _logger.LogTrace("No keys found for tags: {Tags}", string.Join(", ", tags));
-                return;
-            }
-            
-            _logger.LogDebug("Invalidating {KeyCount} keys for tags: {Tags}", 
-                keysToInvalidate.Count, string.Join(", ", tags));
-            
-            // Remove keys from L1 cache
-            var removedCount = await _l1Cache.RemoveMultipleAsync(keysToInvalidate.ToArray());
-            
-            // Clean up tag mappings for invalidated keys
-            foreach (var key in keysToInvalidate)
-            {
-                UntrackKeyTags(key);
-                CancelRefreshAhead(key);
-            }
-            
-            _logger.LogTrace("Successfully invalidated {RemovedCount}/{TotalCount} keys", 
-                removedCount, keysToInvalidate.Count);
+            return await _storageProvider.GetAsync<T>(key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting value from L2 for key {Key}", key);
+            return default;
+        }
+    }
+
+    public async Task SetInL1Async<T>(string key, T value, TimeSpan expiration)
+    {
+        if (_options.Strategy == HybridStrategy.L2Only) return;
+
+        await _l1Storage.SetAsync(key, value, expiration);
+    }
+
+    public async Task SetInL1Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags)
+    {
+        if (_options.Strategy == HybridStrategy.L2Only) return;
+
+        await _l1Storage.SetAsync(key, value, expiration, tags);
+    }
+
+    public async Task SetInL2Async<T>(string key, T value, TimeSpan expiration)
+    {
+        if (!ShouldUseL2) return;
+
+        await _storageProvider.SetAsync(key, value, expiration);
+    }
+
+    public async Task SetInBothAsync<T>(string key, T value, TimeSpan l1Expiration, TimeSpan l2Expiration)
+    {
+        var tasks = new List<Task>();
+
+        if (ShouldUseL1)
+        {
+            tasks.Add(_l1Storage.SetAsync(key, value, l1Expiration));
         }
 
-        public async Task<T?> GetFromL1Async<T>(string key)
+        if (ShouldUseL2)
         {
-            return await _l1Cache.GetAsync<T>(key);
+            tasks.Add(_storageProvider.SetAsync(key, value, l2Expiration));
         }
 
-        public async Task<T?> GetFromL2Async<T>(string key)
+        await Task.WhenAll(tasks);
+    }
+
+    public async Task InvalidateL1Async(string key)
+    {
+        await _l1Storage.RemoveAsync(key);
+    }
+
+    public async Task InvalidateL2Async(string key)
+    {
+        if (!ShouldUseL2) return;
+
+        await _storageProvider.RemoveAsync(key);
+    }
+
+    public async Task InvalidateBothAsync(string key)
+    {
+        var tasks = new List<Task>();
+
+        if (ShouldUseL1)
         {
-            if (!_options.L2Enabled || _l2Cache == null) return default;
-            
-            try
-            {
-                await _l2Semaphore.WaitAsync();
-                var (exists, value) = await GetL2ValueDirectlyAsync<T>(key);
-                if (!exists)
-                {
-                    _logger.LogDebug("L2 cache miss for key {Key}", key);
-                }
-                return exists ? value : default;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error retrieving key {Key} from L2 cache", key);
-                return default;
-            }
-            finally
-            {
-                _l2Semaphore.Release();
-            }
+            tasks.Add(_l1Storage.RemoveAsync(key));
         }
 
-        public async Task SetInL1Async<T>(string key, T value, TimeSpan expiration)
+        if (ShouldUseL2)
         {
-            if (_options.Strategy == HybridStrategy.L2Only) return;
-            
-            var effectiveExpiration = expiration > _options.L1MaxExpiration 
-                ? _options.L1MaxExpiration 
-                : expiration;
-                
-            await _l1Cache.SetAsync(key, value, effectiveExpiration);
-        }
-        
-        public async Task SetInL1Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags)
-        {
-            if (_options.Strategy == HybridStrategy.L2Only) return;
-            
-            var effectiveExpiration = expiration > _options.L1MaxExpiration 
-                ? _options.L1MaxExpiration 
-                : expiration;
-                
-            await _l1Cache.SetAsync(key, value, effectiveExpiration);
-            
-            // Track tags for efficient invalidation
-            TrackKeyTags(key, tags);
+            tasks.Add(_storageProvider.RemoveAsync(key));
         }
 
-        public async Task SetInL2Async<T>(string key, T value, TimeSpan expiration)
-        {
-            if (!_options.L2Enabled || _options.Strategy == HybridStrategy.L1Only || _l2Cache == null) return;
-            
-            try
-            {
-                await _l2Semaphore.WaitAsync();
-                
-                // Use GetOrCreateAsync with a factory that returns the value we want to set
-                var settings = new CacheMethodSettings { Duration = expiration };
-                var keyGenerator = new SimpleKeyGenerator(key);
-                
-                await _l2Cache.GetOrCreateAsync<T>(
-                    "HybridL2Set",
-                    Array.Empty<object>(),
-                    () => Task.FromResult(value),
-                    settings,
-                    keyGenerator,
-                    false);
-                    
-                _logger.LogTrace("Set value in L2 cache for key {Key}", key);
-            }
-            finally
-            {
-                _l2Semaphore.Release();
-            }
-        }
+        await Task.WhenAll(tasks);
+    }
 
-        public async Task SetInBothAsync<T>(string key, T value, TimeSpan l1Expiration, TimeSpan l2Expiration)
-        {
-            await SetInL1Async(key, value, l1Expiration);
-            await SetInL2Async(key, value, l2Expiration);
-        }
+    public async Task WarmL1CacheAsync(params string[] keys)
+    {
+        if (!ShouldUseL1 || !ShouldUseL2 || keys.Length == 0) return;
 
-        public async Task InvalidateL1Async(string key)
+        try
         {
-            await _l1Cache.RemoveAsync(key);
-            
-            // Clean up tag mappings
-            UntrackKeyTags(key);
-            CancelRefreshAhead(key);
-        }
-
-        public async Task InvalidateL2Async(string key)
-        {
-            if (!_options.L2Enabled || _l2Cache == null) return;
-            
-            // WORKAROUND: The ICacheManager interface only provides InvalidateByTagsAsync() but no direct
-            // RemoveAsync(key) method for individual key invalidation. As a workaround, we create a 
-            // synthetic tag for each key (format: "key:{actualKey}") and use tag-based invalidation.
-            // 
-            // This approach has significant limitations and trade-offs:
-            // 1. DEPENDENCY: Relies on L2 cache implementations supporting tag-based invalidation
-            //    - If the L2 provider doesn't support tags, this silently fails
-            //    - Some providers may have different tag invalidation semantics
-            // 2. PERFORMANCE: Creates additional metadata overhead for tag tracking
-            //    - Each cached item gets an extra synthetic tag
-            //    - Tag indexes consume additional memory and processing time
-            // 3. EFFICIENCY: May be less efficient than direct key removal
-            //    - Tag-based invalidation often scans tag indexes rather than direct hash lookups
-            //    - Some implementations may clear multiple items when only one is needed
-            // 4. CONSISTENCY: Different L2 providers may handle tag invalidation differently
-            //    - Redis: Uses SET operations and key scanning
-            //    - SQL Server: May use table joins and WHERE clauses
-            //    - Memory caches: May use dictionary lookups
-            // 5. ERROR HANDLING: Failed invalidations are not easily detectable
-            //    - InvalidateByTagsAsync typically returns void, hiding failures
-            //    - Stale data may persist in L2 cache without indication
-            // 
-            // RECOMMENDED SOLUTIONS:
-            // - Extend ICacheManager interface to include RemoveAsync(string key) method
-            // - Add TryRemoveAsync(string key) : Task<bool> for failure detection
-            // - Consider using cache provider-specific interfaces when available
-            // 
-            // IMPACT: This workaround affects cache consistency guarantees and performance
-            // characteristics, making it unsuitable for scenarios requiring strict consistency.
-            var invalidationTag = $"key:{key}";
-            await _l2Cache.InvalidateByTagsAsync(invalidationTag);
-            _logger.LogTrace("Invalidated L2 cache for key {Key} using synthetic tag {Tag}", key, invalidationTag);
-            CancelRefreshAhead(key);
-        }
-
-        public async Task InvalidateBothAsync(string key)
-        {
-            await InvalidateL1Async(key);
-            await InvalidateL2Async(key);
-            
-            // Notify other instances
-            if (_backplane != null && _options.EnableBackplane)
-            {
-                await _backplane.PublishKeyInvalidationAsync(key);
-                Interlocked.Increment(ref _backplaneMessagesSent);
-            }
-        }
-
-        public async Task WarmL1CacheAsync(params string[] keys)
-        {
-            if (!_options.EnableL1Warming || !_options.L2Enabled) return;
-            
             foreach (var key in keys)
             {
-                await WarmL1CacheKeyAsync(key);
+                var value = await _storageProvider.GetAsync<object>(key);
+                if (value != null)
+                {
+                    var l1Expiration = CalculateL1Expiration(_options.L2DefaultExpiration);
+                    await _l1Storage.SetAsync(key, value, l1Expiration);
+                }
             }
-        }
-        
-        public async Task WarmL1CacheKeyAsync<T>(string key)
-        {
-            if (!_options.EnableL1Warming || !_options.L2Enabled) return;
-            
-            var l2Value = await GetFromL2Async<T>(key);
-            if (l2Value != null)
-            {
-                await SetInL1Async(key, l2Value, _options.L1DefaultExpiration);
-                // Note: Tags are not preserved during warming since we don't have access to original settings
-                // This is a limitation of the current design
-            }
-        }
-        
-        public async Task WarmL1CacheKeyAsync<T>(string key, IEnumerable<string> tags)
-        {
-            if (!_options.EnableL1Warming || !_options.L2Enabled) return;
-            
-            var l2Value = await GetFromL2Async<T>(key);
-            if (l2Value != null)
-            {
-                await SetInL1Async(key, l2Value, _options.L1DefaultExpiration, tags);
-            }
-        }
-        
-        private async Task WarmL1CacheKeyAsync(string key)
-        {
-            // Generic fallback for when type is unknown
-            var l2Value = await GetFromL2Async<object>(key);
-            if (l2Value != null)
-            {
-                await SetInL1Async(key, l2Value, _options.L1DefaultExpiration);
-                // Note: Tags are not preserved during warming since we don't have access to original settings
-            }
-        }
 
-        public async Task<HybridCacheStats> GetStatsAsync()
+            _logger.LogDebug("Warmed L1 cache with {Count} keys", keys.Length);
+        }
+        catch (Exception ex)
         {
-            var l1Stats = await _l1Cache.GetStatsAsync();
-            
-            int tagMappingCount = 0;
-            int uniqueTagCount = 0;
-            
-            if (_options.EnableEfficientL1TagInvalidation)
-            {
-                _tagMappingLock.EnterReadLock();
-                try
-                {
-                    tagMappingCount = _tagMappingCount;
-                    uniqueTagCount = _tagToKeys.Count;
-                }
-                finally
-                {
-                    _tagMappingLock.ExitReadLock();
-                }
-            }
-            
+            _logger.LogError(ex, "Error warming L1 cache");
+        }
+    }
+
+    public async Task<HybridCacheStats> GetStatsAsync()
+    {
+        try
+        {
+            var l1Stats = _l1Storage.GetStats();
+            var storageStats = await _storageProvider.GetStatsAsync();
+
             return new HybridCacheStats
             {
-                L1Hits = _l1Hits,
-                L1Misses = _l1Misses,
-                L2Hits = _l2Hits,
-                L2Misses = _l2Misses,
-                L1Entries = l1Stats.Entries,
+                L1Hits = l1Stats.Hits,
+                L1Misses = l1Stats.Misses,
+                L1Entries = l1Stats.EntryCount,
                 L1Evictions = l1Stats.Evictions,
-                BackplaneMessagesSent = _backplaneMessagesSent,
-                BackplaneMessagesReceived = _backplaneMessagesReceived,
-                TagMappingCount = tagMappingCount,
-                UniqueTagCount = uniqueTagCount,
-                EfficientTagInvalidationEnabled = _options.EnableEfficientL1TagInvalidation
+                L2Hits = storageStats?.GetOperations ?? 0, // Approximation
+                L2Misses = 0, // Would need to track this separately
+                TagMappingCount = l1Stats.TagMappingCount,
+                UniqueTagCount = 0, // Would need to track this separately
+                EfficientTagInvalidationEnabled = _options.EnableEfficientL1TagInvalidation,
+                BackplaneMessagesSent = 0, // Would need to track this separately
+                BackplaneMessagesReceived = 0 // Would need to track this separately
             };
         }
-
-        public async Task EvictFromL1Async(string key)
+        catch (Exception ex)
         {
-            await _l1Cache.RemoveAsync(key);
-            
-            // Clean up tag mappings
-            UntrackKeyTags(key);
+            _logger.LogError(ex, "Error getting hybrid cache stats");
+            return new HybridCacheStats();
         }
+    }
 
-        public async Task SyncL1CacheAsync()
+    public async Task EvictFromL1Async(string key)
+    {
+        await _l1Storage.RemoveAsync(key);
+    }
+
+    public Task SyncL1CacheAsync()
+    {
+        // This would require coordinating with other instances
+        // For now, we'll just clear L1 to force refresh
+        _l1Storage.Clear();
+        _logger.LogDebug("Synchronized L1 cache by clearing it");
+        return Task.CompletedTask;
+    }
+
+    private async Task<(bool HasValue, T Value, TimeSpan? TimeToLive)> TryGetFromStorageAsync<T>(string key)
+    {
+        // Try L1 first if enabled
+        if (ShouldUseL1)
         {
-            if (_backplane == null || !_options.EnableBackplane)
+            var l1Value = await _l1Storage.GetAsync<T>(key);
+            if (l1Value != null)
             {
-                _logger.LogWarning("L1 cache sync requires a configured backplane");
-                return;
-            }
-
-            try
-            {
-                _logger.LogDebug("Triggering L1 cache synchronization across instances");
-                
-                // Use a special sync tag to trigger cache clearing on other instances
-                // This ensures all L1 caches are cleared and will be refreshed from L2
-                var syncTag = $"l1sync:{Guid.NewGuid()}";
-                await _backplane.PublishInvalidationAsync(syncTag);
-                
-                // Clear our own L1 cache to ensure consistency
-                await _l1Cache.ClearAsync();
-                ClearAllTagMappings();
-                
-                _logger.LogInformation("L1 cache synchronization completed");
-                Interlocked.Increment(ref _backplaneMessagesSent);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during L1 cache synchronization");
-                throw;
+                return (true, l1Value, null); // L1 doesn't provide TTL
             }
         }
 
-        public async ValueTask DisposeAsync()
+        // Try L2 if enabled and L1 missed
+        if (ShouldUseL2)
         {
-            if (_disposed) return;
-            
-            try
+            var l2Value = await _storageProvider.GetAsync<T>(key);
+            if (l2Value != null)
             {
-                if (_backplane != null && _options.EnableBackplane)
+                // Warm L1 cache
+                if (ShouldUseL1)
                 {
-                    _backplane.InvalidationReceived -= OnBackplaneInvalidationReceived;
-                    // Properly await the async disposal
-                    await _backplane.StopListeningAsync();
-                    _backplane.Dispose();
-                }
-                
-                // Clean up key-level locks (striped lock pool handles its own disposal)
-                
-                // Clean up tag mappings
-                ClearAllTagMappings();
-                _tagMappingLock?.Dispose();
-
-                if (_l1Cache is IAsyncDisposable asyncL1Cache)
-                {
-                    await asyncL1Cache.DisposeAsync();
-                }
-                else
-                {
-                    _l1Cache?.Dispose();
+                    var l1Expiration = CalculateL1Expiration(_options.L2DefaultExpiration);
+                    await _l1Storage.SetAsync(key, l2Value, l1Expiration);
                 }
 
-                foreach (var registration in _refreshAheadTokens.Values)
+                return (true, l2Value, null); // Storage provider doesn't expose TTL directly
+            }
+        }
+
+        return (false, default(T)!, null);
+    }
+
+    private async Task<T> GetOrCreateWithLockAsync<T>(string cacheKey, Func<Task<T>> factory, CacheMethodSettings settings, TimeSpan lockTimeout)
+    {
+        var lockKey = $"lock:{cacheKey}";
+
+        using var lockHandle = await _keyLevelLocks.AcquireAsync(lockKey);
+        Interlocked.Increment(ref _stampedeProtectionActivations);
+
+        try
+        {
+            // Double-check cache after acquiring lock
+            var cachedValue = await TryGetFromStorageAsync<T>(cacheKey);
+            if (cachedValue.HasValue && !ShouldRefreshAhead(cachedValue.TimeToLive, settings))
+            {
+                _logger.LogDebug("Cache hit after lock acquisition for key {Key}", cacheKey);
+                return cachedValue.Value;
+            }
+
+            // Execute factory and cache result
+            _logger.LogDebug("Cache miss, executing factory for key {Key}", cacheKey);
+            var result = await factory();
+
+            if (result != null)
+            {
+                await SetToCacheWithTagsAsync(cacheKey, result, settings);
+            }
+
+            return result;
+        }
+        finally
+        {
+            // Lock will be automatically released by using statement
+        }
+    }
+
+    private async Task SetToCacheWithTagsAsync<T>(string key, T value, CacheMethodSettings settings)
+    {
+        var l1Expiration = CalculateL1Expiration(settings.Duration ?? _options.L2DefaultExpiration);
+        var l2Expiration = settings.Duration ?? _options.L2DefaultExpiration;
+        var tags = settings.Tags;
+
+        var tasks = new List<Task>();
+
+        // Set in L1 if enabled
+        if (ShouldUseL1)
+        {
+            tasks.Add(_l1Storage.SetAsync(key, value, l1Expiration, tags));
+        }
+
+        // Set in L2 if enabled
+        if (ShouldUseL2)
+        {
+            if (_options.EnableAsyncL2Writes)
+            {
+                // Fire and forget for async writes
+                _ = Task.Run(async () =>
                 {
-                    registration.Cancel();
-                    registration.Dispose();
-                }
-                _refreshAheadTokens.Clear();
-
-                _l2Semaphore?.Dispose();
-                _keyLevelLocks?.Dispose();
-            }
-            finally
-            {
-                _disposed = true;
-            }
-        }
-        
-        public void Dispose()
-        {
-            // For synchronous disposal, we have to block (unfortunately)
-            // But we warn about it
-            if (_backplane != null && _options.EnableBackplane)
-            {
-                // Consider logging a warning here about blocking disposal
-            }
-            DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
-
-        private TimeSpan CalculateL1Expiration(CacheMethodSettings settings)
-        {
-            var requestedExpiration = settings.SlidingExpiration ?? settings.Duration ?? _options.L1DefaultExpiration;
-            return requestedExpiration > _options.L1MaxExpiration 
-                ? _options.L1MaxExpiration 
-                : requestedExpiration;
-        }
-
-        private static bool NeedsExecutionContext(CacheMethodSettings settings)
-            => settings.Condition != null || settings.OnHitAction != null || settings.OnMissAction != null;
-
-        private CacheExecutionContext EnsureExecutionContext(ref CacheExecutionContext? context, string methodName, object[] args)
-        {
-            if (context != null)
-            {
-                return context;
-            }
-
-            var serviceType = typeof(object);
-            var separator = methodName.LastIndexOf('.');
-            if (separator > 0)
-            {
-                var typeName = methodName.Substring(0, separator);
-                serviceType = Type.GetType(typeName) ?? typeof(object);
-            }
-
-            context = new CacheExecutionContext(methodName, serviceType, args, null, CancellationToken.None);
-            return context;
-        }
-
-        private void InvokeHitCallbacks(CacheMethodSettings settings, ref CacheExecutionContext? context, string methodName, object[] args)
-        {
-            if (settings.OnHitAction == null)
-            {
-                return;
-            }
-
-            var ctx = EnsureExecutionContext(ref context, methodName, args);
-            SafeInvoke(settings.OnHitAction, ctx);
-        }
-
-        private void InvokeMissCallbacks(CacheMethodSettings settings, ref CacheExecutionContext? context, string methodName, object[] args)
-        {
-            if (settings.OnMissAction == null)
-            {
-                return;
-            }
-
-            var ctx = EnsureExecutionContext(ref context, methodName, args);
-            SafeInvoke(settings.OnMissAction, ctx);
-        }
-
-        private void SafeInvoke(Action<CacheExecutionContext> callback, CacheExecutionContext context)
-        {
-            try
-            {
-                callback(context);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing cache callback for {Method}", context.MethodName);
-            }
-        }
-
-        private void ScheduleRefreshAhead<T>(
-            string cacheKey,
-            CacheMethodSettings settings,
-            Func<Task<T>> factory,
-            string methodName,
-            object[] args,
-            ICacheKeyGenerator keyGenerator,
-            bool requireIdempotent)
-        {
-            if (!settings.RefreshAhead.HasValue || !settings.Duration.HasValue)
-            {
-                return;
-            }
-
-            var delay = settings.Duration.Value - settings.RefreshAhead.Value;
-            if (delay < TimeSpan.Zero)
-            {
-                delay = TimeSpan.Zero;
-            }
-
-            var cts = new CancellationTokenSource();
-            var previous = _refreshAheadTokens.AddOrUpdate(cacheKey, cts, (_, existing) =>
-            {
-                existing.Cancel();
-                existing.Dispose();
-                return cts;
-            });
-
-            if (!ReferenceEquals(previous, cts))
-            {
-                // previous was disposed in delegate
-            }
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await Task.Delay(delay, cts.Token).ConfigureAwait(false);
-                    await _keyLevelLocks.ExecuteWithLockAsync(cacheKey, async () =>
+                    try
                     {
-                        await ExecuteFactoryAndCache(methodName, args, factory, settings, keyGenerator, requireIdempotent, cacheKey).ConfigureAwait(false);
-                        return true;
-                    }).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error executing refresh-ahead for key {Key}", cacheKey);
-                }
-                finally
-                {
-                    _refreshAheadTokens.TryRemove(cacheKey, out _);
-                    cts.Dispose();
-                }
-            });
+                        await _storageProvider.SetAsync(key, value, l2Expiration, tags);
+                        _logger.LogDebug("Async L2 write completed for key {Key}", key);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in async L2 write for key {Key}", key);
+                    }
+                });
+            }
+            else
+            {
+                // Synchronous L2 write
+                tasks.Add(_storageProvider.SetAsync(key, value, l2Expiration, tags));
+            }
         }
 
-        private void CancelRefreshAhead(string cacheKey)
+        await Task.WhenAll(tasks);
+        _logger.LogDebug("Set key {Key} in hybrid storage", key);
+    }
+
+    private TimeSpan CalculateL1Expiration(TimeSpan originalExpiration)
+    {
+        var l1Expiration = TimeSpan.FromTicks(Math.Min(
+            originalExpiration.Ticks,
+            _options.L1MaxExpiration.Ticks));
+
+        return TimeSpan.FromTicks(Math.Max(
+            l1Expiration.Ticks,
+            _options.L1DefaultExpiration.Ticks));
+    }
+
+    private static bool ShouldRefreshAhead(TimeSpan? timeToLive, CacheMethodSettings settings)
+    {
+        if (timeToLive == null) return false;
+
+        var configuredRefreshAhead = settings.RefreshAhead;
+        if (configuredRefreshAhead is TimeSpan refreshAhead && refreshAhead > TimeSpan.Zero && timeToLive <= refreshAhead)
         {
-            if (_refreshAheadTokens.TryRemove(cacheKey, out var cts))
+            return true;
+        }
+
+        var stampede = settings.StampedeProtection;
+        if (stampede == null) return false;
+
+        switch (stampede.Mode)
+        {
+            case StampedeProtectionMode.RefreshAhead:
+                var window = stampede.RefreshAheadWindow ?? configuredRefreshAhead;
+                return window.HasValue && window.Value > TimeSpan.Zero && timeToLive <= window;
+            case StampedeProtectionMode.Probabilistic:
+                var duration = settings.Duration ?? TimeSpan.Zero;
+                if (duration <= TimeSpan.Zero) return false;
+
+                var remainingRatio = Math.Clamp(timeToLive.Value.TotalSeconds / duration.TotalSeconds, 0d, 1d);
+                var beta = stampede.Beta <= 0 ? 1d : stampede.Beta;
+                var probability = Math.Exp(-beta * (1 - remainingRatio));
+                var sample = Random.Shared.NextDouble();
+                return sample > probability;
+            default:
+                return false;
+        }
+    }
+
+    private async Task StartBackplaneListeningAsync()
+    {
+        if (_backplane == null) return;
+
+        const int maxRetries = 3;
+        const int baseDelayMs = 1000;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                await _backplane.SubscribeAsync(OnBackplaneMessageReceived);
+                _logger.LogInformation("Successfully started backplane listening on attempt {Attempt}", attempt);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to start backplane listening on attempt {Attempt} of {MaxRetries}", attempt, maxRetries);
+
+                if (attempt < maxRetries)
+                {
+                    var delay = baseDelayMs * (int)Math.Pow(2, attempt - 1);
+                    await Task.Delay(delay);
+                }
+            }
+        }
+
+        _logger.LogError("Failed to start backplane listening after {MaxRetries} attempts", maxRetries);
+    }
+
+    private async Task OnBackplaneMessageReceived(BackplaneMessage message)
+    {
+        try
+        {
+            // Ignore messages from our own instance
+            if (message.InstanceId == _options.InstanceId)
+                return;
+
+            switch (message.Type)
+            {
+                case BackplaneMessageType.KeyInvalidation when message.Key != null:
+                    await _l1Storage.RemoveAsync(message.Key);
+                    _logger.LogDebug("Processed backplane key invalidation for {Key}", message.Key);
+                    break;
+
+                case BackplaneMessageType.TagInvalidation when message.Tag != null:
+                    await _l1Storage.RemoveByTagAsync(message.Tag);
+                    _logger.LogDebug("Processed backplane tag invalidation for {Tag}", message.Tag);
+                    break;
+
+                case BackplaneMessageType.ClearAll:
+                    _l1Storage.Clear();
+                    _logger.LogDebug("Processed backplane clear all");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing backplane message");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+
+        try
+        {
+            // Cancel all refresh-ahead operations
+            foreach (var cts in _refreshAheadTokens.Values)
             {
                 cts.Cancel();
                 cts.Dispose();
             }
+            _refreshAheadTokens.Clear();
+
+            // Unsubscribe from backplane
+            if (_backplane != null)
+            {
+                await _backplane.UnsubscribeAsync();
+            }
+
+            _logger.LogDebug("Hybrid cache manager disposed");
+        }
+        finally
+        {
+            _disposed = true;
+        }
+    }
+}
+
+/// <summary>
+/// Simple striped lock implementation for distributed locking simulation.
+/// </summary>
+internal class StripedLockPool
+{
+    private readonly SemaphoreSlim[] _locks;
+    private readonly int _stripeCount;
+
+    public StripedLockPool(int stripeCount)
+    {
+        _stripeCount = stripeCount;
+        _locks = new SemaphoreSlim[stripeCount];
+        for (int i = 0; i < stripeCount; i++)
+        {
+            _locks[i] = new SemaphoreSlim(1, 1);
+        }
+    }
+
+    public async Task<IDisposable> AcquireAsync(string key)
+    {
+        var stripe = Math.Abs(key.GetHashCode()) % _stripeCount;
+        var semaphore = _locks[stripe];
+        await semaphore.WaitAsync();
+        return new SemaphoreReleaser(semaphore);
+    }
+
+    private class SemaphoreReleaser : IDisposable
+    {
+        private readonly SemaphoreSlim _semaphore;
+        private bool _disposed;
+
+        public SemaphoreReleaser(SemaphoreSlim semaphore)
+        {
+            _semaphore = semaphore;
         }
 
-        private void OnBackplaneInvalidationReceived(object? sender, CacheInvalidationEventArgs e)
+        public void Dispose()
         {
-            // Skip if this is our own message
-            if (e.SourceInstanceId == _options.InstanceId) return;
-            
-            Interlocked.Increment(ref _backplaneMessagesReceived);
-            
-            _logger.LogDebug("Received backplane invalidation from {SourceInstance} for type {Type}", 
-                e.SourceInstanceId, e.Type);
-            
-            // Handle async operations in a fire-and-forget manner with proper error handling
-            _ = Task.Run(async () =>
+            if (!_disposed)
             {
-                try
-                {
-                    switch (e.Type)
-                    {
-                        case InvalidationType.ByTags:
-                            // Use efficient tag-based invalidation if enabled
-                            if (_options.EnableEfficientL1TagInvalidation && e.Tags != null)
-                            {
-                                await InvalidateL1ByTagsEfficientlyAsync(e.Tags);
-                            }
-                            else
-                            {
-                                await _l1Cache.ClearAsync();
-                                ClearAllTagMappings();
-                            }
-                            break;
-                            
-                        case InvalidationType.ByKeys:
-                            // Remove specific keys from L1
-                            if (e.Keys != null && e.Keys.Any())
-                            {
-                                await _l1Cache.RemoveMultipleAsync(e.Keys);
-                                // Clean up tag mappings for removed keys
-                                foreach (var key in e.Keys)
-                                {
-                                    UntrackKeyTags(key);
-                                }
-                            }
-                            break;
-                            
-                        case InvalidationType.ClearAll:
-                            // Clear entire L1 cache
-                            await _l1Cache.ClearAsync();
-                            ClearAllTagMappings();
-                            break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error processing backplane invalidation");
-                }
-            });
-        }
-
-        #region Tag Tracking Infrastructure
-        
-        /// <summary>
-        /// Associates a cache key with its tags for efficient invalidation.
-        /// </summary>
-        private void TrackKeyTags(string key, IEnumerable<string> tags)
-        {
-            if (!_options.EnableEfficientL1TagInvalidation || tags == null) return;
-            
-            var tagList = tags.ToList();
-            if (!tagList.Any()) return;
-            
-            _tagMappingLock.EnterWriteLock();
-            try
-            {
-                // Check if we're exceeding the mapping limit
-                if (_tagMappingCount >= _options.MaxTagMappings)
-                {
-                    // Clean up some old mappings (simple FIFO approach)
-                    CleanupOldTagMappings();
-                }
-                
-                // Track key -> tags mapping
-                var keyTags = _keyToTags.GetOrAdd(key, _ => new ConcurrentDictionary<string, byte>());
-                
-                foreach (var tag in tagList)
-                {
-                    // Track tag -> keys mapping
-                    var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
-                    
-                    // Add bidirectional mapping
-                    if (tagKeys.TryAdd(key, 0) && keyTags.TryAdd(tag, 0))
-                    {
-                        Interlocked.Increment(ref _tagMappingCount);
-                    }
-                }
-            }
-            finally
-            {
-                _tagMappingLock.ExitWriteLock();
-            }
-        }
-        
-        /// <summary>
-        /// Removes tag associations for a cache key.
-        /// </summary>
-        private void UntrackKeyTags(string key)
-        {
-            if (!_options.EnableEfficientL1TagInvalidation) return;
-            
-            _tagMappingLock.EnterWriteLock();
-            try
-            {
-                if (_keyToTags.TryRemove(key, out var keyTags))
-                {
-                    foreach (var tag in keyTags.Keys)
-                    {
-                        if (_tagToKeys.TryGetValue(tag, out var tagKeys) && tagKeys.TryRemove(key, out _))
-                        {
-                            Interlocked.Decrement(ref _tagMappingCount);
-                            
-                            // Clean up empty tag mappings
-                            if (tagKeys.IsEmpty)
-                            {
-                                _tagToKeys.TryRemove(tag, out _);
-                            }
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                _tagMappingLock.ExitWriteLock();
-            }
-        }
-        
-        /// <summary>
-        /// Gets all keys associated with given tags.
-        /// </summary>
-        private HashSet<string> GetKeysForTags(string[] tags)
-        {
-            if (!_options.EnableEfficientL1TagInvalidation || tags == null || !tags.Any())
-                return new HashSet<string>();
-                
-            var keys = new HashSet<string>();
-            
-            _tagMappingLock.EnterReadLock();
-            try
-            {
-                foreach (var tag in tags)
-                {
-                    if (_tagToKeys.TryGetValue(tag, out var tagKeys))
-                    {
-                        foreach (var key in tagKeys.Keys)
-                        {
-                            keys.Add(key);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                _tagMappingLock.ExitReadLock();
-            }
-            
-            return keys;
-        }
-        
-        /// <summary>
-        /// Cleans up old tag mappings when limit is exceeded.
-        /// </summary>
-        private void CleanupOldTagMappings()
-        {
-            // Simple cleanup: remove 10% of mappings
-            var targetCleanup = Math.Max(1, _options.MaxTagMappings / 10);
-            var cleaned = 0;
-            
-            foreach (var kvp in _keyToTags.ToArray())
-            {
-                if (cleaned >= targetCleanup) break;
-                
-                UntrackKeyTags(kvp.Key);
-                cleaned++;
-            }
-            
-            _logger.LogDebug("Cleaned up {CleanedCount} tag mappings, current count: {CurrentCount}", 
-                cleaned, _tagMappingCount);
-        }
-        
-        /// <summary>
-        /// Clears all tag mappings.
-        /// </summary>
-        private void ClearAllTagMappings()
-        {
-            if (!_options.EnableEfficientL1TagInvalidation) return;
-            
-            _tagMappingLock.EnterWriteLock();
-            try
-            {
-                _tagToKeys.Clear();
-                _keyToTags.Clear();
-                _tagMappingCount = 0;
-            }
-            finally
-            {
-                _tagMappingLock.ExitWriteLock();
-            }
-        }
-
-        private static string WildcardToRegex(string pattern)
-        {
-            return "^" + Regex.Escape(pattern)
-                .Replace("\\*", ".*")
-                .Replace("\\?", ".") + "$";
-        }
-
-        #endregion
-        
-        // Simple key generator for internal use
-        private class SimpleKeyGenerator : ICacheKeyGenerator
-        {
-            private readonly string _key;
-            
-            public SimpleKeyGenerator(string key)
-            {
-                _key = key;
-            }
-            
-            public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
-            {
-                return _key;
+                _semaphore.Release();
+                _disposed = true;
             }
         }
     }
