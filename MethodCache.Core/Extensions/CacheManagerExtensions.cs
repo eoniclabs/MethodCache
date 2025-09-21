@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Fluent;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
@@ -28,8 +29,11 @@ namespace MethodCache.Core.Extensions
         /// </summary>
         public static async ValueTask<T> GetOrCreateAsync<T>(
             this ICacheManager cacheManager,
+            string methodName,
+            object[] args,
             Func<ValueTask<T>> factory,
             Action<CacheEntryOptions.Builder>? configure = null,
+            ICacheKeyGenerator? keyGenerator = null,
             IServiceProvider? services = null,
             CancellationToken cancellationToken = default)
         {
@@ -63,6 +67,10 @@ namespace MethodCache.Core.Extensions
             var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
+
+            // Set arguments in context for GetArg<T>() access
+            context.SetArguments(args);
+
             var factoryExecuted = false;
             var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
 
@@ -91,14 +99,14 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
-            var effectiveKeyGenerator = new FixedKeyGenerator(cacheKey, options.Version);
+            var fixedKeyGen1 = new FixedKeyGenerator(cacheKey, options.Version);
 
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
                 settings,
-                effectiveKeyGenerator,
+                fixedKeyGen1,
                 requireIdempotent: true).ConfigureAwait(false);
 
             if (!factoryExecuted)
@@ -155,6 +163,10 @@ namespace MethodCache.Core.Extensions
             var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
+
+            // Set arguments in context for GetArg<T>() access
+            context.SetArguments(args);
+
             var factoryExecuted = false;
             var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
 
@@ -183,14 +195,14 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
-            var effectiveKeyGenerator = new FixedKeyGenerator(cacheKey, options.Version);
+            var fixedKeyGen2 = new FixedKeyGenerator(cacheKey, options.Version);
 
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
                 settings,
-                effectiveKeyGenerator,
+                fixedKeyGen2,
                 requireIdempotent: true).ConfigureAwait(false);
 
             if (!factoryExecuted)
@@ -616,6 +628,10 @@ namespace MethodCache.Core.Extensions
             var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
+
+            // Set arguments in context for GetArg<T>() access
+            context.SetArguments(args);
+
             var factoryExecuted = false;
             var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
 
@@ -626,7 +642,7 @@ namespace MethodCache.Core.Extensions
                 return bypassResult;
             }
 
-            async Task<T> WrappedFactory()
+            Task<T> WrappedFactory()
             {
                 factoryExecuted = true;
                 InvokeMissCallbacks(options, context);
@@ -635,7 +651,7 @@ namespace MethodCache.Core.Extensions
                 {
                     var result = factory();
                     options.Metrics?.RecordMiss(context.Key);
-                    return result;
+                    return Task.FromResult(result);
                 }
                 catch (Exception ex)
                 {
@@ -644,14 +660,14 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
-            var effectiveKeyGenerator = new FixedKeyGenerator(cacheKey, options.Version);
+            var fixedKeyGen3 = new FixedKeyGenerator(cacheKey, options.Version);
 
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
                 settings,
-                effectiveKeyGenerator,
+                fixedKeyGen3,
                 requireIdempotent: true).ConfigureAwait(false);
 
             if (!factoryExecuted)
@@ -730,7 +746,14 @@ namespace MethodCache.Core.Extensions
                 try
                 {
                     var value = field.GetValue(target);
-                    arguments.Add(value);
+                    if (value != null)
+                    {
+                        // Filter out service instances - only include actual method parameters
+                        if (!IsServiceType(value.GetType()))
+                        {
+                            arguments.Add(value);
+                        }
+                    }
                 }
                 catch
                 {
@@ -739,8 +762,81 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
-            return arguments.ToArray();
+            return arguments.ToArray()!;
         }
+
+        private static bool IsServiceType(Type type)
+        {
+            var typeName = type.Name;
+
+            // Filter out service types
+            if (typeName.EndsWith("Service") ||
+                typeName.EndsWith("Repository") ||
+                typeName.EndsWith("Manager") ||
+                typeName.EndsWith("Handler") ||
+                typeName.EndsWith("Provider") ||
+                typeName.StartsWith("Mock") || // For testing
+                type.GetInterfaces().Any(i =>
+                    i.Name.EndsWith("Service") ||
+                    i.Name.EndsWith("Repository")))
+            {
+                return true;
+            }
+
+            // Filter out common test artifacts that are not method parameters
+            if (type.IsArray ||  // Arrays like Object[]
+                type == typeof(bool) ||  // Boolean flags (likely test state)
+                type.IsGenericType ||  // Generic types like TaskCompletionSource<T>, List<T>
+                typeName.Contains("CompletionSource") ||
+                typeName.Contains("List") ||
+                typeName.Contains("Dictionary"))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // Method Chaining API
+
+        /// <summary>
+        /// Begins a fluent cache operation with automatic key generation from the factory method.
+        /// </summary>
+        /// <typeparam name="T">The type of the cached value</typeparam>
+        /// <param name="cacheManager">The cache manager</param>
+        /// <param name="factory">The factory method to cache</param>
+        /// <param name="services">Optional service provider</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A fluent builder for configuring the cache operation</returns>
+        public static CacheBuilder<T> Cache<T>(
+            this ICacheManager cacheManager,
+            Func<ValueTask<T>> factory,
+            IServiceProvider? services = null,
+            CancellationToken cancellationToken = default)
+        {
+            return new CacheBuilder<T>(cacheManager, factory, services, cancellationToken);
+        }
+
+        /// <summary>
+        /// Begins a fluent cache operation with automatic key generation from the factory method.
+        /// Alternative API that returns a builder for method chaining.
+        /// </summary>
+        /// <typeparam name="T">The type of the cached value</typeparam>
+        /// <param name="cacheManager">The cache manager</param>
+        /// <param name="factory">The factory method to cache</param>
+        /// <param name="services">Optional service provider</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A fluent builder for configuring the cache operation</returns>
+        public static CacheBuilder<T> Build<T>(
+            this ICacheManager cacheManager,
+            Func<ValueTask<T>> factory,
+            IServiceProvider? services = null,
+            CancellationToken cancellationToken = default)
+        {
+            return new CacheBuilder<T>(cacheManager, factory, services, cancellationToken);
+        }
+
+        // Helper classes
 
         private sealed class FixedKeyGenerator : ICacheKeyGenerator
         {
