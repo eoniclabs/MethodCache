@@ -725,7 +725,7 @@ namespace MethodCache.Core.Tests.Extensions
         {
             var keyGen = new SmartKeyGenerator();
 
-            var key = keyGen.GenerateKey("GetUserAsync", new object[] { null }, new CacheMethodSettings());
+            var key = keyGen.GenerateKey("GetUserAsync", new object[] { null! }, new CacheMethodSettings());
 
             Assert.Contains("null", key);
         }

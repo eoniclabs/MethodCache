@@ -5,10 +5,13 @@ using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Backplane;
+using MethodCache.Providers.Redis.Infrastructure;
 using MethodCache.HybridCache.Abstractions;
 using MethodCache.HybridCache.Configuration;
 using MethodCache.HybridCache.Implementation;
 using MethodCache.HybridCache.Extensions;
+using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Infrastructure.Configuration;
 using System;
 
 namespace MethodCache.Providers.Redis.Extensions
@@ -16,7 +19,8 @@ namespace MethodCache.Providers.Redis.Extensions
     public static class HybridCacheServiceCollectionExtensions
     {
         /// <summary>
-        /// Adds hybrid L1/L2 cache with Redis as L2 and in-memory as L1
+        /// Adds hybrid L1/L2 cache with Redis as L2 and in-memory as L1.
+        /// Uses the Infrastructure layer for provider-agnostic implementation.
         /// </summary>
         public static IServiceCollection AddHybridRedisCache(
             this IServiceCollection services,
@@ -26,91 +30,38 @@ namespace MethodCache.Providers.Redis.Extensions
             if (configureHybridOptions == null)
                 throw new ArgumentNullException(nameof(configureHybridOptions));
 
-            // Configure hybrid cache options
-            services.Configure(configureHybridOptions);
+            // Add Redis infrastructure with L1+L2 storage
+            services.AddRedisHybridInfrastructure(configureRedisOptions);
 
-            // Add Redis infrastructure first
-            services.AddRedisCache(configureRedisOptions ?? (_ => { }));
-
-            // Store the original Redis cache manager under a different key
-            services.AddSingleton<RedisCacheManager>(provider =>
-            {
-                var connectionManager = provider.GetRequiredService<IRedisConnectionManager>();
-                var serializer = provider.GetRequiredService<IRedisSerializer>();
-                var tagManager = provider.GetRequiredService<IRedisTagManager>();
-                var distributedLock = provider.GetRequiredService<IDistributedLock>();
-                var pubSubInvalidation = provider.GetRequiredService<IRedisPubSubInvalidation>();
-                var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RedisOptions>>();
-                var metricsProvider = provider.GetRequiredService<ICacheMetricsProvider>();
-                var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RedisCacheManager>>();
-                
-                return new RedisCacheManager(connectionManager, serializer, tagManager, distributedLock, pubSubInvalidation, metricsProvider, options, logger);
-            });
-
-            // Register Redis backplane for hybrid cache
-            services.AddSingleton<ICacheBackplane, RedisCacheBackplane>();
-            
-            // Register L1 cache (using enhanced InMemoryCacheManager)
-            services.AddSingleton<IMemoryCache, InMemoryCacheManager>();
-
-            // Register hybrid cache manager
-            services.AddSingleton<IHybridCacheManager>(provider =>
-            {
-                var l1Cache = provider.GetRequiredService<IMemoryCache>();
-                var l2Cache = provider.GetRequiredService<RedisCacheManager>(); // Use dedicated Redis instance
-                var backplane = provider.GetRequiredService<ICacheBackplane>();
-                var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();
-                var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HybridCacheManager>>();
-
-                return new HybridCacheManager(l1Cache, l2Cache, backplane, hybridOptions, logger);
-            });
-
-            // Replace ICacheManager with hybrid implementation
-            services.Replace(ServiceDescriptor.Singleton<ICacheManager>(provider =>
-                provider.GetRequiredService<IHybridCacheManager>()));
+            // Add hybrid cache using Infrastructure
+            services.AddInfrastructureHybridCacheWithL2(configureHybridOptions);
 
             return services;
         }
 
         /// <summary>
-        /// Adds hybrid cache with custom L2 cache implementation
+        /// Adds hybrid L1/L2 cache with Redis and custom configuration.
+        /// This is the comprehensive setup method for Redis hybrid caching.
         /// </summary>
-        public static IServiceCollection AddHybridCache<TL2Cache>(
+        public static IServiceCollection AddHybridRedisCache(
             this IServiceCollection services,
-            Action<HybridCacheOptions> configureHybridOptions)
-            where TL2Cache : class, ICacheManager
+            string connectionString,
+            Action<HybridCacheOptions>? configureHybridOptions = null,
+            Action<RedisOptions>? configureRedisOptions = null)
         {
-            if (configureHybridOptions == null)
-                throw new ArgumentNullException(nameof(configureHybridOptions));
-
-            // Configure hybrid cache options
-            services.Configure(configureHybridOptions);
-
-            // Register L1 cache (using enhanced InMemoryCacheManager)
-            services.AddSingleton<IMemoryCache, InMemoryCacheManager>();
-
-            // Register custom L2 cache
-            services.AddSingleton<TL2Cache>();
-            
-            // Note: For generic L2 cache, backplane would need to be configured separately
-            // Register hybrid cache manager with null backplane
-            services.AddSingleton<IHybridCacheManager>(provider =>
+            // Add Redis infrastructure
+            services.AddRedisHybridInfrastructure(options =>
             {
-                var l1Cache = provider.GetRequiredService<IMemoryCache>();
-                var l2Cache = provider.GetRequiredService<TL2Cache>();
-                var backplane = provider.GetService<ICacheBackplane>(); // Optional
-                var hybridOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HybridCacheOptions>>();
-                var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HybridCacheManager>>();
-
-                return new HybridCacheManager(l1Cache, l2Cache, backplane, hybridOptions, logger);
+                options.ConnectionString = connectionString;
+                configureRedisOptions?.Invoke(options);
             });
 
-            // Replace ICacheManager with hybrid implementation
-            services.Replace(ServiceDescriptor.Singleton<ICacheManager>(provider =>
-                provider.GetRequiredService<IHybridCacheManager>()));
+            // Add hybrid cache using Infrastructure
+            services.AddInfrastructureHybridCacheWithL2(configureHybridOptions);
 
             return services;
         }
+
 
         /// <summary>
         /// Fluent configuration extension for hybrid cache options
@@ -119,7 +70,7 @@ namespace MethodCache.Providers.Redis.Extensions
             this HybridCacheOptions options,
             long maxItems = 10000,
             TimeSpan? defaultExpiration = null,
-            L1EvictionPolicy evictionPolicy = L1EvictionPolicy.LRU)
+            HybridCache.Configuration.L1EvictionPolicy evictionPolicy = HybridCache.Configuration.L1EvictionPolicy.LRU)
         {
             options.L1MaxItems = maxItems;
             options.L1DefaultExpiration = defaultExpiration ?? TimeSpan.FromMinutes(5);
@@ -176,5 +127,97 @@ namespace MethodCache.Providers.Redis.Extensions
             options.EnableBackplane = enableBackplane;
             return options;
         }
+
+        /// <summary>
+        /// Adds the complete Redis + Hybrid Cache stack in one call.
+        /// This is the recommended way to set up hybrid caching with Redis using Infrastructure.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="connectionString">Redis connection string.</param>
+        /// <param name="configure">Optional configuration action.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddRedisHybridCacheComplete(
+            this IServiceCollection services,
+            string connectionString,
+            Action<RedisHybridCacheOptions>? configure = null)
+        {
+            var options = new RedisHybridCacheOptions();
+            configure?.Invoke(options);
+
+            // Add Redis infrastructure
+            services.AddRedisHybridInfrastructure(redis =>
+            {
+                redis.ConnectionString = connectionString;
+                redis.Compression = options.RedisCompression;
+                redis.DefaultSerializer = options.RedisSerializer;
+                redis.EnablePubSubInvalidation = options.EnableBackplane;
+            }, storage =>
+            {
+                storage.L1DefaultExpiration = options.L1DefaultExpiration;
+                storage.L1MaxExpiration = options.L1MaxExpiration;
+                storage.L2DefaultExpiration = options.L2DefaultExpiration;
+                storage.EnableBackplane = options.EnableBackplane;
+            });
+
+            // Add hybrid cache
+            services.AddInfrastructureHybridCacheWithL2(hybrid =>
+            {
+                hybrid.L1DefaultExpiration = options.L1DefaultExpiration;
+                hybrid.L1MaxExpiration = options.L1MaxExpiration;
+                hybrid.L2DefaultExpiration = options.L2DefaultExpiration;
+                hybrid.L2Enabled = true;
+                hybrid.Strategy = options.Strategy;
+                hybrid.EnableBackplane = options.EnableBackplane;
+                hybrid.EnableAsyncL2Writes = options.EnableAsyncL2Writes;
+            });
+
+            return services;
+        }
+    }
+
+    /// <summary>
+    /// Configuration options for Redis + Hybrid Cache setup.
+    /// </summary>
+    public class RedisHybridCacheOptions
+    {
+        /// <summary>
+        /// Default expiration time for L1 cache entries.
+        /// </summary>
+        public TimeSpan L1DefaultExpiration { get; set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+        /// Maximum expiration time for L1 cache entries.
+        /// </summary>
+        public TimeSpan L1MaxExpiration { get; set; } = TimeSpan.FromMinutes(30);
+
+        /// <summary>
+        /// Default expiration time for L2 cache entries.
+        /// </summary>
+        public TimeSpan L2DefaultExpiration { get; set; } = TimeSpan.FromHours(4);
+
+        /// <summary>
+        /// Hybrid cache strategy.
+        /// </summary>
+        public HybridStrategy Strategy { get; set; } = HybridStrategy.WriteThrough;
+
+        /// <summary>
+        /// Whether to enable backplane coordination.
+        /// </summary>
+        public bool EnableBackplane { get; set; } = true;
+
+        /// <summary>
+        /// Whether to enable async L2 writes.
+        /// </summary>
+        public bool EnableAsyncL2Writes { get; set; } = true;
+
+        /// <summary>
+        /// Redis compression type.
+        /// </summary>
+        public RedisCompressionType RedisCompression { get; set; } = RedisCompressionType.Gzip;
+
+        /// <summary>
+        /// Redis serializer type.
+        /// </summary>
+        public RedisSerializerType RedisSerializer { get; set; } = RedisSerializerType.MessagePack;
     }
 }

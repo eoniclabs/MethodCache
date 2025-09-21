@@ -1,136 +1,83 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using MethodCache.Core;
-using MethodCache.HybridCache.Abstractions;
-using MethodCache.Providers.Redis.Backplane;
+using MethodCache.Infrastructure.Extensions;
 using MethodCache.Providers.Redis.Configuration;
-using MethodCache.Providers.Redis.Features;
-using MethodCache.Providers.Redis.Compression;
-using MethodCache.Providers.Redis.Services;
-using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
+using MethodCache.Providers.Redis.Infrastructure;
 using System;
 
 namespace MethodCache.Providers.Redis.Extensions
 {
+    /// <summary>
+    /// Extension methods for registering Redis cache services using Infrastructure layer.
+    /// </summary>
     public static class ServiceCollectionExtensions
     {
+        /// <summary>
+        /// Adds Redis cache services using Infrastructure layer.
+        /// This registers Redis as both the distributed storage provider and as ICacheManager.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configureOptions">Optional Redis configuration.</param>
+        /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddRedisCache(
             this IServiceCollection services,
             Action<RedisOptions>? configureOptions = null)
         {
             // Ensure MethodCache core is registered
             services.AddMethodCache();
-            
-            // Configure options
-            if (configureOptions != null)
-            {
-                services.Configure(configureOptions);
-            }
-            
-            // Register Redis connection service (async initialization)
-            services.AddSingleton<RedisConnectionService>();
-            services.AddHostedService<RedisConnectionService>(provider => 
-                provider.GetRequiredService<RedisConnectionService>());
-            
-            // Register connection multiplexer that waits for async initialization with timeout
-            services.AddSingleton<IConnectionMultiplexer>(provider =>
-            {
-                var connectionService = provider.GetRequiredService<RedisConnectionService>();
-                var connectionTask = connectionService.GetConnectionAsync();
-                
-                // Use GetAwaiter().GetResult() for better async context handling and longer timeout
-                try
-                {
-                    return connectionTask.GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    throw new TimeoutException("Redis connection initialization failed during service resolution", ex);
-                }
-            });
-            
-            // Register Redis-specific services
-            services.AddSingleton<IRedisConnectionManager, RedisConnectionManager>();
-            services.AddSingleton<IRedisSerializerFactory, RedisSerializerFactory>();
-            services.AddSingleton<IRedisCompressionFactory, RedisCompressionFactory>();
-            services.AddSingleton<IRedisSerializer>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<RedisOptions>>().Value;
-                var serializerFactory = provider.GetRequiredService<IRedisSerializerFactory>();
-                var compressionFactory = provider.GetRequiredService<IRedisCompressionFactory>();
-                var logger = provider.GetRequiredService<ILogger<CompressedRedisSerializer>>();
-                
-                // Create base serializer
-                var baseSerializer = serializerFactory.Create(options.DefaultSerializer);
-                
-                // Wrap with compression if enabled
-                if (options.Compression != RedisCompressionType.None)
-                {
-                    var compressor = compressionFactory.Create(options.Compression, options.CompressionThreshold);
-                    return new CompressedRedisSerializer(baseSerializer, compressor, logger);
-                }
-                
-                return baseSerializer;
-            });
-            services.AddSingleton<IRedisTagManager, RedisTagManager>();
-            services.AddSingleton<IDistributedLock, RedisDistributedLock>();
-            
-            // Register the comprehensive backplane for invalidation (replaces duplicate pub/sub mechanism)
-            services.AddSingleton<ICacheBackplane, RedisCacheBackplane>();
-            
-            // Register legacy pub/sub interface as wrapper around backplane for backward compatibility
-            services.AddSingleton<IRedisPubSubInvalidation, RedisPubSubInvalidation>();
-            
-            services.AddSingleton<ICacheWarmingService, RedisCacheWarmingService>();
-            
-            // Register cache warming as hosted service only if enabled
-            services.AddSingleton<RedisCacheWarmingService>(provider => 
-                (RedisCacheWarmingService)provider.GetRequiredService<ICacheWarmingService>());
-            
-            // Conditionally register hosted service based on configuration
-            services.AddSingleton<IHostedService>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<RedisOptions>>().Value;
-                if (options.EnableCacheWarming)
-                {
-                    return provider.GetRequiredService<RedisCacheWarmingService>();
-                }
-                
-                // Return a no-op hosted service when warming is disabled
-                return new NoOpHostedService();
-            });
-            
-            // Replace the default cache manager with Redis implementation
-            services.Replace(ServiceDescriptor.Singleton<ICacheManager, RedisCacheManager>());
-            
+
+            // Add Redis infrastructure
+            services.AddRedisInfrastructure(configureOptions);
+
+            // Register Redis as the primary cache manager through Infrastructure
+            services.AddMemoryOnlyStorage();
+
             return services;
         }
 
+        /// <summary>
+        /// Adds Redis cache services with health checks.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configureOptions">Optional Redis configuration.</param>
+        /// <param name="healthCheckName">Name for the health check.</param>
+        /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddRedisCacheWithHealthChecks(
             this IServiceCollection services,
             Action<RedisOptions>? configureOptions = null,
             string healthCheckName = "redis_cache")
         {
-            services.AddRedisCache(configureOptions);
-            services.AddRedisHealthChecks(healthCheckName);
-            
+            services.AddRedisInfrastructureWithHealthChecks(configureOptions, null, healthCheckName);
+            services.AddMethodCache();
+            services.AddMemoryOnlyStorage();
+
             return services;
         }
-        
+
+        /// <summary>
+        /// Adds Redis cache services with health checks using connection string.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="connectionString">Redis connection string.</param>
+        /// <param name="healthCheckName">Name for the health check.</param>
+        /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddRedisCacheWithHealthChecks(
             this IServiceCollection services,
             string connectionString,
             string healthCheckName = "redis_cache")
         {
-            services.AddRedisCache(connectionString);
-            services.AddRedisHealthChecks(healthCheckName);
-            
-            return services;
+            return services.AddRedisCacheWithHealthChecks(options =>
+            {
+                options.ConnectionString = connectionString;
+            }, healthCheckName);
         }
-        
+
+        /// <summary>
+        /// Adds Redis cache services using connection string.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="connectionString">Redis connection string.</param>
+        /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddRedisCache(
             this IServiceCollection services,
             string connectionString)
@@ -140,7 +87,14 @@ namespace MethodCache.Providers.Redis.Extensions
                 options.ConnectionString = connectionString;
             });
         }
-        
+
+        /// <summary>
+        /// Adds Redis cache services using connection string with additional configuration.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="connectionString">Redis connection string.</param>
+        /// <param name="configureOptions">Additional Redis configuration.</param>
+        /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddRedisCache(
             this IServiceCollection services,
             string connectionString,

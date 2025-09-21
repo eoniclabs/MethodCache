@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Suppress CS7022 warning from Microsoft.NET.Test.Sdk global code generation -->
+    <NoWarn>$(NoWarn);CS7022</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
