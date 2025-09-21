@@ -33,6 +33,20 @@ namespace MethodCache.Core.Extensions
             IServiceProvider? services = null,
             CancellationToken cancellationToken = default)
         {
+            return await GetOrCreateAsync(cacheManager, factory, configure, keyGenerator: null, services, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets a cache value or creates it using automatic key generation from the factory method with a specific key generator.
+        /// </summary>
+        public static async ValueTask<T> GetOrCreateAsync<T>(
+            this ICacheManager cacheManager,
+            Func<ValueTask<T>> factory,
+            Action<CacheEntryOptions.Builder>? configure = null,
+            ICacheKeyGenerator? keyGenerator = null,
+            IServiceProvider? services = null,
+            CancellationToken cancellationToken = default)
+        {
             if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
             if (factory == null) throw new ArgumentNullException(nameof(factory));
 
@@ -44,9 +58,9 @@ namespace MethodCache.Core.Extensions
             // Analyze factory to extract method info and arguments
             var (methodName, args) = AnalyzeFactory(factory);
 
-            // Use configured key generator or default to FastHashKeyGenerator
-            var keyGenerator = services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
+            var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
+            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
             var factoryExecuted = false;
@@ -110,6 +124,22 @@ namespace MethodCache.Core.Extensions
             IServiceProvider? services = null,
             CancellationToken cancellationToken = default)
         {
+            return await GetOrCreateAsync(cacheManager, methodName, args, factory, configure, keyGenerator: null, services, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets a cache value or creates it using automatic key generation from method name and arguments with a specific key generator.
+        /// </summary>
+        public static async ValueTask<T> GetOrCreateAsync<T>(
+            this ICacheManager cacheManager,
+            string methodName,
+            object[] args,
+            Func<CacheContext, CancellationToken, ValueTask<T>> factory,
+            Action<CacheEntryOptions.Builder>? configure = null,
+            ICacheKeyGenerator? keyGenerator = null,
+            IServiceProvider? services = null,
+            CancellationToken cancellationToken = default)
+        {
             if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
             if (string.IsNullOrWhiteSpace(methodName)) throw new ArgumentException("Method name must be provided.", nameof(methodName));
             if (args == null) throw new ArgumentNullException(nameof(args));
@@ -120,9 +150,9 @@ namespace MethodCache.Core.Extensions
             var options = BuildOptions(configure);
             var settings = ToMethodSettings(options);
 
-            // Use configured key generator or default to FastHashKeyGenerator
-            var keyGenerator = services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
+            var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
+            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
             var factoryExecuted = false;
@@ -556,6 +586,20 @@ namespace MethodCache.Core.Extensions
             IServiceProvider? services = null,
             CancellationToken cancellationToken = default)
         {
+            return await GetOrCreateAsync(cacheManager, factory, configure, keyGenerator: null, services, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets a cache value or creates it using automatic key generation from the factory method (synchronous version) with a specific key generator.
+        /// </summary>
+        public static async ValueTask<T> GetOrCreateAsync<T>(
+            this ICacheManager cacheManager,
+            Func<T> factory,
+            Action<CacheEntryOptions.Builder>? configure = null,
+            ICacheKeyGenerator? keyGenerator = null,
+            IServiceProvider? services = null,
+            CancellationToken cancellationToken = default)
+        {
             if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
             if (factory == null) throw new ArgumentNullException(nameof(factory));
 
@@ -567,9 +611,9 @@ namespace MethodCache.Core.Extensions
             // Analyze factory to extract method info and arguments
             var (methodName, args) = AnalyzeFactory(factory);
 
-            // Use configured key generator or default to FastHashKeyGenerator
-            var keyGenerator = services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
+            var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
+            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
             var factoryExecuted = false;
