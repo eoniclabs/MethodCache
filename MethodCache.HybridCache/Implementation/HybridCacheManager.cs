@@ -132,9 +132,28 @@ public class HybridCacheManager : IHybridCacheManager, IAsyncDisposable
 
         try
         {
-            // Use storage provider for tag-based invalidation
-            var tasks = tags.Select(tag => _storageProvider.RemoveByTagAsync(tag));
-            await Task.WhenAll(tasks);
+            var invalidationTasks = new List<Task>();
+
+            // Invalidate L1 cache for each tag
+            if (_options.Strategy != HybridStrategy.L2Only)
+            {
+                foreach (var tag in tags)
+                {
+                    invalidationTasks.Add(_l1Storage.RemoveByTagAsync(tag));
+                }
+            }
+
+            // Invalidate L2 cache for each tag
+            if (ShouldUseL2)
+            {
+                foreach (var tag in tags)
+                {
+                    invalidationTasks.Add(_storageProvider.RemoveByTagAsync(tag));
+                }
+            }
+
+            // Execute all invalidations concurrently
+            await Task.WhenAll(invalidationTasks);
 
             // Publish invalidation event via backplane if enabled
             if (_backplane != null && _options.EnableBackplane)

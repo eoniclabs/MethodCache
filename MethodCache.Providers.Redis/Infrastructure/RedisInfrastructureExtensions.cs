@@ -86,7 +86,6 @@ public static class RedisInfrastructureExtensions
             return baseSerializer;
         });
         services.AddSingleton<IRedisTagManager, RedisTagManager>();
-        services.AddSingleton<IRedisPubSubInvalidation, RedisPubSubInvalidation>();
 
         // Register Redis infrastructure components
         services.TryAddSingleton<IStorageProvider, RedisStorageProvider>();

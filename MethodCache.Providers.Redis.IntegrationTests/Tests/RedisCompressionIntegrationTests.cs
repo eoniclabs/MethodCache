@@ -1,8 +1,10 @@
 using FluentAssertions;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Infrastructure.Abstractions;
 using MethodCache.Providers.Redis.Configuration;
-using MethodCache.Providers.Redis.Extensions;
+using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -19,13 +21,21 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
-        services.AddRedisCache(options =>
+        services.AddRedisInfrastructureForTests(options =>
         {
             options.ConnectionString = RedisConnectionString;
             options.Compression = RedisCompressionType.Gzip;
             options.CompressionThreshold = 100; // Low threshold for testing
             options.KeyPrefix = CreateKeyPrefix("gzip-test");
         });
+        // Register infrastructure-based cache manager
+        services.AddSingleton<ICacheManager>(provider =>
+        {
+            var storageProvider = provider.GetRequiredService<IStorageProvider>();
+            var keyGenerator = provider.GetService<ICacheKeyGenerator>() ?? new DefaultCacheKeyGenerator();
+            return new StorageProviderCacheManager(storageProvider, keyGenerator);
+        });
+        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
@@ -85,13 +95,21 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
-        services.AddRedisCache(options =>
+        services.AddRedisInfrastructureForTests(options =>
         {
             options.ConnectionString = RedisConnectionString;
             options.Compression = RedisCompressionType.Brotli;
             options.CompressionThreshold = 100;
             options.KeyPrefix = CreateKeyPrefix("brotli-test");
         });
+        // Register infrastructure-based cache manager
+        services.AddSingleton<ICacheManager>(provider =>
+        {
+            var storageProvider = provider.GetRequiredService<IStorageProvider>();
+            var keyGenerator = provider.GetService<ICacheKeyGenerator>() ?? new DefaultCacheKeyGenerator();
+            return new StorageProviderCacheManager(storageProvider, keyGenerator);
+        });
+        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
@@ -168,13 +186,21 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
-        services.AddRedisCache(options =>
+        services.AddRedisInfrastructureForTests(options =>
         {
             options.ConnectionString = RedisConnectionString;
             options.Compression = RedisCompressionType.Gzip;
             options.CompressionThreshold = 5000; // High threshold
             options.KeyPrefix = CreateKeyPrefix("threshold-test");
         });
+        // Register infrastructure-based cache manager
+        services.AddSingleton<ICacheManager>(provider =>
+        {
+            var storageProvider = provider.GetRequiredService<IStorageProvider>();
+            var keyGenerator = provider.GetService<ICacheKeyGenerator>() ?? new DefaultCacheKeyGenerator();
+            return new StorageProviderCacheManager(storageProvider, keyGenerator);
+        });
+        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);

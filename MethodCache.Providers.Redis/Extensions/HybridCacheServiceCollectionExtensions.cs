@@ -4,7 +4,6 @@ using MethodCache.Core;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
-using MethodCache.Providers.Redis.Backplane;
 using MethodCache.Providers.Redis.Infrastructure;
 using MethodCache.HybridCache.Abstractions;
 using MethodCache.HybridCache.Configuration;
