@@ -99,6 +99,75 @@ public static class InfrastructureServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Adds hybrid cache services using the advanced Memory provider with sophisticated features.
+    /// This provides L1 caching with advanced eviction policies, memory tracking, and tag support.
+    /// Requires MethodCache.Providers.Memory package.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureOptions">Optional hybrid cache configuration.</param>
+    /// <param name="configureMemory">Optional memory provider configuration.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddAdvancedMemoryHybridCache(
+        this IServiceCollection services,
+        Action<HybridCacheOptions>? configureOptions = null,
+        Action<object>? configureMemory = null)
+    {
+        // Configure hybrid cache options
+        services.Configure<HybridCacheOptions>(options =>
+        {
+            options.L2Enabled = false;
+            options.Strategy = HybridStrategy.L1Only;
+            configureOptions?.Invoke(options);
+        });
+
+        // Use reflection to add advanced memory infrastructure if available
+        try
+        {
+            var memoryProviderType = Type.GetType("MethodCache.Providers.Memory.Extensions.MemoryServiceCollectionExtensions, MethodCache.Providers.Memory");
+            if (memoryProviderType != null)
+            {
+                var addAdvancedMemoryMethod = memoryProviderType.GetMethod("AddAdvancedMemoryInfrastructure");
+                if (addAdvancedMemoryMethod != null)
+                {
+                    addAdvancedMemoryMethod.Invoke(null, new object?[] { services, configureMemory });
+                }
+                else
+                {
+                    throw new InvalidOperationException("MethodCache.Providers.Memory is available but AddAdvancedMemoryInfrastructure method not found");
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("MethodCache.Providers.Memory package is required for AddAdvancedMemoryHybridCache");
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Failed to configure advanced memory provider. Ensure MethodCache.Providers.Memory package is installed and configured properly.",
+                ex);
+        }
+
+        // Register hybrid cache manager using Infrastructure
+        services.TryAddSingleton<IHybridCacheManager>(provider =>
+        {
+            var storageProvider = provider.GetRequiredService<IStorageProvider>();
+            var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
+            var backplane = provider.GetService<IBackplane>();
+            var options = provider.GetRequiredService<IOptions<HybridCacheOptions>>();
+            var logger = provider.GetRequiredService<ILogger<HybridCacheManager>>();
+
+            return new HybridCacheManager(storageProvider, memoryStorage, backplane, options, logger);
+        });
+
+        // Register as primary cache manager for backwards compatibility
+        services.TryAddSingleton<ICacheManager>(provider =>
+            provider.GetRequiredService<IHybridCacheManager>());
+
+        return services;
+    }
+
 
 }
 

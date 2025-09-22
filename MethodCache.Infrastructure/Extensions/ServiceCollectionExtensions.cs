@@ -81,6 +81,30 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Adds advanced memory storage using the Memory provider with sophisticated features.
+    /// This is now the recommended default for memory-only scenarios.
+    /// </summary>
+    public static IServiceCollection AddAdvancedMemoryOnlyStorage(
+        this IServiceCollection services,
+        Action<StorageOptions>? configureStorage = null)
+    {
+        // Register infrastructure serializer
+        services.TryAddSingleton<ISerializer, MessagePackSerializer>();
+
+        // Configure storage options if provided
+        if (configureStorage != null)
+        {
+            services.Configure(configureStorage);
+        }
+
+        // NOTE: The advanced memory storage and provider are registered by calling:
+        // services.AddAdvancedMemoryStorage() from MethodCache.Providers.Memory
+        // This method assumes that has already been called.
+
+        return services;
+    }
+
+    /// <summary>
     /// Validates that all required infrastructure services are registered.
     /// </summary>
     public static IServiceCollection ValidateInfrastructure(this IServiceCollection services)

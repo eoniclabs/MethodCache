@@ -21,7 +21,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
     private readonly IRedisConnectionManager _connectionManager;
     private readonly IRedisSerializer _serializer;
     private readonly IRedisTagManager _tagManager;
-    private readonly IRedisPubSubInvalidation _pubSubInvalidation;
+    private readonly IBackplane? _backplane;
     private readonly ResiliencePipeline _resilience;
     private readonly RedisOptions _options;
     private readonly ILogger<RedisStorageProvider> _logger;
@@ -42,14 +42,14 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         IRedisConnectionManager connectionManager,
         IRedisSerializer serializer,
         IRedisTagManager tagManager,
-        IRedisPubSubInvalidation pubSubInvalidation,
+        IBackplane? backplane,
         IOptions<RedisOptions> options,
         ILogger<RedisStorageProvider> logger)
     {
         _connectionManager = connectionManager;
         _serializer = serializer;
         _tagManager = tagManager;
-        _pubSubInvalidation = pubSubInvalidation;
+        _backplane = backplane;
         _options = options.Value;
         _logger = logger;
 
@@ -223,9 +223,9 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
                 _logger.LogDebug("Removed {KeyCount} keys for tag {Tag}", keys.Length, tag);
 
                 // Publish invalidation event for cross-instance coordination
-                if (_options.EnablePubSubInvalidation)
+                if (_options.EnablePubSubInvalidation && _backplane != null)
                 {
-                    await _pubSubInvalidation.PublishInvalidationEventAsync(new[] { tag });
+                    await _backplane.PublishTagInvalidationAsync(tag, cancellationToken);
                 }
             }, cancellationToken);
         }
