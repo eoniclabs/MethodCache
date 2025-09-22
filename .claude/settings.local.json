@@ -29,7 +29,13 @@
       "Bash(git rm:*)",
       "Bash(./scripts/benchmark-tracker.sh run:*)",
       "Bash(pkill:*)",
-      "Bash(./scripts/benchmark-tracker.sh:*)"
+      "Bash(./scripts/benchmark-tracker.sh:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(gtimeout:*)",
+      "Read(//Users/johan/dev/**)",
+      "WebFetch(domain:www.nuget.org)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
