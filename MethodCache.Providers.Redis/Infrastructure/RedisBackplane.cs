@@ -221,11 +221,6 @@ public class RedisBackplane : IBackplane
         }
     }
 
-    [Obsolete("Use UnsubscribeAsync instead")]
-    public async Task StopListeningAsync()
-    {
-        await UnsubscribeAsync();
-    }
 
     private string SerializeMessage(BackplaneMessage message)
     {
