@@ -1,4 +1,6 @@
+using MethodCache.HttpCaching.Metrics;
 using MethodCache.HttpCaching.Storage;
+using MethodCache.HttpCaching.Validation;
 
 namespace MethodCache.HttpCaching;
 
@@ -110,4 +112,114 @@ public class HttpCacheOptions
     /// beyond the standard Vary headers. This is useful for custom caching scenarios.
     /// </summary>
     public string[] AdditionalVaryHeaders { get; set; } = Array.Empty<string>();
+
+    // === NEW ADVANCED FEATURES ===
+
+    /// <summary>
+    /// Gets or sets whether to respect must-revalidate directive.
+    /// When true, stale responses cannot be used without successful revalidation.
+    /// Default is true.
+    /// </summary>
+    public bool RespectMustRevalidate { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to respect proxy-revalidate directive.
+    /// Only applies to shared caches. Default is true.
+    /// </summary>
+    public bool RespectProxyRevalidate { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to respect the immutable directive.
+    /// Immutable responses don't need revalidation during their freshness lifetime.
+    /// Default is true.
+    /// </summary>
+    public bool RespectImmutable { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to respect request max-age directive.
+    /// Client specifies maximum acceptable age. Default is true.
+    /// </summary>
+    public bool RespectRequestMaxAge { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to respect request max-stale directive.
+    /// Client indicates willingness to accept stale responses. Default is true.
+    /// </summary>
+    public bool RespectRequestMaxStale { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to respect request min-fresh directive.
+    /// Client wants response to be fresh for at least this long. Default is true.
+    /// </summary>
+    public bool RespectRequestMinFresh { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to respect only-if-cached directive.
+    /// Client only wants cached responses, not from origin. Default is true.
+    /// </summary>
+    public bool RespectOnlyIfCached { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to generate Warning headers for stale responses
+    /// and other cache conditions according to RFC 9111. Default is false.
+    /// </summary>
+    public bool EnableWarningHeaders { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether to enable quality value parsing for Accept headers.
+    /// Allows proper content negotiation based on client preferences. Default is true.
+    /// </summary>
+    public bool EnableQualityValues { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to enable Accept-Language negotiation.
+    /// Caches different language variants separately. Default is true.
+    /// </summary>
+    public bool EnableAcceptLanguage { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to enable Accept-Encoding negotiation.
+    /// Handles compression and encoding preferences. Default is true.
+    /// </summary>
+    public bool EnableAcceptEncoding { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to enable Accept-Charset negotiation.
+    /// Default is false (rarely used in modern applications).
+    /// </summary>
+    public bool EnableAcceptCharset { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether to store multiple variants per URL.
+    /// Enables content negotiation caching. Default is true.
+    /// </summary>
+    public bool EnableMultipleVariants { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the maximum number of variants to cache per URL.
+    /// Prevents unbounded variant storage. Default is 5.
+    /// </summary>
+    public int MaxVariantsPerUrl { get; set; } = 5;
+
+    /// <summary>
+    /// Gets or sets whether to enable metrics collection.
+    /// Provides hit rates, response times, and other statistics. Default is true.
+    /// </summary>
+    public bool EnableMetrics { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the metrics collector instance.
+    /// If null, a default implementation will be created.
+    /// </summary>
+    public IHttpCacheMetrics? Metrics { get; set; }
+
+    /// <summary>
+    /// Gets the advanced cache directives options.
+    /// </summary>
+    public AdvancedCacheDirectives.Options AdvancedDirectives { get; set; } = new();
+
+    /// <summary>
+    /// Gets the content negotiation options.
+    /// </summary>
+    public ContentNegotiationHandler.Options ContentNegotiation { get; set; } = new();
 }
