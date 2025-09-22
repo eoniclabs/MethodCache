@@ -6,7 +6,7 @@ namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
 public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBase
 {
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task EnsureTablesExistAsync_ShouldCreateAllRequiredTables()
     {
         // Arrange
@@ -20,7 +20,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         tablesExist.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task TablesExistAsync_WithoutTables_ShouldReturnFalse()
     {
         // Arrange - Create a new table manager with a different schema that doesn't exist
@@ -46,7 +46,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CreateSchemaAsync_ShouldCreateSchemaIfNotExists()
     {
         // Arrange
@@ -77,7 +77,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CreateEntriesTableAsync_ShouldCreateEntriesTable()
     {
         // Arrange
@@ -115,7 +115,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CreateTagsTableAsync_ShouldCreateTagsTableWithForeignKey()
     {
         // Arrange
@@ -154,7 +154,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CreateInvalidationsTableAsync_ShouldCreateInvalidationsTable()
     {
         // Arrange
@@ -192,7 +192,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CreateIndexesAsync_ShouldCreatePerformanceIndexes()
     {
         // Arrange
@@ -241,7 +241,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task FullTableCreation_ShouldCreateAllTablesAndIndexes()
     {
         // Arrange

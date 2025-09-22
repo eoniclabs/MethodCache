@@ -252,7 +252,7 @@ internal static class RedisInfrastructureTestExtensions
     public static IServiceCollection AddRedisHybridInfrastructureForTests(
         this IServiceCollection services,
         Action<RedisOptions>? configureRedis = null,
-        Action<StorageOptions>? configureStorage = null)
+        Action<MethodCache.Infrastructure.Configuration.StorageOptions>? configureStorage = null)
     {
         // Add Redis infrastructure
         services.AddRedisInfrastructureForTests(configureRedis);

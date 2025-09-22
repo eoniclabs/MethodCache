@@ -94,7 +94,8 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
             {
                 try
                 {
-                    await _tableManager.EnsureTablesExistAsync();
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+                    await _tableManager.EnsureTablesExistAsync(timeout.Token);
                     _logger.LogInformation("SQL Server cache tables initialized successfully");
                 }
                 catch (Exception ex)

@@ -6,7 +6,7 @@ namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
 public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTestBase
 {
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SetAsync_WithBasicValue_ShouldStoreAndRetrieve()
     {
         // Arrange
@@ -23,7 +23,7 @@ public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTest
         retrieved.Should().Be(value);
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SetAsync_WithComplexObject_ShouldStoreAndRetrieve()
     {
         // Arrange
@@ -43,7 +43,7 @@ public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTest
         retrieved.Items.Should().BeEquivalentTo(value.Items);
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SetAsync_WithTags_ShouldAllowTagBasedRemoval()
     {
         // Arrange
@@ -75,7 +75,7 @@ public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTest
         afterRemoval2.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task GetAsync_WithNonExistentKey_ShouldReturnNull()
     {
         // Arrange
@@ -89,7 +89,7 @@ public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTest
         result.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task RemoveAsync_WithExistingKey_ShouldRemoveValue()
     {
         // Arrange
@@ -109,7 +109,7 @@ public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTest
         afterRemoval.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SetAsync_WithExpiration_ShouldExpireAfterTimespan()
     {
         // Arrange
@@ -132,7 +132,7 @@ public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTest
         afterExpiration.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SetAsync_WithMultipleTags_ShouldAllowSelectiveTagRemoval()
     {
         // Arrange

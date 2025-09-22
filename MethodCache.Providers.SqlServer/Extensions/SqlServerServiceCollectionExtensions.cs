@@ -66,12 +66,26 @@ public static class SqlServerServiceCollectionExtensions
         this IServiceCollection services,
         Action<SqlServerOptions>? configureSqlServer = null)
     {
-        // For now, just add the basic SQL Server infrastructure
-        // TODO: Implement full hybrid storage manager registration in future iteration
+        // Add SQL Server L3 infrastructure
         services.AddSqlServerInfrastructure(configureSqlServer);
 
-        // Add basic infrastructure services for L1 cache
+        // Add core infrastructure services
         services.AddCacheInfrastructure();
+
+        // Register HybridStorageManager with L1 + L3 (SqlServer as persistent storage)
+        services.TryAddSingleton<HybridStorageManager>(provider =>
+        {
+            var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
+            var options = provider.GetRequiredService<IOptions<StorageOptions>>();
+            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var l3Storage = provider.GetRequiredService<IPersistentStorageProvider>();
+            var backplane = provider.GetService<IBackplane>();
+
+            return new HybridStorageManager(memoryStorage, options, logger, l2Storage: null, l3Storage, backplane);
+        });
+
+        // Register as IStorageProvider for backward compatibility
+        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
 
         return services;
     }
@@ -119,7 +133,7 @@ public static class SqlServerServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds hybrid L1/L2 cache with SQL Server as L2 and in-memory as L1.
+    /// Adds hybrid L1/L3 cache with SQL Server as L3 persistent and in-memory as L1.
     /// Uses the Infrastructure layer for provider-agnostic implementation.
     /// </summary>
     public static IServiceCollection AddHybridSqlServerCache(
@@ -130,17 +144,29 @@ public static class SqlServerServiceCollectionExtensions
         if (configureHybridOptions == null)
             throw new ArgumentNullException(nameof(configureHybridOptions));
 
-        // Add SQL Server infrastructure with L1+L2 storage
+        // Add SQL Server infrastructure with L1+L3 storage
         services.AddSqlServerHybridInfrastructure(configureSqlServerOptions);
 
-        // Add hybrid cache using Infrastructure
-        services.AddInfrastructureHybridCacheWithL2(configureHybridOptions);
+        // Configure hybrid cache options for L1+L3
+        if (configureHybridOptions != null)
+        {
+            services.Configure<StorageOptions>(options =>
+            {
+                var hybridOptions = new HybridCacheOptions();
+                configureHybridOptions(hybridOptions);
+
+                options.L1DefaultExpiration = hybridOptions.L1DefaultExpiration;
+                options.L3DefaultExpiration = hybridOptions.L2DefaultExpiration; // Map L2 to L3 for persistence
+                options.L3Enabled = true;
+                options.EnableL3Promotion = true;
+            });
+        }
 
         return services;
     }
 
     /// <summary>
-    /// Adds hybrid L1/L2 cache with SQL Server and custom configuration.
+    /// Adds hybrid L1/L3 cache with SQL Server and custom configuration.
     /// This is the comprehensive setup method for SQL Server hybrid caching.
     /// </summary>
     public static IServiceCollection AddHybridSqlServerCache(
@@ -156,8 +182,20 @@ public static class SqlServerServiceCollectionExtensions
             configureSqlServerOptions?.Invoke(options);
         });
 
-        // Add hybrid cache using Infrastructure
-        services.AddInfrastructureHybridCacheWithL2(configureHybridOptions);
+        // Configure hybrid cache options for L1+L3
+        if (configureHybridOptions != null)
+        {
+            services.Configure<StorageOptions>(options =>
+            {
+                var hybridOptions = new HybridCacheOptions();
+                configureHybridOptions(hybridOptions);
+
+                options.L1DefaultExpiration = hybridOptions.L1DefaultExpiration;
+                options.L3DefaultExpiration = hybridOptions.L2DefaultExpiration; // Map L2 to L3 for persistence
+                options.L3Enabled = true;
+                options.EnableL3Promotion = true;
+            });
+        }
 
         return services;
     }

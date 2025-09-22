@@ -6,7 +6,7 @@ namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
 public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
 {
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task PublishInvalidationAsync_ShouldStoreInvalidationMessage()
     {
         // Arrange
@@ -21,7 +21,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         // (This is implicitly tested by the subscription mechanism)
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task PublishTagInvalidationAsync_ShouldStoreTagInvalidationMessage()
     {
         // Arrange
@@ -36,7 +36,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         // (This is implicitly tested by the subscription mechanism)
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SubscribeAsync_ShouldReceiveInvalidationMessages()
     {
         // Arrange
@@ -86,7 +86,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider2.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SubscribeAsync_ShouldReceiveTagInvalidationMessages()
     {
         // Arrange
@@ -136,7 +136,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider2.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task BackplaneCoordination_ShouldInvalidateAcrossInstances()
     {
         // Arrange
@@ -221,7 +221,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         serviceProvider2.Dispose();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task UnsubscribeAsync_ShouldStopReceivingMessages()
     {
         // Arrange
