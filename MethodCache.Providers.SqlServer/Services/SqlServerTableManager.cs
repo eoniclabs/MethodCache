@@ -46,6 +46,7 @@ public class SqlServerTableManager : ISqlServerTableManager
             // Create tables
             await CreateEntriesTableAsync(cancellationToken);
             await CreateTagsTableAsync(cancellationToken);
+            await CreateInvalidationsTableAsync(cancellationToken);
             await CreateIndexesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully created SQL Server cache tables in schema '{Schema}'", _options.Schema);
@@ -67,7 +68,7 @@ public class SqlServerTableManager : ISqlServerTableManager
                 SELECT COUNT(*)
                 FROM INFORMATION_SCHEMA.TABLES
                 WHERE TABLE_SCHEMA = @Schema
-                AND TABLE_NAME IN (@EntriesTable, @TagsTable)";
+                AND TABLE_NAME IN (@EntriesTable, @TagsTable, @InvalidationsTable)";
 
             await using var command = new SqlCommand(checkTablesSql, connection)
             {
@@ -76,9 +77,10 @@ public class SqlServerTableManager : ISqlServerTableManager
             command.Parameters.AddWithValue("@Schema", _options.Schema);
             command.Parameters.AddWithValue("@EntriesTable", _options.EntriesTableName);
             command.Parameters.AddWithValue("@TagsTable", _options.TagsTableName);
+            command.Parameters.AddWithValue("@InvalidationsTable", _options.InvalidationsTableName);
 
             var tableCount = (int)(await command.ExecuteScalarAsync(cancellationToken) ?? 0);
-            return tableCount == 2; // Both tables should exist
+            return tableCount == 3; // All three tables should exist
         }
         catch (Exception ex)
         {
@@ -189,6 +191,38 @@ public class SqlServerTableManager : ISqlServerTableManager
         }
     }
 
+    public async Task CreateInvalidationsTableAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using var connection = await _connectionManager.GetConnectionAsync(cancellationToken);
+
+            var createTableSql = $@"
+                CREATE TABLE {_options.FullInvalidationsTableName} (
+                    [Id] BIGINT IDENTITY(1,1) NOT NULL,
+                    [InstanceId] NVARCHAR(100) NOT NULL,
+                    [MessageType] TINYINT NOT NULL,
+                    [TargetKey] NVARCHAR(500) NULL,
+                    [TargetTag] NVARCHAR(200) NULL,
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    CONSTRAINT [PK_{_options.Schema}_{_options.InvalidationsTableName}] PRIMARY KEY ([Id])
+                )";
+
+            await using var command = new SqlCommand(createTableSql, connection)
+            {
+                CommandTimeout = _options.CommandTimeoutSeconds
+            };
+
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            _logger.LogDebug("Created invalidations table {TableName}", _options.FullInvalidationsTableName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating invalidations table {TableName}", _options.FullInvalidationsTableName);
+            throw;
+        }
+    }
+
     public async Task CreateIndexesAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -229,6 +263,17 @@ public class SqlServerTableManager : ISqlServerTableManager
                 CommandTimeout = _options.CommandTimeoutSeconds
             };
             await createdCommand.ExecuteNonQueryAsync(cancellationToken);
+
+            // Index on invalidations CreatedAt and Id for efficient polling
+            var createInvalidationsIndexSql = $@"
+                CREATE NONCLUSTERED INDEX [IX_{_options.Schema}_{_options.InvalidationsTableName}_CreatedAt_Id]
+                ON {_options.FullInvalidationsTableName} ([CreatedAt], [Id])";
+
+            await using var invalidationsCommand = new SqlCommand(createInvalidationsIndexSql, connection)
+            {
+                CommandTimeout = _options.CommandTimeoutSeconds
+            };
+            await invalidationsCommand.ExecuteNonQueryAsync(cancellationToken);
 
             _logger.LogDebug("Created performance indexes for cache tables");
         }

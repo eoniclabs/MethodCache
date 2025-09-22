@@ -112,6 +112,11 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
+        if (key == null)
+            throw new ArgumentNullException(nameof(key));
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Key cannot be empty or whitespace.", nameof(key));
+
         var start = DateTime.UtcNow;
         Interlocked.Increment(ref _getOperations);
 
@@ -175,6 +180,13 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
 
     public async Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
+        if (key == null)
+            throw new ArgumentNullException(nameof(key));
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Key cannot be empty or whitespace.", nameof(key));
+        if (value == null)
+            throw new ArgumentNullException(nameof(value));
+
         var start = DateTime.UtcNow;
         Interlocked.Increment(ref _setOperations);
 
@@ -189,6 +201,8 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
                 {
                     var fullKey = _options.KeyPrefix + key;
                     var data = await _serializer.SerializeAsync(value);
+                    if (data == null)
+                        return; // Skip null values
                     var expiresAt = expiration == TimeSpan.MaxValue ? (DateTime?)null : DateTime.UtcNow.Add(expiration);
                     var tagsArray = tags.ToArray();
 
@@ -276,6 +290,11 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
 
     public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
+        if (key == null)
+            throw new ArgumentNullException(nameof(key));
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Key cannot be empty or whitespace.", nameof(key));
+
         var start = DateTime.UtcNow;
         Interlocked.Increment(ref _removeOperations);
 
@@ -339,6 +358,11 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
 
     public async Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
+        if (tag == null)
+            throw new ArgumentNullException(nameof(tag));
+        if (string.IsNullOrWhiteSpace(tag))
+            throw new ArgumentException("Tag cannot be empty or whitespace.", nameof(tag));
+
         var start = DateTime.UtcNow;
 
         try
@@ -446,6 +470,11 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
 
     public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
+        if (key == null)
+            throw new ArgumentNullException(nameof(key));
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Key cannot be empty or whitespace.", nameof(key));
+
         try
         {
             return await _resilience.ExecuteAsync(async _ =>

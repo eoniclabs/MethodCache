@@ -1,9 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Infrastructure.Extensions;
 using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Infrastructure.Configuration;
 using MethodCache.HybridCache.Extensions;
 using MethodCache.HybridCache.Configuration;
 using MethodCache.Providers.SqlServer.Configuration;
@@ -43,6 +46,10 @@ public static class SqlServerServiceCollectionExtensions
         services.AddSingleton<SqlServerStorageProvider>();
         services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<SqlServerStorageProvider>());
 
+        // Register the backplane (conditionally based on options)
+        services.AddSingleton<SqlServerBackplane>();
+        services.AddSingleton<IBackplane>(provider => provider.GetRequiredService<SqlServerBackplane>());
+
         return services;
     }
 
@@ -56,11 +63,12 @@ public static class SqlServerServiceCollectionExtensions
         this IServiceCollection services,
         Action<SqlServerOptions>? configureSqlServer = null)
     {
-        // Add SQL Server infrastructure
+        // For now, just add the basic SQL Server infrastructure
+        // TODO: Implement full hybrid storage manager registration in future iteration
         services.AddSqlServerInfrastructure(configureSqlServer);
 
-        // Add hybrid storage manager
-        services.AddHybridStorageManager();
+        // Add basic infrastructure services for L1 cache
+        services.AddCacheInfrastructure();
 
         return services;
     }
@@ -176,6 +184,9 @@ public static class SqlServerServiceCollectionExtensions
             sqlServer.EnableAutoTableCreation = options.EnableAutoTableCreation;
             sqlServer.CommandTimeoutSeconds = options.CommandTimeoutSeconds;
             sqlServer.MaxRetryAttempts = options.MaxRetryAttempts;
+            sqlServer.EnableBackplane = options.EnableBackplane;
+            sqlServer.BackplanePollingInterval = options.BackplanePollingInterval;
+            sqlServer.BackplaneMessageRetention = options.BackplaneMessageRetention;
         });
 
         // Add hybrid cache
@@ -223,6 +234,16 @@ public class SqlServerHybridCacheOptions
     /// Whether to enable backplane coordination.
     /// </summary>
     public bool EnableBackplane { get; set; } = true;
+
+    /// <summary>
+    /// Backplane polling interval for checking invalidation messages.
+    /// </summary>
+    public TimeSpan BackplanePollingInterval { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// How long to keep backplane messages in the database.
+    /// </summary>
+    public TimeSpan BackplaneMessageRetention { get; set; } = TimeSpan.FromHours(1);
 
     /// <summary>
     /// Whether to enable async L2 writes.

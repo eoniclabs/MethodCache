@@ -28,6 +28,11 @@ public class SqlServerOptions
     public string TagsTableName { get; set; } = "Tags";
 
     /// <summary>
+    /// Table name for backplane invalidation messages. Default is 'Invalidations'.
+    /// </summary>
+    public string InvalidationsTableName { get; set; } = "Invalidations";
+
+    /// <summary>
     /// Key prefix for cache entries. Default is 'methodcache:'.
     /// </summary>
     public string KeyPrefix { get; set; } = "methodcache:";
@@ -108,6 +113,21 @@ public class SqlServerOptions
     public IsolationLevel IsolationLevel { get; set; } = IsolationLevel.ReadCommitted;
 
     /// <summary>
+    /// Backplane polling interval for checking invalidation messages. Default is 2 seconds.
+    /// </summary>
+    public TimeSpan BackplanePollingInterval { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// How long to keep invalidation messages in the database. Default is 1 hour.
+    /// </summary>
+    public TimeSpan BackplaneMessageRetention { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// Whether to enable the SQL Server backplane for distributed cache coordination.
+    /// </summary>
+    public bool EnableBackplane { get; set; } = false;
+
+    /// <summary>
     /// Gets the full qualified table name for cache entries.
     /// </summary>
     public string FullEntriesTableName => $"[{Schema}].[{EntriesTableName}]";
@@ -116,6 +136,11 @@ public class SqlServerOptions
     /// Gets the full qualified table name for tag associations.
     /// </summary>
     public string FullTagsTableName => $"[{Schema}].[{TagsTableName}]";
+
+    /// <summary>
+    /// Gets the full qualified table name for backplane invalidations.
+    /// </summary>
+    public string FullInvalidationsTableName => $"[{Schema}].[{InvalidationsTableName}]";
 }
 
 /// <summary>
