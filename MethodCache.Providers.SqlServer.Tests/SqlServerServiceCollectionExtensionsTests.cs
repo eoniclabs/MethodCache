@@ -26,13 +26,13 @@ public class SqlServerServiceCollectionExtensionsTests
         serviceProvider.GetService<ISqlServerConnectionManager>().Should().NotBeNull();
         serviceProvider.GetService<ISqlServerSerializer>().Should().NotBeNull();
         serviceProvider.GetService<ISqlServerTableManager>().Should().NotBeNull();
-        serviceProvider.GetService<SqlServerStorageProvider>().Should().NotBeNull();
+        serviceProvider.GetService<SqlServerPersistentStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<SqlServerBackplane>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
 
         // Verify they are the same instances
-        serviceProvider.GetService<IStorageProvider>().Should().BeOfType<SqlServerStorageProvider>();
+        serviceProvider.GetService<IStorageProvider>().Should().BeOfType<SqlServerPersistentStorageProvider>();
         serviceProvider.GetService<IBackplane>().Should().BeOfType<SqlServerBackplane>();
 
         await serviceProvider.DisposeAsync();

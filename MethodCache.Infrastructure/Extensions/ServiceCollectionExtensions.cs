@@ -55,7 +55,7 @@ public static class ServiceCollectionExtensions
             var l2Storage = provider.GetService<IStorageProvider>();
             var backplane = provider.GetService<IBackplane>();
 
-            return new HybridStorageManager(memoryStorage, options, logger, l2Storage, backplane);
+            return new HybridStorageManager(memoryStorage, options, logger, l2Storage, null, backplane);
         });
 
         return services;

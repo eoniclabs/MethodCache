@@ -14,10 +14,11 @@ using Polly.Retry;
 namespace MethodCache.Providers.SqlServer.Infrastructure;
 
 /// <summary>
-/// SQL Server implementation of IStorageProvider using the Infrastructure pattern.
-/// Provides distributed storage capabilities with automatic table management, retry policies, and health monitoring.
+/// SQL Server implementation of IPersistentStorageProvider for L3 persistent cache storage.
+/// Provides persistent storage capabilities with automatic table management, retry policies, health monitoring, and cleanup operations.
+/// Designed for long-term data persistence with durability and large storage capacity.
 /// </summary>
-public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
+public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IStorageProvider, IAsyncDisposable
 {
     private readonly ISqlServerConnectionManager _connectionManager;
     private readonly ISqlServerSerializer _serializer;
@@ -25,7 +26,7 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
     private readonly IBackplane? _backplane;
     private readonly ResiliencePipeline _resilience;
     private readonly SqlServerOptions _options;
-    private readonly ILogger<SqlServerStorageProvider> _logger;
+    private readonly ILogger<SqlServerPersistentStorageProvider> _logger;
     private readonly Timer? _cleanupTimer;
 
     // Statistics
@@ -39,15 +40,15 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
     // Disposal tracking
     private bool _disposed;
 
-    public string Name => "SqlServer";
+    public string Name => "SqlServer-L3-Persistent";
 
-    public SqlServerStorageProvider(
+    public SqlServerPersistentStorageProvider(
         ISqlServerConnectionManager connectionManager,
         ISqlServerSerializer serializer,
         ISqlServerTableManager tableManager,
         IBackplane? backplane,
         IOptions<SqlServerOptions> options,
-        ILogger<SqlServerStorageProvider> logger)
+        ILogger<SqlServerPersistentStorageProvider> logger)
     {
         _connectionManager = connectionManager;
         _serializer = serializer;
@@ -537,7 +538,7 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
-    public async Task<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    public async Task<PersistentStorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -574,13 +575,20 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
                 tagCount = reader.IsDBNull("TagCount") ? 0 : (long)(int)reader["TagCount"];
             }
 
-            return new StorageStats
+            return new PersistentStorageStats
             {
                 GetOperations = getOps,
                 SetOperations = setOps,
                 RemoveOperations = removeOps,
                 ErrorCount = errors,
                 AverageResponseTimeMs = CalculateAverageResponseTime(),
+                EntryCount = entryCount,
+                DiskSpaceUsedBytes = await GetStorageSizeAsync(cancellationToken),
+                ExpiredEntriesCleaned = 0, // TODO: Track this
+                AveragePersistTimeMs = CalculateAverageResponseTime(),
+                AverageRetrievalTimeMs = CalculateAverageResponseTime(),
+                ActiveConnections = 1, // Current connection
+                LastCleanupTime = DateTime.UtcNow, // TODO: Track actual cleanup time
                 AdditionalStats = new Dictionary<string, object>
                 {
                     ["ConnectionString"] = MaskConnectionString(_options.ConnectionString),
@@ -599,13 +607,20 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting SQL Server storage stats");
-            return new StorageStats
+            return new PersistentStorageStats
             {
                 GetOperations = Interlocked.Read(ref _getOperations),
                 SetOperations = Interlocked.Read(ref _setOperations),
                 RemoveOperations = Interlocked.Read(ref _removeOperations),
                 ErrorCount = Interlocked.Read(ref _errorCount),
-                AverageResponseTimeMs = CalculateAverageResponseTime()
+                AverageResponseTimeMs = CalculateAverageResponseTime(),
+                DiskSpaceUsedBytes = 0,
+                EntryCount = 0,
+                ExpiredEntriesCleaned = 0,
+                AveragePersistTimeMs = 0,
+                AverageRetrievalTimeMs = 0,
+                ActiveConnections = 0,
+                LastCleanupTime = null
             };
         }
     }
@@ -684,6 +699,96 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
+    // IPersistentStorageProvider specific methods
+
+    public async Task CleanupExpiredEntriesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using var connection = await _connectionManager.GetConnectionAsync(cancellationToken);
+
+            const string deleteSql = @"
+                DELETE TOP (@BatchSize)
+                FROM {0}
+                WHERE [ExpiresAt] IS NOT NULL AND [ExpiresAt] <= GETUTCDATE()";
+
+            var formattedSql = string.Format(deleteSql, _options.FullEntriesTableName);
+
+            await using var command = new SqlCommand(formattedSql, connection)
+            {
+                CommandTimeout = _options.CommandTimeoutSeconds
+            };
+            command.Parameters.AddWithValue("@BatchSize", _options.CleanupBatchSize);
+
+            var deletedCount = await command.ExecuteNonQueryAsync(cancellationToken);
+
+            if (deletedCount > 0)
+            {
+                _logger.LogInformation("L3 cleanup: Removed {DeletedCount} expired entries", deletedCount);
+            }
+
+            // Also cleanup orphaned tag entries
+            const string cleanupTagsSql = @"
+                DELETE FROM {1}
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM {0} WHERE {0}.[Key] = {1}.[Key]
+                )";
+
+            var formattedTagsSql = string.Format(cleanupTagsSql, _options.FullEntriesTableName, _options.FullTagsTableName);
+            await using var tagsCommand = new SqlCommand(formattedTagsSql, connection)
+            {
+                CommandTimeout = _options.CommandTimeoutSeconds
+            };
+
+            var orphanedTags = await tagsCommand.ExecuteNonQueryAsync(cancellationToken);
+            if (orphanedTags > 0)
+            {
+                _logger.LogDebug("L3 cleanup: Removed {OrphanedTags} orphaned tag entries", orphanedTags);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during L3 persistent storage cleanup");
+            throw;
+        }
+    }
+
+    public async Task<long> GetStorageSizeAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using var connection = await _connectionManager.GetConnectionAsync(cancellationToken);
+
+            const string sizeSql = @"
+                SELECT
+                    SUM(CAST(DATALENGTH([Value]) AS BIGINT)) as TotalSize
+                FROM {0}
+                WHERE [ExpiresAt] IS NULL OR [ExpiresAt] > GETUTCDATE()";
+
+            var formattedSql = string.Format(sizeSql, _options.FullEntriesTableName);
+
+            await using var command = new SqlCommand(formattedSql, connection)
+            {
+                CommandTimeout = _options.CommandTimeoutSeconds
+            };
+
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+            return result is DBNull || result == null ? 0L : (long)result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting L3 storage size");
+            return 0L;
+        }
+    }
+
+    // Explicit interface implementation for IStorageProvider.GetStatsAsync
+    async Task<StorageStats?> IStorageProvider.GetStatsAsync(CancellationToken cancellationToken)
+    {
+        var persistentStats = await GetStatsAsync(cancellationToken);
+        return persistentStats; // PersistentStorageStats inherits from StorageStats
+    }
+
     public ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -692,7 +797,7 @@ public class SqlServerStorageProvider : IStorageProvider, IAsyncDisposable
         try
         {
             _cleanupTimer?.Dispose();
-            _logger.LogDebug("SqlServerStorageProvider disposed");
+            _logger.LogDebug("SqlServerPersistentStorageProvider disposed");
         }
         finally
         {

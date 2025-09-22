@@ -97,6 +97,69 @@ public class StorageOptions
     /// Key prefix to use for all cache operations.
     /// </summary>
     public string KeyPrefix { get; set; } = "cache:";
+
+    // L3 Persistent Storage Configuration
+
+    /// <summary>
+    /// Default expiration time for L3 persistent cache entries.
+    /// </summary>
+    public TimeSpan L3DefaultExpiration { get; set; } = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Maximum expiration time for L3 persistent cache entries.
+    /// </summary>
+    public TimeSpan L3MaxExpiration { get; set; } = TimeSpan.FromDays(30);
+
+    /// <summary>
+    /// Whether L3 persistent cache is enabled.
+    /// </summary>
+    public bool L3Enabled { get; set; } = false;
+
+    /// <summary>
+    /// Maximum concurrent L3 operations.
+    /// </summary>
+    public int MaxConcurrentL3Operations { get; set; } = 5;
+
+    /// <summary>
+    /// Whether to enable automatic cleanup of expired L3 entries.
+    /// </summary>
+    public bool EnableL3Cleanup { get; set; } = true;
+
+    /// <summary>
+    /// Interval for L3 cleanup operations.
+    /// </summary>
+    public TimeSpan L3CleanupInterval { get; set; } = TimeSpan.FromHours(6);
+
+    /// <summary>
+    /// Whether to enable async writes to L3.
+    /// </summary>
+    public bool EnableAsyncL3Writes { get; set; } = true;
+
+    /// <summary>
+    /// Whether to promote cache hits from L3 to L1/L2.
+    /// </summary>
+    public bool EnableL3Promotion { get; set; } = true;
+
+    /// <summary>
+    /// Minimum time a key must be accessed before promotion from L3.
+    /// Prevents promoting rarely accessed items.
+    /// </summary>
+    public TimeSpan L3PromotionThreshold { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// Maximum size limit for L3 storage in bytes (0 = unlimited).
+    /// </summary>
+    public long L3MaxStorageSizeBytes { get; set; } = 0;
+
+    /// <summary>
+    /// Retry policy for L3 operations.
+    /// </summary>
+    public RetryOptions L3RetryPolicy { get; set; } = new RetryOptions
+    {
+        MaxRetries = 2,
+        BaseDelay = TimeSpan.FromMilliseconds(500),
+        MaxDelay = TimeSpan.FromSeconds(10)
+    };
 }
 
 /// <summary>

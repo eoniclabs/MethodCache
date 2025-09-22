@@ -40,6 +40,7 @@ public class HybridStorageManagerTests : IDisposable
             Options.Create(_options),
             NullLogger<HybridStorageManager>.Instance,
             _l2Storage,
+            null,
             _backplane);
     }
 
@@ -119,6 +120,7 @@ public class HybridStorageManagerTests : IDisposable
             Options.Create(optionsWithL2Disabled),
             NullLogger<HybridStorageManager>.Instance,
             _l2Storage,
+            null,
             _backplane);
 
         const string key = "test-key";
@@ -369,6 +371,7 @@ public class HybridStorageManagerTests : IDisposable
             Options.Create(optionsWithAsyncWrites),
             NullLogger<HybridStorageManager>.Instance,
             _l2Storage,
+            null,
             _backplane);
 
         const string key = "test-key";
