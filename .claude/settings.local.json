@@ -35,7 +35,8 @@
       "Bash(gtimeout:*)",
       "Read(//Users/johan/dev/**)",
       "WebFetch(domain:www.nuget.org)",
-      "WebSearch"
+      "WebSearch",
+      "Read(//private/tmp/debugtest/**)"
     ],
     "deny": [],
     "ask": []

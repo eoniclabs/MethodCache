@@ -9,7 +9,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using Xunit;
 
-namespace MethodCache.HttpCaching.UnitTests.Storage;
+namespace MethodCache.HttpCaching.Tests.Storage;
 
 public class HybridHttpCacheStorageTests
 {

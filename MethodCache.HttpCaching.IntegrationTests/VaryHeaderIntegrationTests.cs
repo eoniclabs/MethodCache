@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using MethodCache.HttpCaching.Storage;
-using MethodCache.HttpCaching.UnitTests;
+using MethodCache.HttpCaching.Tests;
 using System.Net;
 using System.Net.Http.Headers;
 using Xunit;
