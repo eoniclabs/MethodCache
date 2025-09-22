@@ -7,7 +7,7 @@ namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
 public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
 {
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HybridStorageManager_ShouldUseL1AndL2Storage()
     {
         // Arrange
@@ -41,7 +41,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HybridStorageManager_L1Miss_ShouldFallbackToL2()
     {
         // Arrange
@@ -79,7 +79,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HybridStorageManager_WithTags_ShouldInvalidateAcrossBothLayers()
     {
         // Arrange
@@ -122,7 +122,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HybridStorageManager_WithBackplane_ShouldPropagateInvalidations()
     {
         // Arrange
@@ -195,7 +195,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider2.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HybridStorageManager_Performance_ShouldBeReasonablyFast()
     {
         // Arrange
@@ -248,7 +248,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HybridStorageManager_WithExpiration_ShouldRespectExpiration()
     {
         // Arrange

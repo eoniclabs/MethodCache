@@ -10,7 +10,7 @@ namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerIntegrationTestBase
 {
     [Fact]
-    public void AddSqlServerInfrastructure_ShouldRegisterAllRequiredServices()
+    public async Task AddSqlServerInfrastructure_ShouldRegisterAllRequiredServices()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -37,11 +37,11 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         serviceProvider.GetService<IStorageProvider>().Should().BeOfType<SqlServerPersistentStorageProvider>();
         serviceProvider.GetService<IBackplane>().Should().BeOfType<SqlServerBackplane>();
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
-    public void AddSqlServerHybridInfrastructure_ShouldRegisterHybridServices()
+    public async Task AddSqlServerHybridInfrastructure_ShouldRegisterHybridServices()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -61,7 +61,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         // Hybrid storage manager should be registered
         serviceProvider.GetService<MethodCache.Infrastructure.Implementation.HybridStorageManager>().Should().NotBeNull();
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -95,11 +95,11 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         var result = await healthCheckService!.CheckHealthAsync();
         result.Status.Should().Be(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy);
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
-    public void AddSqlServerCache_ShouldRegisterMethodCacheAndSqlServer()
+    public async Task AddSqlServerCache_ShouldRegisterMethodCacheAndSqlServer()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -121,11 +121,11 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
-    public void AddHybridSqlServerCache_WithOptions_ShouldRegisterHybridCache()
+    public async Task AddHybridSqlServerCache_WithOptions_ShouldRegisterHybridCache()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -148,11 +148,11 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
         serviceProvider.GetService<MethodCache.Infrastructure.Implementation.HybridStorageManager>().Should().NotBeNull();
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
-    public void AddHybridSqlServerCache_WithConnectionString_ShouldRegisterServices()
+    public async Task AddHybridSqlServerCache_WithConnectionString_ShouldRegisterServices()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -168,11 +168,11 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
         serviceProvider.GetService<MethodCache.Infrastructure.Implementation.HybridStorageManager>().Should().NotBeNull();
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
-    public void AddSqlServerHybridCacheComplete_ShouldRegisterCompleteStack()
+    public async Task AddSqlServerHybridCacheComplete_ShouldRegisterCompleteStack()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -200,7 +200,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         sqlOptions!.Value.ConnectionString.Should().Be(SqlServerConnectionString);
         sqlOptions.Value.EnableBackplane.Should().BeTrue();
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
     }
 
     [Fact]
-    public void MultipleRegistrations_ShouldUseSingletonPattern()
+    public async Task MultipleRegistrations_ShouldUseSingletonPattern()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -274,6 +274,6 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         storage1.Should().BeSameAs(storage2);
         backplane1.Should().BeSameAs(backplane2);
 
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 }

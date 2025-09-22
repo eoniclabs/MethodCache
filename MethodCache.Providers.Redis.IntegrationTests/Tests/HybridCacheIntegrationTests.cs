@@ -391,7 +391,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             hybridOptions.Strategy = HybridStrategy.WriteThrough;
             hybridOptions.L2Enabled = true;
             hybridOptions.L1MaxItems = 3; // Very small cache
-            hybridOptions.L1EvictionPolicy = L1EvictionPolicy.LRU;
+            hybridOptions.L1EvictionPolicy = MethodCache.HybridCache.Configuration.L1EvictionPolicy.LRU;
         });
 
         var serviceProvider = services.BuildServiceProvider();

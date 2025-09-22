@@ -7,7 +7,7 @@ namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
 public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
 {
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CheckHealthAsync_WithHealthyDatabase_ShouldReturnHealthy()
     {
         // Arrange
@@ -22,7 +22,7 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
         result.Data["database_accessible"].Should().Be(true);
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CheckHealthAsync_WithTablesPresent_ShouldIncludeTableInfo()
     {
         // Arrange
@@ -37,7 +37,7 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
         result.Data["tables_exist"].Should().Be(true);
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CheckHealthAsync_WithBackplaneEnabled_ShouldIncludeBackplaneInfo()
     {
         // Arrange
@@ -71,7 +71,7 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CheckHealthAsync_WithInvalidConnectionString_ShouldReturnUnhealthy()
     {
         // Arrange
@@ -99,7 +99,7 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
         serviceProvider.Dispose();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HealthCheckService_Integration_ShouldWorkWithDependencyInjection()
     {
         // Arrange
@@ -132,7 +132,7 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
         await serviceProvider.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CheckHealthAsync_WithTimeout_ShouldHandleGracefully()
     {
         // Arrange
@@ -147,7 +147,7 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
         result.Status.Should().BeOneOf(HealthStatus.Healthy, HealthStatus.Unhealthy);
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task CheckHealthAsync_MultipleChecks_ShouldBeConsistent()
     {
         // Arrange

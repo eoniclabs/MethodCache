@@ -86,13 +86,13 @@ namespace MethodCache.Core.Configuration
         /// </summary>
         public static IServiceCollection AddMethodCacheWithSources(
             this IServiceCollection services,
-            Action<MethodCacheBuilder>? configure = null)
+            Action<MethodCacheConfigurationBuilder>? configure = null)
         {
             services.AddSingleton<RuntimeOverrideConfigurationSource>();
             services.AddSingleton<Sources.IConfigurationSource>(provider => provider.GetRequiredService<RuntimeOverrideConfigurationSource>());
             services.AddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
 
-            var builder = new MethodCacheBuilder(services);
+            var builder = new MethodCacheConfigurationBuilder(services);
             
             // Add default attribute source
             builder.AddAttributeSource(Assembly.GetCallingAssembly());
@@ -135,13 +135,13 @@ namespace MethodCache.Core.Configuration
     }
     
     /// <summary>
-    /// Builder for configuring MethodCache
+    /// Builder for configuring MethodCache configuration sources
     /// </summary>
-    public class MethodCacheBuilder
+    public class MethodCacheConfigurationBuilder
     {
         private readonly IServiceCollection _services;
         
-        public MethodCacheBuilder(IServiceCollection services)
+        public MethodCacheConfigurationBuilder(IServiceCollection services)
         {
             _services = services;
         }
@@ -149,7 +149,7 @@ namespace MethodCache.Core.Configuration
         /// <summary>
         /// Adds attribute-based configuration source
         /// </summary>
-        public MethodCacheBuilder AddAttributeSource(params Assembly[] assemblies)
+        public MethodCacheConfigurationBuilder AddAttributeSource(params Assembly[] assemblies)
         {
             _services.AddSingleton<Sources.IConfigurationSource>(new AttributeConfigurationSource(assemblies));
             return this;
@@ -158,34 +158,34 @@ namespace MethodCache.Core.Configuration
         /// <summary>
         /// Adds JSON configuration source
         /// </summary>
-        public MethodCacheBuilder AddJsonConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
+        public MethodCacheConfigurationBuilder AddJsonConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
         {
             _services.AddJsonConfiguration(configuration, sectionName);
             return this;
         }
-        
+
         /// <summary>
         /// Adds YAML configuration source
         /// </summary>
-        public MethodCacheBuilder AddYamlConfiguration(string yamlFilePath)
+        public MethodCacheConfigurationBuilder AddYamlConfiguration(string yamlFilePath)
         {
             _services.AddYamlConfiguration(yamlFilePath);
             return this;
         }
-        
+
         /// <summary>
         /// Adds runtime configuration with IOptionsMonitor
         /// </summary>
-        public MethodCacheBuilder AddRuntimeConfiguration(Action<MethodCacheOptions>? configure = null)
+        public MethodCacheConfigurationBuilder AddRuntimeConfiguration(Action<MethodCacheOptions>? configure = null)
         {
             _services.AddRuntimeConfiguration(configure);
             return this;
         }
-        
+
         /// <summary>
         /// Adds programmatic configuration
         /// </summary>
-        public MethodCacheBuilder AddProgrammaticConfiguration(Action<IProgrammaticConfigurationBuilder> configure)
+        public MethodCacheConfigurationBuilder AddProgrammaticConfiguration(Action<IProgrammaticConfigurationBuilder> configure)
         {
             var source = new ProgrammaticConfigurationSource();
             var builder = new ProgrammaticConfigurationBuilder(source);
