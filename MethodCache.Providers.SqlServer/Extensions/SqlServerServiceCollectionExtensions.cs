@@ -7,6 +7,7 @@ using MethodCache.Core;
 using MethodCache.Infrastructure.Extensions;
 using MethodCache.Infrastructure.Abstractions;
 using MethodCache.Infrastructure.Configuration;
+using MethodCache.Infrastructure.Implementation;
 using MethodCache.HybridCache.Extensions;
 using MethodCache.HybridCache.Configuration;
 using MethodCache.Providers.SqlServer.Configuration;
@@ -42,9 +43,11 @@ public static class SqlServerServiceCollectionExtensions
         services.TryAddSingleton<ISqlServerSerializer, SqlServerSerializer>();
         services.TryAddSingleton<ISqlServerTableManager, SqlServerTableManager>();
 
-        // Register the storage provider
-        services.AddSingleton<SqlServerStorageProvider>();
-        services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<SqlServerStorageProvider>());
+        // Register the L3 persistent storage provider
+        services.AddSingleton<SqlServerPersistentStorageProvider>();
+        services.AddSingleton<IPersistentStorageProvider>(provider => provider.GetRequiredService<SqlServerPersistentStorageProvider>());
+        // Also register as IStorageProvider for backward compatibility
+        services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<SqlServerPersistentStorageProvider>());
 
         // Register the backplane (conditionally based on options)
         services.AddSingleton<SqlServerBackplane>();
@@ -200,6 +203,103 @@ public static class SqlServerServiceCollectionExtensions
             hybrid.EnableBackplane = options.EnableBackplane;
             hybrid.EnableAsyncL2Writes = options.EnableAsyncL2Writes;
         });
+
+        return services;
+    }
+
+    // L3 Persistent Cache Extension Methods
+
+    /// <summary>
+    /// Adds SQL Server as L3 persistent cache provider.
+    /// This provides long-term cache persistence with automatic cleanup and large storage capacity.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureSqlServer">Configuration for SQL Server options.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddSqlServerPersistentCache(
+        this IServiceCollection services,
+        Action<SqlServerOptions>? configureSqlServer = null)
+    {
+        // Add SQL Server infrastructure for L3
+        services.AddSqlServerInfrastructure(configureSqlServer);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds complete triple-layer cache (L1 + L2 + L3) with SQL Server as L3 persistent storage.
+    /// This provides the full caching stack: Memory (L1) + Distributed (L2) + Persistent (L3).
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureStorage">Configuration for storage options.</param>
+    /// <param name="configureSqlServer">Configuration for SQL Server L3 options.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddTripleLayerCacheWithSqlServer(
+        this IServiceCollection services,
+        Action<StorageOptions>? configureStorage = null,
+        Action<SqlServerOptions>? configureSqlServer = null)
+    {
+        // Add infrastructure services
+        services.AddCacheInfrastructure(configureStorage);
+
+        // Add SQL Server as L3 persistent storage
+        services.AddSqlServerPersistentCache(configureSqlServer);
+
+        // Register the enhanced hybrid storage manager with L3 support
+        services.TryAddSingleton<HybridStorageManager>(provider =>
+        {
+            var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
+            var options = provider.GetRequiredService<IOptions<StorageOptions>>();
+            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var l2Storage = provider.GetService<IStorageProvider>(); // Redis or other L2
+            var l3Storage = provider.GetRequiredService<IPersistentStorageProvider>(); // SQL Server L3
+            var backplane = provider.GetService<IBackplane>();
+
+            return new HybridStorageManager(memoryStorage, options, logger, l2Storage, l3Storage, backplane);
+        });
+
+        // Register as IStorageProvider
+        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds L1 + L3 cache setup (skipping L2 distributed cache).
+    /// Useful for single-instance applications that need persistence without distribution complexity.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureStorage">Configuration for storage options.</param>
+    /// <param name="configureSqlServer">Configuration for SQL Server L3 options.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddL1L3CacheWithSqlServer(
+        this IServiceCollection services,
+        Action<StorageOptions>? configureStorage = null,
+        Action<SqlServerOptions>? configureSqlServer = null)
+    {
+        // Add infrastructure services
+        services.AddCacheInfrastructure(options =>
+        {
+            options.L2Enabled = false; // Skip L2
+            configureStorage?.Invoke(options);
+        });
+
+        // Add SQL Server as L3 persistent storage
+        services.AddSqlServerPersistentCache(configureSqlServer);
+
+        // Register the enhanced hybrid storage manager (L1 + L3, no L2)
+        services.TryAddSingleton<HybridStorageManager>(provider =>
+        {
+            var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
+            var options = provider.GetRequiredService<IOptions<StorageOptions>>();
+            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var l3Storage = provider.GetRequiredService<IPersistentStorageProvider>(); // SQL Server L3
+
+            return new HybridStorageManager(memoryStorage, options, logger, null, l3Storage, null);
+        });
+
+        // Register as IStorageProvider
+        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
 
         return services;
     }

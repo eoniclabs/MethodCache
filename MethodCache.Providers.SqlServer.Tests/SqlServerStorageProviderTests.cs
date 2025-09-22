@@ -9,23 +9,23 @@ using NSubstitute;
 
 namespace MethodCache.Providers.SqlServer.Tests;
 
-public class SqlServerStorageProviderTests
+public class SqlServerPersistentStorageProviderTests
 {
     private readonly ISqlServerConnectionManager _mockConnectionManager;
     private readonly ISqlServerSerializer _mockSerializer;
     private readonly ISqlServerTableManager _mockTableManager;
     private readonly IBackplane _mockBackplane;
-    private readonly ILogger<SqlServerStorageProvider> _mockLogger;
+    private readonly ILogger<SqlServerPersistentStorageProvider> _mockLogger;
     private readonly IOptions<SqlServerOptions> _mockOptions;
     private readonly SqlServerOptions _options;
 
-    public SqlServerStorageProviderTests()
+    public SqlServerPersistentStorageProviderTests()
     {
         _mockConnectionManager = Substitute.For<ISqlServerConnectionManager>();
         _mockSerializer = Substitute.For<ISqlServerSerializer>();
         _mockTableManager = Substitute.For<ISqlServerTableManager>();
         _mockBackplane = Substitute.For<IBackplane>();
-        _mockLogger = Substitute.For<ILogger<SqlServerStorageProvider>>();
+        _mockLogger = Substitute.For<ILogger<SqlServerPersistentStorageProvider>>();
 
         _options = new SqlServerOptions
         {
@@ -42,7 +42,7 @@ public class SqlServerStorageProviderTests
     public void Constructor_ShouldInitializeCorrectly()
     {
         // Act
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -58,7 +58,7 @@ public class SqlServerStorageProviderTests
     public void Constructor_WithNullBackplane_ShouldInitializeCorrectly()
     {
         // Act
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -74,7 +74,7 @@ public class SqlServerStorageProviderTests
     public async Task GetAsync_WithNullKey_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -91,7 +91,7 @@ public class SqlServerStorageProviderTests
     public async Task GetAsync_WithEmptyKey_ShouldThrowArgumentException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -108,7 +108,7 @@ public class SqlServerStorageProviderTests
     public async Task SetAsync_WithNullKey_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -125,7 +125,7 @@ public class SqlServerStorageProviderTests
     public async Task SetAsync_WithEmptyKey_ShouldThrowArgumentException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -142,7 +142,7 @@ public class SqlServerStorageProviderTests
     public async Task SetAsync_WithNullValue_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -159,7 +159,7 @@ public class SqlServerStorageProviderTests
     public async Task RemoveAsync_WithNullKey_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -176,7 +176,7 @@ public class SqlServerStorageProviderTests
     public async Task RemoveAsync_WithEmptyKey_ShouldThrowArgumentException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -193,7 +193,7 @@ public class SqlServerStorageProviderTests
     public async Task RemoveByTagAsync_WithNullTag_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -210,7 +210,7 @@ public class SqlServerStorageProviderTests
     public async Task RemoveByTagAsync_WithEmptyTag_ShouldThrowArgumentException()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -230,7 +230,7 @@ public class SqlServerStorageProviderTests
     public async Task RemoveAsync_WithBackplane_ShouldPublishInvalidation()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -254,7 +254,7 @@ public class SqlServerStorageProviderTests
     public async Task RemoveByTagAsync_WithBackplane_ShouldPublishTagInvalidation()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -274,7 +274,7 @@ public class SqlServerStorageProviderTests
     public async Task SetAsync_WithZeroExpiration_ShouldNotThrow()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -291,7 +291,7 @@ public class SqlServerStorageProviderTests
     public async Task SetAsync_WithNegativeExpiration_ShouldNotThrow()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -308,7 +308,7 @@ public class SqlServerStorageProviderTests
     public async Task SetAsync_WithEmptyTags_ShouldNotThrow()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,
@@ -325,7 +325,7 @@ public class SqlServerStorageProviderTests
     public async Task SetAsync_WithNullTags_ShouldNotThrow()
     {
         // Arrange
-        var provider = new SqlServerStorageProvider(
+        var provider = new SqlServerPersistentStorageProvider(
             _mockConnectionManager,
             _mockSerializer,
             _mockTableManager,

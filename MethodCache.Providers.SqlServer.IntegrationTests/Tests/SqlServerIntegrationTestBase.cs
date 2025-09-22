@@ -189,8 +189,8 @@ internal static class SqlServerInfrastructureTestExtensions
         services.TryAddSingleton<ISqlServerTableManager, SqlServerTableManager>();
 
         // Register the storage provider
-        services.AddSingleton<SqlServerStorageProvider>();
-        services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<SqlServerStorageProvider>());
+        services.AddSingleton<SqlServerPersistentStorageProvider>();
+        services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<SqlServerPersistentStorageProvider>());
 
         // Register the backplane
         services.AddSingleton<SqlServerBackplane>();

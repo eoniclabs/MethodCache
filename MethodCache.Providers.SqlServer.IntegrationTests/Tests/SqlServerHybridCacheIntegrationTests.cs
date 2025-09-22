@@ -61,7 +61,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         await tableManager.EnsureTablesExistAsync();
 
         var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
-        var sqlServerStorage = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Infrastructure.SqlServerStorageProvider>();
+        var sqlServerStorage = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider>();
         var key = "l1-miss-test";
         var value = "l1-miss-value";
 
