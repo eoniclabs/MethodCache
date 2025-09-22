@@ -67,28 +67,29 @@ public class AdvancedCacheDirectives
         var directives = new ResponseDirectives();
         var cacheControl = response.Headers.CacheControl;
 
-        if (cacheControl == null)
-            return directives;
-
-        // Standard directives
-        directives.MustRevalidate = cacheControl.MustRevalidate == true;
-        directives.ProxyRevalidate = cacheControl.ProxyRevalidate == true;
-        directives.NoCache = cacheControl.NoCache == true;
-        directives.NoStore = cacheControl.NoStore == true;
-        directives.Private = cacheControl.Private == true;
-        directives.Public = cacheControl.Public == true;
-        directives.NoTransform = cacheControl.NoTransform == true;
-
-        // Parse extensions for immutable, stale-while-revalidate, stale-if-error
-        if (cacheControl.Extensions != null)
+        // Parse Cache-Control directives if present
+        if (cacheControl != null)
         {
-            foreach (var extension in cacheControl.Extensions)
+            // Standard directives
+            directives.MustRevalidate = cacheControl.MustRevalidate == true;
+            directives.ProxyRevalidate = cacheControl.ProxyRevalidate == true;
+            directives.NoCache = cacheControl.NoCache == true;
+            directives.NoStore = cacheControl.NoStore == true;
+            directives.Private = cacheControl.Private == true;
+            directives.Public = cacheControl.Public == true;
+            directives.NoTransform = cacheControl.NoTransform == true;
+
+            // Parse extensions for immutable, stale-while-revalidate, stale-if-error
+            if (cacheControl.Extensions != null)
             {
-                ParseResponseExtension(extension, directives);
+                foreach (var extension in cacheControl.Extensions)
+                {
+                    ParseResponseExtension(extension, directives);
+                }
             }
         }
 
-        // Parse Surrogate-Control header if present
+        // Parse Surrogate-Control header if present (independent of Cache-Control)
         ParseSurrogateControl(response, directives);
 
         return directives;
@@ -143,7 +144,7 @@ public class AdvancedCacheDirectives
         }
 
         var maxAgeMatch = System.Text.RegularExpressions.Regex.Match(
-            surrogateControl, @"max-age=(\d+)",
+            surrogateControl, @"max-age\s*=\s*(\d+)",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         if (maxAgeMatch.Success && int.TryParse(maxAgeMatch.Groups[1].Value, out var maxAge))

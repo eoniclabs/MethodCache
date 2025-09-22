@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.HttpCaching\MethodCache.HttpCaching.csproj" />
-    <ProjectReference Include="..\MethodCache.HttpCaching.UnitTests\MethodCache.HttpCaching.UnitTests.csproj" />
+    <ProjectReference Include="..\MethodCache.HttpCaching.Tests\MethodCache.HttpCaching.Tests.csproj" />
   </ItemGroup>
 
 </Project>

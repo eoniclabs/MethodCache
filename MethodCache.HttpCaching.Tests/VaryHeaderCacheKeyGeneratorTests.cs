@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using MethodCache.HttpCaching.Validation;
 using Xunit;
 
-namespace MethodCache.HttpCaching.UnitTests;
+namespace MethodCache.HttpCaching.Tests;
 
 public class VaryHeaderCacheKeyGeneratorTests
 {

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MethodCache.HttpCaching.Storage;
 using Xunit;
 
-namespace MethodCache.HttpCaching.UnitTests;
+namespace MethodCache.HttpCaching.Tests;
 
 public class HttpCacheHandlerTests
 {
