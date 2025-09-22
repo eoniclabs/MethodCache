@@ -38,6 +38,12 @@ public interface ISqlServerTableManager
     Task CreateTagsTableAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates the backplane invalidations table.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task CreateInvalidationsTableAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates all necessary indexes for optimal performance.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>

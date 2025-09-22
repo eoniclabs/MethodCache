@@ -12,6 +12,7 @@ public class SqlServerSerializer : ISqlServerSerializer
 {
     private readonly SqlServerOptions _options;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly MessagePackSerializerOptions _messagePackOptions;
 
     public SqlServerSerializer(IOptions<SqlServerOptions> options)
     {
@@ -21,12 +22,15 @@ public class SqlServerSerializer : ISqlServerSerializer
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false
         };
+
+        // Configure MessagePack to handle objects without attributes
+        _messagePackOptions = MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
     }
 
-    public async Task<byte[]> SerializeAsync<T>(T value)
+    public async Task<byte[]?> SerializeAsync<T>(T value)
     {
         if (value == null)
-            return Array.Empty<byte>();
+            return null;
 
         return _options.DefaultSerializer switch
         {
@@ -37,7 +41,7 @@ public class SqlServerSerializer : ISqlServerSerializer
         };
     }
 
-    public async Task<T?> DeserializeAsync<T>(byte[] data)
+    public async Task<T?> DeserializeAsync<T>(byte[]? data)
     {
         if (data == null || data.Length == 0)
             return default(T);
@@ -66,13 +70,13 @@ public class SqlServerSerializer : ISqlServerSerializer
 
     private Task<byte[]> SerializeMessagePackAsync<T>(T value)
     {
-        var data = MessagePackSerializer.Serialize(value);
+        var data = MessagePackSerializer.Serialize(value, _messagePackOptions);
         return Task.FromResult(data);
     }
 
     private Task<T?> DeserializeMessagePackAsync<T>(byte[] data)
     {
-        var value = MessagePackSerializer.Deserialize<T>(data);
+        var value = MessagePackSerializer.Deserialize<T>(data, _messagePackOptions);
         return Task.FromResult<T?>(value);
     }
 
