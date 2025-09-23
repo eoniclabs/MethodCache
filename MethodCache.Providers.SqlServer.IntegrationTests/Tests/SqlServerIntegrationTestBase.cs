@@ -144,6 +144,7 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
             options.EnableAutoTableCreation = true;
             options.CommandTimeoutSeconds = 10; // Shorter timeout for tests
             options.MaxRetryAttempts = 1; // Fewer retries for faster failures
+            options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100); // Faster polling for tests
             // Unique prefix per test class instance to avoid cross-test collisions
             options.KeyPrefix = $"test:{Guid.NewGuid():N}:";
             options.Schema = $"test_{Guid.NewGuid():N}".Replace("-", "");

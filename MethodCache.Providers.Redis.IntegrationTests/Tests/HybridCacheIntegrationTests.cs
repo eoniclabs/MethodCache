@@ -23,18 +23,17 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
         // Add Redis infrastructure
-        services.AddRedisHybridInfrastructureForTests(redisOptions =>
-        {
-            redisOptions.ConnectionString = RedisConnectionString;
-            redisOptions.KeyPrefix = CreateKeyPrefix("hybrid-test");
-            redisOptions.DefaultExpiration = TimeSpan.FromMinutes(10);
-        });
-
-        // Add HybridCache with Infrastructure
-        services.AddHybridStorageManager(options =>
-        {
-            options.L2Enabled = true;
-        });
+        services.AddRedisHybridInfrastructureForTests(
+            redisOptions =>
+            {
+                redisOptions.ConnectionString = RedisConnectionString;
+                redisOptions.KeyPrefix = CreateKeyPrefix("hybrid-test");
+                redisOptions.DefaultExpiration = TimeSpan.FromMinutes(10);
+            },
+            storageOptions =>
+            {
+                storageOptions.L2Enabled = true;
+            });
         services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
@@ -92,19 +91,18 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
         // Add Redis infrastructure
-        services.AddRedisHybridInfrastructureForTests(redisOptions =>
-        {
-            redisOptions.ConnectionString = RedisConnectionString;
-            redisOptions.KeyPrefix = CreateKeyPrefix("l1miss-test");
-            redisOptions.DefaultExpiration = TimeSpan.FromMinutes(10);
-        });
-
-        // Add HybridCache with Infrastructure
-        services.AddHybridStorageManager(options =>
-        {
-            options.L2Enabled = true;
-            options.L1DefaultExpiration = TimeSpan.FromMilliseconds(100);
-        });
+        services.AddRedisHybridInfrastructureForTests(
+            redisOptions =>
+            {
+                redisOptions.ConnectionString = RedisConnectionString;
+                redisOptions.KeyPrefix = CreateKeyPrefix("l1miss-test");
+                redisOptions.DefaultExpiration = TimeSpan.FromMinutes(10);
+            },
+            storageOptions =>
+            {
+                storageOptions.L2Enabled = true;
+                storageOptions.L1DefaultExpiration = TimeSpan.FromMilliseconds(100);
+            });
         services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
@@ -162,18 +160,17 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
         // Add Redis infrastructure
-        services.AddRedisHybridInfrastructureForTests(redisOptions =>
-        {
-            redisOptions.ConnectionString = RedisConnectionString;
-            redisOptions.KeyPrefix = CreateKeyPrefix("writeback-test");
-            redisOptions.DefaultExpiration = TimeSpan.FromMinutes(10);
-        });
-
-        // Add HybridCache with Infrastructure
-        services.AddHybridStorageManager(options =>
-        {
-            options.L2Enabled = true;
-        });
+        services.AddRedisHybridInfrastructureForTests(
+            redisOptions =>
+            {
+                redisOptions.ConnectionString = RedisConnectionString;
+                redisOptions.KeyPrefix = CreateKeyPrefix("writeback-test");
+                redisOptions.DefaultExpiration = TimeSpan.FromMinutes(10);
+            },
+            storageOptions =>
+            {
+                storageOptions.L2Enabled = true;
+            });
         services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteBack;
@@ -224,17 +221,16 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
         // Add Redis infrastructure
-        services.AddRedisHybridInfrastructureForTests(redisOptions =>
-        {
-            redisOptions.ConnectionString = RedisConnectionString;
-            redisOptions.KeyPrefix = CreateKeyPrefix("l1only-test");
-        });
-
-        // Add HybridCache with Infrastructure
-        services.AddHybridStorageManager(options =>
-        {
-            options.L2Enabled = false;
-        });
+        services.AddRedisHybridInfrastructureForTests(
+            redisOptions =>
+            {
+                redisOptions.ConnectionString = RedisConnectionString;
+                redisOptions.KeyPrefix = CreateKeyPrefix("l1only-test");
+            },
+            storageOptions =>
+            {
+                storageOptions.L2Enabled = false;
+            });
         services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.L1Only;
@@ -282,17 +278,16 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
         // Add Redis infrastructure
-        services.AddRedisHybridInfrastructureForTests(redisOptions =>
-        {
-            redisOptions.ConnectionString = RedisConnectionString;
-            redisOptions.KeyPrefix = CreateKeyPrefix("invalidate-test");
-        });
-
-        // Add HybridCache with Infrastructure
-        services.AddHybridStorageManager(options =>
-        {
-            options.L2Enabled = true;
-        });
+        services.AddRedisHybridInfrastructureForTests(
+            redisOptions =>
+            {
+                redisOptions.ConnectionString = RedisConnectionString;
+                redisOptions.KeyPrefix = CreateKeyPrefix("invalidate-test");
+            },
+            storageOptions =>
+            {
+                storageOptions.L2Enabled = true;
+            });
         services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
@@ -347,17 +342,16 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
         // Add Redis infrastructure
-        services.AddRedisHybridInfrastructureForTests(redisOptions =>
-        {
-            redisOptions.ConnectionString = RedisConnectionString;
-            redisOptions.KeyPrefix = CreateKeyPrefix("stats-test");
-        });
-
-        // Add HybridCache with Infrastructure
-        services.AddHybridStorageManager(options =>
-        {
-            options.L2Enabled = true;
-        });
+        services.AddRedisHybridInfrastructureForTests(
+            redisOptions =>
+            {
+                redisOptions.ConnectionString = RedisConnectionString;
+                redisOptions.KeyPrefix = CreateKeyPrefix("stats-test");
+            },
+            storageOptions =>
+            {
+                storageOptions.L2Enabled = true;
+            });
         services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
@@ -403,17 +397,16 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
         
         // Add Redis infrastructure
-        services.AddRedisHybridInfrastructureForTests(redisOptions =>
-        {
-            redisOptions.ConnectionString = RedisConnectionString;
-            redisOptions.KeyPrefix = CreateKeyPrefix("eviction-test");
-        });
-
-        // Add HybridCache with Infrastructure
-        services.AddHybridStorageManager(options =>
-        {
-            options.L2Enabled = true;
-        });
+        services.AddRedisHybridInfrastructureForTests(
+            redisOptions =>
+            {
+                redisOptions.ConnectionString = RedisConnectionString;
+                redisOptions.KeyPrefix = CreateKeyPrefix("eviction-test");
+            },
+            storageOptions =>
+            {
+                storageOptions.L2Enabled = true;
+            });
         services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;

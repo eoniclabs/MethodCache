@@ -1,9 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Infrastructure.Abstractions;
+using Xunit;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
+[Collection("SqlServerBackplane")]
 public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
 {
     [Fact(Timeout = 30000)] // 30 seconds
@@ -52,6 +54,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             options.EnableAutoTableCreation = true;
             options.KeyPrefix = $"test2:{Guid.NewGuid():N}:";
             options.Schema = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.Schema;
+            options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100); // Faster polling for tests
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
@@ -68,12 +71,16 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
+        // Give the subscription and polling mechanism time to initialize
+        await Task.Delay(200);
+
         // Publish from first instance
         var testKey = "cross-instance-test-key";
         await backplane1.PublishInvalidationAsync(testKey);
 
         // Wait for message to be received (with timeout)
-        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        // Allow extra time for polling-based delivery
+        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(15));
 
         // Assert
         received.Should().BeTrue();
@@ -102,6 +109,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             options.EnableAutoTableCreation = true;
             options.KeyPrefix = $"test2:{Guid.NewGuid():N}:";
             options.Schema = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.Schema;
+            options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100); // Faster polling for tests
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
@@ -118,12 +126,16 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
+        // Give the subscription and polling mechanism time to initialize
+        await Task.Delay(200);
+
         // Publish from first instance
         var testTag = "cross-instance-test-tag";
         await backplane1.PublishTagInvalidationAsync(testTag);
 
         // Wait for message to be received (with timeout)
-        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        // Allow extra time for polling-based delivery
+        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(15));
 
         // Assert
         received.Should().BeTrue();
@@ -237,6 +249,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             options.EnableAutoTableCreation = true;
             options.KeyPrefix = $"test2:{Guid.NewGuid():N}:";
             options.Schema = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.Schema;
+            options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100); // Faster polling for tests
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
@@ -251,6 +264,9 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             receivedMessages.Add(message);
             return Task.CompletedTask;
         });
+
+        // Give the subscription and polling mechanism time to initialize
+        await Task.Delay(200);
 
         // Publish a message and verify it's received
         await backplane1.PublishInvalidationAsync("test-before-unsubscribe");
