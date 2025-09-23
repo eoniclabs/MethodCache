@@ -298,7 +298,92 @@ internal static class RedisInfrastructureTestExtensions
             return new TestHybridCacheManager(hybridStorage, l1Storage, l2Storage);
         }));
 
+        // Override ICacheManager to use the Infrastructure HybridStorageManager
+        services.Replace(ServiceDescriptor.Scoped<ICacheManager>(provider =>
+        {
+            var hybridStorage = provider.GetRequiredService<HybridStorageManager>();
+            var keyGenerator = provider.GetRequiredService<ICacheKeyGenerator>();
+
+            return new InfrastructureCacheManager(hybridStorage, keyGenerator);
+        }));
+
         return services;
+    }
+}
+
+/// <summary>
+/// Cache manager implementation that bridges Core.ICacheManager with Infrastructure.HybridStorageManager
+/// </summary>
+internal class InfrastructureCacheManager : ICacheManager
+{
+    private readonly HybridStorageManager _hybridStorage;
+    private readonly ICacheKeyGenerator _keyGenerator;
+
+    public InfrastructureCacheManager(HybridStorageManager hybridStorage, ICacheKeyGenerator keyGenerator)
+    {
+        _hybridStorage = hybridStorage;
+        _keyGenerator = keyGenerator;
+    }
+
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+    {
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+
+        // Try to get from cache first
+        var cachedValue = await _hybridStorage.GetAsync<T>(cacheKey);
+        if (cachedValue != null)
+        {
+            return cachedValue;
+        }
+
+        // Execute factory and cache the result
+        var result = await factory();
+        if (result != null)
+        {
+            var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
+            await _hybridStorage.SetAsync(cacheKey, result, expiration, settings.Tags ?? new List<string>());
+        }
+
+        return result;
+    }
+
+    public Task RemoveAsync(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    {
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+        return _hybridStorage.RemoveAsync(cacheKey);
+    }
+
+    public Task RemoveByTagAsync(string tag)
+    {
+        return _hybridStorage.RemoveByTagAsync(tag);
+    }
+
+    public Task RemoveByTagPatternAsync(string pattern)
+    {
+        return _hybridStorage.RemoveByTagAsync(pattern); // Infrastructure version should handle patterns
+    }
+
+    public Task InvalidateByKeysAsync(params string[] keys)
+    {
+        var tasks = keys.Select(key => _hybridStorage.RemoveAsync(key));
+        return Task.WhenAll(tasks);
+    }
+
+    public Task InvalidateByTagsAsync(params string[] tags)
+    {
+        var tasks = tags.Select(tag => _hybridStorage.RemoveByTagAsync(tag));
+        return Task.WhenAll(tasks);
+    }
+
+    public Task InvalidateByTagPatternAsync(string pattern)
+    {
+        return _hybridStorage.RemoveByTagAsync(pattern);
+    }
+
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    {
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+        return await _hybridStorage.GetAsync<T>(cacheKey);
     }
 }
 
@@ -385,7 +470,7 @@ internal class StorageProviderCacheManager : ICacheManager
 internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheManager
 {
     private readonly HybridStorageManager _hybridStorage;
-    private readonly MethodCache.Infrastructure.Abstractions.IMemoryStorage _l1Storage;
+    private readonly MethodCache.Infrastructure.Abstractions.IMemoryStorage _l1Storage = null!;
     private readonly MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider _l2Storage;
 
     public TestHybridCacheManager(
@@ -465,11 +550,11 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
     {
         Console.WriteLine($"DEBUG: GetFromL1Async called for key: {key}");
         var result = await _l1Storage.GetAsync<T>(key);
-        Console.WriteLine($"DEBUG: GetFromL1Async result: {result ?? "null"}");
+        Console.WriteLine($"DEBUG: GetFromL1Async result: {result?.ToString() ?? "null"}");
 
         // Also check if the value exists by calling the hybrid storage directly
         var hybridResult = await _hybridStorage.GetAsync<T>(key);
-        Console.WriteLine($"DEBUG: HybridStorage result: {hybridResult ?? "null"}");
+        Console.WriteLine($"DEBUG: HybridStorage result: {hybridResult?.ToString() ?? "null"}");
 
         return result;
     }
@@ -563,7 +648,7 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
             L2Misses = stats?.AdditionalStats?.TryGetValue("L2Misses", out var l2Misses) == true ? Convert.ToInt64(l2Misses) : 0,
             L3Hits = 0,
             L3Misses = 0,
-            L1Entries = stats?.AdditionalStats?.TryGetValue("L1Entries", out var l1Entries) == true ? Convert.ToInt64(l1Entries) : 0,
+            L1Entries = stats?.AdditionalStats?.TryGetValue("L1EntryCount", out var l1Entries) == true ? Convert.ToInt64(l1Entries) : 0,
             L1Evictions = stats?.AdditionalStats?.TryGetValue("L1Evictions", out var l1Evictions) == true ? Convert.ToInt64(l1Evictions) : 0,
             BackplaneMessagesSent = 0,
             BackplaneMessagesReceived = 0,

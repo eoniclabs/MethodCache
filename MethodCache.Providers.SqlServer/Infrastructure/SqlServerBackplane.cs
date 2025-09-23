@@ -21,6 +21,7 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
 
     private Func<BackplaneMessage, Task>? _messageHandler;
     private DateTimeOffset _lastPollTime;
+    private readonly HashSet<long> _processedMessageIds = new();
     private bool _isSubscribed;
     private bool _disposed;
 
@@ -145,7 +146,8 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
 
         _messageHandler = onMessage;
         _isSubscribed = true;
-        _lastPollTime = DateTimeOffset.UtcNow; // Reset poll time when subscribing
+        _lastPollTime = DateTimeOffset.UtcNow;
+        _processedMessageIds.Clear();
 
         _logger.LogInformation("Subscribed to SQL Server backplane invalidation messages");
         return Task.CompletedTask;
@@ -173,7 +175,7 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
             const string selectSql = @"
                 SELECT [Id], [InstanceId], [MessageType], [TargetKey], [TargetTag], [CreatedAt]
                 FROM {0}
-                WHERE [CreatedAt] > @LastPollTime
+                WHERE [CreatedAt] >= @LastPollTime
                   AND [InstanceId] != @CurrentInstanceId
                 ORDER BY [CreatedAt], [Id]";
 
@@ -187,15 +189,18 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
             command.Parameters.AddWithValue("@CurrentInstanceId", InstanceId);
 
             var messages = new List<BackplaneMessage>();
-            var newLastPollTime = _lastPollTime;
+            var newMessages = new List<BackplaneMessage>();
 
             await using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
+                var messageId = (long)reader["Id"];
                 var createdAt = (DateTime)reader["CreatedAt"];
-                if (createdAt > newLastPollTime)
+
+                // Skip messages we've already processed
+                if (_processedMessageIds.Contains(messageId))
                 {
-                    newLastPollTime = createdAt;
+                    continue;
                 }
 
                 var message = new BackplaneMessage
@@ -208,10 +213,12 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
                 };
 
                 messages.Add(message);
+                newMessages.Add(message);
+                _processedMessageIds.Add(messageId);
             }
 
-            // Update last poll time
-            _lastPollTime = newLastPollTime;
+            // Update last poll time to current time
+            _lastPollTime = DateTimeOffset.UtcNow;
 
             // Process messages
             foreach (var message in messages)

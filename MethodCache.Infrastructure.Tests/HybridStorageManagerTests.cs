@@ -90,7 +90,7 @@ public class HybridStorageManagerTests : IDisposable
         result.Should().Be(value);
         await _l1Storage.Received(1).GetAsync<string>(key, Arg.Any<CancellationToken>());
         await _l2Storage.Received(1).GetAsync<string>(key, Arg.Any<CancellationToken>());
-        await _l1Storage.Received(1).SetAsync(key, value, Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
+        await _l1Storage.Received(1).SetAsync(key, value, Arg.Any<TimeSpan>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -100,20 +100,19 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         var services1 = new ServiceCollection();
         services1.AddLogging();
         var sharedKeyPrefix = CreateKeyPrefix("pubsub-test-shared");
-        services1.AddRedisHybridInfrastructureForTests(options =>
-        {
-            options.ConnectionString = RedisConnectionString;
-            options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = sharedKeyPrefix;
-        });
-
-        // Add hybrid cache for cross-instance coordination
-        services1.AddHybridStorageManager(options =>
-        {
-            options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
-            options.L2DefaultExpiration = TimeSpan.FromHours(1);
-            options.EnableBackplane = true;
-        });
+        services1.AddRedisHybridInfrastructureForTests(
+            options =>
+            {
+                options.ConnectionString = RedisConnectionString;
+                options.EnablePubSubInvalidation = true;
+                options.KeyPrefix = sharedKeyPrefix;
+            },
+            storageOptions =>
+            {
+                storageOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+                storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
+                storageOptions.EnableBackplane = true;
+            });
         services1.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
@@ -128,20 +127,19 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
 
         var services2 = new ServiceCollection();
         services2.AddLogging();
-        services2.AddRedisHybridInfrastructureForTests(options =>
-        {
-            options.ConnectionString = RedisConnectionString;
-            options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = sharedKeyPrefix;
-        });
-
-        // Add hybrid cache for cross-instance coordination
-        services2.AddHybridStorageManager(options =>
-        {
-            options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
-            options.L2DefaultExpiration = TimeSpan.FromHours(1);
-            options.EnableBackplane = true;
-        });
+        services2.AddRedisHybridInfrastructureForTests(
+            options =>
+            {
+                options.ConnectionString = RedisConnectionString;
+                options.EnablePubSubInvalidation = true;
+                options.KeyPrefix = sharedKeyPrefix;
+            },
+            storageOptions =>
+            {
+                storageOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+                storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
+                storageOptions.EnableBackplane = true;
+            });
         services2.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
