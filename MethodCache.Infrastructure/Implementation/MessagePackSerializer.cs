@@ -13,7 +13,8 @@ public class MessagePackSerializer : ISerializer
     public MessagePackSerializer()
     {
         _options = MessagePackSerializerOptions.Standard
-            .WithCompression(MessagePackCompression.Lz4BlockArray);
+            .WithCompression(MessagePackCompression.Lz4BlockArray)
+            .WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
     }
 
     public MessagePackSerializer(MessagePackSerializerOptions options)

@@ -215,11 +215,10 @@ public class MessagePackSerializerTests
         public Dictionary<string, string> Metadata { get; set; } = new();
     }
 
-    // Object that cannot be serialized with MessagePack (missing proper attributes)
+    // Object that cannot be serialized with MessagePack (contains non-serializable types)
     public class NonSerializableObject
     {
-        private readonly object _nonSerializableField = new();
-
-        public object GetNonSerializableField() => _nonSerializableField;
+        public IntPtr Pointer { get; set; } = new IntPtr(12345);
+        public Delegate Action { get; set; } = new Action(() => { });
     }
 }
