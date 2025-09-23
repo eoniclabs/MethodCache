@@ -754,6 +754,11 @@ namespace MethodCache.Core.Extensions
                             arguments.Add(value);
                         }
                     }
+                    else
+                    {
+                        // Include null values as they might be valid arguments
+                        arguments.Add(null);
+                    }
                 }
                 catch
                 {
