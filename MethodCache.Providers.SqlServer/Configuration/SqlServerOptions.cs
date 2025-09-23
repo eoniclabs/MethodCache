@@ -53,6 +53,13 @@ public class SqlServerOptions
     public int CommandTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
+    /// Command timeout in seconds specifically for health check operations.
+    /// Default is 5 seconds to quickly detect issues without blocking.
+    /// Health checks should be lightweight and fast to avoid false negatives.
+    /// </summary>
+    public int HealthCheckTimeoutSeconds { get; set; } = 5;
+
+    /// <summary>
     /// Connection timeout in seconds. Default is 15 seconds.
     /// </summary>
     public int ConnectionTimeoutSeconds { get; set; } = 15;

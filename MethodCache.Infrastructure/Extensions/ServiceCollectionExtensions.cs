@@ -64,8 +64,6 @@ public static class ServiceCollectionExtensions
 
         // Override any existing IStorageProvider registration with hybrid manager
         services.AddScoped<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
-
-
         return services;
     }
 

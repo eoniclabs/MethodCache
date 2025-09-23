@@ -56,7 +56,9 @@ public class VaryHeaderCacheKeyGenerator
         {
             if (parts[i].Length > 0)
             {
-                parts[i] = char.ToUpper(parts[i][0]) + parts[i][1..].ToLower();
+                parts[i] = parts[i].Length == 1
+                    ? char.ToUpper(parts[i][0]).ToString()
+                    : char.ToUpper(parts[i][0]) + parts[i][1..].ToLower();
             }
         }
         return string.Join("-", parts);

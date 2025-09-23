@@ -47,6 +47,13 @@ public class HttpCacheOptions
     public TimeSpan? DefaultMaxAge { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
+    /// Gets or sets the minimum expiration time for cached responses.
+    /// Responses with shorter cache lifetimes will be extended to this minimum.
+    /// Default is 30 seconds to balance freshness with performance.
+    /// </summary>
+    public TimeSpan MinExpiration { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
     /// Gets or sets the HTTP methods that should be cached.
     /// Default includes GET, HEAD, and OPTIONS.
     /// </summary>

@@ -413,13 +413,9 @@ namespace MethodCache.Core.Fluent
                 return true;
             }
 
-            // Filter out common test artifacts that are not method parameters
-            if (type.IsArray ||  // Arrays like Object[]
-                type == typeof(bool) ||  // Boolean flags (likely test state)
-                type.IsGenericType ||  // Generic types like TaskCompletionSource<T>, List<T>
-                typeName.Contains("CompletionSource") ||
-                typeName.Contains("List") ||
-                typeName.Contains("Dictionary"))
+            // Filter out only specific test artifacts that are not method parameters
+            if (type.IsArray && type.GetElementType() == typeof(object) ||  // Object[] arrays from tests
+                typeName.Contains("CompletionSource"))  // TaskCompletionSource and similar
             {
                 return true;
             }

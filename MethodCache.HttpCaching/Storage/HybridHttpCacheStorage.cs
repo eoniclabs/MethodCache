@@ -253,7 +253,7 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
 
         // Ensure minimum expiration
-        var minExpiration = TimeSpan.FromSeconds(30);
+        var minExpiration = _httpOptions.MinExpiration != default ? _httpOptions.MinExpiration : TimeSpan.FromSeconds(30);
         if (expiration < minExpiration)
         {
             return minExpiration;

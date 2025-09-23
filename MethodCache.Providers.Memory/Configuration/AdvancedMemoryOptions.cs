@@ -14,8 +14,9 @@ public class AdvancedMemoryOptions
 
     /// <summary>
     /// Maximum memory usage in bytes (approximate).
+    /// Default: 256MB - balanced for typical applications.
     /// </summary>
-    public long MaxMemoryUsage { get; set; } = 100 * 1024 * 1024; // 100MB
+    public long MaxMemoryUsage { get; set; } = 256 * 1024 * 1024; // 256MB
 
     /// <summary>
     /// Eviction policy to use when limits are reached.
@@ -24,8 +25,24 @@ public class AdvancedMemoryOptions
 
     /// <summary>
     /// How often to run cleanup for expired entries.
+    /// This is the base interval - actual cleanup frequency may be higher
+    /// based on memory pressure. Under high memory pressure, cleanup
+    /// can occur as frequently as every 30 seconds.
     /// </summary>
     public TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Minimum cleanup interval when under memory pressure.
+    /// Default is 30 seconds to prevent excessive cleanup overhead.
+    /// </summary>
+    public TimeSpan MinCleanupInterval { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Memory pressure threshold (0.0 to 1.0) at which to increase cleanup frequency.
+    /// When memory usage exceeds this percentage of MaxMemoryUsage, cleanup will
+    /// run more frequently. Default is 0.8 (80%).
+    /// </summary>
+    public double MemoryPressureThreshold { get; set; } = 0.8;
 
     /// <summary>
     /// Memory usage calculation mode.

@@ -272,7 +272,12 @@ public class HttpCacheHandler : DelegatingHandler
         if (request.Headers.Authorization != null)
         {
             keyBuilder.Append(':');
-            keyBuilder.Append(request.Headers.Authorization.GetHashCode());
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var authBytes = System.Text.Encoding.UTF8.GetBytes(request.Headers.Authorization.ToString());
+                var hashBytes = sha256.ComputeHash(authBytes);
+                keyBuilder.Append(Convert.ToBase64String(hashBytes));
+            }
         }
 
         return keyBuilder.ToString();

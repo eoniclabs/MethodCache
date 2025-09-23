@@ -59,11 +59,21 @@ namespace MethodCache.Core.Storage
 
         /// <summary>
         /// Whether to enable async writes to L2.
+        /// When enabled (default), L2 writes are performed asynchronously in the background,
+        /// allowing the request to return immediately after L1 write. This improves response
+        /// times but may result in temporary inconsistency if L2 write fails.
+        /// When disabled, L2 writes are synchronous, ensuring consistency but potentially
+        /// increasing latency. Use sync writes when data consistency is critical.
         /// </summary>
         public bool EnableAsyncL2Writes { get; set; } = true;
 
         /// <summary>
         /// Whether to enable async writes to L3.
+        /// When enabled (default), L3 writes are performed asynchronously in the background,
+        /// which is recommended for persistent storage layers that may have higher latency.
+        /// When disabled, L3 writes are synchronous, which can significantly impact performance
+        /// but ensures data is persisted before returning. Use sync writes only when immediate
+        /// persistence confirmation is required (e.g., for critical data or compliance requirements).
         /// </summary>
         public bool EnableAsyncL3Writes { get; set; } = true;
 
