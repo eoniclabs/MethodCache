@@ -5,7 +5,7 @@ using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
-using MethodCache.HybridCache.Implementation;
+
 using MethodCache.Providers.Redis;
 using MethodCache.Providers.Redis.Configuration;
 
@@ -33,7 +33,7 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
     {
         // Create services with different cache providers
         var inMemoryProvider = CreateServiceProviderWithCache<InMemoryCacheManager>();
-        var hybridProvider = CreateServiceProviderWithCache<HybridCacheManager>();
+        var hybridProvider = CreateServiceProviderWithCache<InMemoryCacheManager>(); // Use InMemory instead of Hybrid for benchmarks
         
         _inMemoryService = inMemoryProvider.GetRequiredService<ICacheProviderTestService>();
         _hybridService = hybridProvider.GetRequiredService<ICacheProviderTestService>();

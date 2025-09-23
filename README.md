@@ -23,11 +23,13 @@ Whether you are wrapping your own services or slapping caching onto third-party 
 - [Why MethodCache?](#why-methodcache)
 - [Configuration Surfaces](#configuration-surfaces)
   - [Attributes](#attributes)
-  - [Fluent API](#fluent-api)
+  - [Fluent API](#fluent-api) - 🆕 Method Chaining API
   - [JSON / YAML](#json--yaml)
   - [Runtime Overrides](#runtime-overrides)
 - [Cache Third‑Party Libraries](#cache-third-party-libraries)
 - [Feature Highlights](#feature-highlights)
+  - [Performance](#performance)
+  - [Key Generators Performance](#key-generators-performance) - 🆕
 - [Architecture at a Glance](#architecture-at-a-glance)
 - [Packages](#packages)
 - [Documentation & Samples](#documentation--samples)
@@ -72,7 +74,22 @@ builder.Services.AddMethodCache(config =>
 });
 ```
 
-That’s it – the source generator emits decorators, `ICacheManager` handles storage, and you retain clean business code.
+That's it – the source generator emits decorators, `ICacheManager` handles storage, and you retain clean business code.
+
+### ✨ Alternative: New Method Chaining API
+
+For non-generated scenarios or third-party libraries, use the intuitive method chaining API:
+
+```csharp
+// Inject ICacheManager and use fluent chaining
+var user = await cache.Cache(() => userService.GetUserAsync(userId))
+    .WithDuration(TimeSpan.FromHours(1))
+    .WithTags("user")
+    .WithKeyGenerator<JsonKeyGenerator>()
+    .ExecuteAsync();
+```
+
+Perfect for caching external APIs, legacy code, or when you prefer explicit control over attribute-based configuration.
 
 ---
 
@@ -81,9 +98,11 @@ That’s it – the source generator emits decorators, `ICacheManager` handles s
 | Capability | What it means for you |
 |------------|-----------------------|
 | **Compile‑time decorators** | Roslyn source generator produces zero‑reflection proxies with per‑method caching logic. |
-| **Fluent, config, or runtime control** | Choose attributes, the new fluent API (versioning, custom key generators, predicates), configuration files, or management endpoints. |
+| **Method Chaining API** | NEW! Intuitive fluent interface: `cache.Cache(() => service.GetData()).WithDuration(TimeSpan.FromHours(1)).ExecuteAsync()` |
+| **Flexible configuration** | Choose attributes, fluent API (versioning, custom key generators, predicates), configuration files, or runtime overrides. |
+| **Smart key generation** | FastHashKeyGenerator (performance), JsonKeyGenerator (debugging), MessagePackKeyGenerator (complex objects). |
 | **Provider agnostic** | In‑memory L1, Redis L2, hybrid orchestration, compression, distributed locks, multi‑region support. |
-| **Safe by default** | Analyzers validate usage (e.g., key generator types), circuit breakers and stampede protection guard your downstreams. |
+| **Safe by default** | Analyzers validate usage, circuit breakers and stampede protection guard your downstreams. |
 | **Observability ready** | Metrics hooks, structured logging, health checks, diagnostics – built to operate in production. |
 | **Third‑party caching** | Layer caching onto NuGet packages or SDKs without touching their source. |
 
@@ -108,7 +127,26 @@ Attributes describe intent; everything can be overridden downstream.
 
 ### Fluent API
 
-Use `AddMethodCacheFluent` or the generator‑emitted rules to express richer policies with IntelliSense support.
+**Method Chaining API** - NEW! Chain configuration methods for intuitive, readable cache operations:
+
+```csharp
+// Simple usage
+var user = await cache.Cache(() => userService.GetUserAsync(userId))
+    .WithDuration(TimeSpan.FromHours(1))
+    .WithTags("user", $"user:{userId}")
+    .ExecuteAsync();
+
+// Advanced configuration
+var orders = await cache.Cache(() => orderService.GetOrdersAsync(customerId, status))
+    .WithDuration(TimeSpan.FromMinutes(30))
+    .WithStampedeProtection()
+    .WithKeyGenerator<JsonKeyGenerator>()
+    .When(ctx => customerId > 0)
+    .OnHit(ctx => logger.LogInformation($"Cache hit: {ctx.Key}"))
+    .ExecuteAsync();
+```
+
+**Configuration-Based Fluent API** - Express richer policies with IntelliSense support:
 
 ```csharp
 services.AddMethodCacheFluent(fluent =>
@@ -228,6 +266,15 @@ MethodCache delivers exceptional performance with microsecond-level cache hits:
 - **Memory Efficient**: Minimal memory allocations during cache operations
 - **Scalable**: Consistent performance across different data sizes
 - **Zero-Overhead**: Negligible impact when caching is disabled
+- **Method Chaining**: No performance penalty - compiles to same efficient code as callback-based API
+
+### Key Generators Performance
+
+| Generator | Use Case | Performance | Key Format |
+|-----------|----------|-------------|------------|
+| `FastHashKeyGenerator` | High-throughput scenarios | Fastest (~50ns) | `MethodName_hash` |
+| `JsonKeyGenerator` | Development/debugging | Medium (~200ns) | `MethodName:param1:value1:param2:value2` |
+| `MessagePackKeyGenerator` | Complex objects | Fast (~100ns) | `MethodName_binary_hash` |
 ## 🏗️ Architecture at a Glance
 
 ```mermaid
@@ -266,12 +313,15 @@ Configuration precedence:
 
 ## 📖 Documentation & Samples
 
-- [Configuration Guide](CONFIGURATION_GUIDE.md)
-- [Fluent API Specification](FLUENT_API_SPEC.md)
-- [Third‑Party Caching Scenarios](THIRD_PARTY_CACHING.md)
-- [ETag Usage Examples](ETAG_USAGE_EXAMPLES.md)
-- [Sample App](MethodCache.SampleApp)
-- [Demo Project](MethodCache.Demo)
+- [Configuration Guide](CONFIGURATION_GUIDE.md) - Comprehensive configuration options
+- [Fluent API Specification](FLUENT_API_SPEC.md) - Complete fluent API reference
+- [Method Chaining Examples](method_chaining_examples.cs) - NEW! Real-world method chaining patterns
+- [Key Generator Selection Guide](key_generator_selection_examples.cs) - Choose the right key generator
+- [Simplified API Examples](simplified_api_examples.cs) - FluentCache-like simplicity with MethodCache power
+- [Third‑Party Caching Scenarios](THIRD_PARTY_CACHING.md) - Cache external libraries
+- [ETag Usage Examples](ETAG_USAGE_EXAMPLES.md) - HTTP ETag integration
+- [Sample App](MethodCache.SampleApp) - Working examples
+- [Demo Project](MethodCache.Demo) - Configuration-driven demonstrations
 
 ---
 

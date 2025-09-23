@@ -5,10 +5,11 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
-using MethodCache.HybridCache.Implementation;
-using MethodCache.HybridCache.Configuration;
+
+
 using MethodCache.Providers.Redis;
 using System.Linq;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 
 namespace MethodCache.Benchmarks.Core;
@@ -48,9 +49,9 @@ public abstract class BenchmarkBase
             .AddConsole());
 
         // Add MethodCache configuration
-        services.AddSingleton<MethodCacheConfiguration>(provider =>
+        services.AddSingleton<MethodCache.Core.Configuration.MethodCacheConfiguration>(provider =>
         {
-            var config = new MethodCacheConfiguration();
+            var config = new MethodCache.Core.Configuration.MethodCacheConfiguration();
             config.DefaultDuration(TimeSpan.FromMinutes(10));
             return config;
         });
@@ -73,9 +74,9 @@ public abstract class BenchmarkBase
         // In-Memory Cache
         services.AddSingleton<InMemoryCacheManager>();
         
-        // Hybrid Cache
-        services.AddSingleton<ICacheManager, HybridCacheManager>();
-        services.Configure<HybridCacheOptions>(options =>
+        // Use InMemoryCacheManager for benchmarks instead of hybrid
+        services.AddSingleton<ICacheManager, InMemoryCacheManager>();
+        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
         {
             options.L1MaxItems = 1000;
             options.L2DefaultExpiration = TimeSpan.FromMinutes(30);

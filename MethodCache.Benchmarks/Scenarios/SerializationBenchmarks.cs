@@ -347,31 +347,17 @@ public class ToStringKeyGenerator : ICacheKeyGenerator
 }
 
 // Test parameter classes
-[MessagePackObject]
 public class ComplexParameter
 {
-    [Key(0)]
     public int Id { get; set; }
-    
-    [Key(1)]
     public string Name { get; set; } = string.Empty;
-    
-    [Key(2)]
     public double[] Values { get; set; } = Array.Empty<double>();
-    
-    [Key(3)]
     public Dictionary<string, object> Metadata { get; set; } = new();
-    
-    [Key(4)]
     public NestedParameter NestedObject { get; set; } = new();
 }
 
-[MessagePackObject]
 public class NestedParameter
 {
-    [Key(0)]
     public string Type { get; set; } = string.Empty;
-    
-    [Key(1)]
     public Dictionary<string, string> Data { get; set; } = new();
 }

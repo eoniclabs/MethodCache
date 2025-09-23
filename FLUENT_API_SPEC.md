@@ -37,6 +37,103 @@ The fluent API composes with existing middleware, providers, and analyzers. Sour
 
 ## API Surface Details
 
+### Method Chaining API (NEW!)
+Namespace: `MethodCache.Core.Extensions` and `MethodCache.Core.Fluent`.
+
+**Overview**: The Method Chaining API provides an intuitive, chainable interface for configuring cache operations. This API transforms the callback-based configuration into a more readable and discoverable fluent interface.
+
+```csharp
+public static class CacheManagerExtensions
+{
+    // Method Chaining API - Primary entry points
+    public static CacheBuilder<T> Cache<T>(
+        this ICacheManager cacheManager,
+        Func<ValueTask<T>> factory,
+        IServiceProvider? services = null,
+        CancellationToken cancellationToken = default);
+
+    public static CacheBuilder<T> Build<T>(
+        this ICacheManager cacheManager,
+        Func<ValueTask<T>> factory,
+        IServiceProvider? services = null,
+        CancellationToken cancellationToken = default);
+}
+
+public class CacheBuilder<T>
+{
+    // Duration and expiration
+    public CacheBuilder<T> WithDuration(TimeSpan duration);
+    public CacheBuilder<T> WithRefreshAhead(TimeSpan window);
+    public CacheBuilder<T> WithSlidingExpiration(TimeSpan slidingExpiration);
+
+    // Tags and versioning
+    public CacheBuilder<T> WithTags(params string[] tags);
+    public CacheBuilder<T> WithVersion(int version);
+
+    // Key generation
+    public CacheBuilder<T> WithKeyGenerator(ICacheKeyGenerator keyGenerator);
+    public CacheBuilder<T> WithKeyGenerator<TKeyGenerator>() where TKeyGenerator : ICacheKeyGenerator, new();
+
+    // Advanced features
+    public CacheBuilder<T> WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0, TimeSpan? refreshAheadWindow = null);
+    public CacheBuilder<T> WithDistributedLock(TimeSpan timeout, int maxConcurrency = 1);
+    public CacheBuilder<T> WithMetrics(ICacheMetrics metrics);
+
+    // Callbacks and conditions
+    public CacheBuilder<T> OnHit(Action<CacheContext> onHit);
+    public CacheBuilder<T> OnMiss(Action<CacheContext> onMiss);
+    public CacheBuilder<T> When(Func<CacheContext, bool> predicate);
+
+    // Configuration
+    public CacheBuilder<T> WithServices(IServiceProvider services);
+    public CacheBuilder<T> WithCancellationToken(CancellationToken cancellationToken);
+
+    // Execution
+    public ValueTask<T> ExecuteAsync();
+}
+```
+
+**Usage Examples**:
+
+```csharp
+// Simple usage
+var user = await cache.Cache(() => userService.GetUserAsync(userId))
+    .WithDuration(TimeSpan.FromHours(1))
+    .WithTags("user", $"user:{userId}")
+    .ExecuteAsync();
+
+// Advanced configuration
+var orders = await cache.Cache(() => orderService.GetOrdersAsync(customerId, status))
+    .WithDuration(TimeSpan.FromMinutes(30))
+    .WithStampedeProtection()
+    .WithKeyGenerator<JsonKeyGenerator>()
+    .When(ctx => customerId > 0)
+    .OnHit(ctx => logger.LogInformation($"Cache hit: {ctx.Key}"))
+    .OnMiss(ctx => logger.LogInformation($"Cache miss: {ctx.Key}"))
+    .ExecuteAsync();
+
+// Multiple key generators based on conditions
+var builder = cache.Cache(() => service.ProcessDataAsync(request))
+    .WithDuration(TimeSpan.FromMinutes(30));
+
+if (request.IsComplex)
+    builder = builder.WithKeyGenerator<MessagePackKeyGenerator>();
+else if (request.IsDebugMode)
+    builder = builder.WithKeyGenerator<JsonKeyGenerator>();
+else
+    builder = builder.WithKeyGenerator<FastHashKeyGenerator>();
+
+var result = await builder.ExecuteAsync();
+```
+
+**Benefits**:
+- **Intuitive**: Natural reading flow with method chaining
+- **Type-safe**: Generic key generator selection with compile-time validation
+- **Discoverable**: IntelliSense guides through available options
+- **Flexible**: Conditional configuration based on runtime values
+- **Performance**: No overhead - compiles to same efficient code as callback-based API
+- **Backward Compatible**: Existing APIs continue to work unchanged
+
 ### ICacheManager Extensions
 Namespace: `MethodCache.Core.Extensions`.
 

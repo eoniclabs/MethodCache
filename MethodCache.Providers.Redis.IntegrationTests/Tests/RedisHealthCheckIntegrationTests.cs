@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using MethodCache.Providers.Redis.Extensions;
+using MethodCache.Providers.Redis.Infrastructure;
 using MethodCache.Providers.Redis.HealthChecks;
 using Xunit;
 
@@ -15,7 +15,7 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
         // Arrange
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddRedisCacheWithHealthChecks(options =>
+        services.AddRedisInfrastructureWithHealthChecksForTests(options =>
         {
             options.ConnectionString = RedisConnectionString;
         });
@@ -29,14 +29,14 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
 
         // Assert
         result.Status.Should().Be(HealthStatus.Healthy);
-        result.Entries.Should().ContainKey("redis_cache");
-        
-        var redisCheck = result.Entries["redis_cache"];
+        result.Entries.Should().ContainKey("redis_infrastructure");
+
+        var redisCheck = result.Entries["redis_infrastructure"];
         redisCheck.Status.Should().Be(HealthStatus.Healthy);
-        redisCheck.Data.Should().ContainKey("ping_ms");
-        redisCheck.Data.Should().ContainKey("set_success");
-        redisCheck.Data.Should().ContainKey("get_success");
-        redisCheck.Data.Should().ContainKey("delete_success");
+        redisCheck.Data.Should().ContainKey("Provider");
+        redisCheck.Data.Should().ContainKey("Status");
+        redisCheck.Data.Should().ContainKey("GetOperations");
+        redisCheck.Data.Should().ContainKey("SetOperations");
 
         await StopHostedServicesAsync(serviceProvider);
         await DisposeServiceProviderAsync(serviceProvider);
@@ -48,12 +48,11 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
         // Arrange
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddRedisCacheWithHealthChecks(options =>
+        services.AddRedisInfrastructureWithHealthChecksForTests(options =>
         {
             options.ConnectionString = RedisConnectionString;
             options.EnableDistributedLocking = true;
             options.EnablePubSubInvalidation = true;
-            options.EnableCacheWarming = false; // Temporarily disabled to test if this causes hang
             options.KeyPrefix = CreateKeyPrefix("health-test");
             options.BackplaneChannel = CreateKeyPrefix("health-test-backplane");
         });
@@ -66,18 +65,14 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
         var result = await healthCheckService.CheckHealthAsync();
 
         // Assert
-        var redisCheck = result.Entries["redis_cache"];
-        redisCheck.Data.Should().ContainKey("database_number");
-        redisCheck.Data.Should().ContainKey("key_prefix");
-        redisCheck.Data.Should().ContainKey("distributed_locking_enabled");
-        redisCheck.Data.Should().ContainKey("pubsub_invalidation_enabled");
-        redisCheck.Data.Should().ContainKey("cache_warming_enabled");
-        
-        redisCheck.Data["key_prefix"].Should().NotBeNull();
-        ((string)redisCheck.Data["key_prefix"]).Should().StartWith("health-test:");
-        redisCheck.Data["distributed_locking_enabled"].Should().Be(true);
-        redisCheck.Data["pubsub_invalidation_enabled"].Should().Be(true);
-        redisCheck.Data["cache_warming_enabled"].Should().Be(false); // We disabled it to avoid hanging
+        var redisCheck = result.Entries["redis_infrastructure"];
+        redisCheck.Data.Should().ContainKey("Provider");
+        redisCheck.Data.Should().ContainKey("Status");
+        redisCheck.Data.Should().ContainKey("GetOperations");
+        redisCheck.Data.Should().ContainKey("SetOperations");
+
+        redisCheck.Data["Provider"].Should().Be("Redis");
+        redisCheck.Data["Status"].Should().Be("Healthy");
 
         await StopHostedServicesAsync(serviceProvider);
         await DisposeServiceProviderAsync(serviceProvider);
@@ -90,9 +85,9 @@ public class RedisHealthCheckIntegrationTests : RedisIntegrationTestBase
         var customName = "my_custom_redis_check";
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddRedisCacheWithHealthChecks(
+        services.AddRedisInfrastructureWithHealthChecksForTests(
             options => options.ConnectionString = RedisConnectionString,
-            customName);
+            healthCheckName: customName);
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);

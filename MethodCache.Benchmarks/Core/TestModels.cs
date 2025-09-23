@@ -6,16 +6,12 @@ namespace MethodCache.Benchmarks.Core;
 /// <summary>
 /// Small data model for performance testing
 /// </summary>
-[MessagePackObject]
 public class SmallModel
 {
-    [Key(0)]
     public int Id { get; set; }
     
-    [Key(1)]
     public string Name { get; set; } = string.Empty;
     
-    [Key(2)]
     public DateTime CreatedAt { get; set; }
     
     public static SmallModel Create(int id) => new()
@@ -29,34 +25,24 @@ public class SmallModel
 /// <summary>
 /// Medium data model for performance testing
 /// </summary>
-[MessagePackObject]
 public class MediumModel
 {
-    [Key(0)]
     public int Id { get; set; }
     
-    [Key(1)]
     public string Name { get; set; } = string.Empty;
     
-    [Key(2)]
     public string Description { get; set; } = string.Empty;
     
-    [Key(3)]
     public DateTime CreatedAt { get; set; }
     
-    [Key(4)]
     public DateTime UpdatedAt { get; set; }
     
-    [Key(5)]
     public List<string> Tags { get; set; } = new();
     
-    [Key(6)]
     public Dictionary<string, object> Properties { get; set; } = new();
     
-    [Key(7)]
     public decimal Price { get; set; }
     
-    [Key(8)]
     public bool IsActive { get; set; }
 
     public static MediumModel Create(int id) => new()
@@ -79,37 +65,26 @@ public class MediumModel
 /// <summary>
 /// Large data model for performance testing
 /// </summary>
-[MessagePackObject]
 public class LargeModel
 {
-    [Key(0)]
     public int Id { get; set; }
     
-    [Key(1)]
     public string Name { get; set; } = string.Empty;
     
-    [Key(2)]
     public string Description { get; set; } = string.Empty;
     
-    [Key(3)]
     public DateTime CreatedAt { get; set; }
     
-    [Key(4)]
     public DateTime UpdatedAt { get; set; }
     
-    [Key(5)]
     public List<string> Tags { get; set; } = new();
     
-    [Key(6)]
     public Dictionary<string, object> Properties { get; set; } = new();
     
-    [Key(7)]
     public List<MediumModel> RelatedItems { get; set; } = new();
     
-    [Key(8)]
     public byte[] BinaryData { get; set; } = Array.Empty<byte>();
     
-    [Key(9)]
     public List<Dictionary<string, string>> NestedData { get; set; } = new();
     
     [Key(10)]
@@ -147,31 +122,22 @@ public class LargeModel
 /// <summary>
 /// User model for real-world scenarios
 /// </summary>
-[MessagePackObject]
 public class User
 {
-    [Key(0)]
     public int Id { get; set; }
     
-    [Key(1)]
     public string FirstName { get; set; } = string.Empty;
     
-    [Key(2)]
     public string LastName { get; set; } = string.Empty;
     
-    [Key(3)]
     public string Email { get; set; } = string.Empty;
     
-    [Key(4)]
     public DateTime CreatedAt { get; set; }
     
-    [Key(5)]
     public DateTime LastLoginAt { get; set; }
     
-    [Key(6)]
     public List<string> Roles { get; set; } = new();
     
-    [Key(7)]
     public UserPreferences Preferences { get; set; } = new();
 
     public static User Create(int id) => new()
@@ -189,19 +155,14 @@ public class User
     };
 }
 
-[MessagePackObject]
 public class UserPreferences
 {
-    [Key(0)]
     public string Theme { get; set; } = "Light";
     
-    [Key(1)]
     public string Language { get; set; } = "en-US";
     
-    [Key(2)]
     public Dictionary<string, bool> Features { get; set; } = new();
     
-    [Key(3)]
     public NotificationSettings Notifications { get; set; } = new();
 
     public static UserPreferences Create() => new()
@@ -218,16 +179,12 @@ public class UserPreferences
     };
 }
 
-[MessagePackObject]
 public class NotificationSettings
 {
-    [Key(0)]
     public bool EmailEnabled { get; set; }
     
-    [Key(1)]
     public bool PushEnabled { get; set; }
     
-    [Key(2)]
     public bool SmsEnabled { get; set; }
 
     public static NotificationSettings Create() => new()
@@ -241,31 +198,22 @@ public class NotificationSettings
 /// <summary>
 /// Product model for e-commerce scenarios
 /// </summary>
-[MessagePackObject]
 public class Product
 {
-    [Key(0)]
     public int Id { get; set; }
     
-    [Key(1)]
     public string Name { get; set; } = string.Empty;
     
-    [Key(2)]
     public string Description { get; set; } = string.Empty;
     
-    [Key(3)]
     public decimal Price { get; set; }
     
-    [Key(4)]
     public string Category { get; set; } = string.Empty;
     
-    [Key(5)]
     public List<string> Tags { get; set; } = new();
     
-    [Key(6)]
     public ProductInventory Inventory { get; set; } = new();
     
-    [Key(7)]
     public List<ProductReview> Reviews { get; set; } = new();
 
     public static Product Create(int id) => new()
@@ -285,16 +233,12 @@ public class Product
     };
 }
 
-[MessagePackObject]
 public class ProductInventory
 {
-    [Key(0)]
     public int Quantity { get; set; }
     
-    [Key(1)]
     public int ReservedQuantity { get; set; }
     
-    [Key(2)]
     public DateTime LastUpdated { get; set; }
 
     public static ProductInventory Create() => new()
@@ -305,19 +249,14 @@ public class ProductInventory
     };
 }
 
-[MessagePackObject]
 public class ProductReview
 {
-    [Key(0)]
     public int Id { get; set; }
     
-    [Key(1)]
     public int Rating { get; set; }
     
-    [Key(2)]
     public string Comment { get; set; } = string.Empty;
     
-    [Key(3)]
     public DateTime CreatedAt { get; set; }
 
     public static ProductReview Create(int id) => new()
