@@ -1,14 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using MethodCache.Core;
+using MethodCache.Core.Storage;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Infrastructure;
-using MethodCache.HybridCache.Abstractions;
-using MethodCache.HybridCache.Configuration;
-using MethodCache.HybridCache.Implementation;
-using MethodCache.HybridCache.Extensions;
+
+
+
+
 using MethodCache.Infrastructure.Abstractions;
 using MethodCache.Infrastructure.Configuration;
 using System;
@@ -32,8 +34,11 @@ namespace MethodCache.Providers.Redis.Extensions
             // Add Redis infrastructure with L1+L2 storage
             services.AddRedisHybridInfrastructure(configureRedisOptions);
 
-            // Add hybrid cache using Infrastructure
-            services.AddInfrastructureHybridCacheWithL2(configureHybridOptions);
+            // Configure hybrid cache options
+            if (configureHybridOptions != null)
+            {
+                services.Configure(configureHybridOptions);
+            }
 
             return services;
         }
@@ -56,7 +61,11 @@ namespace MethodCache.Providers.Redis.Extensions
             });
 
             // Add hybrid cache using Infrastructure
-            services.AddInfrastructureHybridCacheWithL2(configureHybridOptions);
+            // Configure hybrid cache options
+            if (configureHybridOptions != null)
+            {
+                services.Configure(configureHybridOptions);
+            }
 
             return services;
         }
@@ -69,7 +78,7 @@ namespace MethodCache.Providers.Redis.Extensions
             this HybridCacheOptions options,
             long maxItems = 10000,
             TimeSpan? defaultExpiration = null,
-            HybridCache.Configuration.L1EvictionPolicy evictionPolicy = HybridCache.Configuration.L1EvictionPolicy.LRU)
+            MethodCache.Core.Storage.L1EvictionPolicy evictionPolicy = MethodCache.Core.Storage.L1EvictionPolicy.LRU)
         {
             options.L1MaxItems = maxItems;
             options.L1DefaultExpiration = defaultExpiration ?? TimeSpan.FromMinutes(5);
@@ -158,8 +167,8 @@ namespace MethodCache.Providers.Redis.Extensions
                 storage.EnableBackplane = options.EnableBackplane;
             });
 
-            // Add hybrid cache
-            services.AddInfrastructureHybridCacheWithL2(hybrid =>
+            // Add hybrid cache configuration
+            services.Configure<HybridCacheOptions>(hybrid =>
             {
                 hybrid.L1DefaultExpiration = options.L1DefaultExpiration;
                 hybrid.L1MaxExpiration = options.L1MaxExpiration;

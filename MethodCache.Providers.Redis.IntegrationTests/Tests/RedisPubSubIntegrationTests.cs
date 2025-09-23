@@ -2,8 +2,8 @@ using FluentAssertions;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
-using MethodCache.HybridCache.Extensions;
 using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Infrastructure.Extensions;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -108,7 +108,13 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         });
 
         // Add hybrid cache for cross-instance coordination
-        services1.AddInfrastructureHybridCacheWithL2(hybridOptions =>
+        services1.AddHybridStorageManager(options =>
+        {
+            options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+            options.L2DefaultExpiration = TimeSpan.FromHours(1);
+            options.EnableBackplane = true;
+        });
+        services1.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
             hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
@@ -130,7 +136,13 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         });
 
         // Add hybrid cache for cross-instance coordination
-        services2.AddInfrastructureHybridCacheWithL2(hybridOptions =>
+        services2.AddHybridStorageManager(options =>
+        {
+            options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+            options.L2DefaultExpiration = TimeSpan.FromHours(1);
+            options.EnableBackplane = true;
+        });
+        services2.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
             hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);

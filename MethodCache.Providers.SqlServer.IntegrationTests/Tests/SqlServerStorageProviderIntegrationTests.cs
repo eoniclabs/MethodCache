@@ -166,10 +166,16 @@ public class SqlServerStorageProviderIntegrationTests : SqlServerIntegrationTest
         afterRemovalA3.Should().BeNull(); // Had both tags A and B
     }
 
-    private class TestObject
+    [MessagePack.MessagePackObject]
+    internal class TestObject
     {
+        [MessagePack.Key(0)]
         public int Id { get; set; }
+
+        [MessagePack.Key(1)]
         public string Name { get; set; } = string.Empty;
+
+        [MessagePack.Key(2)]
         public string[] Items { get; set; } = Array.Empty<string>();
     }
 }

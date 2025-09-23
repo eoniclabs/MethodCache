@@ -73,7 +73,7 @@ public class WarningHeaderBuilder
     /// <returns>The builder for chaining.</returns>
     public WarningHeaderBuilder AddWarning(WarningCode code, string text, DateTimeOffset? date = null)
     {
-        var agent = $"{_hostName}:{Environment.ProcessId}";
+        var agent = _hostName;
         var warning = date.HasValue
             ? new WarningHeaderValue((int)code, agent, $"\"{text}\"", date.Value)
             : new WarningHeaderValue((int)code, agent, $"\"{text}\"");

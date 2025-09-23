@@ -127,11 +127,13 @@ public class MemoryStorage : IMemoryStorage
             return;
         }
 
+        bool hasTagMapping = false;
         _tagMappingLock.EnterReadLock();
         try
         {
             if (_tagToKeys.TryGetValue(tag, out var keys))
             {
+                hasTagMapping = true;
                 var keysToRemove = keys.Keys.ToArray();
                 foreach (var key in keysToRemove)
                 {
@@ -144,6 +146,15 @@ public class MemoryStorage : IMemoryStorage
         finally
         {
             _tagMappingLock.ExitReadLock();
+        }
+
+        if (!hasTagMapping)
+        {
+            // Tag not found in mappings - this can happen when entries were promoted from L2/L3
+            // without tag information. In this case, we must clear the entire L1 cache to be safe.
+            _logger.LogWarning("Tag {Tag} not found in mappings. Clearing entire L1 cache to ensure consistency.", tag);
+            Clear();
+            return;
         }
 
         // Clean up tag mappings

@@ -54,7 +54,7 @@ public class HybridStorageManagerTests : IDisposable
         var name = _hybridStorage.Name;
 
         // Assert
-        name.Should().Be("Hybrid(Redis)");
+        name.Should().Be("Hybrid(L1+L2+Memory-Only)");
     }
 
     [Fact]

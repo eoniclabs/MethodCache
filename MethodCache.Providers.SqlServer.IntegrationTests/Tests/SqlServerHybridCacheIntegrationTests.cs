@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Infrastructure.Abstractions;
 using MethodCache.Infrastructure.Implementation;
+using MethodCache.Providers.SqlServer.Infrastructure;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
@@ -123,8 +124,61 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
     }
 
     [Fact(Timeout = 30000)] // 30 seconds
+    public async Task HybridStorageManager_SingleInstance_RemoveByTag_ShouldWork()
+    {
+        // Debug test to isolate the issue without backplane complexity
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var schema = $"debug_{Guid.NewGuid():N}".Replace("-", "");
+        services.AddSqlServerHybridInfrastructureForTests(options =>
+        {
+            options.ConnectionString = SqlServerConnectionString;
+            options.EnableAutoTableCreation = true;
+            options.EnableBackplane = false; // Disable backplane
+            options.Schema = schema;
+            options.KeyPrefix = "debug:";
+        }, configureStorage: storageOptions =>
+        {
+            storageOptions.EnableAsyncL2Writes = false;
+            storageOptions.L3Enabled = true; // Enable L3 for testing
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Initialize tables
+        var tableManager = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Services.ISqlServerTableManager>();
+        await tableManager.EnsureTablesExistAsync();
+
+        var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
+
+        var key = "debug-test-key";
+        var value = "debug-test-value";
+        var tag = "debug-test-tag";
+
+        // Store value
+        await hybridStorage.SetAsync(key, value, TimeSpan.FromMinutes(10), new[] { tag });
+
+        // Verify it's stored
+        var retrieved = await hybridStorage.GetAsync<string>(key);
+        retrieved.Should().Be(value);
+
+        // Remove by tag
+        await hybridStorage.RemoveByTagAsync(tag);
+
+        // Verify it's removed
+        var afterRemoval = await hybridStorage.GetAsync<string>(key);
+        afterRemoval.Should().BeNull("Value should be removed after RemoveByTagAsync");
+
+        // Cleanup
+        await serviceProvider.DisposeAsync();
+    }
+
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task HybridStorageManager_WithBackplane_ShouldPropagateInvalidations()
     {
+        // First run the debug test to ensure basic functionality works
+        await HybridStorageManager_SingleInstance_RemoveByTag_ShouldWork();
+
         // Arrange
         var services1 = new ServiceCollection();
         services1.AddLogging();
@@ -135,7 +189,11 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
             options.EnableAutoTableCreation = true;
             options.EnableBackplane = true;
             options.Schema = schema;
-            options.KeyPrefix = "instance1:";
+            options.KeyPrefix = "shared:";
+        }, configureStorage: storageOptions =>
+        {
+            storageOptions.EnableAsyncL2Writes = false; // Use synchronous L2 writes for testing
+            storageOptions.L3Enabled = false; // Use L2 only, not L3
         });
 
         var serviceProvider1 = services1.BuildServiceProvider();
@@ -153,7 +211,11 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
             options.EnableAutoTableCreation = true;
             options.EnableBackplane = true;
             options.Schema = schema;
-            options.KeyPrefix = "instance2:";
+            options.KeyPrefix = "shared:";
+        }, configureStorage: storageOptions =>
+        {
+            storageOptions.EnableAsyncL2Writes = false; // Use synchronous L2 writes for testing
+            storageOptions.L3Enabled = false; // Use L2 only, not L3
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
@@ -179,6 +241,25 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         // Invalidate by tag from instance 2
         await hybridStorage2.RemoveByTagAsync(tag);
 
+        // Check what layers are being used - get L1 storage directly to verify it's cleared
+        var memoryStorage1 = serviceProvider1.GetRequiredService<IMemoryStorage>();
+        var memoryStorage2 = serviceProvider2.GetRequiredService<IMemoryStorage>();
+
+        // Verify that instances have different memory storage
+        ReferenceEquals(memoryStorage1, memoryStorage2).Should().BeFalse("Each instance should have its own L1 memory storage");
+
+        var l1Value = await memoryStorage2.GetAsync<string>(key);
+        l1Value.Should().BeNull("L1 cache should be cleared after RemoveByTagAsync");
+
+        // Check L2 storage directly
+        var sqlStorage2 = serviceProvider2.GetRequiredService<SqlServerPersistentStorageProvider>();
+        var l2Value = await sqlStorage2.GetAsync<string>(key);
+        l2Value.Should().BeNull("L2 storage should be cleared after RemoveByTagAsync");
+
+        // Verify instance 2 can't find it immediately (should be removed from its own storage)
+        var immediate2 = await hybridStorage2.GetAsync<string>(key);
+        immediate2.Should().BeNull("Instance 2 should not find value after its own RemoveByTagAsync");
+
         // Wait for backplane propagation
         await Task.Delay(TimeSpan.FromSeconds(5));
 
@@ -187,8 +268,8 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         var afterInvalidation2 = await hybridStorage2.GetAsync<string>(key);
 
         // Assert
-        afterInvalidation1.Should().BeNull();
-        afterInvalidation2.Should().BeNull();
+        afterInvalidation1.Should().BeNull("Instance 1 should not find value after backplane propagation");
+        afterInvalidation2.Should().BeNull("Instance 2 should not find value after its own RemoveByTagAsync");
 
         // Cleanup
         await serviceProvider1.DisposeAsync();

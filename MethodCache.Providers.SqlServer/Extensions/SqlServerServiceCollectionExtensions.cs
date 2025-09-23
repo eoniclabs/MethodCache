@@ -8,8 +8,6 @@ using MethodCache.Infrastructure.Extensions;
 using MethodCache.Infrastructure.Abstractions;
 using MethodCache.Infrastructure.Configuration;
 using MethodCache.Infrastructure.Implementation;
-using MethodCache.HybridCache.Extensions;
-using MethodCache.HybridCache.Configuration;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.HealthChecks;
 using MethodCache.Providers.SqlServer.Infrastructure;
@@ -32,6 +30,9 @@ public static class SqlServerServiceCollectionExtensions
         this IServiceCollection services,
         Action<SqlServerOptions>? configureSqlServer = null)
     {
+        // Add core infrastructure first
+        services.AddCacheInfrastructure();
+
         // Configure options
         if (configureSqlServer != null)
         {
@@ -138,7 +139,7 @@ public static class SqlServerServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddHybridSqlServerCache(
         this IServiceCollection services,
-        Action<HybridCacheOptions> configureHybridOptions,
+        Action<MethodCache.Core.Storage.HybridCacheOptions> configureHybridOptions,
         Action<SqlServerOptions>? configureSqlServerOptions = null)
     {
         if (configureHybridOptions == null)
@@ -150,15 +151,10 @@ public static class SqlServerServiceCollectionExtensions
         // Configure hybrid cache options for L1+L3
         if (configureHybridOptions != null)
         {
-            services.Configure<StorageOptions>(options =>
+            services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
             {
-                var hybridOptions = new HybridCacheOptions();
-                configureHybridOptions(hybridOptions);
-
-                options.L1DefaultExpiration = hybridOptions.L1DefaultExpiration;
-                options.L3DefaultExpiration = hybridOptions.L2DefaultExpiration; // Map L2 to L3 for persistence
+                configureHybridOptions(options);
                 options.L3Enabled = true;
-                options.EnableL3Promotion = true;
             });
         }
 
@@ -172,7 +168,7 @@ public static class SqlServerServiceCollectionExtensions
     public static IServiceCollection AddHybridSqlServerCache(
         this IServiceCollection services,
         string connectionString,
-        Action<HybridCacheOptions>? configureHybridOptions = null,
+        Action<MethodCache.Core.Storage.HybridCacheOptions>? configureHybridOptions = null,
         Action<SqlServerOptions>? configureSqlServerOptions = null)
     {
         // Add SQL Server infrastructure
@@ -185,15 +181,10 @@ public static class SqlServerServiceCollectionExtensions
         // Configure hybrid cache options for L1+L3
         if (configureHybridOptions != null)
         {
-            services.Configure<StorageOptions>(options =>
+            services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
             {
-                var hybridOptions = new HybridCacheOptions();
-                configureHybridOptions(hybridOptions);
-
-                options.L1DefaultExpiration = hybridOptions.L1DefaultExpiration;
-                options.L3DefaultExpiration = hybridOptions.L2DefaultExpiration; // Map L2 to L3 for persistence
+                configureHybridOptions(options);
                 options.L3Enabled = true;
-                options.EnableL3Promotion = true;
             });
         }
 
@@ -230,8 +221,8 @@ public static class SqlServerServiceCollectionExtensions
             sqlServer.BackplaneMessageRetention = options.BackplaneMessageRetention;
         });
 
-        // Add hybrid cache
-        services.AddInfrastructureHybridCacheWithL2(hybrid =>
+        // Configure hybrid cache options
+        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybrid =>
         {
             hybrid.L1DefaultExpiration = options.L1DefaultExpiration;
             hybrid.L1MaxExpiration = options.L1MaxExpiration;
@@ -366,7 +357,7 @@ public class SqlServerHybridCacheOptions
     /// <summary>
     /// Hybrid cache strategy.
     /// </summary>
-    public HybridStrategy Strategy { get; set; } = HybridStrategy.WriteThrough;
+    public MethodCache.Core.Storage.HybridStrategy Strategy { get; set; } = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
 
     /// <summary>
     /// Whether to enable backplane coordination.

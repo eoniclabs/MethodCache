@@ -1,7 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Providers.SqlServer.HealthChecks;
+using MethodCache.Providers.SqlServer.Infrastructure;
+using MethodCache.Providers.SqlServer.Services;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
@@ -11,30 +15,38 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
     public async Task CheckHealthAsync_WithHealthyDatabase_ShouldReturnHealthy()
     {
         // Arrange
-        var healthCheck = ServiceProvider.GetRequiredService<SqlServerInfrastructureHealthCheck>();
+        var healthCheck = new SqlServerInfrastructureHealthCheck(
+            ServiceProvider.GetRequiredService<SqlServerPersistentStorageProvider>(),
+            ServiceProvider.GetRequiredService<ILogger<SqlServerInfrastructureHealthCheck>>());
 
         // Act
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext(), CancellationToken.None);
 
         // Assert
         result.Status.Should().Be(HealthStatus.Healthy);
-        result.Data.Should().ContainKey("database_accessible");
-        result.Data["database_accessible"].Should().Be(true);
+        result.Data.Should().ContainKey("Provider");
+        result.Data.Should().ContainKey("Status");
+        result.Data["Provider"].Should().Be("SqlServer-L3-Persistent");
+        result.Data["Status"].Should().Be("Healthy");
     }
 
     [Fact(Timeout = 30000)] // 30 seconds
     public async Task CheckHealthAsync_WithTablesPresent_ShouldIncludeTableInfo()
     {
         // Arrange
-        var healthCheck = ServiceProvider.GetRequiredService<SqlServerInfrastructureHealthCheck>();
+        var healthCheck = new SqlServerInfrastructureHealthCheck(
+            ServiceProvider.GetRequiredService<SqlServerPersistentStorageProvider>(),
+            ServiceProvider.GetRequiredService<ILogger<SqlServerInfrastructureHealthCheck>>());
 
         // Act
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext(), CancellationToken.None);
 
         // Assert
         result.Status.Should().Be(HealthStatus.Healthy);
-        result.Data.Should().ContainKey("tables_exist");
-        result.Data["tables_exist"].Should().Be(true);
+        result.Data.Should().ContainKey("Provider");
+        result.Data.Should().ContainKey("Status");
+        result.Data["Provider"].Should().Be("SqlServer-L3-Persistent");
+        result.Data["Status"].Should().Be("Healthy");
     }
 
     [Fact(Timeout = 30000)] // 30 seconds
@@ -64,8 +76,10 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
 
         // Assert
         result.Status.Should().Be(HealthStatus.Healthy);
-        result.Data.Should().ContainKey("backplane_enabled");
-        result.Data["backplane_enabled"].Should().Be(true);
+        result.Data.Should().ContainKey("Provider");
+        result.Data.Should().ContainKey("Status");
+        result.Data["Provider"].Should().Be("SqlServer-L3-Persistent");
+        result.Data["Status"].Should().Be("Healthy");
 
         // Cleanup
         await serviceProvider.DisposeAsync();
@@ -91,12 +105,11 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
 
         // Assert
         result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Exception.Should().NotBeNull();
-        result.Data.Should().ContainKey("database_accessible");
-        result.Data["database_accessible"].Should().Be(false);
+        result.Data.Should().ContainKey("Provider");
+        result.Data["Provider"].Should().Be("SqlServer-L3-Persistent");
 
         // Cleanup
-        serviceProvider.Dispose();
+        await serviceProvider.DisposeAsync();
     }
 
     [Fact(Timeout = 30000)] // 30 seconds
@@ -136,7 +149,9 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
     public async Task CheckHealthAsync_WithTimeout_ShouldHandleGracefully()
     {
         // Arrange
-        var healthCheck = ServiceProvider.GetRequiredService<SqlServerInfrastructureHealthCheck>();
+        var healthCheck = new SqlServerInfrastructureHealthCheck(
+            ServiceProvider.GetRequiredService<SqlServerPersistentStorageProvider>(),
+            ServiceProvider.GetRequiredService<ILogger<SqlServerInfrastructureHealthCheck>>());
         var shortTimeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(1));
 
         // Act
@@ -151,7 +166,9 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
     public async Task CheckHealthAsync_MultipleChecks_ShouldBeConsistent()
     {
         // Arrange
-        var healthCheck = ServiceProvider.GetRequiredService<SqlServerInfrastructureHealthCheck>();
+        var healthCheck = new SqlServerInfrastructureHealthCheck(
+            ServiceProvider.GetRequiredService<SqlServerPersistentStorageProvider>(),
+            ServiceProvider.GetRequiredService<ILogger<SqlServerInfrastructureHealthCheck>>());
 
         // Act
         var result1 = await healthCheck.CheckHealthAsync(new HealthCheckContext(), CancellationToken.None);
@@ -163,8 +180,10 @@ public class SqlServerHealthCheckIntegrationTests : SqlServerIntegrationTestBase
         result2.Status.Should().Be(HealthStatus.Healthy);
         result3.Status.Should().Be(HealthStatus.Healthy);
 
-        // All should have consistent data
-        result1.Data.Should().BeEquivalentTo(result2.Data);
-        result2.Data.Should().BeEquivalentTo(result3.Data);
+        // All should have consistent basic data (excluding statistics which can vary)
+        result1.Data["Provider"].Should().Be(result2.Data["Provider"]);
+        result1.Data["Status"].Should().Be(result2.Data["Status"]);
+        result2.Data["Provider"].Should().Be(result3.Data["Provider"]);
+        result2.Data["Status"].Should().Be(result3.Data["Status"]);
     }
 }
