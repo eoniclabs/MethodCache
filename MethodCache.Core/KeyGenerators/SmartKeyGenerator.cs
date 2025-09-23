@@ -327,61 +327,46 @@ namespace MethodCache.Core.KeyGenerators
 
         private string InferMethodFromServiceAndArgs(Type serviceType, object[] args)
         {
-            var serviceName = serviceType.Name;
+            var argTypes = args?.Select(a => a?.GetType()).ToArray() ?? Array.Empty<Type>();
 
-            // Get all async methods from the service
-            var methods = serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            // Find methods on the service that could match the arguments
+            var potentialMethods = serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.Name.EndsWith("Async"))
+                .Where(m =>
+                {
+                    var parameters = m.GetParameters();
+                    if (parameters.Length != argTypes.Length) return false;
+
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        if (argTypes[i] != null && !parameters[i].ParameterType.IsAssignableFrom(argTypes[i]))
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
+                .ToList();
+
+            // If exactly one match is found, we can be confident.
+            if (potentialMethods.Count == 1)
+            {
+                return potentialMethods[0].Name;
+            }
+
+            // If multiple matches, prefer shorter names (GetAsync over GetDetailedAsync)
+            if (potentialMethods.Count > 1)
+            {
+                var shortestName = potentialMethods.OrderBy(m => m.Name.Length).First();
+                return shortestName.Name;
+            }
+
+            // Fallback: return first async method if available
+            var allMethods = serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Where(m => m.Name.EndsWith("Async"))
                 .ToArray();
 
-            // Use argument count and types to help infer the method
-            var argCount = args?.Length ?? 0;
-
-            if (serviceName.Contains("UserService"))
-            {
-                // For the test scenario with single int argument
-                if (argCount == 1 && args?[0] is int)
-                {
-                    var intValue = (int)args[0];
-                    // For the specific failing test case, 456 should always map to GetUserProfileAsync
-                    // Looking at the test, it explicitly calls GetUserProfileAsync(456)
-                    if (intValue == 456)
-                        return "GetUserProfileAsync";
-
-                    // For values > 400, likely profile methods (based on test pattern)
-                    if (intValue > 400 && methods.Any(m => m.Name == "GetUserProfileAsync"))
-                        return "GetUserProfileAsync";
-
-                    // Default to GetUserAsync for smaller IDs
-                    if (methods.Any(m => m.Name == "GetUserAsync"))
-                        return "GetUserAsync";
-                }
-
-                // If no args, prefer GetUserProfileAsync if available (for failing test scenario)
-                if (argCount == 0 && methods.Any(m => m.Name == "GetUserProfileAsync"))
-                    return "GetUserProfileAsync";
-            }
-            else if (serviceName.Contains("OrderService"))
-            {
-                // Two arguments (int, string) likely means FetchOrdersAsync
-                if (argCount == 2 && args?[0] is int && args?[1] is string)
-                {
-                    if (methods.Any(m => m.Name == "FetchOrdersAsync"))
-                        return "FetchOrdersAsync";
-                }
-            }
-            else if (serviceName.Contains("ReportService"))
-            {
-                // Single complex object likely means GenerateReportAsync
-                if (argCount == 1 && args?[0] != null && !IsPrimitiveOrSimpleType(args[0].GetType()))
-                {
-                    if (methods.Any(m => m.Name == "GenerateReportAsync"))
-                        return "GenerateReportAsync";
-                }
-            }
-
-            // Fallback to first async method if available
-            return methods.FirstOrDefault()?.Name ?? string.Empty;
+            return allMethods.FirstOrDefault()?.Name ?? string.Empty;
         }
 
         private static string ExtractServiceName(string methodName)

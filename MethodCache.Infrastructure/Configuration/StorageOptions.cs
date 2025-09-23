@@ -67,8 +67,10 @@ public class StorageOptions
 
     /// <summary>
     /// Instance ID for this cache instance (used in backplane communication).
+    /// Should be set to a stable, unique value for each logical cache instance.
+    /// If not set, backplane communication may not work as expected.
     /// </summary>
-    public string InstanceId { get; set; } = Guid.NewGuid().ToString();
+    public string? InstanceId { get; set; } = null;
 
     /// <summary>
     /// Whether to log detailed debug information.

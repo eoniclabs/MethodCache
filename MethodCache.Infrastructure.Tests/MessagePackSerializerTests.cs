@@ -205,25 +205,13 @@ public class MessagePackSerializerTests
     }
 
     // Test object for complex serialization scenarios
-    [MessagePack.MessagePackObject]
     public class TestObject
     {
-        [MessagePack.Key(0)]
         public int Id { get; set; }
-
-        [MessagePack.Key(1)]
         public string Name { get; set; } = string.Empty;
-
-        [MessagePack.Key(2)]
         public string[] Tags { get; set; } = Array.Empty<string>();
-
-        [MessagePack.Key(3)]
         public DateTimeOffset CreatedAt { get; set; }
-
-        [MessagePack.Key(4)]
         public bool IsActive { get; set; }
-
-        [MessagePack.Key(5)]
         public Dictionary<string, string> Metadata { get; set; } = new();
     }
 

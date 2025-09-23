@@ -34,6 +34,8 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
     private long _setOperations;
     private long _removeOperations;
     private long _errorCount;
+    private long _expiredEntriesCleaned;
+    private DateTime _lastCleanupTime = DateTime.MinValue;
     private readonly object _statsLock = new();
     private DateTime _lastOperationTime = DateTime.UtcNow;
 
@@ -517,7 +519,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
             const string sql = "SELECT 1";
             await using var command = new SqlCommand(sql, connection)
             {
-                CommandTimeout = 5 // Short timeout for health checks
+                CommandTimeout = _options.HealthCheckTimeoutSeconds
             };
 
             var start = DateTime.UtcNow;
@@ -585,11 +587,11 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
                 AverageResponseTimeMs = CalculateAverageResponseTime(),
                 EntryCount = entryCount,
                 DiskSpaceUsedBytes = await GetStorageSizeAsync(cancellationToken),
-                ExpiredEntriesCleaned = 0, // TODO: Track this
+                ExpiredEntriesCleaned = Interlocked.Read(ref _expiredEntriesCleaned),
                 AveragePersistTimeMs = CalculateAverageResponseTime(),
                 AverageRetrievalTimeMs = CalculateAverageResponseTime(),
                 ActiveConnections = 1, // Current connection
-                LastCleanupTime = DateTime.UtcNow, // TODO: Track actual cleanup time
+                LastCleanupTime = _lastCleanupTime == DateTime.MinValue ? null : _lastCleanupTime,
                 AdditionalStats = new Dictionary<string, object>
                 {
                     ["ConnectionString"] = MaskConnectionString(_options.ConnectionString),
@@ -617,11 +619,11 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
                 AverageResponseTimeMs = CalculateAverageResponseTime(),
                 DiskSpaceUsedBytes = 0,
                 EntryCount = 0,
-                ExpiredEntriesCleaned = 0,
+                ExpiredEntriesCleaned = Interlocked.Read(ref _expiredEntriesCleaned),
                 AveragePersistTimeMs = 0,
                 AverageRetrievalTimeMs = 0,
                 ActiveConnections = 0,
-                LastCleanupTime = null
+                LastCleanupTime = _lastCleanupTime == DateTime.MinValue ? null : _lastCleanupTime
             };
         }
     }
@@ -725,8 +727,11 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
 
             if (deletedCount > 0)
             {
+                Interlocked.Add(ref _expiredEntriesCleaned, deletedCount);
                 _logger.LogInformation("L3 cleanup: Removed {DeletedCount} expired entries", deletedCount);
             }
+
+            _lastCleanupTime = DateTime.UtcNow;
 
             // Also cleanup orphaned tag entries
             const string cleanupTagsSql = @"

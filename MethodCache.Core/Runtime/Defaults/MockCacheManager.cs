@@ -14,7 +14,7 @@ namespace MethodCache.Core.Runtime.Defaults
         public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
         {
             var key = keyGenerator.GenerateKey(methodName, args, settings);
-            System.Console.WriteLine($"MockCacheManager: key='{key}', keyGen='{keyGenerator.GetType().Name}', method='{methodName}', args=[{string.Join(",", args.Select(a => a?.GetType().Name ?? "null"))}], cache contains: {_cache.ContainsKey(key)}");
+            // Debug info available via logging if needed
 
             if (ForceCacheHit && _cache.TryGetValue(key, out var hitValue))
             {
