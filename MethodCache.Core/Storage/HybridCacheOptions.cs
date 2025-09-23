@@ -1,6 +1,6 @@
 using System;
 
-namespace MethodCache.HybridCache.Configuration
+namespace MethodCache.Core.Storage
 {
     /// <summary>
     /// Configuration options for the hybrid cache.
@@ -8,7 +8,7 @@ namespace MethodCache.HybridCache.Configuration
     public class HybridCacheOptions
     {
         /// <summary>
-        /// Strategy for coordinating L1 and L2 caches.
+        /// Strategy for coordinating L1, L2, and L3 caches.
         /// </summary>
         public HybridStrategy Strategy { get; set; } = HybridStrategy.WriteThrough;
 
@@ -28,9 +28,19 @@ namespace MethodCache.HybridCache.Configuration
         public TimeSpan L2DefaultExpiration { get; set; } = TimeSpan.FromHours(4);
 
         /// <summary>
+        /// Default expiration time for L3 cache entries.
+        /// </summary>
+        public TimeSpan L3DefaultExpiration { get; set; } = TimeSpan.FromDays(7);
+
+        /// <summary>
         /// Whether L2 cache is enabled.
         /// </summary>
         public bool L2Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Whether L3 cache is enabled.
+        /// </summary>
+        public bool L3Enabled { get; set; } = false;
 
         /// <summary>
         /// Maximum number of items in L1 cache.
@@ -53,9 +63,19 @@ namespace MethodCache.HybridCache.Configuration
         public bool EnableAsyncL2Writes { get; set; } = true;
 
         /// <summary>
+        /// Whether to enable async writes to L3.
+        /// </summary>
+        public bool EnableAsyncL3Writes { get; set; } = true;
+
+        /// <summary>
         /// Maximum concurrent L2 operations.
         /// </summary>
         public int MaxConcurrentL2Operations { get; set; } = 10;
+
+        /// <summary>
+        /// Maximum concurrent L3 operations.
+        /// </summary>
+        public int MaxConcurrentL3Operations { get; set; } = 5;
 
         /// <summary>
         /// L1 cache eviction policy.
@@ -83,6 +103,11 @@ namespace MethodCache.HybridCache.Configuration
         public RetryOptions L2RetryPolicy { get; set; } = new RetryOptions();
 
         /// <summary>
+        /// Retry policy for L3 operations.
+        /// </summary>
+        public RetryOptions L3RetryPolicy { get; set; } = new RetryOptions();
+
+        /// <summary>
         /// Whether to enable efficient tag-based L1 invalidation.
         /// When enabled, tracks tag-to-key mappings for surgical invalidations.
         /// When disabled, falls back to clearing entire L1 cache on tag invalidation.
@@ -97,17 +122,17 @@ namespace MethodCache.HybridCache.Configuration
     }
 
     /// <summary>
-    /// Strategy for coordinating L1 and L2 caches.
+    /// Strategy for coordinating L1, L2, and L3 caches.
     /// </summary>
     public enum HybridStrategy
     {
         /// <summary>
-        /// Write to both L1 and L2 synchronously.
+        /// Write to all enabled cache layers synchronously.
         /// </summary>
         WriteThrough,
 
         /// <summary>
-        /// Write to L1 immediately, write to L2 asynchronously.
+        /// Write to L1 immediately, write to L2/L3 asynchronously.
         /// </summary>
         WriteBack,
 
@@ -122,7 +147,12 @@ namespace MethodCache.HybridCache.Configuration
         L2Only,
 
         /// <summary>
-        /// Read from L1, fallback to L2, write to both.
+        /// Only use L3 cache.
+        /// </summary>
+        L3Only,
+
+        /// <summary>
+        /// Read from L1, fallback to L2, then L3, write to all enabled layers.
         /// </summary>
         ReadThrough
     }
@@ -154,7 +184,7 @@ namespace MethodCache.HybridCache.Configuration
     }
 
     /// <summary>
-    /// Retry options for L2 operations.
+    /// Retry options for cache operations.
     /// </summary>
     public class RetryOptions
     {

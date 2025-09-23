@@ -14,7 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
-    <ProjectReference Include="..\MethodCache.HybridCache\MethodCache.HybridCache.csproj" />
   </ItemGroup>
 
   <ItemGroup>

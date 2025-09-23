@@ -334,7 +334,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(5), null);
+        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(5), null!);
         await act.Should().NotThrowAsync();
     }
 }

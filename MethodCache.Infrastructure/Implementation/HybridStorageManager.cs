@@ -93,8 +93,10 @@ public class HybridStorageManager : IStorageProvider
                     _logger.LogDebug("L2 cache hit for key {Key}", key);
 
                     // Warm L1 cache with shorter expiration
+                    // TODO: Tags are not preserved when promoting from L2 to L1
+                    // This means tag-based invalidation won't work for L1-promoted entries
                     var l1Expiration = CalculateL1Expiration(_options.L2DefaultExpiration);
-                    await _l1Storage.SetAsync(key, result, l1Expiration, cancellationToken);
+                    await _l1Storage.SetAsync(key, result, l1Expiration, Enumerable.Empty<string>(), cancellationToken);
 
                     return result;
                 }
@@ -239,14 +241,24 @@ public class HybridStorageManager : IStorageProvider
             _l1Storage.RemoveAsync(key, cancellationToken)
         };
 
-        if (_l2Storage != null && _options.L2Enabled)
+        // If L2 and L3 are the same instance, only call once to avoid race conditions
+        if (_l2Storage != null && _l3Storage != null && ReferenceEquals(_l2Storage, _l3Storage) && _options.L2Enabled && _options.L3Enabled)
         {
+            // L2 and L3 are the same instance, call once
             tasks.Add(WriteToL2Async(() => _l2Storage.RemoveAsync(key, cancellationToken)));
         }
-
-        if (_l3Storage != null && _options.L3Enabled)
+        else
         {
-            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveAsync(key, cancellationToken)));
+            // L2 and L3 are different instances, call separately
+            if (_l2Storage != null && _options.L2Enabled)
+            {
+                tasks.Add(WriteToL2Async(() => _l2Storage.RemoveAsync(key, cancellationToken)));
+            }
+
+            if (_l3Storage != null && _options.L3Enabled)
+            {
+                tasks.Add(WriteToL3Async(() => _l3Storage.RemoveAsync(key, cancellationToken)));
+            }
         }
 
         await Task.WhenAll(tasks);
@@ -270,19 +282,104 @@ public class HybridStorageManager : IStorageProvider
 
     public async Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
-        var tasks = new List<Task>
-        {
-            _l1Storage.RemoveByTagAsync(tag, cancellationToken)
-        };
+        _logger.LogDebug("Starting RemoveByTagAsync for tag {Tag}", tag);
 
-        if (_l2Storage != null && _options.L2Enabled)
+        // Remove from L1 first
+        await _l1Storage.RemoveByTagAsync(tag, cancellationToken);
+        _logger.LogDebug("Completed L1 RemoveByTagAsync for tag {Tag}", tag);
+
+        var tasks = new List<Task>();
+
+        // If L2 and L3 are the same instance, only call once to avoid race conditions
+        if (_l2Storage != null && _l3Storage != null && ReferenceEquals(_l2Storage, _l3Storage) && _options.L2Enabled && _options.L3Enabled)
         {
-            tasks.Add(WriteToL2Async(() => _l2Storage.RemoveByTagAsync(tag, cancellationToken)));
+            // L2 and L3 are the same instance, call once
+            if (_options.EnableAsyncL2Writes)
+            {
+                // Fire and forget for async L2 removes
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _l2Semaphore.WaitAsync(cancellationToken);
+                        await _l2Storage.RemoveByTagAsync(tag, cancellationToken);
+                        _logger.LogDebug("Async L2 RemoveByTagAsync completed for tag {Tag}", tag);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in async L2 RemoveByTagAsync for tag {Tag}", tag);
+                    }
+                    finally
+                    {
+                        _l2Semaphore.Release();
+                    }
+                }, cancellationToken);
+            }
+            else
+            {
+                tasks.Add(WriteToL2Async(() => _l2Storage.RemoveByTagAsync(tag, cancellationToken)));
+            }
         }
-
-        if (_l3Storage != null && _options.L3Enabled)
+        else
         {
-            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveByTagAsync(tag, cancellationToken)));
+            // L2 and L3 are different instances, call separately
+            if (_l2Storage != null && _options.L2Enabled)
+            {
+                if (_options.EnableAsyncL2Writes)
+                {
+                    // Fire and forget for async L2 removes
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _l2Semaphore.WaitAsync(cancellationToken);
+                            await _l2Storage.RemoveByTagAsync(tag, cancellationToken);
+                            _logger.LogDebug("Async L2 RemoveByTagAsync completed for tag {Tag}", tag);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error in async L2 RemoveByTagAsync for tag {Tag}", tag);
+                        }
+                        finally
+                        {
+                            _l2Semaphore.Release();
+                        }
+                    }, cancellationToken);
+                }
+                else
+                {
+                    tasks.Add(WriteToL2Async(() => _l2Storage.RemoveByTagAsync(tag, cancellationToken)));
+                }
+            }
+
+            if (_l3Storage != null && _options.L3Enabled)
+            {
+                if (_options.EnableAsyncL3Writes)
+                {
+                    // Fire and forget for async L3 removes
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _l3Semaphore.WaitAsync(cancellationToken);
+                            await _l3Storage.RemoveByTagAsync(tag, cancellationToken);
+                            _logger.LogDebug("Async L3 RemoveByTagAsync completed for tag {Tag}", tag);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error in async L3 RemoveByTagAsync for tag {Tag}", tag);
+                        }
+                        finally
+                        {
+                            _l3Semaphore.Release();
+                        }
+                    }, cancellationToken);
+                }
+                else
+                {
+                    tasks.Add(WriteToL3Async(() => _l3Storage.RemoveByTagAsync(tag, cancellationToken)));
+                }
+            }
         }
 
         await Task.WhenAll(tasks);
@@ -441,8 +538,8 @@ public class HybridStorageManager : IStorageProvider
                 ["BackplaneMessagesSent"] = Interlocked.Read(ref _backplaneMessagesSent),
                 ["BackplaneMessagesReceived"] = Interlocked.Read(ref _backplaneMessagesReceived),
                 ["TotalHitRatio"] = totalHits + totalMisses > 0 ? (double)totalHits / (totalHits + totalMisses) : 0.0,
-                ["L2Stats"] = l2Stats,
-                ["L3Stats"] = l3Stats
+                ["L2Stats"] = l2Stats ?? (object)"Not Available",
+                ["L3Stats"] = l3Stats ?? (object)"Not Available"
             }
         };
 
@@ -451,13 +548,11 @@ public class HybridStorageManager : IStorageProvider
 
     private TimeSpan CalculateL1Expiration(TimeSpan originalExpiration)
     {
-        var l1Expiration = TimeSpan.FromTicks(Math.Min(
+        // Use the smaller of original expiration and L1 max expiration
+        // Don't enforce a minimum that's longer than what was requested
+        return TimeSpan.FromTicks(Math.Min(
             originalExpiration.Ticks,
             _options.L1MaxExpiration.Ticks));
-
-        return TimeSpan.FromTicks(Math.Max(
-            l1Expiration.Ticks,
-            _options.L1DefaultExpiration.Ticks));
     }
 
     private async Task WriteToL2Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken)
@@ -501,27 +596,32 @@ public class HybridStorageManager : IStorageProvider
     {
         try
         {
-            // Ignore messages from our own instance
-            if (message.InstanceId == _options.InstanceId)
+            // Ignore messages from our own backplane instance
+            if (_backplane != null && message.InstanceId == _backplane.InstanceId)
+            {
+                _logger.LogTrace("Ignoring backplane message from own instance {InstanceId}", message.InstanceId);
                 return;
+            }
 
             Interlocked.Increment(ref _backplaneMessagesReceived);
 
             switch (message.Type)
             {
                 case BackplaneMessageType.KeyInvalidation when message.Key != null:
+                    // Remove from L1 only - L2/L3 should have been handled by the originating instance
                     await _l1Storage.RemoveAsync(message.Key);
-                    _logger.LogDebug("Processed backplane key invalidation for {Key}", message.Key);
+                    _logger.LogDebug("Processed backplane key invalidation for {Key} from instance {InstanceId}", message.Key, message.InstanceId);
                     break;
 
                 case BackplaneMessageType.TagInvalidation when message.Tag != null:
+                    // Remove from L1 only - L2/L3 should have been handled by the originating instance
                     await _l1Storage.RemoveByTagAsync(message.Tag);
-                    _logger.LogDebug("Processed backplane tag invalidation for {Tag}", message.Tag);
+                    _logger.LogDebug("Processed backplane tag invalidation for {Tag} from instance {InstanceId}", message.Tag, message.InstanceId);
                     break;
 
                 case BackplaneMessageType.ClearAll:
                     _l1Storage.Clear();
-                    _logger.LogDebug("Processed backplane clear all");
+                    _logger.LogDebug("Processed backplane clear all from instance {InstanceId}", message.InstanceId);
                     break;
             }
         }
@@ -588,9 +688,11 @@ public class HybridStorageManager : IStorageProvider
             var l1Expiration = CalculateL1Expiration(_options.L3DefaultExpiration);
             var l2Expiration = _options.L2DefaultExpiration;
 
+            // TODO: Tags are not preserved when promoting from L3 to L1/L2
+            // This means tag-based invalidation won't work for promoted entries
             var promotionTasks = new List<Task>
             {
-                _l1Storage.SetAsync(key, value, l1Expiration, cancellationToken)
+                _l1Storage.SetAsync(key, value, l1Expiration, Enumerable.Empty<string>(), cancellationToken)
             };
 
             // Also promote to L2 if available

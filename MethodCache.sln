@@ -15,9 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.Redis
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.Redis.IntegrationTests", "MethodCache.Providers.Redis.IntegrationTests\MethodCache.Providers.Redis.IntegrationTests.csproj", "{D59594A0-E0DD-446F-A214-F81933EBB454}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.HybridCache", "MethodCache.HybridCache\MethodCache.HybridCache.csproj", "{33A041E2-5CF6-4596-92F7-D6163724A521}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.HybridCache.Tests", "MethodCache.HybridCache.Tests\MethodCache.HybridCache.Tests.csproj", "{6AD29521-CBEB-4179-BD31-3EAFB3214C00}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.ETags", "MethodCache.ETags\MethodCache.ETags.csproj", "{E59594A0-E0DD-446F-A214-F81933EBB455}"
 EndProject

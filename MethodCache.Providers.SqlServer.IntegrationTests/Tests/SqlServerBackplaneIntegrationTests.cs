@@ -194,7 +194,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
     }
 
     [Fact]
-    public void InstanceId_ShouldBeUniquePerInstance()
+    public async Task InstanceId_ShouldBeUniquePerInstance()
     {
         // Arrange
         var backplane1 = ServiceProvider.GetRequiredService<IBackplane>();
@@ -218,7 +218,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         backplane1.InstanceId.Should().NotBe(backplane2.InstanceId);
 
         // Cleanup
-        serviceProvider2.Dispose();
+        await serviceProvider2.DisposeAsync();
     }
 
     [Fact(Timeout = 30000)] // 30 seconds

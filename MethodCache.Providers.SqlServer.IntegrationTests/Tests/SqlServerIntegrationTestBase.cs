@@ -6,9 +6,9 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
-using MethodCache.HybridCache.Extensions;
 using MethodCache.Infrastructure.Abstractions;
 using MethodCache.Infrastructure.Configuration;
+using MethodCache.Infrastructure.Implementation;
 using MethodCache.Infrastructure.Extensions;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Extensions;
@@ -269,6 +269,7 @@ internal static class SqlServerInfrastructureTestExtensions
         // Register the storage provider
         services.AddSingleton<SqlServerPersistentStorageProvider>();
         services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<SqlServerPersistentStorageProvider>());
+        services.AddSingleton<IPersistentStorageProvider>(provider => provider.GetRequiredService<SqlServerPersistentStorageProvider>());
 
         // Register the backplane
         services.AddSingleton<SqlServerBackplane>();
@@ -300,11 +301,41 @@ internal static class SqlServerInfrastructureTestExtensions
         Action<SqlServerOptions>? configureSqlServer = null,
         Action<MethodCache.Infrastructure.Configuration.StorageOptions>? configureStorage = null)
     {
-        // Add SQL Server infrastructure
+        // Add SQL Server infrastructure first
         services.AddSqlServerInfrastructureForTests(configureSqlServer);
 
-        // Add hybrid storage manager
-        services.AddHybridStorageManager();
+        // Configure storage options
+        if (configureStorage != null)
+        {
+            services.Configure(configureStorage);
+        }
+
+        // Add core infrastructure for hybrid manager
+        services.AddCacheInfrastructure();
+
+        // Register custom hybrid storage manager that uses SqlServer as L2
+        services.AddScoped<HybridStorageManager>(provider =>
+        {
+            var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
+            var options = provider.GetRequiredService<IOptions<MethodCache.Infrastructure.Configuration.StorageOptions>>();
+            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+
+            // Get SqlServer provider for L2/L3
+            var sqlServerProvider = provider.GetRequiredService<SqlServerPersistentStorageProvider>();
+            var backplane = provider.GetService<IBackplane>();
+
+            return new HybridStorageManager(
+                memoryStorage,
+                options,
+                logger,
+                sqlServerProvider,  // L2 storage
+                sqlServerProvider,  // L3 storage (same instance)
+                backplane);
+        });
+
+        // Override IStorageProvider to use hybrid manager
+        services.AddScoped<IStorageProvider>(provider =>
+            provider.GetRequiredService<HybridStorageManager>());
 
         return services;
     }

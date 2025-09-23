@@ -441,8 +441,8 @@ public class HybridStorageManager : IStorageProvider
                 ["BackplaneMessagesSent"] = Interlocked.Read(ref _backplaneMessagesSent),
                 ["BackplaneMessagesReceived"] = Interlocked.Read(ref _backplaneMessagesReceived),
                 ["TotalHitRatio"] = totalHits + totalMisses > 0 ? (double)totalHits / (totalHits + totalMisses) : 0.0,
-                ["L2Stats"] = l2Stats,
-                ["L3Stats"] = l3Stats
+                ["L2Stats"] = l2Stats ?? (object)"Not Available",
+                ["L3Stats"] = l3Stats ?? (object)"Not Available"
             }
         };
 

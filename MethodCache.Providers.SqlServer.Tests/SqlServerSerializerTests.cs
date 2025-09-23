@@ -112,7 +112,7 @@ public class SqlServerSerializerTests
         var serializer = new SqlServerSerializer(options);
 
         // Act
-        var serialized = await serializer.SerializeAsync<string>(null);
+        var serialized = await serializer.SerializeAsync<string>(null!);
         var deserialized = await serializer.DeserializeAsync<string>(serialized);
 
         // Assert
@@ -127,7 +127,7 @@ public class SqlServerSerializerTests
         var serializer = new SqlServerSerializer(options);
 
         // Act
-        var result = await serializer.SerializeAsync<string>(null);
+        var result = await serializer.SerializeAsync<string>(null!);
 
         // Assert
         result.Should().BeNull();
