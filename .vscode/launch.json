@@ -1,0 +1,108 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Tests Infrastructure Tool",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Tests/MethodCache.Tests.Infrastructure/bin/Debug/net9.0/MethodCache.Tests.Infrastructure.dll",
+            "args": ["validate"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Setup Test Environment",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Tests/MethodCache.Tests.Infrastructure/bin/Debug/net9.0/MethodCache.Tests.Infrastructure.dll",
+            "args": ["setup", "--interactive"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Debug SQL Server Integration Test",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/MethodCache.Providers.SqlServer.IntegrationTests",
+                "--filter",
+                "FullyQualifiedName~SetAsync_WithBasicValue_ShouldStoreAndRetrieve",
+                "--logger",
+                "console;verbosity=detailed"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "METHODCACHE_SQLSERVER_URL": "${input:sqlServerConnectionString}"
+            }
+        },
+        {
+            "name": "Debug Redis Integration Test",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/MethodCache.Providers.Redis.IntegrationTests",
+                "--filter",
+                "FullyQualifiedName~RedisHealthCheck_ShouldReturnHealthy",
+                "--logger",
+                "console;verbosity=detailed"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "METHODCACHE_REDIS_URL": "${input:redisConnectionString}"
+            }
+        },
+        {
+            "name": "Run Benchmarks",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/MethodCache.Benchmarks/bin/Release/net9.0/MethodCache.Benchmarks.dll",
+            "args": ["--filter", "*"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Debug Sample App",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/MethodCache.SampleApp/bin/Debug/net9.0/MethodCache.SampleApp.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/MethodCache.SampleApp",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "sqlServerConnectionString",
+            "description": "SQL Server connection string",
+            "default": "Server=localhost;Database=MethodCacheTests;Trusted_Connection=true;",
+            "type": "promptString"
+        },
+        {
+            "id": "redisConnectionString",
+            "description": "Redis connection string",
+            "default": "localhost:6379",
+            "type": "promptString"
+        }
+    ]
+}

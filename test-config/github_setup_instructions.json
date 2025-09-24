@@ -1,0 +1,4 @@
+{
+  "value": "Run: dotnet run --project Tests/MethodCache.Tests.Infrastructure setup-github --token YOUR_TOKEN",
+  "timestamp": "2025-09-23T14:16:56.9589321+00:00"
+}
