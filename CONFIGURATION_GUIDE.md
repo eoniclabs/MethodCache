@@ -18,15 +18,16 @@ This guide covers all the ways you can configure MethodCache, from simple attrib
 
 1. [Configuration Overview](#configuration-overview)
 2. [Attribute-Based Configuration](#attribute-based-configuration)
-3. [Programmatic Configuration](#programmatic-configuration)
-4. [JSON Configuration](#json-configuration)
-5. [YAML Configuration](#yaml-configuration)
-6. [Runtime Configuration](#runtime-configuration)
-7. [Management Interface & Runtime Overrides](#management-interface--runtime-overrides)
-8. [Multi-Source Configuration](#multi-source-configuration)
-9. [Configuration Priorities](#configuration-priorities)
-10. [Configuration Validation](#configuration-validation)
-11. [Examples](#examples)
+3. [Method Chaining API Configuration](#method-chaining-api-configuration) 🆕
+4. [Programmatic Configuration](#programmatic-configuration)
+5. [JSON Configuration](#json-configuration)
+6. [YAML Configuration](#yaml-configuration)
+7. [Runtime Configuration](#runtime-configuration)
+8. [Management Interface & Runtime Overrides](#management-interface--runtime-overrides)
+9. [Multi-Source Configuration](#multi-source-configuration)
+10. [Configuration Priorities](#configuration-priorities)
+11. [Configuration Validation](#configuration-validation)
+12. [Examples](#examples)
 
 ## Configuration Overview
 
@@ -61,6 +62,132 @@ public interface IUserService
 // Register with attribute scanning
 builder.Services.AddMethodCache(assemblies: Assembly.GetExecutingAssembly());
 ```
+
+## Method Chaining API Configuration
+
+**NEW!** The Method Chaining API provides an intuitive, chainable interface for configuring cache operations. Perfect for caching third-party libraries, legacy code, or when you prefer explicit control over attribute-based configuration.
+
+### Basic Usage
+
+```csharp
+// Inject ICacheManager and use fluent chaining
+public class UserService
+{
+    private readonly ICacheManager _cache;
+    private readonly IUserRepository _repository;
+
+    public async Task<User> GetUserAsync(int userId)
+    {
+        return await _cache.Cache(() => _repository.GetUserAsync(userId))
+            .WithDuration(TimeSpan.FromHours(1))
+            .WithTags("user", $"user:{userId}")
+            .ExecuteAsync();
+    }
+}
+```
+
+### Advanced Configuration
+
+```csharp
+public async Task<List<Order>> GetOrdersWithAdvancedConfig(int customerId, OrderStatus status)
+{
+    return await _cache.Cache(() => _orderService.GetOrdersAsync(customerId, status))
+        .WithDuration(TimeSpan.FromMinutes(30))
+        .WithSlidingExpiration(TimeSpan.FromMinutes(10))
+        .WithRefreshAhead(TimeSpan.FromMinutes(5))
+        .WithTags("orders", $"customer:{customerId}", $"status:{status}")
+        .WithStampedeProtection(StampedeProtectionMode.Probabilistic, beta: 1.5)
+        .WithDistributedLock(TimeSpan.FromSeconds(30), maxConcurrency: 2)
+        .WithKeyGenerator<JsonKeyGenerator>()
+        .WithVersion(2)
+        .OnHit(ctx => _logger.LogInformation($"Cache hit: {ctx.Key}"))
+        .OnMiss(ctx => _logger.LogInformation($"Cache miss: {ctx.Key}"))
+        .When(ctx => customerId > 0) // Conditional caching
+        .ExecuteAsync();
+}
+```
+
+### Key Generator Selection
+
+```csharp
+// Choose optimal key generator based on scenario
+public async Task<DataResult> GetDataWithOptimalKeyGenerator(QueryRequest request)
+{
+    var builder = _cache.Cache(() => _dataService.ProcessQueryAsync(request))
+        .WithDuration(TimeSpan.FromMinutes(30));
+
+    // Dynamic key generator selection
+    if (request.Parameters.Count > 10)
+        builder = builder.WithKeyGenerator<MessagePackKeyGenerator>(); // Complex objects
+    else if (request.IsDebugMode)
+        builder = builder.WithKeyGenerator<JsonKeyGenerator>(); // Human-readable
+    else
+        builder = builder.WithKeyGenerator<FastHashKeyGenerator>(); // Performance
+
+    return await builder.ExecuteAsync();
+}
+```
+
+### Conditional Caching
+
+```csharp
+// Cache based on business logic
+public async Task<AnalyticsReport> GetReportConditionally(ReportCriteria criteria, bool isPremiumUser)
+{
+    return await _cache.Cache(() => _reportService.GenerateReportAsync(criteria))
+        .WithDuration(isPremiumUser ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(30))
+        .WithTags("analytics", isPremiumUser ? "premium" : "standard")
+        .When(ctx => criteria.IsExpensive) // Only cache expensive reports
+        .WithKeyGenerator<MessagePackKeyGenerator>()
+        .ExecuteAsync();
+}
+```
+
+### Third-Party Library Caching
+
+```csharp
+// Cache external API calls without modifying the library
+public class WeatherService
+{
+    private readonly IWeatherApiClient _weatherApi;
+    private readonly ICacheManager _cache;
+
+    public async Task<WeatherData> GetWeatherAsync(string location)
+    {
+        return await _cache.Cache(() => _weatherApi.GetCurrentWeatherAsync(location))
+            .WithDuration(TimeSpan.FromMinutes(15))
+            .WithTags("weather", $"location:{location}")
+            .WithKeyGenerator<JsonKeyGenerator>() // Debug-friendly keys
+            .OnHit(ctx => _metrics.RecordWeatherCacheHit())
+            .OnMiss(ctx => _metrics.RecordWeatherApiCall())
+            .ExecuteAsync();
+    }
+}
+```
+
+### Alternative API Syntax
+
+```csharp
+// Both APIs are equivalent - choose your preference
+// Option 1: Cache()
+var result1 = await cache.Cache(() => service.GetDataAsync(id))
+    .WithDuration(TimeSpan.FromHours(1))
+    .ExecuteAsync();
+
+// Option 2: Build()
+var result2 = await cache.Build(() => service.GetDataAsync(id))
+    .WithDuration(TimeSpan.FromHours(1))
+    .ExecuteAsync();
+```
+
+### Benefits of Method Chaining API
+
+- **Intuitive**: Natural reading flow with discoverable methods
+- **Type-safe**: Generic key generator selection with compile-time validation
+- **Flexible**: Conditional configuration based on runtime values
+- **Performance**: No overhead - compiles to efficient code
+- **Testable**: Easy to mock and unit test
+- **Backward Compatible**: Works alongside existing attribute and configuration-based approaches
 
 ## Programmatic Configuration
 

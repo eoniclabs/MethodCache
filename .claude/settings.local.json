@@ -34,6 +34,7 @@
       "Bash(git branch:*)",
       "Bash(gtimeout:*)",
       "Read(./**)",
+      "Read(//Users/johan/dev/**)",
       "WebFetch(domain:www.nuget.org)",
       "WebSearch",
       "Read(//private/tmp/debugtest/**)",
@@ -51,6 +52,8 @@
       "Bash(docker exec:*)",
       "Bash(export METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};\")",
       "Bash(export METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\")",
+      "Bash(export METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;\")",
+      "Bash(export METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\")",
       "Bash(csc:*)",
       "Bash(./FluentApiTest)",
       "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_WithBackplane_ShouldPropagateInvalidations\" --logger \"console;verbosity=normal\")",
@@ -66,6 +69,18 @@
       "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_WithTags_ShouldInvalidateAcrossBothLayers\" --logger \"console;verbosity=minimal\")",
       "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_WithBackplane_ShouldPropagateInvalidations\" --logger \"console;verbosity=minimal\")",
       "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveTagInvalidationMessages\" --logger \"console;verbosity=minimal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_WithBackplane_ShouldPropagateInvalidations\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SetAsync_WithTags_ShouldAllowTagBasedRemoval\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_SingleInstance_RemoveByTag_ShouldWork\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveInvalidationMessages\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveTagInvalidationMessages\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --logger \"console;verbosity=minimal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" timeout 60s dotnet test MethodCache.Providers.SqlServer.IntegrationTests --logger \"console;verbosity=minimal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_WithTags_ShouldInvalidateAcrossBothLayers\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet run --project . /Users/johan/dev/MethodCache/debug_tag_issue.cs)",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_WithTags_ShouldInvalidateAcrossBothLayers\" --logger \"console;verbosity=minimal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~HybridStorageManager_WithBackplane_ShouldPropagateInvalidations\" --logger \"console;verbosity=minimal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveTagInvalidationMessages\" --logger \"console;verbosity=minimal\")",
       "Bash(METHODCACHE_REDIS_URL=\"localhost:6379\" dotnet test MethodCache.Providers.Redis.IntegrationTests --logger \"console;verbosity=minimal\" --filter \"HybridCache_GetOrCreateAsync_ShouldWorkWithBothCacheLayers\")",
       "Bash(METHODCACHE_REDIS_URL=\"localhost:6379\" timeout 60s dotnet test MethodCache.Providers.Redis.IntegrationTests --logger \"console;verbosity=minimal\" --filter \"HybridCache_L1OnlyStrategy_ShouldOnlyUseL1Cache\")",
       "Bash(METHODCACHE_REDIS_URL=\"localhost:6379\" gtimeout 60s dotnet test MethodCache.Providers.Redis.IntegrationTests --logger \"console;verbosity=minimal\" --filter \"HybridCache_L1OnlyStrategy_ShouldOnlyUseL1Cache\")",
@@ -75,6 +90,7 @@
       "Bash(METHODCACHE_REDIS_URL=\"localhost:6379\" dotnet test MethodCache.Providers.Redis.IntegrationTests --logger \"console;verbosity=normal\")",
       "Bash(METHODCACHE_REDIS_URL=\"localhost:6379\" dotnet test MethodCache.Providers.Redis.IntegrationTests --filter \"FullyQualifiedName~HybridCache_GetOrCreateAsync_ShouldWorkWithBothCacheLayers\" --logger \"console;verbosity=normal\")",
       "Bash(METHODCACHE_REDIS_URL=\"localhost:6379\" dotnet test MethodCache.Providers.Redis.IntegrationTests --filter \"FullyQualifiedName~HybridCache_GetStatsAsync_ShouldReturnAccurateStatistics\" --logger \"console;verbosity=normal\")",
+<<<<<<< HEAD
       "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\" timeout 30s dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveInvalidationMessages\" --logger \"console;verbosity=normal\")",
       "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\" gtimeout 30s dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveInvalidationMessages\" --logger \"console;verbosity=normal\")",
       "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"ClassName~SqlServerBackplaneIntegrationTests\" --logger \"console;verbosity=normal\")",
@@ -95,6 +111,13 @@
       "Bash(dotnet nuget search:*)",
       "Bash(dir:*)",
       "Bash(timeout:*)"
+=======
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" timeout 30s dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveInvalidationMessages\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" gtimeout 30s dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~SubscribeAsync_ShouldReceiveInvalidationMessages\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"ClassName~SqlServerBackplaneIntegrationTests\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"SqlServerBackplaneIntegrationTests\" --logger \"console;verbosity=normal\")",
+      "Bash(METHODCACHE_SQLSERVER_URL=\"Server=localhost,1433;Database=MethodCacheTests;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;Encrypt=false;\" dotnet test MethodCache.Providers.SqlServer.IntegrationTests --filter \"FullyQualifiedName~UnsubscribeAsync_ShouldStopReceivingMessages\" --logger \"console;verbosity=normal\")"
+>>>>>>> 146ee4256fe935bc9e620a1c3259f7f039b5d1f4
     ],
     "deny": [],
     "ask": []

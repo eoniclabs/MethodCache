@@ -4,195 +4,215 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
-using MethodCache.Providers.Redis;
+using MethodCache.Infrastructure.Abstractions;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
+using MethodCache.Providers.Redis.Infrastructure;
 using StackExchange.Redis;
 using System.Threading.Tasks;
 using System.Linq;
 
 namespace MethodCache.Providers.Redis.Tests
 {
-    public class RedisCacheManagerTests
+    public class RedisStorageProviderTests
     {
         private readonly IRedisConnectionManager _connectionManagerMock;
         private readonly IDatabase _databaseMock;
         private readonly ITransaction _transactionMock;
         private readonly IRedisSerializer _serializerMock;
         private readonly IRedisTagManager _tagManagerMock;
-        private readonly IDistributedLock _distributedLockMock;
-        private readonly IRedisPubSubInvalidation _pubSubInvalidationMock;
-        private readonly ICacheMetricsProvider _metricsProviderMock;
-        private readonly ICacheKeyGenerator _keyGeneratorMock;
-        private readonly ILogger<RedisCacheManager> _loggerMock;
+        private readonly IBackplane _backplaneMock;
+        private readonly ILogger<RedisStorageProvider> _loggerMock;
         private readonly RedisOptions _options;
-        private readonly RedisCacheManager _cacheManager;
+        private readonly RedisStorageProvider _storageProvider;
 
-        public RedisCacheManagerTests()
+        public RedisStorageProviderTests()
         {
             _connectionManagerMock = Substitute.For<IRedisConnectionManager>();
             _databaseMock = Substitute.For<IDatabase>();
             _transactionMock = Substitute.For<ITransaction>();
             _serializerMock = Substitute.For<IRedisSerializer>();
             _tagManagerMock = Substitute.For<IRedisTagManager>();
-            _distributedLockMock = Substitute.For<IDistributedLock>();
-            _pubSubInvalidationMock = Substitute.For<IRedisPubSubInvalidation>();
-            _metricsProviderMock = Substitute.For<ICacheMetricsProvider>();
-            _keyGeneratorMock = Substitute.For<ICacheKeyGenerator>();
-            _loggerMock = Substitute.For<ILogger<RedisCacheManager>>();
+            _backplaneMock = Substitute.For<IBackplane>();
+            _loggerMock = Substitute.For<ILogger<RedisStorageProvider>>();
 
             _options = new RedisOptions
             {
                 KeyPrefix = "test:",
-                EnableDistributedLocking = true
+                EnablePubSubInvalidation = true
             };
 
             _connectionManagerMock.GetDatabase().Returns(_databaseMock);
             _databaseMock.CreateTransaction().Returns(_transactionMock);
             _transactionMock.ExecuteAsync().Returns(true);
-            
+
             // Mock transaction operations to return completed tasks
             _transactionMock.KeyDeleteAsync(Arg.Any<RedisKey[]>())
                            .Returns(Task.FromResult(1L));
-            _transactionMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>())
+            _databaseMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>())
                            .Returns(Task.FromResult(true));
 
-            _cacheManager = new RedisCacheManager(
+            _storageProvider = new RedisStorageProvider(
                 _connectionManagerMock,
                 _serializerMock,
                 _tagManagerMock,
-                _distributedLockMock,
-                _pubSubInvalidationMock,
-                _metricsProviderMock,
+                _backplaneMock,
                 Options.Create(_options),
                 _loggerMock);
         }
 
         [Fact]
-        public async Task GetOrCreateAsync_WithCacheHit_ReturnsCachedValue()
+        public async Task GetAsync_WithCacheHit_ReturnsCachedValue()
         {
             // Arrange
-            var methodName = "TestMethod";
-            var args = new object[] { 1, "test" };
-            var cachedValue = "cached result";
-            var cacheKey = "generated-key";
+            var cacheKey = "test-key";
             var fullKey = "test:" + cacheKey;
-            var settings = new CacheMethodSettings();
+            var cachedValue = "cached result";
 
-            _keyGeneratorMock.GenerateKey(methodName, args, settings).Returns(cacheKey);
-            _databaseMock.StringGetAsync(fullKey, CommandFlags.None).Returns((RedisValue)new byte[] { 1, 2, 3 });
-            _databaseMock.KeyTimeToLiveAsync(fullKey, CommandFlags.None).Returns(TimeSpan.FromMinutes(5));
+            _databaseMock.StringGetAsync(fullKey).Returns((RedisValue)new byte[] { 1, 2, 3 });
             _serializerMock.DeserializeAsync<string>(Arg.Any<byte[]>()).Returns(cachedValue);
 
             // Act
-            var result = await _cacheManager.GetOrCreateAsync(
-                methodName,
-                args,
-                () => Task.FromResult("factory result"),
-                settings,
-                _keyGeneratorMock,
-                false);
+            var result = await _storageProvider.GetAsync<string>(cacheKey);
 
             // Assert
             Assert.Equal(cachedValue, result);
-            _metricsProviderMock.Received(1).CacheHit(methodName);
+            await _databaseMock.Received(1).StringGetAsync(fullKey);
+            await _serializerMock.Received(1).DeserializeAsync<string>(Arg.Any<byte[]>());
         }
 
         [Fact]
-        public async Task GetOrCreateAsync_WithCacheMiss_ExecutesFactoryAndCaches()
+        public async Task GetAsync_WithCacheMiss_ReturnsDefault()
         {
             // Arrange
-            var methodName = "TestMethod";
-            var args = new object[] { 1, "test" };
-            var factoryResult = "factory result";
-            var cacheKey = "generated-key";
+            var cacheKey = "missing-key";
             var fullKey = "test:" + cacheKey;
-            var settings = new CacheMethodSettings { Tags = new List<string> { "tag1" }, Duration = TimeSpan.FromMinutes(10) };
-            var lockHandle = Substitute.For<ILockHandle>();
-            var transactionMock = Substitute.For<ITransaction>();
 
-            _keyGeneratorMock.GenerateKey(methodName, args, settings).Returns(cacheKey);
-            _databaseMock.StringGetAsync(fullKey, CommandFlags.None).Returns(RedisValue.Null);
-            
-            lockHandle.IsAcquired.Returns(true);
-            _distributedLockMock.AcquireAsync($"lock:{fullKey}", TimeSpan.FromSeconds(30), default)
-                               .Returns(lockHandle);
+            _databaseMock.StringGetAsync(fullKey).Returns(RedisValue.Null);
 
-            _serializerMock.SerializeAsync(factoryResult).Returns(new byte[] { 1, 2, 3 });
-            _databaseMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>()).Returns(true);
-            
-            // Mock transaction behavior
-            _databaseMock.CreateTransaction().Returns(transactionMock);
-            transactionMock.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>()).Returns(Task.FromResult(true));
-            transactionMock.ExecuteAsync().Returns(true);
-            
-            // Mock successful Lua script execution for atomic operations
+            // Act
+            var result = await _storageProvider.GetAsync<string>(cacheKey);
+
+            // Assert
+            Assert.Null(result);
+            await _databaseMock.Received(1).StringGetAsync(fullKey);
+        }
+
+        [Fact]
+        public async Task SetAsync_WithoutTags_StoresValueCorrectly()
+        {
+            // Arrange
+            var cacheKey = "test-key";
+            var fullKey = "test:" + cacheKey;
+            var value = "test value";
+            var expiration = TimeSpan.FromMinutes(10);
+            var serializedData = new byte[] { 1, 2, 3 };
+
+            _serializerMock.SerializeAsync(value).Returns(serializedData);
+            _databaseMock.StringSetAsync(fullKey, serializedData, expiration).Returns(true);
+
+            // Act
+            await _storageProvider.SetAsync(cacheKey, value, expiration);
+
+            // Assert
+            await _serializerMock.Received(1).SerializeAsync(value);
+            await _databaseMock.Received(1).StringSetAsync(fullKey, serializedData, expiration);
+        }
+
+        [Fact]
+        public async Task SetAsync_WithTags_UsesAtomicLuaScript()
+        {
+            // Arrange
+            var cacheKey = "test-key";
+            var fullKey = "test:" + cacheKey;
+            var value = "test value";
+            var expiration = TimeSpan.FromMinutes(10);
+            var tags = new[] { "tag1", "tag2" };
+            var serializedData = new byte[] { 1, 2, 3 };
+
+            _serializerMock.SerializeAsync(value).Returns(serializedData);
             _databaseMock.ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>())
                          .Returns(Task.FromResult(RedisResult.Create(1)));
 
             // Act
-            var result = await _cacheManager.GetOrCreateAsync(
-                methodName,
-                args,
-                () => Task.FromResult(factoryResult),
-                settings,
-                _keyGeneratorMock,
-                false);
+            await _storageProvider.SetAsync(cacheKey, value, expiration, tags);
 
             // Assert
-            Assert.Equal(factoryResult, result);
-            _metricsProviderMock.Received(1).CacheMiss(methodName);
-            
-            // Debug: Verify that the distributed lock was actually called
-#pragma warning disable CS4014
-            _distributedLockMock.Received(1).AcquireAsync($"lock:{fullKey}", TimeSpan.FromSeconds(30), default);
-
-            // Debug: Verify serializer was called once (for atomic operation)
-            _serializerMock.Received(1).SerializeAsync(factoryResult);
-
-            // Debug: Verify atomic Lua script was used instead of tag manager
-            _databaseMock.Received(1).ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>());
-
-            // Tag manager should NOT be called since atomic approach succeeded
-            _tagManagerMock.DidNotReceive().AssociateTagsAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>());
-#pragma warning restore CS4014
+            await _serializerMock.Received(1).SerializeAsync(value);
+            await _databaseMock.Received(1).ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>());
         }
 
         [Fact]
-        public async Task InvalidateByTagsAsync_WithValidTags_DeletesKeysAndRemovesAssociations()
+        public async Task RemoveByTagAsync_WithKeysFound_DeletesKeysAndPublishesBackplaneMessage()
         {
             // Arrange
-            var tags = new[] { "tag1", "tag2" };
+            var tag = "test-tag";
             var keys = new[] { "key1", "key2", "key3" };
 
-            _tagManagerMock.GetKeysByTagsAsync(tags).Returns(keys);
+            _tagManagerMock.GetKeysByTagsAsync(Arg.Is<string[]>(tags => tags.Length == 1 && tags[0] == tag)).Returns(keys);
+            _databaseMock.CreateTransaction().Returns(_transactionMock);
+            _transactionMock.ExecuteAsync().Returns(true);
+            _transactionMock.KeyDeleteAsync(Arg.Any<RedisKey[]>()).Returns(Task.FromResult(3L));
 
             // Act
-            await _cacheManager.InvalidateByTagsAsync(tags);
+            await _storageProvider.RemoveByTagAsync(tag);
 
             // Assert
+            await _tagManagerMock.Received(1).GetKeysByTagsAsync(Arg.Is<string[]>(tags => tags.Length == 1 && tags[0] == tag));
             _databaseMock.Received(1).CreateTransaction();
-            var expectedRedisKeys = keys.Select(k => (RedisKey)k).ToArray();
-#pragma warning disable CS4014
-            _transactionMock.Received(1).KeyDeleteAsync(Arg.Is<RedisKey[]>(rk =>
-                rk.Length == expectedRedisKeys.Length &&
-                rk.All(key => expectedRedisKeys.Contains(key))));
-            _transactionMock.Received(1).ExecuteAsync();
-            _tagManagerMock.Received(1).RemoveTagAssociationsAsync(keys, tags);
-#pragma warning restore CS4014
+            await _backplaneMock.Received(1).PublishTagInvalidationAsync(tag, Arg.Any<CancellationToken>());
         }
 
         [Fact]
-        public async Task InvalidateByTagsAsync_WithEmptyTags_DoesNothing()
+        public async Task RemoveByTagAsync_WithNoKeysFound_DoesNotCreateTransaction()
         {
+            // Arrange
+            var tag = "test-tag";
+            var keys = new string[0]; // No keys found
+
+            _tagManagerMock.GetKeysByTagsAsync(Arg.Is<string[]>(tags => tags.Length == 1 && tags[0] == tag)).Returns(keys);
+
             // Act
-            await _cacheManager.InvalidateByTagsAsync();
+            await _storageProvider.RemoveByTagAsync(tag);
 
             // Assert
-#pragma warning disable CS4014
-            _tagManagerMock.DidNotReceive().GetKeysByTagsAsync(Arg.Any<string[]>());
-            _databaseMock.DidNotReceive().KeyDeleteAsync(Arg.Any<RedisKey[]>(), Arg.Any<CommandFlags>());
-#pragma warning restore CS4014
+            await _tagManagerMock.Received(1).GetKeysByTagsAsync(Arg.Is<string[]>(tags => tags.Length == 1 && tags[0] == tag));
+            _databaseMock.DidNotReceive().CreateTransaction();
+            await _backplaneMock.DidNotReceive().PublishTagInvalidationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+
+        [Fact]
+        public async Task RemoveAsync_RemovesKeyAndTagAssociations()
+        {
+            // Arrange
+            var cacheKey = "test-key";
+            var fullKey = "test:" + cacheKey;
+
+            _databaseMock.KeyDeleteAsync(fullKey).Returns(true);
+
+            // Act
+            await _storageProvider.RemoveAsync(cacheKey);
+
+            // Assert
+            await _databaseMock.Received(1).KeyDeleteAsync(fullKey);
+            await _tagManagerMock.Received(1).RemoveAllTagAssociationsAsync(fullKey);
+        }
+
+        [Fact]
+        public async Task ExistsAsync_ChecksKeyExistence()
+        {
+            // Arrange
+            var cacheKey = "test-key";
+            var fullKey = "test:" + cacheKey;
+
+            _databaseMock.KeyExistsAsync(fullKey).Returns(true);
+
+            // Act
+            var result = await _storageProvider.ExistsAsync(cacheKey);
+
+            // Assert
+            Assert.True(result);
+            await _databaseMock.Received(1).KeyExistsAsync(fullKey);
         }
     }
 }
