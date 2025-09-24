@@ -2,9 +2,8 @@ using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
-using MethodCache.Infrastructure.Implementation;
+using MethodCache.Core.Storage;
+using MethodCache.Core.Configuration;
 using NSubstitute;
 using Xunit;
 

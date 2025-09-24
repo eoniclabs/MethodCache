@@ -4,8 +4,8 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.HttpCaching.Storage;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Storage;
+using MethodCache.Core.Configuration;
 using MethodCache.Infrastructure.Extensions;
 
 namespace MethodCache.HttpCaching.Extensions;

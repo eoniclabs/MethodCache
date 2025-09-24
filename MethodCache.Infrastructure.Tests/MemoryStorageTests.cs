@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Configuration;
 using MethodCache.Infrastructure.Implementation;
 using Xunit;
 
@@ -16,7 +16,7 @@ public class MemoryStorageTests : IDisposable
 
     public MemoryStorageTests()
     {
-        _memoryCache = new MemoryCache(new MemoryCacheOptions());
+        _memoryCache = new MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
         _options = new StorageOptions
         {
             EnableEfficientL1TagInvalidation = true,
@@ -290,7 +290,7 @@ public class MemoryStorageTests : IDisposable
             MaxTagMappings = 2 // Very low limit for testing
         };
         var limitedStorage = new MemoryStorage(
-            new MemoryCache(new MemoryCacheOptions()),
+            new MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
             Options.Create(limitedOptions),
             NullLogger<MemoryStorage>.Instance);
 

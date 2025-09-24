@@ -5,9 +5,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Infrastructure.Extensions;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
-using MethodCache.Infrastructure.Implementation;
+using MethodCache.Core.Storage;
+using MethodCache.Core.Configuration;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.HealthChecks;
 using MethodCache.Providers.SqlServer.Infrastructure;
@@ -47,7 +46,10 @@ public static class SqlServerServiceCollectionExtensions
         // Register the L3 persistent storage provider
         services.AddSingleton<SqlServerPersistentStorageProvider>();
         services.AddSingleton<IPersistentStorageProvider>(provider => provider.GetRequiredService<SqlServerPersistentStorageProvider>());
-        // Also register as IStorageProvider for backward compatibility
+        // Replace any existing IStorageProvider registration with SqlServer implementation
+        // Remove any existing IStorageProvider registrations first
+        services.RemoveAll<IStorageProvider>();
+        // Now register SqlServer as the IStorageProvider
         services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<SqlServerPersistentStorageProvider>());
 
         // Register the backplane (conditionally based on options)
@@ -67,14 +69,16 @@ public static class SqlServerServiceCollectionExtensions
         this IServiceCollection services,
         Action<SqlServerOptions>? configureSqlServer = null)
     {
-        // Add SQL Server L3 infrastructure
-        services.AddSqlServerInfrastructure(configureSqlServer);
-
-        // Add core infrastructure services
+        // Add core infrastructure services first
         services.AddCacheInfrastructure();
 
+        // Add SQL Server L3 infrastructure (which will replace IStorageProvider)
+        services.AddSqlServerInfrastructure(configureSqlServer);
+
         // Register HybridStorageManager with L1 + L3 (SqlServer as persistent storage)
-        services.TryAddSingleton<HybridStorageManager>(provider =>
+        // Remove any existing HybridStorageManager first
+        services.RemoveAll<HybridStorageManager>();
+        services.AddSingleton<HybridStorageManager>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
@@ -85,8 +89,9 @@ public static class SqlServerServiceCollectionExtensions
             return new HybridStorageManager(memoryStorage, options, logger, l2Storage: null, l3Storage, backplane);
         });
 
-        // Register as IStorageProvider for backward compatibility
-        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+        // Replace IStorageProvider with HybridStorageManager
+        services.RemoveAll<IStorageProvider>();
+        services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
 
         return services;
     }

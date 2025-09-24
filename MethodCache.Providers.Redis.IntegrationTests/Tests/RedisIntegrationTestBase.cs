@@ -6,10 +6,9 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Storage;
 using MethodCache.Infrastructure.Extensions;
-using MethodCache.Infrastructure.Implementation;
+using InfraStorageOptions = MethodCache.Infrastructure.Configuration.StorageOptions;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Compression;
 using MethodCache.Providers.Redis.Features;
@@ -269,7 +268,7 @@ internal static class RedisInfrastructureTestExtensions
         services.AddMethodCache();
 
         // Ensure IMemoryStorage is registered as singleton BEFORE AddCacheInfrastructure
-        services.TryAddSingleton<MethodCache.Infrastructure.Abstractions.IMemoryStorage, MethodCache.Infrastructure.Implementation.MemoryStorage>();
+        services.TryAddSingleton<MethodCache.Core.Storage.IMemoryStorage, MethodCache.Infrastructure.Implementation.MemoryStorage>();
 
         // Add core infrastructure for hybrid manager (same as SqlServer tests)
         services.AddCacheInfrastructure();
@@ -277,13 +276,30 @@ internal static class RedisInfrastructureTestExtensions
         // Register custom hybrid storage manager that uses Redis as L2
         services.AddScoped<HybridStorageManager>(provider =>
         {
-            var l1Storage = provider.GetRequiredService<MethodCache.Infrastructure.Abstractions.IMemoryStorage>();
-            var options = provider.GetRequiredService<IOptions<MethodCache.Infrastructure.Configuration.StorageOptions>>();
+            var l1Storage = provider.GetRequiredService<MethodCache.Core.Storage.IMemoryStorage>();
+            var infraOptions = provider.GetRequiredService<IOptions<InfraStorageOptions>>();
+            var coreOptions = Options.Create(new StorageOptions
+            {
+                L1MaxExpiration = infraOptions.Value.L1MaxExpiration,
+                L2Enabled = infraOptions.Value.L2Enabled,
+                L2DefaultExpiration = infraOptions.Value.L2DefaultExpiration,
+                L3Enabled = infraOptions.Value.L3Enabled,
+                L3DefaultExpiration = infraOptions.Value.L3DefaultExpiration,
+                L3MaxExpiration = infraOptions.Value.L3MaxExpiration,
+                MaxConcurrentL2Operations = infraOptions.Value.MaxConcurrentL2Operations,
+                MaxConcurrentL3Operations = infraOptions.Value.MaxConcurrentL3Operations,
+                EnableAsyncL2Writes = infraOptions.Value.EnableAsyncL2Writes,
+                EnableAsyncL3Writes = infraOptions.Value.EnableAsyncL3Writes,
+                EnableL3Promotion = infraOptions.Value.EnableL3Promotion,
+                EnableBackplane = infraOptions.Value.EnableBackplane,
+                EnableEfficientL1TagInvalidation = infraOptions.Value.EnableEfficientL1TagInvalidation,
+                MaxTagMappings = infraOptions.Value.MaxTagMappings
+            });
             var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
             var l2Storage = provider.GetRequiredService<MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider>();
             var backplane = provider.GetService<IBackplane>();
 
-            return new HybridStorageManager(l1Storage, options, logger, l2Storage, null, backplane);
+            return new HybridStorageManager(l1Storage, coreOptions, logger, l2Storage, null, backplane);
         });
 
         // Register Core IHybridCacheManager implementation that delegates to Infrastructure HybridStorageManager
@@ -292,7 +308,7 @@ internal static class RedisInfrastructureTestExtensions
         {
             Console.WriteLine("DEBUG: IHybridCacheManager factory method called - creating TestHybridCacheManager");
             var hybridStorage = provider.GetRequiredService<HybridStorageManager>();
-            var l1Storage = provider.GetRequiredService<MethodCache.Infrastructure.Abstractions.IMemoryStorage>();
+            var l1Storage = provider.GetRequiredService<MethodCache.Core.Storage.IMemoryStorage>();
             var l2Storage = provider.GetRequiredService<MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider>();
 
             return new TestHybridCacheManager(hybridStorage, l1Storage, l2Storage);
@@ -392,10 +408,10 @@ internal class InfrastructureCacheManager : ICacheManager
 /// </summary>
 internal class StorageProviderCacheManager : ICacheManager
 {
-    private readonly MethodCache.Infrastructure.Abstractions.IStorageProvider _storageProvider;
+    private readonly MethodCache.Core.Storage.IStorageProvider _storageProvider;
     private readonly ICacheKeyGenerator _keyGenerator;
 
-    public StorageProviderCacheManager(MethodCache.Infrastructure.Abstractions.IStorageProvider storageProvider, ICacheKeyGenerator keyGenerator)
+    public StorageProviderCacheManager(MethodCache.Core.Storage.IStorageProvider storageProvider, ICacheKeyGenerator keyGenerator)
     {
         _storageProvider = storageProvider;
         _keyGenerator = keyGenerator;
@@ -470,12 +486,12 @@ internal class StorageProviderCacheManager : ICacheManager
 internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheManager
 {
     private readonly HybridStorageManager _hybridStorage;
-    private readonly MethodCache.Infrastructure.Abstractions.IMemoryStorage _l1Storage = null!;
+    private readonly MethodCache.Core.Storage.IMemoryStorage _l1Storage = null!;
     private readonly MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider _l2Storage;
 
     public TestHybridCacheManager(
         HybridStorageManager hybridStorage,
-        MethodCache.Infrastructure.Abstractions.IMemoryStorage l1Storage,
+        MethodCache.Core.Storage.IMemoryStorage l1Storage,
         MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider l2Storage)
     {
         Console.WriteLine("DEBUG: TestHybridCacheManager constructor called");
@@ -484,7 +500,7 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
 
         // Use reflection to get the actual L1 storage from HybridStorageManager
         var l1Field = typeof(HybridStorageManager).GetField("_l1Storage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        _l1Storage = (MethodCache.Infrastructure.Abstractions.IMemoryStorage)l1Field!.GetValue(hybridStorage)!;
+        _l1Storage = (MethodCache.Core.Storage.IMemoryStorage)l1Field!.GetValue(hybridStorage)!;
         Console.WriteLine($"DEBUG: L1 storage extracted via reflection: {_l1Storage?.GetType().Name}");
     }
 

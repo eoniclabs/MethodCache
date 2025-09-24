@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.SqlServer.Extensions;
 using MethodCache.Providers.SqlServer.Infrastructure;
 using MethodCache.Providers.SqlServer.Services;
@@ -59,7 +59,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
         // Hybrid storage manager should be registered
-        serviceProvider.GetService<MethodCache.Infrastructure.Implementation.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
 
         await serviceProvider.DisposeAsync();
     }
@@ -146,7 +146,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         // Assert
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
-        serviceProvider.GetService<MethodCache.Infrastructure.Implementation.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
 
         await serviceProvider.DisposeAsync();
     }
@@ -166,7 +166,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         // Assert
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
-        serviceProvider.GetService<MethodCache.Infrastructure.Implementation.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
 
         await serviceProvider.DisposeAsync();
     }
@@ -192,7 +192,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         // Assert
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
-        serviceProvider.GetService<MethodCache.Infrastructure.Implementation.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
 
         // Verify configuration was applied
         var sqlOptions = serviceProvider.GetService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>();

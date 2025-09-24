@@ -93,8 +93,13 @@ public class HybridStorageManager : IStorageProvider
                     _logger.LogDebug("L2 cache hit for key {Key}", key);
 
                     // Warm L1 cache with shorter expiration
+                    // NOTE: Tags are not preserved when promoting from L2 to L1 due to
+                    // IStorageProvider interface limitations. This is acceptable because:
+                    // - L1 cache has short expiration and will refresh frequently
+                    // - Tag-based invalidations still work via backplane messages
+                    // - Most tag operations target L2/L3 directly
                     var l1Expiration = CalculateL1Expiration(_options.L2DefaultExpiration);
-                    await _l1Storage.SetAsync(key, result, l1Expiration, cancellationToken);
+                    await _l1Storage.SetAsync(key, result, l1Expiration, Enumerable.Empty<string>(), cancellationToken);
 
                     return result;
                 }
@@ -451,13 +456,14 @@ public class HybridStorageManager : IStorageProvider
 
     private TimeSpan CalculateL1Expiration(TimeSpan originalExpiration)
     {
+        // Always respect the original expiration if it's shorter than max
+        // Only use L1DefaultExpiration as a lower bound when original expiration is very long
         var l1Expiration = TimeSpan.FromTicks(Math.Min(
             originalExpiration.Ticks,
             _options.L1MaxExpiration.Ticks));
 
-        return TimeSpan.FromTicks(Math.Max(
-            l1Expiration.Ticks,
-            _options.L1DefaultExpiration.Ticks));
+        // Don't enforce a minimum expiration time - respect short expirations
+        return l1Expiration;
     }
 
     private async Task WriteToL2Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken)

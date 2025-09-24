@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Memory.Configuration;
 using MethodCache.Providers.Memory.Extensions;
 using MethodCache.Providers.Memory.Infrastructure;
