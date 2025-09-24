@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Infrastructure.Configuration;
 
 namespace MethodCache.Infrastructure.Implementation;

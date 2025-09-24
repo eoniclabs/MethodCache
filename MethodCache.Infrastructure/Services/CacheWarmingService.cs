@@ -2,39 +2,28 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Services;
-using MethodCache.Providers.Redis.Configuration;
-using StackExchange.Redis;
-using System;
+using MethodCache.Infrastructure.Configuration;
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace MethodCache.Providers.Redis.Features
+namespace MethodCache.Infrastructure.Services
 {
     /// <summary>
-    /// Redis-specific cache warming service with TTL optimization
+    /// Generic cache warming service that works with any storage provider
     /// </summary>
-    public class RedisCacheWarmingService : BackgroundService, ICacheWarmingService
+    public class CacheWarmingService : BackgroundService, ICacheWarmingService
     {
-        private readonly IRedisConnectionManager _connectionManager;
-        private readonly IRedisSerializer _serializer;
-        private readonly IRedisTagManager _tagManager;
-        private readonly RedisOptions _options;
-        private readonly ILogger<RedisCacheWarmingService> _logger;
+        private readonly IStorageProvider _storageProvider;
+        private readonly StorageOptions _options;
+        private readonly ILogger<CacheWarmingService> _logger;
         private readonly ConcurrentDictionary<string, CacheWarmupEntry> _warmupEntries = new();
         private readonly Timer? _warmupTimer;
 
-        public RedisCacheWarmingService(
-            IRedisConnectionManager connectionManager,
-            IRedisSerializer serializer,
-            IRedisTagManager tagManager,
-            IOptions<RedisOptions> options,
-            ILogger<RedisCacheWarmingService> logger)
+        public CacheWarmingService(
+            IStorageProvider storageProvider,
+            IOptions<StorageOptions> options,
+            ILogger<CacheWarmingService> logger)
         {
-            _connectionManager = connectionManager;
-            _serializer = serializer;
-            _tagManager = tagManager;
+            _storageProvider = storageProvider;
             _options = options.Value;
             _logger = logger;
 
@@ -69,21 +58,19 @@ namespace MethodCache.Providers.Redis.Features
             if (!_options.EnableCacheWarming)
                 return Task.CompletedTask;
 
-            var fullKey = _options.KeyPrefix + key;
-            var entry = new CacheWarmupEntry(fullKey, factory, refreshInterval, tags ?? Array.Empty<string>());
+            var entry = new CacheWarmupEntry(key, factory, refreshInterval, tags ?? Array.Empty<string>());
 
-            _warmupEntries.AddOrUpdate(fullKey, entry, (_, _) => entry);
+            _warmupEntries.AddOrUpdate(key, entry, (_, _) => entry);
 
-            _logger.LogDebug("Registered cache warmup for key {Key} with interval {Interval}", fullKey, refreshInterval);
+            _logger.LogDebug("Registered cache warmup for key {Key} with interval {Interval}", key, refreshInterval);
             return Task.CompletedTask;
         }
 
         public Task UnregisterWarmupKeyAsync(string key)
         {
-            var fullKey = _options.KeyPrefix + key;
-            _warmupEntries.TryRemove(fullKey, out _);
+            _warmupEntries.TryRemove(key, out _);
 
-            _logger.LogDebug("Unregistered cache warmup for key {Key}", fullKey);
+            _logger.LogDebug("Unregistered cache warmup for key {Key}", key);
             return Task.CompletedTask;
         }
 
@@ -164,32 +151,26 @@ namespace MethodCache.Providers.Redis.Features
         {
             try
             {
-                var database = _connectionManager.GetDatabase();
+                // Check if entry exists and get its status
+                var exists = await _storageProvider.ExistsAsync(entry.Key);
 
-                // Check if entry still exists and is close to expiration (Redis-specific TTL check)
-                var ttl = await database.KeyTimeToLiveAsync(entry.Key);
-
-                // If key doesn't exist or expires within the next 25% of refresh interval, warm it up
+                // Calculate warmup threshold (warm when 25% of refresh interval remains)
                 var warmupThreshold = entry.RefreshInterval.Multiply(0.25);
+                var timeSinceLastWarm = now - entry.LastWarmedAt;
 
-                if (!ttl.HasValue || ttl.Value <= warmupThreshold)
+                // Warm up if key doesn't exist or it's time to refresh
+                if (!exists || timeSinceLastWarm >= (entry.RefreshInterval - warmupThreshold))
                 {
-                    _logger.LogDebug("Warming up cache entry {Key} (TTL: {TTL})", entry.Key, ttl?.ToString() ?? "expired");
+                    _logger.LogDebug("Warming up cache entry {Key} (exists: {Exists}, time since last warm: {TimeSinceWarm})",
+                        entry.Key, exists, timeSinceLastWarm);
 
                     // Execute the factory to get fresh data
                     var freshData = await entry.Factory();
 
                     if (freshData != null)
                     {
-                        // Serialize and cache the fresh data
-                        var serializedData = await _serializer.SerializeAsync(freshData);
-                        await database.StringSetAsync(entry.Key, serializedData, entry.RefreshInterval);
-
-                        // Update tag associations if needed
-                        if (entry.Tags.Any())
-                        {
-                            await _tagManager.AssociateTagsAsync(entry.Key, entry.Tags);
-                        }
+                        // Cache the fresh data
+                        await _storageProvider.SetAsync(entry.Key, freshData, entry.RefreshInterval, entry.Tags);
 
                         entry.LastWarmedAt = now;
                         _logger.LogDebug("Successfully warmed up cache entry {Key}", entry.Key);

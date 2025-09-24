@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using Polly;
