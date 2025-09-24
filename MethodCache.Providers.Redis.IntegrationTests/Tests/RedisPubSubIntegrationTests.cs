@@ -1,8 +1,11 @@
 using FluentAssertions;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Infrastructure.Extensions;
 using MethodCache.Providers.Redis.Features;
-using MethodCache.Providers.Redis.Extensions;
+using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,24 +21,40 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         // Arrange - Create two separate service providers to simulate different instances
         var services1 = new ServiceCollection();
         services1.AddLogging();
-        services1.AddRedisCache(options =>
+        services1.AddRedisInfrastructureForTests(options =>
         {
             options.ConnectionString = RedisConnectionString;
             options.EnablePubSubInvalidation = true;
             options.KeyPrefix = CreateKeyPrefix("instance1");
         });
+        // Register infrastructure-based cache manager
+        services1.AddSingleton<ICacheManager>(provider =>
+        {
+            var storageProvider = provider.GetRequiredService<IStorageProvider>();
+            var keyGenerator = provider.GetService<ICacheKeyGenerator>() ?? new DefaultCacheKeyGenerator();
+            return new StorageProviderCacheManager(storageProvider, keyGenerator);
+        });
+        services1.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
         var serviceProvider1 = services1.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider1);
         var cacheManager1 = serviceProvider1.GetRequiredService<ICacheManager>();
 
         var services2 = new ServiceCollection();
         services2.AddLogging();
-        services2.AddRedisCache(options =>
+        services2.AddRedisInfrastructureForTests(options =>
         {
             options.ConnectionString = RedisConnectionString;
             options.EnablePubSubInvalidation = true;
             options.KeyPrefix = CreateKeyPrefix("instance2");
         });
+        // Register infrastructure-based cache manager
+        services2.AddSingleton<ICacheManager>(provider =>
+        {
+            var storageProvider = provider.GetRequiredService<IStorageProvider>();
+            var keyGenerator = provider.GetService<ICacheKeyGenerator>() ?? new DefaultCacheKeyGenerator();
+            return new StorageProviderCacheManager(storageProvider, keyGenerator);
+        });
+        services2.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
         var serviceProvider2 = services2.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider2);
         var cacheManager2 = serviceProvider2.GetRequiredService<ICacheManager>();
@@ -80,12 +99,27 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         // Arrange - Create two separate service providers
         var services1 = new ServiceCollection();
         services1.AddLogging();
-        services1.AddRedisCache(options =>
+        var sharedKeyPrefix = CreateKeyPrefix("pubsub-test-shared");
+        services1.AddRedisHybridInfrastructureForTests(
+            options =>
+            {
+                options.ConnectionString = RedisConnectionString;
+                options.EnablePubSubInvalidation = true;
+                options.KeyPrefix = sharedKeyPrefix;
+            },
+            storageOptions =>
+            {
+                storageOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+                storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
+                storageOptions.EnableBackplane = true;
+            });
+        services1.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
-            options.ConnectionString = RedisConnectionString;
-            options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = CreateKeyPrefix("pubsub-test-instance1");
+            hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+            hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
+            hybridOptions.EnableBackplane = true;
         });
+        services1.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
         var serviceProvider1 = services1.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider1);
         var cacheManager1 = serviceProvider1.GetRequiredService<ICacheManager>();
@@ -93,12 +127,26 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
 
         var services2 = new ServiceCollection();
         services2.AddLogging();
-        services2.AddRedisCache(options =>
+        services2.AddRedisHybridInfrastructureForTests(
+            options =>
+            {
+                options.ConnectionString = RedisConnectionString;
+                options.EnablePubSubInvalidation = true;
+                options.KeyPrefix = sharedKeyPrefix;
+            },
+            storageOptions =>
+            {
+                storageOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+                storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
+                storageOptions.EnableBackplane = true;
+            });
+        services2.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
         {
-            options.ConnectionString = RedisConnectionString;
-            options.EnablePubSubInvalidation = true;
-            options.KeyPrefix = CreateKeyPrefix("pubsub-test-instance2");
+            hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
+            hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
+            hybridOptions.EnableBackplane = true;
         });
+        services2.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
         var serviceProvider2 = services2.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider2);
         var cacheManager2 = serviceProvider2.GetRequiredService<ICacheManager>();

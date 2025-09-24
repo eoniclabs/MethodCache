@@ -30,7 +30,6 @@
     <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" />
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" />
-    <ProjectReference Include="..\MethodCache.HybridCache\MethodCache.HybridCache.csproj" />
   </ItemGroup>
 
 </Project>
