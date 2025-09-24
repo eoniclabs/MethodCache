@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Infrastructure.Configuration;
 using MethodCache.Infrastructure.Implementation;
+using MethodCache.Infrastructure.Services;
 
 namespace MethodCache.Infrastructure.Extensions;
 
@@ -27,7 +29,7 @@ public static class ServiceCollectionExtensions
 
         // Register core services
         services.TryAddSingleton<ISerializer, MessagePackSerializer>();
-        services.TryAddSingleton<IMemoryStorage, MemoryStorage>();
+        services.TryAddSingleton<IMemoryStorage, Implementation.MemoryStorage>();
 
         // Add memory cache if not already registered
         services.AddMemoryCache();
@@ -45,11 +47,11 @@ public static class ServiceCollectionExtensions
         services.AddCacheInfrastructure(configure);
 
         // Register hybrid storage manager as the primary storage provider
-        services.TryAddScoped<HybridStorageManager>(provider =>
+        services.TryAddScoped<Implementation.HybridStorageManager>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<Implementation.HybridStorageManager>>();
 
             // Try to get L2 and L3 storage providers and backplane (optional)
             // For L2, we can look for any registered IStorageProvider (but not this hybrid manager itself)
@@ -59,11 +61,11 @@ public static class ServiceCollectionExtensions
 
             // For now, don't try to automatically wire L2/L3 to avoid circular dependencies
             // Tests can manually configure these if needed
-            return new HybridStorageManager(memoryStorage, options, logger, null, null, backplane);
+            return new Implementation.HybridStorageManager(memoryStorage, options, logger, null, null, backplane);
         });
 
         // Override any existing IStorageProvider registration with hybrid manager
-        services.AddScoped<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+        services.AddScoped<IStorageProvider>(provider => provider.GetRequiredService<Implementation.HybridStorageManager>());
         return services;
     }
 
@@ -111,6 +113,18 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Adds generic cache warming service that works with any storage provider
+    /// </summary>
+    public static IServiceCollection AddCacheWarming(this IServiceCollection services)
+    {
+        services.TryAddSingleton<ICacheWarmingService, CacheWarmingService>();
+        services.TryAddSingleton<CacheWarmingService>();
+        services.AddHostedService<CacheWarmingService>();
+
+        return services;
+    }
+
+    /// <summary>
     /// Validates that all required infrastructure services are registered.
     /// </summary>
     public static IServiceCollection ValidateInfrastructure(this IServiceCollection services)
@@ -124,11 +138,11 @@ public static class ServiceCollectionExtensions
 /// <summary>
 /// Adapter to make IMemoryStorage work as IStorageProvider for memory-only scenarios.
 /// </summary>
-internal class MemoryOnlyStorageProvider : Abstractions.IStorageProvider
+internal class MemoryOnlyStorageProvider : IStorageProvider
 {
-    private readonly Abstractions.IMemoryStorage _memoryStorage;
+    private readonly IMemoryStorage _memoryStorage;
 
-    public MemoryOnlyStorageProvider(Abstractions.IMemoryStorage memoryStorage)
+    public MemoryOnlyStorageProvider(IMemoryStorage memoryStorage)
     {
         _memoryStorage = memoryStorage;
     }
@@ -170,10 +184,10 @@ internal class MemoryOnlyStorageProvider : Abstractions.IStorageProvider
         return Task.FromResult(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy);
     }
 
-    public Task<Abstractions.StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    public Task<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         var memStats = _memoryStorage.GetStats();
-        var stats = new Abstractions.StorageStats
+        var stats = new StorageStats
         {
             GetOperations = memStats.Hits + memStats.Misses,
             SetOperations = memStats.EntryCount, // Approximate
@@ -192,7 +206,7 @@ internal class MemoryOnlyStorageProvider : Abstractions.IStorageProvider
             }
         };
 
-        return Task.FromResult<Abstractions.StorageStats?>(stats);
+        return Task.FromResult<StorageStats?>(stats);
     }
 }
 
@@ -202,9 +216,9 @@ internal class MemoryOnlyStorageProvider : Abstractions.IStorageProvider
 internal class InfrastructureValidator
 {
     public InfrastructureValidator(
-        Abstractions.IStorageProvider storageProvider,
-        Abstractions.IMemoryStorage memoryStorage,
-        Abstractions.ISerializer serializer)
+        IStorageProvider storageProvider,
+        IMemoryStorage memoryStorage,
+        ISerializer serializer)
     {
         // Constructor injection validates that all required services are registered
         _ = storageProvider ?? throw new InvalidOperationException("IStorageProvider is not registered");

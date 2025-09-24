@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 using StackExchange.Redis;
 using System.Text.Json;
