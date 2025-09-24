@@ -1,0 +1,11 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force specific files to have unix line endings
+*.sh text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Force batch files to have CRLF line endings
+*.bat text eol=crlf
+*.ps1 text eol=crlf

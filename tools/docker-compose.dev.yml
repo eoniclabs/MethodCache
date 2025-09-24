@@ -1,0 +1,92 @@
+# Docker Compose for MethodCache Development Environment
+# Provides Redis and SQL Server for local development and testing
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: methodcache-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - methodcache-dev
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: methodcache-sqlserver-dev
+    platform: linux/amd64  # For Apple Silicon compatibility
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+      - MSSQL_COLLATION=SQL_Latin1_General_CP1_CI_AS
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./scripts/sql:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - methodcache-dev
+
+  # Optional: Redis Commander for GUI management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: methodcache-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - methodcache-dev
+    profiles:
+      - tools
+
+  # Optional: SQL Server monitoring
+  sqlserver-exporter:
+    image: awaragi/prometheus-mssql-exporter:latest
+    container_name: methodcache-sqlserver-exporter
+    ports:
+      - "4000:4000"
+    environment:
+      - SERVER=sqlserver
+      - USERNAME=sa
+      - PASSWORD=YourStrong@Passw0rd
+      - DEBUG=app
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - methodcache-dev
+    profiles:
+      - monitoring
+
+volumes:
+  redis_data:
+    driver: local
+  sqlserver_data:
+    driver: local
+
+networks:
+  methodcache-dev:
+    driver: bridge
+    name: methodcache-dev
