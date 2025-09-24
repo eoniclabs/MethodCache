@@ -2,7 +2,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Configuration;
 
 namespace MethodCache.Infrastructure.Implementation;
 

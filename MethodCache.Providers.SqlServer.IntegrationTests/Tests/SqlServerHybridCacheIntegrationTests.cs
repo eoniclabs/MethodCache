@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Implementation;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.SqlServer.Infrastructure;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;

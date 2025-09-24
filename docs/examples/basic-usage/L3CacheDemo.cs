@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MethodCache.Core;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Configuration;
 using MethodCache.Providers.SqlServer.Extensions;
 
 namespace MethodCacheDemo;

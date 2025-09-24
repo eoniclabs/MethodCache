@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -6,10 +7,9 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
-using MethodCache.Infrastructure.Implementation;
+using MethodCache.Core.Storage;
 using MethodCache.Infrastructure.Extensions;
+using InfraStorageOptions = MethodCache.Infrastructure.Configuration.StorageOptions;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Extensions;
 using MethodCache.Providers.SqlServer.Infrastructure;
@@ -103,6 +103,40 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
                         await SharedContainer.StartAsync(containerTimeout.Token);
                         var elapsed = DateTime.UtcNow - startTime;
                         Console.WriteLine($"SQL Server container started in {elapsed.TotalSeconds:F1}s");
+
+                        // Disable forced TLS encryption to keep local integration tests working on macOS.
+                        static async Task EnsureExecSuccessAsync(Task<DotNet.Testcontainers.Containers.ExecResult> execTask, string actionDescription)
+                        {
+                            var result = await execTask.ConfigureAwait(false);
+                            if (result.ExitCode != 0)
+                            {
+                                throw new InvalidOperationException($"{actionDescription} failed. Exit code {result.ExitCode}. stderr: {result.Stderr}");
+                            }
+                        }
+
+                        await EnsureExecSuccessAsync(
+                            SharedContainer.ExecAsync(new[]
+                            {
+                                "/opt/mssql-tools18/bin/sqlcmd",
+                                "-S", "localhost",
+                                "-U", "sa",
+                                "-P", "YourStrong@Passw0rd",
+                                "-C",
+                                "-Q", "EXEC sp_configure 'show advanced options', 1; RECONFIGURE;"
+                            }, globalTimeout.Token),
+                            "Enable advanced SQL Server options");
+
+                        await EnsureExecSuccessAsync(
+                            SharedContainer.ExecAsync(new[]
+                            {
+                                "/opt/mssql-tools18/bin/sqlcmd",
+                                "-S", "localhost",
+                                "-U", "sa",
+                                "-P", "YourStrong@Passw0rd",
+                                "-C",
+                                "-Q", "EXEC sp_configure 'force encryption', 0; RECONFIGURE;"
+                            }, globalTimeout.Token),
+                            "Disable SQL Server forced encryption");
                     }
                     catch (Exception ex)
                     {
@@ -126,11 +160,56 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
 
         // Use the shared container for this test class if present
         SqlServerContainer = SharedContainer!;
+        string? rawContainerConnection = SharedContainer?.GetConnectionString();
+
+        if (rawContainerConnection != null)
+        {
+            var rawBuilder = new SqlConnectionStringBuilder(rawContainerConnection);
+            if (!string.IsNullOrEmpty(rawBuilder.Password))
+            {
+                rawBuilder.Password = "********";
+            }
+            Console.WriteLine($"Raw SQL Server container connection string: {rawBuilder.ConnectionString}");
+        }
+
         SqlServerConnectionString = SharedContainer != null
-            ? $"{SharedContainer.GetConnectionString()};Connection Timeout=30;Command Timeout=30;Pooling=true;Min Pool Size=1;Max Pool Size=10"
+            ? $"{rawContainerConnection};Connection Timeout=30;Command Timeout=30;Pooling=true;Min Pool Size=1;Max Pool Size=10"
             : (Environment.GetEnvironmentVariable("METHODCACHE_SQLSERVER_URL")
                ?? Environment.GetEnvironmentVariable("SQLSERVER_URL")
                ?? throw new InvalidOperationException("No SQL Server connection available."));
+
+        // Ensure local test connections work on macOS by disabling SQL Server TLS when using the container.
+        var connectionBuilder = new SqlConnectionStringBuilder(SqlServerConnectionString);
+
+        var hasEncryptSetting = SqlServerConnectionString.IndexOf("encrypt", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        var hasTrustServerCertificateSetting = SqlServerConnectionString.IndexOf("trustservercertificate", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+        if (SharedContainer != null)
+        {
+            connectionBuilder.Encrypt = false;
+            connectionBuilder.TrustServerCertificate = true;
+        }
+        else
+        {
+            if (!hasEncryptSetting)
+            {
+                connectionBuilder.Encrypt = false;
+            }
+
+            if (!hasTrustServerCertificateSetting)
+            {
+                connectionBuilder.TrustServerCertificate = true;
+            }
+        }
+
+        SqlServerConnectionString = connectionBuilder.ConnectionString;
+
+        var logBuilder = new SqlConnectionStringBuilder(SqlServerConnectionString);
+        if (!string.IsNullOrEmpty(logBuilder.Password))
+        {
+            logBuilder.Password = "********";
+        }
+        Console.WriteLine($"Using SQL Server connection string: {logBuilder.ConnectionString}");
 
         var services = new ServiceCollection();
         // Reduce logging noise and overhead for CI speed
@@ -148,6 +227,7 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
             // Unique prefix per test class instance to avoid cross-test collisions
             options.KeyPrefix = $"test:{Guid.NewGuid():N}:";
             options.Schema = $"test_{Guid.NewGuid():N}".Replace("-", "");
+            options.DefaultSerializer = SqlServerSerializerType.Json; // Use JSON for tests to avoid MessagePack issues
         });
 
         // Register infrastructure-based cache manager
@@ -318,7 +398,24 @@ internal static class SqlServerInfrastructureTestExtensions
         services.AddScoped<HybridStorageManager>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
-            var options = provider.GetRequiredService<IOptions<MethodCache.Infrastructure.Configuration.StorageOptions>>();
+            var infraOptions = provider.GetRequiredService<IOptions<InfraStorageOptions>>();
+            var coreOptions = Options.Create(new StorageOptions
+            {
+                L1MaxExpiration = infraOptions.Value.L1MaxExpiration,
+                L2Enabled = infraOptions.Value.L2Enabled,
+                L2DefaultExpiration = infraOptions.Value.L2DefaultExpiration,
+                L3Enabled = infraOptions.Value.L3Enabled,
+                L3DefaultExpiration = infraOptions.Value.L3DefaultExpiration,
+                L3MaxExpiration = infraOptions.Value.L3MaxExpiration,
+                MaxConcurrentL2Operations = infraOptions.Value.MaxConcurrentL2Operations,
+                MaxConcurrentL3Operations = infraOptions.Value.MaxConcurrentL3Operations,
+                EnableAsyncL2Writes = infraOptions.Value.EnableAsyncL2Writes,
+                EnableAsyncL3Writes = infraOptions.Value.EnableAsyncL3Writes,
+                EnableL3Promotion = infraOptions.Value.EnableL3Promotion,
+                EnableBackplane = infraOptions.Value.EnableBackplane,
+                EnableEfficientL1TagInvalidation = infraOptions.Value.EnableEfficientL1TagInvalidation,
+                MaxTagMappings = infraOptions.Value.MaxTagMappings
+            });
             var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
 
             // Get SqlServer provider for L2/L3
@@ -327,7 +424,7 @@ internal static class SqlServerInfrastructureTestExtensions
 
             return new HybridStorageManager(
                 memoryStorage,
-                options,
+                coreOptions,
                 logger,
                 sqlServerProvider,  // L2 storage
                 sqlServerProvider,  // L3 storage (same instance)

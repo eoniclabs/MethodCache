@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Configuration;
 using MethodCache.Infrastructure.Implementation;
 using MethodCache.Infrastructure.Services;
 

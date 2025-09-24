@@ -125,14 +125,14 @@ public class SqlServerL3Provider : IL3Provider
 
         // Register the L3 persistent storage provider
         services.AddSingleton<SqlServerPersistentStorageProvider>();
-        services.AddSingleton<MethodCache.Infrastructure.Abstractions.IPersistentStorageProvider>(provider =>
+        services.AddSingleton<MethodCache.Core.Storage.IPersistentStorageProvider>(provider =>
             provider.GetRequiredService<SqlServerPersistentStorageProvider>());
 
         // Register backplane if enabled
         if (Options.EnableBackplane)
         {
             services.AddSingleton<SqlServerBackplane>();
-            services.AddSingleton<MethodCache.Infrastructure.Abstractions.IBackplane>(provider =>
+            services.AddSingleton<MethodCache.Core.Storage.IBackplane>(provider =>
                 provider.GetRequiredService<SqlServerBackplane>());
         }
     }
