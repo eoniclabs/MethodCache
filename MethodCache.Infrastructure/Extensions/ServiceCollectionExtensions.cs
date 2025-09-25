@@ -7,6 +7,8 @@ using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
 using MethodCache.Infrastructure.Implementation;
 using MethodCache.Infrastructure.Services;
+using MethodCache.Core;
+using McmMemoryCacheOptions = Microsoft.Extensions.Caching.Memory.MemoryCacheOptions;
 
 namespace MethodCache.Infrastructure.Extensions;
 
@@ -33,6 +35,7 @@ public static class ServiceCollectionExtensions
 
         // Add memory cache if not already registered
         services.AddMemoryCache();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<McmMemoryCacheOptions>, StorageMemoryCacheConfigurator>());
 
         return services;
     }
@@ -47,11 +50,12 @@ public static class ServiceCollectionExtensions
         services.AddCacheInfrastructure(configure);
 
         // Register hybrid storage manager as the primary storage provider
-        services.TryAddScoped<Implementation.HybridStorageManager>(provider =>
+        services.TryAddScoped<HybridStorageManager>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
-            var logger = provider.GetRequiredService<ILogger<Implementation.HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var metrics = provider.GetService<ICacheMetricsProvider>();
 
             // Try to get L2 and L3 storage providers and backplane (optional)
             // For L2, we can look for any registered IStorageProvider (but not this hybrid manager itself)
@@ -61,11 +65,11 @@ public static class ServiceCollectionExtensions
 
             // For now, don't try to automatically wire L2/L3 to avoid circular dependencies
             // Tests can manually configure these if needed
-            return new Implementation.HybridStorageManager(memoryStorage, options, logger, null, null, backplane);
+            return new HybridStorageManager(memoryStorage, options, logger, null, null, backplane, metrics);
         });
 
         // Override any existing IStorageProvider registration with hybrid manager
-        services.AddScoped<IStorageProvider>(provider => provider.GetRequiredService<Implementation.HybridStorageManager>());
+        services.AddScoped<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
         return services;
     }
 
@@ -149,42 +153,42 @@ internal class MemoryOnlyStorageProvider : IStorageProvider
 
     public string Name => "Memory-Only";
 
-    public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    public ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         return _memoryStorage.GetAsync<T>(key, cancellationToken);
     }
 
-    public Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
         return _memoryStorage.SetAsync(key, value, expiration, cancellationToken);
     }
 
-    public Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         return _memoryStorage.SetAsync(key, value, expiration, tags, cancellationToken);
     }
 
-    public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         return _memoryStorage.RemoveAsync(key, cancellationToken);
     }
 
-    public Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
         return _memoryStorage.RemoveByTagAsync(tag, cancellationToken);
     }
 
-    public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(_memoryStorage.Exists(key));
+        return ValueTask.FromResult(_memoryStorage.Exists(key));
     }
 
-    public Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
+    public ValueTask<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy);
+        return ValueTask.FromResult(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy);
     }
 
-    public Task<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    public ValueTask<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         var memStats = _memoryStorage.GetStats();
         var stats = new StorageStats
@@ -206,7 +210,7 @@ internal class MemoryOnlyStorageProvider : IStorageProvider
             }
         };
 
-        return Task.FromResult<StorageStats?>(stats);
+        return ValueTask.FromResult<StorageStats?>(stats);
     }
 }
 

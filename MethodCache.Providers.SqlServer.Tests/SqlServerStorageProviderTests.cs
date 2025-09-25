@@ -6,6 +6,7 @@ using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Infrastructure;
 using MethodCache.Providers.SqlServer.Services;
 using NSubstitute;
+using System.Threading.Tasks;
 
 namespace MethodCache.Providers.SqlServer.Tests;
 
@@ -83,7 +84,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.GetAsync<string>(null!);
+        var act = () => provider.GetAsync<string>(null!).AsTask();
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
@@ -100,7 +101,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.GetAsync<string>("");
+        var act = () => provider.GetAsync<string>("").AsTask();
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
@@ -117,7 +118,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync(null!, "value", TimeSpan.FromMinutes(5));
+        var act = () => provider.SetAsync(null!, "value", TimeSpan.FromMinutes(5)).AsTask();
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
@@ -134,7 +135,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync("", "value", TimeSpan.FromMinutes(5));
+        var act = () => provider.SetAsync("", "value", TimeSpan.FromMinutes(5)).AsTask();
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
@@ -151,7 +152,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync<string>("key", null!, TimeSpan.FromMinutes(5));
+        var act = () => provider.SetAsync<string>("key", null!, TimeSpan.FromMinutes(5)).AsTask();
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
@@ -168,7 +169,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.RemoveAsync(null!);
+        var act = () => provider.RemoveAsync(null!).AsTask();
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
@@ -185,7 +186,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.RemoveAsync("");
+        var act = () => provider.RemoveAsync("").AsTask();
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
@@ -202,7 +203,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.RemoveByTagAsync(null!);
+        var act = () => provider.RemoveByTagAsync(null!).AsTask();
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
@@ -219,7 +220,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.RemoveByTagAsync("");
+        var act = () => provider.RemoveByTagAsync("").AsTask();
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
@@ -243,7 +244,7 @@ public class SqlServerPersistentStorageProviderTests
         // so we'll just verify the backplane call would happen
 
         // Act
-        var act = () => provider.RemoveAsync("test-key");
+        var act = () => provider.RemoveAsync("test-key").AsTask();
 
         // Assert
         // The method should not throw and should attempt to call backplane
@@ -263,7 +264,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act
-        var act = () => provider.RemoveByTagAsync("test-tag");
+        var act = () => provider.RemoveByTagAsync("test-tag").AsTask();
 
         // Assert
         // The method should not throw and should attempt to call backplane
@@ -283,7 +284,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync("key", "value", TimeSpan.Zero);
+        var act = () => provider.SetAsync("key", "value", TimeSpan.Zero).AsTask();
         await act.Should().NotThrowAsync();
     }
 
@@ -300,7 +301,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(-1));
+        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(-1)).AsTask();
         await act.Should().NotThrowAsync();
     }
 
@@ -317,7 +318,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(5), new string[0]);
+        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(5), new string[0]).AsTask();
         await act.Should().NotThrowAsync();
     }
 
@@ -334,7 +335,7 @@ public class SqlServerPersistentStorageProviderTests
             _mockLogger);
 
         // Act & Assert
-        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(5), null!);
+        var act = () => provider.SetAsync("key", "value", TimeSpan.FromMinutes(5), null!).AsTask();
         await act.Should().NotThrowAsync();
     }
 }

@@ -19,6 +19,8 @@ using Xunit;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using System.Runtime.InteropServices;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
@@ -467,7 +469,7 @@ internal class StorageProviderCacheManager : ICacheManager
         if (value != null)
         {
             var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageProvider.SetAsync(key, value, expiration, settings.Tags ?? new List<string>());
+            await _storageProvider.SetAsync(key, value, expiration, settings.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return value;
@@ -475,24 +477,24 @@ internal class StorageProviderCacheManager : ICacheManager
 
     public Task InvalidateByTagsAsync(params string[] tags)
     {
-        return Task.WhenAll(tags.Select(tag => _storageProvider.RemoveByTagAsync(tag)));
+        return Task.WhenAll(tags.Select(tag => _storageProvider.RemoveByTagAsync(tag).AsTask()));
     }
 
     public Task InvalidateAsync(string methodName, params object[] args)
     {
         var key = _keyGenerator.GenerateKey(methodName, args, new CacheMethodSettings());
-        return _storageProvider.RemoveAsync(key);
+        return _storageProvider.RemoveAsync(key).AsTask();
     }
 
     public Task InvalidateByKeysAsync(params string[] keys)
     {
-        return Task.WhenAll(keys.Select(key => _storageProvider.RemoveAsync(key)));
+        return Task.WhenAll(keys.Select(key => _storageProvider.RemoveAsync(key).AsTask()));
     }
 
     public Task InvalidateByTagPatternAsync(string pattern)
     {
         // Basic implementation - remove by single tag
-        return _storageProvider.RemoveByTagAsync(pattern);
+        return _storageProvider.RemoveByTagAsync(pattern).AsTask();
     }
 
     public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)

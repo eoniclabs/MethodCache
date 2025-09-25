@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Linq;
+using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
@@ -357,7 +359,7 @@ internal class InfrastructureCacheManager : ICacheManager
         if (result != null)
         {
             var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
-            await _hybridStorage.SetAsync(cacheKey, result, expiration, settings.Tags ?? new List<string>());
+            await _hybridStorage.SetAsync(cacheKey, result, expiration, settings.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return result;
@@ -366,34 +368,34 @@ internal class InfrastructureCacheManager : ICacheManager
     public Task RemoveAsync(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
     {
         var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-        return _hybridStorage.RemoveAsync(cacheKey);
+        return _hybridStorage.RemoveAsync(cacheKey).AsTask();
     }
 
     public Task RemoveByTagAsync(string tag)
     {
-        return _hybridStorage.RemoveByTagAsync(tag);
+        return _hybridStorage.RemoveByTagAsync(tag).AsTask();
     }
 
     public Task RemoveByTagPatternAsync(string pattern)
     {
-        return _hybridStorage.RemoveByTagAsync(pattern); // Infrastructure version should handle patterns
+        return _hybridStorage.RemoveByTagAsync(pattern).AsTask(); // Infrastructure version should handle patterns
     }
 
     public Task InvalidateByKeysAsync(params string[] keys)
     {
-        var tasks = keys.Select(key => _hybridStorage.RemoveAsync(key));
+        var tasks = keys.Select(key => _hybridStorage.RemoveAsync(key).AsTask());
         return Task.WhenAll(tasks);
     }
 
     public Task InvalidateByTagsAsync(params string[] tags)
     {
-        var tasks = tags.Select(tag => _hybridStorage.RemoveByTagAsync(tag));
+        var tasks = tags.Select(tag => _hybridStorage.RemoveByTagAsync(tag).AsTask());
         return Task.WhenAll(tasks);
     }
 
     public Task InvalidateByTagPatternAsync(string pattern)
     {
-        return _hybridStorage.RemoveByTagAsync(pattern);
+        return _hybridStorage.RemoveByTagAsync(pattern).AsTask();
     }
 
     public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
@@ -431,7 +433,7 @@ internal class StorageProviderCacheManager : ICacheManager
         if (value != null)
         {
             var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageProvider.SetAsync(key, value, expiration, settings.Tags ?? new List<string>());
+            await _storageProvider.SetAsync(key, value, expiration, settings.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return value;
@@ -439,24 +441,24 @@ internal class StorageProviderCacheManager : ICacheManager
 
     public Task InvalidateByTagsAsync(params string[] tags)
     {
-        return Task.WhenAll(tags.Select(tag => _storageProvider.RemoveByTagAsync(tag)));
+        return Task.WhenAll(tags.Select(tag => _storageProvider.RemoveByTagAsync(tag).AsTask()));
     }
 
     public Task InvalidateAsync(string methodName, params object[] args)
     {
         var key = _keyGenerator.GenerateKey(methodName, args, new CacheMethodSettings());
-        return _storageProvider.RemoveAsync(key);
+        return _storageProvider.RemoveAsync(key).AsTask();
     }
 
     public Task InvalidateByKeysAsync(params string[] keys)
     {
-        return Task.WhenAll(keys.Select(key => _storageProvider.RemoveAsync(key)));
+        return Task.WhenAll(keys.Select(key => _storageProvider.RemoveAsync(key).AsTask()));
     }
 
     public Task InvalidateByTagPatternAsync(string pattern)
     {
         // Basic implementation - remove by single tag
-        return _storageProvider.RemoveByTagAsync(pattern);
+        return _storageProvider.RemoveByTagAsync(pattern).AsTask();
     }
 
     public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
@@ -524,10 +526,10 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
             var tags = settings.Tags ?? new List<string>();
 
             // Store via hybrid storage (handles L1+L2 coordination)
-            await _hybridStorage.SetAsync(cacheKey, result, expiration, tags);
+            await _hybridStorage.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
 
             // Also explicitly store in L1 to ensure it's populated for the tests
-            await _l1Storage.SetAsync(cacheKey, result, expiration, tags);
+            await _l1Storage.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
         }
 
         return result;
@@ -543,7 +545,7 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
     {
         foreach (var tag in tags)
         {
-            await _hybridStorage.RemoveByTagAsync(tag);
+            await _hybridStorage.RemoveByTagAsync(tag).ConfigureAwait(false);
         }
     }
 
@@ -551,14 +553,14 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
     {
         foreach (var key in keys)
         {
-            await _hybridStorage.RemoveAsync(key);
+            await _hybridStorage.RemoveAsync(key).ConfigureAwait(false);
         }
     }
 
     public Task InvalidateByTagPatternAsync(string pattern)
     {
         // Basic implementation - remove by single tag
-        return _hybridStorage.RemoveByTagAsync(pattern);
+        return _hybridStorage.RemoveByTagAsync(pattern).AsTask();
     }
 
     // IHybridCacheManager implementation - access layer-specific storage
@@ -577,7 +579,7 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
 
     public Task<T?> GetFromL2Async<T>(string key)
     {
-        return _l2Storage.GetAsync<T>(key);
+        return _l2Storage.GetAsync<T>(key).AsTask();
     }
 
     public Task<T?> GetFromL3Async<T>(string key)
@@ -588,17 +590,17 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
 
     public Task SetInL1Async<T>(string key, T value, TimeSpan expiration)
     {
-        return _l1Storage.SetAsync(key, value, expiration);
+        return _l1Storage.SetAsync(key, value, expiration).AsTask();
     }
 
     public Task SetInL1Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags)
     {
-        return _l1Storage.SetAsync(key, value, expiration, tags);
+        return _l1Storage.SetAsync(key, value, expiration, tags).AsTask();
     }
 
     public Task SetInL2Async<T>(string key, T value, TimeSpan expiration)
     {
-        return _l2Storage.SetAsync(key, value, expiration);
+        return _l2Storage.SetAsync(key, value, expiration).AsTask();
     }
 
     public Task SetInL3Async<T>(string key, T value, TimeSpan expiration)
@@ -611,24 +613,24 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
     {
         // Use shorter expiration for both layers
         var expiration = l1Expiration < l2Expiration ? l1Expiration : l2Expiration;
-        return _hybridStorage.SetAsync(key, value, expiration);
+        return _hybridStorage.SetAsync(key, value, expiration).AsTask();
     }
 
     public Task SetInAllAsync<T>(string key, T value, TimeSpan l1Expiration, TimeSpan l2Expiration, TimeSpan l3Expiration)
     {
         // Use shortest expiration
         var expiration = new[] { l1Expiration, l2Expiration, l3Expiration }.Min();
-        return _hybridStorage.SetAsync(key, value, expiration);
+        return _hybridStorage.SetAsync(key, value, expiration).AsTask();
     }
 
     public Task InvalidateL1Async(string key)
     {
-        return _l1Storage.RemoveAsync(key);
+        return _l1Storage.RemoveAsync(key).AsTask();
     }
 
     public Task InvalidateL2Async(string key)
     {
-        return _l2Storage.RemoveAsync(key);
+        return _l2Storage.RemoveAsync(key).AsTask();
     }
 
     public Task InvalidateL3Async(string key)
@@ -639,12 +641,12 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
 
     public Task InvalidateBothAsync(string key)
     {
-        return _hybridStorage.RemoveAsync(key);
+        return _hybridStorage.RemoveAsync(key).AsTask();
     }
 
     public Task InvalidateAllAsync(string key)
     {
-        return _hybridStorage.RemoveAsync(key);
+        return _hybridStorage.RemoveAsync(key).AsTask();
     }
 
     public Task WarmL1CacheAsync(params string[] keys)
@@ -676,7 +678,7 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
 
     public Task EvictFromL1Async(string key)
     {
-        return _l1Storage.RemoveAsync(key);
+        return _l1Storage.RemoveAsync(key).AsTask();
     }
 
     public Task SyncL1CacheAsync()
@@ -867,5 +869,3 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
         _connectionMultiplexer?.Dispose();
     }
 }
-
-

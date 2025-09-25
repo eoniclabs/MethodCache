@@ -51,6 +51,11 @@ public class StorageOptions
     public bool EnableAsyncL2Writes { get; set; } = true;
 
     /// <summary>
+    /// Maximum number of pending asynchronous write operations queued for background processing.
+    /// </summary>
+    public int AsyncWriteQueueCapacity { get; set; } = 1024;
+
+    /// <summary>
     /// Maximum concurrent L2 operations.
     /// </summary>
     public int MaxConcurrentL2Operations { get; set; } = 10;

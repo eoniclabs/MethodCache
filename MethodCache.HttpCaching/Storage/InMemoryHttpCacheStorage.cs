@@ -23,7 +23,7 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
     }
 
     /// <inheritdoc />
-    public Task<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
         var entry = _cache.Get<HttpCacheEntry>(key);
 
@@ -32,11 +32,11 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
             _logger.LogDebug("Cache entry found for key: {Key}", key);
         }
 
-        return Task.FromResult(entry);
+        return ValueTask.FromResult(entry);
     }
 
     /// <inheritdoc />
-    public Task SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
     {
         var options = new MemoryCacheEntryOptions();
 
@@ -73,19 +73,19 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
         _logger.LogDebug("Cache entry stored for key: {Key}, size: {Size} bytes",
             key, entry.Content.Length);
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <inheritdoc />
-    public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         _cache.Remove(key);
         _logger.LogDebug("Cache entry removed for key: {Key}", key);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <inheritdoc />
-    public Task ClearAsync(CancellationToken cancellationToken = default)
+    public ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
         if (_cache is MemoryCache memoryCache)
         {
@@ -94,7 +94,7 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
         }
 
         _logger.LogInformation("Memory cache cleared");
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     private TimeSpan? CalculateEntryLifetime(HttpCacheEntry entry)

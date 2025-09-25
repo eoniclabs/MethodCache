@@ -36,17 +36,17 @@ public class HttpCacheHandler : DelegatingHandler
         // Only cache safe methods that are configured as cacheable
         if (!IsMethodCacheable(request.Method))
         {
-            return await base.SendAsync(request, cancellationToken);
+            return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
         // Check if request explicitly bypasses cache
         if (ShouldBypassCache(request))
         {
-            return await base.SendAsync(request, cancellationToken);
+            return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
         var cacheKey = GenerateCacheKey(request);
-        var cachedEntry = await GetCacheEntryAsync(request, cacheKey, cancellationToken);
+        var cachedEntry = await GetCacheEntryAsync(request, cacheKey, cancellationToken).ConfigureAwait(false);
 
         _logger.LogDebug("Cache lookup for {Method} {Uri}: {Result}",
             request.Method, request.RequestUri, cachedEntry != null ? "HIT" : "MISS");
@@ -68,7 +68,8 @@ public class HttpCacheHandler : DelegatingHandler
             {
                 try
                 {
-                    await RevalidateCacheEntry(request, cachedEntry, cancellationToken);
+                    await RevalidateCacheEntry(request, cachedEntry, cancellationToken).ConfigureAwait(false);
+                    
                 }
                 catch (Exception ex)
                 {
@@ -89,7 +90,7 @@ public class HttpCacheHandler : DelegatingHandler
         try
         {
             // Execute the request
-            response = await base.SendAsync(request, cancellationToken);
+            response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (cachedEntry != null && _freshnessCalculator.CanUseStaleIfError(cachedEntry))
         {
@@ -104,7 +105,7 @@ public class HttpCacheHandler : DelegatingHandler
 
             // Update cached entry with new headers
             var updatedEntry = cachedEntry.WithUpdatedHeaders(response);
-            await StoreCacheEntryAsync(request, cacheKey, updatedEntry, cancellationToken);
+            await StoreCacheEntryAsync(request, cacheKey, updatedEntry, cancellationToken).ConfigureAwait(false);
 
             response.Dispose(); // Dispose the 304 response
             return CreateCacheHitResponse(updatedEntry, "REVALIDATED");
@@ -116,7 +117,7 @@ public class HttpCacheHandler : DelegatingHandler
             try
             {
                 var cacheEntry = await HttpCacheEntry.FromResponseAsync(request, response);
-                await StoreCacheEntryAsync(request, cacheKey, cacheEntry, cancellationToken);
+                await StoreCacheEntryAsync(request, cacheKey, cacheEntry, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogDebug("Cached response for {Uri}, size: {Size} bytes",
                     request.RequestUri, cacheEntry.Content.Length);
@@ -286,13 +287,13 @@ public class HttpCacheHandler : DelegatingHandler
     /// <summary>
     /// Gets a cache entry with Vary header support.
     /// </summary>
-    private async Task<HttpCacheEntry?> GetCacheEntryAsync(
+    private async ValueTask<HttpCacheEntry?> GetCacheEntryAsync(
         HttpRequestMessage request,
         string baseKey,
         CancellationToken cancellationToken)
     {
         // First, try to get the entry with base key
-        var entry = await _storage.GetAsync(baseKey, cancellationToken);
+        var entry = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
 
         // If no entry found, return null
         if (entry == null)
@@ -322,14 +323,14 @@ public class HttpCacheHandler : DelegatingHandler
         }
 
         // Try to get the Vary-specific entry
-        var varyEntry = await _storage.GetAsync(varyKey, cancellationToken);
+        var varyEntry = await _storage.GetAsync(varyKey, cancellationToken).ConfigureAwait(false);
         return varyEntry;
     }
 
     /// <summary>
     /// Stores a cache entry with Vary header support.
     /// </summary>
-    private async Task StoreCacheEntryAsync(
+    private async ValueTask StoreCacheEntryAsync(
         HttpRequestMessage request,
         string baseKey,
         HttpCacheEntry entry,
@@ -338,7 +339,7 @@ public class HttpCacheHandler : DelegatingHandler
         // If no Vary headers, store with base key only
         if (entry.VaryHeaders == null || entry.VaryHeaders.Length == 0)
         {
-            await _storage.SetAsync(baseKey, entry, cancellationToken);
+            await _storage.SetAsync(baseKey, entry, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -346,7 +347,7 @@ public class HttpCacheHandler : DelegatingHandler
         if (!_options.RespectVary)
         {
             // If we're ignoring Vary, just store with base key
-            await _storage.SetAsync(baseKey, entry, cancellationToken);
+            await _storage.SetAsync(baseKey, entry, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -362,11 +363,11 @@ public class HttpCacheHandler : DelegatingHandler
         // Store with both keys:
         // 1. Base key for Vary header discovery
         // 2. Vary-specific key for actual content retrieval
-        await _storage.SetAsync(baseKey, entry, cancellationToken);
-        await _storage.SetAsync(varyKey, entry, cancellationToken);
+        await _storage.SetAsync(baseKey, entry, cancellationToken).ConfigureAwait(false);
+        await _storage.SetAsync(varyKey, entry, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task RevalidateCacheEntry(
+    private async ValueTask RevalidateCacheEntry(
         HttpRequestMessage originalRequest,
         HttpCacheEntry cachedEntry,
         CancellationToken cancellationToken)
@@ -385,7 +386,7 @@ public class HttpCacheHandler : DelegatingHandler
 
         try
         {
-            var response = await base.SendAsync(revalidationRequest, cancellationToken);
+            var response = await base.SendAsync(revalidationRequest, cancellationToken).ConfigureAwait(false);
 
             var cacheKey = GenerateCacheKey(originalRequest);
 
@@ -393,13 +394,13 @@ public class HttpCacheHandler : DelegatingHandler
             {
                 // Update existing cache entry
                 var updatedEntry = cachedEntry.WithUpdatedHeaders(response);
-                await _storage.SetAsync(cacheKey, updatedEntry, cancellationToken);
+                await _storage.SetAsync(cacheKey, updatedEntry, cancellationToken).ConfigureAwait(false);
             }
             else if (ShouldCacheResponse(originalRequest, response))
             {
                 // Store new response
-                var newEntry = await HttpCacheEntry.FromResponseAsync(originalRequest, response);
-                await _storage.SetAsync(cacheKey, newEntry, cancellationToken);
+                var newEntry = await HttpCacheEntry.FromResponseAsync(originalRequest, response).ConfigureAwait(false);
+                await _storage.SetAsync(cacheKey, newEntry, cancellationToken).ConfigureAwait(false);
             }
 
             response.Dispose();
