@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Storage;
@@ -22,10 +23,8 @@ internal class MethodCacheBuilder : IMethodCacheBuilder
     public MethodCacheBuilder(IServiceCollection services)
     {
         Services = services;
+        _logger = NullLogger<MethodCacheBuilder>.Instance;
 
-        // Try to get logger if available
-        using var tempProvider = services.BuildServiceProvider();
-        _logger = tempProvider.GetService<ILogger<MethodCacheBuilder>>();
     }
 
     public IMethodCacheBuilder WithL1(IL1Provider provider)

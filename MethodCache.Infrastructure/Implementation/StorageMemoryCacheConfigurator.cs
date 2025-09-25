@@ -2,11 +2,12 @@ using System;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Configuration;
+using McmMemoryCacheOptions = Microsoft.Extensions.Caching.Memory.MemoryCacheOptions;
 
 namespace MethodCache.Infrastructure.Implementation;
 
-internal sealed class StorageMemoryCacheConfigurator : IConfigureOptions<MemoryCacheOptions>
+internal sealed class StorageMemoryCacheConfigurator : IConfigureOptions<McmMemoryCacheOptions>
 {
     private readonly IOptions<StorageOptions> _storageOptions;
     private readonly ILogger<StorageMemoryCacheConfigurator> _logger;
@@ -19,7 +20,7 @@ internal sealed class StorageMemoryCacheConfigurator : IConfigureOptions<MemoryC
         _logger = logger;
     }
 
-    public void Configure(MemoryCacheOptions options)
+    public void Configure(McmMemoryCacheOptions options)
     {
         var storage = _storageOptions.Value;
 

@@ -2,21 +2,22 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Configuration;
 using System.Collections.Concurrent;
 
 namespace MethodCache.Infrastructure.Services
 {
     /// <summary>
-    /// Generic cache warming service that works with any storage provider
+    /// Generic cache warming service that works with any storage provider.
     /// </summary>
     public class CacheWarmingService : BackgroundService, ICacheWarmingService
     {
+        private static readonly TimeSpan WarmupPollInterval = TimeSpan.FromSeconds(30);
+
         private readonly IStorageProvider _storageProvider;
         private readonly StorageOptions _options;
         private readonly ILogger<CacheWarmingService> _logger;
         private readonly ConcurrentDictionary<string, CacheWarmupEntry> _warmupEntries = new();
-        private readonly Timer? _warmupTimer;
 
         public CacheWarmingService(
             IStorageProvider storageProvider,
@@ -26,12 +27,6 @@ namespace MethodCache.Infrastructure.Services
             _storageProvider = storageProvider;
             _options = options.Value;
             _logger = logger;
-
-            if (_options.EnableCacheWarming)
-            {
-                // Check for warmup every 30 seconds
-                _warmupTimer = new Timer(ProcessWarmupEntries, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
-            }
         }
 
         public Task StartAsync()
@@ -48,7 +43,6 @@ namespace MethodCache.Infrastructure.Services
 
         public Task StopAsync()
         {
-            _warmupTimer?.Dispose();
             _logger.LogInformation("Cache warming service stopped");
             return Task.CompletedTask;
         }
@@ -56,10 +50,11 @@ namespace MethodCache.Infrastructure.Services
         public Task RegisterWarmupKeyAsync(string key, Func<Task<object>> factory, TimeSpan refreshInterval, string[]? tags = null)
         {
             if (!_options.EnableCacheWarming)
+            {
                 return Task.CompletedTask;
+            }
 
             var entry = new CacheWarmupEntry(key, factory, refreshInterval, tags ?? Array.Empty<string>());
-
             _warmupEntries.AddOrUpdate(key, entry, (_, _) => entry);
 
             _logger.LogDebug("Registered cache warmup for key {Key} with interval {Interval}", key, refreshInterval);
@@ -69,55 +64,48 @@ namespace MethodCache.Infrastructure.Services
         public Task UnregisterWarmupKeyAsync(string key)
         {
             _warmupEntries.TryRemove(key, out _);
-
             _logger.LogDebug("Unregistered cache warmup for key {Key}", key);
             return Task.CompletedTask;
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             if (!_options.EnableCacheWarming)
-                return Task.CompletedTask;
+            {
+                return;
+            }
 
             _logger.LogInformation("Cache warming background service started");
 
-            // Run the warming loop in the background without blocking startup
-            _ = Task.Run(async () =>
+            using var timer = new PeriodicTimer(WarmupPollInterval);
+
+            try
             {
-                try
+                while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
                 {
-                    while (!stoppingToken.IsCancellationRequested)
-                    {
-                        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-
-                        if (!stoppingToken.IsCancellationRequested)
-                        {
-                            await ProcessWarmupEntriesAsync();
-                        }
-                    }
+                    await ProcessWarmupEntriesAsync(stoppingToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
-                {
-                    // Expected when cancellation is requested
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in cache warming background service");
-                }
-            }, stoppingToken);
-
-            return Task.CompletedTask;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // Expected when cancellation is requested
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in cache warming background service");
+            }
+            finally
+            {
+                _logger.LogInformation("Cache warming background service stopped");
+            }
         }
 
-        private void ProcessWarmupEntries(object? state)
+        private async Task ProcessWarmupEntriesAsync(CancellationToken cancellationToken)
         {
-            _ = Task.Run(async () => await ProcessWarmupEntriesAsync());
-        }
-
-        private async Task ProcessWarmupEntriesAsync()
-        {
-            if (!_options.EnableCacheWarming || _warmupEntries.IsEmpty)
+            if (_warmupEntries.IsEmpty)
+            {
                 return;
+            }
 
             var now = DateTimeOffset.UtcNow;
             var processedCount = 0;
@@ -125,13 +113,22 @@ namespace MethodCache.Infrastructure.Services
 
             foreach (var entry in _warmupEntries.Values)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
                 try
                 {
                     if (now >= entry.NextWarmupTime)
                     {
-                        await WarmupCacheEntryAsync(entry, now);
+                        await WarmupCacheEntryAsync(entry, now, cancellationToken).ConfigureAwait(false);
                         processedCount++;
                     }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -147,47 +144,41 @@ namespace MethodCache.Infrastructure.Services
             }
         }
 
-        private async Task WarmupCacheEntryAsync(CacheWarmupEntry entry, DateTimeOffset now)
+        private async Task WarmupCacheEntryAsync(CacheWarmupEntry entry, DateTimeOffset now, CancellationToken cancellationToken)
         {
             try
             {
-                // Check if entry exists and get its status
-                var exists = await _storageProvider.ExistsAsync(entry.Key);
+                var exists = await _storageProvider.ExistsAsync(entry.Key, cancellationToken).ConfigureAwait(false);
 
                 // Calculate warmup threshold (warm when 25% of refresh interval remains)
                 var warmupThreshold = entry.RefreshInterval.Multiply(0.25);
                 var timeSinceLastWarm = now - entry.LastWarmedAt;
 
-                // Warm up if key doesn't exist or it's time to refresh
                 if (!exists || timeSinceLastWarm >= (entry.RefreshInterval - warmupThreshold))
                 {
                     _logger.LogDebug("Warming up cache entry {Key} (exists: {Exists}, time since last warm: {TimeSinceWarm})",
                         entry.Key, exists, timeSinceLastWarm);
 
-                    // Execute the factory to get fresh data
-                    var freshData = await entry.Factory();
+                    var freshData = await entry.Factory().ConfigureAwait(false);
 
                     if (freshData != null)
                     {
-                        // Cache the fresh data
-                        await _storageProvider.SetAsync(entry.Key, freshData, entry.RefreshInterval, entry.Tags);
+                        await _storageProvider.SetAsync(entry.Key, freshData, entry.RefreshInterval, entry.Tags, cancellationToken).ConfigureAwait(false);
 
                         entry.LastWarmedAt = now;
                         _logger.LogDebug("Successfully warmed up cache entry {Key}", entry.Key);
                     }
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to warm up cache entry {Key}", entry.Key);
                 throw;
             }
-        }
-
-        public override void Dispose()
-        {
-            _warmupTimer?.Dispose();
-            base.Dispose();
         }
     }
 }

@@ -10,7 +10,7 @@ using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
 using MethodCache.Infrastructure.Extensions;
-using InfraStorageOptions = MethodCache.Infrastructure.Configuration.StorageOptions;
+using InfraStorageOptions = MethodCache.Core.Configuration.StorageOptions;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Compression;
 using MethodCache.Providers.Redis.Features;
@@ -255,7 +255,7 @@ internal static class RedisInfrastructureTestExtensions
     public static IServiceCollection AddRedisHybridInfrastructureForTests(
         this IServiceCollection services,
         Action<RedisOptions>? configureRedis = null,
-        Action<MethodCache.Infrastructure.Configuration.StorageOptions>? configureStorage = null)
+        Action<MethodCache.Core.Configuration.StorageOptions>? configureStorage = null)
     {
         // Add Redis infrastructure
         services.AddRedisInfrastructureForTests(configureRedis);
@@ -270,7 +270,7 @@ internal static class RedisInfrastructureTestExtensions
         services.AddMethodCache();
 
         // Ensure IMemoryStorage is registered as singleton BEFORE AddCacheInfrastructure
-        services.TryAddSingleton<MethodCache.Core.Storage.IMemoryStorage, MethodCache.Infrastructure.Implementation.MemoryStorage>();
+        services.TryAddSingleton<MethodCache.Core.Storage.IMemoryStorage, MethodCache.Core.Storage.MemoryStorage>();
 
         // Add core infrastructure for hybrid manager (same as SqlServer tests)
         services.AddCacheInfrastructure();
