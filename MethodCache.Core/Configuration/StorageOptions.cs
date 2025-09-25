@@ -165,6 +165,14 @@ public class StorageOptions
         BaseDelay = TimeSpan.FromMilliseconds(500),
         MaxDelay = TimeSpan.FromSeconds(10)
     };
+
+    // Cache Warming Configuration
+
+    /// <summary>
+    /// Whether to enable cache warming service.
+    /// </summary>
+    public bool EnableCacheWarming { get; set; } = false;
+
 }
 
 /// <summary>

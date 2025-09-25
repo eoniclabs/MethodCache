@@ -31,7 +31,7 @@ public static class ServiceCollectionExtensions
 
         // Register core services
         services.TryAddSingleton<ISerializer, MessagePackSerializer>();
-        services.TryAddSingleton<IMemoryStorage, Implementation.MemoryStorage>();
+        services.Replace(ServiceDescriptor.Singleton<IMemoryStorage, MemoryStorage>());
 
         // Add memory cache if not already registered
         services.AddMemoryCache();
@@ -50,7 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddCacheInfrastructure(configure);
 
         // Register hybrid storage manager as the primary storage provider
-        services.TryAddScoped<HybridStorageManager>(provider =>
+        services.TryAddSingleton<HybridStorageManager>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
@@ -69,7 +69,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Override any existing IStorageProvider registration with hybrid manager
-        services.AddScoped<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+        services.Replace(ServiceDescriptor.Singleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>()));
         return services;
     }
 
@@ -83,11 +83,11 @@ public static class ServiceCollectionExtensions
         services.AddCacheInfrastructure(configure);
 
         // Register memory storage as the primary storage provider
-        services.TryAddScoped<IStorageProvider>(provider =>
+        services.Replace(ServiceDescriptor.Singleton<IStorageProvider>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             return new MemoryOnlyStorageProvider(memoryStorage);
-        });
+        }));
 
         return services;
     }
@@ -230,3 +230,5 @@ internal class InfrastructureValidator
         _ = serializer ?? throw new InvalidOperationException("ISerializer is not registered");
     }
 }
+
+

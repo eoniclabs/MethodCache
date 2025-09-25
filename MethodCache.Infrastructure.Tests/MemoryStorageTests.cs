@@ -3,7 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration;
-using MethodCache.Infrastructure.Implementation;
+using MethodCache.Core.Storage;
 using Xunit;
 
 namespace MethodCache.Infrastructure.Tests;
