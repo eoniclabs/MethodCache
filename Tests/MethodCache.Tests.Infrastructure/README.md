@@ -125,20 +125,7 @@ Configuration is stored securely in:
 - `*.json` - Plain files for non-sensitive configuration
 - `.machine-key` - Encryption key (automatically generated)
 
-## 🐋 Docker Development
 
-Use the provided Docker Compose file for development:
-
-```bash
-# Start Redis and SQL Server
-docker-compose -f docker-compose.dev.yml up -d
-
-# Stop services
-docker-compose -f docker-compose.dev.yml down
-
-# Include optional tools (Redis Commander, monitoring)
-docker-compose -f docker-compose.dev.yml --profile tools up -d
-```
 
 ## 🔍 Environment Variables
 
@@ -183,14 +170,6 @@ The configuration system works with any IDE that supports .NET development. Envi
 - External Redis server
 - External SQL Server instance
 - **Estimated time:** ~30 seconds
-
-### Good Setup
-- External service + Docker container
-- **Estimated time:** ~2 minutes
-
-### Docker Setup
-- Both services in Docker containers
-- **Estimated time:** ~5 minutes first run, ~1 minute subsequent
 
 ### Platform-Specific Optimizations
 
@@ -260,7 +239,6 @@ rmdir /s %USERPROFILE%\.methodcache\test-config  # Windows
 ## 📚 Additional Resources
 
 - [Integration Test Strategy](../../INTEGRATION_TEST_STRATEGY.md)
-- [Docker Setup Guide](../../docker-compose.dev.yml)
 - [Platform Setup Scripts](../../scripts/)
 - [VSCode Configuration](../../.vscode/)
 

@@ -79,6 +79,7 @@ services.AddMethodCache(config => {
 2. Integration with existing key generator system
 3. Backward compatibility maintained
 4. Comprehensive examples and documentation
+5. Method chaining API (`CacheBuilder<T>`)
 
 ### 🔄 Ready to Implement (Optional)
 1. Expression tree-based overloads
