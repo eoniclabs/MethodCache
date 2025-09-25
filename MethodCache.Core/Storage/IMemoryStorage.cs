@@ -13,7 +13,7 @@ public interface IMemoryStorage
     /// <summary>
     /// Gets a value from memory storage asynchronously.
     /// </summary>
-    Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
+    ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a value in memory storage with expiration.
@@ -28,12 +28,12 @@ public interface IMemoryStorage
     /// <summary>
     /// Sets a value in memory storage asynchronously.
     /// </summary>
-    Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default);
+    ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a value in memory storage asynchronously with tags.
     /// </summary>
-    Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default);
+    ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a value from memory storage.
@@ -43,7 +43,7 @@ public interface IMemoryStorage
     /// <summary>
     /// Removes a value from memory storage asynchronously.
     /// </summary>
-    Task RemoveAsync(string key, CancellationToken cancellationToken = default);
+    ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes all values associated with a tag.
@@ -53,7 +53,7 @@ public interface IMemoryStorage
     /// <summary>
     /// Removes all values associated with a tag asynchronously.
     /// </summary>
-    Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default);
+    ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a key exists in memory storage.

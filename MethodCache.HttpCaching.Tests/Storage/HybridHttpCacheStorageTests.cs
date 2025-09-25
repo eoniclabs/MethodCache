@@ -7,6 +7,7 @@ using MethodCache.Core.Configuration;
 using NSubstitute;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests.Storage;
@@ -48,7 +49,9 @@ public class HybridHttpCacheStorageTests
         // Arrange
         const string key = "test-key";
         var entry = CreateTestEntry();
-        _storageProvider.GetAsync<HttpCacheEntry>(key, Arg.Any<CancellationToken>()).Returns(entry);
+        _storageProvider
+            .GetAsync<HttpCacheEntry>(key, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<HttpCacheEntry?>(entry));
 
         // Act
         var result = await _storage.GetAsync(key);
@@ -63,7 +66,9 @@ public class HybridHttpCacheStorageTests
     {
         // Arrange
         const string key = "test-key";
-        _storageProvider.GetAsync<HttpCacheEntry>(key, Arg.Any<CancellationToken>()).Returns((HttpCacheEntry?)null);
+        _storageProvider
+            .GetAsync<HttpCacheEntry>(key, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<HttpCacheEntry?>(null));
 
         // Act
         var result = await _storage.GetAsync(key);
@@ -79,7 +84,9 @@ public class HybridHttpCacheStorageTests
         const string key = "test-key";
         var largeEntry = CreateTestEntryWithContent(new byte[2 * 1024 * 1024]); // 2MB > 1MB limit
 
-        _storageProvider.GetAsync<HttpCacheEntry>(key, Arg.Any<CancellationToken>()).Returns(largeEntry);
+        _storageProvider
+            .GetAsync<HttpCacheEntry>(key, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<HttpCacheEntry?>(largeEntry));
 
         // Act
         var result = await _storage.GetAsync(key);

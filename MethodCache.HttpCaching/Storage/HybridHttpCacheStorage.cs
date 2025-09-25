@@ -35,13 +35,13 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         _logger = logger;
     }
 
-    public async Task<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
         Interlocked.Increment(ref _requests);
 
         try
         {
-            var entry = await _storageProvider.GetAsync<HttpCacheEntry>(key, cancellationToken);
+            var entry = await _storageProvider.GetAsync<HttpCacheEntry>(key, cancellationToken).ConfigureAwait(false);
 
             if (entry != null)
             {
@@ -56,7 +56,7 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
                 else
                 {
                     _logger.LogWarning("HTTP cache entry {Key} exceeded size limits, removing from cache", key);
-                    await RemoveAsync(key, cancellationToken);
+                    await RemoveAsync(key, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -72,7 +72,7 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    public async Task SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
     {
         if (!IsEntrySizeValid(entry))
         {
@@ -86,7 +86,7 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
             var expiration = CalculateExpiration(entry);
             var tags = GenerateTags(entry);
 
-            await _storageProvider.SetAsync(key, entry, expiration, tags, cancellationToken);
+            await _storageProvider.SetAsync(key, entry, expiration, tags, cancellationToken).ConfigureAwait(false);
 
             Interlocked.Increment(ref _sets);
             _logger.LogDebug("Stored HTTP cache entry {Key} with expiration {Expiration} and tags {Tags}",
@@ -98,11 +98,11 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         try
         {
-            await _storageProvider.RemoveAsync(key, cancellationToken);
+            await _storageProvider.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
             Interlocked.Increment(ref _removes);
             _logger.LogDebug("Removed HTTP cache entry {Key}", key);
         }
@@ -112,12 +112,12 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    public async Task ClearAsync(CancellationToken cancellationToken = default)
+    public async ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             // Use tag-based invalidation to clear all HTTP cache entries
-            await _storageProvider.RemoveByTagAsync("http-cache", cancellationToken);
+            await _storageProvider.RemoveByTagAsync("http-cache", cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Cleared all HTTP cache entries using tag invalidation");
         }
         catch (Exception ex)
@@ -129,12 +129,12 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
     /// <summary>
     /// Removes HTTP cache entries for a specific URI pattern.
     /// </summary>
-    public async Task InvalidateByUriAsync(string uriPattern, CancellationToken cancellationToken = default)
+    public async ValueTask InvalidateByUriAsync(string uriPattern, CancellationToken cancellationToken = default)
     {
         try
         {
             var tag = $"uri:{uriPattern}";
-            await _storageProvider.RemoveByTagAsync(tag, cancellationToken);
+            await _storageProvider.RemoveByTagAsync(tag, cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("Invalidated HTTP cache entries for URI pattern {UriPattern}", uriPattern);
         }
         catch (Exception ex)
@@ -146,12 +146,12 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
     /// <summary>
     /// Removes HTTP cache entries for a specific HTTP method.
     /// </summary>
-    public async Task InvalidateByMethodAsync(string method, CancellationToken cancellationToken = default)
+    public async ValueTask InvalidateByMethodAsync(string method, CancellationToken cancellationToken = default)
     {
         try
         {
             var tag = $"method:{method.ToUpperInvariant()}";
-            await _storageProvider.RemoveByTagAsync(tag, cancellationToken);
+            await _storageProvider.RemoveByTagAsync(tag, cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("Invalidated HTTP cache entries for method {Method}", method);
         }
         catch (Exception ex)

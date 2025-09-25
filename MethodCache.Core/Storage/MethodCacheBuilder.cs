@@ -130,6 +130,7 @@ internal class MethodCacheBuilder : IMethodCacheBuilder
             var memoryStorage = _l1Provider != null ? provider.GetService<IMemoryStorage>() : null;
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
             var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
             // Get L2 storage if configured
             IStorageProvider? l2Storage = null;
@@ -151,7 +152,7 @@ internal class MethodCacheBuilder : IMethodCacheBuilder
             // Get backplane if available
             var backplane = provider.GetService<IBackplane>();
 
-            return new HybridStorageManager(memoryStorage!, options, logger, l2Storage, l3Storage, backplane);
+            return new HybridStorageManager(memoryStorage!, options, logger, l2Storage, l3Storage, backplane, metricsProvider);
         });
 
         // Register as IStorageProvider for compatibility

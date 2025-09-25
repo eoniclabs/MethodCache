@@ -57,10 +57,8 @@ public class MemoryStorage : IMemoryStorage
         return result;
     }
 
-    public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(Get<T>(key));
-    }
+    public ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(Get<T>(key));
 
     public void Set<T>(string key, T value, TimeSpan expiration)
     {
@@ -92,16 +90,16 @@ public class MemoryStorage : IMemoryStorage
         _logger.LogDebug("Set key {Key} in memory storage with expiration {Expiration}", key, expiration);
     }
 
-    public Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
         Set(key, value, expiration);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         Set(key, value, expiration, tags);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public void Remove(string key)
@@ -111,10 +109,10 @@ public class MemoryStorage : IMemoryStorage
         _logger.LogDebug("Removed key {Key} from memory storage", key);
     }
 
-    public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         Remove(key);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public void RemoveByTag(string tag)
@@ -150,10 +148,10 @@ public class MemoryStorage : IMemoryStorage
         RemoveTagMappings(tag, isTagInvalidation: true);
     }
 
-    public Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
         RemoveByTag(tag);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public bool Exists(string key)

@@ -16,54 +16,54 @@ public interface IPersistentStorageProvider
     /// <summary>
     /// Gets a value from persistent storage.
     /// </summary>
-    Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
+    ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a value in persistent storage with expiration.
     /// Persistent storage typically has longer expiration times compared to L1/L2 caches.
     /// </summary>
-    Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default);
+    ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a value in persistent storage with expiration and tags.
     /// </summary>
-    Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default);
+    ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a value from persistent storage.
     /// </summary>
-    Task RemoveAsync(string key, CancellationToken cancellationToken = default);
+    ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes all values associated with a tag from persistent storage.
     /// </summary>
-    Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default);
+    ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a key exists in persistent storage.
     /// </summary>
-    Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
+    ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the health status of this persistent storage provider.
     /// </summary>
-    Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default);
+    ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets persistent storage statistics if supported.
     /// </summary>
-    Task<PersistentStorageStats?> GetStatsAsync(CancellationToken cancellationToken = default);
+    ValueTask<PersistentStorageStats?> GetStatsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Performs cleanup operations on expired entries.
     /// This is important for persistent storage to manage disk space and performance.
     /// </summary>
-    Task CleanupExpiredEntriesAsync(CancellationToken cancellationToken = default);
+    ValueTask CleanupExpiredEntriesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the total size of data stored in persistent storage (in bytes).
     /// </summary>
-    Task<long> GetStorageSizeAsync(CancellationToken cancellationToken = default);
+    ValueTask<long> GetStorageSizeAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

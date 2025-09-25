@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,12 +10,13 @@ namespace MethodCache.Core.Storage;
 /// <summary>
 /// Manages hybrid storage with L1 (memory), L2 (distributed), and optional L3 (persistent) layers.
 /// </summary>
-public class HybridStorageManager : IStorageProvider
+public class HybridStorageManager : IStorageProvider, IAsyncDisposable
 {
     private readonly IMemoryStorage _l1Storage;
     private readonly IStorageProvider? _l2Storage;
     private readonly IPersistentStorageProvider? _l3Storage;
     private readonly IBackplane? _backplane;
+    private readonly ICacheMetricsProvider? _metricsProvider;
     private readonly StorageOptions _options;
     private readonly ILogger<HybridStorageManager> _logger;
     private readonly SemaphoreSlim _l2Semaphore;
@@ -30,6 +32,18 @@ public class HybridStorageManager : IStorageProvider
     private long _backplaneMessagesSent;
     private long _backplaneMessagesReceived;
 
+    private readonly Channel<Func<CancellationToken, ValueTask>>? _asyncWriteChannel;
+    private readonly CancellationTokenSource? _asyncWriteCts;
+    private readonly Task? _asyncWriteWorker;
+    private readonly CancellationTokenSource? _backplaneCts;
+    private readonly Task? _backplaneSubscriptionTask;
+    private int _disposed;
+
+    private const string MetricsPrefix = "HybridStorage";
+    private const string MetricsL1 = MetricsPrefix + ":L1";
+    private const string MetricsL2 = MetricsPrefix + ":L2";
+    private const string MetricsL3 = MetricsPrefix + ":L3";
+
     public string Name => $"Hybrid(L1+{(_l2Storage != null ? "L2+" : "")}{(_l3Storage != null ? "L3" : "Memory-Only")})";
 
     public HybridStorageManager(
@@ -38,25 +52,46 @@ public class HybridStorageManager : IStorageProvider
         ILogger<HybridStorageManager> logger,
         IStorageProvider? l2Storage = null,
         IPersistentStorageProvider? l3Storage = null,
-        IBackplane? backplane = null)
+        IBackplane? backplane = null,
+        ICacheMetricsProvider? metricsProvider = null)
     {
         _l1Storage = l1Storage;
         _l2Storage = l2Storage;
         _l3Storage = l3Storage;
         _backplane = backplane;
+        _metricsProvider = metricsProvider;
         _options = options.Value;
         _logger = logger;
         _l2Semaphore = new SemaphoreSlim(_options.MaxConcurrentL2Operations, _options.MaxConcurrentL2Operations);
         _l3Semaphore = new SemaphoreSlim(_options.MaxConcurrentL3Operations, _options.MaxConcurrentL3Operations);
 
+        if (_options.EnableAsyncL2Writes || _options.EnableAsyncL3Writes)
+        {
+            var capacity = Math.Max(1, _options.AsyncWriteQueueCapacity);
+            var channelOptions = new BoundedChannelOptions(capacity)
+            {
+                SingleReader = true,
+                SingleWriter = false,
+                FullMode = BoundedChannelFullMode.Wait
+            };
+
+            _asyncWriteChannel = Channel.CreateBounded<Func<CancellationToken, ValueTask>>(channelOptions);
+            _asyncWriteCts = new CancellationTokenSource();
+            _asyncWriteWorker = Task.Run(() => ProcessAsyncWritesAsync(_asyncWriteCts.Token));
+        }
+
         if (_backplane != null)
         {
-            // Subscribe to backplane messages for distributed invalidation
-            _ = Task.Run(async () =>
+            _backplaneCts = new CancellationTokenSource();
+            _backplaneSubscriptionTask = Task.Run(async () =>
             {
                 try
                 {
-                    await _backplane.SubscribeAsync(OnBackplaneMessage);
+                    await _backplane.SubscribeAsync(OnBackplaneMessage, _backplaneCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected during shutdown
                 }
                 catch (Exception ex)
                 {
@@ -66,18 +101,20 @@ public class HybridStorageManager : IStorageProvider
         }
     }
 
-    public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         // Try L1 first
         var result = await _l1Storage.GetAsync<T>(key, cancellationToken);
         if (result != null)
         {
             Interlocked.Increment(ref _l1Hits);
+            _metricsProvider?.CacheHit(MetricsL1);
             _logger.LogDebug("L1 cache hit for key {Key}", key);
             return result;
         }
 
         Interlocked.Increment(ref _l1Misses);
+        _metricsProvider?.CacheMiss(MetricsL1);
 
         // Try L2 if enabled
         if (_l2Storage != null && _options.L2Enabled)
@@ -90,6 +127,7 @@ public class HybridStorageManager : IStorageProvider
                 if (result != null)
                 {
                     Interlocked.Increment(ref _l2Hits);
+                    _metricsProvider?.CacheHit(MetricsL2);
                     _logger.LogDebug("L2 cache hit for key {Key}", key);
 
                     // Warm L1 cache with shorter expiration
@@ -105,6 +143,7 @@ public class HybridStorageManager : IStorageProvider
                 }
 
                 Interlocked.Increment(ref _l2Misses);
+                _metricsProvider?.CacheMiss(MetricsL2);
             }
             catch (Exception ex)
             {
@@ -128,6 +167,7 @@ public class HybridStorageManager : IStorageProvider
                 if (result != null)
                 {
                     Interlocked.Increment(ref _l3Hits);
+                    _metricsProvider?.CacheHit(MetricsL3);
                     _logger.LogDebug("L3 cache hit for key {Key}", key);
 
                     // Promote to higher layers if enabled
@@ -140,6 +180,7 @@ public class HybridStorageManager : IStorageProvider
                 }
 
                 Interlocked.Increment(ref _l3Misses);
+                _metricsProvider?.CacheMiss(MetricsL3);
             }
             catch (Exception ex)
             {
@@ -156,46 +197,34 @@ public class HybridStorageManager : IStorageProvider
         return default;
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
         await SetAsync(key, value, expiration, Enumerable.Empty<string>(), cancellationToken);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         var l1Expiration = CalculateL1Expiration(expiration);
-        var tasks = new List<Task>();
-
-        // Always set in L1
-        tasks.Add(_l1Storage.SetAsync(key, value, l1Expiration, tags, cancellationToken));
+        var tasks = new List<ValueTask>
+        {
+            _l1Storage.SetAsync(key, value, l1Expiration, tags, cancellationToken)
+        };
 
         // Set in L2 if enabled
         if (_l2Storage != null && _options.L2Enabled)
         {
+            var scheduled = false;
             if (_options.EnableAsyncL2Writes)
             {
-                // Fire and forget for async writes
-                _ = Task.Run(async () =>
+                scheduled = TryScheduleAsyncWrite(ct => WriteToL2Async(key, value, expiration, tags, ct));
+                if (!scheduled)
                 {
-                    try
-                    {
-                        await _l2Semaphore.WaitAsync(cancellationToken);
-                        await _l2Storage.SetAsync(key, value, expiration, tags, cancellationToken);
-                        _logger.LogDebug("Async L2 write completed for key {Key}", key);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error in async L2 write for key {Key}", key);
-                    }
-                    finally
-                    {
-                        _l2Semaphore.Release();
-                    }
-                }, cancellationToken);
+                    _logger.LogDebug("Async L2 write queue full; performing synchronous write for key {Key}", key);
+                }
             }
-            else
+
+            if (!scheduled)
             {
-                // Synchronous L2 write
                 tasks.Add(WriteToL2Async(key, value, expiration, tags, cancellationToken));
             }
         }
@@ -205,56 +234,44 @@ public class HybridStorageManager : IStorageProvider
         {
             var l3Expiration = CalculateL3Expiration(expiration);
 
+            var scheduled = false;
             if (_options.EnableAsyncL3Writes)
             {
-                // Fire and forget for async writes
-                _ = Task.Run(async () =>
+                scheduled = TryScheduleAsyncWrite(ct => WriteToL3Async(key, value, l3Expiration, tags, ct));
+                if (!scheduled)
                 {
-                    try
-                    {
-                        await _l3Semaphore.WaitAsync(cancellationToken);
-                        await _l3Storage.SetAsync(key, value, l3Expiration, tags, cancellationToken);
-                        _logger.LogDebug("Async L3 write completed for key {Key}", key);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error in async L3 write for key {Key}", key);
-                    }
-                    finally
-                    {
-                        _l3Semaphore.Release();
-                    }
-                }, cancellationToken);
+                    _logger.LogDebug("Async L3 write queue full; performing synchronous write for key {Key}", key);
+                }
             }
-            else
+
+            if (!scheduled)
             {
-                // Synchronous L3 write
                 tasks.Add(WriteToL3Async(key, value, l3Expiration, tags, cancellationToken));
             }
         }
 
-        await Task.WhenAll(tasks);
+        await AwaitAllAsync(tasks).ConfigureAwait(false);
         _logger.LogDebug("Set key {Key} in hybrid storage with expiration {Expiration}", key, expiration);
     }
 
-    public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
-        var tasks = new List<Task>
+        var tasks = new List<ValueTask>
         {
             _l1Storage.RemoveAsync(key, cancellationToken)
         };
 
         if (_l2Storage != null && _options.L2Enabled)
         {
-            tasks.Add(WriteToL2Async(() => _l2Storage.RemoveAsync(key, cancellationToken)));
+            tasks.Add(WriteToL2Async(() => _l2Storage.RemoveAsync(key, cancellationToken), cancellationToken));
         }
 
         if (_l3Storage != null && _options.L3Enabled)
         {
-            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveAsync(key, cancellationToken)));
+            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveAsync(key, cancellationToken), cancellationToken));
         }
 
-        await Task.WhenAll(tasks);
+        await AwaitAllAsync(tasks).ConfigureAwait(false);
 
         // Notify other instances via backplane
         if (_backplane != null && _options.EnableBackplane)
@@ -273,24 +290,24 @@ public class HybridStorageManager : IStorageProvider
         _logger.LogDebug("Removed key {Key} from hybrid storage", key);
     }
 
-    public async Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
-        var tasks = new List<Task>
+        var tasks = new List<ValueTask>
         {
             _l1Storage.RemoveByTagAsync(tag, cancellationToken)
         };
 
         if (_l2Storage != null && _options.L2Enabled)
         {
-            tasks.Add(WriteToL2Async(() => _l2Storage.RemoveByTagAsync(tag, cancellationToken)));
+            tasks.Add(WriteToL2Async(() => _l2Storage.RemoveByTagAsync(tag, cancellationToken), cancellationToken));
         }
 
         if (_l3Storage != null && _options.L3Enabled)
         {
-            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveByTagAsync(tag, cancellationToken)));
+            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveByTagAsync(tag, cancellationToken), cancellationToken));
         }
 
-        await Task.WhenAll(tasks);
+        await AwaitAllAsync(tasks).ConfigureAwait(false);
 
         // Notify other instances via backplane
         if (_backplane != null && _options.EnableBackplane)
@@ -309,7 +326,7 @@ public class HybridStorageManager : IStorageProvider
         _logger.LogDebug("Removed all keys with tag {Tag} from hybrid storage", tag);
     }
 
-    public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         // Check L1 first
         if (_l1Storage.Exists(key))
@@ -322,8 +339,8 @@ public class HybridStorageManager : IStorageProvider
         {
             try
             {
-                await _l2Semaphore.WaitAsync(cancellationToken);
-                var l2Exists = await _l2Storage.ExistsAsync(key, cancellationToken);
+                await _l2Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                var l2Exists = await _l2Storage.ExistsAsync(key, cancellationToken).ConfigureAwait(false);
                 if (l2Exists) return true;
             }
             catch (Exception ex)
@@ -341,8 +358,8 @@ public class HybridStorageManager : IStorageProvider
         {
             try
             {
-                await _l3Semaphore.WaitAsync(cancellationToken);
-                return await _l3Storage.ExistsAsync(key, cancellationToken);
+                await _l3Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                return await _l3Storage.ExistsAsync(key, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -358,7 +375,7 @@ public class HybridStorageManager : IStorageProvider
         return false;
     }
 
-    public async Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
     {
         var l1Healthy = true; // Memory storage is generally always healthy
         var l2Healthy = true;
@@ -368,7 +385,7 @@ public class HybridStorageManager : IStorageProvider
         {
             try
             {
-                l2Healthy = await _l2Storage.GetHealthAsync(cancellationToken) == HealthStatus.Healthy;
+                l2Healthy = await _l2Storage.GetHealthAsync(cancellationToken).ConfigureAwait(false) == HealthStatus.Healthy;
             }
             catch
             {
@@ -380,7 +397,7 @@ public class HybridStorageManager : IStorageProvider
         {
             try
             {
-                l3Healthy = await _l3Storage.GetHealthAsync(cancellationToken) == HealthStatus.Healthy;
+                l3Healthy = await _l3Storage.GetHealthAsync(cancellationToken).ConfigureAwait(false) == HealthStatus.Healthy;
             }
             catch
             {
@@ -415,11 +432,11 @@ public class HybridStorageManager : IStorageProvider
         return HealthStatus.Unhealthy;
     }
 
-    public async Task<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         var l1Stats = _l1Storage.GetStats();
-        var l2Stats = _l2Storage != null ? await _l2Storage.GetStatsAsync(cancellationToken) : null;
-        var l3Stats = _l3Storage != null ? await _l3Storage.GetStatsAsync(cancellationToken) : null;
+        var l2Stats = _l2Storage != null ? await _l2Storage.GetStatsAsync(cancellationToken).ConfigureAwait(false) : null;
+        var l3Stats = _l3Storage != null ? await _l3Storage.GetStatsAsync(cancellationToken).ConfigureAwait(false) : null;
 
         var totalHits = Interlocked.Read(ref _l1Hits) + Interlocked.Read(ref _l2Hits) + Interlocked.Read(ref _l3Hits);
         var totalMisses = Interlocked.Read(ref _l1Misses) + Interlocked.Read(ref _l2Misses) + Interlocked.Read(ref _l3Misses);
@@ -466,15 +483,21 @@ public class HybridStorageManager : IStorageProvider
         return l1Expiration;
     }
 
-    private async Task WriteToL2Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken)
+    private async ValueTask WriteToL2Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken)
     {
         if (_l2Storage == null)
             return;
 
+        var waitSucceeded = false;
         try
         {
-            await _l2Semaphore.WaitAsync(cancellationToken);
-            await _l2Storage.SetAsync(key, value, expiration, tags, cancellationToken);
+            await _l2Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            waitSucceeded = true;
+            await _l2Storage.SetAsync(key, value, expiration, tags, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("L2 write for key {Key} was cancelled due to shutdown", key);
         }
         catch (Exception ex)
         {
@@ -482,16 +505,25 @@ public class HybridStorageManager : IStorageProvider
         }
         finally
         {
-            _l2Semaphore.Release();
+            if (waitSucceeded)
+            {
+                _l2Semaphore.Release();
+            }
         }
     }
 
-    private async Task WriteToL2Async(Func<Task> operation)
+    private async ValueTask WriteToL2Async(Func<ValueTask> operation, CancellationToken cancellationToken)
     {
+        var waitSucceeded = false;
         try
         {
-            await _l2Semaphore.WaitAsync();
-            await operation();
+            await _l2Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            waitSucceeded = true;
+            await operation().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("L2 operation was cancelled due to shutdown");
         }
         catch (Exception ex)
         {
@@ -499,7 +531,10 @@ public class HybridStorageManager : IStorageProvider
         }
         finally
         {
-            _l2Semaphore.Release();
+            if (waitSucceeded)
+            {
+                _l2Semaphore.Release();
+            }
         }
     }
 
@@ -549,15 +584,21 @@ public class HybridStorageManager : IStorageProvider
             _options.L3MaxExpiration.Ticks));
     }
 
-    private async Task WriteToL3Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken)
+    private async ValueTask WriteToL3Async<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken)
     {
         if (_l3Storage == null)
             return;
 
+        var waitSucceeded = false;
         try
         {
-            await _l3Semaphore.WaitAsync(cancellationToken);
-            await _l3Storage.SetAsync(key, value, expiration, tags, cancellationToken);
+            await _l3Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            waitSucceeded = true;
+            await _l3Storage.SetAsync(key, value, expiration, tags, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("L3 write for key {Key} was cancelled due to shutdown", key);
         }
         catch (Exception ex)
         {
@@ -565,16 +606,25 @@ public class HybridStorageManager : IStorageProvider
         }
         finally
         {
-            _l3Semaphore.Release();
+            if (waitSucceeded)
+            {
+                _l3Semaphore.Release();
+            }
         }
     }
 
-    private async Task WriteToL3Async(Func<Task> operation)
+    private async ValueTask WriteToL3Async(Func<ValueTask> operation, CancellationToken cancellationToken)
     {
+        var waitSucceeded = false;
         try
         {
-            await _l3Semaphore.WaitAsync();
-            await operation();
+            await _l3Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            waitSucceeded = true;
+            await operation().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("L3 operation was cancelled due to shutdown");
         }
         catch (Exception ex)
         {
@@ -582,11 +632,14 @@ public class HybridStorageManager : IStorageProvider
         }
         finally
         {
-            _l3Semaphore.Release();
+            if (waitSucceeded)
+            {
+                _l3Semaphore.Release();
+            }
         }
     }
 
-    private async Task PromoteFromL3Async<T>(string key, T value, CancellationToken cancellationToken)
+    private async ValueTask PromoteFromL3Async<T>(string key, T value, CancellationToken cancellationToken)
     {
         try
         {
@@ -594,7 +647,7 @@ public class HybridStorageManager : IStorageProvider
             var l1Expiration = CalculateL1Expiration(_options.L3DefaultExpiration);
             var l2Expiration = _options.L2DefaultExpiration;
 
-            var promotionTasks = new List<Task>
+            var promotionTasks = new List<ValueTask>
             {
                 _l1Storage.SetAsync(key, value, l1Expiration, cancellationToken)
             };
@@ -605,12 +658,144 @@ public class HybridStorageManager : IStorageProvider
                 promotionTasks.Add(WriteToL2Async(key, value, l2Expiration, Enumerable.Empty<string>(), cancellationToken));
             }
 
-            await Task.WhenAll(promotionTasks);
+            await AwaitAllAsync(promotionTasks).ConfigureAwait(false);
             _logger.LogDebug("Promoted key {Key} from L3 to higher layers", key);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error promoting key {Key} from L3", key);
+        }
+    }
+
+    private static async ValueTask AwaitAllAsync(List<ValueTask> tasks)
+    {
+        foreach (var task in tasks)
+        {
+            await task.ConfigureAwait(false);
+        }
+    }
+
+    private async Task ProcessAsyncWritesAsync(CancellationToken cancellationToken)
+    {
+        if (_asyncWriteChannel == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await foreach (var work in _asyncWriteChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            {
+                try
+                {
+                    await work(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Graceful shutdown
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error executing asynchronous cache write operation");
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when disposing
+        }
+    }
+
+    private bool TryScheduleAsyncWrite(Func<CancellationToken, ValueTask> work)
+    {
+        if (_asyncWriteChannel == null || _asyncWriteCts == null)
+        {
+            return false;
+        }
+
+        if (_asyncWriteChannel.Writer.TryWrite(work))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
+        {
+            return;
+        }
+
+        _asyncWriteChannel?.Writer.TryComplete();
+
+        var asyncWriteCts = _asyncWriteCts;
+        if (asyncWriteCts != null)
+        {
+            try
+            {
+                asyncWriteCts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already disposed by a prior call.
+            }
+        }
+
+        var asyncWriteWorker = _asyncWriteWorker;
+        if (asyncWriteWorker != null)
+        {
+            try
+            {
+                await asyncWriteWorker.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected during shutdown
+            }
+        }
+
+        asyncWriteCts?.Dispose();
+
+        var backplaneCts = _backplaneCts;
+        if (backplaneCts != null)
+        {
+            try
+            {
+                backplaneCts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already disposed
+            }
+
+            var subscriptionTask = _backplaneSubscriptionTask;
+            if (subscriptionTask != null)
+            {
+                try
+                {
+                    await subscriptionTask.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected during shutdown
+                }
+            }
+
+            backplaneCts.Dispose();
+        }
+
+        if (_backplane != null)
+        {
+            try
+            {
+                await _backplane.UnsubscribeAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to unsubscribe from backplane");
+            }
         }
     }
 }
