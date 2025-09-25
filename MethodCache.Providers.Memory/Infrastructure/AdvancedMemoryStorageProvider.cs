@@ -56,6 +56,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     private readonly Timer? _cleanupTimer;
     private readonly AdvancedMemoryOptions _options;
     private readonly ILogger<AdvancedMemoryStorageProvider> _logger;
+    private static readonly Random _randomInstance = new();
 
     // Statistics
     private long _hits;
@@ -285,7 +286,10 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             }
         }
 
-        _logger.LogDebug("Evicted {Count} entries using {Policy} policy", evicted, _options.EvictionPolicy);
+        if (evicted > 0)
+        {
+            _logger.LogDebug("Evicted {Count} entries using {Policy} policy", evicted, _options.EvictionPolicy);
+        }
         return ValueTask.CompletedTask;
     }
 
@@ -305,7 +309,12 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         lock (_accessOrderLock)
         {
-            return _accessOrder.ToList(); // Oldest first
+            // Return an iterator instead of copying the entire list
+            // This yields items one at a time as needed
+            foreach (var key in _accessOrder)
+            {
+                yield return key;
+            }
         }
     }
 
@@ -325,17 +334,46 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private IEnumerable<string> GetRandomCandidates()
     {
-        var random = new Random();
-        return _cache.Keys.OrderBy(k => random.Next());
+        // Use Fisher-Yates shuffle for efficient random sampling
+        // Only shuffle what we need, not the entire collection
+        var keys = _cache.Keys.ToArray();
+        var count = keys.Length;
+
+        // For small collections, just return all keys in random order
+        if (count <= 10)
+        {
+            for (int i = count - 1; i > 0; i--)
+            {
+                int j = _randomInstance.Next(i + 1);
+                (keys[i], keys[j]) = (keys[j], keys[i]);
+            }
+            return keys;
+        }
+
+        // For larger collections, only partially shuffle to get enough candidates
+        var candidatesNeeded = Math.Min(count / 4, 100); // Take up to 25% or 100 items
+        for (int i = 0; i < candidatesNeeded && i < count; i++)
+        {
+            int j = _randomInstance.Next(i, count);
+            (keys[i], keys[j]) = (keys[j], keys[i]);
+        }
+
+        return keys.Take(candidatesNeeded);
     }
 
     private void UpdateAccessOrder(string key, bool remove)
     {
         lock (_accessOrderLock)
         {
+            // Single dictionary lookup - cache the result
+            if (!_cache.TryGetValue(key, out var entry))
+            {
+                return; // Key doesn't exist, nothing to do
+            }
+
             if (remove)
             {
-                if (_cache.TryGetValue(key, out var entry) && entry.OrderNode != null)
+                if (entry.OrderNode != null)
                 {
                     _accessOrder.Remove(entry.OrderNode);
                     entry.OrderNode = null;
@@ -343,17 +381,14 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             }
             else
             {
-                if (_cache.TryGetValue(key, out var entry))
+                // Remove from current position if it exists
+                if (entry.OrderNode != null)
                 {
-                    // Remove from current position
-                    if (entry.OrderNode != null)
-                    {
-                        _accessOrder.Remove(entry.OrderNode);
-                    }
-
-                    // Add to end (most recently used)
-                    entry.OrderNode = _accessOrder.AddLast(key);
+                    _accessOrder.Remove(entry.OrderNode);
                 }
+
+                // Add to end (most recently used)
+                entry.OrderNode = _accessOrder.AddLast(key);
             }
         }
     }
