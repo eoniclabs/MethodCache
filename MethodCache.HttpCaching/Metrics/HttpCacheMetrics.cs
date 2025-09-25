@@ -215,60 +215,28 @@ public class HttpCacheMetrics : IHttpCacheMetrics
 /// </summary>
 public interface IHttpCacheMetrics
 {
-    /// <summary>
-    /// Gets the number of cache hits.
-    /// </summary>
     long HitCount { get; }
-
-    /// <summary>
-    /// Gets the number of cache misses.
-    /// </summary>
     long MissCount { get; }
-
-    /// <summary>
-    /// Gets the number of stale responses served.
-    /// </summary>
     long StaleServedCount { get; }
-
-    /// <summary>
-    /// Gets the number of validation requests (304 responses).
-    /// </summary>
     long ValidationRequestCount { get; }
-
-    /// <summary>
-    /// Gets the number of cache bypasses.
-    /// </summary>
     long BypassCount { get; }
-
-    /// <summary>
-    /// Gets the number of errors.
-    /// </summary>
     long ErrorCount { get; }
-
-    /// <summary>
-    /// Gets the total number of requests.
-    /// </summary>
     long TotalRequests { get; }
-
-    /// <summary>
-    /// Gets the cache hit rate (0-1).
-    /// </summary>
     double HitRate { get; }
-
-    /// <summary>
-    /// Gets the average response time in milliseconds.
-    /// </summary>
     double AverageResponseTimeMs { get; }
-
-    /// <summary>
-    /// Gets counts by status code.
-    /// </summary>
     IReadOnlyDictionary<string, long> StatusCodeCounts { get; }
-
-    /// <summary>
-    /// Gets counts by HTTP method.
-    /// </summary>
     IReadOnlyDictionary<string, long> MethodCounts { get; }
+
+    void RecordHit(long responseTimeMs);
+    void RecordMiss(long responseTimeMs);
+    void RecordStaleServed(long responseTimeMs);
+    void RecordValidation(long responseTimeMs);
+    void RecordBypass(long responseTimeMs);
+    void RecordError();
+    void RecordStatusCode(int statusCode);
+    void RecordMethod(string method);
+    HttpCacheMetricsSnapshot GetSnapshot();
+    void Reset();
 }
 
 /// <summary>

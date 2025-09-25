@@ -2,7 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using MethodCache.HttpCaching.Options;
 using MethodCache.HttpCaching.Storage;
+using MethodCache.HttpCaching.Validation;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -11,27 +14,17 @@ public class HttpCacheHandlerTests
 {
     private readonly HttpClient _httpClient;
     private readonly TestHttpMessageHandler _innerHandler;
-    private readonly InMemoryHttpCacheStorage _storage;
 
     public HttpCacheHandlerTests()
     {
-        var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var options = new HttpCacheOptions();
-        _storage = new InMemoryHttpCacheStorage(memoryCache, options, NullLogger<InMemoryHttpCacheStorage>.Instance);
         _innerHandler = new TestHttpMessageHandler();
-
-        var handler = new HttpCacheHandler(_storage, options, NullLogger<HttpCacheHandler>.Instance)
-        {
-            InnerHandler = _innerHandler
-        };
-
+        var handler = HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), _innerHandler);
         _httpClient = new HttpClient(handler);
     }
 
     [Fact]
     public async Task Get_Request_CachesResponse_WhenResponseHasCacheControl()
     {
-        // Arrange
         var expectedResponse = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("Hello, World!"),
@@ -40,36 +33,29 @@ public class HttpCacheHandlerTests
 
         _innerHandler.SetResponses(expectedResponse, expectedResponse);
 
-        // Act
         var response1 = await _httpClient.GetAsync("https://api.example.com/data");
         var response2 = await _httpClient.GetAsync("https://api.example.com/data");
 
-        // Assert
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
-        Assert.Equal(1, _innerHandler.RequestCount); // Second request served from cache
+        Assert.Equal(1, _innerHandler.RequestCount);
     }
 
     [Fact]
     public async Task Get_Request_Returns304_WhenETagMatches()
     {
-        // Arrange - Create a handler with short cache duration for this test
-        var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var options = new HttpCacheOptions { DefaultMaxAge = TimeSpan.FromMilliseconds(1) };
-        var storage = new InMemoryHttpCacheStorage(memoryCache, options, NullLogger<InMemoryHttpCacheStorage>.Instance);
+        var options = new HttpCacheOptions();
+        options.Freshness.DefaultMaxAge = TimeSpan.FromMilliseconds(1);
+
         var innerHandler = new TestHttpMessageHandler();
-
-        var handler = new HttpCacheHandler(storage, options, NullLogger<HttpCacheHandler>.Instance)
-        {
-            InnerHandler = innerHandler
-        };
-
+        var handler = HttpCacheTestFactory.CreateHandler(options, innerHandler);
         var httpClient = new HttpClient(handler);
 
         var initialResponse = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("Hello, World!"),
-            Headers = {
+            Headers =
+            {
                 ETag = new EntityTagHeaderValue("\"abc123\""),
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMilliseconds(1) }
             }
@@ -82,20 +68,16 @@ public class HttpCacheHandlerTests
 
         innerHandler.SetResponses(initialResponse, notModifiedResponse);
 
-        // Act
         var response1 = await httpClient.GetAsync("https://api.example.com/data");
 
-        // Wait to ensure cache entry is stale
         await Task.Delay(10);
 
         var response2 = await httpClient.GetAsync("https://api.example.com/data");
 
-        // Assert
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, response2.StatusCode); // Handler converts 304 to 200 with cached content
+        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal(2, innerHandler.RequestCount);
 
-        // Check that second request had conditional headers
         var secondRequest = innerHandler.Requests[1];
         Assert.Contains(secondRequest.Headers.IfNoneMatch, etag => etag.Tag == "\"abc123\"");
     }
@@ -103,7 +85,6 @@ public class HttpCacheHandlerTests
     [Fact]
     public async Task Post_Request_NotCached_ByDefault()
     {
-        // Arrange
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("Response"),
@@ -112,20 +93,19 @@ public class HttpCacheHandlerTests
 
         _innerHandler.SetResponses(response, TestHttpMessageHandler.CloneResponse(response));
 
-        // Act
         var response1 = await _httpClient.PostAsync("https://api.example.com/data", new StringContent("test data"));
         var response2 = await _httpClient.PostAsync("https://api.example.com/data", new StringContent("test data"));
 
-        // Assert
-        Assert.Equal(2, _innerHandler.RequestCount); // Both requests went through
+        Assert.Equal(2, _innerHandler.RequestCount);
     }
 
     [Fact]
     public async Task Get_Request_BypassesCache_WhenNoCacheRequested()
     {
-        // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data");
-        request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data")
+        {
+            Headers = { CacheControl = new CacheControlHeaderValue { NoCache = true } }
+        };
 
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -135,20 +115,19 @@ public class HttpCacheHandlerTests
 
         _innerHandler.SetResponses(response, TestHttpMessageHandler.CloneResponse(response));
 
-        // Act
         var response1 = await _httpClient.SendAsync(request);
-        var request2 = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data");
-        request2.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+        var request2 = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data")
+        {
+            Headers = { CacheControl = new CacheControlHeaderValue { NoCache = true } }
+        };
         var response2 = await _httpClient.SendAsync(request2);
 
-        // Assert
-        Assert.Equal(2, _innerHandler.RequestCount); // Cache bypassed
+        Assert.Equal(2, _innerHandler.RequestCount);
     }
 
     [Fact]
     public async Task Get_Request_DoesNotCache_WhenNoStoreResponseDirective()
     {
-        // Arrange
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("Sensitive data"),
@@ -157,18 +136,13 @@ public class HttpCacheHandlerTests
 
         _innerHandler.SetResponses(response, TestHttpMessageHandler.CloneResponse(response));
 
-        // Act
         var response1 = await _httpClient.GetAsync("https://api.example.com/data");
         var response2 = await _httpClient.GetAsync("https://api.example.com/data");
 
-        // Assert
-        Assert.Equal(2, _innerHandler.RequestCount); // Not cached due to no-store
+        Assert.Equal(2, _innerHandler.RequestCount);
     }
 }
 
-/// <summary>
-/// Test helper for simulating HTTP responses.
-/// </summary>
 public class TestHttpMessageHandler : HttpMessageHandler
 {
     private readonly Queue<HttpResponseMessage> _responses = new();
@@ -176,12 +150,9 @@ public class TestHttpMessageHandler : HttpMessageHandler
 
     public int RequestCount => _requests.Count;
     public IReadOnlyList<HttpRequestMessage> Requests => _requests;
-    public bool ShouldThrowException { get; set; } = false;
+    public bool ShouldThrowException { get; set; }
 
-    public void SetResponse(HttpResponseMessage response)
-    {
-        _responses.Enqueue(response);
-    }
+    public void SetResponse(HttpResponseMessage response) => _responses.Enqueue(response);
 
     public void SetResponses(params HttpResponseMessage[] responses)
     {
@@ -191,9 +162,7 @@ public class TestHttpMessageHandler : HttpMessageHandler
         }
     }
 
-    protected override Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         _requests.Add(CloneRequest(request));
 
@@ -222,8 +191,7 @@ public class TestHttpMessageHandler : HttpMessageHandler
 
         if (original.Content != null)
         {
-            // Simple content cloning for tests
-            clone.Content = new StringContent("");
+            clone.Content = new StringContent(string.Empty);
         }
 
         return clone;
@@ -252,3 +220,7 @@ public class TestHttpMessageHandler : HttpMessageHandler
         return clone;
     }
 }
+
+
+
+

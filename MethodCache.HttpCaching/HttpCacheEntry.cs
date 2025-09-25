@@ -142,24 +142,36 @@ public class HttpCacheEntry
     /// </summary>
     public HttpCacheEntry WithUpdatedHeaders(HttpResponseMessage notModifiedResponse)
     {
+        var mergedHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var header in Headers)
+        {
+            mergedHeaders[header.Key] = header.Value;
+        }
+
+        var updatedHeaders = SerializeHeaders(notModifiedResponse.Headers);
+        foreach (var header in updatedHeaders)
+        {
+            mergedHeaders[header.Key] = header.Value;
+        }
+
         return new HttpCacheEntry
         {
             RequestUri = RequestUri,
             Method = Method,
             StatusCode = HttpStatusCode.OK, // Return 200 to client, not 304
             Content = Content,
-            Headers = SerializeHeaders(notModifiedResponse.Headers),
+            Headers = mergedHeaders,
             ContentHeaders = ContentHeaders, // Keep original content headers
             ETag = notModifiedResponse.Headers.ETag?.Tag ?? ETag,
-            LastModified = LastModified, // Keep original
+            LastModified = notModifiedResponse.Content?.Headers.LastModified ?? LastModified,
             CacheControl = notModifiedResponse.Headers.CacheControl ?? CacheControl,
-            Expires = Expires,
+            Expires = notModifiedResponse.Content?.Headers.Expires ?? Expires,
             Date = notModifiedResponse.Headers.Date ?? Date,
             StoredAt = DateTimeOffset.UtcNow, // Reset storage time
             VaryHeaders = notModifiedResponse.Headers.Vary?.ToArray() ?? VaryHeaders
         };
     }
-
     /// <summary>
     /// Calculates the age of this cache entry.
     /// </summary>
