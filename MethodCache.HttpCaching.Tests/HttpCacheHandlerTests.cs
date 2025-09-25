@@ -56,6 +56,7 @@ public class HttpCacheHandlerTests
             Content = new StringContent("Hello, World!"),
             Headers =
             {
+                Date = DateTimeOffset.UtcNow,
                 ETag = new EntityTagHeaderValue("\"abc123\""),
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMilliseconds(1) }
             }
@@ -63,7 +64,10 @@ public class HttpCacheHandlerTests
 
         var notModifiedResponse = new HttpResponseMessage(HttpStatusCode.NotModified)
         {
-            Headers = { ETag = new EntityTagHeaderValue("\"abc123\"") }
+            Headers = {
+                Date = DateTimeOffset.UtcNow,
+                ETag = new EntityTagHeaderValue("\"abc123\"")
+            }
         };
 
         innerHandler.SetResponses(initialResponse, notModifiedResponse);
@@ -184,9 +188,25 @@ public class TestHttpMessageHandler : HttpMessageHandler
     {
         var clone = new HttpRequestMessage(original.Method, original.RequestUri);
 
+        // Copy all headers except the special ones we'll handle separately
         foreach (var header in original.Headers)
         {
-            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            if (header.Key != "If-None-Match" && header.Key != "If-Match")
+            {
+                clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
+
+        // Special handling for IfNoneMatch header collection
+        foreach (var etag in original.Headers.IfNoneMatch)
+        {
+            clone.Headers.IfNoneMatch.Add(etag);
+        }
+
+        // Special handling for IfMatch header collection
+        foreach (var etag in original.Headers.IfMatch)
+        {
+            clone.Headers.IfMatch.Add(etag);
         }
 
         if (original.Content != null)
