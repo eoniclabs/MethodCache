@@ -110,7 +110,8 @@ public class HttpCacheHandler : DelegatingHandler
             }
         }
 
-        if (cachedEntry != null && behavior.EnableStaleIfError)
+        // Add conditional headers for validation if we have a stale cached entry
+        if (cachedEntry != null)
         {
             AddConditionalHeaders(request, cachedEntry);
         }
@@ -228,7 +229,13 @@ public class HttpCacheHandler : DelegatingHandler
             return null;
         }
 
-        if (!behavior.RespectVary || entry.VaryHeaders == null || entry.VaryHeaders.Length == 0)
+        if (!behavior.RespectVary)
+        {
+            // When Vary headers are disabled, return the entry without content negotiation checks
+            return entry;
+        }
+
+        if (entry.VaryHeaders == null || entry.VaryHeaders.Length == 0)
         {
             return negotiationHandler.IsAcceptable(entry, acceptedContent) ? entry : null;
         }
