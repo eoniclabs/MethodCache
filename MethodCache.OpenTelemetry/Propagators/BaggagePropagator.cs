@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Microsoft.Extensions.Options;
 using MethodCache.OpenTelemetry.Configuration;
 using MethodCache.OpenTelemetry.Tracing;
@@ -25,7 +26,7 @@ public interface IBaggagePropagator
 public class BaggagePropagator : IBaggagePropagator
 {
     private readonly OpenTelemetryOptions _options;
-    private readonly Dictionary<string, string> _localBaggage = new();
+    private readonly AsyncLocal<Dictionary<string, string>?> _localBaggage = new();
 
     public BaggagePropagator(IOptions<OpenTelemetryOptions> options)
     {
@@ -37,9 +38,13 @@ public class BaggagePropagator : IBaggagePropagator
         if (activity == null || !_options.EnableBaggagePropagation)
             return;
 
-        foreach (var kvp in _localBaggage.Where(kvp => IsCacheBaggageKey(kvp.Key)))
+        var baggage = _localBaggage.Value;
+        if (baggage != null)
         {
-            activity.SetBaggage(kvp.Key, kvp.Value);
+            foreach (var kvp in baggage.Where(kvp => IsCacheBaggageKey(kvp.Key)))
+            {
+                activity.SetBaggage(kvp.Key, kvp.Value);
+            }
         }
 
         var correlationId = GetCacheCorrelationId();
@@ -72,12 +77,21 @@ public class BaggagePropagator : IBaggagePropagator
         if (activity == null || !_options.EnableBaggagePropagation)
             return;
 
+        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
+        var hasCacheBaggage = false;
+
         foreach (var baggageItem in activity.Baggage)
         {
             if (IsCacheBaggageKey(baggageItem.Key))
             {
-                _localBaggage[baggageItem.Key] = baggageItem.Value ?? "";
+                baggage[baggageItem.Key] = baggageItem.Value ?? "";
+                hasCacheBaggage = true;
             }
+        }
+
+        if (hasCacheBaggage)
+        {
+            _localBaggage.Value = baggage;
         }
     }
 
@@ -86,7 +100,9 @@ public class BaggagePropagator : IBaggagePropagator
         if (!_options.EnableBaggagePropagation)
             return;
 
-        _localBaggage[TracingConstants.BaggageKeys.CacheCorrelationId] = correlationId;
+        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
+        baggage[TracingConstants.BaggageKeys.CacheCorrelationId] = correlationId;
+        _localBaggage.Value = baggage;
     }
 
     public void SetCacheInvalidationId(string invalidationId)
@@ -94,7 +110,9 @@ public class BaggagePropagator : IBaggagePropagator
         if (!_options.EnableBaggagePropagation)
             return;
 
-        _localBaggage[TracingConstants.BaggageKeys.CacheInvalidationId] = invalidationId;
+        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
+        baggage[TracingConstants.BaggageKeys.CacheInvalidationId] = invalidationId;
+        _localBaggage.Value = baggage;
     }
 
     public void SetCacheUserId(string? userId)
@@ -102,7 +120,9 @@ public class BaggagePropagator : IBaggagePropagator
         if (!_options.EnableBaggagePropagation || string.IsNullOrEmpty(userId))
             return;
 
-        _localBaggage[TracingConstants.BaggageKeys.CacheUserId] = userId;
+        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
+        baggage[TracingConstants.BaggageKeys.CacheUserId] = userId;
+        _localBaggage.Value = baggage;
     }
 
     public void SetCacheTenantId(string? tenantId)
@@ -110,27 +130,33 @@ public class BaggagePropagator : IBaggagePropagator
         if (!_options.EnableBaggagePropagation || string.IsNullOrEmpty(tenantId))
             return;
 
-        _localBaggage[TracingConstants.BaggageKeys.CacheTenantId] = tenantId;
+        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
+        baggage[TracingConstants.BaggageKeys.CacheTenantId] = tenantId;
+        _localBaggage.Value = baggage;
     }
 
     public string? GetCacheCorrelationId()
     {
-        return _localBaggage.TryGetValue(TracingConstants.BaggageKeys.CacheCorrelationId, out var value) ? value : null;
+        var baggage = _localBaggage.Value;
+        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheCorrelationId, out var value) ? value : null;
     }
 
     public string? GetCacheInvalidationId()
     {
-        return _localBaggage.TryGetValue(TracingConstants.BaggageKeys.CacheInvalidationId, out var value) ? value : null;
+        var baggage = _localBaggage.Value;
+        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheInvalidationId, out var value) ? value : null;
     }
 
     public string? GetCacheUserId()
     {
-        return _localBaggage.TryGetValue(TracingConstants.BaggageKeys.CacheUserId, out var value) ? value : null;
+        var baggage = _localBaggage.Value;
+        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheUserId, out var value) ? value : null;
     }
 
     public string? GetCacheTenantId()
     {
-        return _localBaggage.TryGetValue(TracingConstants.BaggageKeys.CacheTenantId, out var value) ? value : null;
+        var baggage = _localBaggage.Value;
+        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheTenantId, out var value) ? value : null;
     }
 
     private static bool IsCacheBaggageKey(string key)

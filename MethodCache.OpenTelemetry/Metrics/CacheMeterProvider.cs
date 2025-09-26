@@ -42,6 +42,10 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
     private long _currentMemoryBytes;
     private double _currentHitRatio;
 
+    // Aggregate counters for O(1) hit ratio calculation
+    private long _totalHits;
+    private long _totalMisses;
+
     private readonly ConcurrentDictionary<string, long> _methodHits = new();
     private readonly ConcurrentDictionary<string, long> _methodMisses = new();
 
@@ -129,6 +133,7 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
         if (!_options.EnableMetrics) return;
 
         _methodHits.AddOrUpdate(methodName, 1, (_, old) => old + 1);
+        Interlocked.Increment(ref _totalHits);
 
         var tagList = CreateTagList(methodName, tags);
         _hitsCounter.Add(1, tagList.ToArray());
@@ -141,6 +146,7 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
         if (!_options.EnableMetrics) return;
 
         _methodMisses.AddOrUpdate(methodName, 1, (_, old) => old + 1);
+        Interlocked.Increment(ref _totalMisses);
 
         var tagList = CreateTagList(methodName, tags);
         _missesCounter.Add(1, tagList.ToArray());
@@ -239,14 +245,8 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
 
     private void UpdateHitRatioInternal()
     {
-        var totalHits = 0L;
-        var totalMisses = 0L;
-
-        foreach (var hits in _methodHits.Values)
-            totalHits += hits;
-
-        foreach (var misses in _methodMisses.Values)
-            totalMisses += misses;
+        var totalHits = Interlocked.Read(ref _totalHits);
+        var totalMisses = Interlocked.Read(ref _totalMisses);
 
         var total = totalHits + totalMisses;
         _currentHitRatio = total > 0 ? (double)totalHits / total : 0;
