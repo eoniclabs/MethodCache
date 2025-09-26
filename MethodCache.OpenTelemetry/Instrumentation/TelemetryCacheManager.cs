@@ -58,22 +58,30 @@ public class TelemetryCacheManager : ICacheManager
 
             SetActivityTags(activity, settings);
 
-            var existingValue = await _innerManager.TryGetAsync<T>(methodName, args, settings, keyGenerator);
-            if (existingValue != null && !EqualityComparer<T>.Default.Equals(existingValue, default))
+            // Track whether the factory was invoked to determine hit/miss
+            var factoryInvoked = false;
+            async Task<T> InstrumentedFactory()
             {
-                stopwatch.Stop();
-                _activitySource.SetCacheHit(activity, true);
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(settings));
-                _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(settings));
-                return existingValue;
+                factoryInvoked = true;
+                return await factory();
             }
 
-            _activitySource.SetCacheHit(activity, false);
-            _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(settings));
-
-            var result = await _innerManager.GetOrCreateAsync(methodName, args, factory, settings, keyGenerator, requireIdempotent);
+            var result = await _innerManager.GetOrCreateAsync(methodName, args, InstrumentedFactory, settings, keyGenerator, requireIdempotent);
 
             stopwatch.Stop();
+
+            // If factory was invoked, it was a cache miss
+            if (factoryInvoked)
+            {
+                _activitySource.SetCacheHit(activity, false);
+                _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(settings));
+            }
+            else
+            {
+                _activitySource.SetCacheHit(activity, true);
+                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(settings));
+            }
+
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(settings));
 
             return result;

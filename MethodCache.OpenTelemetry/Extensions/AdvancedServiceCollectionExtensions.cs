@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -221,14 +222,26 @@ public static class AdvancedServiceCollectionExtensions
 /// </summary>
 public class CacheMetricsExporterFactoryOptions
 {
-    private readonly CacheMetricsExporterFactory _factory = new();
+    private readonly Dictionary<string, Func<IServiceProvider, ICacheMetricsExporter>> _pendingFactories = new();
+    private CacheMetricsExporterFactory? _factory;
 
     public void RegisterExporter(string name, Func<IServiceProvider, ICacheMetricsExporter> factory)
     {
-        _factory.RegisterExporter(name, options => factory(null!));
+        _pendingFactories[name] = factory;
     }
 
-    internal CacheMetricsExporterFactory GetFactory() => _factory;
+    internal CacheMetricsExporterFactory GetFactory(IServiceProvider serviceProvider)
+    {
+        if (_factory == null)
+        {
+            _factory = new CacheMetricsExporterFactory();
+            foreach (var kvp in _pendingFactories)
+            {
+                _factory.RegisterExporter(kvp.Key, options => kvp.Value(serviceProvider));
+            }
+        }
+        return _factory;
+    }
 }
 
 /// <summary>
