@@ -142,24 +142,24 @@ This document outlines a set of proposed features and integrations that would en
 
 ### Summary of Proposed Features and Integrations
 
-| Feature/Integration | Description |
-| :--- | :--- |
-| **Easier to Use API** | A more intuitive and expressive API with automatic cache key generation, simpler `GetOrCreate` methods, and better documentation. |
-| **ASP.NET Core Caching Integration** | Seamlessly integrate with ASP.NET Core caching abstractions like `IMemoryCache` and `IDistributedCache`. |
-| **First-Class HTTP Caching Middleware** | A powerful and flexible middleware for both ASP.NET Core and Web API that provides fine-grained control over HTTP caching. |
-| **TimedETag** | A construct that combines an ETag with a last-modified timestamp for more efficient cache validation. |
-| **Efficient Cache Validation** | An interface that allows the server to query the back-end for a `TimedETag` without having to load the entire resource. |
-| **Diagnostic Headers** | Diagnostic headers that provide information about cache hits and misses. |
-| **`fast-cache` Provider** | A high-performance, lock-free in-memory cache provider. |
-| **Advanced Resilience** | A set of advanced resilience features to protect the application from cache-related failures. |
-| **Eager Refresh** | A feature that automatically refreshes cache entries in the background before they expire. |
-| **Named Caches** | The ability to create multiple named caches. |
-| **OpenTelemetry Integration** | Provide deep insights into the performance and behavior of the caching system. |
-| **Polly Integration** | Allow developers to configure advanced resilience strategies for their cache operations. |
-| **Support for Other Caching Providers** | Make the library more versatile by supporting a wider range of caching providers. |
-| **Cache Stale-While-Revalidate** | Improve the perceived performance of an application by serving stale data while fetching a new version in the background. |
-| **Jitter for Cache Expiration** | Help to prevent cache stampedes by adding a small, random amount of time to the expiration of a cache entry. |
-| **Distributed `ICacheKeyGenerator`** | Ensure that all instances of an application generate the same cache key for the same method and arguments. |
+| Feature/Integration | Description | Status |
+| :--- | :--- | :--- |
+| **Easier to Use API** | A more intuitive and expressive API with automatic cache key generation, simpler `GetOrCreate` methods, and better documentation. | Proposed |
+| **ASP.NET Core Caching Integration** | Seamlessly integrate with ASP.NET Core caching abstractions like `IMemoryCache` and `IDistributedCache`. | Partially Implemented |
+| **First-Class HTTP Caching Middleware** | A powerful and flexible middleware for both ASP.NET Core and Web API that provides fine-grained control over HTTP caching. | Implemented |
+| **TimedETag** | A construct that combines an ETag with a last-modified timestamp for more efficient cache validation. | Proposed |
+| **Efficient Cache Validation** | An interface that allows the server to query the back-end for a `TimedETag` without having to load the entire resource. | Proposed |
+| **Diagnostic Headers** | Diagnostic headers that provide information about cache hits and misses. | Proposed |
+| **`fast-cache` Provider** | A high-performance, lock-free in-memory cache provider. | Proposed |
+| **Advanced Resilience** | A set of advanced resilience features to protect the application from cache-related failures. | Proposed |
+| **Eager Refresh** | A feature that automatically refreshes cache entries in the background before they expire. | Proposed |
+| **Named Caches** | The ability to create multiple named caches. | Proposed |
+| **OpenTelemetry Integration** | Provide deep insights into the performance and behavior of the caching system. | Proposed |
+| **Polly Integration** | Allow developers to configure advanced resilience strategies for their cache operations. | Proposed |
+| **Support for Other Caching Providers** | Make the library more versatile by supporting a wider range of caching providers. | Implemented (Redis, SQL Server) |
+| **Cache Stale-While-Revalidate** | Improve the perceived performance of an application by serving stale data while fetching a new version in the background. | Implemented |
+| **Jitter for Cache Expiration** | Help to prevent cache stampedes by adding a small, random amount of time to the expiration of a cache entry. | Proposed |
+| **Distributed `ICacheKeyGenerator`** | Ensure that all instances of an application generate the same cache key for the same method and arguments. | Proposed |
 
 ### 17. Fluent Configuration API
 
@@ -255,30 +255,30 @@ This document outlines a set of proposed features and integrations that would en
 
 ### Updated Summary of Proposed Features and Integrations
 
-| Feature/Integration | Description | Priority |
-| :--- | :--- | :--- |
-| **Easier to Use API** | A more intuitive and expressive API with automatic cache key generation, simpler `GetOrCreate` methods, and better documentation. | High |
-| **HTTP Caching for HttpClient** | Standards-compliant HTTP caching handler that reduces API calls, respects rate limits, and improves performance for any HTTP API integration. | High |
-| **Fluent Configuration API** | Chainable, discoverable configuration API that makes setup intuitive and provides better IntelliSense support. | High |
-| **Zero-Configuration Experience** | Perfect out-of-the-box experience with sensible defaults and minimal required configuration. | High |
-| **Smart Default Behaviors** | Intelligent defaults including auto-expiration, dependency-based invalidation, and adaptive expiration. | High |
-| **Enhanced Source Generator Features** | More powerful source generators with auto-interface generation, compile-time validation, and optimized code generation. | High |
-| **ASP.NET Core Caching Integration** | Seamlessly integrate with ASP.NET Core caching abstractions like `IMemoryCache` and `IDistributedCache`. | Medium |
-| **HTTP Caching Middleware (Server)** | Server-side HTTP caching middleware with ETag generation and conditional request handling. | Medium |
-| **Minimal API Integration** | First-class support for ASP.NET Core Minimal APIs with attribute-based caching. | Medium |
-| **Developer Experience Enhancements** | Cache debugging tools, health checks, performance insights, and configuration validation. | Medium |
-| **Performance-First Defaults** | Optimized defaults including warm-up hints, background refresh, and memory-efficient operations. | Medium |
-| **OpenTelemetry Integration** | Provide deep insights into the performance and behavior of the caching system. | Medium |
-| **Advanced Resilience** | A set of advanced resilience features to protect the application from cache-related failures. | Medium |
-| **Cloud-Native and Modern .NET Features** | Kubernetes-aware invalidation, environment-based configuration, and container-aware defaults. | Medium |
-| **Named Caches** | The ability to create multiple named caches. | Low |
-| **`fast-cache` Provider** | A high-performance, lock-free in-memory cache provider. | Low |
-| **Polly Integration** | Allow developers to configure advanced resilience strategies for their cache operations. | Low |
-| **Support for Other Caching Providers** | Make the library more versatile by supporting a wider range of caching providers. | Low |
-| **TimedETag** | A construct that combines an ETag with a last-modified timestamp for more efficient cache validation. | Low |
-| **Efficient Cache Validation** | An interface that allows the server to query the back-end for a `TimedETag` without having to load the entire resource. | Low |
-| **Diagnostic Headers** | Diagnostic headers that provide information about cache hits and misses. | Low |
-| **Eager Refresh** | A feature that automatically refreshes cache entries in the background before they expire. | Low |
-| **Cache Stale-While-Revalidate** | Improve the perceived performance of an application by serving stale data while fetching a new version in the background. | Low |
-| **Jitter for Cache Expiration** | Help to prevent cache stampedes by adding a small, random amount of time to the expiration of a cache entry. | Low |
-| **Distributed `ICacheKeyGenerator`** | Ensure that all instances of an application generate the same cache key for the same method and arguments. | Low |
+| Feature/Integration | Description | Priority | Status |
+| :--- | :--- | :--- | :--- |
+| **Easier to Use API** | A more intuitive and expressive API with automatic cache key generation, simpler `GetOrCreate` methods, and better documentation. | High | Proposed |
+| **HTTP Caching for HttpClient** | Standards-compliant HTTP caching handler that reduces API calls, respects rate limits, and improves performance for any HTTP API integration. | High | Implemented |
+| **Fluent Configuration API** | Chainable, discoverable configuration API that makes setup intuitive and provides better IntelliSense support. | High | Proposed |
+| **Zero-Configuration Experience** | Perfect out-of-the-box experience with sensible defaults and minimal required configuration. | High | Proposed |
+| **Smart Default Behaviors** | Intelligent defaults including auto-expiration, dependency-based invalidation, and adaptive expiration. | High | Proposed |
+| **Enhanced Source Generator Features** | More powerful source generators with auto-interface generation, compile-time validation, and optimized code generation. | High | Proposed |
+| **ASP.NET Core Caching Integration** | Seamlessly integrate with ASP.NET Core caching abstractions like `IMemoryCache` and `IDistributedCache`. | Medium | Partially Implemented |
+| **HTTP Caching Middleware (Server)** | Server-side HTTP caching middleware with ETag generation and conditional request handling. | Medium | Implemented |
+| **Minimal API Integration** | First-class support for ASP.NET Core Minimal APIs with attribute-based caching. | Medium | Proposed |
+| **Developer Experience Enhancements** | Cache debugging tools, health checks, performance insights, and configuration validation. | Medium | Proposed |
+| **Performance-First Defaults** | Optimized defaults including warm-up hints, background refresh, and memory-efficient operations. | Medium | Proposed |
+| **OpenTelemetry Integration** | Provide deep insights into the performance and behavior of the caching system. | Medium | Proposed |
+| **Advanced Resilience** | A set of advanced resilience features to protect the application from cache-related failures. | Medium | Proposed |
+| **Cloud-Native and Modern .NET Features** | Kubernetes-aware invalidation, environment-based configuration, and container-aware defaults. | Medium | Proposed |
+| **Named Caches** | The ability to create multiple named caches. | Low | Proposed |
+| **`fast-cache` Provider** | A high-performance, lock-free in-memory cache provider. | Low | Proposed |
+| **Polly Integration** | Allow developers to configure advanced resilience strategies for their cache operations. | Low | Proposed |
+| **Support for Other Caching Providers** | Make the library more versatile by supporting a wider range of caching providers. | Low | Implemented (Redis, SQL Server) |
+| **TimedETag** | A construct that combines an ETag with a last-modified timestamp for more efficient cache validation. | Low | Proposed |
+| **Efficient Cache Validation** | An interface that allows the server to query the back-end for a `TimedETag` without having to load the entire resource. | Low | Proposed |
+| **Diagnostic Headers** | Diagnostic headers that provide information about cache hits and misses. | Low | Proposed |
+| **Eager Refresh** | A feature that automatically refreshes cache entries in the background before they expire. | Low | Proposed |
+| **Cache Stale-While-Revalidate** | Improve the perceived performance of an application by serving stale data while fetching a new version in the background. | Low | Implemented |
+| **Jitter for Cache Expiration** | Help to prevent cache stampedes by adding a small, random amount of time to the expiration of a cache entry. | Low | Proposed |
+| **Distributed `ICacheKeyGenerator`** | Ensure that all instances of an application generate the same cache key for the same method and arguments. | Low | Proposed |

@@ -5,9 +5,13 @@
 - `MethodCache.SourceGenerator`: Roslyn source generator for decorators.
 - `MethodCache.Analyzers`: Compile-time checks and diagnostics.
 - `MethodCache.Providers.Redis`: Redis L2 provider (+ compression, tags, locks).
-- `MethodCache.HybridCache`: L1/L2 orchestration and policies.
+- `MethodCache.Providers.Memory`: In-memory L1 provider.
+- `MethodCache.Providers.SqlServer`: SqlServer L2 provider.
 - `MethodCache.ETags`: HTTP ETag support layered on MethodCache.
-- `MethodCache.Core.Tests`, `MethodCache.SourceGenerator.Tests`, `MethodCache.Analyzers.Tests`, other `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed Redis tests.
+- `MethodCache.HttpCaching`: HTTP caching support.
+- `MethodCache.Infrastructure`: Common infrastructure for providers.
+- `MethodCache.Benchmarks`: Performance benchmarks.
+- `MethodCache.Core.Tests`, `MethodCache.SourceGenerator.Tests`, `MethodCache.Analyzers.Tests`, other `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed integration tests.
 - `MethodCache.SampleApp` and `MethodCache.Demo`: runnable examples.
 
 ## Build, Test, Run

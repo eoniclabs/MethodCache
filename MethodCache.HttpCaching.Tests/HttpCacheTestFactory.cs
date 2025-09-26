@@ -7,7 +7,7 @@ using MethodCache.HttpCaching.Validation;
 
 namespace MethodCache.HttpCaching.Tests;
 
-internal static class HttpCacheTestFactory
+public static class HttpCacheTestFactory
 {
     public static HttpCacheHandler CreateHandler(
         HttpCacheOptions options,

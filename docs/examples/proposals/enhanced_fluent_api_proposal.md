@@ -1,5 +1,7 @@
 # Enhanced Fluent API Proposal: Building on Existing Key Generators
 
+> **Note**: Some of the features proposed in this document have been implemented, such as the `GetOrCreateAsync` overload with `methodName` and `args`, and the fluent `CacheBuilder<T>` API. The expression-based overload has not been implemented.
+
 ## Current Strengths to Preserve
 
 MethodCache already has excellent key generation:
