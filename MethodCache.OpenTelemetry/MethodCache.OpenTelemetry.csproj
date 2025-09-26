@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>MethodCache.OpenTelemetry</PackageId>
+    <Version>1.0.0-preview1</Version>
+    <Authors>MethodCache Contributors</Authors>
+    <Description>OpenTelemetry instrumentation for MethodCache - distributed tracing and metrics for cache operations</Description>
+    <PackageTags>cache;methodcache;opentelemetry;tracing;metrics;observability;telemetry</PackageTags>
+    <PackageProjectUrl>https://github.com/yourusername/methodcache</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/yourusername/methodcache</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\MethodCache.Infrastructure\MethodCache.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
