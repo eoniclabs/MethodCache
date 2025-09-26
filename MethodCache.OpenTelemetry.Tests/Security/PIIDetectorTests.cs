@@ -109,7 +109,7 @@ public class PIIDetectorTests
         var detections = _detector.DetectPII(text).ToList();
 
         // Assert
-        detections.Should().HaveCountGreaterOrEqualTo(2);
+        detections.Should().HaveCountGreaterThanOrEqualTo(2);
         detections.Should().Contain(d => d.Type == PIIType.EmailAddress);
         detections.Should().Contain(d => d.Type == PIIType.PhoneNumber);
     }

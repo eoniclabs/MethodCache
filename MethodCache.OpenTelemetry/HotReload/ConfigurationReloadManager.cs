@@ -24,7 +24,7 @@ public class ConfigurationReloadManager : IConfigurationReloadManager, IDisposab
     private readonly ILogger<ConfigurationReloadManager> _logger;
     private readonly ConcurrentDictionary<ConfigurationSection, object> _currentConfigurations = new();
     private readonly ConcurrentDictionary<ConfigurationSection, List<ConfigurationHistoryEntry>> _configurationHistory = new();
-    private readonly ConcurrentDictionary<ConfigurationSection, IConfigurationChangeHandler<object>> _changeHandlers = new();
+    private readonly ConcurrentDictionary<ConfigurationSection, IConfigurationChangeHandlerBase> _changeHandlers = new();
     private readonly ConcurrentDictionary<ConfigurationSection, bool> _hotReloadEnabled = new();
     private readonly SemaphoreSlim _updateSemaphore = new(1, 1);
     private readonly FileSystemWatcher? _fileWatcher;
@@ -112,8 +112,7 @@ public class ConfigurationReloadManager : IConfigurationReloadManager, IDisposab
             {
                 try
                 {
-                    await ((IConfigurationChangeHandler<T>)handler).HandleConfigurationChangeAsync(
-                        (T?)oldConfiguration, newConfiguration, cancellationToken);
+                    await handler.HandleConfigurationChangeAsync(oldConfiguration, newConfiguration, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -195,7 +194,7 @@ public class ConfigurationReloadManager : IConfigurationReloadManager, IDisposab
             {
                 try
                 {
-                    await HandleConfigurationChangeAsync(handler, currentConfig, configCopy, cancellationToken);
+                    await handler.HandleConfigurationChangeAsync(currentConfig, configCopy, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -325,7 +324,7 @@ public class ConfigurationReloadManager : IConfigurationReloadManager, IDisposab
 
     private void RegisterHandler<T>(IConfigurationChangeHandler<T> handler) where T : class
     {
-        _changeHandlers[handler.Section] = (IConfigurationChangeHandler<object>)handler;
+        _changeHandlers[handler.Section] = handler;
     }
 
     private void OnConfigurationFileChanged(object sender, FileSystemEventArgs e)
@@ -377,20 +376,11 @@ public class ConfigurationReloadManager : IConfigurationReloadManager, IDisposab
         }
     }
 
-    private async Task<ValidationResult> ValidateConfigurationInternalAsync<T>(IConfigurationChangeHandler<object> handler, T configuration) where T : class
+    private async Task<ValidationResult> ValidateConfigurationInternalAsync<T>(IConfigurationChangeHandlerBase handler, T configuration) where T : class
     {
-        if (handler is IConfigurationChangeHandler<T> typedHandler)
-        {
-            return await typedHandler.ValidateAsync(configuration);
-        }
-
-        return new ValidationResult { IsValid = true };
+        return await handler.ValidateAsync(configuration);
     }
 
-    private async Task HandleConfigurationChangeAsync(IConfigurationChangeHandler<object> handler, object oldConfig, object newConfig, CancellationToken cancellationToken)
-    {
-        await handler.HandleConfigurationChangeAsync(oldConfig, newConfig, cancellationToken);
-    }
 
     private static object DeepClone(object obj)
     {

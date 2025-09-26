@@ -301,7 +301,7 @@ public class MemoryStorageTests : IDisposable
 
         // Assert
         var stats = limitedStorage.GetStats();
-        stats.TagMappingCount.Should().BeLessOrEqualTo(2);
+        stats.TagMappingCount.Should().BeLessThanOrEqualTo(2);
 
         // The value should still be stored, just not tag-tracked
         limitedStorage.Get<string>("key3").Should().Be("value3");

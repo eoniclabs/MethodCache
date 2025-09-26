@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -512,7 +513,17 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
         }
     }
 
-    private async ValueTask WriteToL2Async(Func<ValueTask> operation, CancellationToken cancellationToken)
+    private ValueTask WriteToL2Async(Func<ValueTask> operation, CancellationToken cancellationToken)
+    {
+        if (_options.EnableAsyncL2Writes && TryScheduleAwaitableAsyncWrite(ct => ExecuteL2OperationAsync(operation, ct), out var completionTask))
+        {
+            return new ValueTask(WaitForScheduledWriteAsync(completionTask, cancellationToken));
+        }
+
+        return ExecuteL2OperationAsync(operation, cancellationToken);
+    }
+
+    private async ValueTask ExecuteL2OperationAsync(Func<ValueTask> operation, CancellationToken cancellationToken)
     {
         var waitSucceeded = false;
         try
@@ -613,7 +624,17 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
         }
     }
 
-    private async ValueTask WriteToL3Async(Func<ValueTask> operation, CancellationToken cancellationToken)
+    private ValueTask WriteToL3Async(Func<ValueTask> operation, CancellationToken cancellationToken)
+    {
+        if (_options.EnableAsyncL3Writes && TryScheduleAwaitableAsyncWrite(ct => ExecuteL3OperationAsync(operation, ct), out var completionTask))
+        {
+            return new ValueTask(WaitForScheduledWriteAsync(completionTask, cancellationToken));
+        }
+
+        return ExecuteL3OperationAsync(operation, cancellationToken);
+    }
+
+    private async ValueTask ExecuteL3OperationAsync(Func<ValueTask> operation, CancellationToken cancellationToken)
     {
         var waitSucceeded = false;
         try
@@ -719,6 +740,46 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
         }
 
         return false;
+    }
+
+    private bool TryScheduleAwaitableAsyncWrite(Func<CancellationToken, ValueTask> work, out Task completionTask)
+    {
+        if (_asyncWriteChannel == null || _asyncWriteCts == null)
+        {
+            completionTask = Task.CompletedTask;
+            return false;
+        }
+
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        if (_asyncWriteChannel.Writer.TryWrite(async ct =>
+        {
+            try
+            {
+                await work(ct).ConfigureAwait(false);
+                tcs.TrySetResult(true);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                tcs.TrySetCanceled(ct);
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
+        }))
+        {
+            completionTask = tcs.Task;
+            return true;
+        }
+
+        completionTask = Task.CompletedTask;
+        return false;
+    }
+
+    private static async Task WaitForScheduledWriteAsync(Task scheduledTask, CancellationToken cancellationToken)
+    {
+        await scheduledTask.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()

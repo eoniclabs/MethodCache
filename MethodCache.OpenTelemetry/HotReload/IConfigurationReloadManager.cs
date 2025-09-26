@@ -123,24 +123,40 @@ public class RuntimeConfiguration
 }
 
 /// <summary>
+/// Non-generic base interface for configuration change handlers
+/// </summary>
+public interface IConfigurationChangeHandlerBase
+{
+    /// <summary>
+    /// Gets the configuration section this handler manages
+    /// </summary>
+    ConfigurationSection Section { get; }
+
+    /// <summary>
+    /// Called when configuration changes (non-generic version)
+    /// </summary>
+    Task HandleConfigurationChangeAsync(object? oldConfiguration, object newConfiguration, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Validates the new configuration (non-generic version)
+    /// </summary>
+    Task<ValidationResult> ValidateAsync(object configuration);
+}
+
+/// <summary>
 /// Interface for configuration change handlers
 /// </summary>
-public interface IConfigurationChangeHandler<T> where T : class
+public interface IConfigurationChangeHandler<T> : IConfigurationChangeHandlerBase where T : class
 {
     /// <summary>
     /// Called when configuration changes
     /// </summary>
-    Task HandleConfigurationChangeAsync(T oldConfiguration, T newConfiguration, CancellationToken cancellationToken = default);
+    Task HandleConfigurationChangeAsync(T? oldConfiguration, T newConfiguration, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Validates the new configuration
     /// </summary>
     Task<ValidationResult> ValidateAsync(T configuration);
-
-    /// <summary>
-    /// Gets the configuration section this handler manages
-    /// </summary>
-    ConfigurationSection Section { get; }
 }
 
 /// <summary>
@@ -150,7 +166,7 @@ public abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChangeHa
 {
     public abstract ConfigurationSection Section { get; }
 
-    public virtual async Task HandleConfigurationChangeAsync(T oldConfiguration, T newConfiguration, CancellationToken cancellationToken = default)
+    public virtual async Task HandleConfigurationChangeAsync(T? oldConfiguration, T newConfiguration, CancellationToken cancellationToken = default)
     {
         await OnConfigurationChangedAsync(oldConfiguration, newConfiguration, cancellationToken);
     }
@@ -160,7 +176,33 @@ public abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChangeHa
         return Task.FromResult(new ValidationResult { IsValid = true });
     }
 
-    protected abstract Task OnConfigurationChangedAsync(T oldConfiguration, T newConfiguration, CancellationToken cancellationToken);
+    // Non-generic implementations for base interface
+    async Task IConfigurationChangeHandlerBase.HandleConfigurationChangeAsync(object? oldConfiguration, object newConfiguration, CancellationToken cancellationToken)
+    {
+        if (newConfiguration is T typedNew)
+        {
+            var typedOld = oldConfiguration as T;
+            await HandleConfigurationChangeAsync(typedOld, typedNew, cancellationToken);
+        }
+        else
+        {
+            throw new ArgumentException($"Configuration must be of type {typeof(T).Name}", nameof(newConfiguration));
+        }
+    }
+
+    async Task<ValidationResult> IConfigurationChangeHandlerBase.ValidateAsync(object configuration)
+    {
+        if (configuration is T typedConfig)
+        {
+            return await ValidateAsync(typedConfig);
+        }
+        else
+        {
+            throw new ArgumentException($"Configuration must be of type {typeof(T).Name}", nameof(configuration));
+        }
+    }
+
+    protected abstract Task OnConfigurationChangedAsync(T? oldConfiguration, T newConfiguration, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -170,23 +212,23 @@ public class OpenTelemetryOptionsChangeHandler : ConfigurationChangeHandlerBase<
 {
     public override ConfigurationSection Section => ConfigurationSection.OpenTelemetry;
 
-    protected override async Task OnConfigurationChangedAsync(OpenTelemetryOptions oldConfiguration, OpenTelemetryOptions newConfiguration, CancellationToken cancellationToken)
+    protected override async Task OnConfigurationChangedAsync(OpenTelemetryOptions? oldConfiguration, OpenTelemetryOptions newConfiguration, CancellationToken cancellationToken)
     {
         // Handle tracing enable/disable
-        if (oldConfiguration.EnableTracing != newConfiguration.EnableTracing)
+        if (oldConfiguration?.EnableTracing != newConfiguration.EnableTracing)
         {
             // Restart activity sources if needed
             await RestartTracingAsync(newConfiguration.EnableTracing, cancellationToken);
         }
 
         // Handle metrics enable/disable
-        if (oldConfiguration.EnableMetrics != newConfiguration.EnableMetrics)
+        if (oldConfiguration?.EnableMetrics != newConfiguration.EnableMetrics)
         {
             await RestartMetricsAsync(newConfiguration.EnableMetrics, cancellationToken);
         }
 
         // Handle sampling ratio changes
-        if (Math.Abs(oldConfiguration.SamplingRatio - newConfiguration.SamplingRatio) > 0.001)
+        if (oldConfiguration == null || Math.Abs(oldConfiguration.SamplingRatio - newConfiguration.SamplingRatio) > 0.001)
         {
             await UpdateSamplingRatioAsync(newConfiguration.SamplingRatio, cancellationToken);
         }
@@ -237,18 +279,18 @@ public class SecurityOptionsChangeHandler : ConfigurationChangeHandlerBase<Secur
 {
     public override ConfigurationSection Section => ConfigurationSection.Security;
 
-    protected override async Task OnConfigurationChangedAsync(SecurityOptions oldConfiguration, SecurityOptions newConfiguration, CancellationToken cancellationToken)
+    protected override async Task OnConfigurationChangedAsync(SecurityOptions? oldConfiguration, SecurityOptions newConfiguration, CancellationToken cancellationToken)
     {
         // Handle PII detection changes
-        if (oldConfiguration.EnablePIIDetection != newConfiguration.EnablePIIDetection ||
-            oldConfiguration.PIITypesToDetect != newConfiguration.PIITypesToDetect)
+        if (oldConfiguration?.EnablePIIDetection != newConfiguration.EnablePIIDetection ||
+            oldConfiguration?.PIITypesToDetect != newConfiguration.PIITypesToDetect)
         {
             await ReconfigurePIIDetectionAsync(newConfiguration, cancellationToken);
         }
 
         // Handle encryption changes
-        if (oldConfiguration.EnableAttributeEncryption != newConfiguration.EnableAttributeEncryption ||
-            oldConfiguration.EncryptionKey != newConfiguration.EncryptionKey)
+        if (oldConfiguration?.EnableAttributeEncryption != newConfiguration.EnableAttributeEncryption ||
+            oldConfiguration?.EncryptionKey != newConfiguration.EncryptionKey)
         {
             await ReconfigureEncryptionAsync(newConfiguration, cancellationToken);
         }

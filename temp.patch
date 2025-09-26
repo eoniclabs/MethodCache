@@ -1,0 +1,174 @@
+*** Begin Patch
+*** Update File: MethodCache.Core/Storage/HybridStorageManager.cs
+@@
+-    private async ValueTask WriteToL2Async(Func<ValueTask> operation, CancellationToken cancellationToken)
+-    {
+-        var waitSucceeded = false;
+-        try
+-        {
+-            await _l2Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+-            waitSucceeded = true;
+-            await operation().ConfigureAwait(false);
+-        }
+-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+-        {
+-            _logger.LogWarning("L2 operation was cancelled due to shutdown");
+-        }
+-        catch (Exception ex)
+-        {
+-            _logger.LogError(ex, "Error in L2 storage operation");
+-        }
+-        finally
+-        {
+-            if (waitSucceeded)
+-            {
+-                _l2Semaphore.Release();
+-            }
+-        }
+-    }
++    private ValueTask WriteToL2Async(Func<ValueTask> operation, CancellationToken cancellationToken)
++    {
++        if (_options.EnableAsyncL2Writes && TryScheduleAwaitableAsyncWrite(ct => ExecuteL2OperationAsync(operation, ct), out var completionTask))
++        {
++            return new ValueTask(WaitForScheduledWriteAsync(completionTask, cancellationToken));
++        }
++
++        return ExecuteL2OperationAsync(operation, cancellationToken);
++    }
++
++    private async ValueTask ExecuteL2OperationAsync(Func<ValueTask> operation, CancellationToken cancellationToken)
++    {
++        var waitSucceeded = false;
++        try
++        {
++            await _l2Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
++            waitSucceeded = true;
++            await operation().ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
++        {
++            _logger.LogWarning("L2 operation was cancelled due to shutdown");
++        }
++        catch (Exception ex)
++        {
++            _logger.LogError(ex, "Error in L2 storage operation");
++        }
++        finally
++        {
++            if (waitSucceeded)
++            {
++                _l2Semaphore.Release();
++            }
++        }
++    }
+@@
+-    private async ValueTask WriteToL3Async(Func<ValueTask> operation, CancellationToken cancellationToken)
+-    {
+-        var waitSucceeded = false;
+-        try
+-        {
+-            await _l3Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+-            waitSucceeded = true;
+-            await operation().ConfigureAwait(false);
+-        }
+-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+-        {
+-            _logger.LogWarning("L3 operation was cancelled due to shutdown");
+-        }
+-        catch (Exception ex)
+-        {
+-            _logger.LogError(ex, "Error in L3 storage operation");
+-        }
+-        finally
+-        {
+-            if (waitSucceeded)
+-            {
+-                _l3Semaphore.Release();
+-            }
+-        }
+-    }
++    private ValueTask WriteToL3Async(Func<ValueTask> operation, CancellationToken cancellationToken)
++    {
++        if (_options.EnableAsyncL3Writes && TryScheduleAwaitableAsyncWrite(ct => ExecuteL3OperationAsync(operation, ct), out var completionTask))
++        {
++            return new ValueTask(WaitForScheduledWriteAsync(completionTask, cancellationToken));
++        }
++
++        return ExecuteL3OperationAsync(operation, cancellationToken);
++    }
++
++    private async ValueTask ExecuteL3OperationAsync(Func<ValueTask> operation, CancellationToken cancellationToken)
++    {
++        var waitSucceeded = false;
++        try
++        {
++            await _l3Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
++            waitSucceeded = true;
++            await operation().ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
++        {
++            _logger.LogWarning("L3 operation was cancelled due to shutdown");
++        }
++        catch (Exception ex)
++        {
++            _logger.LogError(ex, "Error in L3 storage operation");
++        }
++        finally
++        {
++            if (waitSucceeded)
++            {
++                _l3Semaphore.Release();
++            }
++        }
++    }
+@@
+-    private bool TryScheduleAsyncWrite(Func<CancellationToken, ValueTask> work)
++    private bool TryScheduleAsyncWrite(Func<CancellationToken, ValueTask> work)
++    {
++        return TryScheduleAwaitableAsyncWrite(work, out _);
++    }
++
++    private bool TryScheduleAwaitableAsyncWrite(Func<CancellationToken, ValueTask> work, out Task completionTask)
+     {
+         if (_asyncWriteChannel == null || _asyncWriteCts == null)
+         {
+-            return false;
++            completionTask = Task.CompletedTask;
++            return false;
+         }
+ 
+-        if (_asyncWriteChannel.Writer.TryWrite(work))
++        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
++
++        if (_asyncWriteChannel.Writer.TryWrite(async ct =>
+         {
+-            return true;
++            try
++            {
++                await work(ct).ConfigureAwait(false);
++                tcs.TrySetResult(true);
++            }
++            catch (OperationCanceledException) when (ct.IsCancellationRequested)
++            {
++                tcs.TrySetCanceled(ct);
++            }
++            catch (Exception ex)
++            {
++                tcs.TrySetException(ex);
++            }
++        }))
++        {
++            completionTask = tcs.Task;
++            return true;
+         }
+ 
++        completionTask = Task.CompletedTask;
+         return false;
+     }
++
++    private static async Task WaitForScheduledWriteAsync(Task scheduledTask, CancellationToken cancellationToken)
++    {
++        await scheduledTask.WaitAsync(cancellationToken).ConfigureAwait(false);
++    }
+*** End Patch
