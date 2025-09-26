@@ -16,16 +16,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenTelemetry" Version="1.10.0" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.10.0" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.10.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.10.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.1" />
+    <PackageReference Include="OpenTelemetry" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.7.115" />
   </ItemGroup>
 
   <ItemGroup>

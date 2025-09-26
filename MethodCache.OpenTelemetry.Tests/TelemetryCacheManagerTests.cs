@@ -63,6 +63,15 @@ public class TelemetryCacheManagerTests : IDisposable
         _innerManagerMock.Setup(x => x.TryGetAsync<string>(methodName, args, settings, keyGenerator.Object))
             .ReturnsAsync(expectedValue);
 
+        _innerManagerMock.Setup(x => x.GetOrCreateAsync(
+                methodName,
+                args,
+                It.IsAny<Func<Task<string>>>(),
+                settings,
+                keyGenerator.Object,
+                false))
+            .ReturnsAsync(expectedValue);
+
         var activity = new Activity("test");
         _activitySourceMock.Setup(x => x.StartCacheOperation(methodName, TracingConstants.Operations.Get))
             .Returns(activity);
@@ -108,7 +117,8 @@ public class TelemetryCacheManagerTests : IDisposable
                 settings,
                 keyGenerator.Object,
                 false))
-            .ReturnsAsync(expectedValue);
+            .Returns<string, object[], Func<Task<string>>, CacheMethodSettings, ICacheKeyGenerator, bool>(
+                async (_, _, factory, _, _, _) => await factory());
 
         var activity = new Activity("test");
         _activitySourceMock.Setup(x => x.StartCacheOperation(methodName, TracingConstants.Operations.Get))
@@ -144,7 +154,13 @@ public class TelemetryCacheManagerTests : IDisposable
         keyGenerator.Setup(x => x.GenerateKey(methodName, args, settings))
             .Returns("test_key");
 
-        _innerManagerMock.Setup(x => x.TryGetAsync<string>(methodName, args, settings, keyGenerator.Object))
+        _innerManagerMock.Setup(x => x.GetOrCreateAsync(
+                methodName,
+                args,
+                It.IsAny<Func<Task<string>>>(),
+                settings,
+                keyGenerator.Object,
+                false))
             .ThrowsAsync(exception);
 
         var activity = new Activity("test");

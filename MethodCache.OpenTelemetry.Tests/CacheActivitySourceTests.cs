@@ -1,17 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using FluentAssertions;
 using MethodCache.OpenTelemetry.Configuration;
 using MethodCache.OpenTelemetry.Tracing;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using Xunit;
 
 namespace MethodCache.OpenTelemetry.Tests;
 
-public class CacheActivitySourceTests
+public class CacheActivitySourceTests : IDisposable
 {
     private readonly CacheActivitySource _activitySource;
     private readonly OpenTelemetryOptions _options;
+    private readonly TracerProvider _tracerProvider;
+    private readonly List<Activity> _exportedActivities;
 
     public CacheActivitySourceTests()
     {
@@ -24,6 +29,13 @@ public class CacheActivitySourceTests
         };
 
         _activitySource = new CacheActivitySource(Options.Create(_options));
+
+        // Set up TracerProvider to enable activity creation
+        _exportedActivities = new List<Activity>();
+        _tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddSource(TracingConstants.ActivitySourceName)
+            .AddInMemoryExporter(_exportedActivities)
+            .Build()!;
     }
 
     [Fact]
@@ -192,9 +204,10 @@ public class CacheActivitySourceTests
         parentActivity.SetTag("url.full", "https://example.com/api/users");
         parentActivity.TraceStateString = "key=value";
 
-        using var childActivity = new Activity("child").Start();
+        // Create child activity but don't start it yet
+        using var childActivity = new Activity("child");
 
-        // Act
+        // Act - call SetHttpCorrelation while parent is still current
         _activitySource.SetHttpCorrelation(childActivity);
 
         // Assert
@@ -221,5 +234,10 @@ public class CacheActivitySourceTests
 
         // Assert
         childActivity.GetTagItem("http.method").Should().BeNull();
+    }
+
+    public void Dispose()
+    {
+        _tracerProvider?.Dispose();
     }
 }

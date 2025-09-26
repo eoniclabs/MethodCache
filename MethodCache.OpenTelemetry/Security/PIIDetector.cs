@@ -157,7 +157,7 @@ public class RegexPIIDetector : IPIIDetector
             [PIIType.PhoneNumber] = new()
             {
                 new PIIPattern(@"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", 0.85),
-                new PIIPattern(@"\b\(\d{3}\)\s?\d{3}[-.]?\d{4}\b", 0.90),
+                new PIIPattern(@"\(\d{3}\)\s?\d{3}[-.]?\d{4}", 0.90),
                 new PIIPattern(@"\b\+1[-.]?\d{3}[-.]?\d{3}[-.]?\d{4}\b", 0.90)
             },
             [PIIType.SocialSecurityNumber] = new()

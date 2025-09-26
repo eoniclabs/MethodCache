@@ -195,9 +195,9 @@ public class AdvancedMemoryStorageTests
         var stats = _storage.GetStats();
 
         stats.Should().NotBeNull();
-        stats.EntryCount.Should().BeGreaterOrEqualTo(0);
-        stats.Hits.Should().BeGreaterOrEqualTo(0);
-        stats.Misses.Should().BeGreaterOrEqualTo(0);
+        stats.EntryCount.Should().BeGreaterThanOrEqualTo(0);
+        stats.Hits.Should().BeGreaterThanOrEqualTo(0);
+        stats.Misses.Should().BeGreaterThanOrEqualTo(0);
     }
 
     [Fact]

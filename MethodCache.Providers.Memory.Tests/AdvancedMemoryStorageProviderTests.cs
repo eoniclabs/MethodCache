@@ -202,7 +202,7 @@ public class AdvancedMemoryStorageProviderTests
 
         var stats = await provider.GetStatsAsync();
         var entryCount = Convert.ToInt64(stats!.AdditionalStats["EntryCount"]);
-        entryCount.Should().BeLessOrEqualTo(2);
+        entryCount.Should().BeLessThanOrEqualTo(2);
     }
 
     [Fact]

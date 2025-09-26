@@ -17,14 +17,17 @@ public class ConfigurationReloadManagerTests : IDisposable
 
     public ConfigurationReloadManagerTests()
     {
-        // Create a simple mock configuration
-        var builder = new MsConfiguration.ConfigurationBuilder();
-        _configuration = builder.Build();
+        // Create configuration with in-memory provider
+        var initialData = new Dictionary<string, string>
+        {
+            ["MethodCache:OpenTelemetry:EnableTracing"] = "true",
+            ["MethodCache:OpenTelemetry:EnableMetrics"] = "true",
+            ["MethodCache:OpenTelemetry:SamplingRatio"] = "1.0"
+        };
 
-        // Set configuration values directly
-        _configuration["MethodCache:OpenTelemetry:EnableTracing"] = "true";
-        _configuration["MethodCache:OpenTelemetry:EnableMetrics"] = "true";
-        _configuration["MethodCache:OpenTelemetry:SamplingRatio"] = "1.0";
+        var builder = new MsConfiguration.ConfigurationBuilder();
+        MsConfiguration.MemoryConfigurationBuilderExtensions.AddInMemoryCollection(builder, initialData);
+        _configuration = builder.Build();
 
         _manager = new ConfigurationReloadManager(_configuration, NullLogger<ConfigurationReloadManager>.Instance);
     }
@@ -33,7 +36,7 @@ public class ConfigurationReloadManagerTests : IDisposable
     public void GetConfiguration_WithValidSection_ReturnsConfiguration()
     {
         // Act
-        var config = _manager.GetConfiguration<OpenTelemetryOptions>(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry);
+        var config = _manager.GetConfiguration<OpenTelemetryOptions>(ConfigurationSection.OpenTelemetry);
 
         // Assert
         config.Should().NotBeNull();
@@ -63,7 +66,7 @@ public class ConfigurationReloadManagerTests : IDisposable
         result.Should().BeTrue();
         eventFired.Should().BeTrue();
 
-        var updatedConfig = _manager.GetConfiguration<OpenTelemetryOptions>(ConfigurationSection.OpenTelemetry);
+        var updatedConfig = _manager.GetConfiguration<OpenTelemetryOptions>(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry);
         updatedConfig.EnableTracing.Should().BeFalse();
         updatedConfig.SamplingRatio.Should().Be(0.5);
     }
@@ -72,16 +75,16 @@ public class ConfigurationReloadManagerTests : IDisposable
     public async Task UpdatePropertyAsync_WithValidProperty_UpdatesSuccessfully()
     {
         // Arrange
-        var originalConfig = _manager.GetConfiguration<OpenTelemetryOptions>(ConfigurationSection.OpenTelemetry);
+        var originalConfig = _manager.GetConfiguration<OpenTelemetryOptions>(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry);
         originalConfig.EnableTracing.Should().BeTrue();
 
         // Act
-        var result = await _manager.UpdatePropertyAsync(ConfigurationSection.OpenTelemetry, nameof(OpenTelemetryOptions.EnableTracing), false);
+        var result = await _manager.UpdatePropertyAsync(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry, nameof(OpenTelemetryOptions.EnableTracing), false);
 
         // Assert
         result.Should().BeTrue();
 
-        var updatedConfig = _manager.GetConfiguration<OpenTelemetryOptions>(ConfigurationSection.OpenTelemetry);
+        var updatedConfig = _manager.GetConfiguration<OpenTelemetryOptions>(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry);
         updatedConfig.EnableTracing.Should().BeFalse();
     }
 
@@ -95,7 +98,7 @@ public class ConfigurationReloadManagerTests : IDisposable
         };
 
         // Act
-        var result = await _manager.ValidateConfigurationAsync(ConfigurationSection.OpenTelemetry, invalidConfig);
+        var result = await _manager.ValidateConfigurationAsync(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry, invalidConfig);
 
         // Assert
         result.Should().NotBeNull();
@@ -107,7 +110,7 @@ public class ConfigurationReloadManagerTests : IDisposable
     public void GetConfigurationHistory_AfterUpdates_ReturnsHistory()
     {
         // Arrange & Act
-        var initialHistory = _manager.GetConfigurationHistory(ConfigurationSection.OpenTelemetry);
+        var initialHistory = _manager.GetConfigurationHistory(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry);
 
         // Assert
         initialHistory.Should().NotBeNull();
@@ -118,8 +121,8 @@ public class ConfigurationReloadManagerTests : IDisposable
     public void SetHotReloadEnabled_DisablesThenEnables_WorksCorrectly()
     {
         // Act & Assert - should not throw
-        _manager.SetHotReloadEnabled(ConfigurationSection.OpenTelemetry, false);
-        _manager.SetHotReloadEnabled(ConfigurationSection.OpenTelemetry, true);
+        _manager.SetHotReloadEnabled(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry, false);
+        _manager.SetHotReloadEnabled(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry, true);
     }
 
     [Fact]
@@ -130,7 +133,7 @@ public class ConfigurationReloadManagerTests : IDisposable
 
         // Assert
         allConfigs.Should().NotBeEmpty();
-        allConfigs.Should().ContainKey(ConfigurationSection.OpenTelemetry);
+        allConfigs.Should().ContainKey(MethodCache.OpenTelemetry.HotReload.ConfigurationSection.OpenTelemetry);
     }
 
     public void Dispose()
