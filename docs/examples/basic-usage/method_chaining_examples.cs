@@ -38,11 +38,11 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _userRepo.GetUserAsync(userId),
-                opts => opts
-                    .WithDuration(TimeSpan.FromHours(1))
-                    .WithTags("user", $"user:{userId}")
-                    .WithStampedeProtection()
-                    .WithMetrics(_metrics),
+                settings: new CacheMethodSettings 
+                {
+                    Duration = TimeSpan.FromHours(1),
+                    Tags = new[] { "user", $"user:{userId}" }
+                },
                 keyGenerator: new JsonKeyGenerator()
             );
         }

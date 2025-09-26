@@ -16,9 +16,10 @@ public class VaryHeaderIntegrationTests
 
         var jsonResponse = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("{ \"data\": \"json\" }"),
+            Content = new StringContent("{ \"data\": \"json\" }", System.Text.Encoding.UTF8, "application/json"),
             Headers =
             {
+                Date = DateTimeOffset.UtcNow,
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(10) },
                 Vary = { "Accept" }
             }
@@ -26,9 +27,10 @@ public class VaryHeaderIntegrationTests
 
         var xmlResponse = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("<data>xml</data>"),
+            Content = new StringContent("<data>xml</data>", System.Text.Encoding.UTF8, "application/xml"),
             Headers =
             {
+                Date = DateTimeOffset.UtcNow,
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(10) },
                 Vary = { "Accept" }
             }
@@ -63,9 +65,10 @@ public class VaryHeaderIntegrationTests
 
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("{ \"data\": \"json\" }"),
+            Content = new StringContent("{ \"data\": \"json\" }", System.Text.Encoding.UTF8, "application/json"),
             Headers =
             {
+                Date = DateTimeOffset.UtcNow,
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(10) },
                 Vary = { "Accept" }
             }
@@ -99,9 +102,10 @@ public class VaryHeaderIntegrationTests
 
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("uncacheable"),
+            Content = new StringContent("uncacheable", System.Text.Encoding.UTF8, "text/plain"),
             Headers =
             {
+                Date = DateTimeOffset.UtcNow,
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(10) },
                 Vary = { "*" }
             }
@@ -125,13 +129,15 @@ public class VaryHeaderIntegrationTests
 
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("content"),
+            Content = new StringContent("{ \"data\": \"json\" }", System.Text.Encoding.UTF8, "application/json"),
             Headers =
             {
+                Date = DateTimeOffset.UtcNow,
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(10) },
                 Vary = { "Accept", "Accept-Language" }
             }
         };
+        response.Content.Headers.ContentLanguage.Add("en-US");
 
         innerHandler.SetResponses(response, TestHttpMessageHandler.CloneResponse(response));
 
@@ -159,9 +165,10 @@ public class VaryHeaderIntegrationTests
 
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("content"),
+            Content = new StringContent("content", System.Text.Encoding.UTF8, "text/plain"),
             Headers =
             {
+                Date = DateTimeOffset.UtcNow,
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(10) },
                 Vary = { "Accept" }
             }

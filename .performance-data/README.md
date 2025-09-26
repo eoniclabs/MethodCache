@@ -5,9 +5,8 @@ This directory contains historical performance benchmark data for the MethodCach
 ## Structure
 
 - `schema.json` - JSON schema for benchmark data format
-- `benchmark-YYYYMMDD_HHMMSS.json` - Performance data files (one per benchmark run)
+- `benchmark-YYYYMMDD_HHMMSS.json` - Performance data files (one per benchmark run). Note: No benchmark data files are currently present in this directory.
 - `generate-charts.py` - Script to generate performance charts
-- `analyze-trends.py` - Script to analyze performance trends
 
 ## Data Format
 

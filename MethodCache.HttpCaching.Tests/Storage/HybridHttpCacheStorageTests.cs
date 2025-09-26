@@ -21,9 +21,9 @@ public class HybridHttpCacheStorageTests
     {
         return new HybridHttpCacheStorage(
             _storageProvider,
-            Options.Create(_httpOptions),
-            Options.Create(new HttpCacheStorageOptions()),
-            Options.Create(_storageOptions),
+            Microsoft.Extensions.Options.Options.Create(_httpOptions),
+            Microsoft.Extensions.Options.Options.Create(new HttpCacheStorageOptions()),
+            Microsoft.Extensions.Options.Options.Create(_storageOptions),
             NullLogger<HybridHttpCacheStorage>.Instance);
     }
 
@@ -31,12 +31,12 @@ public class HybridHttpCacheStorageTests
     public async Task SetAsync_SkipsWhenEntryTooLarge()
     {
         var storage = CreateStorage();
-        var options = Options.Create(new HttpCacheStorageOptions { MaxResponseSize = 1 });
+        var options = Microsoft.Extensions.Options.Options.Create(new HttpCacheStorageOptions { MaxResponseSize = 1 });
         var sut = new HybridHttpCacheStorage(
             _storageProvider,
-            Options.Create(_httpOptions),
+            Microsoft.Extensions.Options.Options.Create(_httpOptions),
             options,
-            Options.Create(_storageOptions),
+            Microsoft.Extensions.Options.Options.Create(_storageOptions),
             NullLogger<HybridHttpCacheStorage>.Instance);
 
         var entry = new HttpCacheEntry

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 
 namespace MethodCache.HttpCaching.Tests;
 
-internal sealed class TestOptionsMonitor<TOptions> : IOptionsMonitor<TOptions>
+public sealed class TestOptionsMonitor<TOptions> : IOptionsMonitor<TOptions>
     where TOptions : class
 {
     private TOptions _currentValue;

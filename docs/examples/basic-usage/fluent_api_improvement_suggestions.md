@@ -1,5 +1,7 @@
 # Fluent API Improvement Suggestions
 
+> **Note**: The method chaining API suggested in this document has been implemented. See `MethodCache.Core/Fluent/CacheBuilder.cs` for details. The other suggestions are still valid for future development.
+
 Looking at our current fluent API, here are potential enhancements to make it even more powerful and developer-friendly:
 
 ## Current State ✅
