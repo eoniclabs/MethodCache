@@ -100,7 +100,12 @@ namespace MethodCache.Core.Options
             {
                 if (duration <= TimeSpan.Zero)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(duration), "Duration must be positive.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(duration),
+                        $"Cache duration must be positive. Provided: {duration}. " +
+                        "For no expiration, omit the Duration property or use TimeSpan.MaxValue. " +
+                        "Common durations: TimeSpan.FromMinutes(5), TimeSpan.FromHours(1). " +
+                        "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#duration");
                 }
 
                 _duration = duration;
@@ -135,7 +140,12 @@ namespace MethodCache.Core.Options
             {
                 if (slidingExpiration <= TimeSpan.Zero)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(slidingExpiration), "Sliding expiration must be positive.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(slidingExpiration),
+                        $"Sliding expiration must be positive. Provided: {slidingExpiration}. " +
+                        "Sliding expiration resets the timer on each cache access. " +
+                        "Example: TimeSpan.FromMinutes(10) keeps frequently-accessed items cached. " +
+                        "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#sliding-expiration");
                 }
 
                 _slidingExpiration = slidingExpiration;

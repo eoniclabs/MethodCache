@@ -1,0 +1,411 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://methodcache.io/schemas/methodcache-api-v1.json",
+  "title": "MethodCache API Schema",
+  "description": "Machine-readable schema for MethodCache API, designed for AI agents and tooling",
+  "version": "1.0.0",
+  "lastUpdated": "2025-09-29",
+
+  "coreInterfaces": {
+    "ICacheManager": {
+      "namespace": "MethodCache.Core",
+      "description": "Main interface for cache operations with L1/L2 support",
+      "methods": [
+        {
+          "name": "GetOrCreateAsync",
+          "signature": "Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)",
+          "description": "Retrieves cached value or executes factory function",
+          "parameters": {
+            "methodName": "Name of method being cached",
+            "args": "Method arguments for key generation",
+            "factory": "Function to execute on cache miss",
+            "settings": "Cache configuration (duration, tags, version)",
+            "keyGenerator": "Strategy for generating cache keys",
+            "requireIdempotent": "Enforce idempotency check"
+          },
+          "useCases": ["Read operations", "Query results", "API responses"],
+          "performance": "145ns (cache hit), 1.3ms (cache miss)"
+        },
+        {
+          "name": "TryGetAsync",
+          "signature": "ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)",
+          "description": "Fast read-only cache lookup without factory execution",
+          "useCases": ["Check cache existence", "Conditional caching", "Read-through patterns"]
+        },
+        {
+          "name": "InvalidateByTagsAsync",
+          "signature": "Task InvalidateByTagsAsync(params string[] tags)",
+          "description": "Bulk invalidation by cache tags",
+          "useCases": ["Entity updates", "Bulk cache clearing", "Feature-based invalidation"]
+        },
+        {
+          "name": "InvalidateByKeysAsync",
+          "signature": "Task InvalidateByKeysAsync(params string[] keys)",
+          "description": "Precise invalidation by exact cache keys",
+          "useCases": ["Targeted cache removal", "Single entity updates"]
+        },
+        {
+          "name": "InvalidateByTagPatternAsync",
+          "signature": "Task InvalidateByTagPatternAsync(string pattern)",
+          "description": "Wildcard pattern matching for cache invalidation",
+          "useCases": ["Prefix-based clearing", "Namespace invalidation"],
+          "patterns": ["GetUser*", "tenant:{id}:*", "cache:product:*"]
+        }
+      ]
+    },
+
+    "ICacheKeyGenerator": {
+      "namespace": "MethodCache.Core",
+      "description": "Interface for generating cache keys from method signatures",
+      "implementations": [
+        {
+          "name": "FastHashKeyGenerator",
+          "performance": "~50ns",
+          "characteristics": ["Binary hash", "Minimal allocations", "Production-optimized"],
+          "useCases": ["High-throughput scenarios", "Production environments", "Simple parameters"],
+          "keyFormat": "16-character hex hash"
+        },
+        {
+          "name": "JsonKeyGenerator",
+          "performance": "~200ns",
+          "characteristics": ["Human-readable", "JSON serialization", "SHA-256 hash"],
+          "useCases": ["Development", "Debugging", "Complex objects with references"],
+          "keyFormat": "Base64-encoded SHA-256 hash"
+        },
+        {
+          "name": "MessagePackKeyGenerator",
+          "performance": "~100ns",
+          "characteristics": ["Binary serialization", "Deterministic", "Efficient for complex objects"],
+          "useCases": ["Complex DTOs", "Production with complex parameters", "Object graphs"],
+          "keyFormat": "Base64-encoded SHA-256 hash of MessagePack data"
+        }
+      ],
+      "selectionGuide": {
+        "simpleParameters": "FastHashKeyGenerator",
+        "debugging": "JsonKeyGenerator",
+        "complexObjects": "MessagePackKeyGenerator",
+        "production": "FastHashKeyGenerator or MessagePackKeyGenerator"
+      }
+    }
+  },
+
+  "attributes": {
+    "CacheAttribute": {
+      "namespace": "MethodCache.Core",
+      "targets": ["Method"],
+      "description": "Declarative caching with source generation",
+      "properties": {
+        "GroupName": {
+          "type": "string?",
+          "description": "Group name for bulk configuration",
+          "examples": ["users", "products", "reports"]
+        },
+        "Duration": {
+          "type": "string?",
+          "format": "TimeSpan string (HH:MM:SS)",
+          "examples": ["00:05:00", "01:00:00", "1.00:00:00"],
+          "description": "Cache entry lifetime"
+        },
+        "Tags": {
+          "type": "string[]?",
+          "description": "Tags for bulk invalidation",
+          "examples": [["users"], ["products", "catalog"], ["user:123", "profile"]],
+          "bestPractices": [
+            "Use entity type tags (users, products)",
+            "Use specific entity tags (user:123)",
+            "Use feature tags (catalog, reports)"
+          ]
+        },
+        "Version": {
+          "type": "int",
+          "default": -1,
+          "description": "Cache version for invalidating all entries",
+          "useCases": ["Schema changes", "Logic changes", "Full invalidation"]
+        },
+        "KeyGeneratorType": {
+          "type": "Type?",
+          "description": "Key generator implementation type",
+          "allowedValues": ["FastHashKeyGenerator", "JsonKeyGenerator", "MessagePackKeyGenerator", "Custom implementations"]
+        },
+        "RequireIdempotent": {
+          "type": "bool",
+          "default": false,
+          "description": "Enforce idempotency for cached method"
+        }
+      },
+      "examples": [
+        {
+          "scenario": "Basic caching",
+          "code": "[Cache]\nTask<User> GetUserAsync(int userId);"
+        },
+        {
+          "scenario": "Full configuration",
+          "code": "[Cache(\"users\", Duration = \"00:30:00\", Tags = new[] { \"users\", \"profiles\" }, Version = 2, KeyGeneratorType = typeof(FastHashKeyGenerator), RequireIdempotent = true)]\nTask<UserProfile> GetProfileAsync(int userId);"
+        }
+      ]
+    },
+
+    "CacheInvalidateAttribute": {
+      "namespace": "MethodCache.Core",
+      "targets": ["Method"],
+      "description": "Automatic cache invalidation on method execution",
+      "properties": {
+        "Tags": {
+          "type": "string[]?",
+          "description": "Tags identifying cache entries to invalidate",
+          "coordinatesWith": "CacheAttribute.Tags"
+        }
+      },
+      "useCases": ["Write operations", "Create/Update/Delete", "Cache coherency"],
+      "examples": [
+        {
+          "scenario": "Coordinated caching",
+          "code": "[Cache(Tags = new[] { \"users\", \"user:{userId}\" })]\nTask<User> GetUserAsync(int userId);\n\n[CacheInvalidate(Tags = new[] { \"users\", \"user:{userId}\" })]\nTask UpdateUserAsync(int userId, UserUpdateDto update);"
+        }
+      ]
+    }
+  },
+
+  "configuration": {
+    "precedence": [
+      "1. Runtime overrides (IRuntimeCacheConfigurator)",
+      "2. Startup configuration (fluent API or config files)",
+      "3. Attribute values"
+    ],
+
+    "methods": [
+      {
+        "type": "Attributes",
+        "description": "Declarative configuration on methods",
+        "advantages": ["Co-located with code", "Compile-time validation", "Source generation"],
+        "useCases": ["Standard caching patterns", "Simple configurations"]
+      },
+      {
+        "type": "Fluent API",
+        "description": "Programmatic configuration at startup",
+        "advantages": ["Dynamic configuration", "Strong typing", "IntelliSense support"],
+        "useCases": ["Complex policies", "Third-party library caching", "Dynamic durations"]
+      },
+      {
+        "type": "JSON/YAML",
+        "description": "Configuration files",
+        "advantages": ["Environment-specific", "No recompilation", "External configuration"],
+        "useCases": ["Different settings per environment", "Operations control"]
+      },
+      {
+        "type": "Runtime Overrides",
+        "description": "Live configuration changes",
+        "advantages": ["No deployment", "Incident response", "A/B testing"],
+        "useCases": ["Production hotfixes", "Feature flags", "Management UIs"]
+      }
+    ],
+
+    "fluentApiExample": {
+      "code": "services.AddMethodCache(config => {\n    config.DefaultDuration(TimeSpan.FromMinutes(10))\n          .DefaultKeyGenerator<FastHashKeyGenerator>();\n});",
+      "description": "Basic setup with defaults"
+    },
+
+    "jsonConfigExample": {
+      "code": "{\n  \"MethodCache\": {\n    \"Defaults\": { \"Duration\": \"00:05:00\" },\n    \"Services\": {\n      \"MyApp.Services.IOrdersService.GetAsync\": {\n        \"Duration\": \"00:15:00\",\n        \"Tags\": [\"orders\", \"customers\"],\n        \"Version\": 3\n      }\n    }\n  }\n}",
+      "description": "JSON configuration file"
+    }
+  },
+
+  "commonPatterns": {
+    "readOperation": {
+      "description": "Caching read-only operations",
+      "code": "[Cache(\"users\", Duration = \"00:30:00\", RequireIdempotent = true)]\nTask<User> GetUserAsync(int userId);",
+      "tags": ["Pattern: Read", "Idempotent: true"]
+    },
+
+    "writeOperation": {
+      "description": "Invalidating cache on writes",
+      "code": "[CacheInvalidate(Tags = new[] { \"users\", \"user:{userId}\" })]\nTask UpdateUserAsync(int userId, UserUpdateDto update);",
+      "tags": ["Pattern: Write", "Invalidation"]
+    },
+
+    "thirdPartyLibrary": {
+      "description": "Caching external library methods",
+      "code": "// In appsettings.json\n{\n  \"MethodCache\": {\n    \"Services\": {\n      \"WeatherApi.Client.IWeatherApiClient.GetCurrentWeatherAsync\": {\n        \"Duration\": \"00:05:00\",\n        \"Tags\": [\"weather\", \"external-api\"]\n      }\n    }\n  }\n}",
+      "tags": ["Pattern: Third-party", "Configuration-based"]
+    },
+
+    "methodChaining": {
+      "description": "Fluent method chaining API",
+      "code": "var user = await cache.Cache(() => userService.GetUserAsync(userId))\n    .WithDuration(TimeSpan.FromHours(1))\n    .WithTags(\"user\", $\"user:{userId}\")\n    .ExecuteAsync();",
+      "tags": ["Pattern: Fluent", "Runtime configuration"]
+    }
+  },
+
+  "packages": [
+    {
+      "name": "MethodCache.Core",
+      "description": "Core abstractions, in-memory cache manager, attributes",
+      "required": true
+    },
+    {
+      "name": "MethodCache.SourceGenerator",
+      "description": "Roslyn generator emitting decorators",
+      "required": false,
+      "recommended": true,
+      "benefits": ["Zero reflection", "Compile-time validation"]
+    },
+    {
+      "name": "MethodCache.Analyzers",
+      "description": "Roslyn analyzers for safe usage",
+      "required": false,
+      "recommended": true
+    },
+    {
+      "name": "MethodCache.Providers.Redis",
+      "description": "Redis L2 provider with hybrid orchestration",
+      "required": false,
+      "useCases": ["Distributed caching", "Multi-instance applications"]
+    },
+    {
+      "name": "MethodCache.ETags",
+      "description": "HTTP ETag integration",
+      "required": false,
+      "useCases": ["HTTP caching", "Conditional requests"]
+    }
+  ],
+
+  "decisionTrees": {
+    "keyGeneratorSelection": {
+      "question": "What type of parameters do you have?",
+      "branches": [
+        {
+          "condition": "Simple primitives (int, string, bool)",
+          "recommendation": "FastHashKeyGenerator",
+          "reason": "Fastest performance (~50ns)"
+        },
+        {
+          "condition": "Need to debug cache keys",
+          "recommendation": "JsonKeyGenerator",
+          "reason": "Human-readable output"
+        },
+        {
+          "condition": "Complex objects or DTOs",
+          "recommendation": "MessagePackKeyGenerator",
+          "reason": "Efficient binary serialization"
+        }
+      ]
+    },
+
+    "durationSelection": {
+      "question": "How often does the data change?",
+      "branches": [
+        {
+          "condition": "Static or rarely changes",
+          "recommendation": "1-24 hours",
+          "examples": ["Reference data", "Configuration"]
+        },
+        {
+          "condition": "Updates occasionally",
+          "recommendation": "5-30 minutes",
+          "examples": ["Product catalogs", "User profiles"]
+        },
+        {
+          "condition": "Frequently changing",
+          "recommendation": "30 seconds - 5 minutes",
+          "examples": ["Stock prices", "Live scores"]
+        }
+      ]
+    }
+  },
+
+  "troubleshooting": {
+    "cacheNotWorking": {
+      "symptoms": ["Cache always misses", "Factory always executes"],
+      "checks": [
+        "Verify MethodCache is registered: services.AddMethodCache()",
+        "Check Duration is set (attribute or config)",
+        "Ensure key generator is consistent",
+        "Verify method is virtual or interface member"
+      ]
+    },
+
+    "staleData": {
+      "symptoms": ["Old data returned from cache"],
+      "solutions": [
+        "Reduce Duration value",
+        "Add Tags and invalidate on writes",
+        "Increment Version to invalidate all entries",
+        "Use InvalidateByTagsAsync after updates"
+      ]
+    },
+
+    "performanceIssues": {
+      "symptoms": ["Slow cache operations"],
+      "solutions": [
+        "Switch to FastHashKeyGenerator if using JsonKeyGenerator",
+        "Check if Duration is too short (causing frequent misses)",
+        "Review key generation complexity",
+        "Consider L2 cache (Redis) for distributed scenarios"
+      ]
+    }
+  },
+
+  "antiPatterns": {
+    "dontCache": [
+      "Methods with side effects (unless paired with CacheInvalidate)",
+      "Operations that modify state",
+      "Security-sensitive operations",
+      "Methods returning IDisposable resources",
+      "Real-time data without appropriate short durations"
+    ],
+
+    "avoidPatterns": [
+      {
+        "pattern": "Caching for too long",
+        "problem": "Stale data",
+        "solution": "Reduce duration or add invalidation"
+      },
+      {
+        "pattern": "No tags on related data",
+        "problem": "Cache coherency issues",
+        "solution": "Add consistent tags across related methods"
+      },
+      {
+        "pattern": "Forgetting to invalidate",
+        "problem": "Stale cache after updates",
+        "solution": "Use CacheInvalidate attribute on write methods"
+      }
+    ]
+  },
+
+  "bestPractices": [
+    "Use FastHashKeyGenerator for production, JsonKeyGenerator for debugging",
+    "Tag all cache entries for bulk invalidation capability",
+    "Coordinate Tags between [Cache] and [CacheInvalidate]",
+    "Set RequireIdempotent = true for read operations",
+    "Use appropriate Duration based on data volatility",
+    "Version your cache when schema or logic changes",
+    "Consider L2 cache (Redis) for distributed applications",
+    "Monitor cache hit ratios with ICacheMetricsProvider",
+    "Test cache invalidation in integration tests"
+  ],
+
+  "aiAgentGuidance": {
+    "whenToUseMethodCache": [
+      "User asks to add caching to a method",
+      "User wants to improve performance",
+      "User mentions slow API calls or database queries",
+      "User wants to cache third-party library calls"
+    ],
+
+    "recommendedApproach": [
+      "1. Identify cacheable methods (read operations, idempotent)",
+      "2. Choose appropriate key generator based on parameters",
+      "3. Set Duration based on data volatility",
+      "4. Add Tags for invalidation strategy",
+      "5. Add CacheInvalidate to related write operations",
+      "6. Consider Version for schema changes"
+    ],
+
+    "codeGenerationTemplate": {
+      "read": "[Cache(GroupName, Duration = \"HH:MM:SS\", Tags = new[] { \"tag1\", \"tag2\" }, KeyGeneratorType = typeof(FastHashKeyGenerator), RequireIdempotent = true)]",
+      "write": "[CacheInvalidate(Tags = new[] { \"tag1\", \"tag2\" })]"
+    }
+  }
+}
