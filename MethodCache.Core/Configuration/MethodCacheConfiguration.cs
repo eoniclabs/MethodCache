@@ -50,7 +50,13 @@ namespace MethodCache.Core.Configuration
         {
             if (string.IsNullOrEmpty(methodId))
             {
-                throw new ArgumentException("Method id must be provided.", nameof(methodId));
+                throw new ArgumentException(
+                    "Method ID cannot be null or empty. " +
+                    "Method ID format: 'Namespace.TypeName.MethodName' (e.g., 'MyApp.Services.IUserService.GetUserAsync'). " +
+                    "This error usually indicates a configuration issue. " +
+                    "Verify your fluent API configuration or attribute usage. " +
+                    "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md",
+                    nameof(methodId));
             }
 
             _methodGroupMap[methodId] = groupName;
