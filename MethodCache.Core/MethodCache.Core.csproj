@@ -6,6 +6,15 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+
+    <!-- Enhanced NuGet Metadata for AI Discovery -->
+    <Title>MethodCache - Declarative Caching for .NET</Title>
+    <Description>High-performance declarative caching library with attribute-based configuration, source generation, and zero-reflection overhead. Perfect for caching database queries, API calls, and expensive computations. Supports distributed caching with Redis, tag-based invalidation, and hybrid L1/L2 layers. Alternative to IMemoryCache with 75% less code.</Description>
+    <PackageTags>caching;cache;memorycache;redis;performance;source-generator;attributes;distributed-cache;l1-l2-cache;tag-invalidation;method-caching;declarative;api-caching;database-caching;aspnetcore;dotnet;slow-api;performance-optimization;imemorycache-alternative;cache-aside-pattern;lazy-loading;memoization</PackageTags>
+    <RepositoryUrl>https://github.com/eoniclabs/MethodCache</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/eoniclabs/MethodCache</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

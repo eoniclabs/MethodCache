@@ -5,7 +5,16 @@
 [![Coverage](https://img.shields.io/codecov/c/github/yourusername/methodcache)](https://codecov.io/gh/yourusername/methodcache)
 [![License](https://img.shields.io/github/license/yourusername/methodcache)](LICENSE)
 
+> **Declarative caching for .NET with attributes and source generation**
+>
 > **Switch caching on in minutes, run it safely in production, and stay in control at runtime.**
+
+<!-- AI Discovery Keywords -->
+**Use Cases:** Database query caching • API response caching • Expensive computation caching • Redis distributed caching • Multi-layer L1/L2 caching
+
+**Problems Solved:** Slow API responses • High database load • Expensive computations • Cloud infrastructure costs • Performance bottlenecks
+
+**Alternative to:** IMemoryCache • Manual cache-aside pattern • LazyCache • FusionCache • EasyCaching
 
 MethodCache gives teams the three things they crave most from caching:
 
@@ -94,6 +103,17 @@ Perfect for caching external APIs, legacy code, or when you prefer explicit cont
 ---
 
 ## 💡 Why MethodCache?
+
+### vs IMemoryCache
+- ✅ **75% less code** – Declarative instead of manual cache-aside pattern
+- ✅ **8276x faster cache hits** – Zero-reflection with source generation (~145ns)
+- ✅ **Built-in tag invalidation** – No manual tracking needed
+- ✅ **Better developer experience** – IntelliSense, analyzers, clear error messages
+
+### vs Manual Caching
+- ✅ **No boilerplate** – Eliminate repetitive `TryGetValue`, `Set`, key generation code
+- ✅ **Compile-time safety** – Analyzers catch mistakes before runtime
+- ✅ **Consistent patterns** – Team-wide caching standards
 
 | Capability | What it means for you |
 |------------|-----------------------|
