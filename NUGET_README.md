@@ -137,9 +137,9 @@ Task<UserDto> GetUserAsync(int id);
 
 ## 📚 Documentation
 
-- **Full Documentation**: [docs.methodcache.io](https://github.com/eoniclabs/MethodCache/blob/main/README.md)
+- **Full Documentation**: [GitHub README](https://github.com/eoniclabs/MethodCache/blob/main/README.md)
 - **Configuration Guide**: [CONFIGURATION_GUIDE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md)
-- **Fluent API Reference**: [FLUENT_API.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/FLUENT_API.md)
+- **Fluent API Reference**: [fluent-api.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/fluent-api.md)
 - **Third-Party Caching**: [THIRD_PARTY_CACHING.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/THIRD_PARTY_CACHING.md)
 
 ## 🎓 Best Practices
