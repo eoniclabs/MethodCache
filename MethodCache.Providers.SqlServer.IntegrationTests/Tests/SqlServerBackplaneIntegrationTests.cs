@@ -80,8 +80,8 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Publish immediately after subscribing
-        var testKey = "cross-instance-test-key";
+        // Publish immediately after subscribing - use unique key per test run
+        var testKey = $"cross-instance-test-key-{Guid.NewGuid():N}";
         await backplane1.PublishInvalidationAsync(testKey);
 
         // Wait for message to be received (with timeout)
@@ -90,10 +90,10 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
 
         // Assert
         received.Should().BeTrue();
-        receivedMessages.Should().HaveCount(1);
-        receivedMessages[0].Type.Should().Be(BackplaneMessageType.KeyInvalidation);
-        receivedMessages[0].Key.Should().Be(testKey);
-        receivedMessages[0].InstanceId.Should().NotBe(backplane2.InstanceId);
+        var ourMessage = receivedMessages.Should().ContainSingle(m => m.Key == testKey, "should receive the published message").Subject;
+        ourMessage.Type.Should().Be(BackplaneMessageType.KeyInvalidation);
+        ourMessage.Key.Should().Be(testKey);
+        ourMessage.InstanceId.Should().NotBe(backplane2.InstanceId);
 
         // Cleanup - unsubscribe first to stop polling, then dispose
         await backplane2.UnsubscribeAsync();
@@ -143,8 +143,8 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Publish immediately after subscribing
-        var testTag = "cross-instance-test-tag";
+        // Publish immediately after subscribing - use unique tag per test run
+        var testTag = $"cross-instance-test-tag-{Guid.NewGuid():N}";
         await backplane1.PublishTagInvalidationAsync(testTag);
 
         // Wait for message to be received (with timeout)
@@ -153,10 +153,10 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
 
         // Assert
         received.Should().BeTrue();
-        receivedMessages.Should().HaveCount(1);
-        receivedMessages[0].Type.Should().Be(BackplaneMessageType.TagInvalidation);
-        receivedMessages[0].Tag.Should().Be(testTag);
-        receivedMessages[0].InstanceId.Should().NotBe(backplane2.InstanceId);
+        var ourMessage = receivedMessages.Should().ContainSingle(m => m.Tag == testTag, "should receive the published message").Subject;
+        ourMessage.Type.Should().Be(BackplaneMessageType.TagInvalidation);
+        ourMessage.Tag.Should().Be(testTag);
+        ourMessage.InstanceId.Should().NotBe(backplane2.InstanceId);
 
         // Cleanup - unsubscribe first to stop polling, then dispose
         await backplane2.UnsubscribeAsync();
