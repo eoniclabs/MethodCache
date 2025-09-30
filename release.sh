@@ -13,12 +13,53 @@ function print_info { echo -e "${CYAN}$1${NC}"; }
 function print_warning { echo -e "${YELLOW}$1${NC}"; }
 function print_error { echo -e "${RED}$1${NC}"; }
 
+# Function to get current version from version.json
+get_current_version() {
+    if [ ! -f "version.json" ]; then
+        echo "1.0.0"
+        return
+    fi
+    # Extract version using grep and sed (works on macOS without jq)
+    grep '"version"' version.json | sed 's/.*"version".*:.*"\([^"]*\)".*/\1/'
+}
+
+# Function to suggest next versions
+suggest_versions() {
+    local current=$1
+
+    # Parse version (handles both X.Y and X.Y.Z, with or without prerelease)
+    if [[ $current =~ ^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-(.+))?$ ]]; then
+        local major="${BASH_REMATCH[1]}"
+        local minor="${BASH_REMATCH[2]}"
+        local patch="${BASH_REMATCH[4]:-0}"
+        local prerelease="${BASH_REMATCH[6]}"
+
+        print_info "Current version: $current"
+        print_info ""
+        print_info "Suggested versions:"
+
+        if [ -n "$prerelease" ]; then
+            # If prerelease, suggest stable
+            print_info "  Stable : $major.$minor.$patch"
+        else
+            # Suggest next versions
+            print_info "  Patch  : $major.$minor.$((patch + 1))"
+            print_info "  Minor  : $major.$((minor + 1)).0"
+            print_info "  Major  : $((major + 1)).0.0"
+            print_info "  Alpha  : $major.$((minor + 1)).0-alpha"
+            print_info "  Beta   : $major.$((minor + 1)).0-beta"
+        fi
+    fi
+}
+
 # Check if version parameter is provided
 if [ -z "$1" ]; then
-    print_error "❌ Version number required"
-    echo "Usage: ./release.sh <version> [--skip-tests]"
-    echo "Example: ./release.sh 1.0.0"
-    exit 1
+    CURRENT_VERSION=$(get_current_version)
+    suggest_versions "$CURRENT_VERSION"
+    echo ""
+    print_info "Usage: ./release.sh <version> [--skip-tests]"
+    print_info "Example: ./release.sh 1.1.0"
+    exit 0
 fi
 
 VERSION=$1
@@ -30,7 +71,7 @@ if [ "$2" == "--skip-tests" ]; then
 fi
 
 # Validate version format
-if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\-\.]+)?$ ]]; then
+if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
     print_error "❌ Invalid version format: $VERSION"
     echo "Expected format: 1.0.0 or 1.2.3-beta"
     exit 1
