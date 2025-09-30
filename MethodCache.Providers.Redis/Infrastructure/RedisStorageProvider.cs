@@ -184,9 +184,11 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
                 var database = _connectionManager.GetDatabase();
                 var fullKey = _options.KeyPrefix + key;
 
-                // Remove the key and its tag associations
-                await database.KeyDeleteAsync(fullKey).ConfigureAwait(false);
-                await _tagManager.RemoveAllTagAssociationsAsync(fullKey).ConfigureAwait(false);
+                // Remove the key and its tag associations in parallel
+                await Task.WhenAll(
+                    database.KeyDeleteAsync(fullKey),
+                    _tagManager.RemoveAllTagAssociationsAsync(fullKey)
+                ).ConfigureAwait(false);
 
                 _logger.LogDebug("Removed key {Key} and its tag associations", fullKey);
             }, cancellationToken).ConfigureAwait(false);
@@ -381,12 +383,15 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             return 1";
 
         // Prepare arguments: expiry (seconds), serialized data, then all tags
-        var scriptArgs = new List<RedisValue>
+        var scriptArgs = new RedisValue[tags.Length + 2];
+        scriptArgs[0] = (int)expiry.TotalSeconds;  // ARGV[1] - expiry in seconds
+        scriptArgs[1] = data;                      // ARGV[2] - serialized cache data
+
+        // ARGV[3+] - tags
+        for (int i = 0; i < tags.Length; i++)
         {
-            (int)expiry.TotalSeconds,  // ARGV[1] - expiry in seconds
-            data                       // ARGV[2] - serialized cache data
-        };
-        scriptArgs.AddRange(tags.Select(tag => (RedisValue)tag)); // ARGV[3+] - tags
+            scriptArgs[i + 2] = tags[i];
+        }
 
         var keys = new RedisKey[]
         {
@@ -394,7 +399,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             _options.KeyPrefix  // KEYS[2] - key prefix for tag keys
         };
 
-        await database.ScriptEvaluateAsync(luaScript, keys, scriptArgs.ToArray());
+        await database.ScriptEvaluateAsync(luaScript, keys, scriptArgs);
     }
 
     /// <summary>
