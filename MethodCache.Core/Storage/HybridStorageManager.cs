@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -22,6 +24,7 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
     private readonly ILogger<HybridStorageManager> _logger;
     private readonly SemaphoreSlim _l2Semaphore;
     private readonly SemaphoreSlim _l3Semaphore;
+    private readonly ConcurrentDictionary<string, string[]> _trackedTags = new(StringComparer.Ordinal);
 
     // Statistics
     private long _l1Hits;
@@ -131,14 +134,12 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
                     _metricsProvider?.CacheHit(MetricsL2);
                     _logger.LogDebug("L2 cache hit for key {Key}", key);
 
-                    // Warm L1 cache with shorter expiration
-                    // NOTE: Tags are not preserved when promoting from L2 to L1 due to
-                    // IStorageProvider interface limitations. This is acceptable because:
-                    // - L1 cache has short expiration and will refresh frequently
-                    // - Tag-based invalidations still work via backplane messages
-                    // - Most tag operations target L2/L3 directly
+                    // Warm L1 cache with shorter expiration and preserve any known tags
+                    var promotionTags = GetTrackedTags(key);
                     var l1Expiration = CalculateL1Expiration(_options.L2DefaultExpiration);
-                    await _l1Storage.SetAsync(key, result, l1Expiration, Enumerable.Empty<string>(), cancellationToken);
+                    await _l1Storage.SetAsync(key, result, l1Expiration, promotionTags, cancellationToken);
+
+                    UpdateTrackedTags(key, promotionTags);
 
                     return result;
                 }
@@ -205,10 +206,11 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
 
     public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
+        var tagArray = tags as string[] ?? tags.ToArray();
         var l1Expiration = CalculateL1Expiration(expiration);
 
         // L1 always executes
-        var l1Task = _l1Storage.SetAsync(key, value, l1Expiration, tags, cancellationToken);
+        var l1Task = _l1Storage.SetAsync(key, value, l1Expiration, tagArray, cancellationToken);
 
         // Determine which tasks to execute
         var hasL2 = _l2Storage != null && _options.L2Enabled;
@@ -219,24 +221,24 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
 
         if (hasL2)
         {
-            scheduleL2 = _options.EnableAsyncL2Writes && TryScheduleAsyncWrite(ct => WriteToL2Async(key, value, expiration, tags, ct));
+            scheduleL2 = _options.EnableAsyncL2Writes && TryScheduleAsyncWrite(ct => WriteToL2Async(key, value, expiration, tagArray, ct));
             if (!scheduleL2)
             {
                 if (_options.EnableAsyncL2Writes)
                     _logger.LogDebug("Async L2 write queue full; performing synchronous write for key {Key}", key);
-                l2Task = WriteToL2Async(key, value, expiration, tags, cancellationToken);
+                l2Task = WriteToL2Async(key, value, expiration, tagArray, cancellationToken);
             }
         }
 
         if (hasL3)
         {
             var l3Expiration = CalculateL3Expiration(expiration);
-            scheduleL3 = _options.EnableAsyncL3Writes && TryScheduleAsyncWrite(ct => WriteToL3Async(key, value, l3Expiration, tags, ct));
+            scheduleL3 = _options.EnableAsyncL3Writes && TryScheduleAsyncWrite(ct => WriteToL3Async(key, value, l3Expiration, tagArray, ct));
             if (!scheduleL3)
             {
                 if (_options.EnableAsyncL3Writes)
                     _logger.LogDebug("Async L3 write queue full; performing synchronous write for key {Key}", key);
-                l3Task = WriteToL3Async(key, value, l3Expiration, tags, cancellationToken);
+                l3Task = WriteToL3Async(key, value, l3Expiration, tagArray, cancellationToken);
             }
         }
 
@@ -245,6 +247,7 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
         if (hasL2 && !scheduleL2) await l2Task.ConfigureAwait(false);
         if (hasL3 && !scheduleL3) await l3Task.ConfigureAwait(false);
 
+        UpdateTrackedTags(key, tagArray);
         _logger.LogDebug("Set key {Key} in hybrid storage with expiration {Expiration}", key, expiration);
     }
 
@@ -288,6 +291,7 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
             }
         }
 
+        RemoveTrackedTags(key);
         _logger.LogDebug("Removed key {Key} from hybrid storage", key);
     }
 
@@ -331,14 +335,14 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
             }
         }
 
+        RemoveTrackedTagsByTag(tag);
         _logger.LogDebug("Removed all keys with tag {Tag} from hybrid storage", tag);
     }
 
     public async ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
-        // Check L1 first (async to avoid blocking)
-        var l1Result = await _l1Storage.GetAsync<object>(key, cancellationToken).ConfigureAwait(false);
-        if (l1Result != null)
+        // Check L1 first (synchronous for minimal overhead)
+        if (_l1Storage.Exists(key))
         {
             return true;
         }
@@ -571,16 +575,19 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
             {
                 case BackplaneMessageType.KeyInvalidation when message.Key != null:
                     await _l1Storage.RemoveAsync(message.Key);
+                    RemoveTrackedTags(message.Key);
                     _logger.LogDebug("Processed backplane key invalidation for {Key}", message.Key);
                     break;
 
                 case BackplaneMessageType.TagInvalidation when message.Tag != null:
                     await _l1Storage.RemoveByTagAsync(message.Tag);
+                    RemoveTrackedTagsByTag(message.Tag);
                     _logger.LogDebug("Processed backplane tag invalidation for {Tag}", message.Tag);
                     break;
 
                 case BackplaneMessageType.ClearAll:
                     _l1Storage.Clear();
+                    ClearTrackedTags();
                     _logger.LogDebug("Processed backplane clear all");
                     break;
             }
@@ -589,6 +596,48 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
         {
             _logger.LogError(ex, "Error processing backplane message");
         }
+    }
+
+    private void UpdateTrackedTags(string key, string[] tags)
+    {
+        if (tags.Length == 0)
+        {
+            _trackedTags.TryRemove(key, out _);
+            return;
+        }
+
+        _trackedTags[key] = tags;
+    }
+
+    private string[] GetTrackedTags(string key)
+    {
+        if (_trackedTags.TryGetValue(key, out var tags) && tags.Length > 0)
+        {
+            return tags;
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private void RemoveTrackedTags(string key)
+    {
+        _trackedTags.TryRemove(key, out _);
+    }
+
+    private void RemoveTrackedTagsByTag(string tag)
+    {
+        foreach (var kvp in _trackedTags)
+        {
+            if (Array.IndexOf(kvp.Value, tag) >= 0)
+            {
+                _trackedTags.TryRemove(kvp.Key, out _);
+            }
+        }
+    }
+
+    private void ClearTrackedTags()
+    {
+        _trackedTags.Clear();
     }
 
     private TimeSpan CalculateL3Expiration(TimeSpan originalExpiration)
@@ -675,19 +724,21 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
             // Calculate appropriate expiration times for promotion
             var l1Expiration = CalculateL1Expiration(_options.L3DefaultExpiration);
             var l2Expiration = _options.L2DefaultExpiration;
+            var promotionTags = GetTrackedTags(key);
 
             var promotionTasks = new List<ValueTask>
             {
-                _l1Storage.SetAsync(key, value, l1Expiration, cancellationToken)
+                _l1Storage.SetAsync(key, value, l1Expiration, promotionTags, cancellationToken)
             };
 
             // Also promote to L2 if available
             if (_l2Storage != null && _options.L2Enabled)
             {
-                promotionTasks.Add(WriteToL2Async(key, value, l2Expiration, Enumerable.Empty<string>(), cancellationToken));
+                promotionTasks.Add(WriteToL2Async(key, value, l2Expiration, promotionTags, cancellationToken));
             }
 
             await AwaitAllAsync(promotionTasks).ConfigureAwait(false);
+            UpdateTrackedTags(key, promotionTags);
             _logger.LogDebug("Promoted key {Key} from L3 to higher layers", key);
         }
         catch (Exception ex)
