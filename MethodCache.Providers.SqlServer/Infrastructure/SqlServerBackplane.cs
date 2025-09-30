@@ -20,8 +20,7 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
     private readonly Timer? _cleanupTimer;
 
     private Func<BackplaneMessage, Task>? _messageHandler;
-    private DateTimeOffset _lastPollTime;
-    private readonly HashSet<long> _processedMessageIds = new();
+    private long _lastProcessedMessageId = 0;
     private bool _isSubscribed;
     private bool _disposed;
 
@@ -41,7 +40,6 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
 
         // Create unique instance identifier
         InstanceId = $"{Environment.MachineName}_{Environment.ProcessId}_{Guid.NewGuid():N}";
-        _lastPollTime = DateTimeOffset.UtcNow;
 
         if (_options.EnableBackplane)
         {
@@ -147,12 +145,8 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
         _messageHandler = onMessage;
         _isSubscribed = true;
 
-        var safetyWindow = _options.BackplanePollingInterval > TimeSpan.Zero
-            ? TimeSpan.FromTicks(Math.Max(_options.BackplanePollingInterval.Ticks, TimeSpan.FromSeconds(1).Ticks))
-            : TimeSpan.FromSeconds(1);
-
-        _lastPollTime = DateTimeOffset.UtcNow - safetyWindow;
-        _processedMessageIds.Clear();
+        // Reset to 0 to start receiving all messages from this point forward
+        _lastProcessedMessageId = 0;
 
         _logger.LogInformation("Subscribed to SQL Server backplane invalidation messages");
 
@@ -186,15 +180,14 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
         {
             await using var connection = await _connectionManager.GetConnectionAsync();
 
-            // Get all messages since last poll from other instances
-            // Use a 2-second overlap window to handle clock skew and timing edge cases
-            // Deduplication via _processedMessageIds prevents processing messages twice
+            // Get all messages since last processed ID from other instances
+            // ID-based polling is more reliable than timestamp-based
             const string selectSql = @"
                 SELECT [Id], [InstanceId], [MessageType], [TargetKey], [TargetTag], [CreatedAt]
                 FROM {0}
-                WHERE [CreatedAt] >= @LastPollTime
+                WHERE [Id] > @LastProcessedId
                   AND [InstanceId] != @CurrentInstanceId
-                ORDER BY [CreatedAt], [Id]";
+                ORDER BY [Id]";
 
             var formattedSql = string.Format(selectSql, _options.FullInvalidationsTableName);
 
@@ -202,25 +195,16 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
             {
                 CommandTimeout = _options.CommandTimeoutSeconds
             };
-            // Query with 2-second safety margin to catch messages that might be at boundary
-            var queryTime = _lastPollTime.AddSeconds(-2);
-            command.Parameters.AddWithValue("@LastPollTime", queryTime);
+            command.Parameters.AddWithValue("@LastProcessedId", _lastProcessedMessageId);
             command.Parameters.AddWithValue("@CurrentInstanceId", InstanceId);
 
             var messages = new List<BackplaneMessage>();
-            var newMessages = new List<BackplaneMessage>();
 
             await using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
                 var messageId = (long)reader["Id"];
                 var createdAt = (DateTime)reader["CreatedAt"];
-
-                // Skip messages we've already processed
-                if (_processedMessageIds.Contains(messageId))
-                {
-                    continue;
-                }
 
                 var message = new BackplaneMessage
                 {
@@ -232,12 +216,13 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
                 };
 
                 messages.Add(message);
-                newMessages.Add(message);
-                _processedMessageIds.Add(messageId);
-            }
 
-            // Update last poll time to current time
-            _lastPollTime = DateTimeOffset.UtcNow;
+                // Track the highest message ID we've seen
+                if (messageId > _lastProcessedMessageId)
+                {
+                    _lastProcessedMessageId = messageId;
+                }
+            }
 
             // Process messages
             foreach (var message in messages)
