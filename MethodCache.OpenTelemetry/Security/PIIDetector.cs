@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace MethodCache.OpenTelemetry.Security;
@@ -303,6 +305,7 @@ public class PIIRedactor : IPIIRedactor
 
     private static int ComputeSimpleHash(string input)
     {
-        return input.GetHashCode();
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return BitConverter.ToInt32(bytes, 0);
     }
 }

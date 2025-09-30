@@ -143,6 +143,6 @@ public class CacheActivitySource : ICacheActivitySource
     private static string ComputeHash(string input)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToBase64String(bytes)[..8];
+        return Convert.ToBase64String(bytes);
     }
 }

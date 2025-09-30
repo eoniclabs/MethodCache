@@ -205,10 +205,10 @@ public class HttpCacheHandler : DelegatingHandler
             builder.Append(GetHeaderValue(request, header));
         }
 
-        if (!options.Behavior.IsSharedCache && request.Headers.Authorization != null)
+        if (!options.Behavior.IsSharedCache && request.Headers.Authorization is { } auth)
         {
             builder.Append(':');
-            builder.Append(HashValue(request.Headers.Authorization.ToString()));
+            builder.Append(HashValue(auth.ToString()));
         }
 
         return builder.ToString();
@@ -361,13 +361,13 @@ public class HttpCacheHandler : DelegatingHandler
     private static bool HasFreshnessInfo(HttpResponseMessage response, HttpCacheOptions options)
     {
         return response.Headers.CacheControl?.MaxAge != null ||
-               response.Content.Headers.Expires != null ||
-               (response.Content.Headers.LastModified != null && options.Freshness.AllowHeuristicFreshness);
+               response.Content?.Headers.Expires != null ||
+               (response.Content?.Headers.LastModified != null && options.Freshness.AllowHeuristicFreshness);
     }
 
     private static bool HasValidationInfo(HttpResponseMessage response)
     {
-        return response.Headers.ETag != null || response.Content.Headers.LastModified != null;
+        return response.Headers.ETag != null || response.Content?.Headers.LastModified != null;
     }
 
     private HttpResponseMessage CreateCacheHitResponse(HttpCacheEntry entry, string cacheStatus, HttpCacheOptions options, TimeSpan? freshnessLifetime)
