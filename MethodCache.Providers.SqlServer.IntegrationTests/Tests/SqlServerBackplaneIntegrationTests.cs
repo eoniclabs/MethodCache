@@ -80,16 +80,13 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Give the subscription and polling mechanism time to initialize
-        await Task.Delay(500); // Increased delay to ensure polling starts
-
-        // Publish from first instance
+        // Publish immediately after subscribing
         var testKey = "cross-instance-test-key";
         await backplane1.PublishInvalidationAsync(testKey);
 
         // Wait for message to be received (with timeout)
-        // Allow extra time for polling-based delivery
-        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        // The immediate poll from SubscribeAsync plus the timer should pick this up
+        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
         received.Should().BeTrue();
