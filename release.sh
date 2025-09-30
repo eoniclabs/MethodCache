@@ -114,7 +114,7 @@ fi
 # Update version using nbgv
 print_info "Updating version.json to $VERSION..."
 dotnet tool restore
-nbgv set-version $VERSION
+dotnet nbgv set-version $VERSION
 
 # Commit version change
 print_info "Committing version change..."
