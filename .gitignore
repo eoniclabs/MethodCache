@@ -36,8 +36,9 @@ packages/
 # VSCode
 .vscode/
 
-# User config
-.config/
+# User config (except dotnet-tools.json which is project tooling)
+.config/*
+!.config/dotnet-tools.json
 
 # BenchmarkDotNet artifacts
 BenchmarkDotNet.Artifacts/
