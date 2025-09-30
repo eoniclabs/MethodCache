@@ -149,7 +149,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-nbgv set-version $Version
+dotnet nbgv set-version $Version
 if ($LASTEXITCODE -ne 0) {
     Write-Error "❌ Failed to set version using nbgv"
     exit 1
