@@ -38,7 +38,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         // (This is implicitly tested by the subscription mechanism)
     }
 
-    [Fact(Timeout = 30000, Skip = "Flaky when run with other tests - passes individually")] // 30 seconds
+    [Fact(Timeout = 30000)] // 30 seconds
     public async Task SubscribeAsync_ShouldReceiveInvalidationMessages()
     {
         // Arrange
@@ -291,26 +291,33 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
 
         // Act
         // Subscribe first
+        var messageReceived = new TaskCompletionSource<bool>();
         await backplane2.SubscribeAsync(message =>
         {
             receivedMessages.Add(message);
+            messageReceived.TrySetResult(true);
             return Task.CompletedTask;
         });
 
-        // Publish a message immediately after subscribing
-        await backplane1.PublishInvalidationAsync("test-before-unsubscribe");
+        // Publish a message immediately after subscribing - use unique key
+        var testKey = $"test-before-unsubscribe-{Guid.NewGuid():N}";
+        await backplane1.PublishInvalidationAsync(testKey);
 
-        // Wait for message to be received (with reasonable timeout)
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        // Wait for message to be received (with timeout to ensure it arrives)
+        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        received.Should().BeTrue("message should be received before unsubscribe");
 
         var messagesBeforeUnsubscribe = receivedMessages.Count;
 
         // Unsubscribe
         await backplane2.UnsubscribeAsync();
 
-        // Publish another message
-        await backplane1.PublishInvalidationAsync("test-after-unsubscribe");
-        await Task.Delay(TimeSpan.FromSeconds(3)); // Wait for polling
+        // Give time for unsubscribe to take effect
+        await Task.Delay(300);
+
+        // Publish another message - use unique key
+        await backplane1.PublishInvalidationAsync($"test-after-unsubscribe-{Guid.NewGuid():N}");
+        await Task.Delay(TimeSpan.FromSeconds(1)); // Wait to ensure no polling happens
 
         var messagesAfterUnsubscribe = receivedMessages.Count;
 
