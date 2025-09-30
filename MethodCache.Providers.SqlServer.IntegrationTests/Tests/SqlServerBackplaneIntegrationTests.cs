@@ -63,6 +63,10 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
+
+        // Start hosted services for the second instance (needed for backplane polling)
+        await StartHostedServicesAsync(serviceProvider2);
+
         var backplane2 = serviceProvider2.GetRequiredService<IBackplane>();
 
         var receivedMessages = new List<BackplaneMessage>();
@@ -77,7 +81,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         });
 
         // Give the subscription and polling mechanism time to initialize
-        await Task.Delay(200);
+        await Task.Delay(500); // Increased delay to ensure polling starts
 
         // Publish from first instance
         var testKey = "cross-instance-test-key";
