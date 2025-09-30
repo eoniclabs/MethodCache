@@ -44,29 +44,38 @@ public class MessagePackKeyGenerator : ICacheKeyGenerator
 {
     public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
     {
-        var keyBuilder = new StringBuilder();
-        keyBuilder.Append(methodName);
-
-        if (settings.Version.HasValue) keyBuilder.Append($"_v{settings.Version.Value}");
-
-        foreach (var arg in args)
-            if (arg is ICacheKeyProvider keyProvider)
-            {
-                keyBuilder.Append($"_{keyProvider.CacheKeyPart}");
-            }
-            else
-            {
-                // Use MessagePack for deterministic serialization of complex objects
-                var serializedArg = MessagePackSerializer.Typeless.Serialize(arg);
-                keyBuilder.Append($"_{Convert.ToBase64String(serializedArg)}");
-            }
-
         using (var sha256 = SHA256.Create())
         {
-            var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
-            var base64Hash = Convert.ToBase64String(hash);
-            if (settings.Version.HasValue) return $"{base64Hash}_v{settings.Version.Value}";
-            return base64Hash;
+            // Hash method name
+            var methodBytes = Encoding.UTF8.GetBytes(methodName);
+            sha256.TransformBlock(methodBytes, 0, methodBytes.Length, null, 0);
+
+            // Hash version if present
+            if (settings.Version.HasValue)
+            {
+                var versionBytes = BitConverter.GetBytes(settings.Version.Value);
+                sha256.TransformBlock(versionBytes, 0, versionBytes.Length, null, 0);
+            }
+
+            // Hash arguments
+            foreach (var arg in args)
+            {
+                if (arg is ICacheKeyProvider keyProvider)
+                {
+                    var keyPartBytes = Encoding.UTF8.GetBytes(keyProvider.CacheKeyPart);
+                    sha256.TransformBlock(keyPartBytes, 0, keyPartBytes.Length, null, 0);
+                }
+                else
+                {
+                    // Serialize and hash the bytes directly
+                    var serializedArg = MessagePackSerializer.Typeless.Serialize(arg);
+                    sha256.TransformBlock(serializedArg, 0, serializedArg.Length, null, 0);
+                }
+            }
+
+            // Finalize hash
+            sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            return Convert.ToBase64String(sha256.Hash!);
         }
     }
 }

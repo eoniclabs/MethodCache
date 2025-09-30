@@ -23,37 +23,44 @@ public class AdvancedMemoryStorage : IMemoryStorage, IAsyncDisposable, IDisposab
     public T? Get<T>(string key)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        return _provider.GetAsync<T>(key).GetAwaiter().GetResult();
+        // Memory operations are synchronous, so this is safe
+        var task = _provider.GetAsync<T>(key);
+        return task.IsCompleted ? task.Result : task.AsTask().GetAwaiter().GetResult();
     }
 
     public void Set<T>(string key, T value, TimeSpan expiration)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        _provider.SetAsync(key, value, expiration, Array.Empty<string>()).GetAwaiter().GetResult();
+        var task = _provider.SetAsync(key, value, expiration, Array.Empty<string>());
+        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
     }
 
     public void Set<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        _provider.SetAsync(key, value, expiration, tags).GetAwaiter().GetResult();
+        var task = _provider.SetAsync(key, value, expiration, tags);
+        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
     }
 
     public void Remove(string key)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        _provider.RemoveAsync(key).GetAwaiter().GetResult();
+        var task = _provider.RemoveAsync(key);
+        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
     }
 
     public void RemoveByTag(string tag)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        _provider.RemoveByTagAsync(tag).GetAwaiter().GetResult();
+        var task = _provider.RemoveByTagAsync(tag);
+        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
     }
 
     public bool Exists(string key)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        return _provider.ExistsAsync(key).GetAwaiter().GetResult();
+        var task = _provider.ExistsAsync(key);
+        return task.IsCompleted ? task.Result : task.AsTask().GetAwaiter().GetResult();
     }
 
     public MemoryStorageStats GetStats()

@@ -80,16 +80,17 @@ public class HttpCacheEntry
         HttpRequestMessage request,
         HttpResponseMessage response)
     {
-        // Store original content headers before reading content
-        var originalContentHeaders = response.Content.Headers.ToList();
-
+        // Read content first
         var content = await response.Content.ReadAsByteArrayAsync();
+
+        // Capture content headers before replacing content
+        var contentHeaders = SerializeHeaders(response.Content.Headers);
 
         // Replace the consumed content with a new ByteArrayContent so the response can still be read
         response.Content = new ByteArrayContent(content);
 
         // Restore the original content headers
-        foreach (var header in originalContentHeaders)
+        foreach (var header in contentHeaders)
         {
             response.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
@@ -101,7 +102,7 @@ public class HttpCacheEntry
             StatusCode = response.StatusCode,
             Content = content,
             Headers = SerializeHeaders(response.Headers),
-            ContentHeaders = SerializeHeaders(response.Content.Headers),
+            ContentHeaders = contentHeaders,
             ETag = response.Headers.ETag?.Tag,
             LastModified = response.Content.Headers.LastModified,
             CacheControl = response.Headers.CacheControl,

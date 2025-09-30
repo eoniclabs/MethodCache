@@ -25,6 +25,9 @@ public class RedisBackplane : IBackplane
     private readonly string _tagInvalidationChannel;
     private readonly string _clearAllChannel;
 
+    // Cached JsonSerializerOptions to avoid allocation on every serialization
+    private static readonly JsonSerializerOptions s_jsonOptions = new();
+
     /// <summary>
     /// Gets the instance ID for this backplane.
     /// </summary>
@@ -224,7 +227,7 @@ public class RedisBackplane : IBackplane
 
     private string SerializeMessage(BackplaneMessage message)
     {
-        return JsonSerializer.Serialize(message, JsonSerializerOptions.Default);
+        return JsonSerializer.Serialize(message, s_jsonOptions);
     }
 
     private BackplaneMessage? DeserializeMessage(string message, BackplaneMessageType expectedType)

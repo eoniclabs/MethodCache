@@ -79,7 +79,7 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
                             .WithEnvironment("MSSQL_PID", "Developer") // Use Developer edition for full features
                             .WithEnvironment("MSSQL_COLLATION", "SQL_Latin1_General_CP1_CI_AS")
                             .WithWaitStrategy(Wait.ForUnixContainer()
-                                .UntilPortIsAvailable(1433)
+                                .UntilInternalTcpPortIsAvailable(1433)
                                 .UntilCommandIsCompleted("/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q \"SELECT 1\" -C -l 3"))
                             .WithReuse(true)
                             .WithCleanUp(false); // Keep container alive for reuse
