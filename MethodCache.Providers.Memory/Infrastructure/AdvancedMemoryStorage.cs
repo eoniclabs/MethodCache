@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Memory.Configuration;
 
 namespace MethodCache.Providers.Memory.Infrastructure;
@@ -83,34 +83,34 @@ public class AdvancedMemoryStorage : IMemoryStorage, IAsyncDisposable, IDisposab
         _provider.Clear();
     }
 
-    public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        return await _provider.GetAsync<T>(key, cancellationToken);
+        return await _provider.GetAsync<T>(key, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        await _provider.SetAsync(key, value, expiration, Array.Empty<string>(), cancellationToken);
+        await _provider.SetAsync(key, value, expiration, Array.Empty<string>(), cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        await _provider.SetAsync(key, value, expiration, tags, cancellationToken);
+        await _provider.SetAsync(key, value, expiration, tags, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        await _provider.RemoveAsync(key, cancellationToken);
+        await _provider.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        await _provider.RemoveByTagAsync(tag, cancellationToken);
+        await _provider.RemoveByTagAsync(tag, cancellationToken).ConfigureAwait(false);
     }
 
     public void Dispose()

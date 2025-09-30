@@ -1,5 +1,7 @@
 # 📊 MethodCache Performance Dashboard
 
+> **Note**: This document is a template for the performance dashboard. The data will be populated once the performance benchmarks are run.
+
 > **Latest Version:** v2.0.0-preview
 > **Last Updated:** 2024-12-20
 > **Total Benchmark Runs:** 1

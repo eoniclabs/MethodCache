@@ -38,9 +38,10 @@ namespace MethodCache.Examples
             return await _cacheManager.GetOrCreateAsync(
                 methodName: nameof(_userRepository.GetUserAsync),
                 args: new object[] { userId },
-                factory: (ctx, ct) => _userRepository.GetUserAsync(userId),
-                configure: opts => opts.WithDuration(TimeSpan.FromHours(1)),
-                services: _services
+                factory: () => _userRepository.GetUserAsync(userId),
+                settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) },
+                keyGenerator: new FastHashKeyGenerator(),
+                requireIdempotent: true
             );
             // Uses FastHashKeyGenerator by default
             // Generated key: Efficient hash of "GetUserAsync" + userId
@@ -61,10 +62,8 @@ namespace MethodCache.Examples
 
             return await _cacheManager.GetOrCreateAsync(
                 key: cacheKey,
-                factory: (ctx, ct) => _orderService.GenerateReportAsync(criteria),
-                configure: opts => opts
-                    .WithDuration(TimeSpan.FromHours(2))
-                    .WithTags("reports", "analytics")
+                factory: () => _orderService.GenerateReportAsync(criteria),
+                settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(2), Tags = new[] { "reports", "analytics" } }
             );
         }
 
@@ -85,11 +84,10 @@ namespace MethodCache.Examples
             return await _cacheManager.GetOrCreateAsync(
                 methodName: methodName,
                 args: args,
-                factory: (ctx, ct) => _orderService.GetOrdersByCustomerAsync(customerId, status, from, to),
-                configure: opts => opts
-                    .WithDuration(TimeSpan.FromMinutes(30))
-                    .WithTags("orders", $"customer:{customerId}"),
-                services: _services
+                factory: () => _orderService.GetOrdersByCustomerAsync(customerId, status, from, to),
+                settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30), Tags = new[] { "orders", $"customer:{customerId}" } },
+                keyGenerator: jsonGenerator,
+                requireIdempotent: true
             );
         }
 
@@ -101,8 +99,8 @@ namespace MethodCache.Examples
             // Existing manual key approach unchanged
             return await _cacheManager.GetOrCreateAsync(
                 key: $"settings:{section}",
-                factory: (ctx, ct) => GetSettingsFromConfig(section),
-                configure: opts => opts.WithDuration(TimeSpan.FromMinutes(15))
+                factory: () => GetSettingsFromConfig(section),
+                settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(15) }
             );
         }
 
@@ -127,8 +125,8 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     key: $"user:{userId}",  // Manual string interpolation
-                    factory: (ctx, ct) => _userRepo.GetUserAsync(userId),
-                    configure: opts => opts.WithDuration(TimeSpan.FromHours(1))
+                    factory: () => _userRepo.GetUserAsync(userId),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) }
                 );
             }
 
@@ -138,9 +136,10 @@ namespace MethodCache.Examples
                 return await _cache.GetOrCreateAsync(
                     methodName: nameof(_userRepo.GetUserAsync),
                     args: new object[] { userId },
-                    factory: (ctx, ct) => _userRepo.GetUserAsync(userId),
-                    configure: opts => opts.WithDuration(TimeSpan.FromHours(1)),
-                    services: _services
+                    factory: () => _userRepo.GetUserAsync(userId),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) },
+                    keyGenerator: new FastHashKeyGenerator(),
+                    requireIdempotent: true
                 );
                 // FastHashKeyGenerator produces collision-resistant hash
                 // Better for cache distribution and performance
@@ -154,8 +153,8 @@ namespace MethodCache.Examples
 
                 return await _cache.GetOrCreateAsync(
                     key: key,
-                    factory: (ctx, ct) => _userRepo.GetOrdersAsync(customerId, status, includeItems),
-                    configure: opts => opts.WithDuration(TimeSpan.FromMinutes(30))
+                    factory: () => _userRepo.GetOrdersAsync(customerId, status, includeItems),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) }
                 );
             }
 
@@ -165,9 +164,10 @@ namespace MethodCache.Examples
                 return await _cache.GetOrCreateAsync(
                     methodName: "GetOrdersAsync",
                     args: new object[] { customerId, status, includeItems },
-                    factory: (ctx, ct) => _userRepo.GetOrdersAsync(customerId, status, includeItems),
-                    configure: opts => opts.WithDuration(TimeSpan.FromMinutes(30)),
-                    services: _services
+                    factory: () => _userRepo.GetOrdersAsync(customerId, status, includeItems),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) },
+                    keyGenerator: new FastHashKeyGenerator(),
+                    requireIdempotent: true
                 );
                 // Automatic handling of enum serialization, null values, etc.
             }
@@ -219,8 +219,8 @@ namespace MethodCache.Examples
 
                 return await _cache.GetOrCreateAsync(
                     key: cacheKey,
-                    factory: (ctx, ct) => _dataService.QueryDataAsync(request),
-                    configure: opts => opts.WithDuration(TimeSpan.FromMinutes(30))
+                    factory: () => _dataService.QueryDataAsync(request),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) }
                 );
             }
 
@@ -234,8 +234,10 @@ namespace MethodCache.Examples
                 return await _cache.GetOrCreateAsync(
                     methodName: nameof(_dataService.GetTenantDataAsync),
                     args: new object[] { tenantId, dataType },
-                    factory: (ctx, ct) => _dataService.GetTenantDataAsync(tenantId, dataType),
-                    configure: opts => opts.WithDuration(TimeSpan.FromHours(1))
+                    factory: () => _dataService.GetTenantDataAsync(tenantId, dataType),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) },
+                    keyGenerator: tenantKeyGenerator,
+                    requireIdempotent: true
                 );
             }
         }

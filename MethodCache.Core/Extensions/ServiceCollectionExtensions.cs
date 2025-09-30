@@ -12,12 +12,12 @@ namespace MethodCache.Core.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds MethodCache services with a default memory L1 provider.
+    /// Creates a MethodCache builder preconfigured with the default memory L1 provider.
     /// This is the recommended starting point for most applications.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>A builder for configuring additional cache layers.</returns>
-    public static IMethodCacheBuilder AddMethodCache(this IServiceCollection services)
+    public static IMethodCacheBuilder AddMethodCacheBuilder(this IServiceCollection services)
     {
         if (services == null) throw new ArgumentNullException(nameof(services));
 
@@ -32,12 +32,12 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds MethodCache core services without any providers.
+    /// Creates a MethodCache builder without registering any providers.
     /// Use this when you want full control over provider configuration.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>A builder for configuring cache layers.</returns>
-    public static IMethodCacheBuilder AddMethodCacheCore(this IServiceCollection services)
+    public static IMethodCacheBuilder AddMethodCacheBuilderCore(this IServiceCollection services)
     {
         if (services == null) throw new ArgumentNullException(nameof(services));
 

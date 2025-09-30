@@ -2,10 +2,10 @@ using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
-using MethodCache.Infrastructure.Implementation;
+using MethodCache.Core.Storage;
+using MethodCache.Core.Configuration;
 using NSubstitute;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace MethodCache.Infrastructure.Tests;
@@ -324,7 +324,9 @@ public class HybridStorageManagerTests : IDisposable
         };
 
         _l1Storage.GetStats().Returns(l1Stats);
-        _l2Storage.GetStatsAsync(Arg.Any<CancellationToken>()).Returns(l2Stats);
+        _l2Storage
+            .GetStatsAsync(Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<StorageStats?>(l2Stats));
 
         // Act
         var stats = await _hybridStorage.GetStatsAsync();
@@ -343,8 +345,12 @@ public class HybridStorageManagerTests : IDisposable
     {
         // Arrange
         const string key = "test-key";
-        _l1Storage.GetAsync<string>(key, Arg.Any<CancellationToken>()).Returns((string?)null);
-        _l2Storage.GetAsync<string>(key, Arg.Any<CancellationToken>()).Returns(Task.FromException<string?>(new InvalidOperationException("L2 error")));
+        _l1Storage
+            .GetAsync<string>(key, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>(null));
+        _l2Storage
+            .GetAsync<string>(key, Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<string?>(Task.FromException<string?>(new InvalidOperationException("L2 error"))));
 
         // Act
         var result = await _hybridStorage.GetAsync<string>(key);
@@ -366,7 +372,7 @@ public class HybridStorageManagerTests : IDisposable
             EnableAsyncL2Writes = true
         };
 
-        var hybridWithAsyncWrites = new HybridStorageManager(
+        await using var hybridWithAsyncWrites = new HybridStorageManager(
             _l1Storage,
             Options.Create(optionsWithAsyncWrites),
             NullLogger<HybridStorageManager>.Instance,
@@ -391,6 +397,6 @@ public class HybridStorageManagerTests : IDisposable
 
     public void Dispose()
     {
-        // Nothing to dispose in this test class
+        _hybridStorage.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 }

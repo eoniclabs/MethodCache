@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Storage;
+using MethodCache.HttpCaching.Options;
 
 namespace MethodCache.HttpCaching.Storage;
 
@@ -13,10 +14,11 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
 {
     private readonly IStorageProvider _storageProvider;
     private readonly ILogger<HybridHttpCacheStorage> _logger;
-    private readonly HttpCacheOptions _httpOptions;
-    private readonly StorageOptions _storageOptions;
+    private readonly CacheBehaviorOptions _behavior;
+    private readonly CacheFreshnessOptions _freshness;
+    private readonly HttpCacheStorageOptions _httpStorage;
+    private readonly StorageOptions _hybridStorageOptions;
 
-    // Statistics
     private long _requests;
     private long _hits;
     private long _misses;
@@ -25,39 +27,39 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
 
     public HybridHttpCacheStorage(
         IStorageProvider storageProvider,
-        IOptions<HttpCacheOptions> httpOptions,
-        IOptions<StorageOptions> storageOptions,
+        IOptions<HttpCacheOptions> cacheOptions,
+        IOptions<HttpCacheStorageOptions> storageOptions,
+        IOptions<StorageOptions> hybridStorageOptions,
         ILogger<HybridHttpCacheStorage> logger)
     {
         _storageProvider = storageProvider;
-        _httpOptions = httpOptions.Value;
-        _storageOptions = storageOptions.Value;
         _logger = logger;
+        var options = cacheOptions.Value;
+        _behavior = options.Behavior;
+        _freshness = options.Freshness;
+        _httpStorage = storageOptions.Value;
+        _hybridStorageOptions = hybridStorageOptions.Value;
     }
 
-    public async Task<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
         Interlocked.Increment(ref _requests);
 
         try
         {
-            var entry = await _storageProvider.GetAsync<HttpCacheEntry>(key, cancellationToken);
+            var entry = await _storageProvider.GetAsync<HttpCacheEntry>(key, cancellationToken).ConfigureAwait(false);
 
             if (entry != null)
             {
-                Interlocked.Increment(ref _hits);
-                _logger.LogDebug("HTTP cache hit for key {Key}", key);
-
-                // Validate that the entry hasn't exceeded storage size limits
                 if (IsEntrySizeValid(entry))
                 {
+                    Interlocked.Increment(ref _hits);
+                    _logger.LogDebug("HTTP cache hit for key {Key}", key);
                     return entry;
                 }
-                else
-                {
-                    _logger.LogWarning("HTTP cache entry {Key} exceeded size limits, removing from cache", key);
-                    await RemoveAsync(key, cancellationToken);
-                }
+
+                _logger.LogWarning("HTTP cache entry {Key} exceeded size limits, removing", key);
+                await RemoveAsync(key, cancellationToken).ConfigureAwait(false);
             }
 
             Interlocked.Increment(ref _misses);
@@ -72,12 +74,11 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    public async Task SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
     {
         if (!IsEntrySizeValid(entry))
         {
-            _logger.LogWarning("HTTP cache entry {Key} exceeds maximum response size ({Size} bytes), not caching",
-                key, entry.Content.Length);
+            _logger.LogDebug("HTTP cache entry {Key} exceeds maximum response size ({Size} bytes), not caching", key, entry.Content.Length);
             return;
         }
 
@@ -86,11 +87,10 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
             var expiration = CalculateExpiration(entry);
             var tags = GenerateTags(entry);
 
-            await _storageProvider.SetAsync(key, entry, expiration, tags, cancellationToken);
+            await _storageProvider.SetAsync(key, entry, expiration, tags, cancellationToken).ConfigureAwait(false);
 
             Interlocked.Increment(ref _sets);
-            _logger.LogDebug("Stored HTTP cache entry {Key} with expiration {Expiration} and tags {Tags}",
-                key, expiration, string.Join(", ", tags));
+            _logger.LogDebug("Stored HTTP cache entry {Key} with expiration {Expiration} and tags {Tags}", key, expiration, string.Join(", ", tags));
         }
         catch (Exception ex)
         {
@@ -98,11 +98,11 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         try
         {
-            await _storageProvider.RemoveAsync(key, cancellationToken);
+            await _storageProvider.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
             Interlocked.Increment(ref _removes);
             _logger.LogDebug("Removed HTTP cache entry {Key}", key);
         }
@@ -112,12 +112,11 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    public async Task ClearAsync(CancellationToken cancellationToken = default)
+    public async ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            // Use tag-based invalidation to clear all HTTP cache entries
-            await _storageProvider.RemoveByTagAsync("http-cache", cancellationToken);
+            await _storageProvider.RemoveByTagAsync(HttpCacheTags.AllEntries, cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Cleared all HTTP cache entries using tag invalidation");
         }
         catch (Exception ex)
@@ -126,15 +125,11 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    /// <summary>
-    /// Removes HTTP cache entries for a specific URI pattern.
-    /// </summary>
-    public async Task InvalidateByUriAsync(string uriPattern, CancellationToken cancellationToken = default)
+    public async ValueTask InvalidateByUriAsync(string uriPattern, CancellationToken cancellationToken = default)
     {
         try
         {
-            var tag = $"uri:{uriPattern}";
-            await _storageProvider.RemoveByTagAsync(tag, cancellationToken);
+            await _storageProvider.RemoveByTagAsync(HttpCacheTags.ForUriPattern(uriPattern), cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("Invalidated HTTP cache entries for URI pattern {UriPattern}", uriPattern);
         }
         catch (Exception ex)
@@ -143,15 +138,11 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    /// <summary>
-    /// Removes HTTP cache entries for a specific HTTP method.
-    /// </summary>
-    public async Task InvalidateByMethodAsync(string method, CancellationToken cancellationToken = default)
+    public async ValueTask InvalidateByMethodAsync(string method, CancellationToken cancellationToken = default)
     {
         try
         {
-            var tag = $"method:{method.ToUpperInvariant()}";
-            await _storageProvider.RemoveByTagAsync(tag, cancellationToken);
+            await _storageProvider.RemoveByTagAsync(HttpCacheTags.ForMethod(method), cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("Invalidated HTTP cache entries for method {Method}", method);
         }
         catch (Exception ex)
@@ -160,9 +151,6 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
         }
     }
 
-    /// <summary>
-    /// Gets cache statistics.
-    /// </summary>
     public HttpCacheStats GetStats()
     {
         var requests = Interlocked.Read(ref _requests);
@@ -185,32 +173,36 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
 
     private bool IsEntrySizeValid(HttpCacheEntry entry)
     {
-        if (_httpOptions.MaxResponseSize <= 0)
+        if (_httpStorage.MaxResponseSize <= 0)
+        {
             return true;
+        }
 
-        var entrySize = entry.Content.Length;
-        return entrySize <= _httpOptions.MaxResponseSize;
+        return entry.Content.Length <= _httpStorage.MaxResponseSize;
     }
 
     private TimeSpan CalculateExpiration(HttpCacheEntry entry)
     {
-        // Calculate expiration based on HTTP cache headers
         var now = DateTimeOffset.UtcNow;
 
-        // Check for explicit max-age
-        if (entry.CacheControl?.MaxAge.HasValue == true)
+        if (_behavior.RespectCacheControl && entry.CacheControl?.MaxAge.HasValue == true)
         {
-            var maxAge = entry.CacheControl.MaxAge.Value;
-            var age = entry.GetAge();
-            var remainingTime = maxAge - age;
-
-            if (remainingTime > TimeSpan.Zero)
+            var remaining = entry.CacheControl.MaxAge.Value - entry.GetAge();
+            if (remaining > TimeSpan.Zero)
             {
-                return ClampExpiration(remainingTime);
+                return ClampExpiration(remaining);
             }
         }
 
-        // Check for Expires header
+        if (_behavior.IsSharedCache && _behavior.RespectCacheControl && entry.CacheControl?.SharedMaxAge.HasValue == true)
+        {
+            var remaining = entry.CacheControl.SharedMaxAge.Value - entry.GetAge();
+            if (remaining > TimeSpan.Zero)
+            {
+                return ClampExpiration(remaining);
+            }
+        }
+
         if (entry.Expires.HasValue)
         {
             var expiresIn = entry.Expires.Value - now;
@@ -220,43 +212,37 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
             }
         }
 
-        // Use default max age or heuristic freshness
-        if (_httpOptions.DefaultMaxAge.HasValue)
+        if (_freshness.DefaultMaxAge.HasValue)
         {
-            return ClampExpiration(_httpOptions.DefaultMaxAge.Value);
+            return ClampExpiration(_freshness.DefaultMaxAge.Value);
         }
 
-        // Heuristic freshness (10% of Last-Modified age)
-        if (_httpOptions.AllowHeuristicFreshness && entry.LastModified.HasValue)
+        if (_freshness.AllowHeuristicFreshness && entry.LastModified.HasValue)
         {
             var lastModifiedAge = now - entry.LastModified.Value;
             var heuristicFreshness = TimeSpan.FromTicks(lastModifiedAge.Ticks / 10);
-
-            if (heuristicFreshness <= _httpOptions.MaxHeuristicFreshness)
+            if (heuristicFreshness > _freshness.MaxHeuristicFreshness)
             {
-                return ClampExpiration(heuristicFreshness);
+                heuristicFreshness = _freshness.MaxHeuristicFreshness;
             }
+
+            return ClampExpiration(heuristicFreshness);
         }
 
-        // Fallback to max heuristic freshness
-        return ClampExpiration(_httpOptions.MaxHeuristicFreshness);
+        return ClampExpiration(_freshness.MaxHeuristicFreshness);
     }
 
     private TimeSpan ClampExpiration(TimeSpan expiration)
     {
-        // Ensure expiration doesn't exceed L2 max expiration from storage options
-        var maxExpiration = _storageOptions.L2MaxExpiration;
-        if (expiration > maxExpiration)
+        if (expiration > _hybridStorageOptions.L2MaxExpiration)
         {
-            _logger.LogDebug("Clamping HTTP cache expiration from {Original} to {Max}", expiration, maxExpiration);
-            return maxExpiration;
+            _logger.LogDebug("Clamping HTTP cache expiration from {Original} to {Max}", expiration, _hybridStorageOptions.L2MaxExpiration);
+            expiration = _hybridStorageOptions.L2MaxExpiration;
         }
 
-        // Ensure minimum expiration
-        var minExpiration = _httpOptions.MinExpiration != default ? _httpOptions.MinExpiration : TimeSpan.FromSeconds(30);
-        if (expiration < minExpiration)
+        if (expiration < _freshness.MinExpiration)
         {
-            return minExpiration;
+            return _freshness.MinExpiration;
         }
 
         return expiration;
@@ -264,65 +250,48 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
 
     private IEnumerable<string> GenerateTags(HttpCacheEntry entry)
     {
-        var tags = new List<string>
-        {
-            "http-cache" // Universal tag for all HTTP cache entries
-        };
+        var tags = new List<string> { HttpCacheTags.AllEntries };
 
-        // Add method-based tag
         if (!string.IsNullOrEmpty(entry.Method))
         {
-            tags.Add($"method:{entry.Method.ToUpperInvariant()}");
+            tags.Add(HttpCacheTags.ForMethod(entry.Method));
         }
 
-        // Add URI-based tags
         if (!string.IsNullOrEmpty(entry.RequestUri))
         {
-            try
+            if (Uri.TryCreate(entry.RequestUri, UriKind.Absolute, out var uri))
             {
-                var uri = new Uri(entry.RequestUri);
+                tags.Add(HttpCacheTags.ForHost(uri.Host));
 
-                // Add host tag
-                tags.Add($"host:{uri.Host}");
-
-                // Add path tag (for path-based invalidation)
                 if (!string.IsNullOrEmpty(uri.AbsolutePath))
                 {
-                    tags.Add($"path:{uri.AbsolutePath}");
+                    tags.Add(HttpCacheTags.ForPath(uri.AbsolutePath));
 
-                    // Add parent path tags for hierarchical invalidation
-                    var pathSegments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                    var currentPath = "";
-                    foreach (var segment in pathSegments.Take(pathSegments.Length - 1))
+                    var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                    if (segments.Length > 1)
                     {
-                        currentPath += "/" + segment;
-                        tags.Add($"parent-path:{currentPath}");
+                        var current = string.Empty;
+                        for (var i = 0; i < segments.Length - 1; i++)
+                        {
+                            current += "/" + segments[i];
+                            tags.Add(HttpCacheTags.ForParentPath(current));
+                        }
                     }
                 }
             }
-            catch (UriFormatException ex)
-            {
-                _logger.LogWarning(ex, "Invalid URI format for cache entry: {RequestUri}", entry.RequestUri);
-            }
         }
 
-        // Add content-type tag if available
         if (entry.ContentHeaders.TryGetValue("Content-Type", out var contentTypes) && contentTypes.Length > 0)
         {
             var contentType = contentTypes[0].Split(';')[0].Trim();
-            tags.Add($"content-type:{contentType}");
+            tags.Add(HttpCacheTags.ForContentType(contentType));
         }
 
-        // Add status code tag
-        tags.Add($"status:{(int)entry.StatusCode}");
-
+        tags.Add(HttpCacheTags.ForStatus(entry.StatusCode));
         return tags;
     }
 }
 
-/// <summary>
-/// Statistics for HTTP cache operations.
-/// </summary>
 public class HttpCacheStats
 {
     public long Requests { get; init; }
@@ -331,5 +300,5 @@ public class HttpCacheStats
     public double HitRatio { get; init; }
     public long Sets { get; init; }
     public long Removes { get; init; }
-    public string StorageProviderName { get; init; } = "";
+    public string StorageProviderName { get; init; } = string.Empty;
 }

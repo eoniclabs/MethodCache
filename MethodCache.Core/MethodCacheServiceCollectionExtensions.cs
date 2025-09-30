@@ -318,7 +318,17 @@ namespace MethodCache.Core
             {
                 // Try to find it in any loaded assembly
                 extensionType = AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a => a.GetTypes())
+                    .SelectMany(a =>
+                    {
+                        try
+                        {
+                            return a.GetTypes();
+                        }
+                        catch (ReflectionTypeLoadException)
+                        {
+                            return Array.Empty<Type>();
+                        }
+                    })
                     .FirstOrDefault(t => t.Name == "MethodCacheServiceCollectionExtensions" &&
                                         t.Namespace == "Microsoft.Extensions.DependencyInjection");
             }

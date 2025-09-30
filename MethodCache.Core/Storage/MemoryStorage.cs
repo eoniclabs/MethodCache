@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Storage;
@@ -57,9 +56,9 @@ public class MemoryStorage : IMemoryStorage
         return result;
     }
 
-    public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    public ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Get<T>(key));
+        return ValueTask.FromResult(Get<T>(key));
     }
 
     public void Set<T>(string key, T value, TimeSpan expiration)
@@ -92,16 +91,16 @@ public class MemoryStorage : IMemoryStorage
         _logger.LogDebug("Set key {Key} in memory storage with expiration {Expiration}", key, expiration);
     }
 
-    public Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
         Set(key, value, expiration);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         Set(key, value, expiration, tags);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public void Remove(string key)
@@ -111,10 +110,10 @@ public class MemoryStorage : IMemoryStorage
         _logger.LogDebug("Removed key {Key} from memory storage", key);
     }
 
-    public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         Remove(key);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public void RemoveByTag(string tag)
@@ -127,11 +126,13 @@ public class MemoryStorage : IMemoryStorage
             return;
         }
 
+        bool hasTagMapping = false;
         _tagMappingLock.EnterReadLock();
         try
         {
             if (_tagToKeys.TryGetValue(tag, out var keys))
             {
+                hasTagMapping = true;
                 var keysToRemove = keys.Keys.ToArray();
                 foreach (var key in keysToRemove)
                 {
@@ -146,19 +147,28 @@ public class MemoryStorage : IMemoryStorage
             _tagMappingLock.ExitReadLock();
         }
 
+        if (!hasTagMapping)
+        {
+            // Tag not found in mappings - this can happen when entries were promoted from L2/L3
+            // without tag information. In this case, we must clear the entire L1 cache to be safe.
+            _logger.LogWarning("Tag {Tag} not found in mappings. Clearing entire L1 cache to ensure consistency.", tag);
+            Clear();
+            return;
+        }
+
         // Clean up tag mappings
         RemoveTagMappings(tag, isTagInvalidation: true);
     }
 
-    public Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
         RemoveByTag(tag);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public bool Exists(string key)
     {
-        return _cache.TryGetValue(key, out object? _);
+        return _cache.TryGetValue(key, out _);
     }
 
     public MemoryStorageStats GetStats()
@@ -206,7 +216,7 @@ public class MemoryStorage : IMemoryStorage
 
     private void TrackTags(string key, string[] tags)
     {
-        if (_tagMappingCount >= _options.MaxTagMappings)
+        if (_options.MaxTagMappings > 0 && _tagMappingCount >= _options.MaxTagMappings)
         {
             _logger.LogWarning("Tag mapping limit reached, not tracking tags for key {Key}", key);
             return;
@@ -215,17 +225,37 @@ public class MemoryStorage : IMemoryStorage
         _tagMappingLock.EnterWriteLock();
         try
         {
-            // Track key -> tags mapping
             var keyTags = _keyToTags.GetOrAdd(key, _ => new ConcurrentDictionary<string, byte>());
+            var addedMappings = 0;
+
             foreach (var tag in tags)
             {
-                keyTags.TryAdd(tag, 0);
+                if (_options.MaxTagMappings > 0 && _tagMappingCount + addedMappings >= _options.MaxTagMappings)
+                {
+                    _logger.LogWarning("Tag mapping limit reached while tracking key {Key}. Remaining tags will be skipped.", key);
+                    break;
+                }
 
-                // Track tag -> keys mapping
+                if (!keyTags.TryAdd(tag, 0))
+                {
+                    continue; // Mapping already exists
+                }
+
                 var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
-                tagKeys.TryAdd(key, 0);
+                if (tagKeys.TryAdd(key, 0))
+                {
+                    addedMappings++;
+                }
+                else
+                {
+                    // Roll back key -> tag mapping if tag already contained the key
+                    keyTags.TryRemove(tag, out _);
+                }
+            }
 
-                _tagMappingCount++;
+            if (addedMappings > 0)
+            {
+                _tagMappingCount += addedMappings;
             }
         }
         finally
@@ -242,6 +272,7 @@ public class MemoryStorage : IMemoryStorage
         _tagMappingLock.EnterWriteLock();
         try
         {
+            var removed = 0;
             if (_keyToTags.TryRemove(key, out var tags))
             {
                 foreach (var tag in tags.Keys)
@@ -254,8 +285,13 @@ public class MemoryStorage : IMemoryStorage
                             _tagToKeys.TryRemove(tag, out _);
                         }
                     }
-                    _tagMappingCount--;
+                    removed++;
                 }
+            }
+
+            if (removed > 0)
+            {
+                _tagMappingCount = Math.Max(0, _tagMappingCount - removed);
             }
         }
         finally
@@ -272,6 +308,7 @@ public class MemoryStorage : IMemoryStorage
         _tagMappingLock.EnterWriteLock();
         try
         {
+            var removed = 0;
             if (_tagToKeys.TryRemove(tag, out var keys))
             {
                 foreach (var key in keys.Keys)
@@ -284,8 +321,13 @@ public class MemoryStorage : IMemoryStorage
                             _keyToTags.TryRemove(key, out _);
                         }
                     }
-                    _tagMappingCount--;
+                    removed++;
                 }
+            }
+
+            if (removed > 0)
+            {
+                _tagMappingCount = Math.Max(0, _tagMappingCount - removed);
             }
         }
         finally
@@ -328,3 +370,4 @@ public class MemoryStorage : IMemoryStorage
         return _tagMappingCount * 50 + approximateEntryCount * 200; // Rough estimate
     }
 }
+

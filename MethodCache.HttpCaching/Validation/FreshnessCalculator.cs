@@ -1,3 +1,5 @@
+using MethodCache.HttpCaching.Options;
+
 namespace MethodCache.HttpCaching.Validation;
 
 /// <summary>
@@ -5,20 +7,18 @@ namespace MethodCache.HttpCaching.Validation;
 /// </summary>
 public class FreshnessCalculator
 {
-    private readonly HttpCacheOptions _options;
+    private readonly CacheBehaviorOptions _behavior;
+    private readonly CacheFreshnessOptions _freshness;
 
-    public FreshnessCalculator(HttpCacheOptions options)
+    public FreshnessCalculator(CacheBehaviorOptions behavior, CacheFreshnessOptions freshness)
     {
-        _options = options;
+        _behavior = behavior;
+        _freshness = freshness;
     }
 
-    /// <summary>
-    /// Determines if a cache entry is fresh according to HTTP caching rules.
-    /// </summary>
     public bool IsFresh(HttpCacheEntry entry)
     {
-        // If Cache-Control: no-cache is present, always stale
-        if (entry.CacheControl?.NoCache == true)
+        if (_behavior.RespectCacheControl && entry.CacheControl?.NoCache == true)
         {
             return false;
         }
@@ -33,26 +33,22 @@ public class FreshnessCalculator
         return currentAge < freshnessLifetime.Value;
     }
 
-    /// <summary>
-    /// Calculates the freshness lifetime of a cache entry in seconds.
-    /// </summary>
+    public TimeSpan GetCurrentAge(HttpCacheEntry entry) => CalculateCurrentAge(entry);
+
+    public TimeSpan? GetFreshnessLifetime(HttpCacheEntry entry) => CalculateFreshnessLifetime(entry);
+
     private TimeSpan? CalculateFreshnessLifetime(HttpCacheEntry entry)
     {
-        // 1. Check Cache-Control max-age directive (highest priority)
-        if (_options.RespectCacheControl && entry.CacheControl?.MaxAge.HasValue == true)
+        if (_behavior.RespectCacheControl && entry.CacheControl?.MaxAge.HasValue == true)
         {
             return entry.CacheControl.MaxAge.Value;
         }
 
-        // 2. Check Cache-Control s-maxage for shared caches
-        if (_options.IsSharedCache &&
-            _options.RespectCacheControl &&
-            entry.CacheControl?.SharedMaxAge.HasValue == true)
+        if (_behavior.IsSharedCache && _behavior.RespectCacheControl && entry.CacheControl?.SharedMaxAge.HasValue == true)
         {
             return entry.CacheControl.SharedMaxAge.Value;
         }
 
-        // 3. Check Expires header
         if (entry.Expires.HasValue && entry.Date.HasValue)
         {
             var expiresLifetime = entry.Expires.Value - entry.Date.Value;
@@ -62,98 +58,73 @@ public class FreshnessCalculator
             }
         }
 
-        // 4. Use heuristic freshness if allowed
-        if (_options.AllowHeuristicFreshness && entry.LastModified.HasValue && entry.Date.HasValue)
+        if (_freshness.AllowHeuristicFreshness && entry.LastModified.HasValue && entry.Date.HasValue)
         {
-            // RFC 7234 suggests using 10% of the time since last modification
             var age = entry.Date.Value - entry.LastModified.Value;
-            var heuristicFreshness = TimeSpan.FromSeconds(age.TotalSeconds * 0.1);
+            var heuristicFreshness = TimeSpan.FromSeconds(Math.Max(0, age.TotalSeconds * 0.1));
 
-            // Cap heuristic freshness at the configured maximum
-            if (heuristicFreshness > _options.MaxHeuristicFreshness)
+            if (heuristicFreshness > _freshness.MaxHeuristicFreshness)
             {
-                heuristicFreshness = _options.MaxHeuristicFreshness;
+                heuristicFreshness = _freshness.MaxHeuristicFreshness;
             }
 
             return heuristicFreshness;
         }
 
-        // 5. Use default max age if configured
-        return _options.DefaultMaxAge;
+        return _freshness.DefaultMaxAge;
     }
 
-    /// <summary>
-    /// Calculates the current age of a cache entry.
-    /// </summary>
-    private TimeSpan CalculateCurrentAge(HttpCacheEntry entry)
+    private static TimeSpan CalculateCurrentAge(HttpCacheEntry entry)
     {
-        // RFC 7234 compliant age calculation
         var now = DateTimeOffset.UtcNow;
-
-        // Age when we received the response (resident_time)
         var residentTime = now - entry.StoredAt;
 
-        // Age based on response Date header (if available)
         var responseAge = TimeSpan.Zero;
         if (entry.Date.HasValue)
         {
             responseAge = entry.StoredAt - entry.Date.Value;
             if (responseAge < TimeSpan.Zero)
-                responseAge = TimeSpan.Zero; // Clock skew protection
+            {
+                responseAge = TimeSpan.Zero;
+            }
         }
 
-        // Total age = resident time + response age
         return residentTime + responseAge;
     }
 
-    /// <summary>
-    /// Determines if a stale cache entry can be used while revalidating.
-    /// </summary>
     public bool CanUseStaleWhileRevalidate(HttpCacheEntry entry)
     {
-        if (!_options.EnableStaleWhileRevalidate)
+        if (!_behavior.EnableStaleWhileRevalidate)
         {
             return false;
         }
 
-        // Check if the response allows stale-while-revalidate
-        if (entry.CacheControl?.Extensions?.Any(e =>
-            e.Name?.Equals("stale-while-revalidate", StringComparison.OrdinalIgnoreCase) == true) == true)
-        {
-            return true;
-        }
-
-        return false;
+        return entry.CacheControl?.Extensions?.Any(e =>
+            string.Equals(e.Name, "stale-while-revalidate", StringComparison.OrdinalIgnoreCase)) == true;
     }
 
-    /// <summary>
-    /// Determines if a stale cache entry can be used when there's an error.
-    /// </summary>
     public bool CanUseStaleIfError(HttpCacheEntry entry)
     {
-        if (!_options.EnableStaleIfError)
+        if (!_behavior.EnableStaleIfError)
         {
             return false;
         }
 
         var staleness = DateTimeOffset.UtcNow - entry.StoredAt;
 
-        // Check if the response allows stale-if-error with specific timeout
-        var staleIfErrorExtension = entry.CacheControl?.Extensions?.FirstOrDefault(e =>
-            e.Name?.Equals("stale-if-error", StringComparison.OrdinalIgnoreCase) == true);
+        var extension = entry.CacheControl?.Extensions?.FirstOrDefault(e =>
+            string.Equals(e.Name, "stale-if-error", StringComparison.OrdinalIgnoreCase));
 
-        if (staleIfErrorExtension != null)
+        if (extension != null)
         {
-            // If stale-if-error has a value, use it as the timeout in seconds
-            if (int.TryParse(staleIfErrorExtension.Value, out var timeoutSeconds))
+            if (!string.IsNullOrEmpty(extension.Value) && int.TryParse(extension.Value.Trim('"'), out var timeoutSeconds))
             {
                 return staleness < TimeSpan.FromSeconds(timeoutSeconds);
             }
-            // If no value or invalid value, allow stale-if-error without timeout
+
             return true;
         }
 
-        // Use global stale-if-error timeout
-        return staleness < _options.MaxStaleIfError;
+        return staleness < _behavior.MaxStaleIfError;
     }
 }

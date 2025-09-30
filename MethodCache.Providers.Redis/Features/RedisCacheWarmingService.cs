@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MethodCache.Core.Storage;
+using MethodCache.Infrastructure.Services;
 using MethodCache.Providers.Redis.Configuration;
+using StackExchange.Redis;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -9,6 +12,9 @@ using System.Threading.Tasks;
 
 namespace MethodCache.Providers.Redis.Features
 {
+    /// <summary>
+    /// Redis-specific cache warming service with TTL optimization
+    /// </summary>
     public class RedisCacheWarmingService : BackgroundService, ICacheWarmingService
     {
         private readonly IRedisConnectionManager _connectionManager;
@@ -65,9 +71,9 @@ namespace MethodCache.Providers.Redis.Features
 
             var fullKey = _options.KeyPrefix + key;
             var entry = new CacheWarmupEntry(fullKey, factory, refreshInterval, tags ?? Array.Empty<string>());
-            
+
             _warmupEntries.AddOrUpdate(fullKey, entry, (_, _) => entry);
-            
+
             _logger.LogDebug("Registered cache warmup for key {Key} with interval {Interval}", fullKey, refreshInterval);
             return Task.CompletedTask;
         }
@@ -76,7 +82,7 @@ namespace MethodCache.Providers.Redis.Features
         {
             var fullKey = _options.KeyPrefix + key;
             _warmupEntries.TryRemove(fullKey, out _);
-            
+
             _logger.LogDebug("Unregistered cache warmup for key {Key}", fullKey);
             return Task.CompletedTask;
         }
@@ -96,7 +102,7 @@ namespace MethodCache.Providers.Redis.Features
                     while (!stoppingToken.IsCancellationRequested)
                     {
                         await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-                        
+
                         if (!stoppingToken.IsCancellationRequested)
                         {
                             await ProcessWarmupEntriesAsync();
@@ -149,7 +155,7 @@ namespace MethodCache.Providers.Redis.Features
 
             if (processedCount > 0 || errorCount > 0)
             {
-                _logger.LogDebug("Cache warmup cycle completed: {ProcessedCount} entries warmed, {ErrorCount} errors", 
+                _logger.LogDebug("Cache warmup cycle completed: {ProcessedCount} entries warmed, {ErrorCount} errors",
                     processedCount, errorCount);
             }
         }
@@ -159,26 +165,26 @@ namespace MethodCache.Providers.Redis.Features
             try
             {
                 var database = _connectionManager.GetDatabase();
-                
-                // Check if entry still exists and is close to expiration
+
+                // Check if entry still exists and is close to expiration (Redis-specific TTL check)
                 var ttl = await database.KeyTimeToLiveAsync(entry.Key);
-                
+
                 // If key doesn't exist or expires within the next 25% of refresh interval, warm it up
                 var warmupThreshold = entry.RefreshInterval.Multiply(0.25);
-                
+
                 if (!ttl.HasValue || ttl.Value <= warmupThreshold)
                 {
                     _logger.LogDebug("Warming up cache entry {Key} (TTL: {TTL})", entry.Key, ttl?.ToString() ?? "expired");
 
                     // Execute the factory to get fresh data
                     var freshData = await entry.Factory();
-                    
+
                     if (freshData != null)
                     {
                         // Serialize and cache the fresh data
                         var serializedData = await _serializer.SerializeAsync(freshData);
                         await database.StringSetAsync(entry.Key, serializedData, entry.RefreshInterval);
-                        
+
                         // Update tag associations if needed
                         if (entry.Tags.Any())
                         {

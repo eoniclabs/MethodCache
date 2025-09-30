@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Memory.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -56,6 +56,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     private readonly Timer? _cleanupTimer;
     private readonly AdvancedMemoryOptions _options;
     private readonly ILogger<AdvancedMemoryStorageProvider> _logger;
+    private static readonly Random _randomInstance = new();
 
     // Statistics
     private long _hits;
@@ -83,7 +84,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             _options.EvictionPolicy, _options.MaxEntries);
     }
 
-    public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    public ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue(key, out var entry))
         {
@@ -91,34 +92,34 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
-                UpdateAccessOrder(key, remove: true);
+                RemoveFromAccessOrder(entry);
                 Interlocked.Increment(ref _misses);
-                return Task.FromResult<T?>(default);
+                return ValueTask.FromResult<T?>(default);
             }
 
             entry.UpdateAccess();
-            UpdateAccessOrder(key, remove: false);
+            UpdateAccessOrder(key, entry, remove: false);
             Interlocked.Increment(ref _hits);
 
             if (entry.Value is T typedValue)
             {
-                return Task.FromResult<T?>(typedValue);
+                return ValueTask.FromResult<T?>(typedValue);
             }
 
             _logger.LogWarning("Cache entry for key {Key} is not of expected type {Type}", key, typeof(T));
-            return Task.FromResult<T?>(default);
+            return ValueTask.FromResult<T?>(default);
         }
 
         Interlocked.Increment(ref _misses);
-        return Task.FromResult<T?>(default);
+        return ValueTask.FromResult<T?>(default);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
-        await SetAsync(key, value, expiration, Array.Empty<string>(), cancellationToken);
+        return SetAsync(key, value, expiration, Array.Empty<string>(), cancellationToken);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         if (value == null) return;
 
@@ -135,13 +136,16 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         };
 
         // Check if we need to evict entries before adding
-        await CheckAndEvictIfNeeded(key, entry);
+        await CheckAndEvictIfNeeded(key, entry).ConfigureAwait(false);
 
         _cache.AddOrUpdate(key, entry, (k, existing) =>
         {
             // Remove old tag mappings
             RemoveFromTagIndex(k, existing.Tags);
-            UpdateAccessOrder(k, remove: true);
+            // Remove from access order while we still have the entry
+            RemoveFromAccessOrder(existing);
+            // Subtract the old entry's size from memory usage
+            Interlocked.Add(ref _estimatedMemoryUsage, -existing.EstimateSize());
             return entry;
         });
 
@@ -149,27 +153,28 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         AddToTagIndex(key, tagSet);
 
         // Update access order
-        UpdateAccessOrder(key, remove: false);
+        UpdateAccessOrder(key, entry, remove: false);
 
 
         _logger.LogDebug("Set cache entry {Key} with expiration {Expiration} and tags {Tags}",
             key, expiration, string.Join(", ", tagSet));
     }
 
-    public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         if (_cache.TryRemove(key, out var entry))
         {
             RemoveFromTagIndex(key, entry.Tags);
-            UpdateAccessOrder(key, remove: true);
+            // Remove from access order using the entry we still have
+            RemoveFromAccessOrder(entry);
             Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize());
 
             _logger.LogDebug("Removed cache entry {Key}", key);
         }
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public async Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
         if (_tagToKeys.TryGetValue(tag, out var keys))
         {
@@ -177,14 +182,14 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
             foreach (var key in keysToRemove)
             {
-                await RemoveAsync(key, cancellationToken);
+                await RemoveAsync(key, cancellationToken).ConfigureAwait(false);
             }
 
             _logger.LogDebug("Removed {Count} cache entries with tag {Tag}", keysToRemove.Count, tag);
         }
     }
 
-    public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue(key, out var entry))
         {
@@ -192,15 +197,15 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
-                UpdateAccessOrder(key, remove: true);
-                return Task.FromResult(false);
+                RemoveFromAccessOrder(entry);
+                return ValueTask.FromResult(false);
             }
-            return Task.FromResult(true);
+            return ValueTask.FromResult(true);
         }
-        return Task.FromResult(false);
+        return ValueTask.FromResult(false);
     }
 
-    public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
+    public ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -215,16 +220,16 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
             var status = isHealthy ? HealthStatus.Healthy : HealthStatus.Degraded;
 
-            return Task.FromResult(status);
+            return ValueTask.FromResult(status);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Health check failed for AdvancedMemoryStorageProvider");
-            return Task.FromResult(HealthStatus.Unhealthy);
+            return ValueTask.FromResult(HealthStatus.Unhealthy);
         }
     }
 
-    public Task<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    public ValueTask<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         var stats = new StorageStats
         {
@@ -248,10 +253,10 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             }
         };
 
-        return Task.FromResult<StorageStats?>(stats);
+        return ValueTask.FromResult<StorageStats?>(stats);
     }
 
-    private async Task CheckAndEvictIfNeeded(string newKey, CacheEntry newEntry)
+    private async ValueTask CheckAndEvictIfNeeded(string newKey, CacheEntry newEntry)
     {
         var currentCount = _cache.Count;
         var estimatedSize = newEntry.EstimateSize();
@@ -259,13 +264,13 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         if (currentCount >= _options.MaxEntries || currentMemory + estimatedSize > _options.MaxMemoryUsage)
         {
-            await EvictEntries(1); // Evict at least one entry
+            await EvictEntries(1).ConfigureAwait(false); // Evict at least one entry
         }
 
         Interlocked.Add(ref _estimatedMemoryUsage, estimatedSize);
     }
 
-    private Task EvictEntries(int minToEvict)
+    private ValueTask EvictEntries(int minToEvict)
     {
         var evicted = 0;
         var candidates = GetEvictionCandidates();
@@ -275,7 +280,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             if (_cache.TryRemove(key, out var entry))
             {
                 RemoveFromTagIndex(key, entry.Tags);
-                UpdateAccessOrder(key, remove: true);
+                RemoveFromAccessOrder(entry);
                 Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize());
                 Interlocked.Increment(ref _evictions);
                 evicted++;
@@ -285,8 +290,11 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             }
         }
 
-        _logger.LogDebug("Evicted {Count} entries using {Policy} policy", evicted, _options.EvictionPolicy);
-        return Task.CompletedTask;
+        if (evicted > 0)
+        {
+            _logger.LogDebug("Evicted {Count} entries using {Policy} policy", evicted, _options.EvictionPolicy);
+        }
+        return ValueTask.CompletedTask;
     }
 
     private IEnumerable<string> GetEvictionCandidates()
@@ -305,7 +313,12 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         lock (_accessOrderLock)
         {
-            return _accessOrder.ToList(); // Oldest first
+            // Return an iterator instead of copying the entire list
+            // This yields items one at a time as needed
+            foreach (var key in _accessOrder)
+            {
+                yield return key;
+            }
         }
     }
 
@@ -325,17 +338,40 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private IEnumerable<string> GetRandomCandidates()
     {
-        var random = new Random();
-        return _cache.Keys.OrderBy(k => random.Next());
+        // Use Fisher-Yates shuffle for efficient random sampling
+        // Only shuffle what we need, not the entire collection
+        var keys = _cache.Keys.ToArray();
+        var count = keys.Length;
+
+        // For small collections, just return all keys in random order
+        if (count <= 10)
+        {
+            for (int i = count - 1; i > 0; i--)
+            {
+                int j = _randomInstance.Next(i + 1);
+                (keys[i], keys[j]) = (keys[j], keys[i]);
+            }
+            return keys;
+        }
+
+        // For larger collections, only partially shuffle to get enough candidates
+        var candidatesNeeded = Math.Min(count / 4, 100); // Take up to 25% or 100 items
+        for (int i = 0; i < candidatesNeeded && i < count; i++)
+        {
+            int j = _randomInstance.Next(i, count);
+            (keys[i], keys[j]) = (keys[j], keys[i]);
+        }
+
+        return keys.Take(candidatesNeeded);
     }
 
-    private void UpdateAccessOrder(string key, bool remove)
+    private void UpdateAccessOrder(string key, CacheEntry entry, bool remove)
     {
         lock (_accessOrderLock)
         {
             if (remove)
             {
-                if (_cache.TryGetValue(key, out var entry) && entry.OrderNode != null)
+                if (entry.OrderNode != null)
                 {
                     _accessOrder.Remove(entry.OrderNode);
                     entry.OrderNode = null;
@@ -343,17 +379,26 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             }
             else
             {
-                if (_cache.TryGetValue(key, out var entry))
+                // Remove from current position if it exists
+                if (entry.OrderNode != null)
                 {
-                    // Remove from current position
-                    if (entry.OrderNode != null)
-                    {
-                        _accessOrder.Remove(entry.OrderNode);
-                    }
-
-                    // Add to end (most recently used)
-                    entry.OrderNode = _accessOrder.AddLast(key);
+                    _accessOrder.Remove(entry.OrderNode);
                 }
+
+                // Add to end (most recently used)
+                entry.OrderNode = _accessOrder.AddLast(key);
+            }
+        }
+    }
+
+    private void RemoveFromAccessOrder(CacheEntry entry)
+    {
+        lock (_accessOrderLock)
+        {
+            if (entry.OrderNode != null)
+            {
+                _accessOrder.Remove(entry.OrderNode);
+                entry.OrderNode = null;
             }
         }
     }
@@ -415,7 +460,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             if (_cache.TryRemove(key, out var entry))
             {
                 RemoveFromTagIndex(key, entry.Tags);
-                UpdateAccessOrder(key, remove: true);
+                RemoveFromAccessOrder(entry);
                 Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize());
             }
         }

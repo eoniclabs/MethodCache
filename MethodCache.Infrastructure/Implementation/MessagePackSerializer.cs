@@ -1,5 +1,5 @@
 using MessagePack;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 
 namespace MethodCache.Infrastructure.Implementation;
 

@@ -1,0 +1,175 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="47a44277-70ae-41a1-8a11-e4766f0c8a59" name="johan@XPS13 2025-09-26 16:25:05" runUser="XPS13\johan" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2025-09-26T16:25:05.0679297+02:00" queuing="2025-09-26T16:25:05.0679303+02:00" start="2025-09-26T16:24:56.3144437+02:00" finish="2025-09-26T16:25:42.7422158+02:00" />
+  <TestSettings name="default" id="f5edcb41-a6cf-47d1-8cdc-23aaa36bf847">
+    <Deployment runDeploymentRoot="johan_XPS13_2025-09-26_16_25_05" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="48cdaa0d-b169-48d2-8afe-660ebd869fcf" testId="8e915f48-3591-3f35-1b34-110c0c422c40" testName="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.PublishTagInvalidationAsync_ShouldStoreTagInvalidationMessage" computerName="XPS13" duration="00:00:00.0334165" startTime="2025-09-26T16:25:05.0489061+02:00" endTime="2025-09-26T16:25:05.1368563+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="48cdaa0d-b169-48d2-8afe-660ebd869fcf" />
+    <UnitTestResult executionId="b84f50a3-b70f-4184-be52-93cc4ea6f516" testId="0cbc4890-0fe6-a90e-6f2d-f9fc42a1c547" testName="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.UnsubscribeAsync_ShouldStopReceivingMessages" computerName="XPS13" duration="00:00:06.6053765" startTime="2025-09-26T16:24:57.0935351+02:00" endTime="2025-09-26T16:25:05.0220963+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b84f50a3-b70f-4184-be52-93cc4ea6f516">
+      <Output>
+        <ErrorInfo>
+          <Message>Expected messagesBeforeUnsubscribe to be greater than 0, but found 0.</Message>
+          <StackTrace>   at FluentAssertions.Execution.LateBoundTestFramework.Throw(String message)&#xD;
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)&#xD;
+   at FluentAssertions.Execution.AssertionScope.AddPreFormattedFailure(String formattedFailureMessage)&#xD;
+   at FluentAssertions.Execution.AssertionChain.FailWith(Func`1 getFailureReason)&#xD;
+   at FluentAssertions.Execution.AssertionChain.FailWith(Func`1 getFailureReason)&#xD;
+   at FluentAssertions.Execution.AssertionChain.FailWith(String message, Object[] args)&#xD;
+   at FluentAssertions.Numeric.NumericAssertionsBase`3.BeGreaterThan(T expected, String because, Object[] becauseArgs)&#xD;
+   at MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.UnsubscribeAsync_ShouldStopReceivingMessages() in C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\Tests\SqlServerBackplaneIntegrationTests.cs:line 316&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="ed7aaacf-55fb-45cc-8dbb-72da5258d397" testId="01fea668-ba01-bc73-79bd-17a2ccd0b1ee" testName="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.InstanceId_ShouldBeUniquePerInstance" computerName="XPS13" duration="00:00:00.0039305" startTime="2025-09-26T16:25:42.3874967+02:00" endTime="2025-09-26T16:25:42.4931930+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ed7aaacf-55fb-45cc-8dbb-72da5258d397" />
+    <UnitTestResult executionId="07d6bad9-5881-48a9-b522-c26c8256086a" testId="a802d79b-eb89-d9aa-aeb2-a76d910ae7ac" testName="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.PublishInvalidationAsync_ShouldStoreInvalidationMessage" computerName="XPS13" duration="00:00:00.0152463" startTime="2025-09-26T16:25:26.6311028+02:00" endTime="2025-09-26T16:25:26.7404026+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="07d6bad9-5881-48a9-b522-c26c8256086a" />
+    <UnitTestResult executionId="e8b91a28-ac97-4b9d-b671-08c589a8f2b6" testId="0acc6aa0-e823-9065-4795-d0909e0f8008" testName="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveTagInvalidationMessages" computerName="XPS13" duration="00:00:15.5370275" startTime="2025-09-26T16:25:26.7410975+02:00" endTime="2025-09-26T16:25:42.3833091+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e8b91a28-ac97-4b9d-b671-08c589a8f2b6">
+      <Output>
+        <ErrorInfo>
+          <Message>System.TimeoutException : The operation has timed out.</Message>
+          <StackTrace>   at MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveTagInvalidationMessages() in C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\Tests\SqlServerBackplaneIntegrationTests.cs:line 152&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="7ab86b89-c17e-4a95-a65e-63703f6a136c" testId="196d75bf-8836-136e-e702-ae26320df268" testName="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveInvalidationMessages" computerName="XPS13" duration="00:00:15.2294953" startTime="2025-09-26T16:25:11.3533587+02:00" endTime="2025-09-26T16:25:26.6279036+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7ab86b89-c17e-4a95-a65e-63703f6a136c">
+      <Output>
+        <ErrorInfo>
+          <Message>System.TimeoutException : The operation has timed out.</Message>
+          <StackTrace>   at MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveInvalidationMessages() in C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\Tests\SqlServerBackplaneIntegrationTests.cs:line 88&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="af5a7ea2-b47a-44fc-a65b-12f1ef5868a1" testId="95acadfb-2da0-ce32-3f16-e522e8e05f59" testName="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.BackplaneCoordination_ShouldInvalidateAcrossInstances" computerName="XPS13" duration="00:00:06.1253608" startTime="2025-09-26T16:25:05.1387434+02:00" endTime="2025-09-26T16:25:11.3519516+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="af5a7ea2-b47a-44fc-a65b-12f1ef5868a1" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveInvalidationMessages" storage="c:\dev\methodcache\methodcache.providers.sqlserver.integrationtests\bin\debug\net9.0\methodcache.providers.sqlserver.integrationtests.dll" id="196d75bf-8836-136e-e702-ae26320df268">
+      <Execution id="7ab86b89-c17e-4a95-a65e-63703f6a136c" />
+      <TestMethod codeBase="C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\bin\Debug\net9.0\MethodCache.Providers.SqlServer.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests" name="SubscribeAsync_ShouldReceiveInvalidationMessages" />
+    </UnitTest>
+    <UnitTest name="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.InstanceId_ShouldBeUniquePerInstance" storage="c:\dev\methodcache\methodcache.providers.sqlserver.integrationtests\bin\debug\net9.0\methodcache.providers.sqlserver.integrationtests.dll" id="01fea668-ba01-bc73-79bd-17a2ccd0b1ee">
+      <Execution id="ed7aaacf-55fb-45cc-8dbb-72da5258d397" />
+      <TestMethod codeBase="C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\bin\Debug\net9.0\MethodCache.Providers.SqlServer.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests" name="InstanceId_ShouldBeUniquePerInstance" />
+    </UnitTest>
+    <UnitTest name="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.PublishInvalidationAsync_ShouldStoreInvalidationMessage" storage="c:\dev\methodcache\methodcache.providers.sqlserver.integrationtests\bin\debug\net9.0\methodcache.providers.sqlserver.integrationtests.dll" id="a802d79b-eb89-d9aa-aeb2-a76d910ae7ac">
+      <Execution id="07d6bad9-5881-48a9-b522-c26c8256086a" />
+      <TestMethod codeBase="C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\bin\Debug\net9.0\MethodCache.Providers.SqlServer.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests" name="PublishInvalidationAsync_ShouldStoreInvalidationMessage" />
+    </UnitTest>
+    <UnitTest name="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveTagInvalidationMessages" storage="c:\dev\methodcache\methodcache.providers.sqlserver.integrationtests\bin\debug\net9.0\methodcache.providers.sqlserver.integrationtests.dll" id="0acc6aa0-e823-9065-4795-d0909e0f8008">
+      <Execution id="e8b91a28-ac97-4b9d-b671-08c589a8f2b6" />
+      <TestMethod codeBase="C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\bin\Debug\net9.0\MethodCache.Providers.SqlServer.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests" name="SubscribeAsync_ShouldReceiveTagInvalidationMessages" />
+    </UnitTest>
+    <UnitTest name="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.BackplaneCoordination_ShouldInvalidateAcrossInstances" storage="c:\dev\methodcache\methodcache.providers.sqlserver.integrationtests\bin\debug\net9.0\methodcache.providers.sqlserver.integrationtests.dll" id="95acadfb-2da0-ce32-3f16-e522e8e05f59">
+      <Execution id="af5a7ea2-b47a-44fc-a65b-12f1ef5868a1" />
+      <TestMethod codeBase="C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\bin\Debug\net9.0\MethodCache.Providers.SqlServer.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests" name="BackplaneCoordination_ShouldInvalidateAcrossInstances" />
+    </UnitTest>
+    <UnitTest name="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.UnsubscribeAsync_ShouldStopReceivingMessages" storage="c:\dev\methodcache\methodcache.providers.sqlserver.integrationtests\bin\debug\net9.0\methodcache.providers.sqlserver.integrationtests.dll" id="0cbc4890-0fe6-a90e-6f2d-f9fc42a1c547">
+      <Execution id="b84f50a3-b70f-4184-be52-93cc4ea6f516" />
+      <TestMethod codeBase="C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\bin\Debug\net9.0\MethodCache.Providers.SqlServer.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests" name="UnsubscribeAsync_ShouldStopReceivingMessages" />
+    </UnitTest>
+    <UnitTest name="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.PublishTagInvalidationAsync_ShouldStoreTagInvalidationMessage" storage="c:\dev\methodcache\methodcache.providers.sqlserver.integrationtests\bin\debug\net9.0\methodcache.providers.sqlserver.integrationtests.dll" id="8e915f48-3591-3f35-1b34-110c0c422c40">
+      <Execution id="48cdaa0d-b169-48d2-8afe-660ebd869fcf" />
+      <TestMethod codeBase="C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\bin\Debug\net9.0\MethodCache.Providers.SqlServer.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests" name="PublishTagInvalidationAsync_ShouldStoreTagInvalidationMessage" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="8e915f48-3591-3f35-1b34-110c0c422c40" executionId="48cdaa0d-b169-48d2-8afe-660ebd869fcf" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0cbc4890-0fe6-a90e-6f2d-f9fc42a1c547" executionId="b84f50a3-b70f-4184-be52-93cc4ea6f516" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="01fea668-ba01-bc73-79bd-17a2ccd0b1ee" executionId="ed7aaacf-55fb-45cc-8dbb-72da5258d397" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a802d79b-eb89-d9aa-aeb2-a76d910ae7ac" executionId="07d6bad9-5881-48a9-b522-c26c8256086a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0acc6aa0-e823-9065-4795-d0909e0f8008" executionId="e8b91a28-ac97-4b9d-b671-08c589a8f2b6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="196d75bf-8836-136e-e702-ae26320df268" executionId="7ab86b89-c17e-4a95-a65e-63703f6a136c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="95acadfb-2da0-ce32-3f16-e522e8e05f59" executionId="af5a7ea2-b47a-44fc-a65b-12f1ef5868a1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="7" executed="7" passed="4" failed="3" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 9.0.8)&#xD;
+[xUnit.net 00:00:00.10]   Discovering: MethodCache.Providers.SqlServer.IntegrationTests&#xD;
+[xUnit.net 00:00:00.15]   Discovered:  MethodCache.Providers.SqlServer.IntegrationTests&#xD;
+[xUnit.net 00:00:00.17]   Starting:    MethodCache.Providers.SqlServer.IntegrationTests&#xD;
+Checking Docker availability at: npipe://./pipe/docker_engine&#xD;
+Starting SQL Server test container...&#xD;
+[testcontainers.org 00:00:00.13] Connected to Docker:&#xD;
+  Host: npipe://./pipe/docker_engine&#xD;
+  Server Version: 28.4.0&#xD;
+  Kernel Version: 6.6.87.2-microsoft-standard-WSL2&#xD;
+  API Version: 1.51&#xD;
+  Operating System: Docker Desktop&#xD;
+  Total Memory: 15.42 GB&#xD;
+  Labels: &#xD;
+    com.docker.desktop.address=npipe://\\.\pipe\docker_cli&#xD;
+[testcontainers.org 00:00:00.13] Reuse is an experimental feature. For more information, visit: https://dotnet.testcontainers.org/api/resource_reuse/&#xD;
+[testcontainers.org 00:00:00.17] Reusable resource found&#xD;
+[testcontainers.org 00:00:00.24] Start Docker container f2e76b3a6482&#xD;
+[testcontainers.org 00:00:00.27] Wait for Docker container f2e76b3a6482 to complete readiness checks&#xD;
+[testcontainers.org 00:00:00.29] Execute "/bin/sh -c true &amp;&amp; (grep -i ':0*599' /proc/net/tcp* || nc -vz -w 1 localhost 1433 || /bin/bash -c '&lt;/dev/tcp/localhost/1433')" at Docker container f2e76b3a6482&#xD;
+[testcontainers.org 00:00:00.44] Execute "/bin/sh -c /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q "SELECT 1" -C -l 3" at Docker container f2e76b3a6482&#xD;
+[testcontainers.org 00:00:00.55] Docker container f2e76b3a6482 ready&#xD;
+SQL Server container started in 0,5s&#xD;
+[testcontainers.org 00:00:00.55] Execute "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -C -Q EXEC sp_configure 'show advanced options', 1; RECONFIGURE;" at Docker container f2e76b3a6482&#xD;
+[testcontainers.org 00:00:00.68] Execute "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -C -Q EXEC sp_configure 'force encryption', 0; RECONFIGURE;" at Docker container f2e76b3a6482&#xD;
+Raw SQL Server container connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Trust Server Certificate=True&#xD;
+Using SQL Server connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Pooling=True;Min Pool Size=1;Max Pool Size=10;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Command Timeout=30&#xD;
+     Warning:&#xD;
+     The component "Fluent Assertions" is governed by the rules defined in the Xceed License Agreement and&#xD;
+     the Xceed Fluent Assertions Community License. You may use Fluent Assertions free of charge for&#xD;
+     non-commercial use only. An active subscription is required to use Fluent Assertions for commercial use.&#xD;
+     Please contact Xceed Sales mailto:sales@xceed.com to acquire a subscription at a very low cost.&#xD;
+     A paid commercial license supports the development and continued increasing support of&#xD;
+     Fluent Assertions users under both commercial and community licenses. Help us&#xD;
+     keep Fluent Assertions at the forefront of unit testing.&#xD;
+     For more information, visit https://xceed.com/products/unit-testing/fluent-assertions/&#xD;
+Raw SQL Server container connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Trust Server Certificate=True&#xD;
+Using SQL Server connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Pooling=True;Min Pool Size=1;Max Pool Size=10;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Command Timeout=30&#xD;
+[xUnit.net 00:00:08.14]       Expected messagesBeforeUnsubscribe to be greater than 0, but found 0.&#xD;
+[xUnit.net 00:00:08.14]       Stack Trace:&#xD;
+[xUnit.net 00:00:08.14]            at FluentAssertions.Execution.LateBoundTestFramework.Throw(String message)&#xD;
+[xUnit.net 00:00:08.14]            at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)&#xD;
+[xUnit.net 00:00:08.14]            at FluentAssertions.Execution.AssertionScope.AddPreFormattedFailure(String formattedFailureMessage)&#xD;
+[xUnit.net 00:00:08.14]            at FluentAssertions.Execution.AssertionChain.FailWith(Func`1 getFailureReason)&#xD;
+[xUnit.net 00:00:08.14]            at FluentAssertions.Execution.AssertionChain.FailWith(Func`1 getFailureReason)&#xD;
+[xUnit.net 00:00:08.14]            at FluentAssertions.Execution.AssertionChain.FailWith(String message, Object[] args)&#xD;
+[xUnit.net 00:00:08.14]            at FluentAssertions.Numeric.NumericAssertionsBase`3.BeGreaterThan(T expected, String because, Object[] becauseArgs)&#xD;
+[xUnit.net 00:00:08.14]         C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\Tests\SqlServerBackplaneIntegrationTests.cs(316,0): at MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.UnsubscribeAsync_ShouldStopReceivingMessages()&#xD;
+[xUnit.net 00:00:08.14]         --- End of stack trace from previous location ---&#xD;
+Raw SQL Server container connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Trust Server Certificate=True&#xD;
+Using SQL Server connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Pooling=True;Min Pool Size=1;Max Pool Size=10;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Command Timeout=30&#xD;
+Raw SQL Server container connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Trust Server Certificate=True&#xD;
+Using SQL Server connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Pooling=True;Min Pool Size=1;Max Pool Size=10;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Command Timeout=30&#xD;
+Raw SQL Server container connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Trust Server Certificate=True&#xD;
+Using SQL Server connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Pooling=True;Min Pool Size=1;Max Pool Size=10;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Command Timeout=30&#xD;
+[xUnit.net 00:00:29.74]       System.TimeoutException : The operation has timed out.&#xD;
+[xUnit.net 00:00:29.74]       Stack Trace:&#xD;
+[xUnit.net 00:00:29.74]         C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\Tests\SqlServerBackplaneIntegrationTests.cs(88,0): at MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveInvalidationMessages()&#xD;
+[xUnit.net 00:00:29.74]         --- End of stack trace from previous location ---&#xD;
+Raw SQL Server container connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Trust Server Certificate=True&#xD;
+Using SQL Server connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Pooling=True;Min Pool Size=1;Max Pool Size=10;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Command Timeout=30&#xD;
+Raw SQL Server container connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Trust Server Certificate=True&#xD;
+Using SQL Server connection string: Data Source=127.0.0.1,56776;Initial Catalog=master;User ID=sa;Password=********;Pooling=True;Min Pool Size=1;Max Pool Size=10;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Command Timeout=30&#xD;
+[xUnit.net 00:00:45.50]       System.TimeoutException : The operation has timed out.&#xD;
+[xUnit.net 00:00:45.50]       Stack Trace:&#xD;
+[xUnit.net 00:00:45.50]         C:\dev\MethodCache\MethodCache.Providers.SqlServer.IntegrationTests\Tests\SqlServerBackplaneIntegrationTests.cs(152,0): at MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveTagInvalidationMessages()&#xD;
+[xUnit.net 00:00:45.50]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:45.63]   Finished:    MethodCache.Providers.SqlServer.IntegrationTests&#xD;
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="XPS13" outcome="Error" timestamp="2025-09-26T16:25:05.0247580+02:00">
+        <Text>[xUnit.net 00:00:08.13]     MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.UnsubscribeAsync_ShouldStopReceivingMessages [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="XPS13" outcome="Error" timestamp="2025-09-26T16:25:26.6289846+02:00">
+        <Text>[xUnit.net 00:00:29.74]     MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveInvalidationMessages [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="XPS13" outcome="Error" timestamp="2025-09-26T16:25:42.3849667+02:00">
+        <Text>[xUnit.net 00:00:45.49]     MethodCache.Providers.SqlServer.IntegrationTests.Tests.SqlServerBackplaneIntegrationTests.SubscribeAsync_ShouldReceiveTagInvalidationMessages [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

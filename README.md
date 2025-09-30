@@ -333,15 +333,14 @@ Configuration precedence:
 
 ## 📖 Documentation & Samples
 
-- [Configuration Guide](CONFIGURATION_GUIDE.md) - Comprehensive configuration options
-- [Fluent API Specification](FLUENT_API_SPEC.md) - Complete fluent API reference
-- [Method Chaining Examples](method_chaining_examples.cs) - NEW! Real-world method chaining patterns
-- [Key Generator Selection Guide](key_generator_selection_examples.cs) - Choose the right key generator
-- [Simplified API Examples](simplified_api_examples.cs) - FluentCache-like simplicity with MethodCache power
-- [Third‑Party Caching Scenarios](THIRD_PARTY_CACHING.md) - Cache external libraries
-- [ETag Usage Examples](ETAG_USAGE_EXAMPLES.md) - HTTP ETag integration
-- [Sample App](MethodCache.SampleApp) - Working examples
-- [Demo Project](MethodCache.Demo) - Configuration-driven demonstrations
+- [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md) - Comprehensive configuration options
+- [Fluent API Specification](docs/user-guide/FLUENT_API.md) - Complete fluent API reference
+- [Method Chaining Examples](docs/examples/basic-usage/method_chaining_examples.cs) - NEW! Real-world method chaining patterns
+- [Key Generator Selection Guide](docs/examples/basic-usage/key_generator_selection_examples.cs) - Choose the right key generator
+- [Simplified API Examples](docs/examples/basic-usage/simplified_api_examples.cs) - FluentCache-like simplicity with MethodCache power
+- [Third‑Party Caching Scenarios](docs/user-guide/THIRD_PARTY_CACHING.md) - Cache external libraries
+- [Sample App](MethodCache.SampleApp/) - Working examples
+- [Demo Project](MethodCache.Demo/) - Configuration-driven demonstrations
 
 ---
 
@@ -355,17 +354,5 @@ Built with ❤️ for the .NET community.
 
 
 
-
-
-## 🚀 Performance Benchmarks
-
-Last updated: 2025-09-20_20-23-44 (commit: `ffc8b75`)
-
-| Benchmark | Mean | Error | Allocated |
-|-----------|------|-------|-----------|
-| CacheHit | 2392263.67 ns | ±0.00 | 1408 B |
-| CacheHitCold | 2382623.43 ns | ±0.00 | 1510 B |
-| CacheMiss | 1173469.39 ns | ±0.00 | 891 B |
-| NoCaching | 1420264.04 ns | ±0.00 | 786 B |
 
 

@@ -95,18 +95,7 @@ dotnet test MethodCache.Providers.SqlServer.IntegrationTests
 dotnet test MethodCache.Providers.SqlServer.Tests
 ```
 
-## 📊 **Test Categories & Expected Performance**
 
-| Test Category | Count | External SQL | Docker SQL |
-|---------------|-------|--------------|------------|
-| **Table Management** | 8 tests | ~10 seconds | ~5 minutes* |
-| **Storage Provider** | 8 tests | ~15 seconds | ~5 minutes* |
-| **Service Extensions** | 9 tests | ~20 seconds | ~5 minutes* |
-| **Backplane** | 7 tests | ~25 seconds | ~6 minutes* |
-| **Health Checks** | 7 tests | ~10 seconds | ~5 minutes* |
-| **Hybrid Cache** | 6 tests | ~15 seconds | ~5 minutes* |
-
-*_First run with Docker includes ~3-5 minute container startup time_
 
 ## 🔧 **Updated Architecture Tests**
 
@@ -162,23 +151,7 @@ dotnet test MethodCache.Providers.SqlServer.IntegrationTests
 dotnet test MethodCache.Providers.SqlServer.Tests
 ```
 
-### **For CI/CD Pipeline**
 
-```yaml
-# GitHub Actions / Azure DevOps
-steps:
-  - name: Start SQL Server
-    run: |
-      docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Passw0rd" \
-        -p 1433:1433 -d --platform linux/amd64 \
-        mcr.microsoft.com/mssql/server:2022-latest
-      sleep 30 # Wait for startup
-
-  - name: Run Integration Tests
-    run: dotnet test MethodCache.Providers.SqlServer.IntegrationTests
-    env:
-      METHODCACHE_SQLSERVER_URL: "Server=localhost,1433;Database=master;User Id=sa;Password=YourStrong@Passw0rd;"
-```
 
 ### **macOS Apple Silicon Optimization**
 

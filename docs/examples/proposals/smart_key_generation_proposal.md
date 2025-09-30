@@ -1,5 +1,7 @@
 # Smart Key Generation Enhancement
 
+> **Note**: The Smart Key Generation feature proposed in this document has been implemented. See `MethodCache.Core/Fluent/CacheBuilder.cs` for details.
+
 ## Current vs Smart Key Generation
 
 ### Current Behavior

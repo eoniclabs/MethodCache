@@ -15,42 +15,42 @@ public interface IStorageProvider
     /// <summary>
     /// Gets a value from storage.
     /// </summary>
-    Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
+    ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a value in storage with expiration.
     /// </summary>
-    Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default);
+    ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a value in storage with expiration and tags.
     /// </summary>
-    Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default);
+    ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a value from storage.
     /// </summary>
-    Task RemoveAsync(string key, CancellationToken cancellationToken = default);
+    ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes all values associated with a tag.
     /// </summary>
-    Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default);
+    ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a key exists in storage.
     /// </summary>
-    Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
+    ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the health status of this storage provider.
     /// </summary>
-    Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default);
+    ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets storage statistics if supported.
     /// </summary>
-    Task<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default);
+    ValueTask<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
