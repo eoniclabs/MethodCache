@@ -37,6 +37,14 @@ import subprocess
 import requests
 from datetime import datetime
 
+# Fix stdout encoding for Windows to support emojis
+if sys.platform == 'win32':
+    import io
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding='utf-8')
+    if isinstance(sys.stderr, io.TextIOWrapper):
+        sys.stderr.reconfigure(encoding='utf-8')
+
 # --- REST/GQL endpoints for new batch features ---
 REST = "https://api.github.com"
 GQL = "https://api.github.com/graphql"
