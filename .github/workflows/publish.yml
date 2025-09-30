@@ -44,5 +44,22 @@ jobs:
       - name: Pack
         run: dotnet pack --configuration Release --no-build -o ./artifacts
 
+      - name: Publish to NuGet.org
+        if: ${{ secrets.NUGET_API_KEY != '' }}
+        run: dotnet nuget push "./artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
       - name: Publish to GitHub Packages
-        run: dotnet nuget push "./artifacts/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "https://nuget.pkg.github.com/eoniclabs/index.json"
+        run: dotnet nuget push "./artifacts/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "https://nuget.pkg.github.com/eoniclabs/index.json" --skip-duplicate
+
+      - name: Make GitHub Packages Public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract package names from .nupkg files and set visibility to public
+          for package in ./artifacts/*.nupkg; do
+            package_name=$(basename "$package" | sed -E 's/\.([0-9]+\.[0-9]+\.[0-9]+.*)\.nupkg$//')
+            echo "Setting $package_name to public..."
+            gh api --method PATCH -H "Accept: application/vnd.github+json" \
+              "/orgs/eoniclabs/packages/nuget/$package_name" \
+              -f visibility='public' || echo "Failed to set $package_name to public (may not exist yet or already public)"
+          done
