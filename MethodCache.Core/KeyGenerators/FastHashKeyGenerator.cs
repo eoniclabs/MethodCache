@@ -8,6 +8,35 @@ using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.KeyGenerators;
 
+/// <summary>
+/// High-performance cache key generator using FNV-1a hashing algorithm.
+/// Optimized for production scenarios with minimal allocations and fastest execution (~50ns).
+/// </summary>
+/// <remarks>
+/// Performance characteristics:
+/// - ~50ns per key generation
+/// - Minimal heap allocations (uses ArrayPool)
+/// - Zero-allocation fast path for simple types
+///
+/// Use FastHashKeyGenerator when:
+/// - Performance is critical
+/// - Cache keys don't need to be human-readable
+/// - You have high-throughput caching scenarios
+///
+/// For debugging or when you need readable keys, use JsonKeyGenerator instead.
+/// </remarks>
+/// <example>
+/// <code>
+/// services.AddMethodCache(config =>
+/// {
+///     config.DefaultKeyGenerator&lt;FastHashKeyGenerator&gt;();
+/// });
+///
+/// // Or use with attribute
+/// [Cache(KeyGeneratorType = typeof(FastHashKeyGenerator))]
+/// Task&lt;User&gt; GetUserAsync(int userId);
+/// </code>
+/// </example>
 public class FastHashKeyGenerator : ICacheKeyGenerator
 {
     // Fast non-cryptographic hash constants (FNV-1a variant)

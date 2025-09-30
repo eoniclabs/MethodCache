@@ -149,7 +149,15 @@ namespace MethodCache.Core.Extensions
             CancellationToken cancellationToken = default)
         {
             if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
-            if (string.IsNullOrWhiteSpace(methodName)) throw new ArgumentException("Method name must be provided.", nameof(methodName));
+            if (string.IsNullOrWhiteSpace(methodName))
+            {
+                throw new ArgumentException(
+                    "Method name cannot be null or whitespace. " +
+                    "Provide a descriptive method name for cache key generation (e.g., 'GetUser', 'FetchOrders'). " +
+                    "This name is used to generate unique cache keys. " +
+                    "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#manual-caching",
+                    nameof(methodName));
+            }
             if (args == null) throw new ArgumentNullException(nameof(args));
             if (factory == null) throw new ArgumentNullException(nameof(factory));
 
@@ -228,7 +236,16 @@ namespace MethodCache.Core.Extensions
             CancellationToken cancellationToken = default)
         {
             if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key must be provided.", nameof(key));
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentException(
+                    "Cache key cannot be null or whitespace. " +
+                    "Provide a unique string identifier for this cache entry. " +
+                    "Keys should be descriptive and unique (e.g., 'user:123', 'product:456:details'). " +
+                    "Consider using a key generator or manual key construction. " +
+                    "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#cache-keys",
+                    nameof(key));
+            }
             if (factory == null) throw new ArgumentNullException(nameof(factory));
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -294,7 +311,16 @@ namespace MethodCache.Core.Extensions
             CancellationToken cancellationToken = default)
         {
             if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key must be provided.", nameof(key));
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentException(
+                    "Cache key cannot be null or whitespace. " +
+                    "Provide a unique string identifier for this cache entry. " +
+                    "Keys should be descriptive and unique (e.g., 'user:123', 'product:456:details'). " +
+                    "Consider using a key generator or manual key construction. " +
+                    "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#cache-keys",
+                    nameof(key));
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
 
