@@ -18,6 +18,8 @@ namespace MethodCache.HttpCaching;
 /// </summary>
 public class HttpCacheHandler : DelegatingHandler
 {
+    // Instance-level variant tracking prevents memory leaks across handler instances
+    // Each handler instance manages its own variant limits independently
     private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _variantIndex = new(StringComparer.Ordinal);
 
     private readonly IHttpCacheStorage _storage;
@@ -570,8 +572,11 @@ public class HttpCacheHandler : DelegatingHandler
             return string.Empty;
         }
 
-        // Use Span to avoid allocations
-        Span<char> buffer = stackalloc char[headerName.Length];
+        // Use Span to avoid allocations for small header names; fall back to heap for large ones
+        const int StackAllocThreshold = 128;
+        Span<char> buffer = headerName.Length <= StackAllocThreshold
+            ? stackalloc char[headerName.Length]
+            : new char[headerName.Length];
         headerName.AsSpan().CopyTo(buffer);
 
         var capitalizeNext = true;
