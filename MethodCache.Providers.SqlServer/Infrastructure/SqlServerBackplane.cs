@@ -187,6 +187,8 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
             await using var connection = await _connectionManager.GetConnectionAsync();
 
             // Get all messages since last poll from other instances
+            // Use a 2-second overlap window to handle clock skew and timing edge cases
+            // Deduplication via _processedMessageIds prevents processing messages twice
             const string selectSql = @"
                 SELECT [Id], [InstanceId], [MessageType], [TargetKey], [TargetTag], [CreatedAt]
                 FROM {0}
@@ -200,7 +202,9 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
             {
                 CommandTimeout = _options.CommandTimeoutSeconds
             };
-            command.Parameters.AddWithValue("@LastPollTime", _lastPollTime);
+            // Query with 2-second safety margin to catch messages that might be at boundary
+            var queryTime = _lastPollTime.AddSeconds(-2);
+            command.Parameters.AddWithValue("@LastPollTime", queryTime);
             command.Parameters.AddWithValue("@CurrentInstanceId", InstanceId);
 
             var messages = new List<BackplaneMessage>();
