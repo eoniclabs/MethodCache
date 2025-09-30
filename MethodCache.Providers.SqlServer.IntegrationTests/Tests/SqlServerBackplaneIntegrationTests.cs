@@ -143,16 +143,13 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Give the subscription and polling mechanism time to initialize
-        await Task.Delay(500); // Increased delay to ensure polling starts
-
-        // Publish from first instance
+        // Publish immediately after subscribing
         var testTag = "cross-instance-test-tag";
         await backplane1.PublishTagInvalidationAsync(testTag);
 
         // Wait for message to be received (with timeout)
-        // Allow extra time for polling-based delivery
-        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        // The immediate poll from SubscribeAsync plus the timer should pick this up
+        var received = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
         received.Should().BeTrue();
@@ -300,12 +297,11 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Give the subscription and polling mechanism time to initialize
-        await Task.Delay(500); // Increased delay to ensure polling starts
-
-        // Publish a message and verify it's received
+        // Publish a message immediately after subscribing
         await backplane1.PublishInvalidationAsync("test-before-unsubscribe");
-        await Task.Delay(TimeSpan.FromSeconds(3)); // Wait for polling
+
+        // Wait for message to be received (with reasonable timeout)
+        await Task.Delay(TimeSpan.FromSeconds(1));
 
         var messagesBeforeUnsubscribe = receivedMessages.Count;
 
