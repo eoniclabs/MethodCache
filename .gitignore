@@ -28,6 +28,16 @@ packages/
 *.ipr
 *.iws
 .DS_Store
+*.DotSettings.user
+
+# Claude Code
+.claude/
+
+# VSCode
+.vscode/
+
+# User config
+.config/
 
 # BenchmarkDotNet artifacts
 BenchmarkDotNet.Artifacts/
