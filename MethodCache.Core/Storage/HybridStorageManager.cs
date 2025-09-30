@@ -206,73 +206,73 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
     public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         var l1Expiration = CalculateL1Expiration(expiration);
-        var tasks = new List<ValueTask>
-        {
-            _l1Storage.SetAsync(key, value, l1Expiration, tags, cancellationToken)
-        };
 
-        // Set in L2 if enabled
-        if (_l2Storage != null && _options.L2Enabled)
+        // L1 always executes
+        var l1Task = _l1Storage.SetAsync(key, value, l1Expiration, tags, cancellationToken);
+
+        // Determine which tasks to execute
+        var hasL2 = _l2Storage != null && _options.L2Enabled;
+        var hasL3 = _l3Storage != null && _options.L3Enabled;
+        ValueTask l2Task = default;
+        ValueTask l3Task = default;
+        bool scheduleL2 = false, scheduleL3 = false;
+
+        if (hasL2)
         {
-            var scheduled = false;
-            if (_options.EnableAsyncL2Writes)
+            scheduleL2 = _options.EnableAsyncL2Writes && TryScheduleAsyncWrite(ct => WriteToL2Async(key, value, expiration, tags, ct));
+            if (!scheduleL2)
             {
-                scheduled = TryScheduleAsyncWrite(ct => WriteToL2Async(key, value, expiration, tags, ct));
-                if (!scheduled)
-                {
+                if (_options.EnableAsyncL2Writes)
                     _logger.LogDebug("Async L2 write queue full; performing synchronous write for key {Key}", key);
-                }
-            }
-
-            if (!scheduled)
-            {
-                tasks.Add(WriteToL2Async(key, value, expiration, tags, cancellationToken));
+                l2Task = WriteToL2Async(key, value, expiration, tags, cancellationToken);
             }
         }
 
-        // Set in L3 if enabled
-        if (_l3Storage != null && _options.L3Enabled)
+        if (hasL3)
         {
             var l3Expiration = CalculateL3Expiration(expiration);
-
-            var scheduled = false;
-            if (_options.EnableAsyncL3Writes)
+            scheduleL3 = _options.EnableAsyncL3Writes && TryScheduleAsyncWrite(ct => WriteToL3Async(key, value, l3Expiration, tags, ct));
+            if (!scheduleL3)
             {
-                scheduled = TryScheduleAsyncWrite(ct => WriteToL3Async(key, value, l3Expiration, tags, ct));
-                if (!scheduled)
-                {
+                if (_options.EnableAsyncL3Writes)
                     _logger.LogDebug("Async L3 write queue full; performing synchronous write for key {Key}", key);
-                }
-            }
-
-            if (!scheduled)
-            {
-                tasks.Add(WriteToL3Async(key, value, l3Expiration, tags, cancellationToken));
+                l3Task = WriteToL3Async(key, value, l3Expiration, tags, cancellationToken);
             }
         }
 
-        await AwaitAllAsync(tasks).ConfigureAwait(false);
+        // Await based on what's actually needed (avoids List allocation)
+        await l1Task.ConfigureAwait(false);
+        if (hasL2 && !scheduleL2) await l2Task.ConfigureAwait(false);
+        if (hasL3 && !scheduleL3) await l3Task.ConfigureAwait(false);
+
         _logger.LogDebug("Set key {Key} in hybrid storage with expiration {Expiration}", key, expiration);
     }
 
     public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
-        var tasks = new List<ValueTask>
-        {
-            _l1Storage.RemoveAsync(key, cancellationToken)
-        };
+        // L1 always executes
+        var l1Task = _l1Storage.RemoveAsync(key, cancellationToken);
 
-        if (_l2Storage != null && _options.L2Enabled)
+        // Determine which tasks to execute
+        var hasL2 = _l2Storage != null && _options.L2Enabled;
+        var hasL3 = _l3Storage != null && _options.L3Enabled;
+        ValueTask l2Task = default;
+        ValueTask l3Task = default;
+
+        if (hasL2)
         {
-            tasks.Add(WriteToL2Async(() => _l2Storage.RemoveAsync(key, cancellationToken), cancellationToken));
+            l2Task = WriteToL2Async(() => _l2Storage!.RemoveAsync(key, cancellationToken), cancellationToken);
         }
 
-        if (_l3Storage != null && _options.L3Enabled)
+        if (hasL3)
         {
-            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveAsync(key, cancellationToken), cancellationToken));
+            l3Task = WriteToL3Async(() => _l3Storage!.RemoveAsync(key, cancellationToken), cancellationToken);
         }
 
-        await AwaitAllAsync(tasks).ConfigureAwait(false);
+        // Await all tasks that were started
+        await l1Task.ConfigureAwait(false);
+        if (hasL2) await l2Task.ConfigureAwait(false);
+        if (hasL3) await l3Task.ConfigureAwait(false);
 
         // Notify other instances via backplane
         if (_backplane != null && _options.EnableBackplane)
@@ -293,22 +293,29 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
 
     public async ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
-        var tasks = new List<ValueTask>
-        {
-            _l1Storage.RemoveByTagAsync(tag, cancellationToken)
-        };
+        // L1 always executes
+        var l1Task = _l1Storage.RemoveByTagAsync(tag, cancellationToken);
 
-        if (_l2Storage != null && _options.L2Enabled)
+        // Determine which tasks to execute
+        var hasL2 = _l2Storage != null && _options.L2Enabled;
+        var hasL3 = _l3Storage != null && _options.L3Enabled;
+        ValueTask l2Task = default;
+        ValueTask l3Task = default;
+
+        if (hasL2)
         {
-            tasks.Add(WriteToL2Async(() => _l2Storage.RemoveByTagAsync(tag, cancellationToken), cancellationToken));
+            l2Task = WriteToL2Async(() => _l2Storage!.RemoveByTagAsync(tag, cancellationToken), cancellationToken);
         }
 
-        if (_l3Storage != null && _options.L3Enabled)
+        if (hasL3)
         {
-            tasks.Add(WriteToL3Async(() => _l3Storage.RemoveByTagAsync(tag, cancellationToken), cancellationToken));
+            l3Task = WriteToL3Async(() => _l3Storage!.RemoveByTagAsync(tag, cancellationToken), cancellationToken);
         }
 
-        await AwaitAllAsync(tasks).ConfigureAwait(false);
+        // Await all tasks that were started
+        await l1Task.ConfigureAwait(false);
+        if (hasL2) await l2Task.ConfigureAwait(false);
+        if (hasL3) await l3Task.ConfigureAwait(false);
 
         // Notify other instances via backplane
         if (_backplane != null && _options.EnableBackplane)
@@ -329,8 +336,9 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
 
     public async ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
-        // Check L1 first
-        if (_l1Storage.Exists(key))
+        // Check L1 first (async to avoid blocking)
+        var l1Result = await _l1Storage.GetAsync<object>(key, cancellationToken).ConfigureAwait(false);
+        if (l1Result != null)
         {
             return true;
         }
@@ -690,10 +698,21 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
 
     private static async ValueTask AwaitAllAsync(List<ValueTask> tasks)
     {
-        foreach (var task in tasks)
+        if (tasks.Count == 0) return;
+        if (tasks.Count == 1)
         {
-            await task.ConfigureAwait(false);
+            await tasks[0].ConfigureAwait(false);
+            return;
         }
+
+        // Convert ValueTasks to Tasks for parallel execution
+        var regularTasks = new Task[tasks.Count];
+        for (int i = 0; i < tasks.Count; i++)
+        {
+            regularTasks[i] = tasks[i].AsTask();
+        }
+
+        await Task.WhenAll(regularTasks).ConfigureAwait(false);
     }
 
     private async Task ProcessAsyncWritesAsync(CancellationToken cancellationToken)

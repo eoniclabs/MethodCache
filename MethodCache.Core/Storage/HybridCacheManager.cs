@@ -72,18 +72,14 @@ public class HybridCacheManager : IHybridCacheManager
 
     public async Task InvalidateByTagsAsync(params string[] tags)
     {
-        foreach (var tag in tags)
-        {
-            await _storageProvider.RemoveByTagAsync(tag);
-        }
+        var tasks = tags.Select(tag => _storageProvider.RemoveByTagAsync(tag).AsTask());
+        await Task.WhenAll(tasks);
     }
 
     public async Task InvalidateByKeysAsync(params string[] keys)
     {
-        foreach (var key in keys)
-        {
-            await _storageProvider.RemoveAsync(key);
-        }
+        var tasks = keys.Select(key => _storageProvider.RemoveAsync(key).AsTask());
+        await Task.WhenAll(tasks);
     }
 
     public async Task InvalidateByTagPatternAsync(string pattern)
@@ -146,15 +142,19 @@ public class HybridCacheManager : IHybridCacheManager
 
     public async Task SetInBothAsync<T>(string key, T value, TimeSpan l1Expiration, TimeSpan l2Expiration)
     {
-        await SetInL1Async(key, value, l1Expiration);
-        await SetInL2Async(key, value, l2Expiration);
+        await Task.WhenAll(
+            SetInL1Async(key, value, l1Expiration),
+            SetInL2Async(key, value, l2Expiration)
+        );
     }
 
     public async Task SetInAllAsync<T>(string key, T value, TimeSpan l1Expiration, TimeSpan l2Expiration, TimeSpan l3Expiration)
     {
-        await SetInL1Async(key, value, l1Expiration);
-        await SetInL2Async(key, value, l2Expiration);
-        await SetInL3Async(key, value, l3Expiration);
+        await Task.WhenAll(
+            SetInL1Async(key, value, l1Expiration),
+            SetInL2Async(key, value, l2Expiration),
+            SetInL3Async(key, value, l3Expiration)
+        );
     }
 
     public async Task InvalidateL1Async(string key)
@@ -180,15 +180,19 @@ public class HybridCacheManager : IHybridCacheManager
 
     public async Task InvalidateBothAsync(string key)
     {
-        await InvalidateL1Async(key);
-        await InvalidateL2Async(key);
+        await Task.WhenAll(
+            InvalidateL1Async(key),
+            InvalidateL2Async(key)
+        );
     }
 
     public async Task InvalidateAllAsync(string key)
     {
-        await InvalidateL1Async(key);
-        await InvalidateL2Async(key);
-        await InvalidateL3Async(key);
+        await Task.WhenAll(
+            InvalidateL1Async(key),
+            InvalidateL2Async(key),
+            InvalidateL3Async(key)
+        );
     }
 
     public async Task WarmL1CacheAsync(params string[] keys)
