@@ -80,7 +80,11 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Publish immediately after subscribing - use unique key per test run
+        // Small delay to allow the immediate poll from SubscribeAsync to complete
+        // This prevents a race where we publish before the initial poll runs
+        await Task.Delay(50);
+
+        // Publish after subscribing - use unique key per test run
         var testKey = $"cross-instance-test-key-{Guid.NewGuid():N}";
         await backplane1.PublishInvalidationAsync(testKey);
 
@@ -143,7 +147,11 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Publish immediately after subscribing - use unique tag per test run
+        // Small delay to allow the immediate poll from SubscribeAsync to complete
+        // This prevents a race where we publish before the initial poll runs
+        await Task.Delay(50);
+
+        // Publish after subscribing - use unique tag per test run
         var testTag = $"cross-instance-test-tag-{Guid.NewGuid():N}";
         await backplane1.PublishTagInvalidationAsync(testTag);
 
