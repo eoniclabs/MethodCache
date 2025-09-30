@@ -307,7 +307,10 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Publish a message immediately after subscribing - use unique key
+        // Small delay to allow the immediate poll from SubscribeAsync to complete
+        await Task.Delay(50);
+
+        // Publish a message after subscribing - use unique key
         var testKey = $"test-before-unsubscribe-{Guid.NewGuid():N}";
         await backplane1.PublishInvalidationAsync(testKey);
 
