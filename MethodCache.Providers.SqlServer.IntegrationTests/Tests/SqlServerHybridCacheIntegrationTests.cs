@@ -296,7 +296,9 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         afterInvalidation1.Should().BeNull("Instance 1 should not find value after backplane propagation");
         afterInvalidation2.Should().BeNull("Instance 2 should not find value after its own RemoveByTagAsync");
 
-        // Cleanup
+        // Cleanup - stop hosted services before disposal
+        await StopHostedServicesAsync(serviceProvider1);
+        await StopHostedServicesAsync(serviceProvider2);
         await serviceProvider1.DisposeAsync();
         await serviceProvider2.DisposeAsync();
     }

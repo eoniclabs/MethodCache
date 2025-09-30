@@ -94,7 +94,9 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         receivedMessages[0].Key.Should().Be(testKey);
         receivedMessages[0].InstanceId.Should().NotBe(backplane2.InstanceId);
 
-        // Cleanup
+        // Cleanup - unsubscribe first to stop polling, then dispose
+        await backplane2.UnsubscribeAsync();
+        await StopHostedServicesAsync(serviceProvider2);
         await serviceProvider2.DisposeAsync();
     }
 
@@ -158,7 +160,8 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         receivedMessages[0].Tag.Should().Be(testTag);
         receivedMessages[0].InstanceId.Should().NotBe(backplane2.InstanceId);
 
-        // Cleanup
+        // Cleanup - unsubscribe first to stop polling, then dispose
+        await backplane2.UnsubscribeAsync();
         await StopHostedServicesAsync(serviceProvider2);
         await serviceProvider2.DisposeAsync();
     }
@@ -221,7 +224,8 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         afterInvalidation1.Should().BeNull();
         afterInvalidation2.Should().BeNull();
 
-        // Cleanup
+        // Cleanup - stop hosted services before disposal
+        await StopHostedServicesAsync(serviceProvider2);
         await serviceProvider2.DisposeAsync();
     }
 
@@ -249,7 +253,8 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         backplane2.InstanceId.Should().NotBeNullOrEmpty();
         backplane1.InstanceId.Should().NotBe(backplane2.InstanceId);
 
-        // Cleanup
+        // Cleanup - stop hosted services before disposal
+        await StopHostedServicesAsync(serviceProvider2);
         await serviceProvider2.DisposeAsync();
     }
 
