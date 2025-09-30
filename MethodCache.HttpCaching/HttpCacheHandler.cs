@@ -18,7 +18,9 @@ namespace MethodCache.HttpCaching;
 /// </summary>
 public class HttpCacheHandler : DelegatingHandler
 {
-    private static readonly ConcurrentDictionary<string, ConcurrentQueue<string>> VariantIndex = new(StringComparer.Ordinal);
+    // Instance-level variant tracking prevents memory leaks across handler instances
+    // Each handler instance manages its own variant limits independently
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _variantIndex = new(StringComparer.Ordinal);
 
     private readonly IHttpCacheStorage _storage;
     private readonly IOptionsMonitor<HttpCacheOptions> _optionsMonitor;
@@ -192,26 +194,37 @@ public class HttpCacheHandler : DelegatingHandler
             return custom(request);
         }
 
-        var builder = new StringBuilder();
-        builder.Append(request.Method.Method);
-        builder.Append(':');
-        builder.Append(request.RequestUri);
+        // Use hashing for compact, deterministic keys (similar to MessagePackKeyGenerator)
+        using var sha256 = SHA256.Create();
 
+        // Hash method
+        var methodBytes = Encoding.UTF8.GetBytes(request.Method.Method);
+        sha256.TransformBlock(methodBytes, 0, methodBytes.Length, null, 0);
+
+        // Hash URI
+        var uriBytes = Encoding.UTF8.GetBytes(request.RequestUri?.ToString() ?? string.Empty);
+        sha256.TransformBlock(uriBytes, 0, uriBytes.Length, null, 0);
+
+        // Hash additional vary headers in sorted order
         foreach (var header in options.Variation.AdditionalVaryHeaders.OrderBy(h => h, StringComparer.OrdinalIgnoreCase))
         {
-            builder.Append(':');
-            builder.Append(NormalizeHeaderName(header));
-            builder.Append('=');
-            builder.Append(GetHeaderValue(request, header));
+            var headerNameBytes = Encoding.UTF8.GetBytes(NormalizeHeaderName(header));
+            sha256.TransformBlock(headerNameBytes, 0, headerNameBytes.Length, null, 0);
+
+            var headerValue = GetHeaderValue(request, header);
+            var headerValueBytes = Encoding.UTF8.GetBytes(headerValue);
+            sha256.TransformBlock(headerValueBytes, 0, headerValueBytes.Length, null, 0);
         }
 
+        // Hash authorization if private cache
         if (!options.Behavior.IsSharedCache && request.Headers.Authorization is { } auth)
         {
-            builder.Append(':');
-            builder.Append(HashValue(auth.ToString()));
+            var authBytes = Encoding.UTF8.GetBytes(auth.ToString());
+            sha256.TransformBlock(authBytes, 0, authBytes.Length, null, 0);
         }
 
-        return builder.ToString();
+        sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        return Convert.ToBase64String(sha256.Hash!);
     }
 
     private async ValueTask<HttpCacheEntry?> GetCacheEntryAsync(
@@ -265,7 +278,7 @@ public class HttpCacheHandler : DelegatingHandler
     {
         if (entry.VaryHeaders == null || entry.VaryHeaders.Length == 0 || !options.Behavior.RespectVary)
         {
-            VariantIndex.TryRemove(baseKey, out _);
+            _variantIndex.TryRemove(baseKey, out _);
             await _storage.SetAsync(baseKey, entry, cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -276,8 +289,10 @@ public class HttpCacheHandler : DelegatingHandler
             return;
         }
 
-        await _storage.SetAsync(baseKey, entry, cancellationToken).ConfigureAwait(false);
-        await _storage.SetAsync(varyKey, entry, cancellationToken).ConfigureAwait(false);
+        await Task.WhenAll(
+            _storage.SetAsync(baseKey, entry, cancellationToken).AsTask(),
+            _storage.SetAsync(varyKey, entry, cancellationToken).AsTask()
+        ).ConfigureAwait(false);
 
         if (variation.EnableMultipleVariants)
         {
@@ -285,7 +300,7 @@ public class HttpCacheHandler : DelegatingHandler
         }
         else
         {
-            if (VariantIndex.TryRemove(baseKey, out var queue))
+            if (_variantIndex.TryRemove(baseKey, out var queue))
             {
                 while (queue.TryDequeue(out var existing))
                 {
@@ -305,7 +320,7 @@ public class HttpCacheHandler : DelegatingHandler
             return;
         }
 
-        var queue = VariantIndex.GetOrAdd(baseKey, _ => new ConcurrentQueue<string>());
+        var queue = _variantIndex.GetOrAdd(baseKey, _ => new ConcurrentQueue<string>());
         queue.Enqueue(varyKey);
 
         while (queue.Count > maxVariants && queue.TryDequeue(out var evicted))
@@ -552,19 +567,37 @@ public class HttpCacheHandler : DelegatingHandler
 
     private static string NormalizeHeaderName(string headerName)
     {
-        var parts = headerName.Split('-', StringSplitOptions.RemoveEmptyEntries);
-        for (var i = 0; i < parts.Length; i++)
+        if (string.IsNullOrEmpty(headerName))
         {
-            var span = parts[i].AsSpan();
-            parts[i] = span.Length switch
-            {
-                0 => string.Empty,
-                1 => char.ToUpper(span[0]).ToString(),
-                _ => char.ToUpper(span[0]) + span[1..].ToString().ToLowerInvariant()
-            };
+            return string.Empty;
         }
 
-        return string.Join('-', parts);
+        // Use Span to avoid allocations for small header names; fall back to heap for large ones
+        const int StackAllocThreshold = 128;
+        Span<char> buffer = headerName.Length <= StackAllocThreshold
+            ? stackalloc char[headerName.Length]
+            : new char[headerName.Length];
+        headerName.AsSpan().CopyTo(buffer);
+
+        var capitalizeNext = true;
+        for (var i = 0; i < buffer.Length; i++)
+        {
+            if (buffer[i] == '-')
+            {
+                capitalizeNext = true;
+            }
+            else if (capitalizeNext)
+            {
+                buffer[i] = char.ToUpperInvariant(buffer[i]);
+                capitalizeNext = false;
+            }
+            else
+            {
+                buffer[i] = char.ToLowerInvariant(buffer[i]);
+            }
+        }
+
+        return new string(buffer);
     }
 
     private static string GetHeaderValue(HttpRequestMessage request, string headerName)
@@ -580,18 +613,6 @@ public class HttpCacheHandler : DelegatingHandler
         }
 
         return string.Empty;
-    }
-
-    private static string HashValue(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(value));
-        return Convert.ToHexString(hash)[..16];
     }
 }
 

@@ -18,7 +18,7 @@ public class ConfigurationReloadManagerTests : IDisposable
     public ConfigurationReloadManagerTests()
     {
         // Create configuration with in-memory provider
-        var initialData = new Dictionary<string, string>
+        var initialData = new Dictionary<string, string?>
         {
             ["MethodCache:OpenTelemetry:EnableTracing"] = "true",
             ["MethodCache:OpenTelemetry:EnableMetrics"] = "true",
