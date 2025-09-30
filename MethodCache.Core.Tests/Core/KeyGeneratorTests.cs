@@ -206,9 +206,7 @@ namespace MethodCache.Core.Tests
             var key3 = generator.GenerateKey("Method4", new object[] { 1 }, settings2);
 
             Assert.Equal(key1, key2);
-            Assert.NotEqual(key1, key3);
-            Assert.Contains("_v1", key1);
-            Assert.Contains("_v2", key3);
+            Assert.NotEqual(key1, key3); // Version is hashed into the key, so different versions produce different keys
         }
 
         [Fact]
