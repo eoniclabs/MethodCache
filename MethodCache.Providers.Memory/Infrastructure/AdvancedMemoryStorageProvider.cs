@@ -19,17 +19,17 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         public required object Value { get; init; }
         public required HashSet<string> Tags { get; init; }
-        public required DateTimeOffset AbsoluteExpiration { get; set; }
-        public required DateTime CreatedAt { get; init; }
-        public DateTime LastAccessedAt { get; set; }
+        public required long ExpirationTicks { get; set; }
+        public required long CreatedAtTicks { get; init; }
+        public long LastAccessedAtTicks { get; set; }
         public long AccessCount => _accessCount;
         public LinkedListNode<string>? OrderNode { get; set; }
 
-        public bool IsExpired => DateTime.UtcNow > AbsoluteExpiration;
+        public bool IsExpired(long currentTicks) => currentTicks > ExpirationTicks;
 
-        public void UpdateAccess()
+        public void UpdateAccess(long currentTicks)
         {
-            LastAccessedAt = DateTime.UtcNow;
+            LastAccessedAtTicks = currentTicks;
             Interlocked.Increment(ref _accessCount);
         }
 
@@ -53,14 +53,13 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                 // More accurate calculation with overhead
                 const int objectOverhead = 24; // Object header in .NET
                 const int referenceSize = 8; // 64-bit reference
-                const int dateTimeSize = 16;
+                const int longSize = 8;
                 const int hashSetOverhead = 48;
 
                 long size = objectOverhead; // CacheEntry itself
                 size += referenceSize; // Value reference
                 size += hashSetOverhead + (Tags.Count * 32); // Tags with string overhead
-                size += dateTimeSize * 3; // AbsoluteExpiration, CreatedAt, LastAccessedAt
-                size += 8; // AccessCount
+                size += longSize * 4; // ExpirationTicks, CreatedAtTicks, LastAccessedAtTicks, AccessCount
                 size += referenceSize; // OrderNode reference
 
                 // Value size
@@ -115,9 +114,11 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     public ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
+        var currentTicks = Environment.TickCount64;
+
         if (_cache.TryGetValue(key, out var entry))
         {
-            if (entry.IsExpired)
+            if (entry.IsExpired(currentTicks))
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
@@ -126,7 +127,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                 return ValueTask.FromResult<T?>(default);
             }
 
-            entry.UpdateAccess();
+            entry.UpdateAccess(currentTicks);
             UpdateAccessOrder(key, entry, remove: false);
             Interlocked.Increment(ref _hits);
 
@@ -152,16 +153,17 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         if (value == null) return;
 
+        var currentTicks = Environment.TickCount64;
         var tagSet = new HashSet<string>(tags);
-        var absoluteExpiration = DateTimeOffset.UtcNow.Add(expiration);
+        var expirationTicks = currentTicks + (long)expiration.TotalMilliseconds;
 
         var entry = new CacheEntry
         {
             Value = value,
             Tags = tagSet,
-            AbsoluteExpiration = absoluteExpiration,
-            CreatedAt = DateTime.UtcNow,
-            LastAccessedAt = DateTime.UtcNow
+            ExpirationTicks = expirationTicks,
+            CreatedAtTicks = currentTicks,
+            LastAccessedAtTicks = currentTicks
         };
 
         var estimatedSize = entry.EstimateSize(_options.MemoryCalculationMode);
@@ -233,9 +235,11 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     public ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
+        var currentTicks = Environment.TickCount64;
+
         if (_cache.TryGetValue(key, out var entry))
         {
-            if (entry.IsExpired)
+            if (entry.IsExpired(currentTicks))
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
@@ -403,24 +407,24 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         // Use sampling approach similar to LFU
         const int sampleSize = 100;
-        var candidates = new List<(string key, DateTimeOffset expiration)>(sampleSize);
+        var candidates = new List<(string key, long expirationTicks)>(sampleSize);
 
         foreach (var kvp in _cache)
         {
             if (candidates.Count < sampleSize)
             {
-                candidates.Add((kvp.Key, kvp.Value.AbsoluteExpiration));
+                candidates.Add((kvp.Key, kvp.Value.ExpirationTicks));
                 if (candidates.Count == sampleSize)
                 {
-                    candidates.Sort((a, b) => a.expiration.CompareTo(b.expiration));
+                    candidates.Sort((a, b) => a.expirationTicks.CompareTo(b.expirationTicks));
                 }
             }
-            else if (kvp.Value.AbsoluteExpiration < candidates[^1].expiration)
+            else if (kvp.Value.ExpirationTicks < candidates[^1].expirationTicks)
             {
-                candidates[^1] = (kvp.Key, kvp.Value.AbsoluteExpiration);
+                candidates[^1] = (kvp.Key, kvp.Value.ExpirationTicks);
                 for (int i = candidates.Count - 2; i >= 0; i--)
                 {
-                    if (candidates[i].expiration > candidates[i + 1].expiration)
+                    if (candidates[i].expirationTicks > candidates[i + 1].expirationTicks)
                     {
                         (candidates[i], candidates[i + 1]) = (candidates[i + 1], candidates[i]);
                     }
@@ -558,6 +562,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         if (_disposed) return;
 
+        var currentTicks = Environment.TickCount64;
         const int batchSize = 100;
         var cleanedCount = 0;
 
@@ -566,7 +571,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         foreach (var kvp in _cache)
         {
-            if (kvp.Value.IsExpired)
+            if (kvp.Value.IsExpired(currentTicks))
             {
                 batch.Add(kvp.Key);
 
