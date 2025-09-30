@@ -9,10 +9,15 @@
     3. Committing the version change
     4. Creating and pushing a git tag
     5. Triggering the GitHub Actions publish workflow
+
+    When run without parameters, shows suggested version numbers based on the current version.
 .PARAMETER Version
-    The semantic version number (e.g., 1.0.0, 1.2.3-beta)
+    The semantic version number (e.g., 1.0.0, 1.2.3-beta). Optional - if not provided, shows suggestions.
 .PARAMETER SkipTests
     Skip running tests before release (not recommended)
+.EXAMPLE
+    .\release.ps1
+    Shows suggested version numbers based on current version
 .EXAMPLE
     .\release.ps1 -Version 1.0.0
 .EXAMPLE
@@ -20,7 +25,7 @@
 #>
 
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory=$false)]
     [ValidatePattern('^\d+\.\d+\.\d+(-[a-zA-Z0-9\-\.]+)?$')]
     [string]$Version,
 
@@ -35,6 +40,62 @@ function Write-Success { Write-Host $args -ForegroundColor Green }
 function Write-Info { Write-Host $args -ForegroundColor Cyan }
 function Write-Warning { Write-Host $args -ForegroundColor Yellow }
 function Write-Error { Write-Host $args -ForegroundColor Red }
+
+# Function to get current version from version.json
+function Get-CurrentVersion {
+    $versionJson = Get-Content "version.json" | ConvertFrom-Json
+    return $versionJson.version
+}
+
+# Function to suggest next version
+function Get-SuggestedVersions {
+    param([string]$currentVersion)
+
+    # Parse current version
+    if ($currentVersion -match '^(\d+)\.(\d+)(-([a-zA-Z0-9\-\.]+))?$') {
+        $major = [int]$matches[1]
+        $minor = [int]$matches[2]
+        $prerelease = $matches[4]
+
+        # Suggest versions
+        $suggestions = @{
+            Patch = "$major.$minor.0"
+            Minor = "$major.$($minor + 1).0"
+            Major = "$($major + 1).0.0"
+        }
+
+        if ($prerelease) {
+            # If current is prerelease, suggest stable version
+            $suggestions["Stable"] = "$major.$minor.0"
+        } else {
+            # Suggest alpha/beta versions
+            $suggestions["Alpha"] = "$major.$($minor + 1).0-alpha"
+            $suggestions["Beta"] = "$major.$($minor + 1).0-beta"
+        }
+
+        return $suggestions
+    }
+
+    return @{}
+}
+
+# If version not provided, show suggestions
+if (-not $Version) {
+    $currentVersion = Get-CurrentVersion
+    Write-Info "Current version: $currentVersion"
+    Write-Info ""
+    Write-Info "Suggested versions:"
+
+    $suggestions = Get-SuggestedVersions -currentVersion $currentVersion
+    foreach ($key in $suggestions.Keys | Sort-Object) {
+        Write-Info "  $key : $($suggestions[$key])"
+    }
+
+    Write-Info ""
+    Write-Info "Usage: .\release.ps1 -Version <version>"
+    Write-Info "Example: .\release.ps1 -Version $($suggestions['Minor'])"
+    exit 0
+}
 
 # Ensure we're on main branch
 Write-Info "Checking current branch..."
