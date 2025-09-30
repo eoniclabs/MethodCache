@@ -481,6 +481,6 @@ Task<UserSettings> GetUserSettingsAsync(int userId);
 ## Resources
 
 - [Configuration Guide](../user-guide/CONFIGURATION_GUIDE.md)
-- [Fluent API Reference](../user-guide/FLUENT_API.md)
+- [Fluent API Reference](../user-guide/fluent-api.md)
 - [Third-Party Library Caching](../user-guide/THIRD_PARTY_CACHING.md)
 - [GitHub Repository](https://github.com/eoniclabs/MethodCache)

@@ -507,4 +507,4 @@ Task UpdateProductAsync(int productId, ProductUpdateDto dto);
 
 - [Configuration Guide](../user-guide/CONFIGURATION_GUIDE.md)
 - [Migration from IMemoryCache](MIGRATION_FROM_IMEMORYCACHE.md)
-- [Fluent API Reference](../user-guide/FLUENT_API.md)
+- [Fluent API Reference](../user-guide/fluent-api.md)
