@@ -250,7 +250,19 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
 
     private IEnumerable<string> GenerateTags(HttpCacheEntry entry)
     {
-        var tags = new List<string> { HttpCacheTags.AllEntries };
+        // Estimate tag count to avoid resizing
+        var estimatedCount = 5; // AllEntries + Method + Host + Path + Status
+
+        if (!string.IsNullOrEmpty(entry.RequestUri) && Uri.TryCreate(entry.RequestUri, UriKind.Absolute, out var tempUri))
+        {
+            if (!string.IsNullOrEmpty(tempUri.AbsolutePath))
+            {
+                var segmentCount = tempUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
+                estimatedCount += segmentCount; // Parent paths
+            }
+        }
+
+        var tags = new List<string>(estimatedCount) { HttpCacheTags.AllEntries };
 
         if (!string.IsNullOrEmpty(entry.Method))
         {
@@ -270,11 +282,12 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
                     var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
                     if (segments.Length > 1)
                     {
-                        var current = string.Empty;
+                        // Use StringBuilder to avoid string concatenation allocations
+                        var pathBuilder = new System.Text.StringBuilder();
                         for (var i = 0; i < segments.Length - 1; i++)
                         {
-                            current += "/" + segments[i];
-                            tags.Add(HttpCacheTags.ForParentPath(current));
+                            pathBuilder.Append('/').Append(segments[i]);
+                            tags.Add(HttpCacheTags.ForParentPath(pathBuilder.ToString()));
                         }
                     }
                 }
