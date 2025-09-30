@@ -35,7 +35,8 @@ namespace MethodCache.Examples
         public async Task<User> GetUser_Simplest(int userId)
         {
             return await _cache.GetOrCreateAsync(
-                () => _userRepo.GetUserAsync(userId)
+                () => _userRepo.GetUserAsync(userId),
+                new CacheMethodSettings()
             );
             // Key automatically generated from method + userId using FastHashKeyGenerator
         }
@@ -47,7 +48,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _userRepo.GetUserAsync(userId),
-                opts => opts.WithDuration(TimeSpan.FromHours(1))
+                new CacheMethodSettings { Duration = TimeSpan.FromHours(1) }
             );
         }
 
@@ -62,9 +63,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _orderService.GetOrdersAsync(customerId, status, from, to),
-                opts => opts
-                    .WithDuration(TimeSpan.FromMinutes(30))
-                    .WithTags("orders", $"customer:{customerId}")
+                new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30), Tags = new[] { "orders", $"customer:{customerId}" } }
             );
             // FastHashKeyGenerator automatically handles all 4 parameters
         }
@@ -76,9 +75,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _orderService.GenerateReportAsync(criteria),
-                opts => opts
-                    .WithDuration(TimeSpan.FromHours(2))
-                    .WithTags("analytics", "reports")
+                new CacheMethodSettings { Duration = TimeSpan.FromHours(2), Tags = new[] { "analytics", "reports" } }
             );
             // FastHashKeyGenerator uses MessagePack for complex object serialization
         }
@@ -90,7 +87,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _configService.GetSettings(section),
-                opts => opts.WithDuration(TimeSpan.FromMinutes(15))
+                new CacheMethodSettings { Duration = TimeSpan.FromMinutes(15) }
             );
         }
 
@@ -107,9 +104,7 @@ namespace MethodCache.Examples
 
             return await _cache.GetOrCreateAsync(
                 () => _configService.GetDataExpensive(query),
-                opts => opts
-                    .WithDuration(TimeSpan.FromHours(1))
-                    .WithTags("expensive-data")
+                new CacheMethodSettings { Duration = TimeSpan.FromHours(1), Tags = new[] { "expensive-data" } }
             );
         }
 
@@ -122,9 +117,7 @@ namespace MethodCache.Examples
 
             return await _cache.GetOrCreateAsync(
                 () => _configService.GetWeatherData(location),
-                opts => opts
-                    .WithDuration(duration)
-                    .WithTags("weather", $"location:{location}")
+                new CacheMethodSettings { Duration = duration, Tags = new[] { "weather", $"location:{location}" } }
             );
         }
 
@@ -142,28 +135,25 @@ namespace MethodCache.Examples
                 _userRepo = userRepo;
             }
 
-            // BEFORE: Original MethodCache (Manual Keys)
             public async Task<User> GetUser_Before(int userId)
             {
                 return await _cache.GetOrCreateAsync(
                     key: $"user:{userId}",  // Manual key construction
-                    factory: (ctx, ct) => _userRepo.GetUserAsync(userId),
-                    configure: opts => opts.WithDuration(TimeSpan.FromHours(1))
+                    factory: () => _userRepo.GetUserAsync(userId),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) }
                 );
             }
 
-            // AFTER: Simplified MethodCache (FluentCache-like)
             public async Task<User> GetUser_After(int userId)
             {
                 return await _cache.GetOrCreateAsync(
                     () => _userRepo.GetUserAsync(userId),  // Factory only!
-                    opts => opts.WithDuration(TimeSpan.FromHours(1))
+                    new CacheMethodSettings { Duration = TimeSpan.FromHours(1) }
                 );
                 // Key automatically generated using FastHashKeyGenerator
                 // More sophisticated than FluentCache's simple string concatenation
             }
 
-            // BEFORE: Complex multi-parameter scenario (Error-prone)
             public async Task<List<Order>> GetOrders_Before(
                 int customerId, OrderStatus status, DateTime from, DateTime to, bool includeItems)
             {
@@ -172,18 +162,17 @@ namespace MethodCache.Examples
 
                 return await _cache.GetOrCreateAsync(
                     key: key,
-                    factory: (ctx, ct) => _userRepo.GetOrdersAsync(customerId, status, from, to, includeItems),
-                    configure: opts => opts.WithDuration(TimeSpan.FromMinutes(30))
+                    factory: () => _userRepo.GetOrdersAsync(customerId, status, from, to, includeItems),
+                    settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) }
                 );
             }
 
-            // AFTER: Complex scenario (Automatic)
             public async Task<List<Order>> GetOrders_After(
                 int customerId, OrderStatus status, DateTime from, DateTime to, bool includeItems)
             {
                 return await _cache.GetOrCreateAsync(
                     () => _userRepo.GetOrdersAsync(customerId, status, from, to, includeItems),
-                    opts => opts.WithDuration(TimeSpan.FromMinutes(30))
+                    new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) }
                 );
                 // FastHashKeyGenerator handles all parameter types:
                 // - int: optimized serialization
@@ -215,7 +204,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.ProcessData(data.Transform().Normalize()),
-                    opts => opts.WithDuration(TimeSpan.FromHours(1))
+                    new CacheMethodSettings { Duration = TimeSpan.FromHours(1) }
                 );
                 // Closure analysis captures the final transformed data
             }
@@ -235,7 +224,7 @@ namespace MethodCache.Examples
                         }
                         return items;
                     },
-                    opts => opts.WithDuration(TimeSpan.FromMinutes(30))
+                    new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) }
                 );
             }
 
@@ -248,9 +237,7 @@ namespace MethodCache.Examples
 
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.GetProfileAsync(user, contextKey),
-                    opts => opts
-                        .WithDuration(TimeSpan.FromMinutes(60))
-                        .WithTags("profiles", $"tenant:{user.TenantId}")
+                    new CacheMethodSettings { Duration = TimeSpan.FromMinutes(60), Tags = new[] { "profiles", $"tenant:{user.TenantId}" } }
                 );
             }
         }
@@ -281,11 +268,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.DoSomeWork(parameter),
-                    opts => opts
-                        .WithDuration(TimeSpan.FromMinutes(30))
-                        .WithTags("work-results")
-                        .WithStampedeProtection()
-                        .WithMetrics(_metrics)
+                    new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30), Tags = new[] { "work-results" } }
                 );
 
                 // Pros:

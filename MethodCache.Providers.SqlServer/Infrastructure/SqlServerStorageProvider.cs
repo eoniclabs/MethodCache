@@ -4,7 +4,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Services;
 using Polly;
@@ -114,7 +114,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
@@ -163,7 +163,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
                 }
 
                 return default(T);
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -177,12 +177,12 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
-        await SetAsync(key, value, expiration, Enumerable.Empty<string>(), cancellationToken);
+        return SetAsync(key, value, expiration, Enumerable.Empty<string>(), cancellationToken);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
@@ -279,7 +279,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
                     await transaction.RollbackAsync(cancellationToken);
                     throw;
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -292,7 +292,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
@@ -347,7 +347,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
                     await transaction.RollbackAsync(cancellationToken);
                     throw;
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -360,7 +360,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
         if (tag == null)
             throw new ArgumentNullException(nameof(tag));
@@ -459,7 +459,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
                     await transaction.RollbackAsync(cancellationToken);
                     throw;
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -472,7 +472,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
@@ -499,7 +499,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
 
                 var result = await command.ExecuteScalarAsync(cancellationToken);
                 return result != null;
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -509,7 +509,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -541,7 +541,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task<PersistentStorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<PersistentStorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -704,7 +704,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
 
     // IPersistentStorageProvider specific methods
 
-    public async Task CleanupExpiredEntriesAsync(CancellationToken cancellationToken = default)
+    public async ValueTask CleanupExpiredEntriesAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -759,7 +759,7 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
         }
     }
 
-    public async Task<long> GetStorageSizeAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<long> GetStorageSizeAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -789,9 +789,9 @@ public class SqlServerPersistentStorageProvider : IPersistentStorageProvider, IS
     }
 
     // Explicit interface implementation for IStorageProvider.GetStatsAsync
-    async Task<StorageStats?> IStorageProvider.GetStatsAsync(CancellationToken cancellationToken)
+    async ValueTask<StorageStats?> IStorageProvider.GetStatsAsync(CancellationToken cancellationToken)
     {
-        var persistentStats = await GetStatsAsync(cancellationToken);
+        var persistentStats = await GetStatsAsync(cancellationToken).ConfigureAwait(false);
         return persistentStats; // PersistentStorageStats inherits from StorageStats
     }
 

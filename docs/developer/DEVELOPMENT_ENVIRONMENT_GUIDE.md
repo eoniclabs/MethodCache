@@ -94,8 +94,7 @@ MethodCache/
 │   ├── tasks.json                  # VSCode tasks
 │   ├── launch.json                 # Debug configurations
 │   └── settings.json               # Development settings
-├── docker-compose.dev.yml          # Development services
-└── DEVELOPMENT_ENVIRONMENT_GUIDE.md # This file
+├── DEVELOPMENT_ENVIRONMENT_GUIDE.md # This file
 ```
 
 ## 🖥 Platform-Specific Setup
@@ -120,11 +119,9 @@ MethodCache/
 1. **SQL Server Options:**
    - SQL Server Express (recommended): `choco install sql-server-express`
    - SQL Server LocalDB: `choco install sql-server-2019-localdb`
-   - Docker: Use provided docker-compose.dev.yml
 
 2. **Redis Options:**
    - Redis for Windows: `choco install redis-64`
-   - Docker: Use provided docker-compose.dev.yml
 
 3. **Docker Desktop:**
    - Download: https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe
@@ -166,12 +163,11 @@ softwareupdate --install-rosetta --agree-to-license
 
 #### Manual Setup
 1. **SQL Server Options:**
-   - Docker (recommended): Use provided docker-compose.dev.yml
+   - Docker (recommended): `docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=YourStrong@Passw0rd' -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest`
    - Azure SQL Edge: Lighter alternative for development
 
 2. **Redis:**
    - Homebrew: `brew install redis && brew services start redis`
-   - Docker: Use provided docker-compose.dev.yml
 
 3. **Docker Desktop:**
    - Download: https://desktop.docker.com/mac/main/arm64/Docker.dmg (Apple Silicon)
@@ -338,30 +334,7 @@ METHODCACHE_REDIS_URL=localhost:6379
 }
 ```
 
-### Docker Development Environment
 
-#### Start Development Services
-```bash
-# Start Redis and SQL Server
-docker-compose -f docker-compose.dev.yml up -d
-
-# With optional tools (Redis Commander, monitoring)
-docker-compose -f docker-compose.dev.yml --profile tools up -d
-
-# View logs
-docker-compose -f docker-compose.dev.yml logs -f
-```
-
-#### Service Details
-- **Redis:** `localhost:6379` (with persistence and health checks)
-- **SQL Server:** `localhost:1433` (sa/YourStrong@Passw0rd)
-- **Redis Commander:** `localhost:8081` (GUI management, optional)
-- **SQL Server Exporter:** `localhost:4000` (monitoring, optional)
-
-#### Stop Services
-```bash
-docker-compose -f docker-compose.dev.yml down
-```
 
 ## ⚡ Performance Optimization
 
@@ -607,86 +580,55 @@ dotnet run --project Tests/MethodCache.Tests.Infrastructure config list | grep -
 
 #### GitHub Actions
 ```yaml
-# .github/workflows/integration-tests.yml
-name: Integration Tests
+# .github/workflows/publish.yml
+name: Publish NuGet Package
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
 
 jobs:
-  integration-tests:
+  publish:
     runs-on: ubuntu-latest
-
     services:
       redis:
-        image: redis:7-alpine
+        image: redis
         ports:
           - 6379:6379
-
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: YourStrong@Passw0rd
-          MSSQL_PID: Developer
-        ports:
-          - 1433:1433
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Recommended for Nerdbank.GitVersioning
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '8.0.x'
 
-      - name: Setup Test Environment
-        run: |
-          ./scripts/setup-dev-env.sh --non-interactive
+      - name: Install Nerdbank.GitVersioning
+        run: dotnet tool restore
+
+      - name: Set the version
+        run: nbgv cloud
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
         env:
-          METHODCACHE_REDIS_URL: localhost:6379
-          METHODCACHE_SQLSERVER_URL: Server=localhost,1433;Database=master;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;
+          MethodCache_Redis_ConnectionString: "localhost:6379"
 
-      - name: Run Integration Tests
-        run: dotnet test --filter Category=Integration --logger trx --results-directory TestResults
-```
+      - name: Pack
+        run: dotnet pack --configuration Release --no-build -o ./artifacts
 
-#### Azure DevOps
-```yaml
-# azure-pipelines.yml
-trigger:
-  - main
-
-pool:
-  vmImage: 'ubuntu-latest'
-
-services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - 6379:6379
-
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    env:
-      ACCEPT_EULA: Y
-      SA_PASSWORD: $(SqlServerPassword)
-    ports:
-      - 1433:1433
-
-steps:
-- task: UseDotNet@2
-  inputs:
-    version: '9.0.x'
-
-- script: |
-    ./scripts/setup-dev-env.sh --non-interactive
-  displayName: 'Setup Test Environment'
-  env:
-    METHODCACHE_REDIS_URL: localhost:6379
-    METHODCACHE_SQLSERVER_URL: Server=localhost,1433;Database=master;User Id=sa;Password=$(SqlServerPassword);TrustServerCertificate=true;
-
-- script: dotnet test --filter Category=Integration --logger trx
-  displayName: 'Run Integration Tests'
+      - name: Publish to GitHub Packages
+        run: dotnet nuget push "./artifacts/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "https://nuget.pkg.github.com/eoniclabs/index.json"
 ```
 
 ### Performance Monitoring

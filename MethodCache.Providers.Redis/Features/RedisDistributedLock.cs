@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 using StackExchange.Redis;
 using System;

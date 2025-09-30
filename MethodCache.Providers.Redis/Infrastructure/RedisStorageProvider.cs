@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using Polly;
@@ -82,7 +82,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             .Build();
     }
 
-    public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         var start = DateTimeOffset.UtcNow;
         Interlocked.Increment(ref _getOperations);
@@ -111,10 +111,10 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error deserializing cached value for key {Key}, removing corrupted data", fullKey);
-                    await database.KeyDeleteAsync(fullKey); // Remove corrupted data
+                    await database.KeyDeleteAsync(fullKey).ConfigureAwait(false); // Remove corrupted data
                     return default(T);
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -128,12 +128,12 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
-        await SetAsync(key, value, expiration, Enumerable.Empty<string>(), cancellationToken);
+        return SetAsync(key, value, expiration, Enumerable.Empty<string>(), cancellationToken);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         var start = DateTimeOffset.UtcNow;
         Interlocked.Increment(ref _setOperations);
@@ -144,22 +144,22 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             {
                 var database = _connectionManager.GetDatabase();
                 var fullKey = _options.KeyPrefix + key;
-                var data = await _serializer.SerializeAsync(value);
+                var data = await _serializer.SerializeAsync(value).ConfigureAwait(false);
                 var tagArray = tags.ToArray();
 
                 if (tagArray.Length > 0)
                 {
                     // Use atomic operation for cache set + tag association
-                    await SetCacheWithTagsAtomicallyAsync(database, fullKey, data, expiration, tagArray);
+                    await SetCacheWithTagsAtomicallyAsync(database, fullKey, data, expiration, tagArray).ConfigureAwait(false);
                     _logger.LogDebug("Set key {Key} with {TagCount} tags atomically", fullKey, tagArray.Length);
                 }
                 else
                 {
                     // Simple set without tags
-                    await database.StringSetAsync(fullKey, data, expiration);
+                    await database.StringSetAsync(fullKey, data, expiration).ConfigureAwait(false);
                     _logger.LogDebug("Set key {Key} with expiration {Expiration}", fullKey, expiration);
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -172,7 +172,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
-    public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         var start = DateTimeOffset.UtcNow;
         Interlocked.Increment(ref _removeOperations);
@@ -185,11 +185,11 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
                 var fullKey = _options.KeyPrefix + key;
 
                 // Remove the key and its tag associations
-                await database.KeyDeleteAsync(fullKey);
-                await _tagManager.RemoveAllTagAssociationsAsync(fullKey);
+                await database.KeyDeleteAsync(fullKey).ConfigureAwait(false);
+                await _tagManager.RemoveAllTagAssociationsAsync(fullKey).ConfigureAwait(false);
 
                 _logger.LogDebug("Removed key {Key} and its tag associations", fullKey);
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -202,7 +202,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
-    public async Task RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
     {
         var start = DateTimeOffset.UtcNow;
 
@@ -211,7 +211,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             await _resilience.ExecuteAsync(async _ =>
             {
                 // Get keys associated with this tag
-                var keys = await _tagManager.GetKeysByTagsAsync(new[] { tag });
+                var keys = await _tagManager.GetKeysByTagsAsync(new[] { tag }).ConfigureAwait(false);
                 if (keys.Length == 0)
                 {
                     _logger.LogDebug("No keys found for tag {Tag}", tag);
@@ -219,15 +219,15 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
                 }
 
                 // Remove keys atomically
-                await InvalidateKeysAtomicallyAsync(keys, new[] { tag });
+                await InvalidateKeysAtomicallyAsync(keys, new[] { tag }).ConfigureAwait(false);
                 _logger.LogDebug("Removed {KeyCount} keys for tag {Tag}", keys.Length, tag);
 
                 // Publish invalidation event for cross-instance coordination
                 if (_options.EnablePubSubInvalidation && _backplane != null)
                 {
-                    await _backplane.PublishTagInvalidationAsync(tag, cancellationToken);
+                    await _backplane.PublishTagInvalidationAsync(tag, cancellationToken).ConfigureAwait(false);
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -240,7 +240,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
-    public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -248,8 +248,8 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             {
                 var database = _connectionManager.GetDatabase();
                 var fullKey = _options.KeyPrefix + key;
-                return await database.KeyExistsAsync(fullKey);
-            }, cancellationToken);
+                return await database.KeyExistsAsync(fullKey).ConfigureAwait(false);
+            }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -259,7 +259,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
-    public async Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -269,7 +269,7 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var ping = await database.PingAsync();
+            var ping = await database.PingAsync().ConfigureAwait(false);
 
             if (ping.TotalMilliseconds > 1000) // > 1 second is concerning
             {
@@ -291,12 +291,12 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         }
     }
 
-    public async Task<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             var database = _connectionManager.GetDatabase();
-            var info = await database.ExecuteAsync("INFO", "stats");
+            var info = await database.ExecuteAsync("INFO", "stats").ConfigureAwait(false);
 
             var getOps = Interlocked.Read(ref _getOperations);
             var setOps = Interlocked.Read(ref _setOperations);

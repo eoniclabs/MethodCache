@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using Xunit;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
@@ -44,16 +44,21 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         // Arrange
         var backplane1 = ServiceProvider.GetRequiredService<IBackplane>();
 
-        // Create a second service provider to simulate another instance
+        // Create a second service provider with same configuration for backplane coordination
         var services2 = new ServiceCollection();
         services2.AddLogging();
+
+        // Get options from first instance to ensure backplane coordination works
+        var firstInstanceOptions = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value;
+
         services2.AddSqlServerInfrastructureForTests(options =>
         {
             options.ConnectionString = SqlServerConnectionString;
             options.EnableBackplane = true;
             options.EnableAutoTableCreation = true;
-            options.KeyPrefix = $"test2:{Guid.NewGuid():N}:";
-            options.Schema = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.Schema;
+            options.KeyPrefix = firstInstanceOptions.KeyPrefix; // Use same key prefix for backplane coordination
+            options.Schema = firstInstanceOptions.Schema;
+            options.DefaultSerializer = firstInstanceOptions.DefaultSerializer;
             options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100); // Faster polling for tests
         });
 
@@ -99,20 +104,29 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         // Arrange
         var backplane1 = ServiceProvider.GetRequiredService<IBackplane>();
 
-        // Create a second service provider to simulate another instance
+        // Create a second service provider with same configuration for backplane coordination
         var services2 = new ServiceCollection();
         services2.AddLogging();
+
+        // Get options from first instance to ensure backplane coordination works
+        var firstInstanceOptions = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value;
+
         services2.AddSqlServerInfrastructureForTests(options =>
         {
             options.ConnectionString = SqlServerConnectionString;
             options.EnableBackplane = true;
             options.EnableAutoTableCreation = true;
-            options.KeyPrefix = $"test2:{Guid.NewGuid():N}:";
-            options.Schema = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.Schema;
+            options.KeyPrefix = firstInstanceOptions.KeyPrefix; // Use same key prefix for backplane coordination
+            options.Schema = firstInstanceOptions.Schema;
+            options.DefaultSerializer = firstInstanceOptions.DefaultSerializer;
             options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100); // Faster polling for tests
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
+
+        // Start hosted services for the second instance (needed for backplane polling)
+        await StartHostedServicesAsync(serviceProvider2);
+
         var backplane2 = serviceProvider2.GetRequiredService<IBackplane>();
 
         var receivedMessages = new List<BackplaneMessage>();
@@ -127,7 +141,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         });
 
         // Give the subscription and polling mechanism time to initialize
-        await Task.Delay(200);
+        await Task.Delay(500); // Increased delay to ensure polling starts
 
         // Publish from first instance
         var testTag = "cross-instance-test-tag";
@@ -145,6 +159,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         receivedMessages[0].InstanceId.Should().NotBe(backplane2.InstanceId);
 
         // Cleanup
+        await StopHostedServicesAsync(serviceProvider2);
         await serviceProvider2.DisposeAsync();
     }
 
@@ -157,13 +172,18 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         // Create a second service provider to simulate another instance
         var services2 = new ServiceCollection();
         services2.AddLogging();
+
+        // Get options from first instance to ensure they use the same schema/prefix
+        var firstInstanceOptions = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value;
+
         services2.AddSqlServerInfrastructureForTests(options =>
         {
             options.ConnectionString = SqlServerConnectionString;
             options.EnableBackplane = true;
             options.EnableAutoTableCreation = true;
-            options.KeyPrefix = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.KeyPrefix;
-            options.Schema = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.Schema;
+            options.KeyPrefix = firstInstanceOptions.KeyPrefix;
+            options.Schema = firstInstanceOptions.Schema;
+            options.DefaultSerializer = firstInstanceOptions.DefaultSerializer; // Ensure same serialization
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
@@ -239,20 +259,29 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         // Arrange
         var backplane1 = ServiceProvider.GetRequiredService<IBackplane>();
 
-        // Create a second service provider
+        // Create a second service provider with same configuration for backplane coordination
         var services2 = new ServiceCollection();
         services2.AddLogging();
+
+        // Get options from first instance to ensure backplane coordination works
+        var firstInstanceOptions = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value;
+
         services2.AddSqlServerInfrastructureForTests(options =>
         {
             options.ConnectionString = SqlServerConnectionString;
             options.EnableBackplane = true;
             options.EnableAutoTableCreation = true;
-            options.KeyPrefix = $"test2:{Guid.NewGuid():N}:";
-            options.Schema = ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>().Value.Schema;
+            options.KeyPrefix = firstInstanceOptions.KeyPrefix; // Use same key prefix for backplane coordination
+            options.Schema = firstInstanceOptions.Schema;
+            options.DefaultSerializer = firstInstanceOptions.DefaultSerializer;
             options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100); // Faster polling for tests
         });
 
         var serviceProvider2 = services2.BuildServiceProvider();
+
+        // Start hosted services for the second instance (needed for backplane polling)
+        await StartHostedServicesAsync(serviceProvider2);
+
         var backplane2 = serviceProvider2.GetRequiredService<IBackplane>();
 
         var receivedMessages = new List<BackplaneMessage>();
@@ -266,7 +295,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         });
 
         // Give the subscription and polling mechanism time to initialize
-        await Task.Delay(200);
+        await Task.Delay(500); // Increased delay to ensure polling starts
 
         // Publish a message and verify it's received
         await backplane1.PublishInvalidationAsync("test-before-unsubscribe");
@@ -288,6 +317,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
         messagesAfterUnsubscribe.Should().Be(messagesBeforeUnsubscribe); // No new messages
 
         // Cleanup
+        await StopHostedServicesAsync(serviceProvider2);
         await serviceProvider2.DisposeAsync();
     }
 }

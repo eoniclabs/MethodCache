@@ -4,15 +4,10 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Configuration;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Infrastructure;
-
-
-
-
-using MethodCache.Infrastructure.Abstractions;
-using MethodCache.Infrastructure.Configuration;
 using System;
 
 namespace MethodCache.Providers.Redis.Extensions

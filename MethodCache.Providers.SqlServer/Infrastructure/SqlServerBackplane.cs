@@ -1,7 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Services;
 
@@ -146,10 +146,25 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
 
         _messageHandler = onMessage;
         _isSubscribed = true;
-        _lastPollTime = DateTimeOffset.UtcNow;
+
+        var safetyWindow = _options.BackplanePollingInterval > TimeSpan.Zero
+            ? TimeSpan.FromTicks(Math.Max(_options.BackplanePollingInterval.Ticks, TimeSpan.FromSeconds(1).Ticks))
+            : TimeSpan.FromSeconds(1);
+
+        _lastPollTime = DateTimeOffset.UtcNow - safetyWindow;
         _processedMessageIds.Clear();
 
         _logger.LogInformation("Subscribed to SQL Server backplane invalidation messages");
+
+        // Kick off an immediate poll to avoid missing messages due to timer delay
+        _ = Task.Run(() => PollForMessages(null)).ContinueWith(t =>
+        {
+            if (t.Exception != null)
+            {
+                _logger.LogError(t.Exception, "Unhandled exception in PollForMessages background task");
+            }
+        }, TaskContinuationOptions.OnlyOnFaulted);
+
         return Task.CompletedTask;
     }
 

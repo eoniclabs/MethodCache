@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Infrastructure.Abstractions;
+using MethodCache.Core.Storage;
 using MethodCache.Providers.Memory.Configuration;
 using MethodCache.Providers.Memory.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -202,7 +202,7 @@ public class AdvancedMemoryStorageProviderTests
 
         var stats = await provider.GetStatsAsync();
         var entryCount = Convert.ToInt64(stats!.AdditionalStats["EntryCount"]);
-        entryCount.Should().BeLessOrEqualTo(2);
+        entryCount.Should().BeLessThanOrEqualTo(2);
     }
 
     [Fact]
