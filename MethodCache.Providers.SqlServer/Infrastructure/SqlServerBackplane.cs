@@ -157,7 +157,13 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
         _logger.LogInformation("Subscribed to SQL Server backplane invalidation messages");
 
         // Kick off an immediate poll to avoid missing messages due to timer delay
-        _ = Task.Run(() => PollForMessages(null));
+        _ = Task.Run(() => PollForMessages(null)).ContinueWith(t =>
+        {
+            if (t.Exception != null)
+            {
+                _logger.LogError(t.Exception, "Unhandled exception in PollForMessages background task");
+            }
+        }, TaskContinuationOptions.OnlyOnFaulted);
 
         return Task.CompletedTask;
     }

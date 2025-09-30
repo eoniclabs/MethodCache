@@ -356,7 +356,3 @@ Built with ❤️ for the .NET community.
 
 
 
-69.39 ns | ±0.00 | 891 B |
-| NoCaching | 1420264.04 ns | ±0.00 | 786 B |
-
-
