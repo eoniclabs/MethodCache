@@ -25,6 +25,7 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
     private readonly SemaphoreSlim _l2Semaphore;
     private readonly SemaphoreSlim _l3Semaphore;
     private readonly ConcurrentDictionary<string, string[]> _trackedTags = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new(StringComparer.Ordinal);
 
     // Statistics
     private long _l1Hits;
@@ -603,10 +604,19 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
         if (tags.Length == 0)
         {
             _trackedTags.TryRemove(key, out _);
+            // Remove from reverse index
+            RemoveKeyFromReverseIndex(key);
             return;
         }
 
         _trackedTags[key] = tags;
+
+        // Update reverse index: tag -> keys mapping
+        foreach (var tag in tags)
+        {
+            var keys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>(StringComparer.Ordinal));
+            keys.TryAdd(key, 0);
+        }
     }
 
     private string[] GetTrackedTags(string key)
@@ -622,15 +632,42 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
     private void RemoveTrackedTags(string key)
     {
         _trackedTags.TryRemove(key, out _);
+        RemoveKeyFromReverseIndex(key);
     }
 
     private void RemoveTrackedTagsByTag(string tag)
     {
-        foreach (var kvp in _trackedTags)
+        // Use reverse index for O(K) complexity instead of O(N*M)
+        // where K is the number of keys with this tag, N is total keys, M is tags per key
+        if (_tagToKeys.TryGetValue(tag, out var keys))
         {
-            if (Array.IndexOf(kvp.Value, tag) >= 0)
+            foreach (var key in keys.Keys)
             {
-                _trackedTags.TryRemove(kvp.Key, out _);
+                _trackedTags.TryRemove(key, out _);
+                RemoveKeyFromReverseIndex(key);
+            }
+
+            _tagToKeys.TryRemove(tag, out _);
+        }
+    }
+
+    private void RemoveKeyFromReverseIndex(string key)
+    {
+        // Remove key from all tag mappings in reverse index
+        if (_trackedTags.TryGetValue(key, out var tags))
+        {
+            foreach (var tag in tags)
+            {
+                if (_tagToKeys.TryGetValue(tag, out var keys))
+                {
+                    keys.TryRemove(key, out _);
+
+                    // Clean up empty tag entries
+                    if (keys.IsEmpty)
+                    {
+                        _tagToKeys.TryRemove(tag, out _);
+                    }
+                }
             }
         }
     }
@@ -638,6 +675,7 @@ public class HybridStorageManager : IStorageProvider, IAsyncDisposable
     private void ClearTrackedTags()
     {
         _trackedTags.Clear();
+        _tagToKeys.Clear();
     }
 
     private TimeSpan CalculateL3Expiration(TimeSpan originalExpiration)

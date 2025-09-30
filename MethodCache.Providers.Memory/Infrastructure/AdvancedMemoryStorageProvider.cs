@@ -155,6 +155,8 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         var currentTicks = Environment.TickCount64;
         var tagSet = new HashSet<string>(tags);
+        // Note: Despite the name, TickCount64 returns milliseconds, not ticks
+        // TotalMilliseconds is correct here (both are in milliseconds)
         var expirationTicks = currentTicks + (long)expiration.TotalMilliseconds;
 
         var entry = new CacheEntry
@@ -308,12 +310,11 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         var estimatedSize = newEntry.EstimateSize(_options.MemoryCalculationMode);
         var currentMemory = Interlocked.Read(ref _estimatedMemoryUsage);
 
-        if (currentCount >= _options.MaxEntries || currentMemory + estimatedSize > _options.MaxMemoryUsage)
+        // Note: Memory already added in SetAsync (line 172) to ensure accurate eviction decisions
+        if (currentCount >= _options.MaxEntries || currentMemory > _options.MaxMemoryUsage)
         {
             await EvictEntries(1).ConfigureAwait(false); // Evict at least one entry
         }
-
-        Interlocked.Add(ref _estimatedMemoryUsage, estimatedSize);
     }
 
     private ValueTask EvictEntries(int minToEvict)
@@ -550,9 +551,18 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     Interlocked.Decrement(ref _currentTagMappings);
                 }
 
+                // Atomically check and remove empty tag dictionary to prevent race condition
+                // Use lock to ensure check-then-remove is atomic
                 if (keys.IsEmpty)
                 {
-                    _tagToKeys.TryRemove(tag, out _);
+                    lock (keys)
+                    {
+                        // Re-check inside lock in case another thread added a key
+                        if (keys.IsEmpty)
+                        {
+                            _tagToKeys.TryRemove(tag, out _);
+                        }
+                    }
                 }
             }
         }
@@ -624,6 +634,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         if (_disposed) return;
 
         _cleanupTimer?.Dispose();
+        _threadLocalRandom?.Dispose();
         _cache.Clear();
         _tagToKeys.Clear();
 

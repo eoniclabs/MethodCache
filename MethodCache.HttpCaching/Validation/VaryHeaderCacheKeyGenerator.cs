@@ -70,8 +70,11 @@ public class VaryHeaderCacheKeyGenerator
             return string.Empty;
         }
 
-        // Use Span to avoid allocations
-        Span<char> buffer = stackalloc char[headerName.Length];
+        // Use Span to avoid allocations for small header names; fall back to heap for large ones
+        const int StackAllocThreshold = 128;
+        Span<char> buffer = headerName.Length <= StackAllocThreshold
+            ? stackalloc char[headerName.Length]
+            : new char[headerName.Length];
         headerName.AsSpan().CopyTo(buffer);
 
         var capitalizeNext = true;
