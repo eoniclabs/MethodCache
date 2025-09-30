@@ -283,6 +283,20 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
         if (ServiceProvider != null)
         {
             await StopHostedServicesAsync(ServiceProvider);
+
+            // Clear SQL connection pool to prevent connection leaks
+            try
+            {
+                await using (var connection = new SqlConnection(SqlServerConnectionString))
+                {
+                    SqlConnection.ClearPool(connection);
+                }
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+
             await DisposeServiceProviderAsync(ServiceProvider);
         }
         // Do not dispose the shared container here; keep it alive for the entire test run.
