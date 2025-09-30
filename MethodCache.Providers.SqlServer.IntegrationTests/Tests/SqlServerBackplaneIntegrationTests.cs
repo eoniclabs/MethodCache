@@ -80,11 +80,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Small delay to allow the immediate poll from SubscribeAsync to complete
-        // This prevents a race where we publish before the initial poll runs
-        await Task.Delay(50);
-
-        // Publish after subscribing - use unique key per test run
+        // SubscribeAsync now awaits the initial poll, so we can publish immediately
         var testKey = $"cross-instance-test-key-{Guid.NewGuid():N}";
         await backplane1.PublishInvalidationAsync(testKey);
 
@@ -147,11 +143,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Small delay to allow the immediate poll from SubscribeAsync to complete
-        // This prevents a race where we publish before the initial poll runs
-        await Task.Delay(50);
-
-        // Publish after subscribing - use unique tag per test run
+        // SubscribeAsync now awaits the initial poll, so we can publish immediately
         var testTag = $"cross-instance-test-tag-{Guid.NewGuid():N}";
         await backplane1.PublishTagInvalidationAsync(testTag);
 
@@ -307,10 +299,7 @@ public class SqlServerBackplaneIntegrationTests : SqlServerIntegrationTestBase
             return Task.CompletedTask;
         });
 
-        // Small delay to allow the immediate poll from SubscribeAsync to complete
-        await Task.Delay(50);
-
-        // Publish a message after subscribing - use unique key
+        // SubscribeAsync now awaits the initial poll, so we can publish immediately
         var testKey = $"test-before-unsubscribe-{Guid.NewGuid():N}";
         await backplane1.PublishInvalidationAsync(testKey);
 

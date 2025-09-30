@@ -136,12 +136,12 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
         }
     }
 
-    public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
     {
         if (!_options.EnableBackplane)
         {
             _logger.LogWarning("Cannot subscribe to backplane messages - backplane is disabled");
-            return Task.CompletedTask;
+            return;
         }
 
         _messageHandler = onMessage;
@@ -156,16 +156,16 @@ public class SqlServerBackplane : IBackplane, IAsyncDisposable
 
         _logger.LogInformation("Subscribed to SQL Server backplane invalidation messages");
 
-        // Kick off an immediate poll to avoid missing messages due to timer delay
-        _ = Task.Run(() => PollForMessages(null)).ContinueWith(t =>
+        // Perform an immediate poll to avoid missing messages due to timer delay
+        // This ensures any messages published before subscription are processed
+        try
         {
-            if (t.Exception != null)
-            {
-                _logger.LogError(t.Exception, "Unhandled exception in PollForMessages background task");
-            }
-        }, TaskContinuationOptions.OnlyOnFaulted);
-
-        return Task.CompletedTask;
+            await Task.Run(() => PollForMessages(null), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during initial poll in SubscribeAsync");
+        }
     }
 
     public Task UnsubscribeAsync(CancellationToken cancellationToken = default)
