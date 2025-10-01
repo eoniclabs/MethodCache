@@ -52,21 +52,22 @@ function Get-SuggestedVersions {
     param([string]$currentVersion)
 
     # Parse current version
-    if ($currentVersion -match '^(\d+)\.(\d+)(-([a-zA-Z0-9\-\.]+))?$') {
+    if ($currentVersion -match '^(\d+)\.(\d+)\.(\d+)(-([a-zA-Z0-9\-\.]+))?$') {
         $major = [int]$matches[1]
         $minor = [int]$matches[2]
-        $prerelease = $matches[4]
+        $patch = [int]$matches[3]
+        $prerelease = $matches[5]
 
         # Suggest versions
         $suggestions = @{
-            Patch = "$major.$minor.0"
+            Patch = "$major.$minor.$($patch + 1)"
             Minor = "$major.$($minor + 1).0"
             Major = "$($major + 1).0.0"
         }
 
         if ($prerelease) {
             # If current is prerelease, suggest stable version
-            $suggestions["Stable"] = "$major.$minor.0"
+            $suggestions["Stable"] = "$major.$minor.$patch"
         } else {
             # Suggest alpha/beta versions
             $suggestions["Alpha"] = "$major.$($minor + 1).0-alpha"
