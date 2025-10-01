@@ -26,8 +26,8 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.9" />
-    <PackageReference Include="Polly" Version="8.6.3" />
-    <PackageReference Update="Nerdbank.GitVersioning" Version="3.7.115" />
+    <PackageReference Include="Polly" Version="8.6.4" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
   </ItemGroup>
 
 </Project>
