@@ -40,4 +40,8 @@
     <InternalsVisibleTo Include="MethodCache.Core.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Abstractions\MethodCache.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>
