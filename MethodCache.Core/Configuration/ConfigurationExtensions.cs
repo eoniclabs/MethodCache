@@ -7,6 +7,12 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration.Sources;
 using MethodCache.Core.Configuration.Runtime;
 using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.Configuration.Registry;
+using MethodCache.Core.Configuration.Resolver;
+using MethodCache.Abstractions.Resolution;
+using MethodCache.Abstractions.Registry;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MethodCache.Core.Configuration
 {
@@ -118,6 +124,14 @@ namespace MethodCache.Core.Configuration
                 return manager;
             });
             
+            services.AddSingleton<PolicySourceRegistration>(provider =>
+            {
+                var manager = provider.GetRequiredService<IMethodCacheConfigurationManager>();
+                return new PolicySourceRegistration(new ConfigurationManagerPolicySource(manager, PolicySourceIds.ConfigurationManager), 50);
+            });
+
+            PolicyRegistrationExtensions.EnsurePolicyServices(services);
+
             // Register core MethodCache services
             services.AddSingleton<ICacheManager, InMemoryCacheManager>();
             services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
