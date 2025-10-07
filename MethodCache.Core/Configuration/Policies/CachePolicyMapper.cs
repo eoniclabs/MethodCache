@@ -71,11 +71,53 @@ internal static class CachePolicyMapper
         return policy with { Provenance = provenance };
     }
 
+    public static CachePolicyFields DetectFields(CachePolicy policy)
+    {
+        if (policy == null)
+        {
+            throw new ArgumentNullException(nameof(policy));
+        }
+
+        var fields = CachePolicyFields.None;
+
+        if (policy.Duration.HasValue)
+        {
+            fields |= CachePolicyFields.Duration;
+        }
+
+        if (policy.Tags.Count > 0)
+        {
+            fields |= CachePolicyFields.Tags;
+        }
+
+        if (policy.KeyGeneratorType != null)
+        {
+            fields |= CachePolicyFields.KeyGenerator;
+        }
+
+        if (policy.Version.HasValue)
+        {
+            fields |= CachePolicyFields.Version;
+        }
+
+        if (policy.RequireIdempotent.HasValue)
+        {
+            fields |= CachePolicyFields.RequireIdempotent;
+        }
+
+        if (policy.Metadata.Count > 0)
+        {
+            fields |= CachePolicyFields.Metadata;
+        }
+
+        return fields;
+    }
+
     private static IReadOnlyDictionary<string, string?> BuildMetadata(CacheMethodSettings settings)
     {
         if (settings.Metadata.Count == 0)
         {
-            return new Dictionary<string, string?>(StringComparer.Ordinal);
+            return Array.Empty<KeyValuePair<string, string?>>().ToDictionary(static kvp => kvp.Key, static kvp => kvp.Value);
         }
 
         var dictionary = new Dictionary<string, string?>(settings.Metadata.Count, StringComparer.Ordinal);
