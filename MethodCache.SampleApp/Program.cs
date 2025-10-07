@@ -1,7 +1,9 @@
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Diagnostics;
 using MethodCache.SampleApp.Configuration;
 using MethodCache.SampleApp.Infrastructure;
 using MethodCache.SampleApp.Runner;
@@ -44,6 +46,17 @@ builder.Services.AddSingleton<SampleScenarioRunner>();
 
 var host = builder.Build();
 var runner = host.Services.GetRequiredService<SampleScenarioRunner>();
+var diagnostics = host.Services.GetRequiredService<PolicyDiagnosticsService>();
+
+Console.WriteLine();
+Console.WriteLine("Effective MethodCache policies available at startup:");
+foreach (var report in diagnostics.GetAllPolicies().OrderBy(r => r.MethodId))
+{
+    var duration = report.Policy.Duration?.ToString() ?? "(default)";
+    var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
+    Console.WriteLine($" • {report.MethodId}: Duration={duration}, Sources={sources}");
+}
+Console.WriteLine();
 
 try
 {

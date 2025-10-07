@@ -6,6 +6,7 @@
 - 2025-10-??: Phase 3 - Policy Resolver & Merge Logic completed. Implemented PolicyResolver with ordered source registrations, layered merge, change streaming, and concurrency controls; added mapping helpers, runtime override notifications, and unit coverage (PolicyResolverTests) validating precedence, live updates, and removals (114 core tests, 11 abstractions tests).
 - 2025-10-??: Phase 4 - Policy Registry & DI Integration completed. Wired configuration manager output into the new policy resolver/registry pipeline, added DI helpers, streamed runtime overrides through change notifications, and verified sample app plus core/abstractions test suites (build + tests passing).
 - 2025-10-??: Phase 5 - Source Generator & Analyzer Alignment completed. Decorators now resolve policies via IPolicyRegistry/CachePolicyConversion, DI extensions use the new pipeline, tests updated, and generator emits no config-dependent registries.
+- 2025-10-??: Phase 6 - Diagnostics & Tooling completed. Introduced PolicyDiagnosticsService with DI registration, documented usage, and updated samples to surface effective policies.
 ## 1. Context & Goals
 - Preserve MethodCache's multi-surface configuration story while making the effective policy for any method observable, testable, and overrideable at runtime.
 - Reduce coupling between configuration parsing (`MethodCache.Core/MethodCacheServiceCollectionExtensions.cs:17`, `MethodCache.Core/Configuration/ConfigurationManager.cs:1`) and execution so new policy sources or cache layers can be added without touching unrelated components.

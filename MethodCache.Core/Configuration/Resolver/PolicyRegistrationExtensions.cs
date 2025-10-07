@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.Configuration.Registry;
+using MethodCache.Core.Configuration.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -27,5 +28,6 @@ internal static class PolicyRegistrationExtensions
         });
 
         services.TryAddSingleton<IPolicyRegistry>(provider => provider.GetRequiredService<PolicyRegistry>());
+        services.TryAddSingleton<PolicyDiagnosticsService>();
     }
 }
