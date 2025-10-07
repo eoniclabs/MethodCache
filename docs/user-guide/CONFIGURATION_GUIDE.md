@@ -364,6 +364,21 @@ builder.Services.AddMethodCacheWithSources(cache => {
 ```
 
 ## Management Interface & Runtime Overrides
+### Inspect Runtime State
+
+You can inspect the merged runtime configuration through the `PolicyDiagnosticsService` which is automatically registered when you call `AddMethodCacheWithSources`.
+
+```csharp
+var diagnostics = provider.GetRequiredService<PolicyDiagnosticsService>();
+
+foreach (var policy in diagnostics.GetAllPolicies())
+{
+    Console.WriteLine($"{policy.MethodId}: Duration={policy.Policy.Duration ?? TimeSpan.Zero}, Sources={string.Join(", ", policy.Contributions.Select(c => c.SourceId))}");
+}
+```
+
+Each report exposes the full set of `PolicyContribution`s so you can see exactly which layer (attributes, JSON/YAML, programmatic, runtime) produced the effective configuration.
+
 
 **🔥 CRITICAL FEATURE:** The runtime layer has the **highest priority** and overrides every other configuration surface. The DI container exposes `IRuntimeCacheConfigurator`, giving you a single entry point for management UIs, incident tooling, or scripting.
 

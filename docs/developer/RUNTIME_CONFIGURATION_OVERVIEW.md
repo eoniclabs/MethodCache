@@ -44,6 +44,23 @@ curl -X POST /api/admin/cache/ab-test \
 # ✅ Overrides developer settings for experimentation
 ```
 
+## 🔍 Inspect Effective Policies
+
+MethodCache exposes a `PolicyDiagnosticsService` that surfaces the resolver output so hosts can understand exactly which configuration layers contributed to a method.
+
+```csharp
+var diagnostics = host.Services.GetRequiredService<PolicyDiagnosticsService>();
+
+foreach (var report in diagnostics.GetAllPolicies())
+{
+    var duration = report.Policy.Duration?.ToString() ?? "(default)";
+    var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
+    Console.WriteLine($"{report.MethodId}: Duration={duration}, Sources={sources}");
+}
+```
+
+Each `PolicyDiagnosticsReport` includes the effective policy plus every `PolicyContribution`, grouped by source, making it easy to diff runtime overrides against baseline attribute/programmatic configuration.
+
 ## **How It Works**
 
 ### 1. **Developer Sets Defaults** (Priority 10-30)
