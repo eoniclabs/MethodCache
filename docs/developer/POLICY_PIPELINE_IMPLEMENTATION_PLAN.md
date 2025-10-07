@@ -2,6 +2,7 @@
 ## Progress Log
 - 2025-10-??: Phase 0 - Preparation completed. Created branch `feature/policy-resolver` and captured baseline `dotnet test MethodCache.sln` run (integration suites for Redis/SQL fail without Docker; recorded as environment limitation). Confirmed toolchain via `global.json` (SDK 8.0.203 roll-forward) and `dotnet --info` (active SDK 9.0.304).
 - 2025-10-??: Phase 1 - Introduce Abstractions Project completed. Added MethodCache.Abstractions (multi-target net9.0/netstandard2.0), wired MethodCache.Core/SourceGenerator references, introduced base policy contracts, polyfills, and unit tests (11 passing). Confirmed no existing shared enums required at this stage; will reassess in later phases.
+- 2025-10-??: Phase 2 - Implement Policy Sources completed. Added Attribute/Fluent/ConfigFile/RuntimeOverride policy adapters backed by new CachePolicyMapper & snapshot helpers, wired runtime override change notifications, and added core tests covering snapshots and live updates (112 tests passing).
 ## 1. Context & Goals
 - Preserve MethodCache's multi-surface configuration story while making the effective policy for any method observable, testable, and overrideable at runtime.
 - Reduce coupling between configuration parsing (`MethodCache.Core/MethodCacheServiceCollectionExtensions.cs:17`, `MethodCache.Core/Configuration/ConfigurationManager.cs:1`) and execution so new policy sources or cache layers can be added without touching unrelated components.
