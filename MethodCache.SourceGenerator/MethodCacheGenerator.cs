@@ -691,7 +691,9 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using System.Threading;");
                 sb.AppendLine("using System.Threading.Tasks;");
                 sb.AppendLine("using MethodCache.Core;");
+                sb.AppendLine("using MethodCache.Abstractions.Registry;");
                 sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine("using MethodCache.Core.Configuration.Policies;");
                 sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
                 sb.AppendLine();
                 sb.AppendLine($"namespace {ns}");
@@ -726,8 +728,7 @@ namespace MethodCache.SourceGenerator
                 // Fields
                 sb.AppendLine($"        private readonly {interfaceFqn} _decorated;");
                 sb.AppendLine("        private readonly ICacheManager _cacheManager;");
-                sb.AppendLine("        private readonly MethodCacheConfiguration _configuration;");
-                sb.AppendLine("        private readonly IServiceProvider _serviceProvider;");
+                sb.AppendLine("        private readonly IPolicyRegistry _policyRegistry;");
                 sb.AppendLine("        private readonly ICacheKeyGenerator _keyGenerator;");
                 sb.AppendLine();
 
@@ -819,13 +820,13 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"        public {className}(");
                 sb.AppendLine($"            {interfaceFqn} decorated,");
                 sb.AppendLine("            ICacheManager cacheManager,");
-                sb.AppendLine("            MethodCacheConfiguration configuration,");
+                sb.AppendLine("            IPolicyRegistry policyRegistry,");
                 sb.AppendLine("            IServiceProvider serviceProvider)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
                 sb.AppendLine("            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));");
-                sb.AppendLine("            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));");
-                sb.AppendLine("            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));");
+                sb.AppendLine("            _policyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));");
+                sb.AppendLine("            if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));");
                 sb.AppendLine("            _keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();");
                 sb.AppendLine("        }");
                 sb.AppendLine();
@@ -859,7 +860,8 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("            var args = new object[] { };");
                 }
 
-                sb.AppendLine($"            var settings = _configuration.GetMethodSettings(\"{methodId}\");");
+                sb.AppendLine($"            var policyResult = _policyRegistry.GetPolicy(\"{methodId}\");");
+                sb.AppendLine("            var settings = CachePolicyConversion.ToCacheMethodSettings(policyResult.Policy);");
 
                 // Handle different return types
                 if (Utils.IsTask(method.ReturnType, out var taskType))
@@ -1434,6 +1436,8 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
                 sb.AppendLine("using MethodCache.Core;");
                 sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine("using MethodCache.Abstractions.Registry;");
+                sb.AppendLine("using MethodCache.Core.Configuration.Policies;");
                 sb.AppendLine();
                 sb.AppendLine("namespace Microsoft.Extensions.DependencyInjection");
                 sb.AppendLine("{");
@@ -1466,7 +1470,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"                new {decoratorFqn}(");
                 sb.AppendLine("                    implementationFactory(sp),");
                 sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
-                sb.AppendLine("                    sp.GetRequiredService<MethodCacheConfiguration>(),");
+                sb.AppendLine("                    sp.GetRequiredService<IPolicyRegistry>(),");
                 sb.AppendLine("                    sp));");
                 sb.AppendLine("        }");
                 sb.AppendLine();
@@ -1483,7 +1487,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                new {decoratorFqn}(");
                     sb.AppendLine("                    implementationFactory(sp),");
                     sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
-                    sb.AppendLine("                    sp.GetRequiredService<MethodCacheConfiguration>(),");
+                    sb.AppendLine("                    sp.GetRequiredService<IPolicyRegistry>(),");
                     sb.AppendLine("                    sp));");
                     sb.AppendLine("        }");
                     sb.AppendLine();

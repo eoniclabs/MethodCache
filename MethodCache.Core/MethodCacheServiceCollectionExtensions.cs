@@ -1,5 +1,7 @@
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Configuration.Sources;
+using MethodCache.Core.Configuration.Resolver;
 using MethodCache.Core.Runtime.Defaults;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -22,9 +24,13 @@ namespace MethodCache.Core
             services.AddSingleton<IMethodCacheConfiguration>(provider => {
                 // At this point, all attributes should be registered
                 configure?.Invoke(configuration);
+                CacheMethodRegistry.Register(configuration);
                 return configuration;
             });
-            
+
+            services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
+            PolicyRegistrationExtensions.EnsurePolicyServices(services);
+
             services.AddSingleton<ICacheManager, InMemoryCacheManager>(); // Default cache manager
             services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>(); // Default key generator
             services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
@@ -53,6 +59,10 @@ namespace MethodCache.Core
 
             // 3. Apply programmatic configuration (can override attributes)
             configure?.Invoke(configuration);
+            CacheMethodRegistry.Register(configuration);
+
+            services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
+            PolicyRegistrationExtensions.EnsurePolicyServices(services);
             
             // 4. Register final configuration
             services.AddSingleton<IMethodCacheConfiguration>(configuration);
@@ -81,6 +91,10 @@ namespace MethodCache.Core
 
             // 3. Apply programmatic configuration (can override attributes) 
             configure?.Invoke(configuration);
+            CacheMethodRegistry.Register(configuration);
+
+            services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
+            PolicyRegistrationExtensions.EnsurePolicyServices(services);
             
             // 4. Register final configuration
             services.AddSingleton<IMethodCacheConfiguration>(configuration);
