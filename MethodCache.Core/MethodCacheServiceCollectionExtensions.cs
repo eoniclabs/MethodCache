@@ -24,7 +24,6 @@ namespace MethodCache.Core
             services.AddSingleton<IMethodCacheConfiguration>(provider => {
                 // At this point, all attributes should be registered
                 configure?.Invoke(configuration);
-                // Note: CacheMethodRegistry.Register is obsolete - attributes now flow through GeneratedPolicyRegistrations
                 return configuration;
             });
 
@@ -59,7 +58,6 @@ namespace MethodCache.Core
 
             // 3. Apply programmatic configuration (can override attributes)
             configure?.Invoke(configuration);
-            // Note: CacheMethodRegistry.Register is obsolete - attributes now flow through GeneratedPolicyRegistrations
 
             services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
@@ -91,7 +89,6 @@ namespace MethodCache.Core
 
             // 3. Apply programmatic configuration (can override attributes)
             configure?.Invoke(configuration);
-            // Note: CacheMethodRegistry.Register is obsolete - attributes now flow through GeneratedPolicyRegistrations
 
             services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
