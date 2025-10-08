@@ -6,7 +6,7 @@ using MethodCache.Abstractions.Resolution;
 
 namespace MethodCache.Core.Configuration.Sources;
 
-internal static class PolicySourceAsyncEnumerable
+public static class PolicySourceAsyncEnumerable
 {
     public static async IAsyncEnumerable<PolicyChange> Empty([EnumeratorCancellation] CancellationToken cancellationToken)
     {

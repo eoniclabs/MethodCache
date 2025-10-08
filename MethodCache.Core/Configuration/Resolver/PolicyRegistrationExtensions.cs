@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MethodCache.Core.Configuration.Resolver;
 
-internal static class PolicyRegistrationExtensions
+public static class PolicyRegistrationExtensions
 {
     public static void EnsurePolicyServices(this IServiceCollection services)
     {

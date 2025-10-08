@@ -7,7 +7,7 @@ using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Configuration.Policies;
 
-internal static class CachePolicyMapper
+public static class CachePolicyMapper
 {
     public static (CachePolicy Policy, CachePolicyFields Fields) FromSettings(CacheMethodSettings settings)
     {

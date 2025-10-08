@@ -5,10 +5,17 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.SourceGenerator;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Configuration.Resolver;
+using MethodCache.Core.Configuration.Registry;
+using MethodCache.Core.Configuration.Diagnostics;
+using MethodCache.Abstractions.Sources;
+using MethodCache.Abstractions.Resolution;
+using MethodCache.Abstractions.Policies;
 using Microsoft.Extensions.Options;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
@@ -104,19 +111,24 @@ public class SourceGeneratorTestEngine
 
         // Add all required MethodCache infrastructure for testing
         services.AddSingleton<ICacheManager, TestMockCacheManager>();
-        services.AddSingleton<MethodCacheConfiguration>(provider => 
+        services.AddSingleton<MethodCacheConfiguration>(provider =>
         {
             var config = new MethodCacheConfiguration();
             // Set default duration for testing
             config.DefaultDuration(TimeSpan.FromMinutes(5));
             return config;
         });
-        
+
         // Add additional dependencies that might be needed
         services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
-        
+
         // Add default metrics provider (will be overridden by tests)
         services.AddSingleton<ICacheMetricsProvider, TestCacheMetricsProvider>();
+
+        // Add policy registry and resolver services (required by generated decorators)
+        // Add a dummy policy source to satisfy PolicyResolver's requirement for at least one source
+        services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new EmptyPolicySource(), 0));
+        MethodCache.Core.Configuration.Resolver.PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
         // Register generated services using reflection
         RegisterGeneratedServices(services, testAssembly.Assembly, logger);
@@ -187,6 +199,11 @@ public class SourceGeneratorTestEngine
                     // Log but don't fail - some generated methods might have different signatures
                     logger?.Invoke($"Warning: Could not register {method.Name}: {ex.Message}");
                     logger?.Invoke($"Stack trace: {ex.StackTrace}");
+                    if (ex.InnerException != null)
+                    {
+                        logger?.Invoke($"Inner exception: {ex.InnerException.Message}");
+                        logger?.Invoke($"Inner stack trace: {ex.InnerException.StackTrace}");
+                    }
                 }
             }
         }
@@ -273,6 +290,7 @@ namespace {namespaceName}
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(MethodCache.Core.CacheAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(MethodCache.Abstractions.Policies.CachePolicy).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(SourceGeneratorTestEngine).Assembly.Location), // Include this assembly for test models
         };
 
@@ -354,4 +372,27 @@ public static class TypeExtensions
         return type.IsAbstract && type.IsSealed;
     }
 }
+
+/// <summary>
+/// Empty policy source for testing scenarios where no policies are needed
+/// </summary>
+internal sealed class EmptyPolicySource : IPolicySource
+{
+    public string SourceId => "empty";
+
+    public Task<IReadOnlyCollection<PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyCollection<PolicySnapshot>>(Array.Empty<PolicySnapshot>());
+    }
+
+    public async IAsyncEnumerable<PolicyChange> WatchAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask.ConfigureAwait(false);
+        yield break;
+    }
+}
+
+
+
+
 

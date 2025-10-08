@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.Core.Tests" />
+    <InternalsVisibleTo Include="MethodCache.SourceGenerator" />
   </ItemGroup>
 
   <ItemGroup>
