@@ -24,7 +24,7 @@ namespace MethodCache.Core
             services.AddSingleton<IMethodCacheConfiguration>(provider => {
                 // At this point, all attributes should be registered
                 configure?.Invoke(configuration);
-                CacheMethodRegistry.Register(configuration);
+                // Note: CacheMethodRegistry.Register is obsolete - attributes now flow through GeneratedPolicyRegistrations
                 return configuration;
             });
 
@@ -59,7 +59,7 @@ namespace MethodCache.Core
 
             // 3. Apply programmatic configuration (can override attributes)
             configure?.Invoke(configuration);
-            CacheMethodRegistry.Register(configuration);
+            // Note: CacheMethodRegistry.Register is obsolete - attributes now flow through GeneratedPolicyRegistrations
 
             services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
@@ -89,9 +89,9 @@ namespace MethodCache.Core
             // 2. Auto-register services with cache attributes using options
             services.AddMethodCacheServices(options, configuration);
 
-            // 3. Apply programmatic configuration (can override attributes) 
+            // 3. Apply programmatic configuration (can override attributes)
             configure?.Invoke(configuration);
-            CacheMethodRegistry.Register(configuration);
+            // Note: CacheMethodRegistry.Register is obsolete - attributes now flow through GeneratedPolicyRegistrations
 
             services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
@@ -229,7 +229,9 @@ namespace MethodCache.Core
                 return;
             }
 
-            // Load cache attributes into configuration
+            // Load attributes into configuration for scenarios where source generator hasn't run
+            // (e.g., test-only interfaces, runtime-only scenarios)
+            // Note: For generated code, GeneratedPolicyRegistrations.AddPolicies() is the primary path
             if (configuration != null)
             {
                 LoadCacheAttributesIntoConfiguration(interfaceType, configuration);
@@ -370,24 +372,27 @@ namespace MethodCache.Core
 
         private static void LoadCacheAttributesIntoConfiguration(Type interfaceType, IMethodCacheConfiguration configuration)
         {
+            // Simple helper to load cache attributes from an interface into configuration
+            // This is used for scenarios where the source generator hasn't run (e.g., test-only interfaces)
             var methods = interfaceType.GetMethods();
-            
+
             foreach (var method in methods)
             {
                 var cacheAttribute = method.GetCustomAttribute<CacheAttribute>();
                 if (cacheAttribute != null)
                 {
                     var methodKey = $"{interfaceType.FullName}.{method.Name}";
-                    
+
                     var settings = new CacheMethodSettings
                     {
-                        Duration = string.IsNullOrEmpty(cacheAttribute.Duration) 
-                            ? TimeSpan.FromMinutes(15) 
+                        Duration = string.IsNullOrEmpty(cacheAttribute.Duration)
+                            ? TimeSpan.FromMinutes(15)
                             : TimeSpan.Parse(cacheAttribute.Duration),
                         Tags = cacheAttribute.Tags?.ToList() ?? new List<string>(),
                         IsIdempotent = cacheAttribute.RequireIdempotent
                     };
 
+                    // Load ETag metadata if present
                     ApplyETagAttribute(method, settings);
 
                     configuration.AddMethod(methodKey, settings);
@@ -397,6 +402,7 @@ namespace MethodCache.Core
 
         private static void ApplyETagAttribute(MethodInfo method, CacheMethodSettings settings)
         {
+            // Use reflection to load ETag attribute if MethodCache.ETags is available
             var etagAttributeType = Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags");
             if (etagAttributeType == null)
             {
