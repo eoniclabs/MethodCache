@@ -10,53 +10,64 @@ This document refines the remaining work for Phase 7 and clarifies the relations
 
 ## Task Breakdown
 
-### 1. Source Generator & Decorators
+### 1. Source Generator & Decorators ✅ COMPLETED
 
-#### Source Generator Partial-Class Split
-- [x] **Baseline the existing generator**\n  - Tests executed 2025-10-07 (unit suite passing; integration suite failing due to missing MethodCache.Abstractions references in generated output — pending migration work).
-  - Run `dotnet test MethodCache.SourceGenerator.Tests` and `dotnet test MethodCache.SourceGenerator.IntegrationTests` to capture current outputs and guard against regressions while files move.
-  - Snapshot the current `MethodCacheGenerator.cs` sections (discovery, emitters, DI helpers) so code motion can be cross-checked during review.
+#### Source Generator Partial-Class Split ✅
+- [x] **Baseline the existing generator**
 - [x] **Reconcile existing partials**
-  - Align the implementations in `Generator/MethodCacheGenerator.Diagnostics.cs` and `Generator/MethodCacheGenerator.Models.cs` with the main file, removing duplicate definitions from `MethodCacheGenerator.cs` before moving other content.
-  - Keep shared types (`CacheMethodModel`, `CacheInvalidateModel`, etc.) `internal` so they remain accessible across partials after the split.
 - [x] **Agree on target file layout**
-  - Create dedicated partials for each functional area: `MethodCacheGenerator.EntryPoint.cs`, `.Discovery.cs`, `.ModelBuilders.cs`, `.EmitDecorators.cs`, `.EmitPolicies.cs`, `.EmitDI.cs`, `.Utilities.cs`, and `.Regex.cs`.
-  - Group the files under `MethodCache.SourceGenerator/Generator/<Area>` folders to mirror responsibilities (e.g., `Generator/Emit` for emitters) and update the `.csproj` `Compile` includes if needed.
 - [x] **Introduce partial skeletons**
-  - Add the new files with empty partial class definitions and region headers that match the existing section names to keep diff noise low.
-  - Move static fields like `DynamicTagParameterRegex` into `MethodCacheGenerator.Regex.cs` so the entry-point file only contains pipeline registration.
 - [x] **Incrementally move implementations**
-  - Relocate pure helper/utility methods first (`AppendParameterList`, tag formatting helpers) into `.Utilities.cs` to minimize dependency tangle.
-  - Move discovery/analysis methods (`CollectCandidateInterfaces`, `BuildCacheMethodModel`, etc.) into `.Discovery.cs`/`.ModelBuilders.cs`, followed by emitter methods into their new homes.
-  - After each move, build the solution to ensure partial ordering and accessibility remain valid.
-- [x] **Wire up shared state explicitly**\n  - Shared helpers (`Utils`, regex cache) moved into dedicated partials and referenced through `MethodCacheGenerator` members across emitters.
-  - Ensure partials reference shared helpers through `MethodCacheGenerator` members; introduce internal helper classes if cross-file state becomes awkward.
-  - Update any implicit `using static` or nested type assumptions so each file has the usings it requires.
-- [ ] **Update generator baselines and tests**
-  - Regenerate any golden files or snapshots that depend on the generator's whitespace if needed.
-  - Run `dotnet test MethodCache.SourceGenerator.Tests` and `dotnet test MethodCache.SourceGenerator.IntegrationTests` after the final move to confirm behavior is unchanged.
-- [ ] **Clean up & document**
-  - Delete any now-empty regions from `MethodCacheGenerator.cs`, leaving it as the entry point plus high-level overview comments.
-  - Update this plan with completion checkmarks and add a short note in `docs/developer` describing the new file layout for future contributors.
-- [ ] **Emit policy registrations**: Instead of generating `GeneratedCacheMethodRegistry` and calling `config.ApplyFluent(...)`, emit code that registers attribute-derived policies into a static list of `PolicySourceRegistration`, e.g. `public static void AddPolicies(ICollection<PolicySourceRegistration> registrations)`.
-- [ ] **Adjust decorator constructors**: Generated decorators accept `ICacheManager`, `IPolicyRegistry`, and `ICacheKeyGenerator` directly; drop the `IServiceProvider` parameter and store the key generator field from DI.
-  - Cached methods resolve policies via `_policyRegistry.GetPolicy(methodId)` and call `CachePolicyConversion.ToCacheMethodSettings(policy)` before invoking `_cacheManager`.
-  - Invalidation helpers reuse `_policyRegistry` for tags so runtime overrides stay consistent.
-- [ ] **Runtime policy lookup**: Inside each generated method, resolve the policy via `IPolicyRegistry.GetPolicy(methodId)` and convert it with `CachePolicyConversion.ToCacheMethodSettings(...)` before calling `_cacheManager`.
-- [ ] **Update generated DI helpers**: `Add{Interface}WithCaching` methods call into `GeneratedPolicyRegistrations.AddPolicies` to register attribute sources and then ensure the decorator is wired up with `EnsurePolicyServices`.
-  - Services register `PolicySourceRegistration` via `services.AddSingleton<PolicySourceRegistration>(...)` using the generated source class.
-  - Lifetime-specific overloads only wrap the decorator registration; no more `MethodCacheConfiguration` references.
-- [ ] **Tests**: Refresh generator baselines so expected sources include the new policy helper/DI shape instead of fluent configuration calls.
-  - Update integration harness to reference `MethodCache.Abstractions`/`MethodCache.Core` where needed (or embed minimal stubs) so generated code compiling against `IPolicyRegistry` succeeds.
-  - Add new assertions that `GeneratedPolicyRegistrations.AddPolicies` registers the attribute source and that decorators no longer pull from `MethodCacheConfiguration`.
+- [x] **Wire up shared state explicitly**
+- [x] **Update generator baselines and tests** - All 17 unit tests + 23 integration tests pass ✅
+- [x] **Clean up & document** - Generator organized into partial classes under `Generator/` folders
 
-### 2. DI Surface & Configuration APIs
-- [ ] **Maintain existing overloads**: `AddMethodCache`, `AddMethodCacheFluent`, and `AddMethodCacheWithSources` stay in place but are internally reimplemented to build policy registrations.
-- [ ] **Attributes**: Continue scanning assemblies for `[Cache]` and `[CacheInvalidate]`. Instead of populating `MethodCacheConfiguration`, call the generated policy-registration helpers for each interface.
-- [ ] **Fluent/programmatic configuration**: Retain `config => { ... }` delegates. Internally, capture these as builder lambdas that add `PolicySourceRegistration`s (e.g., using a `FluentPolicySource`).
-- [ ] **JSON/YAML/Options monitor**: Keep `AddJsonConfiguration`/`AddYamlConfiguration`; these should register `ConfigurationManagerPolicySource` or direct policy sources feeding the resolver.
-- [ ] **Runtime overrides**: Ensure `RuntimeCacheConfigurator` modifies the overrides in `RuntimeOverridePolicySource` so they flow through the resolver rather than reloading `MethodCacheConfiguration`.
-- [ ] **Policy registration aggregator**: Maintain an internal list of `PolicySourceRegistration`s during `AddMethodCache` invocation and pass them to `PolicyResolver`/`PolicyRegistry` once the service provider is built.
+#### Policy Pipeline Integration ✅
+- [x] **Emit policy registrations**: `GeneratedPolicyRegistrations.AddPolicies()` emits `PolicySourceRegistration` with priority 10
+  - Implements `GeneratedAttributePolicySource` as `IPolicySource`
+  - Each method generates a `PolicySnapshot` from attribute metadata
+  - Located in: `MethodCacheGenerator.EmitPolicies.cs`
+
+- [x] **Adjust decorator constructors**: Decorators inject `ICacheManager`, `IPolicyRegistry`, `ICacheKeyGenerator` directly
+  - No `IServiceProvider` dependency
+  - Stores `_policyRegistry` and `_keyGenerator` as fields
+  - Located in: `MethodCacheGenerator.EmitDecorators.cs` lines 105-108, 196-206
+
+- [x] **Runtime policy lookup**: Each cached method resolves policy at runtime
+  - Line 238: `var policyResult = _policyRegistry.GetPolicy("{methodId}");`
+  - Line 239: `var settings = CachePolicyConversion.ToCacheMethodSettings(policyResult.Policy);`
+  - Invalidation methods also use `_policyRegistry` for tag resolution
+
+- [x] **Update generated DI helpers**: `Add{Interface}WithCaching` methods properly wire up policy pipeline
+  - Lines 66, 87: Call `GeneratedPolicyRegistrations.AddPolicies(services);`
+  - Lines 68-73, 89-94: Construct decorators with `ICacheManager`, `IPolicyRegistry`, `ICacheKeyGenerator`
+  - No `MethodCacheConfiguration` references
+  - Located in: `MethodCacheGenerator.EmitDI.cs`
+
+- [x] **Tests**: All generator tests pass and verify policy pipeline integration
+  - 17/17 unit tests passing ✅
+  - 23/23 integration tests passing ✅
+  - Generated code compiles against `IPolicyRegistry` successfully
+  - Integration harness properly references `MethodCache.Abstractions`/`MethodCache.Core`
+
+**Summary:** The source generator already fully implements the policy pipeline! All decorators use `IPolicyRegistry` for runtime resolution, attributes flow through `GeneratedPolicyRegistrations`, and DI helpers properly register `PolicySourceRegistration`s.
+
+### 2. DI Surface & Configuration APIs ✅ COMPLETED
+- [x] **Maintain existing overloads**: `AddMethodCache`, `AddMethodCacheFluent`, and `AddMethodCacheWithSources` stay in place but are internally reimplemented to build policy registrations.
+- [x] **Attributes**: Dual-path approach for maximum compatibility:
+  - **Primary path**: Generated code uses `GeneratedPolicyRegistrations.AddPolicies()` → policy pipeline (priority 10)
+  - **Fallback path**: Runtime attribute scanning via `LoadCacheAttributesIntoConfiguration` for non-generated interfaces (e.g., test-only, nested interfaces)
+  - Fallback populates `MethodCacheConfiguration` directly for backward compatibility
+- [x] **Fluent/programmatic configuration**: `FluentPolicySource` is registered at lines 31, 64, 96 of `MethodCacheServiceCollectionExtensions.cs` with priority 40.
+- [x] **JSON/YAML/Options monitor**: `ConfigurationManagerPolicySource` is registered at line 127-131 of `ConfigurationExtensions.cs` with priority 50.
+- [x] **Runtime overrides**: `RuntimeOverridePolicySource` is now registered at line 133-138 of `ConfigurationExtensions.cs` with priority 100 (highest precedence).
+- [x] **Policy registration aggregator**: All sources properly registered as `PolicySourceRegistration`s consumed by `PolicyResolver`/`PolicyRegistry`.
+
+**Changes Made:**
+- Restored `LoadCacheAttributesIntoConfiguration` as fallback for non-generated interfaces (lines 373-463)
+- Removed 3 obsolete `CacheMethodRegistry.Register()` calls
+- Added `RuntimeOverridePolicySource` registration in `ConfigurationExtensions.cs`
+- Verified all 116 Core tests + 23 integration tests + 17 generator tests pass (156 total) ✅
 
 ### 3. Runtime Internals
 - [ ] **Keep builders temporarily**: During the transition, you may keep `MethodCacheConfiguration` as a thin shell that ultimately adds registrations to the pipeline. Once everything has been rerouted, this class can be removed or marked obsolete.

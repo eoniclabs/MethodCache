@@ -130,6 +130,13 @@ namespace MethodCache.Core.Configuration
                 return new PolicySourceRegistration(new ConfigurationManagerPolicySource(manager, PolicySourceIds.ConfigurationManager), 50);
             });
 
+            // Register runtime override policy source with highest priority
+            services.AddSingleton<PolicySourceRegistration>(provider =>
+            {
+                var overrideSource = provider.GetRequiredService<RuntimeOverrideConfigurationSource>();
+                return new PolicySourceRegistration(new RuntimeOverridePolicySource(overrideSource), 100);
+            });
+
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
             // Register core MethodCache services
