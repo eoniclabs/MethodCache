@@ -36,10 +36,11 @@ MethodCache supports multiple configuration sources that can be combined:
 | Source | Priority | Runtime Updates | Use Case |
 |--------|----------|-----------------|----------|
 | Attributes | 10 (lowest) | ❌ | Development, defaults |
-| JSON | 20 | ✅ | Operations, environments |
-| YAML | 20 | ✅ | Operations, complex configs |
-| Programmatic | 30 | ❌ | Code-based overrides |
-| Runtime (IOptions) | 40 (highest) | ✅ | Management interface, emergency overrides |
+| Fluent/Programmatic | 40 | ❌ | Code-based overrides |
+| JSON/YAML Configuration | 50 | ✅ | Operations, environments, complex configs |
+| Runtime Overrides | 100 (highest) | ✅ | Management interface, emergency overrides |
+
+**How it works:** All configuration sources flow through a unified **policy pipeline**. Each source contributes policies with a specific priority. When multiple sources configure the same method, the highest priority wins. This architecture enables powerful runtime management while keeping your codebase clean.
 
 ## Attribute-Based Configuration
 
