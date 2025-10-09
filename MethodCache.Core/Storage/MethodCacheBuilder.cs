@@ -119,16 +119,16 @@ internal class MethodCacheBuilder : IMethodCacheBuilder
 
     private void UpdateHybridRegistration()
     {
-        // Remove previous HybridStorageManager registration
-        Services.RemoveAll<HybridStorageManager>();
+        // Remove previous StorageCoordinator registration
+        Services.RemoveAll<StorageCoordinator>();
         Services.RemoveAll<IStorageProvider>();
 
-        // Register HybridStorageManager with current configuration
-        Services.TryAddSingleton<HybridStorageManager>(provider =>
+        // Register StorageCoordinator with current configuration
+        Services.TryAddSingleton<StorageCoordinator>(provider =>
         {
             var memoryStorage = _l1Provider != null ? provider.GetService<IMemoryStorage>() : null;
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
             var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
             // Get L2 storage if configured
@@ -151,10 +151,10 @@ internal class MethodCacheBuilder : IMethodCacheBuilder
             // Get backplane if available
             var backplane = provider.GetService<IBackplane>();
 
-            return new HybridStorageManager(memoryStorage!, options, logger, l2Storage, l3Storage, backplane, metricsProvider);
+            return StorageCoordinatorFactory.Create(memoryStorage!, options, logger, l2Storage, l3Storage, backplane, metricsProvider);
         });
 
         // Register as IStorageProvider for compatibility
-        Services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+        Services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<StorageCoordinator>());
     }
 }

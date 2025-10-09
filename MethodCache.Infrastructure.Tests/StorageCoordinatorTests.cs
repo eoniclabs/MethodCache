@@ -10,15 +10,15 @@ using Xunit;
 
 namespace MethodCache.Infrastructure.Tests;
 
-public class HybridStorageManagerTests : IDisposable
+public class StorageCoordinatorTests : IDisposable
 {
     private readonly IMemoryStorage _l1Storage;
     private readonly IStorageProvider _l2Storage;
     private readonly IBackplane _backplane;
-    private readonly HybridStorageManager _hybridStorage;
+    private readonly StorageCoordinator _storageCoordinator;
     private readonly StorageOptions _options;
 
-    public HybridStorageManagerTests()
+    public StorageCoordinatorTests()
     {
         _l1Storage = Substitute.For<IMemoryStorage>();
         _l2Storage = Substitute.For<IStorageProvider>();
@@ -35,13 +35,14 @@ public class HybridStorageManagerTests : IDisposable
             InstanceId = "test-instance"
         };
 
-        _hybridStorage = new HybridStorageManager(
+        _storageCoordinator = StorageCoordinatorFactory.Create(
             _l1Storage,
             Options.Create(_options),
-            NullLogger<HybridStorageManager>.Instance,
+            NullLogger<StorageCoordinator>.Instance,
             _l2Storage,
             null,
-            _backplane);
+            _backplane,
+            null);
     }
 
     [Fact]
@@ -51,7 +52,7 @@ public class HybridStorageManagerTests : IDisposable
         _l2Storage.Name.Returns("Redis");
 
         // Act
-        var name = _hybridStorage.Name;
+        var name = _storageCoordinator.Name;
 
         // Assert
         name.Should().Be("Hybrid(L1+L2+Memory-Only)");
@@ -66,7 +67,7 @@ public class HybridStorageManagerTests : IDisposable
         _l1Storage.GetAsync<string>(key, Arg.Any<CancellationToken>()).Returns(value);
 
         // Act
-        var result = await _hybridStorage.GetAsync<string>(key);
+        var result = await _storageCoordinator.GetAsync<string>(key);
 
         // Assert
         result.Should().Be(value);
@@ -84,7 +85,7 @@ public class HybridStorageManagerTests : IDisposable
         _l2Storage.GetAsync<string>(key, Arg.Any<CancellationToken>()).Returns(value);
 
         // Act
-        var result = await _hybridStorage.GetAsync<string>(key);
+        var result = await _storageCoordinator.GetAsync<string>(key);
 
         // Assert
         result.Should().Be(value);
@@ -102,7 +103,7 @@ public class HybridStorageManagerTests : IDisposable
         _l2Storage.GetAsync<string>(key, Arg.Any<CancellationToken>()).Returns((string?)null);
 
         // Act
-        var result = await _hybridStorage.GetAsync<string>(key);
+        var result = await _storageCoordinator.GetAsync<string>(key);
 
         // Assert
         result.Should().BeNull();
@@ -115,13 +116,14 @@ public class HybridStorageManagerTests : IDisposable
     {
         // Arrange
         var optionsWithL2Disabled = new StorageOptions { L2Enabled = false };
-        var hybridWithL2Disabled = new HybridStorageManager(
+        var hybridWithL2Disabled = StorageCoordinatorFactory.Create(
             _l1Storage,
             Options.Create(optionsWithL2Disabled),
-            NullLogger<HybridStorageManager>.Instance,
+            NullLogger<StorageCoordinator>.Instance,
             _l2Storage,
             null,
-            _backplane);
+            _backplane,
+            null);
 
         const string key = "test-key";
         _l1Storage.GetAsync<string>(key, Arg.Any<CancellationToken>()).Returns((string?)null);
@@ -144,7 +146,7 @@ public class HybridStorageManagerTests : IDisposable
         var expiration = TimeSpan.FromHours(1);
 
         // Act
-        await _hybridStorage.SetAsync(key, value, expiration);
+        await _storageCoordinator.SetAsync(key, value, expiration);
 
         // Assert
         await _l1Storage.Received(1).SetAsync(key, value, Arg.Any<TimeSpan>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>());
@@ -161,7 +163,7 @@ public class HybridStorageManagerTests : IDisposable
         var tags = new[] { "tag1", "tag2" };
 
         // Act
-        await _hybridStorage.SetAsync(key, value, expiration, tags);
+        await _storageCoordinator.SetAsync(key, value, expiration, tags);
 
         // Assert
         await _l1Storage.Received(1).SetAsync(key, value, Arg.Any<TimeSpan>(), tags, Arg.Any<CancellationToken>());
@@ -177,7 +179,7 @@ public class HybridStorageManagerTests : IDisposable
         var longExpiration = TimeSpan.FromDays(1); // Longer than L1MaxExpiration
 
         // Act
-        await _hybridStorage.SetAsync(key, value, longExpiration);
+        await _storageCoordinator.SetAsync(key, value, longExpiration);
 
         // Assert
         await _l1Storage.Received(1).SetAsync(
@@ -195,7 +197,7 @@ public class HybridStorageManagerTests : IDisposable
         const string key = "test-key";
 
         // Act
-        await _hybridStorage.RemoveAsync(key);
+        await _storageCoordinator.RemoveAsync(key);
 
         // Assert
         await _l1Storage.Received(1).RemoveAsync(key, Arg.Any<CancellationToken>());
@@ -209,7 +211,7 @@ public class HybridStorageManagerTests : IDisposable
         const string key = "test-key";
 
         // Act
-        await _hybridStorage.RemoveAsync(key);
+        await _storageCoordinator.RemoveAsync(key);
 
         // Assert
         await _backplane.Received(1).PublishInvalidationAsync(key, Arg.Any<CancellationToken>());
@@ -222,7 +224,7 @@ public class HybridStorageManagerTests : IDisposable
         const string tag = "test-tag";
 
         // Act
-        await _hybridStorage.RemoveByTagAsync(tag);
+        await _storageCoordinator.RemoveByTagAsync(tag);
 
         // Assert
         await _l1Storage.Received(1).RemoveByTagAsync(tag, Arg.Any<CancellationToken>());
@@ -236,7 +238,7 @@ public class HybridStorageManagerTests : IDisposable
         const string tag = "test-tag";
 
         // Act
-        await _hybridStorage.RemoveByTagAsync(tag);
+        await _storageCoordinator.RemoveByTagAsync(tag);
 
         // Assert
         await _backplane.Received(1).PublishTagInvalidationAsync(tag, Arg.Any<CancellationToken>());
@@ -250,7 +252,7 @@ public class HybridStorageManagerTests : IDisposable
         _l1Storage.Exists(key).Returns(true);
 
         // Act
-        var exists = await _hybridStorage.ExistsAsync(key);
+        var exists = await _storageCoordinator.ExistsAsync(key);
 
         // Assert
         exists.Should().BeTrue();
@@ -267,7 +269,7 @@ public class HybridStorageManagerTests : IDisposable
         _l2Storage.ExistsAsync(key, Arg.Any<CancellationToken>()).Returns(true);
 
         // Act
-        var exists = await _hybridStorage.ExistsAsync(key);
+        var exists = await _storageCoordinator.ExistsAsync(key);
 
         // Assert
         exists.Should().BeTrue();
@@ -282,7 +284,7 @@ public class HybridStorageManagerTests : IDisposable
         _l2Storage.GetHealthAsync(Arg.Any<CancellationToken>()).Returns(HealthStatus.Healthy);
 
         // Act
-        var health = await _hybridStorage.GetHealthAsync();
+        var health = await _storageCoordinator.GetHealthAsync();
 
         // Assert
         health.Should().Be(HealthStatus.Healthy);
@@ -295,7 +297,7 @@ public class HybridStorageManagerTests : IDisposable
         _l2Storage.GetHealthAsync(Arg.Any<CancellationToken>()).Returns(HealthStatus.Unhealthy);
 
         // Act
-        var health = await _hybridStorage.GetHealthAsync();
+        var health = await _storageCoordinator.GetHealthAsync();
 
         // Assert
         health.Should().Be(HealthStatus.Degraded);
@@ -329,7 +331,7 @@ public class HybridStorageManagerTests : IDisposable
             .Returns(ValueTask.FromResult<StorageStats?>(l2Stats));
 
         // Act
-        var stats = await _hybridStorage.GetStatsAsync();
+        var stats = await _storageCoordinator.GetStatsAsync();
 
         // Assert
         stats.Should().NotBeNull();
@@ -353,7 +355,7 @@ public class HybridStorageManagerTests : IDisposable
             .Returns(_ => new ValueTask<string?>(Task.FromException<string?>(new InvalidOperationException("L2 error"))));
 
         // Act
-        var result = await _hybridStorage.GetAsync<string>(key);
+        var result = await _storageCoordinator.GetAsync<string>(key);
 
         // Assert
         result.Should().BeNull();
@@ -372,13 +374,14 @@ public class HybridStorageManagerTests : IDisposable
             EnableAsyncL2Writes = true
         };
 
-        await using var hybridWithAsyncWrites = new HybridStorageManager(
+        await using var hybridWithAsyncWrites = StorageCoordinatorFactory.Create(
             _l1Storage,
             Options.Create(optionsWithAsyncWrites),
-            NullLogger<HybridStorageManager>.Instance,
+            NullLogger<StorageCoordinator>.Instance,
             _l2Storage,
             null,
-            _backplane);
+            _backplane,
+            null);
 
         const string key = "test-key";
         const string value = "test-value";
@@ -397,6 +400,6 @@ public class HybridStorageManagerTests : IDisposable
 
     public void Dispose()
     {
-        _hybridStorage.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _storageCoordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 }

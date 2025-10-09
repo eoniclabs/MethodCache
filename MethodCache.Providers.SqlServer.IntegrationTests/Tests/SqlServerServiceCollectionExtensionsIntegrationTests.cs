@@ -59,7 +59,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
         // Hybrid storage manager should be registered
-        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.StorageCoordinator>().Should().NotBeNull();
 
         await serviceProvider.DisposeAsync();
     }
@@ -146,7 +146,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         // Assert
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
-        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.StorageCoordinator>().Should().NotBeNull();
 
         await serviceProvider.DisposeAsync();
     }
@@ -166,7 +166,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         // Assert
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
-        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.StorageCoordinator>().Should().NotBeNull();
 
         await serviceProvider.DisposeAsync();
     }
@@ -192,7 +192,7 @@ public class SqlServerServiceCollectionExtensionsIntegrationTests : SqlServerInt
         // Assert
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();
         serviceProvider.GetService<IBackplane>().Should().NotBeNull();
-        serviceProvider.GetService<MethodCache.Core.Storage.HybridStorageManager>().Should().NotBeNull();
+        serviceProvider.GetService<MethodCache.Core.Storage.StorageCoordinator>().Should().NotBeNull();
 
         // Verify configuration was applied
         var sqlOptions = serviceProvider.GetService<Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions>>();
