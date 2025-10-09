@@ -49,27 +49,27 @@ public static class ServiceCollectionExtensions
     {
         services.AddCacheInfrastructure(configure);
 
-        // Register hybrid storage manager as the primary storage provider
-        services.TryAddSingleton<HybridStorageManager>(provider =>
+        // Register storage coordinator as the primary storage provider
+        services.TryAddSingleton<StorageCoordinator>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
             var metrics = provider.GetService<ICacheMetricsProvider>();
 
             // Try to get L2 and L3 storage providers and backplane (optional)
-            // For L2, we can look for any registered IStorageProvider (but not this hybrid manager itself)
+            // For L2, we can look for any registered IStorageProvider (but not this coordinator itself)
             // For L3, we look for IPersistentStorageProvider
             // To avoid circular dependency, we'll get them by looking for different service names
             var backplane = provider.GetService<IBackplane>();
 
             // For now, don't try to automatically wire L2/L3 to avoid circular dependencies
             // Tests can manually configure these if needed
-            return new HybridStorageManager(memoryStorage, options, logger, null, null, backplane, metrics);
+            return StorageCoordinatorFactory.Create(memoryStorage, options, logger, null, null, backplane, metrics);
         });
 
-        // Override any existing IStorageProvider registration with hybrid manager
-        services.Replace(ServiceDescriptor.Singleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>()));
+        // Override any existing IStorageProvider registration with coordinator
+        services.Replace(ServiceDescriptor.Singleton<IStorageProvider>(provider => provider.GetRequiredService<StorageCoordinator>()));
         return services;
     }
 

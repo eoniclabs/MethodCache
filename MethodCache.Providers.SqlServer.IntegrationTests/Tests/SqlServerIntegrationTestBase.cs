@@ -410,8 +410,8 @@ internal static class SqlServerInfrastructureTestExtensions
         // Add core infrastructure for hybrid manager
         services.AddCacheInfrastructure();
 
-        // Register custom hybrid storage manager that uses SqlServer as L2
-        services.AddScoped<HybridStorageManager>(provider =>
+        // Register custom storage coordinator that uses SqlServer as L2/L3
+        services.AddScoped<StorageCoordinator>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var infraOptions = provider.GetRequiredService<IOptions<InfraStorageOptions>>();
@@ -432,24 +432,26 @@ internal static class SqlServerInfrastructureTestExtensions
                 EnableEfficientL1TagInvalidation = infraOptions.Value.EnableEfficientL1TagInvalidation,
                 MaxTagMappings = infraOptions.Value.MaxTagMappings
             });
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
 
             // Get SqlServer provider for L2/L3
             var sqlServerProvider = provider.GetRequiredService<SqlServerPersistentStorageProvider>();
             var backplane = provider.GetService<IBackplane>();
+            var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
-            return new HybridStorageManager(
+            return StorageCoordinatorFactory.Create(
                 memoryStorage,
                 coreOptions,
                 logger,
                 sqlServerProvider,  // L2 storage
                 sqlServerProvider,  // L3 storage (same instance)
-                backplane);
+                backplane,
+                metricsProvider);
         });
 
-        // Override IStorageProvider to use hybrid manager
+        // Override IStorageProvider to use storage coordinator
         services.AddScoped<IStorageProvider>(provider =>
-            provider.GetRequiredService<HybridStorageManager>());
+            provider.GetRequiredService<StorageCoordinator>());
 
         return services;
     }

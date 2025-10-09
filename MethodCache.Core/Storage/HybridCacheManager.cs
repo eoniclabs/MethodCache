@@ -223,10 +223,10 @@ public class HybridCacheManager : IHybridCacheManager
 
     public async Task<HybridCacheStats> GetStatsAsync()
     {
-        // If the storage provider is a HybridStorageManager, get stats from it
-        if (_storageProvider is HybridStorageManager hybridManager)
+        // If the storage provider is a StorageCoordinator, get stats from it
+        if (_storageProvider is StorageCoordinator coordinator)
         {
-            var stats = await hybridManager.GetStatsAsync();
+            var stats = await coordinator.GetStatsAsync();
             if (stats?.AdditionalStats != null)
             {
                 return new HybridCacheStats
