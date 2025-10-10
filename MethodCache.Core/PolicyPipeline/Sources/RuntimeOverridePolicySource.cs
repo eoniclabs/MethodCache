@@ -13,12 +13,12 @@ namespace MethodCache.Core.Configuration.Runtime;
 
 internal sealed class RuntimeOverridePolicySource : IPolicySource
 {
-    private readonly RuntimeOverrideConfigurationSource _overrideSource;
+    private readonly RuntimePolicyOverrideStore _store;
     private readonly string _sourceId = PolicySourceIds.RuntimeOverrides;
 
-    public RuntimeOverridePolicySource(RuntimeOverrideConfigurationSource overrideSource)
+    public RuntimeOverridePolicySource(RuntimePolicyOverrideStore store)
     {
-        _overrideSource = overrideSource ?? throw new ArgumentNullException(nameof(overrideSource));
+        _store = store ?? throw new ArgumentNullException(nameof(store));
     }
 
     public string SourceId => _sourceId;
@@ -27,7 +27,7 @@ internal sealed class RuntimeOverridePolicySource : IPolicySource
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var entries = _overrideSource.GetOverrides();
+        var entries = _store.GetOverrides();
         var timestamp = DateTimeOffset.UtcNow;
         var snapshots = new List<PolicySnapshot>(entries.Count);
 
@@ -60,7 +60,7 @@ internal sealed class RuntimeOverridePolicySource : IPolicySource
             channel.Writer.TryWrite(args);
         }
 
-        _overrideSource.OverridesChanged += Handler;
+        _store.OverridesChanged += Handler;
 
         try
         {
@@ -78,7 +78,7 @@ internal sealed class RuntimeOverridePolicySource : IPolicySource
         }
         finally
         {
-            _overrideSource.OverridesChanged -= Handler;
+            _store.OverridesChanged -= Handler;
             channel.Writer.TryComplete();
         }
     }
@@ -92,7 +92,7 @@ internal sealed class RuntimeOverridePolicySource : IPolicySource
             case RuntimeOverrideChangeKind.Upsert:
                 foreach (var methodKey in args.AffectedMethodKeys)
                 {
-                    if (!_overrideSource.TryGetOverride(methodKey, out var settings))
+                    if (!_store.TryGetOverride(methodKey, out var settings))
                     {
                         continue;
                     }

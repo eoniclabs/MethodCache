@@ -1,10 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.Configuration.Runtime;
 using MethodCache.Core.Configuration.Sources;
 using MethodCache.Core.Configuration.Resolver;
 using MethodCache.Core.Runtime.Defaults;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace MethodCache.Core
 {
@@ -18,21 +26,15 @@ namespace MethodCache.Core
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure = null)
         {
-            var configuration = new MethodCacheConfiguration();
-            
-            // Store the configure action to apply AFTER attribute registration
-            services.AddSingleton<IMethodCacheConfiguration>(provider => {
-                // At this point, all attributes should be registered
-                configure?.Invoke(configuration);
-                return configuration;
-            });
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
 
-            services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
-            PolicyRegistrationExtensions.EnsurePolicyServices(services);
+            EnsureCoreServices(services);
 
-            services.AddSingleton<ICacheManager, InMemoryCacheManager>(); // Default cache manager
-            services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>(); // Default key generator
-            services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+            var configuration = BuildStartupConfiguration(configure);
+            RegisterFluentPolicySource(services, configuration);
 
             return services;
         }
@@ -46,24 +48,22 @@ namespace MethodCache.Core
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure = null, params Assembly[]? assemblies)
         {
-            var configuration = new MethodCacheConfiguration();
-            
-            // 1. Register core services first (without configuration)
-            services.AddSingleton<ICacheManager, InMemoryCacheManager>();
-            services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
-            services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
 
-            // 2. Auto-register services with cache attributes (loads attribute config)
-            services.AddMethodCacheServices(assemblies ?? new[] { Assembly.GetCallingAssembly() }, configuration);
+            EnsureCoreServices(services);
 
-            // 3. Apply programmatic configuration (can override attributes)
-            configure?.Invoke(configuration);
+            var targetAssemblies = assemblies is { Length: > 0 }
+                ? assemblies
+                : new[] { Assembly.GetCallingAssembly() };
 
-            services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
-            PolicyRegistrationExtensions.EnsurePolicyServices(services);
-            
-            // 4. Register final configuration
-            services.AddSingleton<IMethodCacheConfiguration>(configuration);
+            RegisterAttributePolicySource(services, targetAssemblies);
+            services.AddMethodCacheServices(MethodCacheRegistrationOptions.ForAssemblies(targetAssemblies));
+
+            var configuration = BuildStartupConfiguration(configure);
+            RegisterFluentPolicySource(services, configuration);
 
             return services;
         }
@@ -77,26 +77,75 @@ namespace MethodCache.Core
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure, MethodCacheRegistrationOptions options)
         {
-            var configuration = new MethodCacheConfiguration();
-            
-            // 1. Register core services first
-            services.AddSingleton<ICacheManager, InMemoryCacheManager>();
-            services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
-            services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
 
-            // 2. Auto-register services with cache attributes using options
-            services.AddMethodCacheServices(options, configuration);
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
 
-            // 3. Apply programmatic configuration (can override attributes)
-            configure?.Invoke(configuration);
+            EnsureCoreServices(services);
 
-            services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new FluentPolicySource(configuration), 40));
-            PolicyRegistrationExtensions.EnsurePolicyServices(services);
-            
-            // 4. Register final configuration
-            services.AddSingleton<IMethodCacheConfiguration>(configuration);
+            var assemblies = GetAssembliesToScan(options);
+            RegisterAttributePolicySource(services, assemblies);
+            services.AddMethodCacheServices(options);
+
+            var configuration = BuildStartupConfiguration(configure);
+            RegisterFluentPolicySource(services, configuration);
 
             return services;
+        }
+
+        private static MethodCacheConfiguration BuildStartupConfiguration(Action<IMethodCacheConfiguration>? configure)
+        {
+            var configuration = new MethodCacheConfiguration();
+            configure?.Invoke(configuration);
+            return configuration;
+        }
+
+        private static void EnsureCoreServices(IServiceCollection services)
+        {
+            services.TryAddSingleton<ICacheManager, InMemoryCacheManager>();
+            services.TryAddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+            services.TryAddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+
+            if (!services.Any(sd => sd.ServiceType == typeof(RuntimePolicyOverrideStore)))
+            {
+                services.AddSingleton<RuntimePolicyOverrideStore>();
+            }
+
+            if (!services.Any(sd => sd.ServiceType == typeof(RuntimeOverridePolicySource)))
+            {
+                services.AddSingleton<RuntimeOverridePolicySource>();
+                services.AddSingleton<PolicySourceRegistration>(sp =>
+                    new PolicySourceRegistration(
+                        sp.GetRequiredService<RuntimeOverridePolicySource>(),
+                        PolicySourcePriority.RuntimeOverrides));
+            }
+
+            services.TryAddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
+
+            PolicyRegistrationExtensions.EnsurePolicyServices(services);
+        }
+
+        private static void RegisterFluentPolicySource(IServiceCollection services, MethodCacheConfiguration configuration)
+        {
+            services.AddSingleton<PolicySourceRegistration>(_ =>
+                new PolicySourceRegistration(new FluentPolicySource(configuration), PolicySourcePriority.StartupFluent));
+        }
+
+        private static void RegisterAttributePolicySource(IServiceCollection services, Assembly[] assemblies)
+        {
+            if (assemblies == null || assemblies.Length == 0)
+            {
+                throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
+            }
+
+            services.AddSingleton<PolicySourceRegistration>(_ =>
+                new PolicySourceRegistration(new AttributePolicySource(assemblies), PolicySourcePriority.Attributes));
         }
 
         /// <summary>
@@ -118,16 +167,15 @@ namespace MethodCache.Core
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="assemblies">Assemblies to scan. If null, scans the calling assembly.</param>
-        /// <param name="configuration">Optional configuration to populate with attribute settings</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, Assembly[]? assemblies, IMethodCacheConfiguration? configuration = null)
+        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, Assembly[]? assemblies)
         {
             var options = new MethodCacheRegistrationOptions
             {
                 Assemblies = assemblies?.Length > 0 ? assemblies : new[] { Assembly.GetCallingAssembly() }
             };
 
-            return services.AddMethodCacheServices(options, configuration);
+            return services.AddMethodCacheServices(options);
         }
 
         /// <summary>
@@ -135,16 +183,15 @@ namespace MethodCache.Core
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="options">Registration options</param>
-        /// <param name="configuration">Optional configuration to populate with attribute settings</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, MethodCacheRegistrationOptions options, IMethodCacheConfiguration? configuration = null)
+        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, MethodCacheRegistrationOptions options)
         {
             var assembliesToScan = GetAssembliesToScan(options);
             var interfacesWithCacheAttributes = FindInterfacesWithCacheAttributes(assembliesToScan, options);
 
             foreach (var interfaceType in interfacesWithCacheAttributes)
             {
-                RegisterServiceWithCaching(services, interfaceType, options, configuration);
+                RegisterServiceWithCaching(services, interfaceType, options);
             }
 
             return services;
@@ -208,7 +255,7 @@ namespace MethodCache.Core
                          m.GetCustomAttributes(typeof(CacheInvalidateAttribute), false).Any());
         }
 
-        private static void RegisterServiceWithCaching(IServiceCollection services, Type interfaceType, MethodCacheRegistrationOptions options, IMethodCacheConfiguration? configuration = null)
+        private static void RegisterServiceWithCaching(IServiceCollection services, Type interfaceType, MethodCacheRegistrationOptions options)
         {
             // Find concrete implementation
             var implementationType = FindImplementationType(interfaceType, options);
@@ -224,14 +271,6 @@ namespace MethodCache.Core
                 // Log warning (for now, just skip - in a real implementation we'd use ILogger)
                 Console.WriteLine($"Warning: {message}");
                 return;
-            }
-
-            // Load attributes into configuration for scenarios where source generator hasn't run
-            // (e.g., test-only interfaces, runtime-only scenarios)
-            // Note: For generated code, GeneratedPolicyRegistrations.AddPolicies() is the primary path
-            if (configuration != null)
-            {
-                LoadCacheAttributesIntoConfiguration(interfaceType, configuration);
             }
 
             // Register the concrete implementation if requested
@@ -367,96 +406,150 @@ namespace MethodCache.Core
                             "Make sure the source generator has run and the interface has cache attributes.");
         }
 
-        private static void LoadCacheAttributesIntoConfiguration(Type interfaceType, IMethodCacheConfiguration configuration)
+        public static IServiceCollection AddMethodCacheWithSources(this IServiceCollection services, Action<MethodCacheConfigurationBuilder>? configure = null, Action<IMethodCacheConfiguration>? configureFluent = null)
         {
-            // Simple helper to load cache attributes from an interface into configuration
-            // This is used for scenarios where the source generator hasn't run (e.g., test-only interfaces)
-            var methods = interfaceType.GetMethods();
-
-            foreach (var method in methods)
+            if (services == null)
             {
-                var cacheAttribute = method.GetCustomAttribute<CacheAttribute>();
-                if (cacheAttribute != null)
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            EnsureCoreServices(services);
+
+            var configuration = BuildStartupConfiguration(configureFluent);
+            RegisterFluentPolicySource(services, configuration);
+
+            var builder = new MethodCacheConfigurationBuilder(services);
+            builder.AddAttributeSource(Assembly.GetCallingAssembly());
+
+            configure?.Invoke(builder);
+
+            builder.Apply();
+
+            return services;
+        }
+
+        public interface IProgrammaticConfigurationBuilder
+        {
+            IProgrammaticConfigurationBuilder AddMethod(string serviceType, string methodName, Action<CacheMethodSettings> configure);
+        }
+
+        public sealed class MethodCacheConfigurationBuilder
+        {
+            private readonly IServiceCollection _services;
+            private readonly List<Configuration.Sources.IConfigurationSource> _configurationSources = new();
+
+            public MethodCacheConfigurationBuilder(IServiceCollection services)
+            {
+                _services = services ?? throw new ArgumentNullException(nameof(services));
+            }
+
+            public MethodCacheConfigurationBuilder AddAttributeSource(params Assembly[] assemblies)
+            {
+                var targets = assemblies is { Length: > 0 } ? assemblies : new[] { Assembly.GetCallingAssembly() };
+                RegisterAttributePolicySource(_services, targets);
+                _services.AddMethodCacheServices(MethodCacheRegistrationOptions.ForAssemblies(targets));
+                return this;
+            }
+
+            public MethodCacheConfigurationBuilder AddJsonConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
+            {
+                if (configuration == null)
                 {
-                    var methodKey = $"{interfaceType.FullName}.{method.Name}";
+                    throw new ArgumentNullException(nameof(configuration));
+                }
 
-                    var settings = new CacheMethodSettings
+                _configurationSources.Add(new JsonConfigurationSource(configuration, sectionName));
+                return this;
+            }
+
+            public MethodCacheConfigurationBuilder AddYamlConfiguration(string yamlFilePath)
+            {
+                if (string.IsNullOrWhiteSpace(yamlFilePath))
+                {
+                    throw new ArgumentException("YAML file path must be provided.", nameof(yamlFilePath));
+                }
+
+                _configurationSources.Add(new YamlConfigurationSource(yamlFilePath));
+                return this;
+            }
+
+            public MethodCacheConfigurationBuilder AddProgrammaticConfiguration(Action<IProgrammaticConfigurationBuilder> configure)
+            {
+                if (configure == null)
+                {
+                    throw new ArgumentNullException(nameof(configure));
+                }
+
+                var source = new ProgrammaticConfigurationSource();
+                var builder = new ProgrammaticConfigurationBuilder(source);
+                configure(builder);
+                _configurationSources.Add(source);
+                return this;
+            }
+
+            public MethodCacheConfigurationBuilder AddRuntimeConfiguration(Action<MethodCacheOptions>? configure = null)
+            {
+                var optionsBuilder = _services.AddOptions<MethodCacheOptions>();
+                optionsBuilder.BindConfiguration("MethodCache");
+
+                if (configure != null)
+                {
+                    optionsBuilder.Configure(configure);
+                }
+
+                _services.AddSingleton<PolicySourceRegistration>(sp =>
+                    new PolicySourceRegistration(
+                        new OptionsMonitorPolicySource(sp.GetRequiredService<IOptionsMonitor<MethodCacheOptions>>()),
+                        PolicySourcePriority.ConfigurationFiles + 5));
+
+                return this;
+            }
+
+            internal void Apply()
+            {
+                if (_configurationSources.Count == 0)
+                {
+                    return;
+                }
+
+                var sources = _configurationSources.ToArray();
+                _services.AddSingleton<PolicySourceRegistration>(_ =>
+                    new PolicySourceRegistration(new ConfigFilePolicySource(sources), PolicySourcePriority.ConfigurationFiles));
+            }
+
+            private sealed class ProgrammaticConfigurationBuilder : IProgrammaticConfigurationBuilder
+            {
+                private readonly ProgrammaticConfigurationSource _source;
+
+                public ProgrammaticConfigurationBuilder(ProgrammaticConfigurationSource source)
+                {
+                    _source = source ?? throw new ArgumentNullException(nameof(source));
+                }
+
+                public IProgrammaticConfigurationBuilder AddMethod(string serviceType, string methodName, Action<CacheMethodSettings> configure)
+                {
+                    if (string.IsNullOrWhiteSpace(serviceType))
                     {
-                        Duration = string.IsNullOrEmpty(cacheAttribute.Duration)
-                            ? TimeSpan.FromMinutes(15)
-                            : TimeSpan.Parse(cacheAttribute.Duration),
-                        Tags = cacheAttribute.Tags?.ToList() ?? new List<string>(),
-                        IsIdempotent = cacheAttribute.RequireIdempotent
-                    };
+                        throw new ArgumentException("Service type must be provided.", nameof(serviceType));
+                    }
 
-                    // Load ETag metadata if present
-                    ApplyETagAttribute(method, settings);
+                    if (string.IsNullOrWhiteSpace(methodName))
+                    {
+                        throw new ArgumentException("Method name must be provided.", nameof(methodName));
+                    }
 
-                    configuration.AddMethod(methodKey, settings);
+                    if (configure == null)
+                    {
+                        throw new ArgumentNullException(nameof(configure));
+                    }
+
+                    var settings = new CacheMethodSettings();
+                    configure(settings);
+                    _source.AddMethodConfiguration(serviceType, methodName, settings);
+                    return this;
                 }
             }
         }
 
-        private static void ApplyETagAttribute(MethodInfo method, CacheMethodSettings settings)
-        {
-            // Use reflection to load ETag attribute if MethodCache.ETags is available
-            var etagAttributeType = Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags");
-            if (etagAttributeType == null)
-            {
-                return;
-            }
-
-            var etagAttribute = method.GetCustomAttribute(etagAttributeType);
-            if (etagAttribute == null)
-            {
-                return;
-            }
-
-            var metadata = new ETagMetadata
-            {
-                Strategy = etagAttributeType.GetProperty("Strategy")?.GetValue(etagAttribute)?.ToString(),
-                IncludeParametersInETag = GetNullableValue<bool>(etagAttributeType, etagAttribute, "IncludeParametersInETag"),
-                ETagGeneratorType = etagAttributeType.GetProperty("ETagGeneratorType")?.GetValue(etagAttribute) as Type,
-                Metadata = etagAttributeType.GetProperty("Metadata")?.GetValue(etagAttribute) as string[],
-                UseWeakETag = GetNullableValue<bool>(etagAttributeType, etagAttribute, "UseWeakETag")
-            };
-
-            var cacheDurationMinutes = GetNullableValue<int>(etagAttributeType, etagAttribute, "CacheDurationMinutes");
-            if (cacheDurationMinutes.HasValue)
-            {
-                metadata.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
-            }
-
-            settings.SetETagMetadata(metadata);
-        }
-
-        private static T? GetNullableValue<T>(Type attributeType, object attribute, string propertyName) where T : struct
-        {
-            var property = attributeType.GetProperty(propertyName);
-            if (property == null)
-            {
-                return null;
-            }
-
-            var value = property.GetValue(attribute);
-            if (value == null)
-            {
-                return null;
-            }
-
-            if (value is T typed)
-            {
-                return typed;
-            }
-
-            // Handle nullable value types
-            if (value.GetType() == typeof(T?))
-            {
-                var nullable = (T?)value;
-                return nullable.HasValue ? nullable.Value : null;
-            }
-
-            return null;
-        }
     }
 }

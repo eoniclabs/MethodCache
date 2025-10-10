@@ -1,8 +1,10 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Demo
@@ -79,13 +81,13 @@ namespace MethodCache.Demo
 
             // Verify that core services are registered
             var cacheManager = serviceProvider.GetService<ICacheManager>();
-            var configuration = serviceProvider.GetService<IMethodCacheConfiguration>();
+            var registry = serviceProvider.GetService<IPolicyRegistry>();
+            var runtimeConfigurator = serviceProvider.GetService<IRuntimeCacheConfigurator>();
             var keyGenerator = serviceProvider.GetService<ICacheKeyGenerator>();
             var metricsProvider = serviceProvider.GetService<ICacheMetricsProvider>();
-
             Console.WriteLine($"\nCore services registered:");
             Console.WriteLine($"  ICacheManager: {(cacheManager != null ? "✓" : "✗")}");
-            Console.WriteLine($"  IMethodCacheConfiguration: {(configuration != null ? "✓" : "✗")}");
+            Console.WriteLine($"  IPolicyRegistry: {(registry != null ? "✓" : "✗")}");
             Console.WriteLine($"  ICacheKeyGenerator: {(keyGenerator != null ? "✓" : "✗")}");
             Console.WriteLine($"  ICacheMetricsProvider: {(metricsProvider != null ? "✓" : "✗")}");
 
@@ -177,3 +179,4 @@ namespace MethodCache.Demo
         }
     }
 }
+

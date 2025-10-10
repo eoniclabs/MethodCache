@@ -77,11 +77,11 @@ public class PolicySourcesTests
     [Fact]
     public async Task RuntimeOverridePolicySource_EmitsChanges()
     {
-        var overrideSource = new RuntimeOverrideConfigurationSource();
-        var policySource = new RuntimeOverridePolicySource(overrideSource);
+        var overrideStore = new RuntimePolicyOverrideStore();
+        var policySource = new RuntimeOverridePolicySource(overrideStore);
         var methodKey = "RuntimeOverride.Service.Get";
 
-        overrideSource.ApplyOverrides(new[]
+        overrideStore.ApplyOverrides(new[]
         {
             new MethodCacheConfigEntry
             {
@@ -98,7 +98,7 @@ public class PolicySourcesTests
         await using var enumerator = policySource.WatchAsync(cts.Token).GetAsyncEnumerator();
 
         var updateTask = enumerator.MoveNextAsync().AsTask();
-        overrideSource.ApplyOverrides(new[]
+        overrideStore.ApplyOverrides(new[]
         {
             new MethodCacheConfigEntry
             {
@@ -118,7 +118,7 @@ public class PolicySourcesTests
         Assert.Equal(PolicyChangeReason.Updated, updateChange.Reason);
 
         var removalTask = enumerator.MoveNextAsync().AsTask();
-        Assert.True(overrideSource.RemoveOverride(methodKey));
+        Assert.True(overrideStore.RemoveOverride(methodKey));
         Assert.True(await removalTask);
         var removalChange = enumerator.Current;
         Assert.Equal(methodKey, removalChange.MethodId);

@@ -1,24 +1,33 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MethodCache.Abstractions.Policies;
 
 public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
 {
-    private readonly IReadOnlyList<PolicyContribution> _contributions;
+    private readonly PolicyContribution[] _contributions;
 
     public static PolicyProvenance Empty { get; } = new PolicyProvenance(Array.Empty<PolicyContribution>());
 
     public PolicyProvenance(IReadOnlyList<PolicyContribution> contributions)
     {
-        _contributions = contributions ?? throw new ArgumentNullException(nameof(contributions));
+        if (contributions is null)
+        {
+            throw new ArgumentNullException(nameof(contributions));
+        }
+
+        _contributions = contributions as PolicyContribution[] ?? contributions.ToArray();
     }
 
-    public int Count => _contributions.Count;
+    private PolicyProvenance(PolicyContribution[] contributions)
+    {
+        _contributions = contributions;
+    }
 
-    public IEnumerator<PolicyContribution> GetEnumerator() => _contributions.GetEnumerator();
+    public int Count => _contributions.Length;
+
+    public IEnumerator<PolicyContribution> GetEnumerator() => ((IEnumerable<PolicyContribution>)_contributions).GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -29,11 +38,9 @@ public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
             throw new ArgumentNullException(nameof(contribution));
         }
 
-        if (_contributions.Count == 0)
-        {
-            return new PolicyProvenance(new[] { contribution });
-        }
-
-        return new PolicyProvenance(_contributions.Concat(new[] { contribution }).ToArray());
+        var next = new PolicyContribution[_contributions.Length + 1];
+        Array.Copy(_contributions, next, _contributions.Length);
+        next[next.Length - 1] = contribution;
+        return new PolicyProvenance(next);
     }
 }

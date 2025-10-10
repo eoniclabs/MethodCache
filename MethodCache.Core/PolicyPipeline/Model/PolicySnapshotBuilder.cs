@@ -34,7 +34,17 @@ internal static class PolicySnapshotBuilder
 
     public static PolicyChange CreateChange(string sourceId, string methodId, CachePolicy policy, CachePolicyFields fields, PolicyChangeReason reason, DateTimeOffset timestamp)
     {
-        var delta = new CachePolicyDelta(reason == PolicyChangeReason.Removed ? CachePolicyFields.None : fields, reason == PolicyChangeReason.Removed ? CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.KeyGenerator | CachePolicyFields.Version | CachePolicyFields.Metadata | CachePolicyFields.RequireIdempotent | CachePolicyFields.Layers | CachePolicyFields.Consistency : CachePolicyFields.None, policy);
+        var clearedFields = CachePolicyFields.Duration |
+                            CachePolicyFields.Tags |
+                            CachePolicyFields.KeyGenerator |
+                            CachePolicyFields.Version |
+                            CachePolicyFields.Metadata |
+                            CachePolicyFields.RequireIdempotent;
+
+        var delta = new CachePolicyDelta(
+            reason == PolicyChangeReason.Removed ? CachePolicyFields.None : fields,
+            reason == PolicyChangeReason.Removed ? clearedFields : CachePolicyFields.None,
+            policy);
         return new PolicyChange(sourceId, methodId, delta, reason, timestamp);
     }
 }

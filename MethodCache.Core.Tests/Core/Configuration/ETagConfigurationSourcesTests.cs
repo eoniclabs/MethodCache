@@ -3,8 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Configuration.Runtime;
 using MethodCache.Core.Configuration.Sources;
 using MethodCache.ETags.Attributes;
@@ -65,8 +67,9 @@ namespace MethodCache.Core.Tests.Configuration
             services.AddMethodCache(null, typeof(IAttributeBackedService).Assembly);
 
             using var provider = services.BuildServiceProvider();
-            var configuration = (MethodCacheConfiguration)provider.GetRequiredService<IMethodCacheConfiguration>();
-            var settings = configuration.GetMethodSettings($"{typeof(IAttributeBackedService).FullName}.{nameof(IAttributeBackedService.GetValue)}");
+            var registry = provider.GetRequiredService<IPolicyRegistry>();
+            var policy = registry.GetPolicy($"{typeof(IAttributeBackedService).FullName}.{nameof(IAttributeBackedService.GetValue)}");
+            var settings = CachePolicyConversion.ToCacheMethodSettings(policy.Policy);
 
             var metadata = settings.GetETagMetadata();
             Assert.NotNull(metadata);
@@ -157,7 +160,7 @@ services:
         }
 
         [Fact]
-        public async Task OptionsMonitorConfigurationSource_MergesEtagMetadata()
+        public async Task OptionsMonitorPolicySource_MergesEtagMetadata()
         {
             var options = new MethodCacheOptions
             {
@@ -191,12 +194,13 @@ services:
             };
 
             var monitor = new StaticOptionsMonitor<MethodCacheOptions>(options);
-            var source = new OptionsMonitorConfigurationSource(monitor);
+            var source = new OptionsMonitorPolicySource(monitor);
 
-            var entries = await source.LoadAsync();
-            var entry = entries.Single();
+            var snapshots = await source.GetSnapshotAsync();
+            var snapshot = snapshots.Single();
+            var settings = CachePolicyConversion.ToCacheMethodSettings(snapshot.Policy);
 
-            var metadata = entry.Settings.GetETagMetadata();
+            var metadata = settings.GetETagMetadata();
             Assert.NotNull(metadata);
             Assert.Equal("Custom", metadata!.Strategy);
             Assert.True(metadata.IncludeParametersInETag);

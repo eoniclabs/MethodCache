@@ -16,18 +16,15 @@ namespace MethodCache.SampleApp.Runner
     {
         private readonly ICacheShowcaseService _service;
         private readonly IRuntimeCacheConfigurator _runtimeConfigurator;
-        private readonly IMethodCacheConfigurationManager _configurationManager;
         private readonly EnhancedMetricsProvider _metricsProvider;
 
         public SampleScenarioRunner(
             ICacheShowcaseService service,
             IRuntimeCacheConfigurator runtimeConfigurator,
-            IMethodCacheConfigurationManager configurationManager,
             ICacheMetricsProvider metricsProvider)
         {
             _service = service;
             _runtimeConfigurator = runtimeConfigurator;
-            _configurationManager = configurationManager;
             _metricsProvider = metricsProvider as EnhancedMetricsProvider
                 ?? throw new ArgumentException("EnhancedMetricsProvider is required for the sample", nameof(metricsProvider));
         }
