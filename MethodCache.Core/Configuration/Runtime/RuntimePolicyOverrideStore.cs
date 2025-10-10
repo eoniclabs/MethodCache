@@ -2,38 +2,40 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Sources;
 
 namespace MethodCache.Core.Configuration.Runtime;
 
-internal sealed class RuntimeOverrideConfigurationSource : IConfigurationSource
+internal sealed class RuntimePolicyOverrideStore
 {
     private readonly ConcurrentDictionary<string, CacheMethodSettings> _overrides = new(StringComparer.Ordinal);
 
     internal event EventHandler<RuntimeOverridesChangedEventArgs>? OverridesChanged;
 
-    public int Priority => int.MaxValue;
-
-    public bool SupportsRuntimeUpdates => true;
-
-    public Task<IEnumerable<MethodCacheConfigEntry>> LoadAsync() =>
-        Task.FromResult<IEnumerable<MethodCacheConfigEntry>>(
-            _overrides.Select(static kvp => CreateEntry(kvp.Key, kvp.Value)));
-
-    internal void ApplyOverrides(IEnumerable<MethodCacheConfigEntry> entries)
+    public IReadOnlyList<MethodCacheConfigEntry> GetOverrides()
     {
+        return _overrides
+            .Select(static kvp => CreateEntry(kvp.Key, kvp.Value))
+            .ToList();
+    }
+
+    public void ApplyOverrides(IEnumerable<MethodCacheConfigEntry> entries)
+    {
+        if (entries == null)
+        {
+            throw new ArgumentNullException(nameof(entries));
+        }
+
         var changed = new List<string>();
 
         foreach (var entry in entries)
         {
-            if (string.IsNullOrWhiteSpace(entry.MethodKey))
+            if (entry == null || string.IsNullOrWhiteSpace(entry.MethodKey))
             {
                 continue;
             }
 
-            _overrides[entry.MethodKey] = entry.Settings.Clone();
+            _overrides[entry.MethodKey] = (entry.Settings ?? new CacheMethodSettings()).Clone();
             changed.Add(entry.MethodKey);
         }
 
@@ -43,38 +45,25 @@ internal sealed class RuntimeOverrideConfigurationSource : IConfigurationSource
         }
     }
 
-    internal void Clear()
+    public bool TryGetOverride(string methodKey, out CacheMethodSettings settings)
     {
-        if (_overrides.IsEmpty)
+        if (string.IsNullOrWhiteSpace(methodKey))
         {
-            return;
+            settings = default!;
+            return false;
         }
 
-        var keys = _overrides.Keys.ToArray();
-        _overrides.Clear();
-        OnOverridesChanged(RuntimeOverrideChangeKind.Cleared, keys);
-    }
-
-    internal IReadOnlyList<MethodCacheConfigEntry> GetOverrides()
-    {
-        return _overrides
-            .Select(static kvp => CreateEntry(kvp.Key, kvp.Value))
-            .ToList();
-    }
-
-    internal bool TryGetOverride(string methodKey, out CacheMethodSettings settings)
-    {
         if (_overrides.TryGetValue(methodKey, out var existing))
         {
             settings = existing.Clone();
             return true;
         }
 
-        settings = default !; 
+        settings = default!;
         return false;
     }
 
-    internal bool RemoveOverride(string methodKey)
+    public bool RemoveOverride(string methodKey)
     {
         if (string.IsNullOrWhiteSpace(methodKey))
         {
@@ -88,6 +77,18 @@ internal sealed class RuntimeOverrideConfigurationSource : IConfigurationSource
         }
 
         return removed;
+    }
+
+    public void Clear()
+    {
+        if (_overrides.IsEmpty)
+        {
+            return;
+        }
+
+        var keys = _overrides.Keys.ToArray();
+        _overrides.Clear();
+        OnOverridesChanged(RuntimeOverrideChangeKind.Cleared, keys);
     }
 
     private void OnOverridesChanged(RuntimeOverrideChangeKind kind, IReadOnlyCollection<string> keys)
@@ -115,5 +116,3 @@ internal sealed class RuntimeOverrideConfigurationSource : IConfigurationSource
         };
     }
 }
-
-

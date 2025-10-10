@@ -10,9 +10,7 @@ public sealed record CachePolicy
     public static CachePolicy Empty { get; } = new CachePolicy();
 
     public TimeSpan? Duration { get; init; }
-    public CacheLayerSettings Layers { get; init; } = CacheLayerSettings.Empty;
     public IReadOnlyList<string> Tags { get; init; } = Array.Empty<string>();
-    public CacheConsistencyMode Consistency { get; init; } = CacheConsistencyMode.Unspecified;
     public Type? KeyGeneratorType { get; init; }
     public int? Version { get; init; }
     public bool? RequireIdempotent { get; init; }

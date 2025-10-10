@@ -1,8 +1,10 @@
 using System;
 using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Configuration.Fluent;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
@@ -85,8 +87,9 @@ namespace MethodCache.Core.Tests.Configuration.Fluent
             });
 
             var provider = services.BuildServiceProvider();
-            var configuration = (MethodCacheConfiguration)provider.GetRequiredService<IMethodCacheConfiguration>();
-            var settings = configuration.GetMethodSettings(MethodKey(nameof(IUserService.GetUser)));
+            var registry = provider.GetRequiredService<IPolicyRegistry>();
+            var policy = registry.GetPolicy(MethodKey(nameof(IUserService.GetUser)));
+            var settings = CachePolicyConversion.ToCacheMethodSettings(policy.Policy);
 
             Assert.Contains("users", settings.Tags);
         }

@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Policies;
 using MethodCache.SampleApp.Configuration;
 using MethodCache.SampleApp.Models;
 
@@ -33,7 +36,7 @@ namespace MethodCache.SampleApp.Services
         private readonly ICacheManager _cacheManager;
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider _metricsProvider;
-        private readonly IMethodCacheConfigurationManager _configurationManager;
+        private readonly IPolicyRegistry _policyRegistry;
         private readonly Dictionary<string, CacheMethodSettings> _defaults;
         private readonly Random _random = new();
 
@@ -41,12 +44,12 @@ namespace MethodCache.SampleApp.Services
             ICacheManager cacheManager,
             ICacheKeyGenerator keyGenerator,
             ICacheMetricsProvider metricsProvider,
-            IMethodCacheConfigurationManager configurationManager)
+            IPolicyRegistry policyRegistry)
         {
             _cacheManager = cacheManager;
             _keyGenerator = keyGenerator;
             _metricsProvider = metricsProvider;
-            _configurationManager = configurationManager;
+            _policyRegistry = policyRegistry;
 
             _defaults = new Dictionary<string, CacheMethodSettings>(StringComparer.Ordinal)
             {
@@ -194,7 +197,24 @@ namespace MethodCache.SampleApp.Services
 
         private CacheMethodSettings ResolveSettings(string methodName)
         {
-            var configured = _configurationManager.GetMethodConfiguration(ServiceType, methodName)?.Clone();
+            var methodId = $"{ServiceType}.{methodName}";
+            var policyResult = _policyRegistry.GetPolicy(methodId);
+            var policy = policyResult.Policy;
+
+            CacheMethodSettings? configured = null;
+
+            var hasConfiguredValues =
+                policy.Duration.HasValue ||
+                policy.Tags.Count > 0 ||
+                policy.KeyGeneratorType != null ||
+                policy.Version.HasValue ||
+                policy.RequireIdempotent.HasValue ||
+                policy.Metadata.Count > 0;
+
+            if (hasConfiguredValues)
+            {
+                configured = CachePolicyConversion.ToCacheMethodSettings(policy);
+            }
 
             if (configured == null && _defaults.TryGetValue(methodName, out var fallbackDefault))
             {

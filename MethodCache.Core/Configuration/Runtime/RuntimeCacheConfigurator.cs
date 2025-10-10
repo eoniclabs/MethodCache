@@ -1,24 +1,27 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Configuration.Sources;
 
 namespace MethodCache.Core.Configuration.Runtime
 {
     internal sealed class RuntimeCacheConfigurator : IRuntimeCacheConfigurator
     {
-        private readonly RuntimeOverrideConfigurationSource _overrideSource;
-        private readonly IMethodCacheConfigurationManager _configurationManager;
+        private readonly RuntimePolicyOverrideStore _store;
+        private readonly IPolicyRegistry _policyRegistry;
 
-        public RuntimeCacheConfigurator(RuntimeOverrideConfigurationSource overrideSource, IMethodCacheConfigurationManager configurationManager)
+        public RuntimeCacheConfigurator(RuntimePolicyOverrideStore store, IPolicyRegistry policyRegistry)
         {
-            _overrideSource = overrideSource ?? throw new ArgumentNullException(nameof(overrideSource));
-            _configurationManager = configurationManager ?? throw new ArgumentNullException(nameof(configurationManager));
+            _store = store ?? throw new ArgumentNullException(nameof(store));
+            _policyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));
         }
 
-        public async Task ApplyFluentAsync(Action<IFluentMethodCacheConfiguration> configure, CancellationToken cancellationToken = default)
+        public Task ApplyFluentAsync(Action<IFluentMethodCacheConfiguration> configure, CancellationToken cancellationToken = default)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
@@ -37,11 +40,11 @@ namespace MethodCache.Core.Configuration.Runtime
                 entries.Add(entry);
             }
 
-            _overrideSource.ApplyOverrides(entries);
-            await _configurationManager.LoadConfigurationAsync().ConfigureAwait(false);
+            _store.ApplyOverrides(entries);
+            return Task.CompletedTask;
         }
 
-        public async Task ApplyOverridesAsync(IEnumerable<MethodCacheConfigEntry> overrides, CancellationToken cancellationToken = default)
+        public Task ApplyOverridesAsync(IEnumerable<MethodCacheConfigEntry> overrides, CancellationToken cancellationToken = default)
         {
             if (overrides == null) throw new ArgumentNullException(nameof(overrides));
 
@@ -67,22 +70,22 @@ namespace MethodCache.Core.Configuration.Runtime
 
             if (normalized.Count == 0)
             {
-                return;
+                return Task.CompletedTask;
             }
 
-            _overrideSource.ApplyOverrides(normalized);
-            await _configurationManager.LoadConfigurationAsync().ConfigureAwait(false);
+            _store.ApplyOverrides(normalized);
+            return Task.CompletedTask;
         }
 
-        public async Task ClearOverridesAsync(CancellationToken cancellationToken = default)
+        public Task ClearOverridesAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            _overrideSource.Clear();
-            await _configurationManager.LoadConfigurationAsync().ConfigureAwait(false);
+            _store.Clear();
+            return Task.CompletedTask;
         }
 
-        public async Task<bool> RemoveOverrideAsync(string serviceType, string methodName, CancellationToken cancellationToken = default)
+        public Task<bool> RemoveOverrideAsync(string serviceType, string methodName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(serviceType))
             {
@@ -96,39 +99,32 @@ namespace MethodCache.Core.Configuration.Runtime
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var removed = _overrideSource.RemoveOverride(BuildMethodKey(serviceType, methodName));
-            if (removed)
-            {
-                await _configurationManager.LoadConfigurationAsync().ConfigureAwait(false);
-            }
-
-            return removed;
+            var removed = _store.RemoveOverride(BuildMethodKey(serviceType, methodName));
+            return Task.FromResult(removed);
         }
 
         public Task<IReadOnlyList<MethodCacheConfigEntry>> GetOverridesAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return Task.FromResult(_overrideSource.GetOverrides());
+            return Task.FromResult(_store.GetOverrides());
         }
 
         public Task<IReadOnlyList<MethodCacheConfigEntry>> GetEffectiveConfigurationAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var merged = _configurationManager.GetAllConfigurations();
-            var entries = new List<MethodCacheConfigEntry>(merged.Count);
+            var policies = _policyRegistry.GetAllPolicies();
+            var entries = new List<MethodCacheConfigEntry>(policies.Count);
 
-            foreach (var kvp in merged)
+            foreach (var result in policies)
             {
-                var methodKey = kvp.Key;
-                var (serviceType, methodName) = SplitMethodKey(methodKey);
-
+                var (serviceType, methodName) = SplitMethodKey(result.MethodId);
                 entries.Add(new MethodCacheConfigEntry
                 {
                     ServiceType = serviceType,
                     MethodName = methodName,
-                    Settings = kvp.Value.Clone()
+                    Settings = CachePolicyConversion.ToCacheMethodSettings(result.Policy)
                 });
             }
 

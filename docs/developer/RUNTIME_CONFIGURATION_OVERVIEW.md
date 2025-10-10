@@ -152,15 +152,14 @@ builder.Services.AddMethodCacheWithSources(cache => {
 [HttpGet("status")]
 public IActionResult GetCacheStatus()
 {
-    var manager = _serviceProvider.GetRequiredService<IMethodCacheConfigurationManager>();
-    var configs = manager.GetAllConfigurations();
+    var registry = _serviceProvider.GetRequiredService<IPolicyRegistry>();
+    var policies = registry.GetAllPolicies();
     
-    return Ok(configs.Select(kvp => new {
-        Method = kvp.Key,
-        Duration = kvp.Value.Duration?.ToString(),
-        Enabled = kvp.Value.Enabled ?? true,
-        Tags = kvp.Value.Tags,
-        Source = "Runtime" // Since it has highest priority
+    return Ok(policies.Select(result => new {
+        Method = result.MethodId,
+        Duration = result.Policy.Duration?.ToString(),
+        Tags = result.Policy.Tags,
+        Source = string.Join(", ", result.Contributions.Select(c => c.SourceId).Distinct())
     }));
 }
 ```

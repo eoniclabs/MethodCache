@@ -1,8 +1,10 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
@@ -60,7 +62,9 @@ namespace MethodCache.Core.Tests.Core
             var serviceProvider = services.BuildServiceProvider();
             
             // Verify core services are registered
-            Assert.NotNull(serviceProvider.GetService<IMethodCacheConfiguration>());
+            Assert.Null(serviceProvider.GetService<IMethodCacheConfiguration>());
+            Assert.NotNull(serviceProvider.GetService<IPolicyRegistry>());
+            Assert.NotNull(serviceProvider.GetService<IRuntimeCacheConfigurator>());
             Assert.NotNull(serviceProvider.GetService<ICacheManager>());
             Assert.NotNull(serviceProvider.GetService<ICacheKeyGenerator>());
             Assert.NotNull(serviceProvider.GetService<ICacheMetricsProvider>());
@@ -83,7 +87,9 @@ namespace MethodCache.Core.Tests.Core
             var serviceProvider = services.BuildServiceProvider();
             
             // Verify core services are registered
-            Assert.NotNull(serviceProvider.GetService<IMethodCacheConfiguration>());
+            Assert.Null(serviceProvider.GetService<IMethodCacheConfiguration>());
+            Assert.NotNull(serviceProvider.GetService<IPolicyRegistry>());
+            Assert.NotNull(serviceProvider.GetService<IRuntimeCacheConfigurator>());
             Assert.NotNull(serviceProvider.GetService<ICacheManager>());
             Assert.NotNull(serviceProvider.GetService<ICacheKeyGenerator>());
             Assert.NotNull(serviceProvider.GetService<ICacheMetricsProvider>());
