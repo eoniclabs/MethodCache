@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using MethodCache.Core.Configuration;
 using MethodCache.Abstractions.Policies;
 using System.Globalization;
 using System.Linq;
+using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Configuration.Policies;
 
