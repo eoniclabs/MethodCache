@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
@@ -17,10 +18,10 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
     private readonly IReadOnlyList<PolicySourceRegistration> _registrations;
     private readonly ConcurrentDictionary<string, PolicyResolutionResult> _cache = new(StringComparer.Ordinal);
     private readonly HashSet<string> _knownMethodIds = new(StringComparer.Ordinal);
-    private readonly SemaphoreSlim _initializationGate = new(1, 1);
+    private readonly object _initializationLock = new();
     private readonly CancellationTokenSource _cts = new();
     private Task? _watchTask;
-    private bool _initialized;
+    private Task? _initializationTask;
 
     public PolicyRegistry(PolicyResolver resolver, IEnumerable<PolicySourceRegistration> registrations)
     {
@@ -40,14 +41,14 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
             throw new ArgumentException("Method identifier is required", nameof(methodId));
         }
 
-        EnsureInitialized();
+        EnsureInitializedAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
         if (_cache.TryGetValue(methodId, out var result))
         {
             return result;
         }
 
-        var resolved = _resolver.ResolveAsync(methodId).GetAwaiter().GetResult();
+        var resolved = _resolver.ResolveAsync(methodId).ConfigureAwait(false).GetAwaiter().GetResult();
         _cache[methodId] = resolved;
         lock (_knownMethodIds)
         {
@@ -59,18 +60,30 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
 
     public IReadOnlyCollection<PolicyResolutionResult> GetAllPolicies()
     {
-        EnsureInitialized();
+        EnsureInitializedAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         return _cache.Values.ToList();
     }
 
     public IAsyncEnumerable<PolicyResolutionResult> WatchAsync(CancellationToken cancellationToken = default)
     {
-        EnsureInitialized();
-        return _resolver.WatchAsync(null, cancellationToken);
+        return WatchInternalAsync(cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
     {
+        var initTask = Volatile.Read(ref _initializationTask);
+        if (initTask != null)
+        {
+            try
+            {
+                await initTask.ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore initialization failures during disposal
+            }
+        }
+
         _cts.Cancel();
         if (_watchTask != null)
         {
@@ -85,51 +98,54 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
         }
 
         _cts.Dispose();
-        _initializationGate.Dispose();
     }
 
-    private void EnsureInitialized()
+    private Task EnsureInitializedAsync()
     {
-        if (_initialized)
+        var existing = Volatile.Read(ref _initializationTask);
+        if (existing != null)
         {
-            return;
+            return existing;
         }
 
-        _initializationGate.Wait();
-        try
+        lock (_initializationLock)
         {
-            if (_initialized)
+            existing = _initializationTask;
+            if (existing != null)
             {
-                return;
+                return existing;
             }
 
-            foreach (var registration in _registrations)
+            existing = InitializeAsync();
+            _initializationTask = existing;
+        }
+
+        return existing;
+    }
+
+    private async Task InitializeAsync()
+    {
+        foreach (var registration in _registrations)
+        {
+            var snapshots = await registration.Source.GetSnapshotAsync().ConfigureAwait(false);
+            foreach (var snapshot in snapshots)
             {
-                var snapshots = registration.Source.GetSnapshotAsync().GetAwaiter().GetResult();
-                foreach (var snapshot in snapshots)
+                if (string.IsNullOrWhiteSpace(snapshot.MethodId))
                 {
-                    if (string.IsNullOrWhiteSpace(snapshot.MethodId))
-                    {
-                        continue;
-                    }
-
-                    lock (_knownMethodIds)
-                    {
-                        _knownMethodIds.Add(snapshot.MethodId);
-                    }
-
-                    var resolved = _resolver.ResolveAsync(snapshot.MethodId).GetAwaiter().GetResult();
-                    _cache[snapshot.MethodId] = resolved;
+                    continue;
                 }
-            }
 
-            _watchTask = Task.Run(() => WatchLoopAsync(_cts.Token));
-            _initialized = true;
+                lock (_knownMethodIds)
+                {
+                    _knownMethodIds.Add(snapshot.MethodId);
+                }
+
+                var resolved = await _resolver.ResolveAsync(snapshot.MethodId).ConfigureAwait(false);
+                _cache[snapshot.MethodId] = resolved;
+            }
         }
-        finally
-        {
-            _initializationGate.Release();
-        }
+
+        _watchTask = Task.Run(() => WatchLoopAsync(_cts.Token), CancellationToken.None);
     }
 
     private async Task WatchLoopAsync(CancellationToken cancellationToken)
@@ -149,6 +165,16 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
         catch (OperationCanceledException)
         {
             // Expected
+        }
+    }
+
+    private async IAsyncEnumerable<PolicyResolutionResult> WatchInternalAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+
+        await foreach (var result in _resolver.WatchAsync(null, cancellationToken).ConfigureAwait(false))
+        {
+            yield return result;
         }
     }
 }

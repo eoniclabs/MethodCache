@@ -6,9 +6,10 @@ namespace MethodCache.Abstractions.Policies;
 
 public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
 {
-    private readonly PolicyContribution[] _contributions;
+    private readonly PolicyContribution[] _buffer;
+    private readonly int _count;
 
-    public static PolicyProvenance Empty { get; } = new PolicyProvenance(Array.Empty<PolicyContribution>());
+    public static PolicyProvenance Empty { get; } = new PolicyProvenance(Array.Empty<PolicyContribution>(), 0);
 
     public PolicyProvenance(IReadOnlyList<PolicyContribution> contributions)
     {
@@ -17,17 +18,38 @@ public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
             throw new ArgumentNullException(nameof(contributions));
         }
 
-        _contributions = contributions as PolicyContribution[] ?? contributions.ToArray();
+        if (contributions.Count == 0)
+        {
+            _buffer = Array.Empty<PolicyContribution>();
+            _count = 0;
+            return;
+        }
+
+        var buffer = new PolicyContribution[contributions.Count];
+        for (var i = 0; i < contributions.Count; i++)
+        {
+            buffer[i] = contributions[i] ?? throw new ArgumentException("Contribution collection cannot contain null entries.", nameof(contributions));
+        }
+
+        _buffer = buffer;
+        _count = buffer.Length;
     }
 
-    private PolicyProvenance(PolicyContribution[] contributions)
+    private PolicyProvenance(PolicyContribution[] buffer, int count)
     {
-        _contributions = contributions;
+        _buffer = buffer;
+        _count = count;
     }
 
-    public int Count => _contributions.Length;
+    public int Count => _count;
 
-    public IEnumerator<PolicyContribution> GetEnumerator() => ((IEnumerable<PolicyContribution>)_contributions).GetEnumerator();
+    public IEnumerator<PolicyContribution> GetEnumerator()
+    {
+        for (var i = 0; i < _count; i++)
+        {
+            yield return _buffer[i];
+        }
+    }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -38,9 +60,25 @@ public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
             throw new ArgumentNullException(nameof(contribution));
         }
 
-        var next = new PolicyContribution[_contributions.Length + 1];
-        Array.Copy(_contributions, next, _contributions.Length);
-        next[next.Length - 1] = contribution;
-        return new PolicyProvenance(next);
+        var buffer = _buffer;
+        var count = _count;
+
+        PolicyContribution[] target;
+        if (buffer.Length == count)
+        {
+            var newCapacity = count == 0 ? 4 : count * 2;
+            target = new PolicyContribution[newCapacity];
+            if (count > 0)
+            {
+                Array.Copy(buffer, target, count);
+            }
+        }
+        else
+        {
+            target = buffer;
+        }
+
+        target[count] = contribution;
+        return new PolicyProvenance(target, count + 1);
     }
 }

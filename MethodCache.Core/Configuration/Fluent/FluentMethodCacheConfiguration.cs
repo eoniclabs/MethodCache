@@ -52,36 +52,43 @@ namespace MethodCache.Core.Configuration.Fluent
             return groupConfiguration;
         }
 
-        internal void Apply(IMethodCacheConfiguration targetConfiguration)
+        internal IReadOnlyList<MethodPolicyDraft> BuildMethodPolicies()
         {
-            if (targetConfiguration == null) throw new ArgumentNullException(nameof(targetConfiguration));
-
+            var drafts = new List<MethodPolicyDraft>();
             var defaultOptions = BuildOptions(_defaultPolicyBuilders);
-            if (defaultOptions?.Duration is TimeSpan duration)
-            {
-                targetConfiguration.DefaultDuration(duration);
-            }
+            var groupOptions = new Dictionary<string, CacheEntryOptions>(StringComparer.Ordinal);
 
             foreach (var (groupName, groupConfiguration) in _groups)
             {
-                var options = groupConfiguration.BuildOptions();
-                var group = targetConfiguration.ForGroup(groupName);
-                if (options.Duration.HasValue)
-                {
-                    group.Duration(options.Duration.Value);
-                }
-
-                foreach (var tag in options.Tags)
-                {
-                    group.TagWith(tag);
-                }
+                groupOptions[groupName] = groupConfiguration.BuildOptions();
             }
 
             foreach (var serviceConfiguration in _services.Values)
             {
-                serviceConfiguration.Apply(targetConfiguration, defaultOptions);
+                foreach (var (methodKey, methodConfiguration) in serviceConfiguration.Methods)
+                {
+                    CacheEntryOptions? groupOption = null;
+                    if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName) &&
+                        groupOptions.TryGetValue(methodConfiguration.GroupName, out var groupSettings))
+                    {
+                        groupOption = groupSettings;
+                    }
+
+                    var options = methodConfiguration.BuildOptions(defaultOptions, groupOption);
+                    var settings = CacheEntryOptionsMapper.ToCacheMethodSettings(options);
+                    if (methodConfiguration.IsIdempotent.HasValue)
+                    {
+                        settings.IsIdempotent = methodConfiguration.IsIdempotent.Value;
+                    }
+
+                    drafts.Add(new MethodPolicyDraft(methodKey, settings, methodConfiguration.GroupName));
+                }
             }
+
+            return drafts;
         }
+
+        internal readonly record struct MethodPolicyDraft(string MethodKey, CacheMethodSettings Settings, string? GroupName);
 
         private static CacheEntryOptions? BuildOptions(IReadOnlyCollection<Action<CacheEntryOptions.Builder>> builders)
         {
@@ -123,23 +130,7 @@ namespace MethodCache.Core.Configuration.Fluent
                 return configuration;
             }
 
-            public void Apply(IMethodCacheConfiguration targetConfiguration, CacheEntryOptions? defaultOptions)
-            {
-                foreach (var (methodKey, methodConfiguration) in _methods)
-                {
-                    var options = methodConfiguration.BuildOptions(defaultOptions);
-                    var settings = CacheEntryOptionsMapper.ToCacheMethodSettings(options);
-                    targetConfiguration.AddMethod(methodKey, settings);
-                    if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName))
-                    {
-                        targetConfiguration.SetMethodGroup(methodKey, methodConfiguration.GroupName);
-                    }
-                    if (methodConfiguration.IsIdempotent.HasValue)
-                    {
-                        settings.IsIdempotent = methodConfiguration.IsIdempotent.Value;
-                    }
-                }
-            }
+            public IReadOnlyDictionary<string, FluentMethodConfiguration> Methods => _methods;
 
             private static string BuildMethodKey(Type serviceType, MethodInfo methodInfo)
             {
@@ -254,7 +245,7 @@ namespace MethodCache.Core.Configuration.Fluent
                 return this;
             }
 
-            public CacheEntryOptions BuildOptions(CacheEntryOptions? defaultOptions)
+            public CacheEntryOptions BuildOptions(CacheEntryOptions? defaultOptions, CacheEntryOptions? groupOptions)
             {
                 var builder = new CacheEntryOptions.Builder();
 
@@ -306,6 +297,59 @@ namespace MethodCache.Core.Configuration.Fluent
                 if (defaultOptions?.Predicate is Func<CacheContext, bool> predicate)
                 {
                     builder.WithPredicate(predicate);
+                }
+
+                if (groupOptions != null)
+                {
+                    if (groupOptions.Duration.HasValue)
+                    {
+                        builder.WithDuration(groupOptions.Duration.Value);
+                    }
+
+                    if (groupOptions.Tags.Count > 0)
+                    {
+                        builder.WithTags(groupOptions.Tags.ToArray());
+                    }
+
+                    if (groupOptions.SlidingExpiration is TimeSpan groupSliding)
+                    {
+                        builder.WithSlidingExpiration(groupSliding);
+                    }
+
+                    if (groupOptions.RefreshAhead is TimeSpan groupRefresh)
+                    {
+                        builder.RefreshAhead(groupRefresh);
+                    }
+
+                    if (groupOptions.StampedeProtection is StampedeProtectionOptions groupStampede)
+                    {
+                        builder.WithStampedeProtection(groupStampede);
+                    }
+
+                    if (groupOptions.DistributedLock is DistributedLockOptions groupLock)
+                    {
+                        builder.WithDistributedLock(groupLock.Timeout, groupLock.MaxConcurrency);
+                    }
+
+                    if (groupOptions.Metrics is ICacheMetrics groupMetrics)
+                    {
+                        builder.WithMetrics(groupMetrics);
+                    }
+
+                    if (groupOptions.Version.HasValue)
+                    {
+                        builder.WithVersion(groupOptions.Version.Value);
+                    }
+
+                    if (groupOptions.KeyGeneratorType != null)
+                    {
+                        builder.WithKeyGenerator(groupOptions.KeyGeneratorType);
+                    }
+
+                    if (groupOptions.Predicate != null)
+                    {
+                        builder.WithPredicate(groupOptions.Predicate);
+                    }
                 }
 
                 foreach (var configure in _configurations)

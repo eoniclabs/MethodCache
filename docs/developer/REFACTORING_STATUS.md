@@ -1,5 +1,9 @@
 # Refactoring Status - Policy Pipeline Migration
 
+> **Update (2025-10-12):** The refactoring is not yet complete—the legacy configuration stack still exists.  
+> Active follow-up work is tracked in `docs/developer/POLICY_PIPELINE_CONSOLIDATION_PLAN.md`.  
+> Treat the analysis below as a historical snapshot taken immediately after the initial migration.
+
 This document compares the original refactoring vision against the current implementation status.
 
 ## 🎯 Original Vision

@@ -3,8 +3,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Runtime;
+using MethodCache.Core.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
@@ -62,7 +62,6 @@ namespace MethodCache.Core.Tests.Core
             var serviceProvider = services.BuildServiceProvider();
             
             // Verify core services are registered
-            Assert.Null(serviceProvider.GetService<IMethodCacheConfiguration>());
             Assert.NotNull(serviceProvider.GetService<IPolicyRegistry>());
             Assert.NotNull(serviceProvider.GetService<IRuntimeCacheConfigurator>());
             Assert.NotNull(serviceProvider.GetService<ICacheManager>());
@@ -87,7 +86,6 @@ namespace MethodCache.Core.Tests.Core
             var serviceProvider = services.BuildServiceProvider();
             
             // Verify core services are registered
-            Assert.Null(serviceProvider.GetService<IMethodCacheConfiguration>());
             Assert.NotNull(serviceProvider.GetService<IPolicyRegistry>());
             Assert.NotNull(serviceProvider.GetService<IRuntimeCacheConfigurator>());
             Assert.NotNull(serviceProvider.GetService<ICacheManager>());
@@ -135,7 +133,7 @@ namespace MethodCache.Core.Tests.Core
         {
             // Arrange
             var assembly1 = Assembly.GetExecutingAssembly();
-            var assembly2 = typeof(MethodCacheConfiguration).Assembly;
+            var assembly2 = typeof(MethodCacheServiceCollectionExtensions).Assembly;
 
             // Act
             var options = MethodCacheRegistrationOptions.ForAssemblies(assembly1, assembly2);

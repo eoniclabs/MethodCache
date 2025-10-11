@@ -200,16 +200,13 @@ public interface ICacheProviderTestService
 public class CacheProviderTestService : ICacheProviderTestService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public CacheProviderTestService(
-        ICacheManager cacheManager, 
-        MethodCacheConfiguration configuration,
+        ICacheManager cacheManager,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
         _keyGenerator = keyGenerator;
     }
 

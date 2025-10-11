@@ -1,10 +1,14 @@
 # Code Cleanup Recommendations
 
-This document lists legacy/dead code identified after the Policy Pipeline migration.
+> **Status:** _Outdated summary._  
+> Legacy configuration types (`CacheMethodSettings`, `MethodCacheConfiguration`, related services) still exist and are being tracked in `docs/developer/POLICY_PIPELINE_CONSOLIDATION_PLAN.md`.  
+> The sections below remain as historical notes; do not treat the checkmarks as current state.
+
+This document lists legacy/dead code identified after the initial Policy Pipeline migration.
 
 ## ✅ CLEANUP COMPLETE (as of 2025-10-08)
 
-All legacy code has been removed from the codebase. Since there are no external users yet, we opted to remove legacy code immediately rather than going through a deprecation cycle.
+_(Historical record – see status note above.)_
 
 ### 1. CacheMethodRegistry (IMethodCacheConfiguration.cs) ✅ REMOVED
 

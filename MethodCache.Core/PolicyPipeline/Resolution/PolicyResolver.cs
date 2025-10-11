@@ -181,9 +181,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
         {
             // Expected when resolver is disposed
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // TODO: add logging hook
+            Console.Error.WriteLine($"[MethodCache] Policy source '{registration.SourceId}' watcher failed: {ex}");
         }
     }
 
@@ -312,8 +312,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
             bool? requireIdempotent = null;
             IReadOnlyDictionary<string, string?> metadata = CachePolicy.Empty.Metadata;
 
-            foreach (var layer in _layers.Values.OrderByDescending(static l => l.Priority))
+            foreach (var kvp in _layers.Reverse())
             {
+                var layer = kvp.Value;
                 var fields = layer.Fields;
                 var policy = layer.Policy;
 
@@ -348,12 +349,34 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
                 }
             }
 
-            var contributions = _layers.Values
-                .OrderBy(static l => l.Priority)
-                .SelectMany(static l => l.Policy.Provenance)
-                .ToList();
+            List<PolicyContribution>? contributionsBuilder = null;
 
-            var provenance = contributions.Count == 0 ? PolicyProvenance.Empty : new PolicyProvenance(contributions);
+            foreach (var kvp in _layers)
+            {
+                var provenanceLayer = kvp.Value.Policy.Provenance;
+                if (provenanceLayer.Count == 0)
+                {
+                    continue;
+                }
+
+                contributionsBuilder ??= new List<PolicyContribution>();
+                foreach (var contribution in provenanceLayer)
+                {
+                    contributionsBuilder.Add(contribution);
+                }
+            }
+
+            IReadOnlyList<PolicyContribution> contributions;
+            var provenance = PolicyProvenance.Empty;
+            if (contributionsBuilder is { Count: > 0 })
+            {
+                contributions = contributionsBuilder;
+                provenance = new PolicyProvenance(contributionsBuilder);
+            }
+            else
+            {
+                contributions = Array.Empty<PolicyContribution>();
+            }
 
             var effectivePolicy = CachePolicy.Empty with
             {

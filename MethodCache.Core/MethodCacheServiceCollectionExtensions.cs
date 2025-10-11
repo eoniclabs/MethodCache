@@ -1,18 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Fluent;
 using MethodCache.Core.Configuration.Policies;
-using MethodCache.Core.Configuration.Runtime;
-using MethodCache.Core.Configuration.Sources;
 using MethodCache.Core.Configuration.Resolver;
+using MethodCache.Core.Configuration.Sources;
+using MethodCache.Core.Configuration.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 
 namespace MethodCache.Core
 {
@@ -24,7 +23,7 @@ namespace MethodCache.Core
         /// <param name="services">The service collection</param>
         /// <param name="configure">Optional configuration action</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure = null)
+        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure = null)
         {
             if (services == null)
             {
@@ -33,8 +32,10 @@ namespace MethodCache.Core
 
             EnsureCoreServices(services);
 
-            var configuration = BuildStartupConfiguration(configure);
-            RegisterFluentPolicySource(services, configuration);
+            if (configure != null)
+            {
+                RegisterFluentPolicySource(services, configure);
+            }
 
             return services;
         }
@@ -46,7 +47,7 @@ namespace MethodCache.Core
         /// <param name="configure">Optional configuration action</param>
         /// <param name="assemblies">Assemblies to scan for services with cache attributes. If null, scans the calling assembly.</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure = null, params Assembly[]? assemblies)
+        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure = null, params Assembly[]? assemblies)
         {
             if (services == null)
             {
@@ -62,8 +63,10 @@ namespace MethodCache.Core
             RegisterAttributePolicySource(services, targetAssemblies);
             services.AddMethodCacheServices(MethodCacheRegistrationOptions.ForAssemblies(targetAssemblies));
 
-            var configuration = BuildStartupConfiguration(configure);
-            RegisterFluentPolicySource(services, configuration);
+            if (configure != null)
+            {
+                RegisterFluentPolicySource(services, configure);
+            }
 
             return services;
         }
@@ -75,7 +78,7 @@ namespace MethodCache.Core
         /// <param name="configure">Optional configuration action</param>
         /// <param name="options">Options for automatic service registration</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IMethodCacheConfiguration>? configure, MethodCacheRegistrationOptions options)
+        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure, MethodCacheRegistrationOptions options)
         {
             if (services == null)
             {
@@ -93,17 +96,34 @@ namespace MethodCache.Core
             RegisterAttributePolicySource(services, assemblies);
             services.AddMethodCacheServices(options);
 
-            var configuration = BuildStartupConfiguration(configure);
-            RegisterFluentPolicySource(services, configuration);
+            if (configure != null)
+            {
+                RegisterFluentPolicySource(services, configure);
+            }
 
             return services;
         }
 
-        private static MethodCacheConfiguration BuildStartupConfiguration(Action<IMethodCacheConfiguration>? configure)
+
+        public static IServiceCollection AddMethodCacheFromConfiguration(this IServiceCollection services, IConfiguration configuration, string sectionName = "MethodCache")
         {
-            var configuration = new MethodCacheConfiguration();
-            configure?.Invoke(configuration);
-            return configuration;
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+
+            EnsureCoreServices(services);
+
+            var source = ConfigFilePolicySourceBuilder.FromConfiguration(configuration, sectionName);
+            services.AddSingleton<PolicySourceRegistration>(_ =>
+                new PolicySourceRegistration(source, PolicySourcePriority.ConfigurationFiles));
+
+            return services;
         }
 
         private static void EnsureCoreServices(IServiceCollection services)
@@ -112,29 +132,28 @@ namespace MethodCache.Core
             services.TryAddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
             services.TryAddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
 
-            if (!services.Any(sd => sd.ServiceType == typeof(RuntimePolicyOverrideStore)))
+            PolicyRegistrationExtensions.EnsurePolicyServices(services);
+
+            if (!services.Any(sd => sd.ServiceType == typeof(RuntimePolicyStore)))
             {
-                services.AddSingleton<RuntimePolicyOverrideStore>();
+                services.AddSingleton<RuntimePolicyStore>();
             }
 
-            if (!services.Any(sd => sd.ServiceType == typeof(RuntimeOverridePolicySource)))
+            if (!services.Any(sd => sd.ImplementationType == typeof(RuntimePolicySource)))
             {
-                services.AddSingleton<RuntimeOverridePolicySource>();
                 services.AddSingleton<PolicySourceRegistration>(sp =>
                     new PolicySourceRegistration(
-                        sp.GetRequiredService<RuntimeOverridePolicySource>(),
+                        new RuntimePolicySource(sp.GetRequiredService<RuntimePolicyStore>()),
                         PolicySourcePriority.RuntimeOverrides));
             }
 
             services.TryAddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
-
-            PolicyRegistrationExtensions.EnsurePolicyServices(services);
         }
 
-        private static void RegisterFluentPolicySource(IServiceCollection services, MethodCacheConfiguration configuration)
+        private static void RegisterFluentPolicySource(IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)
         {
             services.AddSingleton<PolicySourceRegistration>(_ =>
-                new PolicySourceRegistration(new FluentPolicySource(configuration), PolicySourcePriority.StartupFluent));
+                new PolicySourceRegistration(new FluentPolicySource(configure), PolicySourcePriority.StartupFluent));
         }
 
         private static void RegisterAttributePolicySource(IServiceCollection services, Assembly[] assemblies)
@@ -159,7 +178,7 @@ namespace MethodCache.Core
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
-            return services.AddMethodCache(config => config.ApplyFluent(configure));
+            return services.AddMethodCache(configure);
         }
 
         /// <summary>
@@ -187,11 +206,13 @@ namespace MethodCache.Core
         public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, MethodCacheRegistrationOptions options)
         {
             var assembliesToScan = GetAssembliesToScan(options);
-            var interfacesWithCacheAttributes = FindInterfacesWithCacheAttributes(assembliesToScan, options);
+            var typeLookup = BuildTypeLookup(assembliesToScan);
+            var interfacesWithCacheAttributes = FindInterfacesWithCacheAttributes(typeLookup, options);
+            var implementationCandidates = BuildImplementationCandidates(typeLookup, options);
 
             foreach (var interfaceType in interfacesWithCacheAttributes)
             {
-                RegisterServiceWithCaching(services, interfaceType, options);
+                RegisterServiceWithCaching(services, interfaceType, options, implementationCandidates);
             }
 
             return services;
@@ -199,53 +220,110 @@ namespace MethodCache.Core
 
         private static Assembly[] GetAssembliesToScan(MethodCacheRegistrationOptions options)
         {
-            var assemblies = options.Assemblies?.ToList() ?? new List<Assembly> { Assembly.GetCallingAssembly() };
+            var initialAssemblies = options.Assemblies?.Length > 0
+                ? new List<Assembly>(options.Assemblies!)
+                : new List<Assembly> { Assembly.GetCallingAssembly() };
 
             if (options.ScanReferencedAssemblies)
             {
-                var referencedAssemblies = assemblies
-                    .SelectMany(a => a.GetReferencedAssemblies())
-                    .Select(Assembly.Load)
-                    .Where(a => !assemblies.Contains(a))
-                    .ToList();
+                var seen = new HashSet<string>(initialAssemblies.Select(static a => a.FullName ?? string.Empty), StringComparer.Ordinal);
+                var queue = new Queue<Assembly>(initialAssemblies);
 
-                assemblies.AddRange(referencedAssemblies);
+                while (queue.Count > 0)
+                {
+                    var assembly = queue.Dequeue();
+                    foreach (var reference in assembly.GetReferencedAssemblies())
+                    {
+                        if (!seen.Add(reference.FullName))
+                        {
+                            continue;
+                        }
+
+                        var loaded = Assembly.Load(reference);
+                        initialAssemblies.Add(loaded);
+                        queue.Enqueue(loaded);
+                    }
+                }
             }
 
-            return assemblies.ToArray();
+            return initialAssemblies.Distinct().ToArray();
         }
 
-        private static List<Type> FindInterfacesWithCacheAttributes(Assembly[] assemblies, MethodCacheRegistrationOptions options)
+        private static IReadOnlyDictionary<Assembly, Type[]> BuildTypeLookup(IEnumerable<Assembly> assemblies)
         {
-            var interfaces = new List<Type>();
+            var map = new Dictionary<Assembly, Type[]>();
 
             foreach (var assembly in assemblies)
             {
                 try
                 {
-                    var assemblyInterfaces = assembly.GetTypes()
-                        .Where(t => t.IsInterface)
-                        .Where(t => HasCacheAttributes(t))
-                        .Where(t => options.InterfaceFilter?.Invoke(t) ?? true)
-                        .ToList();
-
-                    interfaces.AddRange(assemblyInterfaces);
+                    map[assembly] = assembly.GetTypes();
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
-                    // Handle cases where some types in the assembly can't be loaded
-                    var loadableTypes = ex.Types.Where(t => t != null).Cast<Type>();
-                    var assemblyInterfaces = loadableTypes
-                        .Where(t => t.IsInterface)
-                        .Where(t => HasCacheAttributes(t))
-                        .Where(t => options.InterfaceFilter?.Invoke(t) ?? true)
-                        .ToList();
-
-                    interfaces.AddRange(assemblyInterfaces);
+                    var loadable = ex.Types.Where(static t => t != null).Cast<Type>().ToArray();
+                    map[assembly] = loadable;
                 }
             }
 
-            return interfaces;
+            return new ReadOnlyDictionary<Assembly, Type[]>(map);
+        }
+
+        private static List<Type> FindInterfacesWithCacheAttributes(IReadOnlyDictionary<Assembly, Type[]> typeLookup, MethodCacheRegistrationOptions options)
+        {
+            var interfaces = new HashSet<Type>();
+
+            foreach (var types in typeLookup.Values)
+            {
+                foreach (var type in types)
+                {
+                    if (type == null || !type.IsInterface)
+                    {
+                        continue;
+                    }
+
+                    if (!(options.InterfaceFilter?.Invoke(type) ?? true))
+                    {
+                        continue;
+                    }
+
+                    if (HasCacheAttributes(type))
+                    {
+                        interfaces.Add(type);
+                    }
+                }
+            }
+
+            return interfaces.ToList();
+        }
+
+        private static IReadOnlyList<Type> BuildImplementationCandidates(IReadOnlyDictionary<Assembly, Type[]> typeLookup, MethodCacheRegistrationOptions options)
+        {
+            var candidates = new List<Type>();
+            var seen = new HashSet<Type>();
+
+            foreach (var types in typeLookup.Values)
+            {
+                foreach (var type in types)
+                {
+                    if (type == null || type.IsInterface || type.IsAbstract)
+                    {
+                        continue;
+                    }
+
+                    if (!(options.ImplementationFilter?.Invoke(type) ?? true))
+                    {
+                        continue;
+                    }
+
+                    if (seen.Add(type))
+                    {
+                        candidates.Add(type);
+                    }
+                }
+            }
+
+            return candidates;
         }
 
         private static bool HasCacheAttributes(Type interfaceType)
@@ -255,10 +333,14 @@ namespace MethodCache.Core
                          m.GetCustomAttributes(typeof(CacheInvalidateAttribute), false).Any());
         }
 
-        private static void RegisterServiceWithCaching(IServiceCollection services, Type interfaceType, MethodCacheRegistrationOptions options)
+        private static void RegisterServiceWithCaching(
+            IServiceCollection services,
+            Type interfaceType,
+            MethodCacheRegistrationOptions options,
+            IReadOnlyList<Type> implementationCandidates)
         {
             // Find concrete implementation
-            var implementationType = FindImplementationType(interfaceType, options);
+            var implementationType = FindImplementationType(interfaceType, options, implementationCandidates);
 
             if (implementationType == null)
             {
@@ -284,57 +366,28 @@ namespace MethodCache.Core
             RegisterCachedService(services, interfaceType, implementationType, options);
         }
 
-        private static Type? FindImplementationType(Type interfaceType, MethodCacheRegistrationOptions options)
+        private static Type? FindImplementationType(Type interfaceType, MethodCacheRegistrationOptions options, IReadOnlyList<Type> implementationCandidates)
         {
-            var assembliesToScan = GetAssembliesToScan(options);
+            var matches = implementationCandidates
+                .Where(interfaceType.IsAssignableFrom)
+                .ToList();
 
-            foreach (var assembly in assembliesToScan)
+            if (matches.Count == 0)
             {
-                try
-                {
-                    var implementations = assembly.GetTypes()
-                        .Where(t => !t.IsInterface && !t.IsAbstract)
-                        .Where(t => interfaceType.IsAssignableFrom(t))
-                        .Where(t => options.ImplementationFilter?.Invoke(t) ?? true)
-                        .ToList();
-
-                    if (implementations.Count == 1)
-                    {
-                        return implementations.First();
-                    }
-
-                    if (implementations.Count > 1)
-                    {
-                        // Prefer implementations with the same name as the interface (minus the 'I' prefix)
-                        var preferredName = interfaceType.Name.StartsWith("I") ? interfaceType.Name.Substring(1) : interfaceType.Name;
-                        var preferred = implementations.FirstOrDefault(t => t.Name == preferredName);
-                        if (preferred != null)
-                        {
-                            return preferred;
-                        }
-
-                        // Return the first one if no preferred match
-                        return implementations.First();
-                    }
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    // Handle cases where some types in the assembly can't be loaded
-                    var loadableTypes = ex.Types.Where(t => t != null).Cast<Type>();
-                    var implementations = loadableTypes
-                        .Where(t => !t.IsInterface && !t.IsAbstract)
-                        .Where(t => interfaceType.IsAssignableFrom(t))
-                        .Where(t => options.ImplementationFilter?.Invoke(t) ?? true)
-                        .ToList();
-
-                    if (implementations.Any())
-                    {
-                        return implementations.First();
-                    }
-                }
+                return null;
             }
 
-            return null;
+            if (matches.Count == 1)
+            {
+                return matches[0];
+            }
+
+            var preferredName = interfaceType.Name.StartsWith("I", StringComparison.Ordinal)
+                ? interfaceType.Name.Substring(1)
+                : interfaceType.Name;
+
+            var preferred = matches.FirstOrDefault(t => string.Equals(t.Name, preferredName, StringComparison.Ordinal));
+            return preferred ?? matches[0];
         }
 
         private static void RegisterService(IServiceCollection services, Type serviceType, Type implementationType, ServiceLifetime lifetime)
@@ -404,151 +457,6 @@ namespace MethodCache.Core
             // Fallback: Log that we couldn't find the generated method
             Console.WriteLine($"Warning: Could not find generated extension method {methodName} for {interfaceType.FullName}. " +
                             "Make sure the source generator has run and the interface has cache attributes.");
-        }
-
-        public static IServiceCollection AddMethodCacheWithSources(this IServiceCollection services, Action<MethodCacheConfigurationBuilder>? configure = null, Action<IMethodCacheConfiguration>? configureFluent = null)
-        {
-            if (services == null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
-            EnsureCoreServices(services);
-
-            var configuration = BuildStartupConfiguration(configureFluent);
-            RegisterFluentPolicySource(services, configuration);
-
-            var builder = new MethodCacheConfigurationBuilder(services);
-            builder.AddAttributeSource(Assembly.GetCallingAssembly());
-
-            configure?.Invoke(builder);
-
-            builder.Apply();
-
-            return services;
-        }
-
-        public interface IProgrammaticConfigurationBuilder
-        {
-            IProgrammaticConfigurationBuilder AddMethod(string serviceType, string methodName, Action<CacheMethodSettings> configure);
-        }
-
-        public sealed class MethodCacheConfigurationBuilder
-        {
-            private readonly IServiceCollection _services;
-            private readonly List<Configuration.Sources.IConfigurationSource> _configurationSources = new();
-
-            public MethodCacheConfigurationBuilder(IServiceCollection services)
-            {
-                _services = services ?? throw new ArgumentNullException(nameof(services));
-            }
-
-            public MethodCacheConfigurationBuilder AddAttributeSource(params Assembly[] assemblies)
-            {
-                var targets = assemblies is { Length: > 0 } ? assemblies : new[] { Assembly.GetCallingAssembly() };
-                RegisterAttributePolicySource(_services, targets);
-                _services.AddMethodCacheServices(MethodCacheRegistrationOptions.ForAssemblies(targets));
-                return this;
-            }
-
-            public MethodCacheConfigurationBuilder AddJsonConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
-            {
-                if (configuration == null)
-                {
-                    throw new ArgumentNullException(nameof(configuration));
-                }
-
-                _configurationSources.Add(new JsonConfigurationSource(configuration, sectionName));
-                return this;
-            }
-
-            public MethodCacheConfigurationBuilder AddYamlConfiguration(string yamlFilePath)
-            {
-                if (string.IsNullOrWhiteSpace(yamlFilePath))
-                {
-                    throw new ArgumentException("YAML file path must be provided.", nameof(yamlFilePath));
-                }
-
-                _configurationSources.Add(new YamlConfigurationSource(yamlFilePath));
-                return this;
-            }
-
-            public MethodCacheConfigurationBuilder AddProgrammaticConfiguration(Action<IProgrammaticConfigurationBuilder> configure)
-            {
-                if (configure == null)
-                {
-                    throw new ArgumentNullException(nameof(configure));
-                }
-
-                var source = new ProgrammaticConfigurationSource();
-                var builder = new ProgrammaticConfigurationBuilder(source);
-                configure(builder);
-                _configurationSources.Add(source);
-                return this;
-            }
-
-            public MethodCacheConfigurationBuilder AddRuntimeConfiguration(Action<MethodCacheOptions>? configure = null)
-            {
-                var optionsBuilder = _services.AddOptions<MethodCacheOptions>();
-                optionsBuilder.BindConfiguration("MethodCache");
-
-                if (configure != null)
-                {
-                    optionsBuilder.Configure(configure);
-                }
-
-                _services.AddSingleton<PolicySourceRegistration>(sp =>
-                    new PolicySourceRegistration(
-                        new OptionsMonitorPolicySource(sp.GetRequiredService<IOptionsMonitor<MethodCacheOptions>>()),
-                        PolicySourcePriority.ConfigurationFiles + 5));
-
-                return this;
-            }
-
-            internal void Apply()
-            {
-                if (_configurationSources.Count == 0)
-                {
-                    return;
-                }
-
-                var sources = _configurationSources.ToArray();
-                _services.AddSingleton<PolicySourceRegistration>(_ =>
-                    new PolicySourceRegistration(new ConfigFilePolicySource(sources), PolicySourcePriority.ConfigurationFiles));
-            }
-
-            private sealed class ProgrammaticConfigurationBuilder : IProgrammaticConfigurationBuilder
-            {
-                private readonly ProgrammaticConfigurationSource _source;
-
-                public ProgrammaticConfigurationBuilder(ProgrammaticConfigurationSource source)
-                {
-                    _source = source ?? throw new ArgumentNullException(nameof(source));
-                }
-
-                public IProgrammaticConfigurationBuilder AddMethod(string serviceType, string methodName, Action<CacheMethodSettings> configure)
-                {
-                    if (string.IsNullOrWhiteSpace(serviceType))
-                    {
-                        throw new ArgumentException("Service type must be provided.", nameof(serviceType));
-                    }
-
-                    if (string.IsNullOrWhiteSpace(methodName))
-                    {
-                        throw new ArgumentException("Method name must be provided.", nameof(methodName));
-                    }
-
-                    if (configure == null)
-                    {
-                        throw new ArgumentNullException(nameof(configure));
-                    }
-
-                    var settings = new CacheMethodSettings();
-                    configure(settings);
-                    _source.AddMethodConfiguration(serviceType, methodName, settings);
-                    return this;
-                }
-            }
         }
 
     }

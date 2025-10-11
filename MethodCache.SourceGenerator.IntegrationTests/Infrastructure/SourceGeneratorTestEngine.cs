@@ -5,10 +5,8 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.SourceGenerator;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Configuration.Resolver;
 using MethodCache.Core.Configuration.Registry;
@@ -16,7 +14,6 @@ using MethodCache.Core.Configuration.Diagnostics;
 using MethodCache.Abstractions.Sources;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Policies;
-using Microsoft.Extensions.Options;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
@@ -111,14 +108,6 @@ public class SourceGeneratorTestEngine
 
         // Add all required MethodCache infrastructure for testing
         services.AddSingleton<ICacheManager, TestMockCacheManager>();
-        services.AddSingleton<MethodCacheConfiguration>(provider =>
-        {
-            var config = new MethodCacheConfiguration();
-            // Set default duration for testing
-            config.DefaultDuration(TimeSpan.FromMinutes(5));
-            return config;
-        });
-
         // Add additional dependencies that might be needed
         services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
 
@@ -391,8 +380,6 @@ internal sealed class EmptyPolicySource : IPolicySource
         yield break;
     }
 }
-
-
 
 
 

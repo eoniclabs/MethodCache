@@ -29,7 +29,6 @@ namespace MethodCache.SourceGenerator.Tests
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(MethodCache.Core.CacheAttribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(MethodCache.Core.Configuration.MethodCacheConfiguration).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.ActivatorUtilities).Assembly.Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location)

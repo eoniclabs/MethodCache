@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Fluent;
+using MethodCache.Core.Extensions;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;

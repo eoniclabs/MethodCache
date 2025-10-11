@@ -1,8 +1,5 @@
 using System.Linq;
-using System.Collections.Generic;
-using System.IO;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Diagnostics;
 using MethodCache.SampleApp.Configuration;
 using MethodCache.SampleApp.Infrastructure;
@@ -12,30 +9,21 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
-var yamlPath = Path.Combine(AppContext.BaseDirectory, "methodcache.yaml");
 
-// Register MethodCache with every configuration surface so we can demo precedence
-builder.Services.AddMethodCacheWithSources(cache =>
+builder.Services.AddMethodCache(config =>
 {
-    cache.AddAttributeSource(typeof(ICacheConfigurationShowcase).Assembly);
-    cache.AddJsonConfiguration(builder.Configuration);
-    if (File.Exists(yamlPath))
-    {
-        cache.AddYamlConfiguration(yamlPath);
-    }
-    cache.AddProgrammaticConfiguration(programmatic =>
-    {
-        programmatic.AddMethod(
-            CacheConfigurationMetadata.ServiceType,
-            nameof(ICacheConfigurationShowcase.GetPriceAsync),
-            settings =>
-            {
-                settings.Duration = TimeSpan.FromMinutes(12);
-                settings.Tags = new List<string> { "fluent", "pricing" };
-                settings.IsIdempotent = true;
-            });
-    });
-});
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(5)));
+
+    config.ForService<ICacheConfigurationShowcase>()
+        .Method(service => service.GetPriceAsync(default!))
+        .Configure(options =>
+        {
+            options.WithDuration(TimeSpan.FromMinutes(12))
+                   .WithTags("fluent", "pricing");
+        });
+}, typeof(ICacheConfigurationShowcase).Assembly);
+
+builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 
 // Use enhanced metrics so we can print cache activity summaries
 builder.Services.AddSingleton<ICacheMetricsProvider, EnhancedMetricsProvider>();

@@ -2,8 +2,9 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Benchmarks.Infrastructure;
 using System.Collections.Concurrent;
 
 namespace MethodCache.Benchmarks.Scenarios;
@@ -202,24 +203,24 @@ public interface IConcurrentCacheService
 public class ConcurrentCacheService : IConcurrentCacheService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
     private static readonly ConcurrentDictionary<int, int> _callCounts = new();
 
     public ConcurrentCacheService(
-        ICacheManager cacheManager, 
-        MethodCacheConfiguration configuration,
+        ICacheManager cacheManager,
+        IPolicyRegistry policyRegistry,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:02:00", Tags = new[] { "data" })]
     public virtual async Task<SmallModel> GetDataAsync(int id)
     {
-        var settings = _configuration.GetMethodSettings("ConcurrentCacheService.GetDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetDataAsync));
         var args = new object[] { id };
 
         return await _cacheManager.GetOrCreateAsync<SmallModel>(
@@ -234,7 +235,7 @@ public class ConcurrentCacheService : IConcurrentCacheService
     [Cache(Duration = "00:02:00", Tags = new[] { "slow_data" })]
     public virtual async Task<SmallModel> GetSlowDataAsync(int id)
     {
-        var settings = _configuration.GetMethodSettings("ConcurrentCacheService.GetSlowDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetSlowDataAsync));
         var args = new object[] { id };
 
         return await _cacheManager.GetOrCreateAsync<SmallModel>(

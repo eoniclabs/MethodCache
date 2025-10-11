@@ -2,8 +2,9 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Benchmarks.Infrastructure;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
@@ -182,23 +183,23 @@ public interface IGenericRepository<T> where T : class
 public class GenericRepository<T> : IGenericRepository<T> where T : class
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public GenericRepository(
-        ICacheManager cacheManager, 
-        MethodCacheConfiguration configuration,
+        ICacheManager cacheManager,
+        IPolicyRegistry policyRegistry,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:05:00", Tags = new[] { "entities" })]
     public virtual async Task<T> GetByIdAsync(int id)
     {
-        var settings = _configuration.GetMethodSettings($"GenericRepository<{typeof(T).Name}>.GetByIdAsync");
+        var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetByIdAsync));
         var args = new object[] { id };
         
         return await _cacheManager.GetOrCreateAsync<T>(
@@ -213,7 +214,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     [Cache(Duration = "00:02:00", Tags = new[] { "entities" })]
     public virtual async Task<List<T>> GetAllAsync()
     {
-        var settings = _configuration.GetMethodSettings($"GenericRepository<{typeof(T).Name}>.GetAllAsync");
+        var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetAllAsync));
         var args = Array.Empty<object>();
         
         return await _cacheManager.GetOrCreateAsync<List<T>>(
@@ -228,7 +229,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     [Cache(Duration = "00:03:00", Tags = new[] { "entities" })]
     public virtual async Task<List<T>> GetByIdsAsync(int[] ids)
     {
-        var settings = _configuration.GetMethodSettings($"GenericRepository<{typeof(T).Name}>.GetByIdsAsync");
+        var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetByIdsAsync));
         var args = new object[] { ids };
         
         return await _cacheManager.GetOrCreateAsync<List<T>>(
@@ -286,23 +287,23 @@ public interface IGenericService
 public class GenericService : IGenericService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public GenericService(
-        ICacheManager cacheManager, 
-        MethodCacheConfiguration configuration,
+        ICacheManager cacheManager,
+        IPolicyRegistry policyRegistry,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:03:00", Tags = new[] { "processing" })]
     public virtual async Task<List<T>> ProcessEntitiesAsync<T>(List<T> entities) where T : class
     {
-        var settings = _configuration.GetMethodSettings($"GenericService.ProcessEntitiesAsync<{typeof(T).Name}>");
+        var settings = _policyRegistry.GetSettingsFor<GenericService>(nameof(ProcessEntitiesAsync));
         var args = new object[] { entities };
         
         return await _cacheManager.GetOrCreateAsync<List<T>>(
@@ -319,7 +320,7 @@ public class GenericService : IGenericService
         where TInput : class 
         where TResult : class, new()
     {
-        var settings = _configuration.GetMethodSettings($"GenericService.TransformAsync<{typeof(TInput).Name},{typeof(TResult).Name}>");
+        var settings = _policyRegistry.GetSettingsFor<GenericService>(nameof(TransformAsync));
         var args = new object[] { input };
         
         return await _cacheManager.GetOrCreateAsync<TResult>(

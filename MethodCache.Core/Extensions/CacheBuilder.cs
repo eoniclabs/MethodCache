@@ -11,7 +11,7 @@ using MethodCache.Core.Extensions;
 using MethodCache.Core.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Fluent
+namespace MethodCache.Core.Extensions
 {
     /// <summary>
     /// Fluent builder for configuring cache operations with method chaining.

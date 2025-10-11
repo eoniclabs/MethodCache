@@ -10,7 +10,6 @@ using MethodCache.Core.Extensions;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Fluent;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Extensions

@@ -3,29 +3,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
 using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.Configuration.Sources;
 
 namespace MethodCache.Core.Configuration.Sources;
 
 internal sealed class ConfigFilePolicySource : IPolicySource
 {
-    private readonly IReadOnlyList<IConfigurationSource> _sources;
+    private readonly IReadOnlyList<(string MethodId, CachePolicy Policy, CachePolicyFields Fields, IReadOnlyDictionary<string, string?>? Metadata, string? Notes)> _policies;
     private readonly string _sourceId;
 
-    public ConfigFilePolicySource(IEnumerable<IConfigurationSource> sources)
+    public ConfigFilePolicySource(IEnumerable<ConfigFilePolicySourceBuilder.PolicyDescriptor> policies)
     {
-        if (sources == null)
+        if (policies == null)
         {
-            throw new ArgumentNullException(nameof(sources));
+            throw new ArgumentNullException(nameof(policies));
         }
 
-        _sources = sources.ToArray();
-        if (_sources.Count == 0)
+        _policies = policies.Select(static descriptor =>
         {
-            throw new ArgumentException("At least one configuration source must be provided.", nameof(sources));
-        }
+            var fields = descriptor.Fields == CachePolicyFields.None
+                ? CachePolicyMapper.DetectFields(descriptor.Policy)
+                : descriptor.Fields;
+
+            return (descriptor.MethodId, descriptor.Policy, fields, descriptor.Metadata, descriptor.Notes);
+        }).ToArray();
 
         _sourceId = PolicySourceIds.ConfigurationFiles;
     }
@@ -37,24 +42,27 @@ internal sealed class ConfigFilePolicySource : IPolicySource
         cancellationToken.ThrowIfCancellationRequested();
 
         var timestamp = DateTimeOffset.UtcNow;
-        var snapshots = new List<PolicySnapshot>();
-
-        foreach (var source in _sources)
+        var snapshots = _policies.Select(policy =>
         {
-            var entries = await source.LoadAsync().ConfigureAwait(false);
+            var enriched = CachePolicyMapper.AttachContribution(
+                policy.Policy,
+                _sourceId,
+                policy.Fields,
+                timestamp,
+                policy.Metadata,
+                policy.Notes);
 
-            foreach (var entry in entries)
-            {
-                if (string.IsNullOrWhiteSpace(entry.MethodKey))
-                {
-                    continue;
-                }
+            return PolicySnapshotBuilder.FromPolicy(
+                _sourceId,
+                policy.MethodId,
+                enriched,
+                policy.Fields,
+                timestamp,
+                policy.Metadata,
+                policy.Notes);
+        }).ToArray();
 
-                snapshots.Add(PolicySnapshotBuilder.FromConfigEntry(_sourceId, entry, timestamp));
-            }
-        }
-
-        return snapshots;
+        return await Task.FromResult<IReadOnlyCollection<PolicySnapshot>>(snapshots).ConfigureAwait(false);
     }
 
     public IAsyncEnumerable<PolicyChange> WatchAsync(CancellationToken cancellationToken = default)

@@ -1,5 +1,7 @@
 # MethodCache.Core Simplification Notes
 
+> See `docs/developer/POLICY_PIPELINE_CONSOLIDATION_PLAN.md` for the active execution plan covering these recommendations.
+
 ## Current Pain Points
 
 - **Dual configuration stacks** – `ConfigurationManager` still merges `IConfigurationSource` instances into mutable `CacheMethodSettings`, while the policy pipeline resolves `CachePolicy` snapshots. Every surface (attributes, files, fluent, runtime) flows through both layers before a policy is produced.

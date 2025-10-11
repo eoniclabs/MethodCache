@@ -2,34 +2,36 @@ using System;
 using System.Collections.Generic;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.Configuration.Sources;
-
 namespace MethodCache.Core.Configuration.Policies;
 
 internal static class PolicySnapshotBuilder
 {
-    public static PolicySnapshot FromConfigEntry(string sourceId, MethodCacheConfigEntry entry, DateTimeOffset timestamp)
+    public static PolicySnapshot FromPolicy(
+        string sourceId,
+        string methodId,
+        CachePolicy policy,
+        CachePolicyFields fields,
+        DateTimeOffset timestamp,
+        IReadOnlyDictionary<string, string?>? metadata,
+        string? notes = null)
     {
-        if (entry == null)
+        if (string.IsNullOrWhiteSpace(sourceId))
         {
-            throw new ArgumentNullException(nameof(entry));
+            throw new ArgumentException("Source identifier must be provided.", nameof(sourceId));
         }
 
-        var methodId = entry.MethodKey;
         if (string.IsNullOrWhiteSpace(methodId))
         {
-            throw new ArgumentException("Configuration entry must include a method key", nameof(entry));
+            throw new ArgumentException("Method identifier must be provided.", nameof(methodId));
         }
 
-        var (policy, fields) = CachePolicyMapper.FromSettings(entry.Settings);
-        var enriched = CachePolicyMapper.AttachContribution(policy, sourceId, fields, timestamp);
-
-        var snapshotMetadata = new Dictionary<string, string?>(StringComparer.Ordinal)
+        if (policy == null)
         {
-            ["priority"] = entry.Priority.ToString()
-        };
+            throw new ArgumentNullException(nameof(policy));
+        }
 
-        return new PolicySnapshot(sourceId, methodId, enriched, timestamp, snapshotMetadata);
+        var enriched = CachePolicyMapper.AttachContribution(policy, sourceId, fields, timestamp, metadata, notes);
+        return new PolicySnapshot(sourceId, methodId, enriched, timestamp, metadata);
     }
 
     public static PolicyChange CreateChange(string sourceId, string methodId, CachePolicy policy, CachePolicyFields fields, PolicyChangeReason reason, DateTimeOffset timestamp)
