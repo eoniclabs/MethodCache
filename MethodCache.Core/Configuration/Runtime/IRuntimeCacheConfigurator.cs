@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Options;
 
 namespace MethodCache.Core.Configuration.Runtime;
@@ -18,6 +19,13 @@ public interface IRuntimeCacheConfigurator
     /// <param name="methodId">Fully qualified method id (e.g. <c>MyApp.Services.IUserService.GetUserAsync</c>).</param>
     /// <param name="configure">Builder used to configure the cache entry.</param>
     Task UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure);
+
+    /// <summary>
+    /// Applies or replaces the runtime policy for the specified method using a policy builder.
+    /// </summary>
+    /// <param name="methodId">Fully qualified method id (e.g. <c>MyApp.Services.IUserService.GetUserAsync</c>).</param>
+    /// <param name="configure">Policy builder used to configure cache policy fields directly.</param>
+    Task UpsertAsync(string methodId, Action<CachePolicyBuilder> configure);
 
     /// <summary>
     /// Applies or replaces the runtime policy for the specified method using an already constructed <see cref="CachePolicy"/>.

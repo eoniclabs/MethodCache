@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core
 {
@@ -60,6 +61,13 @@ namespace MethodCache.Core
         /// </code>
         /// </example>
         Task<T> GetOrCreateAsync<T>(string methodName, object[] args, System.Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent);
+
+        /// <summary>
+        /// Retrieves a cached value using a policy descriptor produced by the policy pipeline.
+        /// Default implementation bridges to the legacy <see cref="CacheMethodSettings"/> path.
+        /// </summary>
+        Task<T> GetOrCreateAsync<T>(string methodName, object[] args, System.Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+            => GetOrCreateAsync(methodName, args, factory, descriptor.ToCacheMethodSettings(), keyGenerator, descriptor.RequireIdempotent);
 
         /// <summary>
         /// Invalidates all cache entries associated with the specified tags.
@@ -141,5 +149,12 @@ namespace MethodCache.Core
         /// </code>
         /// </example>
         ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator);
+
+        /// <summary>
+        /// Attempts to retrieve a cached value using a policy descriptor produced by the policy pipeline.
+        /// Default implementation bridges to the legacy <see cref="CacheMethodSettings"/> path.
+        /// </summary>
+        ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+            => TryGetAsync<T>(methodName, args, descriptor.ToCacheMethodSettings(), keyGenerator);
     }
 }
