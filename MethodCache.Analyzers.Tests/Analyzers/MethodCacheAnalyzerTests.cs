@@ -48,13 +48,13 @@ namespace TestApp
         {
             var source = @"
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace TestApp
 {
     public class ValidKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings) => methodName;
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor) => methodName;
     }
 
     public interface IService

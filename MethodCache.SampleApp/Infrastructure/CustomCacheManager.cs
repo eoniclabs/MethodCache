@@ -1,5 +1,5 @@
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
@@ -23,15 +23,14 @@ namespace MethodCache.SampleApp.Infrastructure
         }
 
         public async Task<T> GetOrCreateAsync<T>(
-            string methodName, 
-            object[] args, 
-            Func<Task<T>> factory, 
-            CacheMethodSettings settings, 
-            ICacheKeyGenerator keyGenerator, 
-            bool requireIdempotent)
+            string methodName,
+            object[] args,
+            Func<Task<T>> factory,
+            CacheRuntimeDescriptor descriptor,
+            ICacheKeyGenerator keyGenerator)
         {
             var startTime = DateTime.UtcNow;
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
 
             try
             {
@@ -40,7 +39,7 @@ namespace MethodCache.SampleApp.Infrastructure
                 {
                     _metricsProvider.CacheHit(methodName);
                     _metricsProvider.CacheLatency(methodName, (long)(DateTime.UtcNow - startTime).TotalMilliseconds);
-                    
+
                     Console.WriteLine($"[CACHE HIT] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
                     return (T)entry.Value;
                 }
@@ -50,21 +49,21 @@ namespace MethodCache.SampleApp.Infrastructure
                 Console.WriteLine($"[CACHE MISS] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
 
                 var result = await factory();
-                
+
                 // Store in cache with expiration
-                var duration = settings.Duration ?? TimeSpan.FromMinutes(5);
+                var duration = descriptor.Duration ?? TimeSpan.FromMinutes(5);
                 var newEntry = new CacheEntry
                 {
                     Value = result!,
                     ExpiresAt = DateTime.UtcNow.Add(duration),
                     CreatedAt = DateTime.UtcNow,
-                    Tags = settings.Tags?.ToHashSet() ?? new HashSet<string>(),
+                    Tags = descriptor.Tags?.ToHashSet() ?? new HashSet<string>(),
                     AccessCount = 0,
                     LastAccessedAt = DateTime.UtcNow
                 };
 
                 _cache.AddOrUpdate(cacheKey, newEntry, (key, oldEntry) => newEntry);
-                
+
                 _metricsProvider.CacheLatency(methodName, (long)(DateTime.UtcNow - startTime).TotalMilliseconds);
                 Console.WriteLine($"[CACHE STORE] {methodName} (TTL: {duration.TotalMinutes:F1}m)");
 
@@ -78,9 +77,9 @@ namespace MethodCache.SampleApp.Infrastructure
             }
         }
 
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
         {
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
             
             if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
             {

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Configuration.Resolver;
 using MethodCache.Core.Configuration.Sources;
@@ -22,8 +22,8 @@ public class PolicyResolverTests
     [Fact]
     public async Task ResolveAsync_RespectsPrecedence()
     {
-        var attributeSource = CreateSource(PolicySourceIds.Attributes, CreateSettings(TimeSpan.FromMinutes(5), tags: new[] { "attr" }));
-        var runtimeSource = CreateSource(PolicySourceIds.RuntimeOverrides, CreateSettings(TimeSpan.FromMinutes(1), tags: new[] { "override" }));
+        var attributeSource = CreateSource(PolicySourceIds.Attributes, TimeSpan.FromMinutes(5), new[] { "attr" });
+        var runtimeSource = CreateSource(PolicySourceIds.RuntimeOverrides, TimeSpan.FromMinutes(1), new[] { "override" });
 
         var resolver = new PolicyResolver(new[]
         {
@@ -42,7 +42,7 @@ public class PolicyResolverTests
     [Fact]
     public async Task WatchAsync_EmitsUpdatesAndRemovals()
     {
-        var attributeSource = CreateSource(PolicySourceIds.Attributes, CreateSettings(TimeSpan.FromMinutes(5), tags: new[] { "attr" }));
+        var attributeSource = CreateSource(PolicySourceIds.Attributes, TimeSpan.FromMinutes(5), new[] { "attr" });
         var runtimeSource = new TestPolicySource(PolicySourceIds.RuntimeOverrides, Array.Empty<PolicySnapshot>());
 
         var resolver = new PolicyResolver(new[]
@@ -79,7 +79,7 @@ public class PolicyResolverTests
 
         await Task.Delay(50);
 
-        runtimeSource.EmitChange(CreateChange(PolicySourceIds.RuntimeOverrides, CreateSettings(TimeSpan.FromMinutes(1), tags: new[] { "override" }), PolicyChangeReason.Updated));
+        runtimeSource.EmitChange(CreateChange(PolicySourceIds.RuntimeOverrides, TimeSpan.FromMinutes(1), new[] { "override" }, PolicyChangeReason.Updated));
         await Task.Delay(100);
         var interimResult = await resolver.ResolveAsync(MethodId);
         Assert.Equal(MethodId, interimResult.MethodId);
@@ -105,9 +105,19 @@ public class PolicyResolverTests
         await resolver.DisposeAsync();
     }
 
-    private static TestPolicySource CreateSource(string sourceId, CacheMethodSettings settings)
+    private static TestPolicySource CreateSource(string sourceId, TimeSpan duration, IEnumerable<string>? tags = null)
     {
-        var (policy, fields) = CachePolicyMapper.FromSettings(settings);
+        var policy = CachePolicy.Empty with
+        {
+            Duration = duration,
+            Tags = tags?.ToArray() ?? Array.Empty<string>()
+        };
+        var fields = CachePolicyFields.Duration;
+        if (tags?.Any() == true)
+        {
+            fields |= CachePolicyFields.Tags;
+        }
+
         var snapshot = PolicySnapshotBuilder.FromPolicy(
             sourceId,
             MethodId,
@@ -118,18 +128,19 @@ public class PolicyResolverTests
         return new TestPolicySource(sourceId, new[] { snapshot });
     }
 
-    private static CacheMethodSettings CreateSettings(TimeSpan duration, IEnumerable<string>? tags = null)
+    private static PolicyChange CreateChange(string sourceId, TimeSpan duration, IEnumerable<string>? tags, PolicyChangeReason reason)
     {
-        return new CacheMethodSettings
+        var policy = CachePolicy.Empty with
         {
             Duration = duration,
-            Tags = tags?.ToList() ?? new List<string>()
+            Tags = tags?.ToArray() ?? Array.Empty<string>()
         };
-    }
+        var fields = CachePolicyFields.Duration;
+        if (tags?.Any() == true)
+        {
+            fields |= CachePolicyFields.Tags;
+        }
 
-    private static PolicyChange CreateChange(string sourceId, CacheMethodSettings settings, PolicyChangeReason reason)
-    {
-        var (policy, fields) = CachePolicyMapper.FromSettings(settings);
         var enriched = CachePolicyMapper.AttachContribution(policy, sourceId, fields, DateTimeOffset.UtcNow);
         var delta = new CachePolicyDelta(fields == CachePolicyFields.None ? CachePolicyMapper.DetectFields(enriched) : fields, CachePolicyFields.None, enriched);
         return new PolicyChange(sourceId, MethodId, delta, reason, DateTimeOffset.UtcNow);

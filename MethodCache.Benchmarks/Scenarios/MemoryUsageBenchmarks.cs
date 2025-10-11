@@ -185,8 +185,7 @@ public class MemoryTestService : IMemoryTestService
             args,
             async () => await CreateDataAsync(id, dataType),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00", Tags = new[] { "large" })]
@@ -200,8 +199,7 @@ public class MemoryTestService : IMemoryTestService
             args,
             async () => await CreateLargeObjectAsync(id),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:00:05", Tags = new[] { "short" })] // 5 seconds
@@ -215,8 +213,7 @@ public class MemoryTestService : IMemoryTestService
             args,
             async () => await CreateShortLivedDataAsync(id),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [CacheInvalidate(Tags = new[] { "data", "large", "short" })]

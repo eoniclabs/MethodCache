@@ -38,7 +38,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _userRepo.GetUserAsync(userId),
-                settings: new CacheMethodSettings 
+                settings: new CacheRuntimeDescriptor 
                 {
                     Duration = TimeSpan.FromHours(1),
                     Tags = new[] { "user", $"user:{userId}" }

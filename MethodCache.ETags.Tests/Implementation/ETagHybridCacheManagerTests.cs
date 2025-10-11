@@ -1,5 +1,5 @@
 using FluentAssertions;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.ETags.Implementation;
 using MethodCache.ETags.Models;
 using MethodCache.HybridCache.Abstractions;
@@ -18,14 +18,14 @@ namespace MethodCache.ETags.Tests.Implementation
         private readonly Mock<IHybridCacheManager> _mockHybridCache;
         private readonly Mock<ILogger<ETagHybridCacheManager>> _mockLogger;
         private readonly ETagHybridCacheManager _cacheManager;
-        private readonly CacheMethodSettings _defaultSettings;
+        private readonly CacheRuntimeDescriptor _defaultSettings;
 
         public ETagHybridCacheManagerTests()
         {
             _mockHybridCache = new Mock<IHybridCacheManager>();
             _mockLogger = new Mock<ILogger<ETagHybridCacheManager>>();
             _cacheManager = new ETagHybridCacheManager(_mockHybridCache.Object, _mockLogger.Object);
-            _defaultSettings = new CacheMethodSettings 
+            _defaultSettings = new CacheRuntimeDescriptor 
             { 
                 Duration = TimeSpan.FromMinutes(30),
                 Tags = new[] { "test-tag" }
@@ -187,7 +187,7 @@ namespace MethodCache.ETags.Tests.Implementation
             var key = "test-key";
             var factoryValue = "factory-value";
             var factoryETag = "\"factory-etag\"";
-            var settingsWithoutTags = new CacheMethodSettings 
+            var settingsWithoutTags = new CacheRuntimeDescriptor 
             { 
                 Duration = TimeSpan.FromMinutes(30),
                 Tags = null

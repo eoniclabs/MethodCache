@@ -1,9 +1,10 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 
 using MethodCache.Providers.Redis;
@@ -74,8 +75,9 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
             
             // Test Redis connectivity
             var cacheManager = provider.GetRequiredService<ICacheManager>();
-            cacheManager.GetOrCreateAsync("test", Array.Empty<object>(), () => Task.FromResult("test"), 
-                new CacheMethodSettings(), provider.GetRequiredService<ICacheKeyGenerator>(), true)
+            var descriptor = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty, CachePolicyFields.None);
+            cacheManager.GetOrCreateAsync("test", Array.Empty<object>(), () => Task.FromResult("test"),
+                descriptor, provider.GetRequiredService<ICacheKeyGenerator>())
                 .Wait(TimeSpan.FromSeconds(5));
             
             return provider;

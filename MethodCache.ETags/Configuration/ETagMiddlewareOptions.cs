@@ -1,4 +1,5 @@
-using MethodCache.Core.Configuration;
+using MethodCache.Abstractions.Policies;
+using MethodCache.Core.Runtime;
 using Microsoft.AspNetCore.Http;
 
 namespace MethodCache.ETags.Middleware
@@ -105,15 +106,20 @@ namespace MethodCache.ETags.Middleware
         public string[]? PersonalizationHeaders { get; set; }
 
         /// <summary>
-        /// Gets the cache settings for storing ETag entries.
+        /// Gets the runtime descriptor for storing ETag entries.
         /// </summary>
-        internal CacheMethodSettings GetCacheSettings()
+        internal CacheRuntimeDescriptor GetRuntimeDescriptor()
         {
-            return new CacheMethodSettings
+            var policy = CachePolicy.Empty with
             {
                 Duration = DefaultExpiration,
-                Tags = DefaultTags?.ToList() ?? new List<string>()
+                Tags = DefaultTags ?? Array.Empty<string>()
             };
+
+            return CacheRuntimeDescriptor.FromPolicy(
+                "ETagMiddleware",
+                policy,
+                CachePolicyFields.Duration | CachePolicyFields.Tags);
         }
     }
 

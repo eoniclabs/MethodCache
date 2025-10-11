@@ -2,7 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
 {
@@ -30,9 +30,9 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             _metricsProvider = metricsProvider;
         }
 
-        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
         {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
 
             // Check cache first and verify not expired
             if (_cache.TryGetValue(key, out var cacheEntry))
@@ -56,7 +56,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
                 var result = await factory();
                 if (result != null)
                 {
-                    var expiryTime = DateTime.UtcNow.Add(settings.Duration ?? TimeSpan.FromMinutes(5));
+                    var expiryTime = DateTime.UtcNow.Add(descriptor.Duration ?? TimeSpan.FromMinutes(5));
                     var newEntry = new CacheEntry
                     {
                         Value = result,
@@ -100,9 +100,9 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             return Task.CompletedTask;
         }
 
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
         {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
             
             if (_cache.TryGetValue(key, out var cacheEntry))
             {

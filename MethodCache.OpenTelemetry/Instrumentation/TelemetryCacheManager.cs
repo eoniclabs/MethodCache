@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.OpenTelemetry.Metrics;
 using MethodCache.OpenTelemetry.Propagators;
 using MethodCache.OpenTelemetry.Tracing;
@@ -33,9 +34,8 @@ public class TelemetryCacheManager : ICacheManager
         string methodName,
         object[] args,
         Func<Task<T>> factory,
-        CacheMethodSettings settings,
-        ICacheKeyGenerator keyGenerator,
-        bool requireIdempotent)
+        CacheRuntimeDescriptor descriptor,
+        ICacheKeyGenerator keyGenerator)
     {
         using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
         var stopwatch = Stopwatch.StartNew();
@@ -45,18 +45,18 @@ public class TelemetryCacheManager : ICacheManager
             _baggagePropagator.InjectBaggage(activity);
 
             var keyGenStopwatch = Stopwatch.StartNew();
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
             keyGenStopwatch.Stop();
 
             _meterProvider.RecordKeyGenerationDuration(methodName, keyGenStopwatch.Elapsed.TotalMilliseconds);
             _activitySource.SetCacheKey(activity, cacheKey);
 
-            if (settings.Tags.Count > 0)
+            if (descriptor.Tags.Count > 0)
             {
-                _activitySource.SetCacheTags(activity, settings.Tags.ToArray());
+                _activitySource.SetCacheTags(activity, descriptor.Tags.ToArray());
             }
 
-            SetActivityTags(activity, settings);
+            SetActivityTags(activity, descriptor);
 
             // Track whether the factory was invoked to determine hit/miss
             var factoryInvoked = false;
@@ -66,7 +66,7 @@ public class TelemetryCacheManager : ICacheManager
                 return await factory();
             }
 
-            var result = await _innerManager.GetOrCreateAsync(methodName, args, InstrumentedFactory, settings, keyGenerator, requireIdempotent);
+            var result = await _innerManager.GetOrCreateAsync(methodName, args, InstrumentedFactory, descriptor, keyGenerator);
 
             stopwatch.Stop();
 
@@ -74,15 +74,15 @@ public class TelemetryCacheManager : ICacheManager
             if (factoryInvoked)
             {
                 _activitySource.SetCacheHit(activity, false);
-                _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(settings));
+                _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(descriptor));
             }
             else
             {
                 _activitySource.SetCacheHit(activity, true);
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(settings));
+                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(descriptor));
             }
 
-            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(settings));
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(descriptor));
 
             return result;
         }
@@ -90,8 +90,8 @@ public class TelemetryCacheManager : ICacheManager
         {
             stopwatch.Stop();
             _activitySource.SetCacheError(activity, ex);
-            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTags(settings));
-            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(settings));
+            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTags(descriptor));
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(descriptor));
             throw;
         }
     }
@@ -174,7 +174,7 @@ public class TelemetryCacheManager : ICacheManager
     public async ValueTask<T?> TryGetAsync<T>(
         string methodName,
         object[] args,
-        CacheMethodSettings settings,
+        CacheRuntimeDescriptor descriptor,
         ICacheKeyGenerator keyGenerator)
     {
         using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
@@ -184,11 +184,11 @@ public class TelemetryCacheManager : ICacheManager
         {
             _baggagePropagator.InjectBaggage(activity);
 
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
             _activitySource.SetCacheKey(activity, cacheKey);
-            SetActivityTags(activity, settings);
+            SetActivityTags(activity, descriptor);
 
-            var result = await _innerManager.TryGetAsync<T>(methodName, args, settings, keyGenerator);
+            var result = await _innerManager.TryGetAsync<T>(methodName, args, descriptor, keyGenerator);
 
             var hit = result != null && !EqualityComparer<T>.Default.Equals(result, default);
             _activitySource.SetCacheHit(activity, hit);
@@ -197,14 +197,14 @@ public class TelemetryCacheManager : ICacheManager
 
             if (hit)
             {
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(settings));
+                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(descriptor));
             }
             else
             {
-                _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(settings));
+                _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(descriptor));
             }
 
-            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(settings));
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(descriptor));
 
             return result;
         }
@@ -212,48 +212,48 @@ public class TelemetryCacheManager : ICacheManager
         {
             stopwatch.Stop();
             _activitySource.SetCacheError(activity, ex);
-            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTags(settings));
+            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTags(descriptor));
             throw;
         }
     }
 
-    private static void SetActivityTags(Activity? activity, CacheMethodSettings settings)
+    private static void SetActivityTags(Activity? activity, CacheRuntimeDescriptor descriptor)
     {
         if (activity == null) return;
 
-        if (settings.Duration.HasValue)
+        if (descriptor.Duration.HasValue)
         {
-            activity.SetTag(TracingConstants.AttributeNames.CacheTtl, settings.Duration.Value.TotalSeconds);
+            activity.SetTag(TracingConstants.AttributeNames.CacheTtl, descriptor.Duration.Value.TotalSeconds);
         }
 
-        if (settings.Metadata.TryGetValue("group", out var group))
+        if (descriptor.Metadata.TryGetValue("group", out var group))
         {
-            activity.SetTag(TracingConstants.AttributeNames.CacheGroup, group?.ToString());
+            activity.SetTag(TracingConstants.AttributeNames.CacheGroup, group);
         }
 
-        if (settings.Version.HasValue)
+        if (descriptor.Version.HasValue)
         {
-            activity.SetTag(TracingConstants.AttributeNames.CacheVersion, settings.Version.Value);
+            activity.SetTag(TracingConstants.AttributeNames.CacheVersion, descriptor.Version.Value);
         }
     }
 
-    private static Dictionary<string, object?>? CreateMetricTags(CacheMethodSettings settings)
+    private static Dictionary<string, object?>? CreateMetricTags(CacheRuntimeDescriptor descriptor)
     {
         var tags = new Dictionary<string, object?>();
 
-        if (settings.Metadata.TryGetValue("group", out var group))
+        if (descriptor.Metadata.TryGetValue("group", out var group))
         {
-            tags["group"] = group?.ToString();
+            tags["group"] = group;
         }
 
-        if (settings.Version.HasValue)
+        if (descriptor.Version.HasValue)
         {
-            tags["version"] = settings.Version.Value;
+            tags["version"] = descriptor.Version.Value;
         }
 
-        if (settings.Tags.Count > 0)
+        if (descriptor.Tags.Count > 0)
         {
-            tags["tags"] = string.Join(",", settings.Tags);
+            tags["tags"] = string.Join(",", descriptor.Tags);
         }
 
         return tags.Count > 0 ? tags : null;

@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using MessagePack;
 using MessagePack.Resolvers;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.KeyGenerators;
@@ -54,9 +53,6 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
     
     // Hex lookup table for fast conversion
     private static ReadOnlySpan<byte> HexChars => "0123456789abcdef"u8;
-
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
-        => GenerateKey(methodName, args, settings.Version);
 
     public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
         => GenerateKey(methodName, args, descriptor.Version);

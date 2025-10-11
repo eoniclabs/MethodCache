@@ -54,7 +54,7 @@ namespace MethodCache.ETags.Tests.Middleware
             _mockCacheManager.Verify(x => x.GetOrCreateWithETagAsync(
                 It.IsAny<string>(),
                 It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
-                It.IsAny<Core.Configuration.CacheMethodSettings>(),
+                It.IsAny<Core.Runtime.CacheRuntimeDescriptor>(),
                 It.IsAny<string?>()), Times.Never);
         }
 
@@ -75,7 +75,7 @@ namespace MethodCache.ETags.Tests.Middleware
             _mockCacheManager.Verify(x => x.GetOrCreateWithETagAsync(
                 It.IsAny<string>(),
                 It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
-                It.IsAny<Core.Configuration.CacheMethodSettings>(),
+                It.IsAny<Core.Runtime.CacheRuntimeDescriptor>(),
                 It.IsAny<string?>()), Times.Never);
         }
 
@@ -94,7 +94,7 @@ namespace MethodCache.ETags.Tests.Middleware
             _mockCacheManager.Verify(x => x.GetOrCreateWithETagAsync(
                 It.IsAny<string>(),
                 It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
-                It.IsAny<Core.Configuration.CacheMethodSettings>(),
+                It.IsAny<Core.Runtime.CacheRuntimeDescriptor>(),
                 It.IsAny<string?>()), Times.Never);
         }
 
@@ -112,7 +112,7 @@ namespace MethodCache.ETags.Tests.Middleware
                 .Setup(x => x.GetOrCreateWithETagAsync(
                     It.IsAny<string>(),
                     It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
-                    It.IsAny<Core.Configuration.CacheMethodSettings>(),
+                    It.IsAny<Core.Runtime.CacheRuntimeDescriptor>(),
                     "\"matching-etag\""))
                 .ReturnsAsync(cacheResult);
 
@@ -148,7 +148,7 @@ namespace MethodCache.ETags.Tests.Middleware
                     It.IsAny<string>(),
                     It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
                     It.IsAny<string?>(),
-                    It.IsAny<Core.Configuration.CacheMethodSettings?>()))
+                    It.IsAny<Core.Runtime.CacheRuntimeDescriptor?>()))
                 .ReturnsAsync(cacheResult);
 
             // Act
@@ -192,8 +192,8 @@ namespace MethodCache.ETags.Tests.Middleware
                     It.IsAny<string>(),
                     It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
                     It.IsAny<string?>(),
-                    It.IsAny<Core.Configuration.CacheMethodSettings?>()))
-                .Returns<string, Func<Task<ETagCacheEntry<ResponseCacheEntry>>>, Core.Configuration.CacheMethodSettings, string?>(
+                    It.IsAny<Core.Runtime.CacheRuntimeDescriptor?>()))
+                .Returns<string, Func<Task<ETagCacheEntry<ResponseCacheEntry>>>, Core.Runtime.CacheRuntimeDescriptor, string?>(
                     async (key, factory, settings, ifNoneMatch) =>
                     {
                         capturedEntry = await factory();
@@ -239,7 +239,7 @@ namespace MethodCache.ETags.Tests.Middleware
                     It.IsAny<string>(),
                     It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
                     It.IsAny<string?>(),
-                    It.IsAny<Core.Configuration.CacheMethodSettings?>()))
+                    It.IsAny<Core.Runtime.CacheRuntimeDescriptor?>()))
                 .ReturnsAsync(cacheResult);
 
             // Act
@@ -273,7 +273,7 @@ namespace MethodCache.ETags.Tests.Middleware
                     It.IsAny<string>(),
                     It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
                     It.IsAny<string?>(),
-                    It.IsAny<Core.Configuration.CacheMethodSettings?>()))
+                    It.IsAny<Core.Runtime.CacheRuntimeDescriptor?>()))
                 .ReturnsAsync(cacheResult);
 
             // Act
@@ -308,7 +308,7 @@ namespace MethodCache.ETags.Tests.Middleware
                     It.IsAny<string>(),
                     It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
                     It.IsAny<string?>(),
-                    It.IsAny<Core.Configuration.CacheMethodSettings?>()))
+                    It.IsAny<Core.Runtime.CacheRuntimeDescriptor?>()))
                 .ReturnsAsync(cacheResult);
 
             // Act
@@ -319,7 +319,7 @@ namespace MethodCache.ETags.Tests.Middleware
             _mockCacheManager.Verify(x => x.GetOrCreateWithETagAsync(
                 It.IsAny<string>(),
                 It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
-                It.IsAny<Core.Configuration.CacheMethodSettings>(),
+                It.IsAny<Core.Runtime.CacheRuntimeDescriptor>(),
                 It.IsAny<string?>()), Times.Once);
         }
 
@@ -342,7 +342,7 @@ namespace MethodCache.ETags.Tests.Middleware
             _mockCacheManager.Verify(x => x.GetOrCreateWithETagAsync(
                 It.IsAny<string>(),
                 It.IsAny<Func<Task<ETagCacheEntry<ResponseCacheEntry>>>>(),
-                It.IsAny<Core.Configuration.CacheMethodSettings>(),
+                It.IsAny<Core.Runtime.CacheRuntimeDescriptor>(),
                 It.IsAny<string?>()), Times.Never);
         }
 

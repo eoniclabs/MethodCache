@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
 {
@@ -92,7 +92,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
     // Custom cache key generator
     public class CustomKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
         {
             return $""CUSTOM_{methodName}_{string.Join(""_"", args)}"";
         }
@@ -110,6 +110,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;";
+using MethodCache.Core.Runtime;";
     }
 }

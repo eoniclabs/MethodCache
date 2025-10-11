@@ -2,7 +2,7 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Benchmarks.Infrastructure;
@@ -202,8 +202,7 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateSimpleDataAsync(id, type),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00")]
@@ -217,8 +216,7 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateComplexDataAsync(param, id, type),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00")]
@@ -232,8 +230,7 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateArrayDataAsync(values),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00")]
@@ -247,8 +244,7 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateStringDataAsync(text),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     private async Task<object> CreateSimpleDataAsync(int id, string type)
@@ -285,13 +281,13 @@ public class SerializationTestService : ISerializationTestService
 // Custom key generators for comparison
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (settings.Version.HasValue) 
-            keyBuilder.Append($"_v{settings.Version.Value}");
+        if (descriptor.Version.HasValue) 
+            keyBuilder.Append($"_v{descriptor.Version.Value}");
 
         foreach (var arg in args)
         {
@@ -310,21 +306,21 @@ public class JsonKeyGenerator : ICacheKeyGenerator
         var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
         var base64Hash = Convert.ToBase64String(hash);
         
-        if (settings.Version.HasValue) 
-            return $"{base64Hash}_v{settings.Version.Value}";
+        if (descriptor.Version.HasValue) 
+            return $"{base64Hash}_v{descriptor.Version.Value}";
         return base64Hash;
     }
 }
 
 public class ToStringKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (settings.Version.HasValue) 
-            keyBuilder.Append($"_v{settings.Version.Value}");
+        if (descriptor.Version.HasValue) 
+            keyBuilder.Append($"_v{descriptor.Version.Value}");
 
         foreach (var arg in args)
         {
@@ -342,8 +338,8 @@ public class ToStringKeyGenerator : ICacheKeyGenerator
         var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
         var base64Hash = Convert.ToBase64String(hash);
         
-        if (settings.Version.HasValue) 
-            return $"{base64Hash}_v{settings.Version.Value}";
+        if (descriptor.Version.HasValue) 
+            return $"{base64Hash}_v{descriptor.Version.Value}";
         return base64Hash;
     }
 }
