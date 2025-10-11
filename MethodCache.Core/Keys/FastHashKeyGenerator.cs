@@ -55,15 +55,21 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
     private static ReadOnlySpan<byte> HexChars => "0123456789abcdef"u8;
 
     public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        => GenerateKey(methodName, args, settings.Version);
+
+    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        => GenerateKey(methodName, args, descriptor.Version);
+
+    private static string GenerateKey(string methodName, object[] args, int? version)
     {
         var writer = new ArrayBufferWriter<byte>(256);
 
         WriteUtf8String(ref writer, methodName);
 
-        if (settings.Version.HasValue)
+        if (version.HasValue)
         {
             WriteUtf8Literal(ref writer, "_v"u8);
-            WriteInt32(ref writer, settings.Version.Value);
+            WriteInt32(ref writer, version.Value);
         }
 
         foreach (var arg in args)
@@ -75,7 +81,7 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         var hash = ComputeFastHash(payload);
         var result = ToHexString(hash);
 
-        return settings.Version.HasValue ? $"{result}_v{settings.Version.Value}" : result;
+        return version.HasValue ? $"{result}_v{version.Value}" : result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -18,18 +18,23 @@ public sealed class CacheRuntimeDescriptor
         string methodId,
         CachePolicy policy,
         CachePolicyFields fields,
-        IReadOnlyDictionary<string, string?> metadata)
+        IReadOnlyDictionary<string, string?> metadata,
+        CacheRuntimeOptions runtimeOptions,
+        CacheMethodSettings? legacySettings)
     {
         MethodId = methodId;
         Policy = policy;
         Fields = fields;
         Metadata = metadata;
+        RuntimeOptions = runtimeOptions;
+        _legacySettings = legacySettings;
     }
 
     public string MethodId { get; }
     public CachePolicy Policy { get; }
     public CachePolicyFields Fields { get; }
     public IReadOnlyDictionary<string, string?> Metadata { get; }
+    public CacheRuntimeOptions RuntimeOptions { get; }
 
     public bool RequireIdempotent => Policy.RequireIdempotent ?? false;
     public TimeSpan? Duration => Policy.Duration;
@@ -50,12 +55,53 @@ public sealed class CacheRuntimeDescriptor
 
         var metadata = result.Policy.Metadata ?? new Dictionary<string, string?>(StringComparer.Ordinal);
 
-        return new CacheRuntimeDescriptor(result.MethodId, result.Policy, fields, metadata);
+        return new CacheRuntimeDescriptor(result.MethodId, result.Policy, fields, metadata, CacheRuntimeOptions.Empty, null);
+    }
+
+    public static CacheRuntimeDescriptor FromPolicy(string methodId, CachePolicy policy, CachePolicyFields fields, IReadOnlyDictionary<string, string?>? metadata = null, CacheRuntimeOptions? runtimeOptions = null, CacheMethodSettings? legacySettings = null)
+    {
+        if (string.IsNullOrWhiteSpace(methodId))
+        {
+            throw new ArgumentException("Method id must be provided.", nameof(methodId));
+        }
+
+        if (policy == null)
+        {
+            throw new ArgumentNullException(nameof(policy));
+        }
+
+        return new CacheRuntimeDescriptor(methodId, policy, fields, metadata ?? new Dictionary<string, string?>(StringComparer.Ordinal), runtimeOptions ?? CacheRuntimeOptions.Empty, legacySettings);
+    }
+
+    public static CacheRuntimeDescriptor FromPolicyDraft(PolicyDraft draft, CacheRuntimeOptions runtimeOptions, CacheMethodSettings? legacySettings = null)
+    {
+        if (runtimeOptions == null)
+        {
+            throw new ArgumentNullException(nameof(runtimeOptions));
+        }
+
+        var metadata = draft.Metadata ?? new Dictionary<string, string?>(StringComparer.Ordinal);
+        return new CacheRuntimeDescriptor(draft.MethodId, draft.Policy, draft.Fields, metadata, runtimeOptions, legacySettings);
     }
 
     /// <summary>
     /// Temporary bridge for legacy runtime paths still expecting <see cref="CacheMethodSettings"/>.
     /// </summary>
     public CacheMethodSettings ToCacheMethodSettings()
-        => CachePolicyConversion.ToCacheMethodSettings(Policy);
+    {
+        if (_legacySettings != null)
+        {
+            return _legacySettings.Clone();
+        }
+
+        var settings = CachePolicyConversion.ToCacheMethodSettings(Policy);
+        settings.SlidingExpiration = RuntimeOptions.SlidingExpiration;
+        settings.RefreshAhead = RuntimeOptions.RefreshAhead;
+        settings.StampedeProtection = RuntimeOptions.StampedeProtection;
+        settings.DistributedLock = RuntimeOptions.DistributedLock;
+        settings.Metrics = RuntimeOptions.Metrics;
+        return settings;
+    }
+
+    private readonly CacheMethodSettings? _legacySettings;
 }
