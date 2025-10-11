@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
 
 namespace MethodCache.Benchmarks.Core;
@@ -25,19 +24,13 @@ public abstract class SimpleBenchmarkBase
             .SetMinimumLevel(LogLevel.Warning)
             .AddConsole());
 
-        // Add MethodCache configuration
-        services.AddSingleton<MethodCacheConfiguration>(provider =>
+        services.AddMethodCache(config =>
         {
-            var config = new MethodCacheConfiguration();
-            config.DefaultDuration(TimeSpan.FromMinutes(10));
-            return config;
-        });
+            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        }, typeof(SimpleBenchmarkBase).Assembly);
 
-        // Add basic services
-        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
-        services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
-        services.AddSingleton<ICacheManager, InMemoryCacheManager>();
-        
+        services.AddSingleton(sp => (InMemoryCacheManager)sp.GetRequiredService<ICacheManager>());
+
         ConfigureBenchmarkServices(services);
         
         ServiceProvider = services.BuildServiceProvider();

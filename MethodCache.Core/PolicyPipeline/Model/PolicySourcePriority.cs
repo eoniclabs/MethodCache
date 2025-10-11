@@ -2,7 +2,7 @@
 
 namespace MethodCache.Core.Configuration.Policies;
 
-internal static class PolicySourcePriority
+public static class PolicySourcePriority
 {
     public const int Attributes = 10;
     public const int StartupFluent = 40;

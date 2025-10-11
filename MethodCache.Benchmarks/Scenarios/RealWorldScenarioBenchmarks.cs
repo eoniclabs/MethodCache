@@ -2,8 +2,9 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Benchmarks.Infrastructure;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
@@ -200,20 +201,20 @@ public interface IUserService
 public class UserService : IUserService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
-    public UserService(ICacheManager cacheManager, MethodCacheConfiguration configuration, ICacheKeyGenerator keyGenerator)
+    public UserService(ICacheManager cacheManager, IPolicyRegistry policyRegistry, ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:05:00", Tags = new[] { "users" })]
     public virtual async Task<User> GetUserAsync(int userId)
     {
-        var settings = _configuration.GetMethodSettings("UserService.GetUserAsync");
+        var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetUserAsync));
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<User>("GetUserAsync", args, 
             async () => { await Task.Delay(10); return User.Create(userId); }, settings, _keyGenerator, true);
@@ -222,7 +223,7 @@ public class UserService : IUserService
     [Cache(Duration = "00:01:00", Tags = new[] { "activity" })]
     public virtual async Task<List<string>> GetUserActivityAsync(int userId)
     {
-        var settings = _configuration.GetMethodSettings("UserService.GetUserActivityAsync");
+        var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetUserActivityAsync));
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<List<string>>("GetUserActivityAsync", args, 
             async () => { await Task.Delay(20); return new List<string> { $"Activity for user {userId}" }; }, 
@@ -232,7 +233,7 @@ public class UserService : IUserService
     [Cache(Duration = "00:30:00", Tags = new[] { "preferences" })]
     public virtual async Task<object> GetUserPreferencesAsync(int userId)
     {
-        var settings = _configuration.GetMethodSettings("UserService.GetUserPreferencesAsync");
+        var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetUserPreferencesAsync));
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<object>("GetUserPreferencesAsync", args, 
             async () => { await Task.Delay(5); return new { Theme = "Dark", Language = "en" }; }, 
@@ -242,7 +243,7 @@ public class UserService : IUserService
     [Cache(Duration = "24:00:00", Tags = new[] { "offline" })]
     public virtual async Task<User> GetUserForOfflineAsync(int userId)
     {
-        var settings = _configuration.GetMethodSettings("UserService.GetUserForOfflineAsync");
+        var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetUserForOfflineAsync));
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<User>("GetUserForOfflineAsync", args, 
             async () => { await Task.Delay(15); return User.Create(userId); }, settings, _keyGenerator, true);
@@ -251,7 +252,7 @@ public class UserService : IUserService
     [Cache(Duration = "00:10:00", Tags = new[] { "messages" })]
     public virtual async Task<List<string>> GetRecentMessagesAsync(int userId)
     {
-        var settings = _configuration.GetMethodSettings("UserService.GetRecentMessagesAsync");
+        var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetRecentMessagesAsync));
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<List<string>>("GetRecentMessagesAsync", args, 
             async () => { await Task.Delay(25); return new List<string> { $"Message for user {userId}" }; }, 
@@ -268,7 +269,7 @@ public class UserService : IUserService
     [Cache(Duration = "01:00:00", Tags = new[] { "statistics" })]
     public virtual async Task<object> GetUserStatisticsAsync()
     {
-        var settings = _configuration.GetMethodSettings("UserService.GetUserStatisticsAsync");
+        var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetUserStatisticsAsync));
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetUserStatisticsAsync", args, 
             async () => { await Task.Delay(500); return new { TotalUsers = 10000, ActiveUsers = 7500 }; }, 
@@ -289,20 +290,20 @@ public interface IProductService
 public class ProductService : IProductService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
-    public ProductService(ICacheManager cacheManager, MethodCacheConfiguration configuration, ICacheKeyGenerator keyGenerator)
+    public ProductService(ICacheManager cacheManager, IPolicyRegistry policyRegistry, ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:15:00", Tags = new[] { "products" })]
     public virtual async Task<Product> GetProductAsync(int productId)
     {
-        var settings = _configuration.GetMethodSettings("ProductService.GetProductAsync");
+        var settings = _policyRegistry.GetSettingsFor<ProductService>(nameof(GetProductAsync));
         var args = new object[] { productId };
         return await _cacheManager.GetOrCreateAsync<Product>("GetProductAsync", args, 
             async () => { await Task.Delay(15); return Product.Create(productId); }, settings, _keyGenerator, true);
@@ -311,7 +312,7 @@ public class ProductService : IProductService
     [Cache(Duration = "00:02:00", Tags = new[] { "inventory" })]
     public virtual async Task<object> GetProductInventoryAsync(int productId)
     {
-        var settings = _configuration.GetMethodSettings("ProductService.GetProductInventoryAsync");
+        var settings = _policyRegistry.GetSettingsFor<ProductService>(nameof(GetProductInventoryAsync));
         var args = new object[] { productId };
         return await _cacheManager.GetOrCreateAsync<object>("GetProductInventoryAsync", args, 
             async () => { await Task.Delay(30); return new { ProductId = productId, Stock = Random.Shared.Next(0, 100) }; }, 
@@ -321,7 +322,7 @@ public class ProductService : IProductService
     [Cache(Duration = "01:00:00", Tags = new[] { "related" })]
     public virtual async Task<List<Product>> GetRelatedProductsAsync(int productId)
     {
-        var settings = _configuration.GetMethodSettings("ProductService.GetRelatedProductsAsync");
+        var settings = _policyRegistry.GetSettingsFor<ProductService>(nameof(GetRelatedProductsAsync));
         var args = new object[] { productId };
         return await _cacheManager.GetOrCreateAsync<List<Product>>("GetRelatedProductsAsync", args, 
             async () => { await Task.Delay(40); return Enumerable.Range(1, 5).Select(i => Product.Create(productId + i)).ToList(); }, 
@@ -338,7 +339,7 @@ public class ProductService : IProductService
     [Cache(Duration = "00:30:00", Tags = new[] { "analytics" })]
     public virtual async Task<object> GetProductAnalyticsAsync()
     {
-        var settings = _configuration.GetMethodSettings("ProductService.GetProductAnalyticsAsync");
+        var settings = _policyRegistry.GetSettingsFor<ProductService>(nameof(GetProductAnalyticsAsync));
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetProductAnalyticsAsync", args, 
             async () => { await Task.Delay(300); return new { TotalProducts = 5000, BestSellers = 50 }; }, 
@@ -359,20 +360,20 @@ public interface IApiService
 public class ApiService : IApiService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
-    public ApiService(ICacheManager cacheManager, MethodCacheConfiguration configuration, ICacheKeyGenerator keyGenerator)
+    public ApiService(ICacheManager cacheManager, IPolicyRegistry policyRegistry, ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:10:00", Tags = new[] { "weather" })]
     public virtual async Task<object> GetWeatherDataAsync(int cityId)
     {
-        var settings = _configuration.GetMethodSettings("ApiService.GetWeatherDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<ApiService>(nameof(GetWeatherDataAsync));
         var args = new object[] { cityId };
         return await _cacheManager.GetOrCreateAsync<object>("GetWeatherDataAsync", args, 
             async () => { await Task.Delay(100); return new { CityId = cityId, Temperature = Random.Shared.Next(-10, 40) }; }, 
@@ -382,7 +383,7 @@ public class ApiService : IApiService
     [Cache(Duration = "00:01:00", Tags = new[] { "stocks" })]
     public virtual async Task<object> GetStockDataAsync(string symbol)
     {
-        var settings = _configuration.GetMethodSettings("ApiService.GetStockDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<ApiService>(nameof(GetStockDataAsync));
         var args = new object[] { symbol };
         return await _cacheManager.GetOrCreateAsync<object>("GetStockDataAsync", args, 
             async () => { await Task.Delay(200); return new { Symbol = symbol, Price = Random.Shared.NextDouble() * 1000 }; }, 
@@ -392,7 +393,7 @@ public class ApiService : IApiService
     [Cache(Duration = "00:05:00", Tags = new[] { "news" })]
     public virtual async Task<object> GetNewsDataAsync()
     {
-        var settings = _configuration.GetMethodSettings("ApiService.GetNewsDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<ApiService>(nameof(GetNewsDataAsync));
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetNewsDataAsync", args, 
             async () => { await Task.Delay(150); return new { Headlines = new[] { "News 1", "News 2", "News 3" } }; }, 
@@ -402,7 +403,7 @@ public class ApiService : IApiService
     [Cache(Duration = "12:00:00", Tags = new[] { "config" })]
     public virtual async Task<object> GetAppConfigurationAsync()
     {
-        var settings = _configuration.GetMethodSettings("ApiService.GetAppConfigurationAsync");
+        var settings = _policyRegistry.GetSettingsFor<ApiService>(nameof(GetAppConfigurationAsync));
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetAppConfigurationAsync", args, 
             async () => { await Task.Delay(50); return new { Version = "1.0", Features = new[] { "feature1", "feature2" } }; }, 
@@ -412,7 +413,7 @@ public class ApiService : IApiService
     [Cache(Duration = "00:05:00", Tags = new[] { "metrics" })]
     public virtual async Task<object> GetSystemMetricsAsync()
     {
-        var settings = _configuration.GetMethodSettings("ApiService.GetSystemMetricsAsync");
+        var settings = _policyRegistry.GetSettingsFor<ApiService>(nameof(GetSystemMetricsAsync));
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetSystemMetricsAsync", args, 
             async () => { await Task.Delay(400); return new { CPU = Random.Shared.NextDouble() * 100, Memory = Random.Shared.NextDouble() * 100 }; }, 

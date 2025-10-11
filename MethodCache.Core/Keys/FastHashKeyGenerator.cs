@@ -1,4 +1,6 @@
 using System.Buffers;
+using System.Buffers.Text;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -54,202 +56,260 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
 
     public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
     {
-        // Rent buffer from pool for efficient memory usage
-        var buffer = ArrayPool<byte>.Shared.Rent(4096);
-        try
+        var writer = new ArrayBufferWriter<byte>(256);
+
+        WriteUtf8String(ref writer, methodName);
+
+        if (settings.Version.HasValue)
         {
-            var span = buffer.AsSpan();
-            var written = 0;
-            
-            // Write method name
-            written += WriteUtf8String(span[written..], methodName);
-            
-            // Write version if present
-            if (settings.Version.HasValue)
-            {
-                written += WriteUtf8String(span[written..], "_v"u8);
-                written += WriteInt32(span[written..], settings.Version.Value);
-            }
-            
-            // Process arguments efficiently
-            foreach (var arg in args)
-            {
-                written += WriteArgument(span[written..], arg);
-            }
-            
-            // Generate fast hash and convert to hex
-            var hash = ComputeFastHash(span[..written]);
-            var result = ToHexString(hash);
-            
-            return settings.Version.HasValue ? $"{result}_v{settings.Version.Value}" : result;
+            WriteUtf8Literal(ref writer, "_v"u8);
+            WriteInt32(ref writer, settings.Version.Value);
         }
-        finally
+
+        foreach (var arg in args)
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            WriteArgument(ref writer, arg);
         }
+
+        var payload = writer.WrittenSpan;
+        var hash = ComputeFastHash(payload);
+        var result = ToHexString(hash);
+
+        return settings.Version.HasValue ? $"{result}_v{settings.Version.Value}" : result;
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int WriteArgument(Span<byte> span, object? arg)
+    private static void WriteArgument(ref ArrayBufferWriter<byte> writer, object? arg)
     {
         if (arg is null)
         {
-            return WriteUtf8String(span, "_NULL"u8);
+            WriteUtf8Literal(ref writer, "_NULL"u8);
+            return;
         }
-        
-        return arg switch
+
+        switch (arg)
         {
-            ICacheKeyProvider keyProvider => WriteUtf8String(span, $"_{keyProvider.CacheKeyPart}"),
-            string s => WriteString(span, s),
-            int i => WriteInt32WithPrefix(span, i, "_INT:"u8),
-            long l => WriteInt64WithPrefix(span, l, "_LONG:"u8),
-            bool b => WriteUtf8String(span, b ? "_BOOL:True"u8 : "_BOOL:False"u8),
-            double d => WriteDouble(span, d),
-            float f => WriteFloat(span, f), 
-            decimal dec => WriteDecimal(span, dec),
-            DateTime dt => WriteDateTime(span, dt),
-            DateTimeOffset dto => WriteDateTimeOffset(span, dto),
-            Guid guid => WriteGuid(span, guid),
-            Enum enumValue => WriteEnum(span, enumValue),
-            _ => WriteComplexObject(span, arg)
-        };
+            case ICacheKeyProvider keyProvider:
+                WriteUtf8String(ref writer, "_" + keyProvider.CacheKeyPart);
+                break;
+            case string s:
+                WriteString(ref writer, s);
+                break;
+            case int i:
+                WriteInt32WithPrefix(ref writer, i, "_INT:"u8);
+                break;
+            case long l:
+                WriteInt64WithPrefix(ref writer, l, "_LONG:"u8);
+                break;
+            case bool b:
+                WriteUtf8Literal(ref writer, b ? "_BOOL:True"u8 : "_BOOL:False"u8);
+                break;
+            case double d:
+                WriteDouble(ref writer, d);
+                break;
+            case float f:
+                WriteFloat(ref writer, f);
+                break;
+            case decimal dec:
+                WriteDecimal(ref writer, dec);
+                break;
+            case DateTime dt:
+                WriteDateTime(ref writer, dt);
+                break;
+            case DateTimeOffset dto:
+                WriteDateTimeOffset(ref writer, dto);
+                break;
+            case Guid guid:
+                WriteGuid(ref writer, guid);
+                break;
+            case Enum enumValue:
+                WriteEnum(ref writer, enumValue);
+                break;
+            default:
+                WriteComplexObject(ref writer, arg);
+                break;
+        }
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int WriteUtf8String(Span<byte> span, ReadOnlySpan<byte> utf8)
+    private static void WriteUtf8Literal(ref ArrayBufferWriter<byte> writer, ReadOnlySpan<byte> literal)
     {
-        utf8.CopyTo(span);
-        return utf8.Length;
+        var span = writer.GetSpan(literal.Length);
+        literal.CopyTo(span);
+        writer.Advance(literal.Length);
     }
-    
+
+    private static void WriteUtf8String(ref ArrayBufferWriter<byte> writer, string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return;
+        }
+
+#if NETSTANDARD2_0
+        var byteCount = Encoding.UTF8.GetByteCount(value);
+        var span = writer.GetSpan(byteCount);
+        var rented = ArrayPool<byte>.Shared.Rent(byteCount);
+        try
+        {
+            var written = Encoding.UTF8.GetBytes(value, 0, value.Length, rented, 0);
+            rented.AsSpan(0, written).CopyTo(span);
+            writer.Advance(written);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(rented);
+        }
+#else
+        var byteCount = Encoding.UTF8.GetByteCount(value);
+        var span = writer.GetSpan(byteCount);
+        var written = Encoding.UTF8.GetBytes(value.AsSpan(), span);
+        writer.Advance(written);
+#endif
+    }
+
+    private static void WriteString(ref ArrayBufferWriter<byte> writer, string value)
+    {
+        WriteUtf8Literal(ref writer, "_STR:"u8);
+        var escaped = value.Replace("_", "__");
+        WriteUtf8String(ref writer, escaped);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int WriteUtf8String(Span<byte> span, string str)
+    private static void WriteInt32WithPrefix(ref ArrayBufferWriter<byte> writer, int value, ReadOnlySpan<byte> prefix)
     {
-        return Encoding.UTF8.GetBytes(str, span);
+        WriteUtf8Literal(ref writer, prefix);
+        WriteInt32(ref writer, value);
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int WriteString(Span<byte> span, string s)
+    private static void WriteInt64WithPrefix(ref ArrayBufferWriter<byte> writer, long value, ReadOnlySpan<byte> prefix)
     {
-        var written = WriteUtf8String(span, "_STR:"u8);
-        // Escape underscores for security
-        var escaped = s.Replace("_", "__");
-        written += WriteUtf8String(span[written..], escaped);
-        return written;
+        WriteUtf8Literal(ref writer, prefix);
+        WriteInt64(ref writer, value);
     }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int WriteInt32WithPrefix(Span<byte> span, int value, ReadOnlySpan<byte> prefix)
+
+    private static void WriteInt32(ref ArrayBufferWriter<byte> writer, int value)
     {
-        var written = WriteUtf8String(span, prefix);
-        written += WriteInt32(span[written..], value);
-        return written;
+        var span = writer.GetSpan(16);
+        if (!Utf8Formatter.TryFormat(value, span, out var written))
+        {
+            throw new InvalidOperationException("Failed to format int32 value.");
+        }
+
+        writer.Advance(written);
     }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int WriteInt64WithPrefix(Span<byte> span, long value, ReadOnlySpan<byte> prefix)
+
+    private static void WriteInt64(ref ArrayBufferWriter<byte> writer, long value)
     {
-        var written = WriteUtf8String(span, prefix);
-        written += WriteInt64(span[written..], value);
-        return written;
+        var span = writer.GetSpan(24);
+        if (!Utf8Formatter.TryFormat(value, span, out var written))
+        {
+            throw new InvalidOperationException("Failed to format int64 value.");
+        }
+
+        writer.Advance(written);
     }
-    
-    private static int WriteInt32(Span<byte> span, int value)
+
+    private static void WriteDouble(ref ArrayBufferWriter<byte> writer, double value)
     {
-        return WriteUtf8String(span, value.ToString());
+        WriteUtf8Literal(ref writer, "_DBL:"u8);
+        var span = writer.GetSpan(32);
+        if (!Utf8Formatter.TryFormat(value, span, out var written, new StandardFormat('G', 17)))
+        {
+            throw new InvalidOperationException("Failed to format double value.");
+        }
+
+        writer.Advance(written);
     }
-    
-    private static int WriteInt64(Span<byte> span, long value)
+
+    private static void WriteFloat(ref ArrayBufferWriter<byte> writer, float value)
     {
-        return WriteUtf8String(span, value.ToString());
+        WriteUtf8Literal(ref writer, "_FLT:"u8);
+        var span = writer.GetSpan(24);
+        if (!Utf8Formatter.TryFormat(value, span, out var written, new StandardFormat('G', 9)))
+        {
+            throw new InvalidOperationException("Failed to format float value.");
+        }
+
+        writer.Advance(written);
     }
-    
-    private static int WriteDouble(Span<byte> span, double value)
+
+    private static void WriteDecimal(ref ArrayBufferWriter<byte> writer, decimal value)
     {
-        var written = WriteUtf8String(span, "_DBL:"u8);
-        written += WriteUtf8String(span[written..], value.ToString("G17", System.Globalization.CultureInfo.InvariantCulture));
-        return written;
+        WriteUtf8Literal(ref writer, "_DEC:"u8);
+        var span = writer.GetSpan(64);
+        if (!Utf8Formatter.TryFormat(value, span, out var written))
+        {
+            throw new InvalidOperationException("Failed to format decimal value.");
+        }
+
+        writer.Advance(written);
     }
-    
-    private static int WriteFloat(Span<byte> span, float value)
+
+    private static void WriteDateTime(ref ArrayBufferWriter<byte> writer, DateTime value)
     {
-        var written = WriteUtf8String(span, "_FLT:"u8);
-        written += WriteUtf8String(span[written..], value.ToString("G9", System.Globalization.CultureInfo.InvariantCulture));
-        return written;
+        WriteUtf8Literal(ref writer, "_DT:"u8);
+        WriteInt64(ref writer, value.ToBinary());
     }
-    
-    private static int WriteDecimal(Span<byte> span, decimal value)
+
+    private static void WriteDateTimeOffset(ref ArrayBufferWriter<byte> writer, DateTimeOffset value)
     {
-        var written = WriteUtf8String(span, "_DEC:"u8);
-        written += WriteUtf8String(span[written..], value.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        return written;
+        WriteUtf8Literal(ref writer, "_DTO:"u8);
+        WriteInt64(ref writer, value.ToUnixTimeMilliseconds());
+        WriteUtf8Literal(ref writer, ":"u8);
+        WriteUtf8String(ref writer, value.Offset.TotalMinutes.ToString(CultureInfo.InvariantCulture));
     }
-    
-    private static int WriteDateTime(Span<byte> span, DateTime value)
+
+    private static void WriteGuid(ref ArrayBufferWriter<byte> writer, Guid value)
     {
-        var written = WriteUtf8String(span, "_DT:"u8);
-        written += WriteInt64(span[written..], value.ToBinary());
-        return written;
+        WriteUtf8Literal(ref writer, "_GUID:"u8);
+        var span = writer.GetSpan(32);
+        if (!Utf8Formatter.TryFormat(value, span, out var written, new StandardFormat('N')))
+        {
+            throw new InvalidOperationException("Failed to format guid value.");
+        }
+
+        writer.Advance(written);
     }
-    
-    private static int WriteDateTimeOffset(Span<byte> span, DateTimeOffset value)
+
+    private static void WriteEnum(ref ArrayBufferWriter<byte> writer, Enum value)
     {
-        var written = WriteUtf8String(span, "_DTO:"u8);
-        written += WriteInt64(span[written..], value.ToUnixTimeMilliseconds());
-        written += WriteUtf8String(span[written..], ":"u8);
-        written += WriteUtf8String(span[written..], value.Offset.TotalMinutes.ToString());
-        return written;
+        WriteUtf8Literal(ref writer, "_ENUM:"u8);
+        WriteUtf8String(ref writer, value.GetType().FullName ?? value.GetType().Name);
+        WriteUtf8Literal(ref writer, ":"u8);
+        WriteUtf8String(ref writer, value.ToString());
     }
-    
-    private static int WriteGuid(Span<byte> span, Guid value)
-    {
-        var written = WriteUtf8String(span, "_GUID:"u8);
-        written += WriteUtf8String(span[written..], value.ToString("N"));
-        return written;
-    }
-    
-    private static int WriteEnum(Span<byte> span, Enum value)
-    {
-        var written = WriteUtf8String(span, "_ENUM:"u8);
-        written += WriteUtf8String(span[written..], value.GetType().FullName!);
-        written += WriteUtf8String(span[written..], ":"u8);
-        written += WriteUtf8String(span[written..], value.ToString());
-        return written;
-    }
-    
-    private static int WriteComplexObject(Span<byte> span, object arg)
+
+    private static void WriteComplexObject(ref ArrayBufferWriter<byte> writer, object arg)
     {
         try
         {
-            // Use secure typed MessagePack serialization with ArrayPool
             var serializedArg = MessagePackSerializer.Serialize(arg.GetType(), arg, _messagePackOptions);
-            var written = WriteUtf8String(span, "_OBJ:"u8);
-            
-            // Convert to hex for efficiency (faster than Base64)
-            written += WriteHex(span[written..], serializedArg);
-            return written;
+            WriteUtf8Literal(ref writer, "_OBJ:"u8);
+            WriteHex(ref writer, serializedArg);
         }
         catch
         {
-            // Secure fallback
             var fallbackValue = $"{arg.GetType().FullName}:{arg}";
             var escapedFallback = fallbackValue.Replace("_", "__");
-            var written = WriteUtf8String(span, "_FALLBACK:"u8);
-            written += WriteUtf8String(span[written..], escapedFallback);
-            return written;
+            WriteUtf8Literal(ref writer, "_FALLBACK:"u8);
+            WriteUtf8String(ref writer, escapedFallback);
         }
     }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int WriteHex(Span<byte> span, ReadOnlySpan<byte> data)
+
+    private static void WriteHex(ref ArrayBufferWriter<byte> writer, ReadOnlySpan<byte> data)
     {
+        var span = writer.GetSpan(data.Length * 2);
+
         for (int i = 0; i < data.Length; i++)
         {
             var b = data[i];
             span[i * 2] = HexChars[b >> 4];
             span[i * 2 + 1] = HexChars[b & 0xF];
         }
-        return data.Length * 2;
+
+        writer.Advance(data.Length * 2);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

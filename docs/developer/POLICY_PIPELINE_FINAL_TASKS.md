@@ -1,5 +1,9 @@
 # Policy Pipeline Migration – Detailed Implementation Plan
 
+> **Status:** _Archived completion report._  
+> Subsequent code changes left parts of the legacy configuration stack in place.  
+> For current work, follow `docs/developer/POLICY_PIPELINE_CONSOLIDATION_PLAN.md`.
+
 This document refines the remaining work for Phase 7 and clarifies the relationship between configuration surfaces and the new policy pipeline. The goal is to keep all existing ways of configuring MethodCache (attributes, JSON/YAML, fluent/programmatic, runtime overrides) while routing them through the `PolicyResolver`/`IPolicyRegistry` infrastructure for consistent behavior and diagnostics.
 
 ## Design Principles
@@ -221,7 +225,6 @@ The policy pipeline architecture is **fully operational and production-ready**. 
 - **Breaking Changes**: 0
 - **New Features**: PolicyDiagnosticsService, guaranteed priority enforcement
 - **Documentation**: 3 comprehensive guides created/updated
-
 
 
 

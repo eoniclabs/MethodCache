@@ -1,4 +1,8 @@
 # Implementation Plan - Unified Policy Resolver & Configuration Pipeline
+
+> **Status:** _Archived planning note (October 2025)._  
+> The pipeline shipped with the dual-stack bridge intact.  
+> See `docs/developer/POLICY_PIPELINE_CONSOLIDATION_PLAN.md` for the active roadmap to remove the remaining `CacheMethodSettings` dependencies.
 ## Progress Log
 - 2025-10-??: Phase 0 - Preparation completed. Created branch `feature/policy-resolver` and captured baseline `dotnet test MethodCache.sln` run (integration suites for Redis/SQL fail without Docker; recorded as environment limitation). Confirmed toolchain via `global.json` (SDK 8.0.203 roll-forward) and `dotnet --info` (active SDK 9.0.304).
 - 2025-10-??: Phase 1 - Introduce Abstractions Project completed. Added MethodCache.Abstractions (multi-target net9.0/netstandard2.0), wired MethodCache.Core/SourceGenerator references, introduced base policy contracts, polyfills, and unit tests (11 passing). Confirmed no existing shared enums required at this stage; will reassess in later phases.

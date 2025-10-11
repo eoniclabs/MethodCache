@@ -4,6 +4,8 @@ using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.KeyGenerators;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Benchmarks.Infrastructure;
 using System.Text.Json;
 using System.Text;
 using MessagePack;
@@ -176,23 +178,23 @@ public interface ISerializationTestService
 public class SerializationTestService : ISerializationTestService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public SerializationTestService(
         ICacheManager cacheManager,
-        MethodCacheConfiguration configuration,
+        IPolicyRegistry policyRegistry,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetSimpleDataAsync(int id, string type)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetSimpleDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetSimpleDataAsync));
         var args = new object[] { id, type };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -207,7 +209,7 @@ public class SerializationTestService : ISerializationTestService
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetComplexDataAsync(ComplexParameter param, int id, string type)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetComplexDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetComplexDataAsync));
         var args = new object[] { param, id, type };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -222,7 +224,7 @@ public class SerializationTestService : ISerializationTestService
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetDataWithArrayAsync(int[] values)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetDataWithArrayAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetDataWithArrayAsync));
         var args = new object[] { values };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -237,7 +239,7 @@ public class SerializationTestService : ISerializationTestService
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetDataWithStringAsync(string text)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetDataWithStringAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetDataWithStringAsync));
         var args = new object[] { text };
 
         return await _cacheManager.GetOrCreateAsync<object>(

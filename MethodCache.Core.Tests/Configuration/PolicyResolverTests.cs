@@ -107,15 +107,14 @@ public class PolicyResolverTests
 
     private static TestPolicySource CreateSource(string sourceId, CacheMethodSettings settings)
     {
-        var entry = new MethodCacheConfigEntry
-        {
-            ServiceType = "MethodCache.Core.Tests.Configuration.PolicyResolverTests+ITestService",
-            MethodName = "Get",
-            Settings = settings,
-            Priority = 0
-        };
-
-        var snapshot = PolicySnapshotBuilder.FromConfigEntry(sourceId, entry, DateTimeOffset.UtcNow);
+        var (policy, fields) = CachePolicyMapper.FromSettings(settings);
+        var snapshot = PolicySnapshotBuilder.FromPolicy(
+            sourceId,
+            MethodId,
+            policy,
+            fields,
+            DateTimeOffset.UtcNow,
+            policy.Metadata);
         return new TestPolicySource(sourceId, new[] { snapshot });
     }
 

@@ -2,28 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
+using MethodCache.Core.Configuration.Fluent;
 using MethodCache.Core.Configuration.Policies;
 
 namespace MethodCache.Core.Configuration.Sources;
 
 internal sealed class FluentPolicySource : IPolicySource
 {
-    private readonly Action<IMethodCacheConfiguration>? _configure;
-    private readonly MethodCacheConfiguration? _preconfigured;
+    private readonly IReadOnlyList<CompiledPolicy> _compiledPolicies;
     private readonly string _sourceId;
 
-    public FluentPolicySource(Action<IMethodCacheConfiguration> configure)
+    public FluentPolicySource(Action<IFluentMethodCacheConfiguration> configure)
     {
-        _configure = configure ?? throw new ArgumentNullException(nameof(configure));
-        _sourceId = PolicySourceIds.StartupFluent;
-    }
+        ArgumentNullException.ThrowIfNull(configure);
 
-    public FluentPolicySource(MethodCacheConfiguration configuration)
-    {
-        _preconfigured = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _sourceId = PolicySourceIds.StartupFluent;
+        _compiledPolicies = CompilePolicies(configure);
     }
 
     public string SourceId => _sourceId;
@@ -32,18 +29,13 @@ internal sealed class FluentPolicySource : IPolicySource
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var configuration = _preconfigured ?? BuildConfigurationFromDelegate();
         var timestamp = DateTimeOffset.UtcNow;
-        var snapshots = new List<PolicySnapshot>();
+        var snapshots = new List<PolicySnapshot>(_compiledPolicies.Count);
 
-        foreach (var entry in configuration.ToConfigEntries())
+        foreach (var policy in _compiledPolicies)
         {
-            if (string.IsNullOrWhiteSpace(entry.MethodKey))
-            {
-                continue;
-            }
-
-            snapshots.Add(PolicySnapshotBuilder.FromConfigEntry(_sourceId, entry, timestamp));
+            cancellationToken.ThrowIfCancellationRequested();
+            snapshots.Add(PolicySnapshotBuilder.FromPolicy(_sourceId, policy.MethodId, policy.Policy, policy.Fields, timestamp, policy.Metadata));
         }
 
         return Task.FromResult<IReadOnlyCollection<PolicySnapshot>>(snapshots);
@@ -52,10 +44,45 @@ internal sealed class FluentPolicySource : IPolicySource
     public IAsyncEnumerable<PolicyChange> WatchAsync(CancellationToken cancellationToken = default)
         => PolicySourceAsyncEnumerable.Empty(cancellationToken);
 
-    private MethodCacheConfiguration BuildConfigurationFromDelegate()
+    private static IReadOnlyList<CompiledPolicy> CompilePolicies(Action<IFluentMethodCacheConfiguration> configure)
     {
-        var configuration = new MethodCacheConfiguration();
-        _configure?.Invoke(configuration);
-        return configuration;
+        var fluent = new FluentMethodCacheConfiguration();
+        configure(fluent);
+
+        var drafts = fluent.BuildMethodPolicies();
+        var compiled = new List<CompiledPolicy>(drafts.Count);
+
+        foreach (var draft in drafts)
+        {
+            var (policy, fields) = CachePolicyMapper.FromSettings(draft.Settings);
+            IReadOnlyDictionary<string, string?>? metadata = null;
+            if (!string.IsNullOrWhiteSpace(draft.GroupName))
+            {
+                metadata = new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["group"] = draft.GroupName
+                };
+            }
+
+            compiled.Add(new CompiledPolicy(draft.MethodKey, policy, fields, metadata));
+        }
+
+        return compiled;
+    }
+
+    private readonly struct CompiledPolicy
+    {
+        public CompiledPolicy(string methodId, CachePolicy policy, CachePolicyFields fields, IReadOnlyDictionary<string, string?>? metadata)
+        {
+            MethodId = methodId;
+            Policy = policy;
+            Fields = fields;
+            Metadata = metadata;
+        }
+
+        public string MethodId { get; }
+        public CachePolicy Policy { get; }
+        public CachePolicyFields Fields { get; }
+        public IReadOnlyDictionary<string, string?>? Metadata { get; }
     }
 }
