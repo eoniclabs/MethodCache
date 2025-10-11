@@ -71,6 +71,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using MethodCache.Abstractions.Registry;");
                 sb.AppendLine("using MethodCache.Core.Configuration;");
                 sb.AppendLine("using MethodCache.Core.Configuration.Policies;");
+                sb.AppendLine("using MethodCache.Core.Runtime;");
                 sb.AppendLine();
                 sb.AppendLine($"namespace {ns}");
                 sb.AppendLine("{");
@@ -236,7 +237,7 @@ namespace MethodCache.SourceGenerator
                 }
 
                 sb.AppendLine($"            var policyResult = _policyRegistry.GetPolicy(\"{methodId}\");");
-                sb.AppendLine("            var settings = CachePolicyConversion.ToCacheMethodSettings(policyResult.Policy);");
+                sb.AppendLine("            var descriptor = CacheRuntimeDescriptor.FromPolicyResult(policyResult);");
 
                 // Handle different return types
                 if (Utils.IsTask(method.ReturnType, out var taskType))
@@ -255,8 +256,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
-
-            private const string IsIdempotentProperty = "settings.IsIdempotent";
 
             /// <summary>
             /// Generates cache method name that includes runtime generic type information for generic interfaces
@@ -288,9 +287,8 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
-                sb.AppendLine("                settings,");
-                sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {IsIdempotentProperty});");
+                sb.AppendLine("                descriptor,");
+                sb.AppendLine("                _keyGenerator);");
             }
 
             private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol)
@@ -313,9 +311,8 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
-                sb.AppendLine("                settings,");
-                sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {IsIdempotentProperty});");
+                sb.AppendLine("                descriptor,");
+                sb.AppendLine("                _keyGenerator);");
                 sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
             }
 
@@ -344,9 +341,8 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                () => Task.FromResult({call}),");
-                sb.AppendLine("                settings,");
-                sb.AppendLine("                _keyGenerator,");
-                sb.AppendLine($"                {IsIdempotentProperty})");
+                sb.AppendLine("                descriptor,");
+                sb.AppendLine("                _keyGenerator)");
                 sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 
@@ -591,5 +587,3 @@ namespace MethodCache.SourceGenerator
 
     }
 }
-
-

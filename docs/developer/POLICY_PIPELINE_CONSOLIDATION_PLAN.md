@@ -85,7 +85,9 @@ Use these as GitHub issues or project board cards to track progress:
    - Deliverables: direct attribute → policy conversion, ETag metadata coverage, tests.
 4. **PP-004 – Rewrite configuration file policy source** ✅ _2025-10-12_  
    - Deliverables: builder-based parser, metadata handling, docs update for JSON examples.
-5. **PP-005 – Runtime override & consumption alignment**  
-   - Deliverables: new configurator overloads, runtime descriptor, cache manager/key generator updates.
+5. **PP-005 – Runtime override & consumption alignment** (in progress)  
+   - ✅ Added policy-builder overload to `IRuntimeCacheConfigurator` and `RuntimeCacheConfigurator`  
+   - ✅ Introduced `CacheRuntimeDescriptor` and updated source-generated decorators to consume it  
+   - ◻️ Update fluent `CacheManagerExtensions` and runtime cache managers to operate on descriptors without converting back to `CacheMethodSettings`
 6. **PP-006 – Legacy removal & doc refresh**  
    - Deliverables: delete legacy types, update public docs, finalize migration guidance.
