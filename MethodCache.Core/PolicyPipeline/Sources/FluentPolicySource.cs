@@ -12,7 +12,7 @@ namespace MethodCache.Core.Configuration.Sources;
 
 internal sealed class FluentPolicySource : IPolicySource
 {
-    private readonly IReadOnlyList<CompiledPolicy> _compiledPolicies;
+    private readonly IReadOnlyList<PolicyDraft> _compiledPolicies;
     private readonly string _sourceId;
 
     public FluentPolicySource(Action<IFluentMethodCacheConfiguration> configure)
@@ -32,10 +32,10 @@ internal sealed class FluentPolicySource : IPolicySource
         var timestamp = DateTimeOffset.UtcNow;
         var snapshots = new List<PolicySnapshot>(_compiledPolicies.Count);
 
-        foreach (var policy in _compiledPolicies)
+        foreach (var draft in _compiledPolicies)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            snapshots.Add(PolicySnapshotBuilder.FromPolicy(_sourceId, policy.MethodId, policy.Policy, policy.Fields, timestamp, policy.Metadata));
+            snapshots.Add(PolicySnapshotBuilder.FromPolicy(_sourceId, draft.MethodId, draft.Policy, draft.Fields, timestamp, draft.Metadata, draft.Notes));
         }
 
         return Task.FromResult<IReadOnlyCollection<PolicySnapshot>>(snapshots);
@@ -44,45 +44,11 @@ internal sealed class FluentPolicySource : IPolicySource
     public IAsyncEnumerable<PolicyChange> WatchAsync(CancellationToken cancellationToken = default)
         => PolicySourceAsyncEnumerable.Empty(cancellationToken);
 
-    private static IReadOnlyList<CompiledPolicy> CompilePolicies(Action<IFluentMethodCacheConfiguration> configure)
+    private static IReadOnlyList<PolicyDraft> CompilePolicies(Action<IFluentMethodCacheConfiguration> configure)
     {
         var fluent = new FluentMethodCacheConfiguration();
         configure(fluent);
 
-        var drafts = fluent.BuildMethodPolicies();
-        var compiled = new List<CompiledPolicy>(drafts.Count);
-
-        foreach (var draft in drafts)
-        {
-            var (policy, fields) = CachePolicyMapper.FromSettings(draft.Settings);
-            IReadOnlyDictionary<string, string?>? metadata = null;
-            if (!string.IsNullOrWhiteSpace(draft.GroupName))
-            {
-                metadata = new Dictionary<string, string?>(StringComparer.Ordinal)
-                {
-                    ["group"] = draft.GroupName
-                };
-            }
-
-            compiled.Add(new CompiledPolicy(draft.MethodKey, policy, fields, metadata));
-        }
-
-        return compiled;
-    }
-
-    private readonly struct CompiledPolicy
-    {
-        public CompiledPolicy(string methodId, CachePolicy policy, CachePolicyFields fields, IReadOnlyDictionary<string, string?>? metadata)
-        {
-            MethodId = methodId;
-            Policy = policy;
-            Fields = fields;
-            Metadata = metadata;
-        }
-
-        public string MethodId { get; }
-        public CachePolicy Policy { get; }
-        public CachePolicyFields Fields { get; }
-        public IReadOnlyDictionary<string, string?>? Metadata { get; }
+        return fluent.BuildMethodPolicies();
     }
 }
