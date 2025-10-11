@@ -1,8 +1,6 @@
-using MethodCache.Abstractions.Policies;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Policies;
 using Microsoft.Extensions.Configuration;
 
@@ -10,13 +8,6 @@ namespace MethodCache.Core.Configuration.Sources;
 
 internal static class ConfigFilePolicySourceBuilder
 {
-    internal readonly record struct PolicyDescriptor(
-        string MethodId,
-        CachePolicy Policy,
-        CachePolicyFields Fields,
-        IReadOnlyDictionary<string, string?>? Metadata,
-        string? Notes);
-
     public static ConfigFilePolicySource FromConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
     {
         if (configuration == null)
@@ -28,18 +19,18 @@ internal static class ConfigFilePolicySourceBuilder
 
         if (!root.Exists())
         {
-            return new ConfigFilePolicySource(Array.Empty<PolicyDescriptor>());
+            return new ConfigFilePolicySource(Array.Empty<PolicyDraft>());
         }
 
-        var defaults = ParseSettings(root.GetSection("Defaults"));
+        var defaults = ParseSection(root.GetSection("Defaults"));
         var servicesSection = root.GetSection("Services");
 
         if (!servicesSection.Exists())
         {
-            return new ConfigFilePolicySource(Array.Empty<PolicyDescriptor>());
+            return new ConfigFilePolicySource(Array.Empty<PolicyDraft>());
         }
 
-        var descriptors = new List<PolicyDescriptor>();
+        var descriptors = new List<PolicyDraft>();
 
         foreach (var methodSection in servicesSection.GetChildren())
         {
@@ -54,52 +45,52 @@ internal static class ConfigFilePolicySourceBuilder
                 continue;
             }
 
-            var specific = ParseSettings(methodSection);
-            var merged = MergeSettings(defaults, specific);
-            var (policy, fields) = CachePolicyMapper.FromSettings(merged);
             var notes = methodSection["Notes"] ?? methodSection["notes"];
+            var baseBuilder = new CachePolicyBuilder();
 
-            descriptors.Add(new PolicyDescriptor(methodId, policy, fields, policy.Metadata, notes));
+            if (defaults.HasChanges)
+            {
+                baseBuilder.Apply(defaults, overwriteExisting: false);
+            }
+
+            var specific = ParseSection(methodSection);
+            if (specific.HasChanges)
+            {
+                baseBuilder.Apply(specific, overwriteExisting: true);
+            }
+
+            var draft = baseBuilder.Build(methodId, notes);
+            descriptors.Add(draft);
         }
 
         return new ConfigFilePolicySource(descriptors);
     }
 
-    private static CacheMethodSettings ParseSettings(IConfigurationSection section)
+    private static CachePolicyBuilder ParseSection(IConfigurationSection section)
     {
-        var settings = new CacheMethodSettings();
+        var builder = new CachePolicyBuilder();
+
         if (!section.Exists())
         {
-            return settings;
+            return builder;
         }
 
         var durationValue = section["Duration"] ?? section["duration"];
         if (!string.IsNullOrWhiteSpace(durationValue) && TimeSpan.TryParse(durationValue, out var duration))
         {
-            settings.Duration = duration;
+            builder.WithDuration(duration);
         }
 
-        var tagsSection = section.GetSection("Tags");
-        if (!tagsSection.Exists())
+        var tags = ReadValues(section.GetSection("Tags")) ?? ReadValues(section.GetSection("tags"));
+        if (tags is { Count: > 0 })
         {
-            tagsSection = section.GetSection("tags");
-        }
-
-        if (tagsSection.Exists())
-        {
-            foreach (var child in tagsSection.GetChildren())
-            {
-                if (!string.IsNullOrWhiteSpace(child.Value))
-                {
-                    settings.Tags.Add(child.Value);
-                }
-            }
+            builder.SetTags(tags);
         }
 
         var versionValue = section["Version"] ?? section["version"];
         if (!string.IsNullOrWhiteSpace(versionValue) && int.TryParse(versionValue, out var version))
         {
-            settings.Version = version;
+            builder.WithVersion(version);
         }
 
         var keyGeneratorValue = section["KeyGenerator"] ?? section["keyGenerator"];
@@ -108,14 +99,20 @@ internal static class ConfigFilePolicySourceBuilder
             var type = Type.GetType(keyGeneratorValue, throwOnError: false);
             if (type != null)
             {
-                settings.KeyGeneratorType = type;
+                builder.WithKeyGenerator(type);
             }
         }
 
         var requireIdempotentValue = section["RequireIdempotent"] ?? section["requireIdempotent"];
         if (!string.IsNullOrWhiteSpace(requireIdempotentValue) && bool.TryParse(requireIdempotentValue, out var requireIdempotent))
         {
-            settings.IsIdempotent = requireIdempotent;
+            builder.RequireIdempotent(requireIdempotent);
+        }
+
+        var groupValue = section["Group"] ?? section["group"];
+        if (!string.IsNullOrWhiteSpace(groupValue))
+        {
+            builder.AddMetadata("group", groupValue);
         }
 
         var metadataSection = section.GetSection("Metadata");
@@ -130,68 +127,30 @@ internal static class ConfigFilePolicySourceBuilder
             {
                 if (!string.IsNullOrWhiteSpace(child.Key))
                 {
-                    settings.Metadata[child.Key] = child.Value;
+                    builder.AddMetadata(child.Key, child.Value);
                 }
             }
         }
 
-        return settings;
+        return builder;
     }
 
-    private static CacheMethodSettings MergeSettings(CacheMethodSettings defaults, CacheMethodSettings specifics)
+    private static List<string>? ReadValues(IConfigurationSection section)
     {
-        if (defaults == null && specifics == null)
+        if (section == null || !section.Exists())
         {
-            return new CacheMethodSettings();
+            return null;
         }
 
-        if (defaults == null)
+        var values = new List<string>();
+        foreach (var child in section.GetChildren())
         {
-            return specifics.Clone();
-        }
-
-        if (specifics == null)
-        {
-            return defaults.Clone();
-        }
-
-        var merged = defaults.Clone();
-
-        if (specifics.Duration.HasValue)
-        {
-            merged.Duration = specifics.Duration;
-        }
-
-        if (specifics.Tags.Count > 0)
-        {
-            merged.Tags.Clear();
-            merged.Tags.AddRange(specifics.Tags);
-        }
-
-        if (specifics.Version.HasValue)
-        {
-            merged.Version = specifics.Version;
-        }
-
-        if (specifics.KeyGeneratorType != null)
-        {
-            merged.KeyGeneratorType = specifics.KeyGeneratorType;
-        }
-
-        // Allow explicit false to override defaults by checking if defaults were true and specifics false.
-        if (specifics.IsIdempotent || defaults.IsIdempotent && !specifics.IsIdempotent)
-        {
-            merged.IsIdempotent = specifics.IsIdempotent;
-        }
-
-        if (specifics.Metadata.Count > 0)
-        {
-            foreach (var kvp in specifics.Metadata)
+            if (!string.IsNullOrWhiteSpace(child.Value))
             {
-                merged.Metadata[kvp.Key] = kvp.Value;
+                values.Add(child.Value);
             }
         }
 
-        return merged;
+        return values;
     }
 }
