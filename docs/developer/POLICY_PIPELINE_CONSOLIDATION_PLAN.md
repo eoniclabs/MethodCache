@@ -81,7 +81,7 @@ Use these as GitHub issues or project board cards to track progress:
    - Deliverables: new builder types, unit tests, adapters for defaults/groups.
 2. **PP-002 – Port fluent configuration to policy builders** ✅ _2025-10-12_  
    - Deliverables: fluent surface producing policy drafts, mapper removal, regression tests.
-3. **PP-003 – Rewrite attribute policy source**  
+3. **PP-003 – Rewrite attribute policy source** ✅ _2025-10-12_  
    - Deliverables: direct attribute → policy conversion, ETag metadata coverage, tests.
 4. **PP-004 – Rewrite configuration file policy source**  
    - Deliverables: builder-based parser, metadata handling, docs update for JSON examples.
