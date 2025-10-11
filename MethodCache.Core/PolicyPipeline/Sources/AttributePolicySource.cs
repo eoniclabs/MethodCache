@@ -64,19 +64,8 @@ public sealed class AttributePolicySource : IPolicySource
                         continue;
                     }
 
-                    var settings = BuildSettings(cacheAttribute, method);
-                    var (policy, fields) = CachePolicyMapper.FromSettings(settings);
-
-                    IReadOnlyDictionary<string, string?>? metadata = null;
-                    if (!string.IsNullOrWhiteSpace(cacheAttribute.GroupName))
-                    {
-                        metadata = new Dictionary<string, string?>(StringComparer.Ordinal)
-                        {
-                            ["group"] = cacheAttribute.GroupName
-                        };
-                    }
-
-                    snapshots.Add(PolicySnapshotBuilder.FromPolicy(_sourceId, methodKey, policy, fields, timestamp, metadata));
+                    var draft = BuildDraft(cacheAttribute, method, methodKey);
+                    snapshots.Add(PolicySnapshotBuilder.FromPolicy(_sourceId, methodKey, draft.Policy, draft.Fields, timestamp, draft.Metadata, draft.Notes));
                 }
             }
         }
@@ -100,24 +89,43 @@ public sealed class AttributePolicySource : IPolicySource
         return $"{typeName}.{method.Name}";
     }
 
-    private static CacheMethodSettings BuildSettings(CacheAttribute attribute, MethodInfo method)
+    private static PolicyDraft BuildDraft(CacheAttribute attribute, MethodInfo method, string methodKey)
     {
-        var settings = new CacheMethodSettings
-        {
-            Duration = string.IsNullOrWhiteSpace(attribute.Duration)
+        var builder = new CachePolicyBuilder()
+            .WithDuration(string.IsNullOrWhiteSpace(attribute.Duration)
                 ? TimeSpan.FromMinutes(15)
-                : TimeSpan.Parse(attribute.Duration, CultureInfo.InvariantCulture),
-            Tags = attribute.Tags?.ToList() ?? new List<string>(),
-            Version = attribute.Version >= 0 ? attribute.Version : null,
-            KeyGeneratorType = attribute.KeyGeneratorType,
-            IsIdempotent = attribute.RequireIdempotent
-        };
+                : TimeSpan.Parse(attribute.Duration, CultureInfo.InvariantCulture));
 
-        LoadETagSettings(method, settings);
-        return settings;
+        if (attribute.Tags is { Length: > 0 })
+        {
+            builder.SetTags(attribute.Tags);
+        }
+
+        if (attribute.KeyGeneratorType != null)
+        {
+            builder.WithKeyGenerator(attribute.KeyGeneratorType);
+        }
+
+        if (attribute.Version >= 0)
+        {
+            builder.WithVersion(attribute.Version);
+        }
+
+        if (attribute.RequireIdempotent)
+        {
+            builder.RequireIdempotent();
+        }
+
+        if (!string.IsNullOrWhiteSpace(attribute.GroupName))
+        {
+            builder.AddMetadata("group", attribute.GroupName);
+        }
+
+        ApplyETagMetadata(method, builder);
+        return builder.Build(methodKey);
     }
 
-    private static void LoadETagSettings(MethodInfo method, CacheMethodSettings settings)
+    private static void ApplyETagMetadata(MethodInfo method, CachePolicyBuilder builder)
     {
         var etagAttributeType = Type.GetType("MethodCache.ETags.Attributes.ETagAttribute, MethodCache.ETags");
         if (etagAttributeType == null)
@@ -146,7 +154,7 @@ public sealed class AttributePolicySource : IPolicySource
             metadata.CacheDuration = TimeSpan.FromMinutes(cacheDurationMinutes.Value);
         }
 
-        settings.SetETagMetadata(metadata);
+        AppendETagMetadata(builder, metadata);
     }
 
     private static T? GetNullableValue<T>(Type attributeType, object attribute, string propertyName) where T : struct
@@ -175,5 +183,38 @@ public sealed class AttributePolicySource : IPolicySource
         }
 
         return null;
+    }
+
+    private static void AppendETagMetadata(CachePolicyBuilder builder, ETagMetadata metadata)
+    {
+        if (!string.IsNullOrWhiteSpace(metadata.Strategy))
+        {
+            builder.AddMetadata("etag.strategy", metadata.Strategy);
+        }
+
+        if (metadata.IncludeParametersInETag.HasValue)
+        {
+            builder.AddMetadata("etag.includeParameters", metadata.IncludeParametersInETag.Value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (metadata.ETagGeneratorType != null)
+        {
+            builder.AddMetadata("etag.generatorType", metadata.ETagGeneratorType.AssemblyQualifiedName);
+        }
+
+        if (metadata.Metadata is { Length: > 0 })
+        {
+            builder.AddMetadata("etag.metadata", string.Join(",", metadata.Metadata));
+        }
+
+        if (metadata.UseWeakETag.HasValue)
+        {
+            builder.AddMetadata("etag.useWeak", metadata.UseWeakETag.Value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (metadata.CacheDuration.HasValue)
+        {
+            builder.AddMetadata("etag.cacheDuration", metadata.CacheDuration.Value.ToString());
+        }
     }
 }
