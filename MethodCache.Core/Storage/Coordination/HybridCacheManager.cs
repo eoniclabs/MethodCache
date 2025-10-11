@@ -4,8 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Storage;
 
@@ -41,36 +41,6 @@ public class HybridCacheManager : IHybridCacheManager
     }
 
     // ICacheManager implementation - delegate to the primary storage provider
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
-    {
-        // For this we need to implement the full cache manager logic
-        // For now, delegate to a simple implementation using the storage provider
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-
-        // Try to get from cache first
-        var cached = await _storageProvider.GetAsync<T>(cacheKey);
-        if (cached != null)
-        {
-            return cached;
-        }
-
-        // Execute factory and cache result
-        var result = await factory();
-        if (result != null)
-        {
-            var expiration = settings.Duration ?? _options.L1DefaultExpiration;
-            await _storageProvider.SetAsync(cacheKey, result, expiration, settings.Tags);
-        }
-
-        return result;
-    }
-
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
-    {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-        return await _storageProvider.GetAsync<T>(cacheKey);
-    }
-
     public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
     {
         if (descriptor == null)
@@ -78,8 +48,7 @@ public class HybridCacheManager : IHybridCacheManager
             throw new ArgumentNullException(nameof(descriptor));
         }
 
-        var settings = descriptor.ToCacheMethodSettings();
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
 
         var cached = await _storageProvider.GetAsync<T>(cacheKey);
         if (cached != null)
@@ -104,8 +73,7 @@ public class HybridCacheManager : IHybridCacheManager
             throw new ArgumentNullException(nameof(descriptor));
         }
 
-        var settings = descriptor.ToCacheMethodSettings();
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
         return await _storageProvider.GetAsync<T>(cacheKey);
     }
 

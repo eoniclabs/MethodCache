@@ -44,7 +44,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using MethodCache.Abstractions.Policies;");
                 sb.AppendLine("using MethodCache.Abstractions.Resolution;");
                 sb.AppendLine("using MethodCache.Abstractions.Sources;");
-                sb.AppendLine("using MethodCache.Core.Configuration;");
+                sb.AppendLine("using MethodCache.Core.Runtime;");
                 sb.AppendLine("using MethodCache.Core.Configuration.Policies;");
                 sb.AppendLine("using MethodCache.Core.Configuration.Resolver;");
                 sb.AppendLine("using MethodCache.Core.Configuration.Sources;");
@@ -101,12 +101,12 @@ namespace MethodCache.SourceGenerator
                 {
                     sb.AppendLine($"        private static PolicySnapshot {definition.SnapshotMethodName}(DateTimeOffset timestamp)");
                     sb.AppendLine("        {");
-                    sb.AppendLine("            var settings = new CacheMethodSettings();");
-                    foreach (var statement in definition.SettingsStatements)
+                    sb.AppendLine("            var policy = CachePolicy.Empty;");
+                    sb.AppendLine("            var fields = CachePolicyFields.None;");
+                    foreach (var statement in definition.PolicyStatements)
                     {
                         sb.AppendLine("            " + statement);
                     }
-                    sb.AppendLine("            var (policy, fields) = CachePolicyMapper.FromSettings(settings);");
                     sb.AppendLine("            policy = CachePolicyMapper.AttachContribution(policy, \"attributes\", fields, timestamp);");
                     sb.AppendLine("            var metadata = new Dictionary<string, string?>(StringComparer.Ordinal)");
                     sb.AppendLine("            {");
@@ -167,14 +167,14 @@ namespace MethodCache.SourceGenerator
                     var ctorArg = cacheAttr.ConstructorArguments[0];
                     if (ctorArg.Value is string groupName && !string.IsNullOrWhiteSpace(groupName))
                     {
-                        definition.SettingsStatements.Add($"settings.Metadata[\"{GroupMetadataKey}\"] = {ToLiteral(groupName)};");
                         definition.MetadataStatements.Add($"metadata[\"{GroupMetadataKey}\"] = {ToLiteral(groupName)};");
                     }
                 }
 
                 if (TryGetNamedArgument(cacheAttr, "Duration", out var durationArg) && durationArg.Value is string duration && !string.IsNullOrWhiteSpace(duration))
                 {
-                    definition.SettingsStatements.Add($"settings.Duration = System.TimeSpan.Parse({ToLiteral(duration)}, System.Globalization.CultureInfo.InvariantCulture);");
+                    definition.PolicyStatements.Add($"policy = policy with {{ Duration = System.TimeSpan.Parse({ToLiteral(duration)}, System.Globalization.CultureInfo.InvariantCulture) }};");
+                    definition.PolicyStatements.Add("fields |= CachePolicyFields.Duration;");
                 }
 
                 if (TryGetNamedArgument(cacheAttr, "Tags", out var tagsArg) && tagsArg.Kind == TypedConstantKind.Array)
@@ -187,24 +187,28 @@ namespace MethodCache.SourceGenerator
 
                     if (tags.Length > 0)
                     {
-                        definition.SettingsStatements.Add($"settings.Tags.AddRange(new[] {{ {string.Join(", ", tags)} }});");
+                        definition.PolicyStatements.Add($"policy = policy with {{ Tags = new[] {{ {string.Join(", ", tags)} }} }};");
+                        definition.PolicyStatements.Add("fields |= CachePolicyFields.Tags;");
                     }
                 }
 
                 if (TryGetNamedArgument(cacheAttr, "Version", out var versionArg) && versionArg.Value is int versionValue && versionValue >= 0)
                 {
-                    definition.SettingsStatements.Add($"settings.Version = {versionValue};");
+                    definition.PolicyStatements.Add($"policy = policy with {{ Version = {versionValue} }};");
+                    definition.PolicyStatements.Add("fields |= CachePolicyFields.Version;");
                 }
 
                 if (TryGetNamedArgument(cacheAttr, "KeyGeneratorType", out var keyGeneratorArg) && keyGeneratorArg.Value is INamedTypeSymbol keyGeneratorType)
                 {
                     var typeName = Utils.GetFullyQualifiedName(keyGeneratorType);
-                    definition.SettingsStatements.Add($"settings.KeyGeneratorType = typeof({typeName});");
+                    definition.PolicyStatements.Add($"policy = policy with {{ KeyGeneratorType = typeof({typeName}) }};");
+                    definition.PolicyStatements.Add("fields |= CachePolicyFields.KeyGeneratorType;");
                 }
 
                 if (TryGetNamedArgument(cacheAttr, "RequireIdempotent", out var idempotentArg) && idempotentArg.Value is bool requireIdempotent && requireIdempotent)
                 {
-                    definition.SettingsStatements.Add("settings.IsIdempotent = true;");
+                    definition.PolicyStatements.Add($"policy = policy with {{ RequireIdempotent = {requireIdempotent.ToString().ToLowerInvariant()} }};");
+                    definition.PolicyStatements.Add("fields |= CachePolicyFields.RequireIdempotent;");
                 }
             }
 
@@ -223,7 +227,7 @@ namespace MethodCache.SourceGenerator
                 return false;
             }
 
-                        private static string ToLiteral(string? value)
+            private static string ToLiteral(string? value)
             {
                 if (value == null)
                 {
@@ -279,14 +283,9 @@ namespace MethodCache.SourceGenerator
 
                 public string MethodId { get; }
                 public string SnapshotMethodName { get; }
-                public List<string> SettingsStatements { get; } = new();
+                public List<string> PolicyStatements { get; } = new();
                 public List<string> MetadataStatements { get; } = new();
             }
         }
     }
 }
-
-
-
-
-

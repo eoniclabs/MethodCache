@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Metrics;
 using MethodCache.Core.Options;
+using MethodCache.Core.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace MethodCache.Core.Runtime.Defaults
@@ -106,59 +106,6 @@ namespace MethodCache.Core.Runtime.Defaults
 
         #region ICacheManager Implementation
 
-        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
-        {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
-            var policy = new CacheEntryPolicy(
-                settings.Duration,
-                settings.SlidingExpiration,
-                settings.RefreshAhead,
-                settings.StampedeProtection,
-                settings.DistributedLock,
-                settings.Metrics);
-
-            // Check cache first using internal method to avoid double statistics
-            var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
-            if (cachedResult != null)
-            {
-                _metricsProvider.CacheHit(methodName);
-                if (_options.EnableStatistics)
-                {
-                    Interlocked.Increment(ref _hits);
-                }
-                return cachedResult;
-            }
-
-            // Validate idempotency requirement
-            if (requireIdempotent && !settings.IsIdempotent)
-            {
-                throw new InvalidOperationException($"Method {methodName} is not marked as idempotent, but caching requires it.");
-            }
-
-            // Handle cache miss with proper single-flight pattern
-            return await ExecuteWithSingleFlight(key, async () =>
-            {
-                var result = await factory().ConfigureAwait(false);
-                
-                if (result != null)
-                {
-                    var expiration = settings.Duration ?? _options.DefaultExpiration;
-                    var effectiveExpiration = expiration > _options.MaxExpiration 
-                        ? _options.MaxExpiration 
-                        : expiration;
-                    await SetAsync(key, result, effectiveExpiration, settings.Tags?.ToArray() ?? Array.Empty<string>(), policy);
-                }
-
-                _metricsProvider.CacheMiss(methodName);
-                if (_options.EnableStatistics)
-                {
-                    Interlocked.Increment(ref _misses);
-                }
-                
-                return result!;
-            }, methodName, policy);
-        }
-
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             if (tags == null || !tags.Any()) return Task.CompletedTask;
@@ -241,12 +188,6 @@ namespace MethodCache.Core.Runtime.Defaults
             await InvalidateByTagsAsync(matchingTags).ConfigureAwait(false);
         }
 
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
-        {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
-            return GetAsyncInternal<T>(key, updateStatistics: false); // Skip statistics for direct reads
-        }
-
         public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
         {
             if (descriptor == null)
@@ -254,8 +195,7 @@ namespace MethodCache.Core.Runtime.Defaults
                 throw new ArgumentNullException(nameof(descriptor));
             }
 
-            var settings = descriptor.ToCacheMethodSettings();
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
             var policy = CreatePolicy(descriptor);
 
             var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
@@ -267,11 +207,6 @@ namespace MethodCache.Core.Runtime.Defaults
                     Interlocked.Increment(ref _hits);
                 }
                 return cachedResult;
-            }
-
-            if (descriptor.RequireIdempotent && !settings.IsIdempotent)
-            {
-                throw new InvalidOperationException($"Method {methodName} is not marked as idempotent, but caching requires it.");
             }
 
             var tags = descriptor.Tags.Count > 0 ? descriptor.Tags.ToArray() : Array.Empty<string>();
@@ -306,8 +241,8 @@ namespace MethodCache.Core.Runtime.Defaults
                 throw new ArgumentNullException(nameof(descriptor));
             }
 
-            var settings = descriptor.ToCacheMethodSettings();
-            return TryGetAsync<T>(methodName, args, settings, keyGenerator);
+            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+            return GetAsyncInternal<T>(key, updateStatistics: false);
         }
 
         /// <summary>

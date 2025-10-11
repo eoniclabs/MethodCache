@@ -59,7 +59,7 @@ namespace MethodCache.ETags.Middleware
                         cacheKey,
                         async () => await CaptureResponseAsync(context),
                         ifNoneMatch,
-                        _options.GetCacheSettings(),
+                        _options.GetRuntimeDescriptor(),
                         forceRefresh: true);
                 }
                 else
@@ -69,7 +69,7 @@ namespace MethodCache.ETags.Middleware
                         cacheKey,
                         async () => await CaptureResponseAsync(context),
                         ifNoneMatch,
-                        _options.GetCacheSettings());
+                        _options.GetRuntimeDescriptor());
                 }
 
                 // Handle bypass results early

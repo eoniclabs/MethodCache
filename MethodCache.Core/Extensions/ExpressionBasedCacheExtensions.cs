@@ -313,7 +313,12 @@ namespace MethodCache.Core.Extensions
             // If it's too long, hash it using the base key generator
             if (defaultKey.Length > 200)
             {
-                return _baseKeyGenerator.GenerateKey("ExpressionHash", new object[] { defaultKey }, new CacheMethodSettings());
+                var policy = Abstractions.Policies.CachePolicy.Empty;
+                var descriptor = CacheRuntimeDescriptor.FromPolicy(
+                    "ExpressionHash",
+                    policy,
+                    Abstractions.Policies.CachePolicyFields.None);
+                return _baseKeyGenerator.GenerateKey("ExpressionHash", new object[] { defaultKey }, descriptor);
             }
 
             return defaultKey;

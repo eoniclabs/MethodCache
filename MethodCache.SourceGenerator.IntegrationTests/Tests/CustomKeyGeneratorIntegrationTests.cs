@@ -4,7 +4,7 @@ using Xunit;
 using Xunit.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
@@ -30,7 +30,7 @@ public class CustomKeyGeneratorIntegrationTests
 using System;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace TestNamespace
 {
@@ -43,7 +43,7 @@ namespace TestNamespace
 
     public class CustomUserKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
         {
             // Custom key format: METHOD:USER_{id}
             if (args.Length > 0 && args[0] is int userId)
@@ -56,7 +56,7 @@ namespace TestNamespace
 
     public class ComplexKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
         {
             // Complex key with method name, arg types, and values
             var keyParts = new System.Collections.Generic.List<string> { methodName };
@@ -199,13 +199,13 @@ namespace TestNamespace
 using System;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace TestNamespace
 {
     public class ParameterSensitiveKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
         {
             // Create keys that are sensitive to parameter order and types
             var parts = new System.Collections.Generic.List<string> { methodName };

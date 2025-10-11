@@ -1,4 +1,3 @@
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core
@@ -23,9 +22,9 @@ namespace MethodCache.Core
     /// <code>
     /// public class CustomKeyGenerator : ICacheKeyGenerator
     /// {
-    ///     public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+    ///     public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
     ///     {
-    ///         var version = settings.Version?.ToString() ?? "v1";
+    ///         var version = descriptor.Version?.ToString() ?? "v1";
     ///         var argsKey = string.Join("_", args.Select(a => a?.ToString() ?? "null"));
     ///         return $"{methodName}_{version}_{argsKey}";
     ///     }

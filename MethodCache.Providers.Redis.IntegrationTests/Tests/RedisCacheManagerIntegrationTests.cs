@@ -1,6 +1,8 @@
 using FluentAssertions;
 using MethodCache.Core;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -14,7 +16,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         // Arrange
         var methodName = "TestMethod";
         var args = new object[] { "testArg" };
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var keyGenerator = ServiceProvider.GetRequiredService<ICacheKeyGenerator>();
         var callCount = 0;
         
@@ -24,17 +26,15 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
             args, 
             () => { callCount++; return Task.FromResult("generated-value"); }, 
             settings, 
-            keyGenerator, 
-            requireIdempotent: false);
+            keyGenerator);
             
         // Act - Second call should use cache
         var result2 = await CacheManager.GetOrCreateAsync(
-            methodName, 
-            args, 
-            () => { callCount++; return Task.FromResult("should-not-be-called"); }, 
-            settings, 
-            keyGenerator, 
-            requireIdempotent: false);
+            methodName,
+            args,
+            () => { callCount++; return Task.FromResult("should-not-be-called"); },
+            settings,
+            keyGenerator);
 
         // Assert
         result1.Should().Be("generated-value");
@@ -48,7 +48,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         // Arrange
         var methodName = "ComplexObjectMethod";
         var args = new object[] { 123 };
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var keyGenerator = ServiceProvider.GetRequiredService<ICacheKeyGenerator>();
         
         var complexObject = new TestComplexObject
@@ -66,12 +66,11 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         
         // Act
         var result = await CacheManager.GetOrCreateAsync(
-            methodName, 
-            args, 
-            () => Task.FromResult(complexObject), 
-            settings, 
-            keyGenerator, 
-            requireIdempotent: false);
+            methodName,
+            args,
+            () => Task.FromResult(complexObject),
+            settings,
+            keyGenerator);
 
         // Assert
         result.Should().NotBeNull();

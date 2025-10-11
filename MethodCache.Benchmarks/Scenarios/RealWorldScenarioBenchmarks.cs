@@ -217,7 +217,7 @@ public class UserService : IUserService
         var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetUserAsync));
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<User>("GetUserAsync", args, 
-            async () => { await Task.Delay(10); return User.Create(userId); }, settings, _keyGenerator, true);
+            async () => { await Task.Delay(10); return User.Create(userId); }, settings, _keyGenerator);
     }
 
     [Cache(Duration = "00:01:00", Tags = new[] { "activity" })]
@@ -227,7 +227,7 @@ public class UserService : IUserService
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<List<string>>("GetUserActivityAsync", args, 
             async () => { await Task.Delay(20); return new List<string> { $"Activity for user {userId}" }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [Cache(Duration = "00:30:00", Tags = new[] { "preferences" })]
@@ -237,7 +237,7 @@ public class UserService : IUserService
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<object>("GetUserPreferencesAsync", args, 
             async () => { await Task.Delay(5); return new { Theme = "Dark", Language = "en" }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [Cache(Duration = "24:00:00", Tags = new[] { "offline" })]
@@ -246,7 +246,7 @@ public class UserService : IUserService
         var settings = _policyRegistry.GetSettingsFor<UserService>(nameof(GetUserForOfflineAsync));
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<User>("GetUserForOfflineAsync", args, 
-            async () => { await Task.Delay(15); return User.Create(userId); }, settings, _keyGenerator, true);
+            async () => { await Task.Delay(15); return User.Create(userId); }, settings, _keyGenerator);
     }
 
     [Cache(Duration = "00:10:00", Tags = new[] { "messages" })]
@@ -256,7 +256,7 @@ public class UserService : IUserService
         var args = new object[] { userId };
         return await _cacheManager.GetOrCreateAsync<List<string>>("GetRecentMessagesAsync", args, 
             async () => { await Task.Delay(25); return new List<string> { $"Message for user {userId}" }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [CacheInvalidate(Tags = new[] { "activity" })]
@@ -273,7 +273,7 @@ public class UserService : IUserService
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetUserStatisticsAsync", args, 
             async () => { await Task.Delay(500); return new { TotalUsers = 10000, ActiveUsers = 7500 }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 }
 
@@ -306,7 +306,7 @@ public class ProductService : IProductService
         var settings = _policyRegistry.GetSettingsFor<ProductService>(nameof(GetProductAsync));
         var args = new object[] { productId };
         return await _cacheManager.GetOrCreateAsync<Product>("GetProductAsync", args, 
-            async () => { await Task.Delay(15); return Product.Create(productId); }, settings, _keyGenerator, true);
+            async () => { await Task.Delay(15); return Product.Create(productId); }, settings, _keyGenerator);
     }
 
     [Cache(Duration = "00:02:00", Tags = new[] { "inventory" })]
@@ -316,7 +316,7 @@ public class ProductService : IProductService
         var args = new object[] { productId };
         return await _cacheManager.GetOrCreateAsync<object>("GetProductInventoryAsync", args, 
             async () => { await Task.Delay(30); return new { ProductId = productId, Stock = Random.Shared.Next(0, 100) }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [Cache(Duration = "01:00:00", Tags = new[] { "related" })]
@@ -326,7 +326,7 @@ public class ProductService : IProductService
         var args = new object[] { productId };
         return await _cacheManager.GetOrCreateAsync<List<Product>>("GetRelatedProductsAsync", args, 
             async () => { await Task.Delay(40); return Enumerable.Range(1, 5).Select(i => Product.Create(productId + i)).ToList(); }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [CacheInvalidate(Tags = new[] { "inventory" })]
@@ -343,7 +343,7 @@ public class ProductService : IProductService
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetProductAnalyticsAsync", args, 
             async () => { await Task.Delay(300); return new { TotalProducts = 5000, BestSellers = 50 }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 }
 
@@ -377,7 +377,7 @@ public class ApiService : IApiService
         var args = new object[] { cityId };
         return await _cacheManager.GetOrCreateAsync<object>("GetWeatherDataAsync", args, 
             async () => { await Task.Delay(100); return new { CityId = cityId, Temperature = Random.Shared.Next(-10, 40) }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [Cache(Duration = "00:01:00", Tags = new[] { "stocks" })]
@@ -387,7 +387,7 @@ public class ApiService : IApiService
         var args = new object[] { symbol };
         return await _cacheManager.GetOrCreateAsync<object>("GetStockDataAsync", args, 
             async () => { await Task.Delay(200); return new { Symbol = symbol, Price = Random.Shared.NextDouble() * 1000 }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00", Tags = new[] { "news" })]
@@ -397,7 +397,7 @@ public class ApiService : IApiService
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetNewsDataAsync", args, 
             async () => { await Task.Delay(150); return new { Headlines = new[] { "News 1", "News 2", "News 3" } }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [Cache(Duration = "12:00:00", Tags = new[] { "config" })]
@@ -407,7 +407,7 @@ public class ApiService : IApiService
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetAppConfigurationAsync", args, 
             async () => { await Task.Delay(50); return new { Version = "1.0", Features = new[] { "feature1", "feature2" } }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00", Tags = new[] { "metrics" })]
@@ -417,6 +417,6 @@ public class ApiService : IApiService
         var args = Array.Empty<object>();
         return await _cacheManager.GetOrCreateAsync<object>("GetSystemMetricsAsync", args, 
             async () => { await Task.Delay(400); return new { CPU = Random.Shared.NextDouble() * 100, Memory = Random.Shared.NextDouble() * 100 }; }, 
-            settings, _keyGenerator, true);
+            settings, _keyGenerator);
     }
 }

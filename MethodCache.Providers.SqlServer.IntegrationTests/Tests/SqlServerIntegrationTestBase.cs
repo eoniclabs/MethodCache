@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
 using MethodCache.Infrastructure.Extensions;
@@ -471,9 +473,9 @@ internal class StorageProviderCacheManager : ICacheManager
         _keyGenerator = keyGenerator;
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool isIdempotent)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
+        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
 
         var cached = await _storageProvider.GetAsync<T>(key);
         if (cached != null)
@@ -484,8 +486,8 @@ internal class StorageProviderCacheManager : ICacheManager
         var value = await factory();
         if (value != null)
         {
-            var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageProvider.SetAsync(key, value, expiration, settings.Tags ?? new List<string>()).ConfigureAwait(false);
+            var expiration = descriptor.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageProvider.SetAsync(key, value, expiration, descriptor.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return value;
@@ -498,7 +500,7 @@ internal class StorageProviderCacheManager : ICacheManager
 
     public Task InvalidateAsync(string methodName, params object[] args)
     {
-        var key = _keyGenerator.GenerateKey(methodName, args, new CacheMethodSettings());
+        var key = _keyGenerator.GenerateKey(methodName, args, CacheRuntimeDescriptor.FromPolicy("temp", CachePolicy.Empty, CachePolicyFields.None));
         return _storageProvider.RemoveAsync(key).AsTask();
     }
 
@@ -513,9 +515,9 @@ internal class StorageProviderCacheManager : ICacheManager
         return _storageProvider.RemoveByTagAsync(pattern).AsTask();
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
+        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
         return await _storageProvider.GetAsync<T>(key);
     }
 

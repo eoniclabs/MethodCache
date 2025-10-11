@@ -58,9 +58,7 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, options);
-            var descriptor = descriptorResult.Descriptor;
-            var settings = descriptorResult.LegacySettings;
+            var descriptor = CreateRuntimeDescriptor(FluentMethodName, options);
             var runtimeOptions = descriptor.RuntimeOptions;
 
             // Analyze factory to extract method info and arguments
@@ -101,7 +99,7 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
-            var version = descriptor.Policy.Version ?? settings.Version;
+            var version = descriptor.Version;
             var fixedKeyGen = new FixedKeyGenerator(cacheKey, version);
 
             var result = await cacheManager.GetOrCreateAsync(
@@ -163,9 +161,7 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var descriptorResult = CreateRuntimeDescriptor(methodName, options);
-            var descriptor = descriptorResult.Descriptor;
-            var settings = descriptorResult.LegacySettings;
+            var descriptor = CreateRuntimeDescriptor(methodName, options);
             var runtimeOptions = descriptor.RuntimeOptions;
 
             // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
@@ -203,7 +199,7 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
-            var version = descriptor.Policy.Version ?? settings.Version;
+            var version = descriptor.Version;
             var fixedKeyGen = new FixedKeyGenerator(cacheKey, version);
 
             var result = await cacheManager.GetOrCreateAsync(
@@ -251,9 +247,7 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, options);
-            var descriptor = descriptorResult.Descriptor;
-            var settings = descriptorResult.LegacySettings;
+            var descriptor = CreateRuntimeDescriptor(FluentMethodName, options);
             var runtimeOptions = descriptor.RuntimeOptions;
             var context = new CacheContext(key, services);
             var factoryExecuted = false;
@@ -284,7 +278,7 @@ namespace MethodCache.Core.Extensions
                 }
             }
 
-            var version = descriptor.Policy.Version ?? settings.Version;
+            var version = descriptor.Version;
             var effectiveKeyGenerator = new FixedKeyGenerator(key, version);
 
             var result = await cacheManager.GetOrCreateAsync(
@@ -327,14 +321,12 @@ namespace MethodCache.Core.Extensions
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, BuildOptions(null));
-            var descriptor = descriptorResult.Descriptor;
-            var settings = descriptorResult.LegacySettings;
+            var descriptor = CreateRuntimeDescriptor(FluentMethodName, BuildOptions(null));
 
             var value = await cacheManager.TryGetAsync<T>(
                 FluentMethodName,
                 EmptyArgs,
-                settings,
+                descriptor,
                 new FixedKeyGenerator(key)).ConfigureAwait(false);
 
             return value is null
@@ -360,9 +352,7 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, options);
-            var descriptor = descriptorResult.Descriptor;
-            var settings = descriptorResult.LegacySettings;
+            var descriptor = CreateRuntimeDescriptor(FluentMethodName, options);
             var runtimeOptions = descriptor.RuntimeOptions;
 
             var keyList = keys as IList<string> ?? keys.ToList();
@@ -403,7 +393,7 @@ namespace MethodCache.Core.Extensions
                 var bulkContext = new CacheContext(BulkMethodName, services);
                 var produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false);
 
-                var version = descriptor.Policy.Version ?? settings.Version;
+                var version = descriptor.Version;
 
                 foreach (var key in missingKeys)
                 {
@@ -585,38 +575,20 @@ namespace MethodCache.Core.Extensions
             return builder.Build();
         }
 
-private static RuntimeDescriptorResult CreateRuntimeDescriptor(string methodId, CacheEntryOptions options)
+private static CacheRuntimeDescriptor CreateRuntimeDescriptor(string methodId, CacheEntryOptions options)
 {
     if (string.IsNullOrWhiteSpace(methodId))
     {
         throw new ArgumentException("Method id must be provided.", nameof(methodId));
     }
 
-    var settings = ToMethodSettings(options);
     var runtimeOptions = CacheRuntimeOptions.From(options);
     var builder = CachePolicyBuilderFactory.FromOptions(options);
-    builder.RequireIdempotent(settings.IsIdempotent);
+    builder.RequireIdempotent(true);
     var draft = builder.Build(methodId);
-    var descriptor = CacheRuntimeDescriptor.FromPolicyDraft(draft, runtimeOptions, settings.Clone());
-    return new RuntimeDescriptorResult(descriptor, settings);
+    var descriptor = CacheRuntimeDescriptor.FromPolicyDraft(draft, runtimeOptions);
+    return descriptor;
 }
-
-        private static CacheMethodSettings ToMethodSettings(CacheEntryOptions options)
-        {
-            var settings = new CacheMethodSettings
-            {
-                Duration = options.Duration,
-                IsIdempotent = true,
-                Tags = new List<string>(options.Tags),
-                SlidingExpiration = options.SlidingExpiration,
-                RefreshAhead = options.RefreshAhead,
-                StampedeProtection = options.StampedeProtection,
-                DistributedLock = options.DistributedLock,
-                Metrics = options.Metrics
-            };
-
-            return settings;
-        }
 
 private static void InvokeHitCallbacks(CacheRuntimeOptions options, CacheContext context)
 {
@@ -634,7 +606,6 @@ private static void InvokeMissCallbacks(CacheRuntimeOptions options, CacheContex
     }
 }
 
-private readonly record struct RuntimeDescriptorResult(CacheRuntimeDescriptor Descriptor, CacheMethodSettings LegacySettings);
 
         /// <summary>
         /// Gets a cache value or creates it using automatic key generation from the factory method (synchronous version).
@@ -667,9 +638,7 @@ private readonly record struct RuntimeDescriptorResult(CacheRuntimeDescriptor De
 
             var options = BuildOptions(configure);
             var (methodName, args) = AnalyzeFactory(factory);
-            var descriptorResult = CreateRuntimeDescriptor(methodName, options);
-            var descriptor = descriptorResult.Descriptor;
-            var settings = descriptorResult.LegacySettings;
+            var descriptor = CreateRuntimeDescriptor(methodName, options);
             var runtimeOptions = descriptor.RuntimeOptions;
 
             var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
@@ -706,7 +675,7 @@ private readonly record struct RuntimeDescriptorResult(CacheRuntimeDescriptor De
                 }
             }
 
-            var version = descriptor.Policy.Version ?? settings.Version;
+            var version = descriptor.Version;
             var fixedKeyGen = new FixedKeyGenerator(cacheKey, version);
 
             var result = await cacheManager.GetOrCreateAsync(

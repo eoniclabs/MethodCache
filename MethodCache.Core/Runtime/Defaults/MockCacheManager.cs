@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
-using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Runtime.Defaults
 {
@@ -11,10 +10,9 @@ namespace MethodCache.Core.Runtime.Defaults
         public bool ForceCacheHit { get; set; }
         public bool ForceCacheMiss { get; set; }
 
-        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
         {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
-            // Debug info available via logging if needed
+            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
 
             if (ForceCacheHit && _cache.TryGetValue(key, out var hitValue))
             {
@@ -66,23 +64,17 @@ namespace MethodCache.Core.Runtime.Defaults
             return Task.CompletedTask;
         }
 
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
         {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
-            
+            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+
             if (ForceCacheMiss || !_cache.TryGetValue(key, out var value))
             {
                 return new ValueTask<T?>(default(T));
             }
-            
+
             return new ValueTask<T?>((T)value);
         }
-
-        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-            => GetOrCreateAsync(methodName, args, factory, descriptor.ToCacheMethodSettings(), keyGenerator, descriptor.RequireIdempotent);
-
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-            => TryGetAsync<T>(methodName, args, descriptor.ToCacheMethodSettings(), keyGenerator);
 
         public void Clear()
         {

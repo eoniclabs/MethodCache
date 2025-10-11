@@ -1,13 +1,13 @@
 using System;
 using MethodCache.Abstractions.Registry;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Configuration.Policies;
 
 namespace MethodCache.Benchmarks.Infrastructure;
 
 internal static class PolicyRegistryExtensions
 {
-    public static CacheMethodSettings GetSettingsFor<T>(this IPolicyRegistry registry, string methodName)
+    public static CacheRuntimeDescriptor GetSettingsFor<T>(this IPolicyRegistry registry, string methodName)
     {
         if (registry == null)
         {
@@ -28,7 +28,7 @@ internal static class PolicyRegistryExtensions
         }
 
         var methodId = $"{typeName}.{normalized}";
-        var policy = registry.GetPolicy(methodId);
-        return CachePolicyConversion.ToCacheMethodSettings(policy.Policy);
+        var policyResult = registry.GetPolicy(methodId);
+        return CacheRuntimeDescriptor.FromPolicyResult(policyResult);
     }
 }

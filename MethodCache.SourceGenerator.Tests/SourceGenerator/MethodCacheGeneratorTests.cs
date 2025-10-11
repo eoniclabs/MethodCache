@@ -150,13 +150,13 @@ namespace TestApp
         public async Task GeneratorIncludesAdvancedFluentOptionsFromAttributes()
         {
             var source = @"using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace TestApp
 {
     public class CustomKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
             => $""custom:{methodName}:{args.Length}"";
     }
 

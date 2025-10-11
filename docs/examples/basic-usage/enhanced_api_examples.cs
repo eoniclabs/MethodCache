@@ -39,7 +39,7 @@ namespace MethodCache.Examples
                 methodName: nameof(_userRepository.GetUserAsync),
                 args: new object[] { userId },
                 factory: () => _userRepository.GetUserAsync(userId),
-                settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) },
+                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) },
                 keyGenerator: new FastHashKeyGenerator(),
                 requireIdempotent: true
             );
@@ -57,13 +57,13 @@ namespace MethodCache.Examples
             var cacheKey = messagePackGenerator.GenerateKey(
                 nameof(_orderService.GenerateReportAsync),
                 new object[] { criteria },
-                new CacheMethodSettings()
+                new CacheRuntimeDescriptor()
             );
 
             return await _cacheManager.GetOrCreateAsync(
                 key: cacheKey,
                 factory: () => _orderService.GenerateReportAsync(criteria),
-                settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(2), Tags = new[] { "reports", "analytics" } }
+                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(2), Tags = new[] { "reports", "analytics" } }
             );
         }
 
@@ -85,7 +85,7 @@ namespace MethodCache.Examples
                 methodName: methodName,
                 args: args,
                 factory: () => _orderService.GetOrdersByCustomerAsync(customerId, status, from, to),
-                settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30), Tags = new[] { "orders", $"customer:{customerId}" } },
+                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(30), Tags = new[] { "orders", $"customer:{customerId}" } },
                 keyGenerator: jsonGenerator,
                 requireIdempotent: true
             );
@@ -100,7 +100,7 @@ namespace MethodCache.Examples
             return await _cacheManager.GetOrCreateAsync(
                 key: $"settings:{section}",
                 factory: () => GetSettingsFromConfig(section),
-                settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(15) }
+                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(15) }
             );
         }
 
@@ -126,7 +126,7 @@ namespace MethodCache.Examples
                 return await _cache.GetOrCreateAsync(
                     key: $"user:{userId}",  // Manual string interpolation
                     factory: () => _userRepo.GetUserAsync(userId),
-                    settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) }
+                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) }
                 );
             }
 
@@ -137,7 +137,7 @@ namespace MethodCache.Examples
                     methodName: nameof(_userRepo.GetUserAsync),
                     args: new object[] { userId },
                     factory: () => _userRepo.GetUserAsync(userId),
-                    settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) },
+                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) },
                     keyGenerator: new FastHashKeyGenerator(),
                     requireIdempotent: true
                 );
@@ -154,7 +154,7 @@ namespace MethodCache.Examples
                 return await _cache.GetOrCreateAsync(
                     key: key,
                     factory: () => _userRepo.GetOrdersAsync(customerId, status, includeItems),
-                    settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) }
+                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(30) }
                 );
             }
 
@@ -165,7 +165,7 @@ namespace MethodCache.Examples
                     methodName: "GetOrdersAsync",
                     args: new object[] { customerId, status, includeItems },
                     factory: () => _userRepo.GetOrdersAsync(customerId, status, includeItems),
-                    settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) },
+                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(30) },
                     keyGenerator: new FastHashKeyGenerator(),
                     requireIdempotent: true
                 );
@@ -214,13 +214,13 @@ namespace MethodCache.Examples
                 var cacheKey = keyGenerator.GenerateKey(
                     nameof(_dataService.QueryDataAsync),
                     new object[] { request },
-                    new CacheMethodSettings()
+                    new CacheRuntimeDescriptor()
                 );
 
                 return await _cache.GetOrCreateAsync(
                     key: cacheKey,
                     factory: () => _dataService.QueryDataAsync(request),
-                    settings: new CacheMethodSettings { Duration = TimeSpan.FromMinutes(30) }
+                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(30) }
                 );
             }
 
@@ -235,7 +235,7 @@ namespace MethodCache.Examples
                     methodName: nameof(_dataService.GetTenantDataAsync),
                     args: new object[] { tenantId, dataType },
                     factory: () => _dataService.GetTenantDataAsync(tenantId, dataType),
-                    settings: new CacheMethodSettings { Duration = TimeSpan.FromHours(1) },
+                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) },
                     keyGenerator: tenantKeyGenerator,
                     requireIdempotent: true
                 );
@@ -256,13 +256,13 @@ namespace MethodCache.Examples
     {
         private readonly FastHashKeyGenerator _baseGenerator = new();
 
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
         {
             // Get tenant from current context (HTTP context, etc.)
             var tenantId = GetCurrentTenantId();
 
             // Prepend tenant to ensure isolation
-            var baseKey = _baseGenerator.GenerateKey(methodName, args, settings);
+            var baseKey = _baseGenerator.GenerateKey(methodName, args, descriptor);
             return $"tenant:{tenantId}:{baseKey}";
         }
 

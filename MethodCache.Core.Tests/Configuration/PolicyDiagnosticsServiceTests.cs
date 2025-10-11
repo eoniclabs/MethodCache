@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Configuration.Diagnostics;
 using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Configuration.Registry;
@@ -23,20 +23,22 @@ public class PolicyDiagnosticsServiceTests
     [Fact]
     public async Task GetPolicy_ReturnsEffectivePolicyAndContributionsAsync()
     {
-        var attributeSettings = new CacheMethodSettings
+        var attributePolicy = CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
-            Tags = new List<string> { "attr" },
-            IsIdempotent = true
+            Tags = new[] { "attr" },
+            RequireIdempotent = true
         };
+        var attributeFields = CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent;
 
-        var runtimeSettings = new CacheMethodSettings
+        var runtimePolicy = CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(1),
-            Tags = new List<string> { "runtime" }
+            Tags = new[] { "runtime" }
         };
+        var runtimeFields = CachePolicyFields.Duration | CachePolicyFields.Tags;
 
-        var attributeSource = new TestPolicySource(PolicySourceIds.Attributes, new[] { CreateSnapshot(PolicySourceIds.Attributes, attributeSettings) });
+        var attributeSource = new TestPolicySource(PolicySourceIds.Attributes, new[] { CreateSnapshot(PolicySourceIds.Attributes, attributePolicy, attributeFields) });
         var runtimeSource = new TestPolicySource(PolicySourceIds.RuntimeOverrides, Array.Empty<PolicySnapshot>());
 
         var registrations = new[]
@@ -58,7 +60,7 @@ public class PolicyDiagnosticsServiceTests
         Assert.Contains(baseline.ContributionsBySource.Keys, key => key == PolicySourceIds.Attributes);
 
         // Runtime override should take precedence and appear in contributions
-        runtimeSource.EmitChange(CreateChange(runtimeSettings, PolicySourceIds.RuntimeOverrides, PolicyChangeReason.Updated));
+        runtimeSource.EmitChange(CreateChange(runtimePolicy, runtimeFields, PolicySourceIds.RuntimeOverrides, PolicyChangeReason.Updated));
         var overridden = await WaitForDurationAsync(diagnostics, TimeSpan.FromMinutes(1));
         Assert.Contains("runtime", overridden.Policy.Tags);
         Assert.Contains(overridden.ContributionsBySource.Keys, key => key == PolicySourceIds.RuntimeOverrides);
@@ -73,13 +75,14 @@ public class PolicyDiagnosticsServiceTests
     [Fact]
     public async Task GetContributionsAndFindBySource_WorkAcrossReportsAsync()
     {
-        var attributeSettings = new CacheMethodSettings
+        var attributePolicy = CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(2),
-            Tags = new List<string> { "attr" }
+            Tags = new[] { "attr" }
         };
+        var attributeFields = CachePolicyFields.Duration | CachePolicyFields.Tags;
 
-        var attributeSource = new TestPolicySource(PolicySourceIds.Attributes, new[] { CreateSnapshot(PolicySourceIds.Attributes, attributeSettings) });
+        var attributeSource = new TestPolicySource(PolicySourceIds.Attributes, new[] { CreateSnapshot(PolicySourceIds.Attributes, attributePolicy, attributeFields) });
         var registrations = new[] { new PolicySourceRegistration(attributeSource, 10) };
 
         var resolver = new PolicyResolver(registrations);
@@ -97,9 +100,8 @@ public class PolicyDiagnosticsServiceTests
         Assert.All(contributions, c => Assert.Equal(PolicySourceIds.Attributes, c.SourceId));
     }
 
-    private static PolicySnapshot CreateSnapshot(string sourceId, CacheMethodSettings settings)
+    private static PolicySnapshot CreateSnapshot(string sourceId, CachePolicy policy, CachePolicyFields fields)
     {
-        var (policy, fields) = CachePolicyMapper.FromSettings(settings);
         var enriched = CachePolicyMapper.AttachContribution(policy, sourceId, fields, DateTimeOffset.UtcNow);
         var metadata = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -109,9 +111,8 @@ public class PolicyDiagnosticsServiceTests
         return new PolicySnapshot(sourceId, MethodId, enriched, DateTimeOffset.UtcNow, metadata);
     }
 
-    private static PolicyChange CreateChange(CacheMethodSettings settings, string sourceId, PolicyChangeReason reason)
+    private static PolicyChange CreateChange(CachePolicy policy, CachePolicyFields fields, string sourceId, PolicyChangeReason reason)
     {
-        var (policy, fields) = CachePolicyMapper.FromSettings(settings);
         if (fields == CachePolicyFields.None)
         {
             fields = CachePolicyMapper.DetectFields(policy);

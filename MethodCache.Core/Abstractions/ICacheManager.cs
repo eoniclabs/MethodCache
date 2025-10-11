@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core
@@ -19,15 +18,13 @@ namespace MethodCache.Core
     /// <example>
     /// Basic usage with GetOrCreateAsync:
     /// <code>
-    /// var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(10) };
     /// var keyGen = new FastHashKeyGenerator();
     /// var user = await cacheManager.GetOrCreateAsync(
     ///     methodName: "GetUser",
     ///     args: new object[] { userId },
     ///     factory: () => database.GetUserAsync(userId),
-    ///     settings: settings,
-    ///     keyGenerator: keyGen,
-    ///     requireIdempotent: true
+    ///     descriptor: descriptor,
+    ///     keyGenerator: keyGen
     /// );
     /// </code>
     /// </example>
@@ -41,9 +38,8 @@ namespace MethodCache.Core
         /// <param name="methodName">Name of the method being cached (used for key generation)</param>
         /// <param name="args">Method arguments (used for key generation to differentiate cache entries)</param>
         /// <param name="factory">Factory function to execute if cache miss occurs</param>
-        /// <param name="settings">Cache configuration including duration, tags, and versioning</param>
+        /// <param name="descriptor">Runtime descriptor containing cache policy and options</param>
         /// <param name="keyGenerator">Strategy for generating cache keys from method name and arguments</param>
-        /// <param name="requireIdempotent">If true, enforces that the cached method is idempotent (same inputs always produce same outputs)</param>
         /// <returns>The cached or newly created value</returns>
         /// <example>
         /// <code>
@@ -51,19 +47,12 @@ namespace MethodCache.Core
         ///     methodName: "GetProduct",
         ///     args: new object[] { productId, includeDetails },
         ///     factory: () => productService.GetProductAsync(productId, includeDetails),
-        ///     settings: new CacheMethodSettings {
-        ///         Duration = TimeSpan.FromMinutes(30),
-        ///         Tags = new[] { "products", $"product:{productId}" }
-        ///     },
-        ///     keyGenerator: new JsonKeyGenerator(),
-        ///     requireIdempotent: true
+        ///     descriptor: descriptor,
+        ///     keyGenerator: new JsonKeyGenerator()
         /// );
         /// </code>
         /// </example>
-        Task<T> GetOrCreateAsync<T>(string methodName, object[] args, System.Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent);
-
-        Task<T> GetOrCreateAsync<T>(string methodName, object[] args, System.Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-            => GetOrCreateAsync(methodName, args, factory, descriptor.ToCacheMethodSettings(), keyGenerator, descriptor.RequireIdempotent);
+        Task<T> GetOrCreateAsync<T>(string methodName, object[] args, System.Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator);
 
         /// <summary>
         /// Invalidates all cache entries associated with the specified tags.
@@ -122,7 +111,7 @@ namespace MethodCache.Core
         /// <typeparam name="T">Type of cached value</typeparam>
         /// <param name="methodName">Method name for key generation</param>
         /// <param name="args">Method arguments for key generation</param>
-        /// <param name="settings">Cache settings for key generation</param>
+        /// <param name="descriptor">Runtime descriptor for key generation</param>
         /// <param name="keyGenerator">Key generator instance</param>
         /// <returns>The cached value if found, or default(T) if not in cache</returns>
         /// <example>
@@ -130,7 +119,7 @@ namespace MethodCache.Core
         /// var cachedUser = await cacheManager.TryGetAsync&lt;User&gt;(
         ///     methodName: "GetUser",
         ///     args: new object[] { userId },
-        ///     settings: settings,
+        ///     descriptor: descriptor,
         ///     keyGenerator: new FastHashKeyGenerator()
         /// );
         ///
@@ -144,9 +133,6 @@ namespace MethodCache.Core
         /// }
         /// </code>
         /// </example>
-        ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator);
-
-        ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-            => TryGetAsync<T>(methodName, args, descriptor.ToCacheMethodSettings(), keyGenerator);
+        ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator);
     }
 }

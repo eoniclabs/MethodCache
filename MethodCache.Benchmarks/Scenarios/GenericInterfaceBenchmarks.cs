@@ -207,8 +207,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
             args,
             async () => await CreateEntityAsync(id),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:02:00", Tags = new[] { "entities" })]
@@ -222,8 +221,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
             args,
             async () => await CreateAllEntitiesAsync(),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:03:00", Tags = new[] { "entities" })]
@@ -237,8 +235,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
             args,
             async () => await CreateEntitiesByIdsAsync(ids),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [CacheInvalidate(Tags = new[] { "entities" })]
@@ -311,8 +308,7 @@ public class GenericService : IGenericService
             args,
             async () => await DoProcessEntitiesAsync(entities),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00", Tags = new[] { "transformation" })]
@@ -328,8 +324,7 @@ public class GenericService : IGenericService
             args,
             async () => await DoTransformAsync<TInput, TResult>(input),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     private async Task<List<T>> DoProcessEntitiesAsync<T>(List<T> entities) where T : class

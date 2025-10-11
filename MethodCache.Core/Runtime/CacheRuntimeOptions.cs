@@ -37,34 +37,4 @@ public sealed class CacheRuntimeOptions
             OnMissCallbacks = options.OnMissCallbacks.Count == 0 ? EmptyCallbacks : new List<Action<CacheContext>>(options.OnMissCallbacks)
         };
     }
-
-    /// <summary>
-    /// Creates runtime options from legacy CacheMethodSettings during migration.
-    /// Will be removed in v4.0.0.
-    /// </summary>
-    [Obsolete("This is a migration helper and will be removed in v4.0.0")]
-    internal static CacheRuntimeOptions FromLegacySettings(Configuration.CacheMethodSettings settings)
-    {
-        if (settings == null)
-        {
-            throw new ArgumentNullException(nameof(settings));
-        }
-
-        // Note: OnHitAction/OnMissAction take CacheExecutionContext, but CacheRuntimeOptions uses CacheContext
-        // For now, we'll skip these callbacks in the FromLegacySettings conversion
-        // They will be handled separately by the legacy compatibility layer
-        var onHitCallbacks = EmptyCallbacks;
-        var onMissCallbacks = EmptyCallbacks;
-
-        return new CacheRuntimeOptions
-        {
-            SlidingExpiration = settings.SlidingExpiration,
-            RefreshAhead = settings.RefreshAhead,
-            StampedeProtection = settings.StampedeProtection,
-            DistributedLock = settings.DistributedLock,
-            Metrics = settings.Metrics,
-            OnHitCallbacks = onHitCallbacks,
-            OnMissCallbacks = onMissCallbacks
-        };
-    }
 }

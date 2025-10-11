@@ -228,8 +228,7 @@ public class ConcurrentCacheService : IConcurrentCacheService
             args,
             async () => await CreateDataAsync(id),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:02:00", Tags = new[] { "slow_data" })]
@@ -243,8 +242,7 @@ public class ConcurrentCacheService : IConcurrentCacheService
             args,
             async () => await CreateSlowDataAsync(id),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [CacheInvalidate(Tags = new[] { "data" })]

@@ -6,7 +6,7 @@ using MethodCache.ETags.Attributes;
 
 namespace MethodCache.ETags.Configuration
 {
-    public static class CacheMethodSettingsExtensions
+    public static class ETagSettingsExtensions
     {
         /// <summary>
         /// Extracts ETag settings from CacheRuntimeDescriptor.
@@ -54,20 +54,6 @@ namespace MethodCache.ETags.Configuration
             };
         }
 
-        /// <summary>
-        /// Legacy method for extracting ETag settings from CacheMethodSettings.
-        /// Use GetETagSettings on CacheRuntimeDescriptor or CachePolicy instead.
-        /// </summary>
-        [Obsolete("Use GetETagSettings on CacheRuntimeDescriptor or CachePolicy. Will be removed in v4.0.0")]
-        public static ETagSettings? GetETagSettings(this CacheMethodSettings settings)
-        {
-            if (settings == null) throw new ArgumentNullException(nameof(settings));
-
-            var metadata = settings.GetETagMetadata();
-            if (metadata == null) return null;
-
-            return ConvertToETagSettings(metadata);
-        }
     }
 
     public class ETagSettings
