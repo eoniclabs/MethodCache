@@ -87,7 +87,19 @@ Use these as GitHub issues or project board cards to track progress:
    - Deliverables: builder-based parser, metadata handling, docs update for JSON examples.
 5. **PP-005 – Runtime override & consumption alignment** (in progress)  
    - ✅ Added policy-builder overload to `IRuntimeCacheConfigurator` and `RuntimeCacheConfigurator`  
-   - ✅ Introduced `CacheRuntimeDescriptor` and updated source-generated decorators to consume it  
-   - ◻️ Update fluent `CacheManagerExtensions` and runtime cache managers to operate on descriptors without converting back to `CacheMethodSettings`
+   - ✅ Introduced `CacheRuntimeDescriptor` and updated source-generated decorators + fluent helpers to consume it  
+   - ✅ Fluent `CacheManagerExtensions` emit descriptors alongside legacy settings  
+   - ✅ In-memory & hybrid cache managers now consume descriptors/runtime options internally  
+   - ◻️ Migrate key generators and runtime helpers (ETag, stampede, distributed locks) off `CacheMethodSettings`
 6. **PP-006 – Legacy removal & doc refresh**  
    - Deliverables: delete legacy types, update public docs, finalize migration guidance.
+
+### Final Migration Checklist
+Follow these steps to remove the legacy stack entirely once PP-005 groundwork is complete:
+1. **Runtime Policy Model:** Introduce a `CacheRuntimePolicy` (or equivalent) derived from `CachePolicy` with runtime-only properties (sliding expiration, refresh ahead, locks, metrics). Update `CacheRuntimeDescriptor` consumers to use it.
+2. **Cache Managers:** Update `InMemoryCacheManager`, `HybridCacheManager`, storage coordination, and default/mock managers to operate on runtime policies/descriptors directly; remove `ToCacheMethodSettings()` calls.
+3. **Key Generators:** Update `ICacheKeyGenerator` contract and built-in generators to take the new runtime policy, eliminating the `CacheMethodSettings` dependency during key creation.
+4. **Helpers & Packages:** Migrate `CacheManagerExtensions`, ETag helpers, stampede protection, distributed locks, and any downstream packages to the runtime policy APIs.
+5. **Clean Legacy Types:** Delete `CacheMethodSettings`, `CacheMethodSettingsExtensions`, `CachePolicyConversion`, and `CacheRuntimeDescriptor` shims once all call sites use the new structures.
+6. **Documentation & Samples:** Refresh user/developer docs, samples, and migration guides; remove references to the legacy configuration manager or builders.
+7. **Final Verification:** Run full build/test suites, grep the repository for `CacheMethodSettings`, and update release notes to announce the removal.

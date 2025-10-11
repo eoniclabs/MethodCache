@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Configuration.Fluent;
 using MethodCache.Core.Extensions;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Options;
@@ -57,7 +58,10 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var settings = ToMethodSettings(options);
+            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, options);
+            var descriptor = descriptorResult.Descriptor;
+            var settings = descriptorResult.LegacySettings;
+            var runtimeOptions = descriptor.RuntimeOptions;
 
             // Analyze factory to extract method info and arguments
             var (methodName, args) = AnalyzeFactory(factory);
@@ -67,52 +71,50 @@ namespace MethodCache.Core.Extensions
             var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
-
-            // Set arguments in context for GetArg<T>() access
             context.SetArguments(args);
 
             var factoryExecuted = false;
-            var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
+            var stopwatch = runtimeOptions.Metrics != null ? Stopwatch.StartNew() : null;
 
             if (options.Predicate != null && !options.Predicate(context))
             {
                 var bypassResult = await factory().ConfigureAwait(false);
-                options.Metrics?.RecordMiss(context.Key);
+                runtimeOptions.Metrics?.RecordMiss(context.Key);
                 return bypassResult;
             }
 
             async Task<T> WrappedFactory()
             {
                 factoryExecuted = true;
-                InvokeMissCallbacks(options, context);
+                InvokeMissCallbacks(runtimeOptions, context);
 
                 try
                 {
                     var result = await factory().ConfigureAwait(false);
-                    options.Metrics?.RecordMiss(context.Key);
+                    runtimeOptions.Metrics?.RecordMiss(context.Key);
                     return result;
                 }
                 catch (Exception ex)
                 {
-                    options.Metrics?.RecordError(context.Key, ex);
+                    runtimeOptions.Metrics?.RecordError(context.Key, ex);
                     throw;
                 }
             }
 
-            var fixedKeyGen1 = new FixedKeyGenerator(cacheKey, options.Version);
+            var version = descriptor.Policy.Version ?? settings.Version;
+            var fixedKeyGen = new FixedKeyGenerator(cacheKey, version);
 
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
-                settings,
-                fixedKeyGen1,
-                requireIdempotent: true).ConfigureAwait(false);
+                descriptor,
+                fixedKeyGen).ConfigureAwait(false);
 
             if (!factoryExecuted)
             {
-                InvokeHitCallbacks(options, context);
-                options.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
+                InvokeHitCallbacks(runtimeOptions, context);
+                runtimeOptions.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
             }
 
             stopwatch?.Stop();
@@ -152,10 +154,7 @@ namespace MethodCache.Core.Extensions
             if (string.IsNullOrWhiteSpace(methodName))
             {
                 throw new ArgumentException(
-                    "Method name cannot be null or whitespace. " +
-                    "Provide a descriptive method name for cache key generation (e.g., 'GetUser', 'FetchOrders'). " +
-                    "This name is used to generate unique cache keys. " +
-                    "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#manual-caching",
+                    "Method name cannot be null or whitespace. Provide a descriptive method name for cache key generation (e.g., 'GetUser', 'FetchOrders'). This name is used to generate unique cache keys. See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#manual-caching",
                     nameof(methodName));
             }
             if (args == null) throw new ArgumentNullException(nameof(args));
@@ -164,59 +163,60 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var settings = ToMethodSettings(options);
+            var descriptorResult = CreateRuntimeDescriptor(methodName, options);
+            var descriptor = descriptorResult.Descriptor;
+            var settings = descriptorResult.LegacySettings;
+            var runtimeOptions = descriptor.RuntimeOptions;
 
             // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
             var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
             var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
-
-            // Set arguments in context for GetArg<T>() access
             context.SetArguments(args);
 
             var factoryExecuted = false;
-            var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
+            var stopwatch = runtimeOptions.Metrics != null ? Stopwatch.StartNew() : null;
 
             if (options.Predicate != null && !options.Predicate(context))
             {
                 var bypassResult = await factory(context, cancellationToken).ConfigureAwait(false);
-                options.Metrics?.RecordMiss(context.Key);
+                runtimeOptions.Metrics?.RecordMiss(context.Key);
                 return bypassResult;
             }
 
             async Task<T> WrappedFactory()
             {
                 factoryExecuted = true;
-                InvokeMissCallbacks(options, context);
+                InvokeMissCallbacks(runtimeOptions, context);
 
                 try
                 {
                     var result = await factory(context, cancellationToken).ConfigureAwait(false);
-                    options.Metrics?.RecordMiss(context.Key);
+                    runtimeOptions.Metrics?.RecordMiss(context.Key);
                     return result;
                 }
                 catch (Exception ex)
                 {
-                    options.Metrics?.RecordError(context.Key, ex);
+                    runtimeOptions.Metrics?.RecordError(context.Key, ex);
                     throw;
                 }
             }
 
-            var fixedKeyGen2 = new FixedKeyGenerator(cacheKey, options.Version);
+            var version = descriptor.Policy.Version ?? settings.Version;
+            var fixedKeyGen = new FixedKeyGenerator(cacheKey, version);
 
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
-                settings,
-                fixedKeyGen2,
-                requireIdempotent: true).ConfigureAwait(false);
+                descriptor,
+                fixedKeyGen).ConfigureAwait(false);
 
             if (!factoryExecuted)
             {
-                InvokeHitCallbacks(options, context);
-                options.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
+                InvokeHitCallbacks(runtimeOptions, context);
+                runtimeOptions.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
             }
 
             stopwatch?.Stop();
@@ -251,50 +251,53 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var settings = ToMethodSettings(options);
+            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, options);
+            var descriptor = descriptorResult.Descriptor;
+            var settings = descriptorResult.LegacySettings;
+            var runtimeOptions = descriptor.RuntimeOptions;
             var context = new CacheContext(key, services);
             var factoryExecuted = false;
-            var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
+            var stopwatch = runtimeOptions.Metrics != null ? Stopwatch.StartNew() : null;
 
             if (options.Predicate != null && !options.Predicate(context))
             {
                 var bypassResult = await factory(context, cancellationToken).ConfigureAwait(false);
-                options.Metrics?.RecordMiss(context.Key);
+                runtimeOptions.Metrics?.RecordMiss(context.Key);
                 return bypassResult;
             }
 
             async Task<T> WrappedFactory()
             {
                 factoryExecuted = true;
-                InvokeMissCallbacks(options, context);
+                InvokeMissCallbacks(runtimeOptions, context);
 
                 try
                 {
                     var result = await factory(context, cancellationToken).ConfigureAwait(false);
-                    options.Metrics?.RecordMiss(context.Key);
+                    runtimeOptions.Metrics?.RecordMiss(context.Key);
                     return result;
                 }
                 catch (Exception ex)
                 {
-                    options.Metrics?.RecordError(context.Key, ex);
+                    runtimeOptions.Metrics?.RecordError(context.Key, ex);
                     throw;
                 }
             }
 
-            var effectiveKeyGenerator = new FixedKeyGenerator(key, options.Version);
+            var version = descriptor.Policy.Version ?? settings.Version;
+            var effectiveKeyGenerator = new FixedKeyGenerator(key, version);
 
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
-                settings,
-                effectiveKeyGenerator,
-                requireIdempotent: true).ConfigureAwait(false);
+                descriptor,
+                effectiveKeyGenerator).ConfigureAwait(false);
 
             if (!factoryExecuted)
             {
-                InvokeHitCallbacks(options, context);
-                options.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
+                InvokeHitCallbacks(runtimeOptions, context);
+                runtimeOptions.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
             }
 
             stopwatch?.Stop();
@@ -324,10 +327,14 @@ namespace MethodCache.Core.Extensions
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, BuildOptions(null));
+            var descriptor = descriptorResult.Descriptor;
+            var settings = descriptorResult.LegacySettings;
+
             var value = await cacheManager.TryGetAsync<T>(
                 FluentMethodName,
                 EmptyArgs,
-                new CacheMethodSettings(),
+                settings,
                 new FixedKeyGenerator(key)).ConfigureAwait(false);
 
             return value is null
@@ -353,14 +360,15 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
+            var descriptorResult = CreateRuntimeDescriptor(FluentMethodName, options);
+            var descriptor = descriptorResult.Descriptor;
+            var settings = descriptorResult.LegacySettings;
+            var runtimeOptions = descriptor.RuntimeOptions;
+
             var keyList = keys as IList<string> ?? keys.ToList();
             var results = new Dictionary<string, T>(keyList.Count);
             var missingKeys = new List<string>();
-            HashSet<string>? skipCacheKeys = null;
-            if (options.Predicate != null)
-            {
-                skipCacheKeys = new HashSet<string>(StringComparer.Ordinal);
-            }
+            HashSet<string>? skipCacheKeys = options.Predicate != null ? new HashSet<string>(StringComparer.Ordinal) : null;
 
             foreach (var key in keyList)
             {
@@ -378,7 +386,7 @@ namespace MethodCache.Core.Extensions
                     if (lookup.Found)
                     {
                         results[key] = lookup.Value!;
-                        InvokeHitCallbacks(options, singleContext);
+                        InvokeHitCallbacks(runtimeOptions, singleContext);
                         continue;
                     }
                 }
@@ -395,9 +403,7 @@ namespace MethodCache.Core.Extensions
                 var bulkContext = new CacheContext(BulkMethodName, services);
                 var produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false);
 
-                // Build the cache settings once for efficiency
-                var cacheOptions = BuildOptions(configure);
-                var settings = ToMethodSettings(cacheOptions);
+                var version = descriptor.Policy.Version ?? settings.Version;
 
                 foreach (var key in missingKeys)
                 {
@@ -406,28 +412,26 @@ namespace MethodCache.Core.Extensions
                         throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
                     }
 
-                    var capturedValue = value!;
-                    results[key] = capturedValue;
+                    results[key] = value!;
 
                     if (skipCacheKeys != null && skipCacheKeys.Contains(key))
                     {
                         continue;
                     }
 
-                    // Use the more direct cache manager method with pre-built settings
-                    var effectiveKeyGenerator = new FixedKeyGenerator(key, cacheOptions.Version);
+                    var fixedKeyGenerator = new FixedKeyGenerator(key, version);
                     await cacheManager.GetOrCreateAsync(
                         FluentMethodName,
                         EmptyArgs,
-                        () => Task.FromResult(capturedValue),
-                        settings,
-                        effectiveKeyGenerator,
-                        requireIdempotent: true).ConfigureAwait(false);
+                        () => Task.FromResult(value!),
+                        descriptor,
+                        fixedKeyGenerator).ConfigureAwait(false);
                 }
             }
 
             return results;
         }
+
 
         /// <summary>
         /// Gets a cached stream or materialises it using the provided factory.
@@ -581,6 +585,22 @@ namespace MethodCache.Core.Extensions
             return builder.Build();
         }
 
+private static RuntimeDescriptorResult CreateRuntimeDescriptor(string methodId, CacheEntryOptions options)
+{
+    if (string.IsNullOrWhiteSpace(methodId))
+    {
+        throw new ArgumentException("Method id must be provided.", nameof(methodId));
+    }
+
+    var settings = ToMethodSettings(options);
+    var runtimeOptions = CacheRuntimeOptions.From(options);
+    var builder = CachePolicyBuilderFactory.FromOptions(options);
+    builder.RequireIdempotent(settings.IsIdempotent);
+    var draft = builder.Build(methodId);
+    var descriptor = CacheRuntimeDescriptor.FromPolicyDraft(draft, runtimeOptions, settings.Clone());
+    return new RuntimeDescriptorResult(descriptor, settings);
+}
+
         private static CacheMethodSettings ToMethodSettings(CacheEntryOptions options)
         {
             var settings = new CacheMethodSettings
@@ -598,21 +618,23 @@ namespace MethodCache.Core.Extensions
             return settings;
         }
 
-        private static void InvokeHitCallbacks(CacheEntryOptions options, CacheContext context)
-        {
-            foreach (var callback in options.OnHitCallbacks)
-            {
-                callback(context);
-            }
-        }
+private static void InvokeHitCallbacks(CacheRuntimeOptions options, CacheContext context)
+{
+    foreach (var callback in options.OnHitCallbacks)
+    {
+        callback(context);
+    }
+}
 
-        private static void InvokeMissCallbacks(CacheEntryOptions options, CacheContext context)
-        {
-            foreach (var callback in options.OnMissCallbacks)
-            {
-                callback(context);
-            }
-        }
+private static void InvokeMissCallbacks(CacheRuntimeOptions options, CacheContext context)
+{
+    foreach (var callback in options.OnMissCallbacks)
+    {
+        callback(context);
+    }
+}
+
+private readonly record struct RuntimeDescriptorResult(CacheRuntimeDescriptor Descriptor, CacheMethodSettings LegacySettings);
 
         /// <summary>
         /// Gets a cache value or creates it using automatic key generation from the factory method (synchronous version).
@@ -644,62 +666,60 @@ namespace MethodCache.Core.Extensions
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var settings = ToMethodSettings(options);
-
-            // Analyze factory to extract method info and arguments
             var (methodName, args) = AnalyzeFactory(factory);
+            var descriptorResult = CreateRuntimeDescriptor(methodName, options);
+            var descriptor = descriptorResult.Descriptor;
+            var settings = descriptorResult.LegacySettings;
+            var runtimeOptions = descriptor.RuntimeOptions;
 
-            // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
             var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
             var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
 
             var context = new CacheContext(cacheKey, services);
-
-            // Set arguments in context for GetArg<T>() access
             context.SetArguments(args);
 
             var factoryExecuted = false;
-            var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
+            var stopwatch = runtimeOptions.Metrics != null ? Stopwatch.StartNew() : null;
 
             if (options.Predicate != null && !options.Predicate(context))
             {
                 var bypassResult = factory();
-                options.Metrics?.RecordMiss(context.Key);
+                runtimeOptions.Metrics?.RecordMiss(context.Key);
                 return bypassResult;
             }
 
             Task<T> WrappedFactory()
             {
                 factoryExecuted = true;
-                InvokeMissCallbacks(options, context);
+                InvokeMissCallbacks(runtimeOptions, context);
 
                 try
                 {
                     var result = factory();
-                    options.Metrics?.RecordMiss(context.Key);
+                    runtimeOptions.Metrics?.RecordMiss(context.Key);
                     return Task.FromResult(result);
                 }
                 catch (Exception ex)
                 {
-                    options.Metrics?.RecordError(context.Key, ex);
+                    runtimeOptions.Metrics?.RecordError(context.Key, ex);
                     throw;
                 }
             }
 
-            var fixedKeyGen3 = new FixedKeyGenerator(cacheKey, options.Version);
+            var version = descriptor.Policy.Version ?? settings.Version;
+            var fixedKeyGen = new FixedKeyGenerator(cacheKey, version);
 
             var result = await cacheManager.GetOrCreateAsync(
                 FluentMethodName,
                 EmptyArgs,
                 () => WrappedFactory(),
-                settings,
-                fixedKeyGen3,
-                requireIdempotent: true).ConfigureAwait(false);
+                descriptor,
+                fixedKeyGen).ConfigureAwait(false);
 
             if (!factoryExecuted)
             {
-                InvokeHitCallbacks(options, context);
-                options.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
+                InvokeHitCallbacks(runtimeOptions, context);
+                runtimeOptions.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, result);
             }
 
             stopwatch?.Stop();

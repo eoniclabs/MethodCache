@@ -241,6 +241,69 @@ namespace MethodCache.Core.Runtime.Defaults
             return GetAsyncInternal<T>(key, updateStatistics: false); // Skip statistics for direct reads
         }
 
+        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+        {
+            if (descriptor == null)
+            {
+                throw new ArgumentNullException(nameof(descriptor));
+            }
+
+            var settings = descriptor.ToCacheMethodSettings();
+            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            var policy = CreatePolicy(descriptor);
+
+            var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
+            if (cachedResult != null)
+            {
+                _metricsProvider.CacheHit(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _hits);
+                }
+                return cachedResult;
+            }
+
+            if (descriptor.RequireIdempotent && !settings.IsIdempotent)
+            {
+                throw new InvalidOperationException($"Method {methodName} is not marked as idempotent, but caching requires it.");
+            }
+
+            var tags = descriptor.Tags.Count > 0 ? descriptor.Tags.ToArray() : Array.Empty<string>();
+
+            return await ExecuteWithSingleFlight(key, async () =>
+            {
+                var result = await factory().ConfigureAwait(false);
+
+                if (result != null)
+                {
+                    var expiration = descriptor.Duration ?? _options.DefaultExpiration;
+                    var effectiveExpiration = expiration > _options.MaxExpiration
+                        ? _options.MaxExpiration
+                        : expiration;
+                    await SetAsync(key, result, effectiveExpiration, tags, policy).ConfigureAwait(false);
+                }
+
+                _metricsProvider.CacheMiss(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _misses);
+                }
+
+                return result!;
+            }, methodName, policy).ConfigureAwait(false);
+        }
+
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+        {
+            if (descriptor == null)
+            {
+                throw new ArgumentNullException(nameof(descriptor));
+            }
+
+            var settings = descriptor.ToCacheMethodSettings();
+            return TryGetAsync<T>(methodName, args, settings, keyGenerator);
+        }
+
         /// <summary>
         /// Executes a factory function with single-flight pattern to prevent duplicate concurrent executions for the same key.
         /// Multiple concurrent requests for the same key will wait for the single execution to complete.
@@ -321,6 +384,23 @@ namespace MethodCache.Core.Runtime.Defaults
                 settings.StampedeProtection,
                 settings.DistributedLock,
                 settings.Metrics);
+        }
+
+        private static CacheEntryPolicy CreatePolicy(CacheRuntimeDescriptor descriptor)
+        {
+            if (descriptor == null)
+            {
+                throw new ArgumentNullException(nameof(descriptor));
+            }
+
+            var options = descriptor.RuntimeOptions;
+            return new CacheEntryPolicy(
+                descriptor.Duration,
+                options.SlidingExpiration,
+                options.RefreshAhead,
+                options.StampedeProtection,
+                options.DistributedLock,
+                options.Metrics);
         }
 
         #region IMemoryCache Implementation

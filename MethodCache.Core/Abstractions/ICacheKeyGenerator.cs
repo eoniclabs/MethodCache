@@ -49,5 +49,15 @@ namespace MethodCache.Core
         /// - Be aware of argument types that don't serialize well (e.g., delegates, streams)
         /// </remarks>
         string GenerateKey(string methodName, object[] args, CacheMethodSettings settings);
+
+        /// <summary>
+        /// Generates a unique cache key from method information and arguments using a runtime descriptor.
+        /// Defaults to the legacy overload for backward compatibility.
+        /// </summary>
+        /// <param name="methodName">The name of the method being cached.</param>
+        /// <param name="args">Method arguments.</param>
+        /// <param name="descriptor">Runtime descriptor carrying policy metadata.</param>
+        string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+            => GenerateKey(methodName, args, descriptor.ToCacheMethodSettings());
     }
 }
