@@ -27,14 +27,14 @@ internal sealed class RuntimeCacheConfigurator : IRuntimeCacheConfigurator
         var builder = new CacheEntryOptions.Builder();
         configure(builder);
         var options = builder.Build();
-        var settings = CacheEntryOptionsMapper.ToCacheMethodSettings(options);
+        var policyBuilder = CachePolicyBuilderFactory.FromOptions(options);
         if (options.Predicate != null)
         {
-            settings.IsIdempotent = true;
+            policyBuilder.RequireIdempotent();
         }
 
-        var (policy, fields) = CachePolicyMapper.FromSettings(settings);
-        return _store.UpsertAsync(methodId, policy, fields);
+        var draft = policyBuilder.Build(methodId);
+        return _store.UpsertAsync(methodId, draft.Policy, draft.Fields);
     }
 
     public Task UpsertAsync(string methodId, CachePolicy policy, CachePolicyFields fields = CachePolicyFields.None)
@@ -53,8 +53,7 @@ internal sealed class RuntimeCacheConfigurator : IRuntimeCacheConfigurator
 
         foreach (var draft in drafts)
         {
-            var (policy, fields) = CachePolicyMapper.FromSettings(draft.Settings);
-            _store.UpsertAsync(draft.MethodKey, policy, fields);
+            _store.UpsertAsync(draft.MethodId, draft.Policy, draft.Fields);
         }
 
         return Task.CompletedTask;

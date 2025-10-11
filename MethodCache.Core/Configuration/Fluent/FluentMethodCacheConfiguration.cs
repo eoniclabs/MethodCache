@@ -4,7 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
-using MethodCache.Core.Configuration.Fluent;
+using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Metrics;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
@@ -52,9 +52,9 @@ namespace MethodCache.Core.Configuration.Fluent
             return groupConfiguration;
         }
 
-        internal IReadOnlyList<MethodPolicyDraft> BuildMethodPolicies()
+        internal IReadOnlyList<PolicyDraft> BuildMethodPolicies()
         {
-            var drafts = new List<MethodPolicyDraft>();
+            var drafts = new List<PolicyDraft>();
             var defaultOptions = BuildOptions(_defaultPolicyBuilders);
             var groupOptions = new Dictionary<string, CacheEntryOptions>(StringComparer.Ordinal);
 
@@ -75,20 +75,24 @@ namespace MethodCache.Core.Configuration.Fluent
                     }
 
                     var options = methodConfiguration.BuildOptions(defaultOptions, groupOption);
-                    var settings = CacheEntryOptionsMapper.ToCacheMethodSettings(options);
+                    var policyBuilder = CachePolicyBuilderFactory.FromOptions(options);
+
                     if (methodConfiguration.IsIdempotent.HasValue)
                     {
-                        settings.IsIdempotent = methodConfiguration.IsIdempotent.Value;
+                        policyBuilder.RequireIdempotent(methodConfiguration.IsIdempotent.Value);
                     }
 
-                    drafts.Add(new MethodPolicyDraft(methodKey, settings, methodConfiguration.GroupName));
+                    if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName))
+                    {
+                        policyBuilder.AddMetadata("group", methodConfiguration.GroupName);
+                    }
+
+                    drafts.Add(policyBuilder.Build(methodKey));
                 }
             }
 
             return drafts;
         }
-
-        internal readonly record struct MethodPolicyDraft(string MethodKey, CacheMethodSettings Settings, string? GroupName);
 
         private static CacheEntryOptions? BuildOptions(IReadOnlyCollection<Action<CacheEntryOptions.Builder>> builders)
         {
