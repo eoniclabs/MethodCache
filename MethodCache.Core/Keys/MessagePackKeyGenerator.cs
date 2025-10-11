@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using MessagePack;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.KeyGenerators;
 
@@ -42,7 +43,7 @@ namespace MethodCache.Core.KeyGenerators;
 /// </example>
 public class MessagePackKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
     {
         using (var sha256 = SHA256.Create())
         {
@@ -51,9 +52,9 @@ public class MessagePackKeyGenerator : ICacheKeyGenerator
             sha256.TransformBlock(methodBytes, 0, methodBytes.Length, null, 0);
 
             // Hash version if present
-            if (settings.Version.HasValue)
+            if (descriptor.Version.HasValue)
             {
-                var versionBytes = BitConverter.GetBytes(settings.Version.Value);
+                var versionBytes = BitConverter.GetBytes(descriptor.Version.Value);
                 sha256.TransformBlock(versionBytes, 0, versionBytes.Length, null, 0);
             }
 

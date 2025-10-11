@@ -85,12 +85,14 @@ Use these as GitHub issues or project board cards to track progress:
    - Deliverables: direct attribute → policy conversion, ETag metadata coverage, tests.
 4. **PP-004 – Rewrite configuration file policy source** ✅ _2025-10-12_  
    - Deliverables: builder-based parser, metadata handling, docs update for JSON examples.
-5. **PP-005 – Runtime override & consumption alignment** (in progress)  
-   - ✅ Added policy-builder overload to `IRuntimeCacheConfigurator` and `RuntimeCacheConfigurator`  
-   - ✅ Introduced `CacheRuntimeDescriptor` and updated source-generated decorators + fluent helpers to consume it  
-   - ✅ Fluent `CacheManagerExtensions` emit descriptors alongside legacy settings  
-   - ✅ In-memory & hybrid cache managers now consume descriptors/runtime options internally  
-   - ◻️ Migrate key generators and runtime helpers (ETag, stampede, distributed locks) off `CacheMethodSettings`
+5. **PP-005 – Runtime override & consumption alignment** ✅ _2025-10-11_
+   - ✅ Added policy-builder overload to `IRuntimeCacheConfigurator` and `RuntimeCacheConfigurator`
+   - ✅ Introduced `CacheRuntimeDescriptor` and updated source-generated decorators + fluent helpers to consume it
+   - ✅ Fluent `CacheManagerExtensions` emit descriptors alongside legacy settings
+   - ✅ In-memory & hybrid cache managers now consume descriptors/runtime options internally
+   - ✅ Migrated key generators to descriptor-based interface (FastHash, Json, MessagePack, Smart, FixedKeyGenerator)
+   - ✅ Updated ETag helpers to support descriptor/policy-based extraction with obsolete markers on legacy methods
+   - ✅ Removed legacy `CreatePolicy(CacheMethodSettings)` method from cache managers
 6. **PP-006 – Legacy removal & doc refresh**  
    - Deliverables: delete legacy types, update public docs, finalize migration guidance.
 

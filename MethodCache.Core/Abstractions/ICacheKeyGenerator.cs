@@ -1,4 +1,5 @@
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core
 {
@@ -34,30 +35,20 @@ namespace MethodCache.Core
     public interface ICacheKeyGenerator
     {
         /// <summary>
-        /// Generates a unique cache key from method information and arguments.
+        /// Generates a unique cache key from method information and arguments using a runtime descriptor.
         /// </summary>
         /// <param name="methodName">The name of the method being cached (e.g., "GetUser", "GetProducts")</param>
         /// <param name="args">The arguments passed to the method, used to differentiate cache entries</param>
-        /// <param name="settings">Cache configuration including version and other metadata affecting key generation</param>
+        /// <param name="descriptor">Runtime descriptor carrying policy metadata (version, tags, etc.)</param>
         /// <returns>A unique string key identifying this specific method call in the cache</returns>
         /// <remarks>
         /// Implementation guidelines:
         /// - Keys must be deterministic (same inputs → same key)
         /// - Keys must be unique (different inputs → different keys)
-        /// - Consider version in key generation to support cache versioning
+        /// - Consider descriptor.Version in key generation to support cache versioning
         /// - Handle null arguments safely
         /// - Be aware of argument types that don't serialize well (e.g., delegates, streams)
         /// </remarks>
-        string GenerateKey(string methodName, object[] args, CacheMethodSettings settings);
-
-        /// <summary>
-        /// Generates a unique cache key from method information and arguments using a runtime descriptor.
-        /// Defaults to the legacy overload for backward compatibility.
-        /// </summary>
-        /// <param name="methodName">The name of the method being cached.</param>
-        /// <param name="args">Method arguments.</param>
-        /// <param name="descriptor">Runtime descriptor carrying policy metadata.</param>
-        string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
-            => GenerateKey(methodName, args, descriptor.ToCacheMethodSettings());
+        string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor);
     }
 }

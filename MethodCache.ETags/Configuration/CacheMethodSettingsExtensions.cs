@@ -1,23 +1,44 @@
 using System;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.ETags.Attributes;
 
 namespace MethodCache.ETags.Configuration
 {
     public static class CacheMethodSettingsExtensions
     {
-        public static ETagSettings? GetETagSettings(this CacheMethodSettings settings)
+        /// <summary>
+        /// Extracts ETag settings from CacheRuntimeDescriptor.
+        /// </summary>
+        public static ETagSettings? GetETagSettings(this CacheRuntimeDescriptor descriptor)
         {
-            if (settings == null) throw new ArgumentNullException(nameof(settings));
+            if (descriptor == null) throw new ArgumentNullException(nameof(descriptor));
 
-            var metadata = settings.GetETagMetadata();
-            if (metadata == null)
-            {
-                return null;
-            }
+            var metadata = descriptor.GetETagMetadata();
+            if (metadata == null) return null;
 
+            return ConvertToETagSettings(metadata);
+        }
+
+        /// <summary>
+        /// Extracts ETag settings from CachePolicy.
+        /// </summary>
+        public static ETagSettings? GetETagSettings(this CachePolicy policy)
+        {
+            if (policy == null) throw new ArgumentNullException(nameof(policy));
+
+            var metadata = policy.GetETagMetadata();
+            if (metadata == null) return null;
+
+            return ConvertToETagSettings(metadata);
+        }
+
+        private static ETagSettings ConvertToETagSettings(ETagMetadata metadata)
+        {
             var strategy = ETagGenerationStrategy.ContentHash;
-            if (!string.IsNullOrWhiteSpace(metadata.Strategy) && Enum.TryParse(metadata.Strategy, out ETagGenerationStrategy parsedStrategy))
+            if (!string.IsNullOrWhiteSpace(metadata.Strategy)
+                && Enum.TryParse(metadata.Strategy, out ETagGenerationStrategy parsedStrategy))
             {
                 strategy = parsedStrategy;
             }
@@ -31,6 +52,21 @@ namespace MethodCache.ETags.Configuration
                 UseWeakETag = metadata.UseWeakETag ?? false,
                 CacheDuration = metadata.CacheDuration
             };
+        }
+
+        /// <summary>
+        /// Legacy method for extracting ETag settings from CacheMethodSettings.
+        /// Use GetETagSettings on CacheRuntimeDescriptor or CachePolicy instead.
+        /// </summary>
+        [Obsolete("Use GetETagSettings on CacheRuntimeDescriptor or CachePolicy. Will be removed in v4.0.0")]
+        public static ETagSettings? GetETagSettings(this CacheMethodSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            var metadata = settings.GetETagMetadata();
+            if (metadata == null) return null;
+
+            return ConvertToETagSettings(metadata);
         }
     }
 
