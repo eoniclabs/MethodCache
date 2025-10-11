@@ -83,7 +83,7 @@ Use these as GitHub issues or project board cards to track progress:
    - Deliverables: fluent surface producing policy drafts, mapper removal, regression tests.
 3. **PP-003 – Rewrite attribute policy source** ✅ _2025-10-12_  
    - Deliverables: direct attribute → policy conversion, ETag metadata coverage, tests.
-4. **PP-004 – Rewrite configuration file policy source**  
+4. **PP-004 – Rewrite configuration file policy source** ✅ _2025-10-12_  
    - Deliverables: builder-based parser, metadata handling, docs update for JSON examples.
 5. **PP-005 – Runtime override & consumption alignment**  
    - Deliverables: new configurator overloads, runtime descriptor, cache manager/key generator updates.

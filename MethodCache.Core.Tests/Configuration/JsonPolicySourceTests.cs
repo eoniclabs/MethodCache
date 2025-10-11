@@ -37,4 +37,27 @@ public sealed class JsonPolicySourceTests
         Assert.Contains("json", result.Policy.Tags);
         Assert.True(result.Policy.RequireIdempotent);
     }
+
+    [Fact]
+    public void AddMethodCacheFromConfiguration_PropagatesMetadata()
+    {
+        var data = new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Type.Method:Metadata:group"] = "config",
+            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:01:00"
+        };
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(data)
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddMethodCacheFromConfiguration(configuration);
+
+        var provider = services.BuildServiceProvider();
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+        var result = registry.GetPolicy("Sample.Type.Method");
+
+        Assert.Equal("config", result.Policy.Metadata["group"]);
+    }
 }
