@@ -68,7 +68,7 @@ namespace MethodCache.Core.Extensions
 
             // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
             var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
-            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, descriptor);
 
             var context = new CacheContext(cacheKey, services);
             context.SetArguments(args);
@@ -170,7 +170,7 @@ namespace MethodCache.Core.Extensions
 
             // Use provided key generator, or resolve from DI, or default to FastHashKeyGenerator
             var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
-            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, descriptor);
 
             var context = new CacheContext(cacheKey, services);
             context.SetArguments(args);
@@ -673,7 +673,7 @@ private readonly record struct RuntimeDescriptorResult(CacheRuntimeDescriptor De
             var runtimeOptions = descriptor.RuntimeOptions;
 
             var effectiveKeyGenerator = keyGenerator ?? services?.GetService<ICacheKeyGenerator>() ?? new FastHashKeyGenerator();
-            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = effectiveKeyGenerator.GenerateKey(methodName, args, descriptor);
 
             var context = new CacheContext(cacheKey, services);
             context.SetArguments(args);
@@ -896,11 +896,12 @@ private readonly record struct RuntimeDescriptorResult(CacheRuntimeDescriptor De
                 _version = version;
             }
 
-            public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+            public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
             {
-                if (_version.HasValue)
+                var effectiveVersion = _version ?? descriptor.Version;
+                if (effectiveVersion.HasValue)
                 {
-                    return $"{_key}::v{_version.Value}";
+                    return $"{_key}::v{effectiveVersion.Value}";
                 }
 
                 return _key;

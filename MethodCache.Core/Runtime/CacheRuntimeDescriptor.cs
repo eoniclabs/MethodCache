@@ -105,3 +105,55 @@ public sealed class CacheRuntimeDescriptor
 
     private readonly CacheMethodSettings? _legacySettings;
 }
+
+/// <summary>
+/// Backward-compatibility extensions for ICacheKeyGenerator during migration to descriptors.
+/// Will be removed in v4.0.0.
+/// </summary>
+public static class ICacheKeyGeneratorCompatExtensions
+{
+    /// <summary>
+    /// Legacy overload for generating cache keys from CacheMethodSettings.
+    /// Use the CacheRuntimeDescriptor overload instead.
+    /// </summary>
+    [Obsolete("Use GenerateKey overload with CacheRuntimeDescriptor. Will be removed in v4.0.0")]
+    public static string GenerateKey(
+        this ICacheKeyGenerator generator,
+        string methodName,
+        object[] args,
+        CacheMethodSettings settings)
+    {
+        if (generator == null)
+        {
+            throw new ArgumentNullException(nameof(generator));
+        }
+
+        if (settings == null)
+        {
+            throw new ArgumentNullException(nameof(settings));
+        }
+
+        // Create a CachePolicy from the settings
+        var policy = new CachePolicy
+        {
+            Duration = settings.Duration,
+            Tags = settings.Tags,
+            KeyGeneratorType = settings.KeyGeneratorType,
+            Version = settings.Version,
+            RequireIdempotent = settings.IsIdempotent
+        };
+
+        var allFields = CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.KeyGenerator |
+                        CachePolicyFields.Version | CachePolicyFields.Metadata | CachePolicyFields.RequireIdempotent;
+
+        var descriptor = CacheRuntimeDescriptor.FromPolicy(
+            methodName,
+            policy,
+            allFields,
+            null,
+            CacheRuntimeOptions.FromLegacySettings(settings),
+            settings);
+
+        return generator.GenerateKey(methodName, args, descriptor);
+    }
+}

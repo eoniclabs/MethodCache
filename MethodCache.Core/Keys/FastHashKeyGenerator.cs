@@ -7,6 +7,7 @@ using System.Text;
 using MessagePack;
 using MessagePack.Resolvers;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.KeyGenerators;
 

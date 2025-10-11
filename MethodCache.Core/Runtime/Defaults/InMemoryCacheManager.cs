@@ -109,7 +109,13 @@ namespace MethodCache.Core.Runtime.Defaults
         public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
         {
             var key = keyGenerator.GenerateKey(methodName, args, settings);
-            var policy = CreatePolicy(settings);
+            var policy = new CacheEntryPolicy(
+                settings.Duration,
+                settings.SlidingExpiration,
+                settings.RefreshAhead,
+                settings.StampedeProtection,
+                settings.DistributedLock,
+                settings.Metrics);
 
             // Check cache first using internal method to avoid double statistics
             var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
@@ -369,22 +375,6 @@ namespace MethodCache.Core.Runtime.Defaults
         }
 
         #endregion
-
-        private static CacheEntryPolicy CreatePolicy(CacheMethodSettings settings)
-        {
-            if (settings == null)
-            {
-                return CacheEntryPolicy.Empty;
-            }
-
-            return new CacheEntryPolicy(
-                settings.Duration,
-                settings.SlidingExpiration,
-                settings.RefreshAhead,
-                settings.StampedeProtection,
-                settings.DistributedLock,
-                settings.Metrics);
-        }
 
         private static CacheEntryPolicy CreatePolicy(CacheRuntimeDescriptor descriptor)
         {

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.KeyGenerators
 {
@@ -24,20 +25,20 @@ namespace MethodCache.Core.KeyGenerators
             _factory = factory;
         }
 
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
         {
             try
             {
-                return GenerateSmartKey(methodName, args, settings);
+                return GenerateSmartKey(methodName, args);
             }
             catch
             {
                 // Fall back to JSON generator if smart key generation fails
-                return _fallbackGenerator.GenerateKey(methodName, args, settings);
+                return _fallbackGenerator.GenerateKey(methodName, args, descriptor);
             }
         }
 
-        private string GenerateSmartKey(string methodName, object[] args, CacheMethodSettings settings)
+        private string GenerateSmartKey(string methodName, object[] args)
         {
             var key = new StringBuilder();
 

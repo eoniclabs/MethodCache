@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.KeyGenerators;
 
@@ -39,14 +40,18 @@ namespace MethodCache.Core.KeyGenerators;
 /// </example>
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (settings.Version.HasValue) keyBuilder.Append($"_v{settings.Version.Value}");
+        if (descriptor.Version.HasValue)
+        {
+            keyBuilder.Append($"_v{descriptor.Version.Value}");
+        }
 
         foreach (var arg in args)
+        {
             if (arg is ICacheKeyProvider keyProvider)
             {
                 keyBuilder.Append($"_{keyProvider.CacheKeyPart}");
@@ -58,12 +63,16 @@ public class JsonKeyGenerator : ICacheKeyGenerator
                     new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.Preserve });
                 keyBuilder.Append($"_{serializedArg}");
             }
+        }
 
         using (var sha256 = SHA256.Create())
         {
             var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
             var base64Hash = Convert.ToBase64String(hash);
-            if (settings.Version.HasValue) return $"{base64Hash}_v{settings.Version.Value}";
+            if (descriptor.Version.HasValue)
+            {
+                return $"{base64Hash}_v{descriptor.Version.Value}";
+            }
             return base64Hash;
         }
     }
