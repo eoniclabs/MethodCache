@@ -1,5 +1,6 @@
 using FluentAssertions;
-using MethodCache.Core.Configuration;
+using MethodCache.Abstractions.Policies;
+using MethodCache.Core.Runtime;
 using MethodCache.ETags.Implementation;
 using MethodCache.ETags.Models;
 using MethodCache.HybridCache.Abstractions;
@@ -18,18 +19,23 @@ namespace MethodCache.ETags.Tests.Implementation
         private readonly Mock<IHybridCacheManager> _mockHybridCache;
         private readonly Mock<ILogger<ETagHybridCacheManager>> _mockLogger;
         private readonly ETagHybridCacheManager _cacheManager;
-        private readonly CacheMethodSettings _defaultSettings;
+        private readonly CacheRuntimePolicy _defaultSettings;
 
         public ETagHybridCacheManagerTests()
         {
             _mockHybridCache = new Mock<IHybridCacheManager>();
             _mockLogger = new Mock<ILogger<ETagHybridCacheManager>>();
             _cacheManager = new ETagHybridCacheManager(_mockHybridCache.Object, _mockLogger.Object);
-            _defaultSettings = new CacheMethodSettings 
-            { 
+
+            var policy = CachePolicy.Empty with
+            {
                 Duration = TimeSpan.FromMinutes(30),
                 Tags = new[] { "test-tag" }
             };
+            _defaultSettings = CacheRuntimePolicy.FromPolicy(
+                "test",
+                policy,
+                CachePolicyFields.Duration | CachePolicyFields.Tags);
         }
 
         [Fact]
@@ -187,11 +193,14 @@ namespace MethodCache.ETags.Tests.Implementation
             var key = "test-key";
             var factoryValue = "factory-value";
             var factoryETag = "\"factory-etag\"";
-            var settingsWithoutTags = new CacheMethodSettings 
-            { 
-                Duration = TimeSpan.FromMinutes(30),
-                Tags = null
+            var policyWithoutTags = CachePolicy.Empty with
+            {
+                Duration = TimeSpan.FromMinutes(30)
             };
+            var settingsWithoutTags = CacheRuntimePolicy.FromPolicy(
+                "test",
+                policyWithoutTags,
+                CachePolicyFields.Duration);
             
             _mockHybridCache
                 .Setup(x => x.GetFromL1Async<string>(key))

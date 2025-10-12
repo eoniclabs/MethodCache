@@ -4,6 +4,7 @@ using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 using StackExchange.Redis;
 using System.Text.Json;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Providers.Redis.Infrastructure;
 

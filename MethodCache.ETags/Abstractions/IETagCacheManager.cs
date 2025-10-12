@@ -1,4 +1,5 @@
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 using MethodCache.ETags.Models;
 
 namespace MethodCache.ETags.Abstractions
@@ -23,7 +24,7 @@ namespace MethodCache.ETags.Abstractions
             string key,
             Func<Task<ETagCacheEntry<T>>> factory,
             string? ifNoneMatch = null,
-            CacheMethodSettings? settings = null,
+            CacheRuntimePolicy? descriptor = null,
             bool forceRefresh = false);
 
         /// <summary>
@@ -34,14 +35,14 @@ namespace MethodCache.ETags.Abstractions
         /// <param name="key">Cache key</param>
         /// <param name="factory">Factory function that receives current ETag and returns new entry</param>
         /// <param name="ifNoneMatch">Client's If-None-Match header value</param>
-        /// <param name="settings">Cache settings</param>
+        /// <param name="descriptor">Runtime descriptor containing cache policy</param>
         /// <param name="forceRefresh">Whether to bypass cache and always execute factory</param>
         /// <returns>ETag cache result</returns>
         Task<ETagCacheResult<T>> GetOrCreateWithETagAsync<T>(
             string key,
             Func<string?, Task<ETagCacheEntry<T>>> factory,
             string? ifNoneMatch = null,
-            CacheMethodSettings? settings = null,
+            CacheRuntimePolicy? descriptor = null,
             bool forceRefresh = false);
 
         /// <summary>

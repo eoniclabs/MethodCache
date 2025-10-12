@@ -6,6 +6,10 @@ using Xunit.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
@@ -220,23 +224,23 @@ namespace TestNamespace
                 var userRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
         .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
                 var userRepoImpl = Activator.CreateInstance(userRepoImplType)!;
-                return Activator.CreateInstance(userRepoDecoratorType, 
+                return Activator.CreateInstance(userRepoDecoratorType,
                     userRepoImpl,
                     sp.GetRequiredService<ICacheManager>(),
-                    sp.GetRequiredService<MethodCacheConfiguration>(),
-                    sp)!;
+                    sp.GetRequiredService<IPolicyRegistry>(),
+                    sp.GetRequiredService<ICacheKeyGenerator>())!;
             });
-            
+
             services.AddSingleton(productRepoInterfaceType, sp =>
             {
                 var productRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
         .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
                 var productRepoImpl = Activator.CreateInstance(productRepoImplType)!;
-                return Activator.CreateInstance(productRepoDecoratorType, 
+                return Activator.CreateInstance(productRepoDecoratorType,
                     productRepoImpl,
                     sp.GetRequiredService<ICacheManager>(),
-                    sp.GetRequiredService<MethodCacheConfiguration>(),
-                    sp)!;
+                    sp.GetRequiredService<IPolicyRegistry>(),
+                    sp.GetRequiredService<ICacheKeyGenerator>())!;
             });
         });
 

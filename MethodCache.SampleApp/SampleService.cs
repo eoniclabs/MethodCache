@@ -3,6 +3,8 @@ using System;
 using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.SampleApp
 {

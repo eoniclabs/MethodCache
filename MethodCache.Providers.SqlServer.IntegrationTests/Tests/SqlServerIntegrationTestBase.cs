@@ -4,11 +4,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Extensions;
 using InfraStorageOptions = MethodCache.Core.Configuration.StorageOptions;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Extensions;
@@ -21,6 +21,12 @@ using DotNet.Testcontainers.Configurations;
 using System.Runtime.InteropServices;
 using System.Linq;
 using System.Threading.Tasks;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 
@@ -410,8 +416,8 @@ internal static class SqlServerInfrastructureTestExtensions
         // Add core infrastructure for hybrid manager
         services.AddCacheInfrastructure();
 
-        // Register custom hybrid storage manager that uses SqlServer as L2
-        services.AddScoped<HybridStorageManager>(provider =>
+        // Register custom storage coordinator that uses SqlServer as L2/L3
+        services.AddScoped<StorageCoordinator>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var infraOptions = provider.GetRequiredService<IOptions<InfraStorageOptions>>();
@@ -432,24 +438,26 @@ internal static class SqlServerInfrastructureTestExtensions
                 EnableEfficientL1TagInvalidation = infraOptions.Value.EnableEfficientL1TagInvalidation,
                 MaxTagMappings = infraOptions.Value.MaxTagMappings
             });
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
 
             // Get SqlServer provider for L2/L3
             var sqlServerProvider = provider.GetRequiredService<SqlServerPersistentStorageProvider>();
             var backplane = provider.GetService<IBackplane>();
+            var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
-            return new HybridStorageManager(
+            return StorageCoordinatorFactory.Create(
                 memoryStorage,
                 coreOptions,
                 logger,
                 sqlServerProvider,  // L2 storage
                 sqlServerProvider,  // L3 storage (same instance)
-                backplane);
+                backplane,
+                metricsProvider);
         });
 
-        // Override IStorageProvider to use hybrid manager
+        // Override IStorageProvider to use storage coordinator
         services.AddScoped<IStorageProvider>(provider =>
-            provider.GetRequiredService<HybridStorageManager>());
+            provider.GetRequiredService<StorageCoordinator>());
 
         return services;
     }
@@ -469,9 +477,11 @@ internal class StorageProviderCacheManager : ICacheManager
         _keyGenerator = keyGenerator;
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool isIdempotent)
+    // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
 
         var cached = await _storageProvider.GetAsync<T>(key);
         if (cached != null)
@@ -482,12 +492,20 @@ internal class StorageProviderCacheManager : ICacheManager
         var value = await factory();
         if (value != null)
         {
-            var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageProvider.SetAsync(key, value, expiration, settings.Tags ?? new List<string>()).ConfigureAwait(false);
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageProvider.SetAsync(key, value, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return value;
     }
+
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+    {
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
+        return await _storageProvider.GetAsync<T>(key);
+    }
+
+    // ============= Invalidation methods =============
 
     public Task InvalidateByTagsAsync(params string[] tags)
     {
@@ -496,7 +514,13 @@ internal class StorageProviderCacheManager : ICacheManager
 
     public Task InvalidateAsync(string methodName, params object[] args)
     {
-        var key = _keyGenerator.GenerateKey(methodName, args, new CacheMethodSettings());
+        var policy = new CacheRuntimePolicy
+        {
+            MethodId = methodName,
+            Duration = TimeSpan.FromMinutes(1),
+            Tags = new List<string>()
+        };
+        var key = _keyGenerator.GenerateKey(methodName, args, policy);
         return _storageProvider.RemoveAsync(key).AsTask();
     }
 
@@ -509,12 +533,6 @@ internal class StorageProviderCacheManager : ICacheManager
     {
         // Basic implementation - remove by single tag
         return _storageProvider.RemoveByTagAsync(pattern).AsTask();
-    }
-
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
-    {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
-        return await _storageProvider.GetAsync<T>(key);
     }
 
     public Task ClearAsync()

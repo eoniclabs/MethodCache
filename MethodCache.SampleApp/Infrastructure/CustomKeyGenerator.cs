@@ -1,9 +1,11 @@
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.SampleApp.Infrastructure
 {
@@ -24,51 +26,51 @@ namespace MethodCache.SampleApp.Infrastructure
             };
         }
 
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             var keyComponents = new StringBuilder();
-            
+
             // Method name as base
             keyComponents.Append($"method:{methodName}");
 
             // Add version if specified
-            if (settings.Version.HasValue)
+            if (policy.Version.HasValue)
             {
-                keyComponents.Append($"_v:{settings.Version}");
+                keyComponents.Append($"_v:{policy.Version}");
             }
 
             // Process arguments
             if (args.Length > 0)
             {
                 keyComponents.Append("_args:");
-                
+
                 foreach (var arg in args)
                 {
                     var argKey = GenerateArgumentKey(arg);
                     keyComponents.Append($"{argKey}_");
                 }
-                
+
                 // Remove trailing underscore
                 keyComponents.Length--;
             }
 
             // Add tags for additional context
-            if (settings.Tags?.Any() == true)
+            if (policy.Tags?.Count > 0)
             {
-                var sortedTags = string.Join(",", settings.Tags.OrderBy(t => t));
+                var sortedTags = string.Join(",", policy.Tags.OrderBy(t => t));
                 keyComponents.Append($"_tags:{sortedTags}");
             }
 
             var rawKey = keyComponents.ToString();
-            
+
             // Generate hash for consistent length and avoid key collision
             var hash = GenerateHash(rawKey);
-            
+
             // Create final key with readable prefix and hash
             var finalKey = $"cache:{methodName.Split('.').LastOrDefault()}:{hash}";
-            
+
             Console.WriteLine($"[KEY GENERATOR] {methodName} -> {finalKey}");
-            
+
             return finalKey;
         }
 
@@ -166,30 +168,30 @@ namespace MethodCache.SampleApp.Infrastructure
     {
         private readonly ConcurrentCache<string, string> _keyCache = new();
 
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             // For methods with no arguments, cache the key
             if (args.Length == 0)
             {
-                var cacheKey = $"{methodName}_v{settings.Version ?? 0}";
-                return _keyCache.GetOrAdd(cacheKey, key => $"fast:{methodName}:v{settings.Version ?? 0}:noargs");
+                var cacheKey = $"{methodName}_v{policy.Version ?? 0}";
+                return _keyCache.GetOrAdd(cacheKey, key => $"fast:{methodName}:v{policy.Version ?? 0}:noargs");
             }
 
             // For simple argument patterns, use optimized path
             if (args.Length == 1 && IsSimpleType(args[0]))
             {
-                return $"fast:{methodName}:v{settings.Version ?? 0}:{args[0]}";
+                return $"fast:{methodName}:v{policy.Version ?? 0}:{args[0]}";
             }
 
             // Fall back to more complex key generation for complex arguments
-            var keyBuilder = new StringBuilder($"fast:{methodName}:v{settings.Version ?? 0}:");
-            
+            var keyBuilder = new StringBuilder($"fast:{methodName}:v{policy.Version ?? 0}:");
+
             foreach (var arg in args)
             {
                 keyBuilder.Append(GetSimpleKey(arg));
                 keyBuilder.Append('_');
             }
-            
+
             // Remove trailing underscore
             if (keyBuilder.Length > 0 && keyBuilder[^1] == '_')
                 keyBuilder.Length--;

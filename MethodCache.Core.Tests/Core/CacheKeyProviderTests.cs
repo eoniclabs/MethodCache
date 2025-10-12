@@ -1,5 +1,6 @@
 using Xunit;
 using MethodCache.Core;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Core.Tests.Core
 {

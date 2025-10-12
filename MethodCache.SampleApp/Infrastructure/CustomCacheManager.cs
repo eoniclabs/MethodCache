@@ -1,7 +1,10 @@
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.SampleApp.Infrastructure
 {
@@ -22,16 +25,17 @@ namespace MethodCache.SampleApp.Infrastructure
             _cleanupTimer = new Timer(CleanupExpiredEntries, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
         }
 
+        // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
         public async Task<T> GetOrCreateAsync<T>(
-            string methodName, 
-            object[] args, 
-            Func<Task<T>> factory, 
-            CacheMethodSettings settings, 
-            ICacheKeyGenerator keyGenerator, 
-            bool requireIdempotent)
+            string methodName,
+            object[] args,
+            Func<Task<T>> factory,
+            CacheRuntimePolicy policy,
+            ICacheKeyGenerator keyGenerator)
         {
             var startTime = DateTime.UtcNow;
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
             try
             {
@@ -40,7 +44,7 @@ namespace MethodCache.SampleApp.Infrastructure
                 {
                     _metricsProvider.CacheHit(methodName);
                     _metricsProvider.CacheLatency(methodName, (long)(DateTime.UtcNow - startTime).TotalMilliseconds);
-                    
+
                     Console.WriteLine($"[CACHE HIT] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
                     return (T)entry.Value;
                 }
@@ -50,21 +54,21 @@ namespace MethodCache.SampleApp.Infrastructure
                 Console.WriteLine($"[CACHE MISS] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
 
                 var result = await factory();
-                
+
                 // Store in cache with expiration
-                var duration = settings.Duration ?? TimeSpan.FromMinutes(5);
+                var duration = policy.Duration ?? TimeSpan.FromMinutes(5);
                 var newEntry = new CacheEntry
                 {
                     Value = result!,
                     ExpiresAt = DateTime.UtcNow.Add(duration),
                     CreatedAt = DateTime.UtcNow,
-                    Tags = settings.Tags?.ToHashSet() ?? new HashSet<string>(),
+                    Tags = policy.Tags?.ToHashSet() ?? new HashSet<string>(),
                     AccessCount = 0,
                     LastAccessedAt = DateTime.UtcNow
                 };
 
                 _cache.AddOrUpdate(cacheKey, newEntry, (key, oldEntry) => newEntry);
-                
+
                 _metricsProvider.CacheLatency(methodName, (long)(DateTime.UtcNow - startTime).TotalMilliseconds);
                 Console.WriteLine($"[CACHE STORE] {methodName} (TTL: {duration.TotalMinutes:F1}m)");
 
@@ -78,17 +82,17 @@ namespace MethodCache.SampleApp.Infrastructure
             }
         }
 
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-            
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
+
             if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
             {
                 _metricsProvider.CacheHit(methodName);
                 Console.WriteLine($"[CACHE HIT] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
                 return new ValueTask<T?>((T)entry.Value);
             }
-            
+
             _metricsProvider.CacheMiss(methodName);
             Console.WriteLine($"[CACHE MISS] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
             return new ValueTask<T?>(default(T));

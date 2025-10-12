@@ -6,10 +6,10 @@ using Microsoft.Extensions.Options;
 using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Core;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Extensions;
 using InfraStorageOptions = MethodCache.Core.Configuration.StorageOptions;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Compression;
@@ -20,6 +20,13 @@ using MethodCache.Providers.Redis.Services;
 using Testcontainers.Redis;
 using Xunit;
 using DotNet.Testcontainers.Builders;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
+using MethodCache.Core.Storage.Layers.Memory;
 using StackExchange.Redis;
 
 namespace MethodCache.Providers.Redis.IntegrationTests.Tests;
@@ -270,15 +277,15 @@ internal static class RedisInfrastructureTestExtensions
         services.AddMethodCache();
 
         // Ensure IMemoryStorage is registered as singleton BEFORE AddCacheInfrastructure
-        services.TryAddSingleton<MethodCache.Core.Storage.IMemoryStorage, MethodCache.Core.Storage.MemoryStorage>();
+        services.TryAddSingleton<IMemoryStorage, MemoryStorage>();
 
         // Add core infrastructure for hybrid manager (same as SqlServer tests)
         services.AddCacheInfrastructure();
 
-        // Register custom hybrid storage manager that uses Redis as L2
-        services.AddScoped<HybridStorageManager>(provider =>
+        // Register custom storage coordinator that uses Redis as L2
+        services.AddScoped<StorageCoordinator>(provider =>
         {
-            var l1Storage = provider.GetRequiredService<MethodCache.Core.Storage.IMemoryStorage>();
+            var l1Storage = provider.GetRequiredService<IMemoryStorage>();
             var infraOptions = provider.GetRequiredService<IOptions<InfraStorageOptions>>();
             var coreOptions = Options.Create(new StorageOptions
             {
@@ -297,32 +304,33 @@ internal static class RedisInfrastructureTestExtensions
                 EnableEfficientL1TagInvalidation = infraOptions.Value.EnableEfficientL1TagInvalidation,
                 MaxTagMappings = infraOptions.Value.MaxTagMappings
             });
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
             var l2Storage = provider.GetRequiredService<MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider>();
             var backplane = provider.GetService<IBackplane>();
+            var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
-            return new HybridStorageManager(l1Storage, coreOptions, logger, l2Storage, null, backplane);
+            return StorageCoordinatorFactory.Create(l1Storage, coreOptions, logger, l2Storage, null, backplane, metricsProvider);
         });
 
-        // Register Core IHybridCacheManager implementation that delegates to Infrastructure HybridStorageManager
+        // Register Core IHybridCacheManager implementation that delegates to StorageCoordinator
         // Use Replace to ensure this overrides any subsequent registrations
-        services.Replace(ServiceDescriptor.Scoped<MethodCache.Core.Storage.IHybridCacheManager>(provider =>
+        services.Replace(ServiceDescriptor.Scoped<IHybridCacheManager>(provider =>
         {
             Console.WriteLine("DEBUG: IHybridCacheManager factory method called - creating TestHybridCacheManager");
-            var hybridStorage = provider.GetRequiredService<HybridStorageManager>();
-            var l1Storage = provider.GetRequiredService<MethodCache.Core.Storage.IMemoryStorage>();
+            var storageCoordinator = provider.GetRequiredService<StorageCoordinator>();
+            var l1Storage = provider.GetRequiredService<IMemoryStorage>();
             var l2Storage = provider.GetRequiredService<MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider>();
 
-            return new TestHybridCacheManager(hybridStorage, l1Storage, l2Storage);
+            return new TestHybridCacheManager(storageCoordinator, l1Storage, l2Storage);
         }));
 
-        // Override ICacheManager to use the Infrastructure HybridStorageManager
+        // Override ICacheManager to use the StorageCoordinator
         services.Replace(ServiceDescriptor.Scoped<ICacheManager>(provider =>
         {
-            var hybridStorage = provider.GetRequiredService<HybridStorageManager>();
+            var storageCoordinator = provider.GetRequiredService<StorageCoordinator>();
             var keyGenerator = provider.GetRequiredService<ICacheKeyGenerator>();
 
-            return new InfrastructureCacheManager(hybridStorage, keyGenerator);
+            return new InfrastructureCacheManager(storageCoordinator, keyGenerator);
         }));
 
         return services;
@@ -330,25 +338,25 @@ internal static class RedisInfrastructureTestExtensions
 }
 
 /// <summary>
-/// Cache manager implementation that bridges Core.ICacheManager with Infrastructure.HybridStorageManager
+/// Cache manager implementation that bridges Core.ICacheManager with StorageCoordinator
 /// </summary>
 internal class InfrastructureCacheManager : ICacheManager
 {
-    private readonly HybridStorageManager _hybridStorage;
+    private readonly StorageCoordinator _storageCoordinator;
     private readonly ICacheKeyGenerator _keyGenerator;
 
-    public InfrastructureCacheManager(HybridStorageManager hybridStorage, ICacheKeyGenerator keyGenerator)
+    public InfrastructureCacheManager(StorageCoordinator storageCoordinator, ICacheKeyGenerator keyGenerator)
     {
-        _hybridStorage = hybridStorage;
+        _storageCoordinator = storageCoordinator;
         _keyGenerator = keyGenerator;
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
         // Try to get from cache first
-        var cachedValue = await _hybridStorage.GetAsync<T>(cacheKey);
+        var cachedValue = await _storageCoordinator.GetAsync<T>(cacheKey);
         if (cachedValue != null)
         {
             return cachedValue;
@@ -358,50 +366,50 @@ internal class InfrastructureCacheManager : ICacheManager
         var result = await factory();
         if (result != null)
         {
-            var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
-            await _hybridStorage.SetAsync(cacheKey, result, expiration, settings.Tags ?? new List<string>()).ConfigureAwait(false);
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageCoordinator.SetAsync(cacheKey, result, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return result;
     }
 
-    public Task RemoveAsync(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    public Task RemoveAsync(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-        return _hybridStorage.RemoveAsync(cacheKey).AsTask();
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
+        return _storageCoordinator.RemoveAsync(cacheKey).AsTask();
     }
 
     public Task RemoveByTagAsync(string tag)
     {
-        return _hybridStorage.RemoveByTagAsync(tag).AsTask();
+        return _storageCoordinator.RemoveByTagAsync(tag).AsTask();
     }
 
     public Task RemoveByTagPatternAsync(string pattern)
     {
-        return _hybridStorage.RemoveByTagAsync(pattern).AsTask(); // Infrastructure version should handle patterns
+        return _storageCoordinator.RemoveByTagAsync(pattern).AsTask(); // Infrastructure version should handle patterns
     }
 
     public Task InvalidateByKeysAsync(params string[] keys)
     {
-        var tasks = keys.Select(key => _hybridStorage.RemoveAsync(key).AsTask());
+        var tasks = keys.Select(key => _storageCoordinator.RemoveAsync(key).AsTask());
         return Task.WhenAll(tasks);
     }
 
     public Task InvalidateByTagsAsync(params string[] tags)
     {
-        var tasks = tags.Select(tag => _hybridStorage.RemoveByTagAsync(tag).AsTask());
+        var tasks = tags.Select(tag => _storageCoordinator.RemoveByTagAsync(tag).AsTask());
         return Task.WhenAll(tasks);
     }
 
     public Task InvalidateByTagPatternAsync(string pattern)
     {
-        return _hybridStorage.RemoveByTagAsync(pattern).AsTask();
+        return _storageCoordinator.RemoveByTagAsync(pattern).AsTask();
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-        return await _hybridStorage.GetAsync<T>(cacheKey);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
+        return await _storageCoordinator.GetAsync<T>(cacheKey);
     }
 }
 
@@ -410,18 +418,18 @@ internal class InfrastructureCacheManager : ICacheManager
 /// </summary>
 internal class StorageProviderCacheManager : ICacheManager
 {
-    private readonly MethodCache.Core.Storage.IStorageProvider _storageProvider;
+    private readonly IStorageProvider _storageProvider;
     private readonly ICacheKeyGenerator _keyGenerator;
 
-    public StorageProviderCacheManager(MethodCache.Core.Storage.IStorageProvider storageProvider, ICacheKeyGenerator keyGenerator)
+    public StorageProviderCacheManager(IStorageProvider storageProvider, ICacheKeyGenerator keyGenerator)
     {
         _storageProvider = storageProvider;
         _keyGenerator = keyGenerator;
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool isIdempotent)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
 
         var cached = await _storageProvider.GetAsync<T>(key);
         if (cached != null)
@@ -432,8 +440,8 @@ internal class StorageProviderCacheManager : ICacheManager
         var value = await factory();
         if (value != null)
         {
-            var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageProvider.SetAsync(key, value, expiration, settings.Tags ?? new List<string>()).ConfigureAwait(false);
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageProvider.SetAsync(key, value, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return value;
@@ -446,7 +454,13 @@ internal class StorageProviderCacheManager : ICacheManager
 
     public Task InvalidateAsync(string methodName, params object[] args)
     {
-        var key = _keyGenerator.GenerateKey(methodName, args, new CacheMethodSettings());
+        var policy = new CacheRuntimePolicy
+        {
+            MethodId = methodName,
+            Duration = TimeSpan.FromMinutes(1),
+            Tags = new List<string>()
+        };
+        var key = _keyGenerator.GenerateKey(methodName, args, policy);
         return _storageProvider.RemoveAsync(key).AsTask();
     }
 
@@ -461,9 +475,9 @@ internal class StorageProviderCacheManager : ICacheManager
         return _storageProvider.RemoveByTagAsync(pattern).AsTask();
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
         return await _storageProvider.GetAsync<T>(key);
     }
 
@@ -483,36 +497,33 @@ internal class StorageProviderCacheManager : ICacheManager
 }
 
 /// <summary>
-/// Test adapter that implements Core.IHybridCacheManager and delegates to Infrastructure.HybridStorageManager
+/// Test adapter that implements Core.IHybridCacheManager and delegates to StorageCoordinator
 /// </summary>
-internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheManager
+internal class TestHybridCacheManager : IHybridCacheManager
 {
-    private readonly HybridStorageManager _hybridStorage;
-    private readonly MethodCache.Core.Storage.IMemoryStorage _l1Storage = null!;
+    private readonly StorageCoordinator _storageCoordinator;
+    private readonly IMemoryStorage _l1Storage = null!;
     private readonly MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider _l2Storage;
 
     public TestHybridCacheManager(
-        HybridStorageManager hybridStorage,
-        MethodCache.Core.Storage.IMemoryStorage l1Storage,
+        StorageCoordinator storageCoordinator,
+        IMemoryStorage l1Storage,
         MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider l2Storage)
     {
         Console.WriteLine("DEBUG: TestHybridCacheManager constructor called");
-        _hybridStorage = hybridStorage;
+        _storageCoordinator = storageCoordinator;
+        _l1Storage = l1Storage;
         _l2Storage = l2Storage;
-
-        // Use reflection to get the actual L1 storage from HybridStorageManager
-        var l1Field = typeof(HybridStorageManager).GetField("_l1Storage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        _l1Storage = (MethodCache.Core.Storage.IMemoryStorage)l1Field!.GetValue(hybridStorage)!;
-        Console.WriteLine($"DEBUG: L1 storage extracted via reflection: {_l1Storage?.GetType().Name}");
+        Console.WriteLine($"DEBUG: L1 storage: {_l1Storage?.GetType().Name}");
     }
 
     // ICacheManager implementation - delegate to hybrid storage with proper L1 population
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
         // Try to get from cache first (this will search L1, then L2)
-        var cached = await _hybridStorage.GetAsync<T>(cacheKey);
+        var cached = await _storageCoordinator.GetAsync<T>(cacheKey);
         if (cached != null)
         {
             return cached;
@@ -522,11 +533,11 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
         var result = await factory();
         if (result != null)
         {
-            var expiration = settings.Duration ?? TimeSpan.FromMinutes(10);
-            var tags = settings.Tags ?? new List<string>();
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(10);
+            var tags = policy.Tags ?? new List<string>();
 
             // Store via hybrid storage (handles L1+L2 coordination)
-            await _hybridStorage.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
+            await _storageCoordinator.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
 
             // Also explicitly store in L1 to ensure it's populated for the tests
             await _l1Storage.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
@@ -535,17 +546,17 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
         return result;
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
-        return await _hybridStorage.GetAsync<T>(cacheKey);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
+        return await _storageCoordinator.GetAsync<T>(cacheKey);
     }
 
     public async Task InvalidateByTagsAsync(params string[] tags)
     {
         foreach (var tag in tags)
         {
-            await _hybridStorage.RemoveByTagAsync(tag).ConfigureAwait(false);
+            await _storageCoordinator.RemoveByTagAsync(tag).ConfigureAwait(false);
         }
     }
 
@@ -553,14 +564,14 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
     {
         foreach (var key in keys)
         {
-            await _hybridStorage.RemoveAsync(key).ConfigureAwait(false);
+            await _storageCoordinator.RemoveAsync(key).ConfigureAwait(false);
         }
     }
 
     public Task InvalidateByTagPatternAsync(string pattern)
     {
         // Basic implementation - remove by single tag
-        return _hybridStorage.RemoveByTagAsync(pattern).AsTask();
+        return _storageCoordinator.RemoveByTagAsync(pattern).AsTask();
     }
 
     // IHybridCacheManager implementation - access layer-specific storage
@@ -571,7 +582,7 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
         Console.WriteLine($"DEBUG: GetFromL1Async result: {result?.ToString() ?? "null"}");
 
         // Also check if the value exists by calling the hybrid storage directly
-        var hybridResult = await _hybridStorage.GetAsync<T>(key);
+        var hybridResult = await _storageCoordinator.GetAsync<T>(key);
         Console.WriteLine($"DEBUG: HybridStorage result: {hybridResult?.ToString() ?? "null"}");
 
         return result;
@@ -613,14 +624,14 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
     {
         // Use shorter expiration for both layers
         var expiration = l1Expiration < l2Expiration ? l1Expiration : l2Expiration;
-        return _hybridStorage.SetAsync(key, value, expiration).AsTask();
+        return _storageCoordinator.SetAsync(key, value, expiration).AsTask();
     }
 
     public Task SetInAllAsync<T>(string key, T value, TimeSpan l1Expiration, TimeSpan l2Expiration, TimeSpan l3Expiration)
     {
         // Use shortest expiration
         var expiration = new[] { l1Expiration, l2Expiration, l3Expiration }.Min();
-        return _hybridStorage.SetAsync(key, value, expiration).AsTask();
+        return _storageCoordinator.SetAsync(key, value, expiration).AsTask();
     }
 
     public Task InvalidateL1Async(string key)
@@ -641,12 +652,12 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
 
     public Task InvalidateBothAsync(string key)
     {
-        return _hybridStorage.RemoveAsync(key).AsTask();
+        return _storageCoordinator.RemoveAsync(key).AsTask();
     }
 
     public Task InvalidateAllAsync(string key)
     {
-        return _hybridStorage.RemoveAsync(key).AsTask();
+        return _storageCoordinator.RemoveAsync(key).AsTask();
     }
 
     public Task WarmL1CacheAsync(params string[] keys)
@@ -655,10 +666,10 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
         return Task.CompletedTask;
     }
 
-    public async Task<MethodCache.Core.Storage.HybridCacheStats> GetStatsAsync()
+    public async Task<HybridCacheStats> GetStatsAsync()
     {
-        var stats = await _hybridStorage.GetStatsAsync();
-        return new MethodCache.Core.Storage.HybridCacheStats
+        var stats = await _storageCoordinator.GetStatsAsync();
+        return new HybridCacheStats
         {
             L1Hits = stats?.AdditionalStats?.TryGetValue("L1Hits", out var l1Hits) == true ? Convert.ToInt64(l1Hits) : 0,
             L1Misses = stats?.AdditionalStats?.TryGetValue("L1Misses", out var l1Misses) == true ? Convert.ToInt64(l1Misses) : 0,
@@ -728,8 +739,8 @@ internal class LazyRedisCacheManager : ICacheManager
     }
 
     // Delegate all ICacheManager calls to the lazy instance
-    public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool isIdempotent)
-        => _lazyCacheManager.Value.GetOrCreateAsync(methodName, args, factory, settings, keyGenerator, isIdempotent);
+    public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        => _lazyCacheManager.Value.GetOrCreateAsync(methodName, args, factory, policy, keyGenerator);
 
     public Task InvalidateByTagsAsync(params string[] tags)
         => _lazyCacheManager.Value.InvalidateByTagsAsync(tags);
@@ -740,8 +751,8 @@ internal class LazyRedisCacheManager : ICacheManager
     public Task InvalidateByTagPatternAsync(string pattern)
         => _lazyCacheManager.Value.InvalidateByTagPatternAsync(pattern);
 
-    public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
-        => _lazyCacheManager.Value.TryGetAsync<T>(methodName, args, settings, keyGenerator);
+    public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        => _lazyCacheManager.Value.TryGetAsync<T>(methodName, args, policy, keyGenerator);
 }
 
 /// <summary>
@@ -764,9 +775,9 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
         _keyGenerator = new DefaultCacheKeyGenerator();
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool isIdempotent)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
         var redisKey = $"{_options.KeyPrefix}{key}";
 
         try
@@ -790,7 +801,7 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
             try
             {
                 var serialized = System.Text.Json.JsonSerializer.Serialize(value);
-                var expiration = settings.Duration ?? TimeSpan.FromMinutes(15);
+                var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
                 await _database.StringSetAsync(redisKey, serialized, expiration);
             }
             catch (Exception ex)
@@ -824,9 +835,9 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
         return InvalidateByPatternAsync(redisPattern);
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, settings);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
         var redisKey = $"{_options.KeyPrefix}{key}";
 
         try

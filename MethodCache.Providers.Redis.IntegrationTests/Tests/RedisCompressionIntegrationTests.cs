@@ -1,13 +1,17 @@
 using FluentAssertions;
 using MethodCache.Core;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Storage.Abstractions;
 using Xunit;
 
 namespace MethodCache.Providers.Redis.IntegrationTests.Tests;
@@ -52,7 +56,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Metadata = Enumerable.Range(1, 50).ToDictionary(i => $"key-{i}", i => $"value-{i}-{new string('X', 50)}")
         };
 
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -60,8 +64,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             new object[] { largeData.Id },
             () => Task.FromResult(largeData),
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Assert
         result.Should().NotBeNull();
@@ -78,8 +81,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             new object[] { largeData.Id },
             () => { callCount++; return Task.FromResult(new TestLargeObject()); },
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         cachedResult.Should().BeEquivalentTo(result);
         callCount.Should().Be(0); // Should not call factory
@@ -126,7 +128,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Metadata = Enumerable.Range(1, 75).ToDictionary(i => $"brotli-key-{i}", i => $"brotli-value-{i}-{new string('Y', 60)}")
         };
 
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -134,8 +136,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             new object[] { largeData.Id },
             () => Task.FromResult(largeData),
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Assert
         result.Should().NotBeNull();
@@ -161,7 +162,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Value = "This is small data that won't be compressed"
         };
 
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await CacheManager.GetOrCreateAsync(
@@ -169,8 +170,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             new object[] { smallData.Id },
             () => Task.FromResult(smallData),
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Assert
         result.Should().NotBeNull();
@@ -217,7 +217,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Metadata = new Dictionary<string, string> { { "size", "medium" } }
         };
 
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -225,8 +225,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             new object[] { mediumData.Id },
             () => Task.FromResult(mediumData),
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Assert - Should work normally even without compression
         result.Should().NotBeNull();

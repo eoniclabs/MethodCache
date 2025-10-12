@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
 using MethodCache.HttpCaching.Options;
 
 namespace MethodCache.HttpCaching.Storage;

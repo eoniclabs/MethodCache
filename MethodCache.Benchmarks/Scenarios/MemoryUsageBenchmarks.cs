@@ -2,8 +2,10 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Benchmarks.Infrastructure;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
@@ -160,23 +162,23 @@ public interface IMemoryTestService
 public class MemoryTestService : IMemoryTestService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public MemoryTestService(
-        ICacheManager cacheManager, 
-        MethodCacheConfiguration configuration,
+        ICacheManager cacheManager,
+        IPolicyRegistry policyRegistry,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:10:00", Tags = new[] { "data" })]
     public virtual async Task<object> GetDataAsync(int id, string dataType)
     {
-        var settings = _configuration.GetMethodSettings("MemoryTestService.GetDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<MemoryTestService>(nameof(GetDataAsync));
         var args = new object[] { id, dataType };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -184,14 +186,13 @@ public class MemoryTestService : IMemoryTestService
             args,
             async () => await CreateDataAsync(id, dataType),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00", Tags = new[] { "large" })]
     public virtual async Task<LargeModel> GetLargeObjectAsync(int id)
     {
-        var settings = _configuration.GetMethodSettings("MemoryTestService.GetLargeObjectAsync");
+        var settings = _policyRegistry.GetSettingsFor<MemoryTestService>(nameof(GetLargeObjectAsync));
         var args = new object[] { id };
 
         return await _cacheManager.GetOrCreateAsync<LargeModel>(
@@ -199,14 +200,13 @@ public class MemoryTestService : IMemoryTestService
             args,
             async () => await CreateLargeObjectAsync(id),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:00:05", Tags = new[] { "short" })] // 5 seconds
     public virtual async Task<SmallModel> GetShortLivedDataAsync(int id)
     {
-        var settings = _configuration.GetMethodSettings("MemoryTestService.GetShortLivedDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<MemoryTestService>(nameof(GetShortLivedDataAsync));
         var args = new object[] { id };
 
         return await _cacheManager.GetOrCreateAsync<SmallModel>(
@@ -214,8 +214,7 @@ public class MemoryTestService : IMemoryTestService
             args,
             async () => await CreateShortLivedDataAsync(id),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [CacheInvalidate(Tags = new[] { "data", "large", "short" })]

@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 using MethodCache.Providers.SqlServer.Infrastructure;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
@@ -26,7 +28,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         var tableManager = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Services.ISqlServerTableManager>();
         await tableManager.EnsureTablesExistAsync();
 
-        var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
+        var hybridStorage = serviceProvider.GetRequiredService<StorageCoordinator>();
         var key = "hybrid-test-key";
         var value = "hybrid-test-value";
 
@@ -60,7 +62,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         var tableManager = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Services.ISqlServerTableManager>();
         await tableManager.EnsureTablesExistAsync();
 
-        var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
+        var hybridStorage = serviceProvider.GetRequiredService<StorageCoordinator>();
         var sqlServerStorage = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider>();
         var key = "l1-miss-test";
         var value = "l1-miss-value";
@@ -90,6 +92,10 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
             options.ConnectionString = SqlServerConnectionString;
             options.EnableAutoTableCreation = true;
             options.Schema = $"taghybrid_{Guid.NewGuid():N}".Replace("-", "");
+        }, configureStorage: storageOptions =>
+        {
+            storageOptions.L2Enabled = true;
+            storageOptions.EnableAsyncL2Writes = false; // Synchronous writes for testing
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -98,7 +104,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         var tableManager = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Services.ISqlServerTableManager>();
         await tableManager.EnsureTablesExistAsync();
 
-        var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
+        var hybridStorage = serviceProvider.GetRequiredService<StorageCoordinator>();
         var testId = Guid.NewGuid().ToString("N");
         var key = $"tag-hybrid-test-{testId}";
         var value = "tag-hybrid-value";
@@ -118,7 +124,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
 
         // Check individual layers before invalidation
         var l1BeforeInvalidation = await memoryStorage.GetAsync<string>(key);
-        var l2Storage = serviceProvider.GetRequiredService<IStorageProvider>();
+        var l2Storage = serviceProvider.GetRequiredService<SqlServerPersistentStorageProvider>();
         var l2BeforeInvalidation = await l2Storage.GetAsync<string>(key);
 
         // Debug: Verify both layers have the item
@@ -174,7 +180,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         var tableManager = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Services.ISqlServerTableManager>();
         await tableManager.EnsureTablesExistAsync();
 
-        var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
+        var hybridStorage = serviceProvider.GetRequiredService<StorageCoordinator>();
 
         var key = "debug-test-key";
         var value = "debug-test-value";
@@ -245,8 +251,8 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
 
         var serviceProvider2 = services2.BuildServiceProvider();
 
-        var hybridStorage1 = serviceProvider1.GetRequiredService<HybridStorageManager>();
-        var hybridStorage2 = serviceProvider2.GetRequiredService<HybridStorageManager>();
+        var hybridStorage1 = serviceProvider1.GetRequiredService<StorageCoordinator>();
+        var hybridStorage2 = serviceProvider2.GetRequiredService<StorageCoordinator>();
 
         var key = "backplane-hybrid-test";
         var value = "backplane-hybrid-value";
@@ -322,7 +328,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         var tableManager = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Services.ISqlServerTableManager>();
         await tableManager.EnsureTablesExistAsync();
 
-        var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
+        var hybridStorage = serviceProvider.GetRequiredService<StorageCoordinator>();
 
         // Act & Assert
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -375,7 +381,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
         var tableManager = serviceProvider.GetRequiredService<MethodCache.Providers.SqlServer.Services.ISqlServerTableManager>();
         await tableManager.EnsureTablesExistAsync();
 
-        var hybridStorage = serviceProvider.GetRequiredService<HybridStorageManager>();
+        var hybridStorage = serviceProvider.GetRequiredService<StorageCoordinator>();
         var key = "expiry-test";
         var value = "expiry-value";
 

@@ -284,7 +284,7 @@ namespace MethodCache.ETags.Tests.Integration
         private readonly Dictionary<string, object> _cache = new();
         private readonly Dictionary<string, DateTime> _expiry = new();
 
-        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, Core.Configuration.CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
         {
             var key = $"{methodName}:{string.Join(":", args)}";
             
@@ -295,8 +295,8 @@ namespace MethodCache.ETags.Tests.Integration
 
             var result = await factory();
             _cache[key] = result!;
-            _expiry[key] = DateTime.UtcNow.Add(settings.Duration ?? TimeSpan.FromMinutes(10));
-            
+            _expiry[key] = DateTime.UtcNow.Add(policy.Duration ?? TimeSpan.FromMinutes(10));
+
             return result;
         }
 

@@ -36,10 +36,11 @@ MethodCache supports multiple configuration sources that can be combined:
 | Source | Priority | Runtime Updates | Use Case |
 |--------|----------|-----------------|----------|
 | Attributes | 10 (lowest) | ❌ | Development, defaults |
-| JSON | 20 | ✅ | Operations, environments |
-| YAML | 20 | ✅ | Operations, complex configs |
-| Programmatic | 30 | ❌ | Code-based overrides |
-| Runtime (IOptions) | 40 (highest) | ✅ | Management interface, emergency overrides |
+| Fluent/Programmatic | 40 | ❌ | Code-based overrides |
+| JSON/YAML Configuration | 50 | ✅ | Operations, environments, complex configs |
+| Runtime Overrides | 100 (highest) | ✅ | Management interface, emergency overrides |
+
+**How it works:** All configuration sources flow through a unified **policy pipeline**. Each source contributes policies with a specific priority. When multiple sources configure the same method, the highest priority wins. This architecture enables powerful runtime management while keeping your codebase clean.
 
 ## Attribute-Based Configuration
 
@@ -364,6 +365,21 @@ builder.Services.AddMethodCacheWithSources(cache => {
 ```
 
 ## Management Interface & Runtime Overrides
+### Inspect Runtime State
+
+You can inspect the merged runtime configuration through the `PolicyDiagnosticsService` which is automatically registered when you call `AddMethodCacheWithSources`.
+
+```csharp
+var diagnostics = provider.GetRequiredService<PolicyDiagnosticsService>();
+
+foreach (var policy in diagnostics.GetAllPolicies())
+{
+    Console.WriteLine($"{policy.MethodId}: Duration={policy.Policy.Duration ?? TimeSpan.Zero}, Sources={string.Join(", ", policy.Contributions.Select(c => c.SourceId))}");
+}
+```
+
+Each report exposes the full set of `PolicyContribution`s so you can see exactly which layer (attributes, JSON/YAML, programmatic, runtime) produced the effective configuration.
+
 
 **🔥 CRITICAL FEATURE:** The runtime layer has the **highest priority** and overrides every other configuration surface. The DI container exposes `IRuntimeCacheConfigurator`, giving you a single entry point for management UIs, incident tooling, or scripting.
 

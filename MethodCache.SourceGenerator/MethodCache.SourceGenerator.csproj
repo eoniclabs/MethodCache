@@ -23,6 +23,10 @@
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Abstractions\MethodCache.Abstractions.csproj" />
+  </ItemGroup>
+
 
 
 </Project>
