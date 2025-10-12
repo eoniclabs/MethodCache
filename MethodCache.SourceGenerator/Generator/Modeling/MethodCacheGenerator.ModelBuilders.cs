@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 
-namespace MethodCache.SourceGenerator.Generator.Modeling
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {
@@ -18,7 +18,7 @@ namespace MethodCache.SourceGenerator.Generator.Modeling
             // Check for void return
             if (method.ReturnsVoid)
             {
-                return (Diagnostic.Create(Diagnostics.MethodCacheGenerator.Diagnostics.UnsupportedVoidCache, location, methodName), false);
+                return (Diagnostic.Create(Diagnostics.UnsupportedVoidCache, location, methodName), false);
             }
 
             // Check for non-generic Task/ValueTask
@@ -29,7 +29,7 @@ namespace MethodCache.SourceGenerator.Generator.Modeling
                 {
                     if (namedType.Name == "Task" || namedType.Name == "ValueTask")
                     {
-                        return (Diagnostic.Create(Diagnostics.MethodCacheGenerator.Diagnostics.UnsupportedTaskCache, location, methodName), false);
+                        return (Diagnostic.Create(Diagnostics.UnsupportedTaskCache, location, methodName), false);
                     }
                 }
             }
@@ -37,19 +37,19 @@ namespace MethodCache.SourceGenerator.Generator.Modeling
             // Check for ref/out/in parameters
             if (method.Parameters.Any(p => p.RefKind != RefKind.None))
             {
-                return (Diagnostic.Create(Diagnostics.MethodCacheGenerator.Diagnostics.UnsupportedRefParams, location, methodName), false);
+                return (Diagnostic.Create(Diagnostics.UnsupportedRefParams, location, methodName), false);
             }
 
             // Check for pointer types
             if (method.Parameters.Any(p => p.Type.TypeKind == TypeKind.Pointer))
             {
-                return (Diagnostic.Create(Diagnostics.MethodCacheGenerator.Diagnostics.UnsupportedPointerType, location, methodName), false);
+                return (Diagnostic.Create(Diagnostics.UnsupportedPointerType, location, methodName), false);
             }
 
             // Check for ref struct types
             if (method.Parameters.Any(p => IsRefLikeType(p.Type)))
             {
-                return (Diagnostic.Create(Diagnostics.MethodCacheGenerator.Diagnostics.UnsupportedRefLikeType, location, methodName), false);
+                return (Diagnostic.Create(Diagnostics.UnsupportedRefLikeType, location, methodName), false);
             }
 
             return (null, true);
@@ -95,7 +95,7 @@ namespace MethodCache.SourceGenerator.Generator.Modeling
                 var template = tag;
 
                 // Find all {parameterName} patterns in the tag
-                var matches = Infrastructure.MethodCacheGenerator.DynamicTagParameterRegex.Matches(tag);
+                var matches = DynamicTagParameterRegex.Matches(tag);
                 foreach (System.Text.RegularExpressions.Match match in matches)
                 {
                     var paramName = match.Groups[1].Value;
@@ -123,14 +123,14 @@ namespace MethodCache.SourceGenerator.Generator.Modeling
 
             foreach (var tag in tags)
             {
-                var matches = Infrastructure.MethodCacheGenerator.DynamicTagParameterRegex.Matches(tag);
+                var matches = DynamicTagParameterRegex.Matches(tag);
                 foreach (System.Text.RegularExpressions.Match match in matches)
                 {
                     var paramName = match.Groups[1].Value;
                     if (!parameterNames.Contains(paramName))
                     {
                         diagnostics.Add(Diagnostic.Create(
-                            Diagnostics.MethodCacheGenerator.Diagnostics.DynamicTagParameterNotFound,
+                            Diagnostics.DynamicTagParameterNotFound,
                             method.Locations.FirstOrDefault(),
                             tag, paramName, method.ToDisplayString()));
                     }

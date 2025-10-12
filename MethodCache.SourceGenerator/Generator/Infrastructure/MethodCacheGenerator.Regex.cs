@@ -2,7 +2,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace MethodCache.SourceGenerator.Generator.Infrastructure
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {

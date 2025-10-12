@@ -50,7 +50,7 @@ public class SourceGeneratorTestEngine
                 optimizationLevel: OptimizationLevel.Debug));
 
         // Apply source generator
-        var generator = new Generator.Utilities.MethodCacheGenerator();
+        var generator = new MethodCacheGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
         
         driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(

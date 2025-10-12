@@ -1,7 +1,7 @@
 #nullable enable
 using Microsoft.CodeAnalysis;
 
-namespace MethodCache.SourceGenerator.Generator.Diagnostics
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {

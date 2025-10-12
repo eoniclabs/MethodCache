@@ -502,7 +502,7 @@ internal class StorageProviderCacheManager : ICacheManager
 internal class TestHybridCacheManager : IHybridCacheManager
 {
     private readonly StorageCoordinator _storageCoordinator;
-    private readonly IMemoryStorage _l1Storage;
+    private readonly IMemoryStorage _l1Storage = null!;
     private readonly MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider _l2Storage;
 
     public TestHybridCacheManager(

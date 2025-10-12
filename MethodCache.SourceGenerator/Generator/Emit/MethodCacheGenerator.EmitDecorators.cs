@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
-namespace MethodCache.SourceGenerator.Generator.Emit
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {
@@ -17,7 +17,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
             // Add static tags
             if (staticTags.Any())
             {
-                var staticTagsWithoutDynamic = staticTags.Where(t => !Infrastructure.MethodCacheGenerator.DynamicTagParameterRegex.IsMatch(t)).ToList();
+                var staticTagsWithoutDynamic = staticTags.Where(t => !DynamicTagParameterRegex.IsMatch(t)).ToList();
                 if (staticTagsWithoutDynamic.Any())
                 {
                     sb.Append($"{indent}allTags.AddRange(new[] {{ ");
@@ -40,11 +40,11 @@ namespace MethodCache.SourceGenerator.Generator.Emit
 
         private static class DecoratorEmitter
         {
-            internal static string Emit(Modeling.MethodCacheGenerator.InterfaceInfo info)
+            internal static string Emit(InterfaceInfo info)
             {
                 var sb = new StringBuilder();
                 var ns = info.Symbol.ContainingNamespace.ToDisplayString();
-                var interfaceFqn = Utilities.MethodCacheGenerator.Utils.GetFullyQualifiedName(info.Symbol);
+                var interfaceFqn = Utils.GetFullyQualifiedName(info.Symbol);
                 var className = $"{info.Symbol.Name}Decorator";
 
                 static string GetSimpleInterfaceName(INamedTypeSymbol symbol)
@@ -205,11 +205,11 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                 sb.AppendLine();
             }
 
-            private static void EmitCachedMethod(StringBuilder sb, Modeling.MethodCacheGenerator.MethodModel model, INamedTypeSymbol interfaceSymbol)
+            private static void EmitCachedMethod(StringBuilder sb, MethodModel model, INamedTypeSymbol interfaceSymbol)
             {
                 var method = model.Method;
-                var returnType = Utilities.MethodCacheGenerator.Utils.GetReturnTypeForSignature(method.ReturnType);
-                var methodId = Utilities.MethodCacheGenerator.Utils.GetMethodId(method);
+                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
+                var methodId = Utils.GetMethodId(method);
 
                 // Method signature
                 EmitMethodSignature(sb, method);
@@ -217,7 +217,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
 
                 // Get cache configuration
                 // Build cache key parameters (exclude CancellationToken)
-                var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utilities.MethodCacheGenerator.Utils.IsCancellationToken(p.Type))
+                var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type))
                     .ToList();
 
                 // Generate cache key array
@@ -236,11 +236,11 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                 sb.AppendLine("            var policy = CacheRuntimePolicy.FromResolverResult(policyResult);");
 
                 // Handle different return types
-                if (Utilities.MethodCacheGenerator.Utils.IsTask(method.ReturnType, out var taskType))
+                if (Utils.IsTask(method.ReturnType, out var taskType))
                 {
                     EmitTaskCaching(sb, method, taskType!, interfaceSymbol);
                 }
-                else if (Utilities.MethodCacheGenerator.Utils.IsValueTask(method.ReturnType, out var valueTaskType))
+                else if (Utils.IsValueTask(method.ReturnType, out var valueTaskType))
                 {
                     EmitValueTaskCaching(sb, method, valueTaskType!, interfaceSymbol);
                 }
@@ -342,14 +342,14 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                 sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 
-            private static void EmitInvalidateMethod(StringBuilder sb, Modeling.MethodCacheGenerator.MethodModel model)
+            private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
             {
                 var method = model.Method;
-                var tags = Modeling.MethodCacheGenerator.ExtractTags(model.InvalidateAttr!);
-                var dynamicTags = Modeling.MethodCacheGenerator.ParseDynamicTags(tags, method);
+                var tags = ExtractTags(model.InvalidateAttr!);
+                var dynamicTags = ParseDynamicTags(tags, method);
 
                 // For async methods, we need to emit async method signature
-                if (Utilities.MethodCacheGenerator.Utils.IsTask(method.ReturnType, out _) || Utilities.MethodCacheGenerator.Utils.IsValueTask(method.ReturnType, out _))
+                if (Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _))
                 {
                     EmitAsyncInvalidateMethodSignature(sb, method);
                 }
@@ -363,7 +363,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                 var call = BuildMethodCall(method);
 
                 // Handle async methods differently
-                if (Utilities.MethodCacheGenerator.Utils.IsTask(method.ReturnType, out _) || Utilities.MethodCacheGenerator.Utils.IsValueTask(method.ReturnType, out _))
+                if (Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _))
                 {
                     // For async methods, emit async wrapper
                     EmitAsyncInvalidateMethodBody(sb, method, call, tags, dynamicTags);
@@ -380,7 +380,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
 
             private static void EmitAsyncInvalidateMethodSignature(StringBuilder sb, IMethodSymbol method)
             {
-                var returnType = Utilities.MethodCacheGenerator.Utils.GetReturnTypeForSignature(method.ReturnType);
+                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
                 var typeParams = method.TypeParameters.Any()
                     ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
                     : string.Empty;
@@ -395,7 +395,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                         _ => ""
                     };
                     var defaultValue = p.HasExplicitDefaultValue ? $" = {FormatDefaultValue(p.ExplicitDefaultValue)}" : "";
-                    return $"{modifier}{Utilities.MethodCacheGenerator.Utils.GetReturnTypeForSignature(p.Type)} {p.Name}{defaultValue}";
+                    return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {p.Name}{defaultValue}";
                 }));
 
                 sb.AppendLine($"        public async {returnType} {method.Name}{typeParams}({parameters})");
@@ -495,7 +495,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
 
             private static void EmitMethodSignature(StringBuilder sb, IMethodSymbol method)
             {
-                var returnType = Utilities.MethodCacheGenerator.Utils.GetReturnTypeForSignature(method.ReturnType);
+                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
                 var typeParams = method.TypeParameters.Any()
                     ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
                     : string.Empty;
@@ -510,7 +510,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                         _ => ""
                     };
                     var defaultValue = p.HasExplicitDefaultValue ? $" = {FormatDefaultValue(p.ExplicitDefaultValue)}" : "";
-                    return $"{modifier}{Utilities.MethodCacheGenerator.Utils.GetReturnTypeForSignature(p.Type)} {p.Name}{defaultValue}";
+                    return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {p.Name}{defaultValue}";
                 }));
 
                 sb.AppendLine($"        public {returnType} {method.Name}{typeParams}({parameters})");
@@ -558,7 +558,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                 if (tp.HasNotNullConstraint)
                     constraints.Add("notnull");
 
-                constraints.AddRange(ImmutableArrayExtensions.Select(tp.ConstraintTypes, ct => Utilities.MethodCacheGenerator.Utils.GetFullyQualifiedName(ct)));
+                constraints.AddRange(ImmutableArrayExtensions.Select(tp.ConstraintTypes, ct => Utils.GetFullyQualifiedName(ct)));
 
                 if (tp.HasConstructorConstraint && !tp.HasValueTypeConstraint && !tp.HasUnmanagedTypeConstraint)
                     constraints.Add("new()");

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
-namespace MethodCache.SourceGenerator.Generator.Emit
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {
@@ -16,7 +16,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
             private const string PriorityMetadataKey = "priority";
             private const string GroupMetadataKey = "group";
 
-            internal static string Emit(List<Modeling.MethodCacheGenerator.InterfaceInfo> interfaces)
+            internal static string Emit(List<InterfaceInfo> interfaces)
             {
                 var definitions = BuildDefinitions(interfaces);
                 if (definitions.Count == 0)
@@ -123,7 +123,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                 sb.AppendLine("}");
             }
 
-            private static List<PolicyDefinition> BuildDefinitions(List<Modeling.MethodCacheGenerator.InterfaceInfo> interfaces)
+            private static List<PolicyDefinition> BuildDefinitions(List<InterfaceInfo> interfaces)
             {
                 var definitions = new List<PolicyDefinition>();
                 var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -143,7 +143,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
                             continue;
                         }
 
-                        var methodId = Utilities.MethodCacheGenerator.Utils.GetMethodId(method.Method);
+                        var methodId = Utils.GetMethodId(method.Method);
                         if (!seen.Add(methodId))
                         {
                             continue;
@@ -198,7 +198,7 @@ namespace MethodCache.SourceGenerator.Generator.Emit
 
                 if (TryGetNamedArgument(cacheAttr, "KeyGeneratorType", out var keyGeneratorArg) && keyGeneratorArg.Value is INamedTypeSymbol keyGeneratorType)
                 {
-                    var typeName = Utilities.MethodCacheGenerator.Utils.GetFullyQualifiedName(keyGeneratorType);
+                    var typeName = Utils.GetFullyQualifiedName(keyGeneratorType);
                     definition.PolicyStatements.Add($"policy = policy with {{ KeyGeneratorType = typeof({typeName}) }};");
                     definition.PolicyStatements.Add("fields |= CachePolicyFields.KeyGenerator;");
                 }
