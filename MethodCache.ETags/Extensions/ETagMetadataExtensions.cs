@@ -4,8 +4,9 @@ using System.Linq;
 using System.Text.Json;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Runtime;
+using MethodCache.ETags.Models;
 
-namespace MethodCache.Core.Configuration
+namespace MethodCache.ETags.Extensions
 {
     public static class ETagMetadataExtensions
     {
