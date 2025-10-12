@@ -80,9 +80,11 @@ public sealed class PersistentStorageLayer : IStorageLayer
             return StorageLayerResult<T>.NotHandled();
         }
 
+        var waitSucceeded = false;
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
+            waitSucceeded = true;
 
             var result = await _l3Storage.GetAsync<T>(key, cancellationToken);
 
@@ -116,7 +118,10 @@ public sealed class PersistentStorageLayer : IStorageLayer
         }
         finally
         {
-            _semaphore.Release();
+            if (waitSucceeded)
+            {
+                _semaphore.Release();
+            }
         }
     }
 
@@ -192,9 +197,11 @@ public sealed class PersistentStorageLayer : IStorageLayer
             return false;
         }
 
+        var waitSucceeded = false;
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
+            waitSucceeded = true;
             return await _l3Storage.ExistsAsync(key, cancellationToken);
         }
         catch (Exception ex)
@@ -204,7 +211,10 @@ public sealed class PersistentStorageLayer : IStorageLayer
         }
         finally
         {
-            _semaphore.Release();
+            if (waitSucceeded)
+            {
+                _semaphore.Release();
+            }
         }
     }
 

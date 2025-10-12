@@ -14,11 +14,13 @@ public class CachePolicyDeltaTests
         Assert.True(delta.IsEmpty);
     }
 
-    [Fact]
-    public void IsEmpty_ReturnsFalse_WhenSetMaskPresent()
+    [Theory]
+    [InlineData(CachePolicyFields.Duration, CachePolicyFields.None)]
+    [InlineData(CachePolicyFields.None, CachePolicyFields.Duration)]
+    public void IsEmpty_ReturnsFalse_WhenChangesPresent(CachePolicyFields setMask, CachePolicyFields clearMask)
     {
         var snapshot = CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(1) };
-        var delta = new CachePolicyDelta(CachePolicyFields.Duration, CachePolicyFields.None, snapshot);
+        var delta = new CachePolicyDelta(setMask, clearMask, snapshot);
 
         Assert.False(delta.IsEmpty);
     }

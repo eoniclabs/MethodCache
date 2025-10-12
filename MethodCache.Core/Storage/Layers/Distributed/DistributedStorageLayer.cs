@@ -76,9 +76,11 @@ public sealed class DistributedStorageLayer : IStorageLayer
             return StorageLayerResult<T>.NotHandled();
         }
 
+        var waitSucceeded = false;
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
+            waitSucceeded = true;
 
             var result = await _l2Storage.GetAsync<T>(key, cancellationToken);
 
@@ -109,7 +111,10 @@ public sealed class DistributedStorageLayer : IStorageLayer
         }
         finally
         {
-            _semaphore.Release();
+            if (waitSucceeded)
+            {
+                _semaphore.Release();
+            }
         }
     }
 
@@ -183,9 +188,11 @@ public sealed class DistributedStorageLayer : IStorageLayer
             return false;
         }
 
+        var waitSucceeded = false;
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
+            waitSucceeded = true;
             return await _l2Storage.ExistsAsync(key, cancellationToken);
         }
         catch (Exception ex)
@@ -195,7 +202,10 @@ public sealed class DistributedStorageLayer : IStorageLayer
         }
         finally
         {
-            _semaphore.Release();
+            if (waitSucceeded)
+            {
+                _semaphore.Release();
+            }
         }
     }
 
