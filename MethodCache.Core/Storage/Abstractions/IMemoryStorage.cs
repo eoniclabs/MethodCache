@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Abstractions;
 
 /// <summary>
 /// Defines a memory storage provider for L1 caching operations.

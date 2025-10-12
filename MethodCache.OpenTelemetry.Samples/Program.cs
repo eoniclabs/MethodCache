@@ -3,6 +3,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.OpenTelemetry.Extensions;
 using MethodCache.OpenTelemetry.Propagators;
 

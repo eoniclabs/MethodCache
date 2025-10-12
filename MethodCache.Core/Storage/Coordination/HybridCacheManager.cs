@@ -1,13 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Configuration;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Coordination;
 
 /// <summary>
 /// Implementation of IHybridCacheManager that coordinates L1/L2/L3 cache operations.

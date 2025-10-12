@@ -11,6 +11,7 @@ using MethodCache.Providers.Redis.Infrastructure;
 using StackExchange.Redis;
 using System.Threading.Tasks;
 using System.Linq;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Providers.Redis.Tests
 {

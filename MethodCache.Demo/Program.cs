@@ -3,6 +3,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Demo

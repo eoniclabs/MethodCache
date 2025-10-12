@@ -1,9 +1,6 @@
-using System;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Infrastructure.Utilities
 {
     /// <summary>
     /// High-performance striped lock pool that eliminates per-key SemaphoreSlim allocation and dictionary contention.

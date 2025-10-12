@@ -1,12 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination.Layers;
+using MethodCache.Core.Storage.Coordination.Supporting;
+using MethodCache.Core.Storage.Layers.Memory;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Layers.Distributed;
 
 /// <summary>
 /// L2 distributed storage layer (e.g., Redis) providing shared cache across multiple instances.

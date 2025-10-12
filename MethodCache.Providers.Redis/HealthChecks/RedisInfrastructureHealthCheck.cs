@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Providers.Redis.HealthChecks;
 

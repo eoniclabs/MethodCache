@@ -10,7 +10,6 @@ using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
-using MethodCache.Core.Extensions;
 using InfraStorageOptions = MethodCache.Core.Configuration.StorageOptions;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Extensions;
@@ -23,6 +22,10 @@ using DotNet.Testcontainers.Configurations;
 using System.Runtime.InteropServices;
 using System.Linq;
 using System.Threading.Tasks;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 
 namespace MethodCache.Providers.SqlServer.IntegrationTests.Tests;
 

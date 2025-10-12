@@ -1,4 +1,4 @@
-namespace MethodCache.Core
+namespace MethodCache.Core.Infrastructure
 {
     public interface ICacheMetricsProvider
     {

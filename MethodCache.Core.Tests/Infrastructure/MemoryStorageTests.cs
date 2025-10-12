@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Layers.Memory;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Infrastructure;

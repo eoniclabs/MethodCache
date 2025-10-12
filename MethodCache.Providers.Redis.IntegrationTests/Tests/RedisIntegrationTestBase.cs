@@ -11,7 +11,6 @@ using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
-using MethodCache.Core.Extensions;
 using InfraStorageOptions = MethodCache.Core.Configuration.StorageOptions;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Compression;
@@ -22,6 +21,11 @@ using MethodCache.Providers.Redis.Services;
 using Testcontainers.Redis;
 using Xunit;
 using DotNet.Testcontainers.Builders;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
+using MethodCache.Core.Storage.Layers.Memory;
 using StackExchange.Redis;
 
 namespace MethodCache.Providers.Redis.IntegrationTests.Tests;
@@ -272,7 +276,7 @@ internal static class RedisInfrastructureTestExtensions
         services.AddMethodCache();
 
         // Ensure IMemoryStorage is registered as singleton BEFORE AddCacheInfrastructure
-        services.TryAddSingleton<MethodCache.Core.Storage.IMemoryStorage, MethodCache.Core.Storage.MemoryStorage>();
+        services.TryAddSingleton<IMemoryStorage, MemoryStorage>();
 
         // Add core infrastructure for hybrid manager (same as SqlServer tests)
         services.AddCacheInfrastructure();
@@ -280,7 +284,7 @@ internal static class RedisInfrastructureTestExtensions
         // Register custom storage coordinator that uses Redis as L2
         services.AddScoped<StorageCoordinator>(provider =>
         {
-            var l1Storage = provider.GetRequiredService<MethodCache.Core.Storage.IMemoryStorage>();
+            var l1Storage = provider.GetRequiredService<IMemoryStorage>();
             var infraOptions = provider.GetRequiredService<IOptions<InfraStorageOptions>>();
             var coreOptions = Options.Create(new StorageOptions
             {
@@ -309,11 +313,11 @@ internal static class RedisInfrastructureTestExtensions
 
         // Register Core IHybridCacheManager implementation that delegates to StorageCoordinator
         // Use Replace to ensure this overrides any subsequent registrations
-        services.Replace(ServiceDescriptor.Scoped<MethodCache.Core.Storage.IHybridCacheManager>(provider =>
+        services.Replace(ServiceDescriptor.Scoped<IHybridCacheManager>(provider =>
         {
             Console.WriteLine("DEBUG: IHybridCacheManager factory method called - creating TestHybridCacheManager");
             var storageCoordinator = provider.GetRequiredService<StorageCoordinator>();
-            var l1Storage = provider.GetRequiredService<MethodCache.Core.Storage.IMemoryStorage>();
+            var l1Storage = provider.GetRequiredService<IMemoryStorage>();
             var l2Storage = provider.GetRequiredService<MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider>();
 
             return new TestHybridCacheManager(storageCoordinator, l1Storage, l2Storage);
@@ -413,10 +417,10 @@ internal class InfrastructureCacheManager : ICacheManager
 /// </summary>
 internal class StorageProviderCacheManager : ICacheManager
 {
-    private readonly MethodCache.Core.Storage.IStorageProvider _storageProvider;
+    private readonly IStorageProvider _storageProvider;
     private readonly ICacheKeyGenerator _keyGenerator;
 
-    public StorageProviderCacheManager(MethodCache.Core.Storage.IStorageProvider storageProvider, ICacheKeyGenerator keyGenerator)
+    public StorageProviderCacheManager(IStorageProvider storageProvider, ICacheKeyGenerator keyGenerator)
     {
         _storageProvider = storageProvider;
         _keyGenerator = keyGenerator;
@@ -494,15 +498,15 @@ internal class StorageProviderCacheManager : ICacheManager
 /// <summary>
 /// Test adapter that implements Core.IHybridCacheManager and delegates to StorageCoordinator
 /// </summary>
-internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheManager
+internal class TestHybridCacheManager : IHybridCacheManager
 {
     private readonly StorageCoordinator _storageCoordinator;
-    private readonly MethodCache.Core.Storage.IMemoryStorage _l1Storage;
+    private readonly IMemoryStorage _l1Storage;
     private readonly MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider _l2Storage;
 
     public TestHybridCacheManager(
         StorageCoordinator storageCoordinator,
-        MethodCache.Core.Storage.IMemoryStorage l1Storage,
+        IMemoryStorage l1Storage,
         MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider l2Storage)
     {
         Console.WriteLine("DEBUG: TestHybridCacheManager constructor called");
@@ -661,10 +665,10 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
         return Task.CompletedTask;
     }
 
-    public async Task<MethodCache.Core.Storage.HybridCacheStats> GetStatsAsync()
+    public async Task<HybridCacheStats> GetStatsAsync()
     {
         var stats = await _storageCoordinator.GetStatsAsync();
-        return new MethodCache.Core.Storage.HybridCacheStats
+        return new HybridCacheStats
         {
             L1Hits = stats?.AdditionalStats?.TryGetValue("L1Hits", out var l1Hits) == true ? Convert.ToInt64(l1Hits) : 0,
             L1Misses = stats?.AdditionalStats?.TryGetValue("L1Misses", out var l1Misses) == true ? Convert.ToInt64(l1Misses) : 0,

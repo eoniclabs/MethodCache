@@ -1,15 +1,9 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using MethodCache.Core.Configuration;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Infrastructure.Utilities
 {
     /// <summary>
     /// Calculates memory usage for cache entries using different strategies.

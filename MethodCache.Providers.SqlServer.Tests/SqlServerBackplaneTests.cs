@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Infrastructure;
 using MethodCache.Providers.SqlServer.Services;

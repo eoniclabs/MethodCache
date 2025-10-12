@@ -1,6 +1,4 @@
-using System;
-
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Layers;
 
 /// <summary>
 /// Configuration options for storage layers.

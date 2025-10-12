@@ -3,6 +3,7 @@ using Xunit.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Models;
 

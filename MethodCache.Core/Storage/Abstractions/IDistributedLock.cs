@@ -1,8 +1,4 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace MethodCache.Core.Storage
+namespace MethodCache.Core.Storage.Abstractions
 {
     /// <summary>
     /// Provides distributed locking capabilities across multiple instances

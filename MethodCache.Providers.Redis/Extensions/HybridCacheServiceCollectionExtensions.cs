@@ -9,6 +9,8 @@ using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Infrastructure;
 using System;
+using MethodCache.Core.Storage.Coordination;
+using L1EvictionPolicy = MethodCache.Core.Storage.Coordination.L1EvictionPolicy;
 
 namespace MethodCache.Providers.Redis.Extensions
 {
@@ -73,7 +75,7 @@ namespace MethodCache.Providers.Redis.Extensions
             this HybridCacheOptions options,
             long maxItems = 10000,
             TimeSpan? defaultExpiration = null,
-            MethodCache.Core.Storage.L1EvictionPolicy evictionPolicy = MethodCache.Core.Storage.L1EvictionPolicy.LRU)
+            L1EvictionPolicy evictionPolicy = L1EvictionPolicy.LRU)
         {
             options.L1MaxItems = maxItems;
             options.L1DefaultExpiration = defaultExpiration ?? TimeSpan.FromMinutes(5);

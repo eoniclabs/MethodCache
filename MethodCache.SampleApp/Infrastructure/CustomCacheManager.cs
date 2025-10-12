@@ -2,6 +2,7 @@ using MethodCache.Core;
 using MethodCache.Core.Runtime;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using MethodCache.Core.Infrastructure;
 
 namespace MethodCache.SampleApp.Infrastructure
 {

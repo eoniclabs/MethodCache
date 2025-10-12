@@ -5,7 +5,8 @@ using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
-using MethodCache.Core.Extensions;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -115,7 +116,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
                 storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
                 storageOptions.EnableBackplane = true;
             });
-        services1.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services1.Configure<HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
             hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
@@ -142,7 +143,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
                 storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
                 storageOptions.EnableBackplane = true;
             });
-        services2.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services2.Configure<HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
             hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);

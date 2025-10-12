@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Abstractions;
 
 /// <summary>
 /// Base interface for all cache provider builders.

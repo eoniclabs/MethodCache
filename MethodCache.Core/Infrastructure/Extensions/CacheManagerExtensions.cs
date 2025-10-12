@@ -1,20 +1,13 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Fluent;
-using MethodCache.Core.Extensions;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Extensions
+namespace MethodCache.Core.Infrastructure.Extensions
 {
     /// <summary>
     /// Fluent helpers for consuming <see cref="ICacheManager"/> outside of source-generated proxies.

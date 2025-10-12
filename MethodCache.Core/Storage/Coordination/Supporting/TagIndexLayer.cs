@@ -1,13 +1,9 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using MethodCache.Core.Storage.Coordination.Layers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Supporting;
 
 /// <summary>
 /// Layer responsible for tracking key-to-tag and tag-to-key mappings.

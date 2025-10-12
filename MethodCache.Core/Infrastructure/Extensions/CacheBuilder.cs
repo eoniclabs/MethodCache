@@ -1,17 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
+using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Options;
-using MethodCache.Core.Metrics;
-using MethodCache.Core.Extensions;
 using MethodCache.Core.Runtime;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Extensions
+namespace MethodCache.Core.Infrastructure.Extensions
 {
     /// <summary>
     /// Fluent builder for configuring cache operations with method chaining.

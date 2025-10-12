@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Configuration
 {
     /// <summary>
     /// Options for configuring automatic service registration with MethodCache.

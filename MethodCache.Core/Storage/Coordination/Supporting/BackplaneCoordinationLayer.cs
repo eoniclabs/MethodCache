@@ -1,12 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination.Layers;
+using MethodCache.Core.Storage.Layers.Memory;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Supporting;
 
 /// <summary>
 /// Layer responsible for cross-instance cache invalidation coordination via backplane (e.g., Redis Pub/Sub).

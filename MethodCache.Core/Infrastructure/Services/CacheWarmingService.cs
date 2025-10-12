@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
 using System.Collections.Concurrent;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Core.Infrastructure.Services
 {

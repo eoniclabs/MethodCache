@@ -1,7 +1,6 @@
-using System;
-using System.Threading.Tasks;
+using MethodCache.Core.Infrastructure;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Storage.Abstractions
 {
     /// <summary>
     /// Defines a memory cache interface for in-process caching operations.

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Abstractions;
 
 /// <summary>
 /// Defines a persistent storage provider for long-term cache storage (L3 layer).

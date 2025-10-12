@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Abstractions;
 
 /// <summary>
 /// Builder interface for configuring MethodCache with different storage layers.

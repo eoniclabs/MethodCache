@@ -1,19 +1,17 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reflection;
+using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Fluent;
 using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Configuration.Resolver;
-using MethodCache.Core.Configuration.Sources;
 using MethodCache.Core.Configuration.Runtime;
+using MethodCache.Core.Configuration.Sources;
 using MethodCache.Core.Runtime.Defaults;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Infrastructure.Extensions
 {
     public static class MethodCacheServiceCollectionExtensions
     {

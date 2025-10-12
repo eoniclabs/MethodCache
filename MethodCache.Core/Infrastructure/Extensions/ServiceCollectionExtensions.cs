@@ -1,17 +1,19 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using MethodCache.Core.Storage;
-using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure.Configuration;
 using MethodCache.Core.Infrastructure.Serialization;
 using MethodCache.Core.Infrastructure.Services;
-using MethodCache.Core.Infrastructure.Configuration;
+using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
+using MethodCache.Core.Storage.Layers.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using McmMemoryCacheOptions = Microsoft.Extensions.Caching.Memory.MemoryCacheOptions;
 
-namespace MethodCache.Core.Extensions;
+namespace MethodCache.Core.Infrastructure.Extensions;
 
 /// <summary>
 /// Extension methods for configuring MethodCache services.
@@ -32,7 +34,7 @@ public static class ServiceCollectionExtensions
         RegisterCoreServices(services);
 
         // Create builder with default L1 memory provider
-        var builder = new Storage.MethodCacheBuilder(services);
+        var builder = new MethodCacheBuilder(services);
 
         // Add default memory L1 provider
         return builder.WithL1(Memory.Default());
@@ -51,7 +53,7 @@ public static class ServiceCollectionExtensions
         // Register core MethodCache services
         RegisterCoreServices(services);
 
-        return new Storage.MethodCacheBuilder(services);
+        return new MethodCacheBuilder(services);
     }
 
     private static void RegisterCoreServices(IServiceCollection services)

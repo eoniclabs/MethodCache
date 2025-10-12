@@ -1,5 +1,6 @@
 using MessagePack;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Core.Infrastructure.Serialization;
 

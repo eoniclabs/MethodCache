@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using FluentAssertions;
+using MethodCache.Core.Infrastructure;
 using MethodCache.OpenTelemetry.Configuration;
 using MethodCache.OpenTelemetry.Metrics;
 using Microsoft.Extensions.Options;
@@ -132,10 +133,10 @@ public class CacheMeterProviderTests
         var latencyMs = 50L;
 
         // Act & Assert - Should not throw
-        ((Core.ICacheMetricsProvider)_meterProvider).CacheHit(methodName);
-        ((Core.ICacheMetricsProvider)_meterProvider).CacheMiss(methodName);
-        ((Core.ICacheMetricsProvider)_meterProvider).CacheError(methodName, errorMessage);
-        ((Core.ICacheMetricsProvider)_meterProvider).CacheLatency(methodName, latencyMs);
+        ((ICacheMetricsProvider)_meterProvider).CacheHit(methodName);
+        ((ICacheMetricsProvider)_meterProvider).CacheMiss(methodName);
+        ((ICacheMetricsProvider)_meterProvider).CacheError(methodName, errorMessage);
+        ((ICacheMetricsProvider)_meterProvider).CacheLatency(methodName, latencyMs);
     }
 
     [Fact]

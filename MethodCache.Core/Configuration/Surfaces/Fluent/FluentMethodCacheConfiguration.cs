@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using MethodCache.Core.Configuration.Policies;
-using MethodCache.Core.Metrics;
+using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
 

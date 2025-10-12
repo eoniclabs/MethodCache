@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Layers;
 
 /// <summary>
 /// Represents a single layer in the storage pipeline with its own metrics and lifecycle.

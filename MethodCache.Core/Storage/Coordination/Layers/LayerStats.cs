@@ -1,6 +1,4 @@
-using System.Collections.Generic;
-
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Layers;
 
 /// <summary>
 /// Statistics for a storage layer.

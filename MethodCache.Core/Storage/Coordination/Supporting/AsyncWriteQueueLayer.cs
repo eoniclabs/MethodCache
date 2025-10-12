@@ -1,13 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
+using MethodCache.Core.Storage.Coordination.Layers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Supporting;
 
 /// <summary>
 /// Layer that provides async write queuing for expensive operations.

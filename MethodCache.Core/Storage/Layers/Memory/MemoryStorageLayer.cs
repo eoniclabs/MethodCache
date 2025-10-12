@@ -1,12 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination.Layers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Layers.Memory;
 
 /// <summary>
 /// L1 memory storage layer providing fast in-memory caching.

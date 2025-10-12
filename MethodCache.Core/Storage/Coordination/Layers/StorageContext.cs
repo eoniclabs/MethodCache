@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Layers;
 
 /// <summary>
 /// Context passed through the storage pipeline, tracking operation metadata and layer interactions.
