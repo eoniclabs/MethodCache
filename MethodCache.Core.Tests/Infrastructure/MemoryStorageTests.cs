@@ -6,7 +6,7 @@ using MethodCache.Core.Configuration;
 using MethodCache.Core.Storage;
 using Xunit;
 
-namespace MethodCache.Infrastructure.Tests;
+namespace MethodCache.Core.Tests.Infrastructure;
 
 public class MemoryStorageTests : IDisposable
 {
@@ -22,7 +22,7 @@ public class MemoryStorageTests : IDisposable
             EnableEfficientL1TagInvalidation = true,
             MaxTagMappings = 1000
         };
-        _storage = new MemoryStorage(_memoryCache, Options.Create(_options), NullLogger<MemoryStorage>.Instance);
+        _storage = new MemoryStorage(_memoryCache, Microsoft.Extensions.Options.Options.Create(_options), NullLogger<MemoryStorage>.Instance);
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class MemoryStorageTests : IDisposable
         };
         var storageWithoutTags = new MemoryStorage(
             _memoryCache,
-            Options.Create(optionsWithoutTagInvalidation),
+            Microsoft.Extensions.Options.Options.Create(optionsWithoutTagInvalidation),
             NullLogger<MemoryStorage>.Instance);
 
         storageWithoutTags.Set("key1", "value1", TimeSpan.FromMinutes(1));
@@ -291,7 +291,7 @@ public class MemoryStorageTests : IDisposable
         };
         var limitedStorage = new MemoryStorage(
             new MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
-            Options.Create(limitedOptions),
+            Microsoft.Extensions.Options.Options.Create(limitedOptions),
             NullLogger<MemoryStorage>.Instance);
 
         // Act

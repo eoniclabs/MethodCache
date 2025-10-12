@@ -1,7 +1,7 @@
 using MessagePack;
 using MethodCache.Core.Storage;
 
-namespace MethodCache.Infrastructure.Implementation;
+namespace MethodCache.Core.Infrastructure.Serialization;
 
 /// <summary>
 /// MessagePack implementation of ISerializer.

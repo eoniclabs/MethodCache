@@ -2,7 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Services;
+using MethodCache.Core.Infrastructure.Services;
 using MethodCache.Providers.Redis.Configuration;
 using StackExchange.Redis;
 using System;

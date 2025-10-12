@@ -10,7 +10,7 @@ using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Extensions;
+using MethodCache.Core.Extensions;
 using InfraStorageOptions = MethodCache.Core.Configuration.StorageOptions;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.Extensions;
