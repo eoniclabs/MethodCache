@@ -18,6 +18,11 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
+    <PackageReference Include="LazyCache" Version="2.4.0" />
+    <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.0.0" />
+    <PackageReference Include="EasyCaching.InMemory" Version="1.9.2" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.25" />
     <PackageReference Include="MessagePack" Version="3.1.4" />
     <PackageReference Include="System.Text.Json" Version="9.0.9" />
@@ -27,6 +32,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\MethodCache.Providers.Memory\MethodCache.Providers.Memory.csproj" />
     <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
     <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" />
     <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" />

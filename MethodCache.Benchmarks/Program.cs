@@ -30,27 +30,27 @@ public class Program
             case "basic":
                 BenchmarkRunner.Run<BasicCachingBenchmarks>(config);
                 break;
-                
+
             case "providers":
                 BenchmarkRunner.Run<CacheProviderComparisonBenchmarks>(config);
                 break;
-                
+
             case "concurrent":
                 BenchmarkRunner.Run<ConcurrentAccessBenchmarks>(config);
                 break;
-                
+
             case "memory":
                 BenchmarkRunner.Run<MemoryUsageBenchmarks>(config);
                 break;
-                
+
             case "realworld":
                 BenchmarkRunner.Run<RealWorldScenarioBenchmarks>(config);
                 break;
-                
+
             case "generic":
                 BenchmarkRunner.Run<GenericInterfaceBenchmarks>(config);
                 break;
-                
+
             case "serialization":
                 BenchmarkRunner.Run<SerializationBenchmarks>(config);
                 break;
@@ -59,10 +59,26 @@ public class Program
                 BenchmarkRunner.Run<QuickCachingBenchmarks>(config);
                 break;
 
+            case "baseline":
+                BenchmarkRunner.Run<BaselineComparisonBenchmarks>(config);
+                break;
+
+            case "comparison":
+                BenchmarkRunner.Run<Comparison.UnifiedCacheComparisonBenchmarks>(config);
+                break;
+
+            case "quickcompare":
+                BenchmarkRunner.Run<Comparison.QuickMethodCacheTest>(config);
+                break;
+
+            case "realcompare":
+                BenchmarkRunner.Run<Comparison.RealMethodCacheComparison>(config);
+                break;
+
             case "all":
                 RunAllBenchmarks(config);
                 break;
-                
+
             default:
                 Console.WriteLine($"Unknown benchmark category: {args[0]}");
                 ShowHelp();
@@ -76,6 +92,8 @@ public class Program
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
         Console.WriteLine("  basic        - Basic caching operations (hit/miss, different data sizes)");
+        Console.WriteLine("  baseline     - Compare with Microsoft.Extensions.Caching.Memory and LazyCache");
+        Console.WriteLine("  comparison   - Unified comparison: MethodCache vs FusionCache vs EasyCaching vs LazyCache");
         Console.WriteLine("  providers    - Compare different cache providers (InMemory, Redis, Hybrid)");
         Console.WriteLine("  concurrent   - Concurrent access and scalability tests");
         Console.WriteLine("  memory       - Memory usage and GC pressure analysis");
@@ -87,6 +105,8 @@ public class Program
         Console.WriteLine("");
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run -- basic");
+        Console.WriteLine("  dotnet run -- baseline");
+        Console.WriteLine("  dotnet run -- comparison");
         Console.WriteLine("  dotnet run -- providers");
         Console.WriteLine("  dotnet run -- all");
     }
