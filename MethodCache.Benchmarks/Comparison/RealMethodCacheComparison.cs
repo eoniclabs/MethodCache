@@ -4,16 +4,17 @@ using Microsoft.Extensions.Caching.Memory;
 using MethodCache.Benchmarks.Comparison.Services;
 using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.Providers.Memory.Extensions;
+using MethodCache.Providers.FastCache.Extensions;
 
 namespace MethodCache.Benchmarks.Comparison;
 
 /// <summary>
 /// Real-world comparison showing actual MethodCache performance (via source generation)
 /// vs Microsoft.Extensions.Caching.Memory baseline
-/// Includes both Core InMemory and AdvancedMemory providers
+/// Includes Core InMemory, AdvancedMemory, and FastCache providers
 ///
 /// IMPORTANT: This benchmark shows how MethodCache is actually used by developers.
-/// Results: MethodCache 15-58 ns vs baseline 658 ns (10-40x faster)
+/// Results: MethodCache 58-166 ns vs baseline 468-766 ns (5-13x faster)
 ///
 /// For adapter-based comparison (normalized but with overhead), see UnifiedCacheComparisonBenchmarks.cs
 /// For comprehensive explanation, see Comparison/README.md and BENCHMARKING_GUIDE.md
@@ -28,6 +29,7 @@ public class RealMethodCacheComparison
 
     private ICachedDataService _realMethodCache = null!;
     private ICachedDataService _advancedMemoryCache = null!;
+    private ICachedDataService _fastCache = null!;
     private IMemoryCache _baselineCache = null!;
 
     [GlobalSetup]
@@ -60,12 +62,27 @@ public class RealMethodCacheComparison
         var advancedServiceProvider = advancedServices.BuildServiceProvider();
         _advancedMemoryCache = advancedServiceProvider.GetRequiredService<ICachedDataService>();
 
+        // Setup MethodCache with FastCache provider (ultra-fast minimal overhead)
+        var fastServices = new ServiceCollection();
+        fastServices.AddLogging();
+        fastServices.AddMethodCache(config =>
+        {
+            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        }, typeof(FastCacheCachedService).Assembly);
+        fastServices.AddFastCacheStorage(); // Use the ultra-fast FastCache provider
+        fastServices.AddSingleton<ICachedDataService, FastCacheCachedService>();
+        fastServices.AddSingleton<FastCacheCachedService>();
+
+        var fastServiceProvider = fastServices.BuildServiceProvider();
+        _fastCache = fastServiceProvider.GetRequiredService<ICachedDataService>();
+
         // Setup baseline Microsoft.Extensions.Caching.Memory
         _baselineCache = new MemoryCache(new MemoryCacheOptions());
 
         // Warmup all caches
         _realMethodCache.GetData(TestKey);
         _advancedMemoryCache.GetData(TestKey);
+        _fastCache.GetData(TestKey);
         _baselineCache.Set(TestKey, TestPayload, TimeSpan.FromMinutes(10));
     }
 
@@ -75,6 +92,7 @@ public class RealMethodCacheComparison
         // Ensure all caches are warm for every iteration
         _realMethodCache.GetData(TestKey);
         _advancedMemoryCache.GetData(TestKey);
+        _fastCache.GetData(TestKey);
         _baselineCache.Set(TestKey, TestPayload, TimeSpan.FromMinutes(10));
     }
 
@@ -90,6 +108,13 @@ public class RealMethodCacheComparison
     {
         // Uses AdvancedMemoryStorage provider (with tags, stats, etc.)
         return _advancedMemoryCache.GetData(TestKey);
+    }
+
+    [Benchmark]
+    public SamplePayload MethodCache_FastCache_Hit()
+    {
+        // Uses FastCacheStorage provider (ultra-fast minimal overhead)
+        return _fastCache.GetData(TestKey);
     }
 
     [Benchmark(Baseline = true)]
@@ -108,6 +133,12 @@ public class RealMethodCacheComparison
     public async Task<SamplePayload> MethodCache_AdvancedMemory_HitAsync()
     {
         return await _advancedMemoryCache.GetDataAsync(TestKey);
+    }
+
+    [Benchmark]
+    public async Task<SamplePayload> MethodCache_FastCache_HitAsync()
+    {
+        return await _fastCache.GetDataAsync(TestKey);
     }
 
     [Benchmark]
