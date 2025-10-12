@@ -10,16 +10,6 @@ namespace MethodCache.Core.Configuration
     public static class ETagMetadataExtensions
     {
         /// <summary>
-        /// Extracts ETag metadata from CacheRuntimeDescriptor.
-        /// Parses the existing etag.* keys used by the policy pipeline.
-        /// </summary>
-        public static ETagMetadata? GetETagMetadata(this CacheRuntimeDescriptor descriptor)
-        {
-            if (descriptor?.Metadata == null) return null;
-            return ParseETagMetadataFromPolicyKeys(descriptor.Metadata);
-        }
-
-        /// <summary>
         /// Extracts ETag metadata from CachePolicy.
         /// Parses the existing etag.* keys used by the policy pipeline.
         /// </summary>

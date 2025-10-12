@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using MethodCache.Core.Runtime;
 
@@ -30,6 +31,8 @@ namespace MethodCache.Core
     /// </example>
     public interface ICacheManager
     {
+        // ============= New CacheRuntimePolicy-based methods (preferred) =============
+
         /// <summary>
         /// Retrieves a cached value or executes the factory function to create and cache a new value.
         /// This is the primary method for caching method results.
@@ -38,21 +41,22 @@ namespace MethodCache.Core
         /// <param name="methodName">Name of the method being cached (used for key generation)</param>
         /// <param name="args">Method arguments (used for key generation to differentiate cache entries)</param>
         /// <param name="factory">Factory function to execute if cache miss occurs</param>
-        /// <param name="descriptor">Runtime descriptor containing cache policy and options</param>
+        /// <param name="policy">Runtime policy containing cache configuration and options</param>
         /// <param name="keyGenerator">Strategy for generating cache keys from method name and arguments</param>
         /// <returns>The cached or newly created value</returns>
-        /// <example>
-        /// <code>
-        /// var product = await cacheManager.GetOrCreateAsync(
-        ///     methodName: "GetProduct",
-        ///     args: new object[] { productId, includeDetails },
-        ///     factory: () => productService.GetProductAsync(productId, includeDetails),
-        ///     descriptor: descriptor,
-        ///     keyGenerator: new JsonKeyGenerator()
-        /// );
-        /// </code>
-        /// </example>
-        Task<T> GetOrCreateAsync<T>(string methodName, object[] args, System.Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator);
+        Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator);
+
+        /// <summary>
+        /// Attempts to retrieve a value from the cache without executing a factory function.
+        /// This is a fast, read-only path that bypasses factory execution and reduces overhead.
+        /// </summary>
+        /// <typeparam name="T">Type of cached value</typeparam>
+        /// <param name="methodName">Method name for key generation</param>
+        /// <param name="args">Method arguments for key generation</param>
+        /// <param name="policy">Runtime policy for key generation</param>
+        /// <param name="keyGenerator">Key generator instance</param>
+        /// <returns>The cached value if found, or default(T) if not in cache</returns>
+        ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator);
 
         /// <summary>
         /// Invalidates all cache entries associated with the specified tags.
@@ -103,36 +107,5 @@ namespace MethodCache.Core
         /// </code>
         /// </example>
         Task InvalidateByTagPatternAsync(string pattern);
-
-        /// <summary>
-        /// Attempts to retrieve a value from the cache without executing a factory function.
-        /// This is a fast, read-only path that bypasses factory execution and reduces overhead.
-        /// </summary>
-        /// <typeparam name="T">Type of cached value</typeparam>
-        /// <param name="methodName">Method name for key generation</param>
-        /// <param name="args">Method arguments for key generation</param>
-        /// <param name="descriptor">Runtime descriptor for key generation</param>
-        /// <param name="keyGenerator">Key generator instance</param>
-        /// <returns>The cached value if found, or default(T) if not in cache</returns>
-        /// <example>
-        /// <code>
-        /// var cachedUser = await cacheManager.TryGetAsync&lt;User&gt;(
-        ///     methodName: "GetUser",
-        ///     args: new object[] { userId },
-        ///     descriptor: descriptor,
-        ///     keyGenerator: new FastHashKeyGenerator()
-        /// );
-        ///
-        /// if (cachedUser != null)
-        /// {
-        ///     // Use cached value
-        /// }
-        /// else
-        /// {
-        ///     // Not in cache, need to fetch from source
-        /// }
-        /// </code>
-        /// </example>
-        ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator);
     }
 }

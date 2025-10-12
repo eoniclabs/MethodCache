@@ -75,7 +75,7 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
             
             // Test Redis connectivity
             var cacheManager = provider.GetRequiredService<ICacheManager>();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty, CachePolicyFields.None);
             cacheManager.GetOrCreateAsync("test", Array.Empty<object>(), () => Task.FromResult("test"),
                 descriptor, provider.GetRequiredService<ICacheKeyGenerator>())
                 .Wait(TimeSpan.FromSeconds(5));

@@ -40,14 +40,17 @@ namespace MethodCache.Core.KeyGenerators;
 /// </example>
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+        => GenerateKeyInternal(methodName, args, policy.Version);
+
+    private static string GenerateKeyInternal(string methodName, object[] args, int? version)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (descriptor.Version.HasValue)
+        if (version.HasValue)
         {
-            keyBuilder.Append($"_v{descriptor.Version.Value}");
+            keyBuilder.Append($"_v{version.Value}");
         }
 
         foreach (var arg in args)
@@ -69,9 +72,9 @@ public class JsonKeyGenerator : ICacheKeyGenerator
         {
             var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
             var base64Hash = Convert.ToBase64String(hash);
-            if (descriptor.Version.HasValue)
+            if (version.HasValue)
             {
-                return $"{base64Hash}_v{descriptor.Version.Value}";
+                return $"{base64Hash}_v{version.Value}";
             }
             return base64Hash;
         }

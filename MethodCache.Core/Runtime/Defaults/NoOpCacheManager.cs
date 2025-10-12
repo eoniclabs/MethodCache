@@ -5,11 +5,21 @@ namespace MethodCache.Core.Runtime.Defaults
 {
     public class NoOpCacheManager : ICacheManager
     {
-        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+        // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
+        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             // Always execute the factory, effectively disabling caching
             return factory();
         }
+
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        {
+            // Always return cache miss for no-op cache
+            return new ValueTask<T?>(default(T));
+        }
+
+        // ============= Invalidation methods =============
 
         public Task InvalidateByTagsAsync(params string[] tags)
         {
@@ -25,12 +35,6 @@ namespace MethodCache.Core.Runtime.Defaults
         public Task InvalidateByTagPatternAsync(string pattern)
         {
             return Task.CompletedTask;
-        }
-
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-        {
-            // Always return cache miss for no-op cache
-            return new ValueTask<T?>(default(T));
         }
     }
 }

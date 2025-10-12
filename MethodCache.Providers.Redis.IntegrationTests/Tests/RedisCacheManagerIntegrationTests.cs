@@ -16,7 +16,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         // Arrange
         var methodName = "TestMethod";
         var args = new object[] { "testArg" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var keyGenerator = ServiceProvider.GetRequiredService<ICacheKeyGenerator>();
         var callCount = 0;
         
@@ -48,7 +48,7 @@ public class RedisCacheManagerIntegrationTests : RedisIntegrationTestBase
         // Arrange
         var methodName = "ComplexObjectMethod";
         var args = new object[] { 123 };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var keyGenerator = ServiceProvider.GetRequiredService<ICacheKeyGenerator>();
         
         var complexObject = new TestComplexObject

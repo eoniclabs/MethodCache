@@ -346,9 +346,9 @@ internal class InfrastructureCacheManager : ICacheManager
         _keyGenerator = keyGenerator;
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
         // Try to get from cache first
         var cachedValue = await _storageCoordinator.GetAsync<T>(cacheKey);
@@ -361,16 +361,16 @@ internal class InfrastructureCacheManager : ICacheManager
         var result = await factory();
         if (result != null)
         {
-            var expiration = descriptor.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageCoordinator.SetAsync(cacheKey, result, expiration, descriptor.Tags ?? new List<string>()).ConfigureAwait(false);
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageCoordinator.SetAsync(cacheKey, result, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return result;
     }
 
-    public Task RemoveAsync(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public Task RemoveAsync(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
         return _storageCoordinator.RemoveAsync(cacheKey).AsTask();
     }
 
@@ -401,9 +401,9 @@ internal class InfrastructureCacheManager : ICacheManager
         return _storageCoordinator.RemoveByTagAsync(pattern).AsTask();
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
         return await _storageCoordinator.GetAsync<T>(cacheKey);
     }
 }
@@ -422,9 +422,9 @@ internal class StorageProviderCacheManager : ICacheManager
         _keyGenerator = keyGenerator;
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
 
         var cached = await _storageProvider.GetAsync<T>(key);
         if (cached != null)
@@ -435,8 +435,8 @@ internal class StorageProviderCacheManager : ICacheManager
         var value = await factory();
         if (value != null)
         {
-            var expiration = descriptor.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageProvider.SetAsync(key, value, expiration, descriptor.Tags ?? new List<string>()).ConfigureAwait(false);
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageProvider.SetAsync(key, value, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return value;
@@ -449,7 +449,13 @@ internal class StorageProviderCacheManager : ICacheManager
 
     public Task InvalidateAsync(string methodName, params object[] args)
     {
-        var key = _keyGenerator.GenerateKey(methodName, args, CacheRuntimeDescriptor.FromPolicy("temp", CachePolicy.Empty, CachePolicyFields.None));
+        var policy = new CacheRuntimePolicy
+        {
+            MethodId = methodName,
+            Duration = TimeSpan.FromMinutes(1),
+            Tags = new List<string>()
+        };
+        var key = _keyGenerator.GenerateKey(methodName, args, policy);
         return _storageProvider.RemoveAsync(key).AsTask();
     }
 
@@ -464,9 +470,9 @@ internal class StorageProviderCacheManager : ICacheManager
         return _storageProvider.RemoveByTagAsync(pattern).AsTask();
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
         return await _storageProvider.GetAsync<T>(key);
     }
 
@@ -507,9 +513,9 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
     }
 
     // ICacheManager implementation - delegate to hybrid storage with proper L1 population
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
         // Try to get from cache first (this will search L1, then L2)
         var cached = await _storageCoordinator.GetAsync<T>(cacheKey);
@@ -522,8 +528,8 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
         var result = await factory();
         if (result != null)
         {
-            var expiration = descriptor.Duration ?? TimeSpan.FromMinutes(10);
-            var tags = descriptor.Tags ?? new List<string>();
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(10);
+            var tags = policy.Tags ?? new List<string>();
 
             // Store via hybrid storage (handles L1+L2 coordination)
             await _storageCoordinator.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
@@ -535,9 +541,9 @@ internal class TestHybridCacheManager : MethodCache.Core.Storage.IHybridCacheMan
         return result;
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
         return await _storageCoordinator.GetAsync<T>(cacheKey);
     }
 
@@ -728,8 +734,8 @@ internal class LazyRedisCacheManager : ICacheManager
     }
 
     // Delegate all ICacheManager calls to the lazy instance
-    public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-        => _lazyCacheManager.Value.GetOrCreateAsync(methodName, args, factory, descriptor, keyGenerator);
+    public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        => _lazyCacheManager.Value.GetOrCreateAsync(methodName, args, factory, policy, keyGenerator);
 
     public Task InvalidateByTagsAsync(params string[] tags)
         => _lazyCacheManager.Value.InvalidateByTagsAsync(tags);
@@ -740,8 +746,8 @@ internal class LazyRedisCacheManager : ICacheManager
     public Task InvalidateByTagPatternAsync(string pattern)
         => _lazyCacheManager.Value.InvalidateByTagPatternAsync(pattern);
 
-    public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-        => _lazyCacheManager.Value.TryGetAsync<T>(methodName, args, descriptor, keyGenerator);
+    public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        => _lazyCacheManager.Value.TryGetAsync<T>(methodName, args, policy, keyGenerator);
 }
 
 /// <summary>
@@ -764,9 +770,9 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
         _keyGenerator = new DefaultCacheKeyGenerator();
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
         var redisKey = $"{_options.KeyPrefix}{key}";
 
         try
@@ -790,7 +796,7 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
             try
             {
                 var serialized = System.Text.Json.JsonSerializer.Serialize(value);
-                var expiration = descriptor.Duration ?? TimeSpan.FromMinutes(15);
+                var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
                 await _database.StringSetAsync(redisKey, serialized, expiration);
             }
             catch (Exception ex)
@@ -824,9 +830,9 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
         return InvalidateByPatternAsync(redisPattern);
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
         var redisKey = $"{_options.KeyPrefix}{key}";
 
         try

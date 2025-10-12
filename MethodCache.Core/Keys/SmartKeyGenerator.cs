@@ -25,7 +25,7 @@ namespace MethodCache.Core.KeyGenerators
             _factory = factory;
         }
 
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             try
             {
@@ -34,7 +34,7 @@ namespace MethodCache.Core.KeyGenerators
             catch
             {
                 // Fall back to JSON generator if smart key generation fails
-                return _fallbackGenerator.GenerateKey(methodName, args, descriptor);
+                return _fallbackGenerator.GenerateKey(methodName, args, policy);
             }
         }
 

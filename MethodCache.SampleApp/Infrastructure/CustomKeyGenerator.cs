@@ -24,17 +24,17 @@ namespace MethodCache.SampleApp.Infrastructure
             };
         }
 
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             var keyComponents = new StringBuilder();
-            
+
             // Method name as base
             keyComponents.Append($"method:{methodName}");
 
             // Add version if specified
-            if (descriptor.Version.HasValue)
+            if (policy.Version.HasValue)
             {
-                keyComponents.Append($"_v:{descriptor.Version}");
+                keyComponents.Append($"_v:{policy.Version}");
             }
 
             // Process arguments
@@ -53,22 +53,22 @@ namespace MethodCache.SampleApp.Infrastructure
             }
 
             // Add tags for additional context
-            if (descriptor.Tags?.Count > 0)
+            if (policy.Tags?.Count > 0)
             {
-                var sortedTags = string.Join(",", descriptor.Tags.OrderBy(t => t));
+                var sortedTags = string.Join(",", policy.Tags.OrderBy(t => t));
                 keyComponents.Append($"_tags:{sortedTags}");
             }
 
             var rawKey = keyComponents.ToString();
-            
+
             // Generate hash for consistent length and avoid key collision
             var hash = GenerateHash(rawKey);
-            
+
             // Create final key with readable prefix and hash
             var finalKey = $"cache:{methodName.Split('.').LastOrDefault()}:{hash}";
-            
+
             Console.WriteLine($"[KEY GENERATOR] {methodName} -> {finalKey}");
-            
+
             return finalKey;
         }
 
@@ -166,30 +166,30 @@ namespace MethodCache.SampleApp.Infrastructure
     {
         private readonly ConcurrentCache<string, string> _keyCache = new();
 
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             // For methods with no arguments, cache the key
             if (args.Length == 0)
             {
-                var cacheKey = $"{methodName}_v{descriptor.Version ?? 0}";
-                return _keyCache.GetOrAdd(cacheKey, key => $"fast:{methodName}:v{descriptor.Version ?? 0}:noargs");
+                var cacheKey = $"{methodName}_v{policy.Version ?? 0}";
+                return _keyCache.GetOrAdd(cacheKey, key => $"fast:{methodName}:v{policy.Version ?? 0}:noargs");
             }
 
             // For simple argument patterns, use optimized path
             if (args.Length == 1 && IsSimpleType(args[0]))
             {
-                return $"fast:{methodName}:v{descriptor.Version ?? 0}:{args[0]}";
+                return $"fast:{methodName}:v{policy.Version ?? 0}:{args[0]}";
             }
 
             // Fall back to more complex key generation for complex arguments
-            var keyBuilder = new StringBuilder($"fast:{methodName}:v{descriptor.Version ?? 0}:");
-            
+            var keyBuilder = new StringBuilder($"fast:{methodName}:v{policy.Version ?? 0}:");
+
             foreach (var arg in args)
             {
                 keyBuilder.Append(GetSimpleKey(arg));
                 keyBuilder.Append('_');
             }
-            
+
             // Remove trailing underscore
             if (keyBuilder.Length > 0 && keyBuilder[^1] == '_')
                 keyBuilder.Length--;

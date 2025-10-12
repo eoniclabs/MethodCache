@@ -106,9 +106,9 @@ namespace MethodCache.ETags.Middleware
         public string[]? PersonalizationHeaders { get; set; }
 
         /// <summary>
-        /// Gets the runtime descriptor for storing ETag entries.
+        /// Gets the runtime policy for storing ETag entries.
         /// </summary>
-        internal CacheRuntimeDescriptor GetRuntimeDescriptor()
+        internal CacheRuntimePolicy GetRuntimeDescriptor()
         {
             var policy = CachePolicy.Empty with
             {
@@ -116,7 +116,7 @@ namespace MethodCache.ETags.Middleware
                 Tags = DefaultTags ?? Array.Empty<string>()
             };
 
-            return CacheRuntimeDescriptor.FromPolicy(
+            return CacheRuntimePolicy.FromPolicy(
                 "ETagMiddleware",
                 policy,
                 CachePolicyFields.Duration | CachePolicyFields.Tags);

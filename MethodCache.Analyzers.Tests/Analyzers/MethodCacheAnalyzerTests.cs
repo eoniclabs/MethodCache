@@ -54,7 +54,7 @@ namespace TestApp
 {
     public class ValidKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor) => methodName;
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy) => methodName;
     }
 
     public interface IService

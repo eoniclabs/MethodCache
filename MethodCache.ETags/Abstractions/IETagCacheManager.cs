@@ -23,7 +23,7 @@ namespace MethodCache.ETags.Abstractions
             string key,
             Func<Task<ETagCacheEntry<T>>> factory,
             string? ifNoneMatch = null,
-            CacheRuntimeDescriptor? descriptor = null,
+            CacheRuntimePolicy? descriptor = null,
             bool forceRefresh = false);
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace MethodCache.ETags.Abstractions
             string key,
             Func<string?, Task<ETagCacheEntry<T>>> factory,
             string? ifNoneMatch = null,
-            CacheRuntimeDescriptor? descriptor = null,
+            CacheRuntimePolicy? descriptor = null,
             bool forceRefresh = false);
 
         /// <summary>

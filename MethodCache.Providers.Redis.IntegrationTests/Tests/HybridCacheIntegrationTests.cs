@@ -50,7 +50,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
 
         var methodName = "TestMethod";
         var args = new object[] { 123, "test" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var callCount = 0;
 
         // Act - First call should execute factory and store in both caches
@@ -119,7 +119,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
 
         var methodName = "L1MissTest";
         var args = new object[] { "test-key" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var callCount = 0;
 
         // Act - Store initial value
@@ -185,7 +185,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
 
         var methodName = "WriteBackTest";
         var args = new object[] { "writeback-key" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -243,7 +243,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
 
         var methodName = "L1OnlyTest";
         var args = new object[] { "l1only-key" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -298,7 +298,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
 
         var methodName = "TagInvalidateTest";
         var args = new object[] { "tagged-key" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "test-tag", "invalidate-tag" }
@@ -360,7 +360,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         // Act - Generate some cache activity
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         
         // Cache miss
         await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator);
@@ -416,7 +416,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act - Fill cache beyond capacity
         await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator);

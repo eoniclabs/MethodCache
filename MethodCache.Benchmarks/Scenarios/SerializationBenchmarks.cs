@@ -281,13 +281,13 @@ public class SerializationTestService : ISerializationTestService
 // Custom key generators for comparison
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (descriptor.Version.HasValue) 
-            keyBuilder.Append($"_v{descriptor.Version.Value}");
+        if (policy.Version.HasValue)
+            keyBuilder.Append($"_v{policy.Version.Value}");
 
         foreach (var arg in args)
         {
@@ -305,22 +305,22 @@ public class JsonKeyGenerator : ICacheKeyGenerator
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
         var base64Hash = Convert.ToBase64String(hash);
-        
-        if (descriptor.Version.HasValue) 
-            return $"{base64Hash}_v{descriptor.Version.Value}";
+
+        if (policy.Version.HasValue)
+            return $"{base64Hash}_v{policy.Version.Value}";
         return base64Hash;
     }
 }
 
 public class ToStringKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (descriptor.Version.HasValue) 
-            keyBuilder.Append($"_v{descriptor.Version.Value}");
+        if (policy.Version.HasValue)
+            keyBuilder.Append($"_v{policy.Version.Value}");
 
         foreach (var arg in args)
         {
@@ -337,9 +337,9 @@ public class ToStringKeyGenerator : ICacheKeyGenerator
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
         var base64Hash = Convert.ToBase64String(hash);
-        
-        if (descriptor.Version.HasValue) 
-            return $"{base64Hash}_v{descriptor.Version.Value}";
+
+        if (policy.Version.HasValue)
+            return $"{base64Hash}_v{policy.Version.Value}";
         return base64Hash;
     }
 }

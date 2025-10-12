@@ -64,7 +64,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         // Set up data in both instances
         var keyGenerator1 = serviceProvider1.GetRequiredService<ICacheKeyGenerator>();
         var keyGenerator2 = serviceProvider2.GetRequiredService<ICacheKeyGenerator>();
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         
         await cacheManager1.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => Task.FromResult("value1"), settings, keyGenerator1);
         await cacheManager2.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => Task.FromResult("value2"), settings, keyGenerator2);
@@ -156,7 +156,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         // Set up tagged data in both instances
         var keyGenerator1 = serviceProvider1.GetRequiredService<ICacheKeyGenerator>();
         var keyGenerator2 = serviceProvider2.GetRequiredService<ICacheKeyGenerator>();
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "user:123", "profile" }

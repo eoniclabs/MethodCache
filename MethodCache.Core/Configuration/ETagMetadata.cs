@@ -4,7 +4,7 @@ namespace MethodCache.Core.Configuration
 {
     /// <summary>
     /// Metadata describing ETag configuration for a cached method.
-    /// Stored in <see cref="CacheRuntimeDescriptor.Metadata"/> so optional packages can enrich behavior
+    /// Stored in <see cref="CacheRuntimePolicy.Metadata"/> so optional packages can enrich behavior
     /// without the core assembly taking hard dependencies.
     /// </summary>
     public class ETagMetadata : ICloneable

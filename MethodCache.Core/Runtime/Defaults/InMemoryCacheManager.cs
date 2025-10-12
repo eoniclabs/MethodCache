@@ -188,15 +188,17 @@ namespace MethodCache.Core.Runtime.Defaults
             await InvalidateByTagsAsync(matchingTags).ConfigureAwait(false);
         }
 
-        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+        // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
+        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
-            if (descriptor == null)
+            if (policy == null)
             {
-                throw new ArgumentNullException(nameof(descriptor));
+                throw new ArgumentNullException(nameof(policy));
             }
 
-            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
-            var policy = CreatePolicy(descriptor);
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
+            var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
 
             var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
             if (cachedResult != null)
@@ -209,7 +211,7 @@ namespace MethodCache.Core.Runtime.Defaults
                 return cachedResult;
             }
 
-            var tags = descriptor.Tags.Count > 0 ? descriptor.Tags.ToArray() : Array.Empty<string>();
+            var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
 
             return await ExecuteWithSingleFlight(key, async () =>
             {
@@ -217,11 +219,11 @@ namespace MethodCache.Core.Runtime.Defaults
 
                 if (result != null)
                 {
-                    var expiration = descriptor.Duration ?? _options.DefaultExpiration;
+                    var expiration = policy.Duration ?? _options.DefaultExpiration;
                     var effectiveExpiration = expiration > _options.MaxExpiration
                         ? _options.MaxExpiration
                         : expiration;
-                    await SetAsync(key, result, effectiveExpiration, tags, policy).ConfigureAwait(false);
+                    await SetAsync(key, result, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
                 }
 
                 _metricsProvider.CacheMiss(methodName);
@@ -231,17 +233,17 @@ namespace MethodCache.Core.Runtime.Defaults
                 }
 
                 return result!;
-            }, methodName, policy).ConfigureAwait(false);
+            }, methodName, entryPolicy).ConfigureAwait(false);
         }
 
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
-            if (descriptor == null)
+            if (policy == null)
             {
-                throw new ArgumentNullException(nameof(descriptor));
+                throw new ArgumentNullException(nameof(policy));
             }
 
-            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
             return GetAsyncInternal<T>(key, updateStatistics: false);
         }
 
@@ -311,21 +313,33 @@ namespace MethodCache.Core.Runtime.Defaults
 
         #endregion
 
-        private static CacheEntryPolicy CreatePolicy(CacheRuntimeDescriptor descriptor)
+        private static CacheEntryPolicy CreatePolicyFromRuntimePolicy(CacheRuntimePolicy policy)
         {
-            if (descriptor == null)
+            if (policy == null)
             {
-                throw new ArgumentNullException(nameof(descriptor));
+                throw new ArgumentNullException(nameof(policy));
             }
 
-            var options = descriptor.RuntimeOptions;
+            var stampedeProtection = policy.StampedeProtection != null
+                ? new StampedeProtectionOptions(
+                    policy.StampedeProtection.Mode,
+                    policy.StampedeProtection.Beta,
+                    policy.StampedeProtection.RefreshAheadWindow)
+                : null;
+
+            var distributedLock = policy.DistributedLock != null
+                ? new DistributedLockOptions(
+                    policy.DistributedLock.Timeout,
+                    policy.DistributedLock.MaxConcurrency)
+                : null;
+
             return new CacheEntryPolicy(
-                descriptor.Duration,
-                options.SlidingExpiration,
-                options.RefreshAhead,
-                options.StampedeProtection,
-                options.DistributedLock,
-                options.Metrics);
+                policy.Duration,
+                policy.SlidingExpiration,
+                policy.RefreshAhead,
+                stampedeProtection,
+                distributedLock,
+                null); // Metrics are extracted from metadata if needed
         }
 
         #region IMemoryCache Implementation

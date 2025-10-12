@@ -19,7 +19,7 @@ namespace MethodCache.ETags.Tests.Implementation
         private readonly Mock<IHybridCacheManager> _mockHybridCache;
         private readonly Mock<ILogger<ETagHybridCacheManager>> _mockLogger;
         private readonly ETagHybridCacheManager _cacheManager;
-        private readonly CacheRuntimeDescriptor _defaultSettings;
+        private readonly CacheRuntimePolicy _defaultSettings;
 
         public ETagHybridCacheManagerTests()
         {
@@ -32,7 +32,7 @@ namespace MethodCache.ETags.Tests.Implementation
                 Duration = TimeSpan.FromMinutes(30),
                 Tags = new[] { "test-tag" }
             };
-            _defaultSettings = CacheRuntimeDescriptor.FromPolicy(
+            _defaultSettings = CacheRuntimePolicy.FromPolicy(
                 "test",
                 policy,
                 CachePolicyFields.Duration | CachePolicyFields.Tags);
@@ -197,7 +197,7 @@ namespace MethodCache.ETags.Tests.Implementation
             {
                 Duration = TimeSpan.FromMinutes(30)
             };
-            var settingsWithoutTags = CacheRuntimeDescriptor.FromPolicy(
+            var settingsWithoutTags = CacheRuntimePolicy.FromPolicy(
                 "test",
                 policyWithoutTags,
                 CachePolicyFields.Duration);

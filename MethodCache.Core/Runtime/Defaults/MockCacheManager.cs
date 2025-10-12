@@ -10,9 +10,11 @@ namespace MethodCache.Core.Runtime.Defaults
         public bool ForceCacheHit { get; set; }
         public bool ForceCacheMiss { get; set; }
 
-        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+        // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
+        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
-            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
 
             if (ForceCacheHit && _cache.TryGetValue(key, out var hitValue))
             {
@@ -31,6 +33,20 @@ namespace MethodCache.Core.Runtime.Defaults
 
             return Task.FromResult((T)value);
         }
+
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        {
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
+
+            if (ForceCacheMiss || !_cache.TryGetValue(key, out var value))
+            {
+                return new ValueTask<T?>(default(T));
+            }
+
+            return new ValueTask<T?>((T)value);
+        }
+
+        // ============= Invalidation methods =============
 
         public Task InvalidateByTagsAsync(params string[] tags)
         {
@@ -62,18 +78,6 @@ namespace MethodCache.Core.Runtime.Defaults
         {
             // Pattern invalidation not required for lightweight mock
             return Task.CompletedTask;
-        }
-
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-        {
-            var key = keyGenerator.GenerateKey(methodName, args, descriptor);
-
-            if (ForceCacheMiss || !_cache.TryGetValue(key, out var value))
-            {
-                return new ValueTask<T?>(default(T));
-            }
-
-            return new ValueTask<T?>((T)value);
         }
 
         public void Clear()

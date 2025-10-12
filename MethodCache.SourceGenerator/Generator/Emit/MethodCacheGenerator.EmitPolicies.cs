@@ -202,7 +202,7 @@ namespace MethodCache.SourceGenerator
                 {
                     var typeName = Utils.GetFullyQualifiedName(keyGeneratorType);
                     definition.PolicyStatements.Add($"policy = policy with {{ KeyGeneratorType = typeof({typeName}) }};");
-                    definition.PolicyStatements.Add("fields |= CachePolicyFields.KeyGeneratorType;");
+                    definition.PolicyStatements.Add("fields |= CachePolicyFields.KeyGenerator;");
                 }
 
                 if (TryGetNamedArgument(cacheAttr, "RequireIdempotent", out var idempotentArg) && idempotentArg.Value is bool requireIdempotent && requireIdempotent)
