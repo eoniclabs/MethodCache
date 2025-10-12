@@ -1,8 +1,8 @@
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 using Microsoft.AspNetCore.Http;
 
-namespace MethodCache.ETags.Middleware
+namespace MethodCache.ETags.Configuration
 {
     /// <summary>
     /// Configuration options for the ETag middleware.

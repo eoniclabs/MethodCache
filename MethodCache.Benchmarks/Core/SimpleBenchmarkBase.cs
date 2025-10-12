@@ -3,7 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MethodCache.Core;
 using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Execution;
 
 namespace MethodCache.Benchmarks.Core;
 

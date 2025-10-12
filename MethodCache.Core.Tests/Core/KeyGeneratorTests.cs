@@ -1,13 +1,10 @@
-using Xunit;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core;
 using MethodCache.Core.Runtime;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using MethodCache.Core.KeyGenerators;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using Xunit;
 
-namespace MethodCache.Core.Tests
+namespace MethodCache.Core.Tests.Core
 {
     public class KeyGeneratorTests
     {

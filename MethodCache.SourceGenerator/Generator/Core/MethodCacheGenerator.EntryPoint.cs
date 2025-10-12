@@ -1,12 +1,11 @@
 #nullable enable
 
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace MethodCache.SourceGenerator
+namespace MethodCache.SourceGenerator.Generator.Core
 {
     public sealed partial class MethodCacheGenerator
     {
@@ -19,7 +18,7 @@ namespace MethodCache.SourceGenerator
                     fullyQualifiedMetadataName: "MethodCache.Core.CacheAttribute",
                     predicate: static (node, _) => node is MethodDeclarationSyntax method &&
                                                    method.Parent is InterfaceDeclarationSyntax,
-                    transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
+                    transform: static (ctx, ct) => Discovery.MethodCacheGenerator.GetInterfaceInfoFromMethod(ctx, ct))
                 .Where(static info => info != null)
                 .Collect();
 
@@ -29,7 +28,7 @@ namespace MethodCache.SourceGenerator
                     fullyQualifiedMetadataName: "MethodCache.Core.CacheInvalidateAttribute",
                     predicate: static (node, _) => node is MethodDeclarationSyntax method &&
                                                    method.Parent is InterfaceDeclarationSyntax,
-                    transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
+                    transform: static (ctx, ct) => Discovery.MethodCacheGenerator.GetInterfaceInfoFromMethod(ctx, ct))
                 .Where(static info => info != null)
                 .Collect();
 
@@ -48,13 +47,13 @@ namespace MethodCache.SourceGenerator
             context.RegisterSourceOutput(combinedProvider, Execute);
         }
 
-        private static void Execute(SourceProductionContext context, ImmutableArray<InterfaceInfo?> interfaces)
+        private static void Execute(SourceProductionContext context, ImmutableArray<Modeling.MethodCacheGenerator.InterfaceInfo?> interfaces)
         {
             if (interfaces.IsDefaultOrEmpty) return;
 
             var validInterfaces = interfaces
                 .Where(i => i != null)
-                .Cast<InterfaceInfo>()
+                .Cast<Modeling.MethodCacheGenerator.InterfaceInfo>()
                 .ToList();
 
             if (validInterfaces.Count == 0) return;
@@ -71,18 +70,18 @@ namespace MethodCache.SourceGenerator
             // Generate sources
             foreach (var info in validInterfaces)
             {
-                var decoratorCode = DecoratorEmitter.Emit(info);
+                var decoratorCode = Emit.MethodCacheGenerator.DecoratorEmitter.Emit(info);
                 context.AddSource($"{info.Symbol.Name}Decorator.g.cs", decoratorCode);
             }
 
             // Generate shared components
-            var policyRegistrationsCode = PolicyRegistrationsEmitter.Emit(validInterfaces);
+            var policyRegistrationsCode = Emit.MethodCacheGenerator.PolicyRegistrationsEmitter.Emit(validInterfaces);
             if (!string.IsNullOrEmpty(policyRegistrationsCode))
             {
                 context.AddSource("GeneratedPolicyRegistrations.g.cs", policyRegistrationsCode);
             }
 
-            var extensionsCode = DIExtensionsEmitter.Emit(validInterfaces);
+            var extensionsCode = Emit.MethodCacheGenerator.DIExtensionsEmitter.Emit(validInterfaces);
             context.AddSource("MethodCacheServiceCollectionExtensions.g.cs", extensionsCode);
         }
     }

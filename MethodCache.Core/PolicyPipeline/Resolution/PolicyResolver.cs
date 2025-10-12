@@ -1,17 +1,11 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
-using MethodCache.Abstractions.Sources;
-using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Resolver;
+namespace MethodCache.Core.PolicyPipeline.Resolution;
 
 internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
 {

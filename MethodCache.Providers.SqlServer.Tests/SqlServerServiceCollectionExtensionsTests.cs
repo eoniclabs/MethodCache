@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MethodCache.Core.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Storage.Abstractions;
@@ -125,7 +126,7 @@ public class SqlServerServiceCollectionExtensionsTests
         var serviceProvider = services.BuildServiceProvider();
 
         // Should have MethodCache core services
-        serviceProvider.GetService<MethodCache.Core.ICacheManager>().Should().NotBeNull();
+        serviceProvider.GetService<ICacheManager>().Should().NotBeNull();
 
         // Should have SQL Server infrastructure
         serviceProvider.GetService<IStorageProvider>().Should().NotBeNull();

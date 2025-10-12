@@ -1,10 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Core.PolicyPipeline.Sources;
 using Microsoft.Extensions.Configuration;
 
-namespace MethodCache.Core.Configuration.Sources;
+namespace MethodCache.Core.Configuration.Surfaces.ConfigFile;
 
 internal static class ConfigFilePolicySourceBuilder
 {

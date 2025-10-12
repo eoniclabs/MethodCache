@@ -1,15 +1,11 @@
-using Xunit;
+using System.Reflection;
+using MethodCache.Core.Configuration.Surfaces.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
-using MethodCache.SourceGenerator;
-using System.Collections.Generic;
-using System;
+using Xunit;
 using Xunit.Abstractions;
 
-namespace MethodCache.SourceGenerator.Tests
+namespace MethodCache.SourceGenerator.Tests.SourceGenerator
 {
     public class MethodCacheGeneratorTests
     {
@@ -28,7 +24,7 @@ namespace MethodCache.SourceGenerator.Tests
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(MethodCache.Core.CacheAttribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.ActivatorUtilities).Assembly.Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location)
@@ -46,7 +42,7 @@ namespace MethodCache.SourceGenerator.Tests
         private async Task<GeneratedSourceResult> GetGeneratedSources(string source)
         {
             var compilation = await CreateCompilation(source);
-            var generator = new MethodCacheGenerator();
+            var generator = new Generator.Utilities.MethodCacheGenerator();
 
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);

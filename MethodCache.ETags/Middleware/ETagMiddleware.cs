@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
+using MethodCache.ETags.Configuration;
 
 namespace MethodCache.ETags.Middleware
 {

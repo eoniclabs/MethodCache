@@ -1,6 +1,7 @@
 
 using System.Threading.Tasks;
 using MethodCache.Core;
+using MethodCache.Core.Configuration.Surfaces.Attributes;
 
 namespace MethodCache.SampleApp
 {

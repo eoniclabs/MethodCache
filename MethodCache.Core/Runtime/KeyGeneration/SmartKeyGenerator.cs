@@ -1,11 +1,8 @@
-using System;
-using System.Linq;
 using System.Reflection;
 using System.Text;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 
-namespace MethodCache.Core.KeyGenerators
+namespace MethodCache.Core.Runtime.KeyGeneration
 {
     /// <summary>
     /// Smart key generator that creates human-readable, semantic cache keys.

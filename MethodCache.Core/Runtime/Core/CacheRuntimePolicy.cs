@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Options;
+using MethodCache.Core.Runtime.Options;
 
-namespace MethodCache.Core.Runtime
+namespace MethodCache.Core.Runtime.Core
 {
     /// <summary>
     /// The definitive runtime representation of a cache policy, containing all

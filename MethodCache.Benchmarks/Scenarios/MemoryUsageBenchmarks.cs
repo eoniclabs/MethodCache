@@ -2,9 +2,11 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Benchmarks.Infrastructure;
 using MethodCache.Abstractions.Registry;
+using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Benchmarks.Scenarios;
 

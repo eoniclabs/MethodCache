@@ -1,10 +1,9 @@
-using System;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 using MethodCache.Core.Options;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
-namespace MethodCache.Core.Configuration.Fluent
+namespace MethodCache.Core.Configuration.Surfaces.Fluent
 {
     public interface IFluentMethodCacheConfiguration
     {

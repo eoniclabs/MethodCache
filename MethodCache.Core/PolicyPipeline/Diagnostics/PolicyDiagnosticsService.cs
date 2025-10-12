@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Abstractions.Resolution;
 
-namespace MethodCache.Core.Configuration.Diagnostics;
+namespace MethodCache.Core.PolicyPipeline.Diagnostics;
 
 public sealed class PolicyDiagnosticsService
 {

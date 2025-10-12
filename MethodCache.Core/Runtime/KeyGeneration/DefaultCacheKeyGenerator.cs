@@ -1,9 +1,4 @@
-using System.Security.Cryptography;
-using System.Text;
-using MessagePack;
-using MethodCache.Core.KeyGenerators;
-
-namespace MethodCache.Core.Runtime.Defaults
+namespace MethodCache.Core.Runtime.KeyGeneration
 {
     public class DefaultCacheKeyGenerator : MessagePackKeyGenerator
     {

@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Storage;
-using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Configuration;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Features;

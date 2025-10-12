@@ -1,15 +1,13 @@
+using System.Collections.Immutable;
+using System.Reflection;
+using MethodCache.Core.Configuration.Surfaces.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
-using MethodCache.Analyzers;
 
-namespace MethodCache.Analyzers.Tests
+namespace MethodCache.Analyzers.Tests.Analyzers
 {
     public class MethodCacheAnalyzerMetadataTests
     {
@@ -233,7 +231,7 @@ namespace TestApp
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Threading.Tasks.Task).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(MethodCache.Core.CacheAttribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.ComponentModel.DescriptionAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location)
             };

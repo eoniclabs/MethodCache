@@ -1,11 +1,9 @@
-using System;
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Configuration.Fluent;
-using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Options;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Runtime;
+namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 
 /// <summary>
 /// Provides an API for applying cache policy overrides at runtime.

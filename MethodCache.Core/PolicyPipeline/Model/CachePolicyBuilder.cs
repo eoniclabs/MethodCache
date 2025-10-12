@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using MethodCache.Abstractions.Policies;
 
-namespace MethodCache.Core.Configuration.Policies;
+namespace MethodCache.Core.PolicyPipeline.Model;
 
 public sealed class CachePolicyBuilder
 {

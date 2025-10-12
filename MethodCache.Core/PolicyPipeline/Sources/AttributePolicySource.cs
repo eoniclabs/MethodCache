@@ -1,16 +1,12 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core.Configuration.Surfaces.ConfigFile;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Sources;
+namespace MethodCache.Core.PolicyPipeline.Sources;
 
 public sealed class AttributePolicySource : IPolicySource
 {

@@ -1,8 +1,7 @@
-using System;
-using System.Threading.Tasks;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
-namespace MethodCache.Core
+namespace MethodCache.Core.Runtime
 {
     /// <summary>
     /// Manages caching operations with support for L1 (in-memory) and L2 (distributed) cache layers.

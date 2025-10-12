@@ -1,16 +1,9 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.Configuration.Resolver;
 
-namespace MethodCache.Core.Configuration.Registry;
+namespace MethodCache.Core.PolicyPipeline.Resolution;
 
 internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
 {

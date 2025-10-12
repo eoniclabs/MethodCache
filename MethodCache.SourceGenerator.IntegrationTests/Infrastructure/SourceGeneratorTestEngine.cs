@@ -7,14 +7,14 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.SourceGenerator;
 using MethodCache.Core;
-using MethodCache.Core.Runtime.Defaults;
-using MethodCache.Core.Configuration.Resolver;
-using MethodCache.Core.Configuration.Registry;
-using MethodCache.Core.Configuration.Diagnostics;
 using MethodCache.Abstractions.Sources;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Policies;
+using MethodCache.Core.Configuration.Surfaces.Attributes;
 using MethodCache.Core.Infrastructure;
+using MethodCache.Core.PolicyPipeline.Resolution;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
@@ -50,7 +50,7 @@ public class SourceGeneratorTestEngine
                 optimizationLevel: OptimizationLevel.Debug));
 
         // Apply source generator
-        var generator = new MethodCacheGenerator();
+        var generator = new Generator.Utilities.MethodCacheGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
         
         driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
@@ -118,7 +118,7 @@ public class SourceGeneratorTestEngine
         // Add policy registry and resolver services (required by generated decorators)
         // Add a dummy policy source to satisfy PolicyResolver's requirement for at least one source
         services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new EmptyPolicySource(), 0));
-        MethodCache.Core.Configuration.Resolver.PolicyRegistrationExtensions.EnsurePolicyServices(services);
+        PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
         // Register generated services using reflection
         RegisterGeneratedServices(services, testAssembly.Assembly, logger);
@@ -279,7 +279,7 @@ namespace {namespaceName}
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(MethodCache.Core.CacheAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(MethodCache.Abstractions.Policies.CachePolicy).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(SourceGeneratorTestEngine).Assembly.Location), // Include this assembly for test models
         };

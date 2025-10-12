@@ -9,6 +9,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using MethodCache.Core;
 using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Storage.Abstractions;
 using MethodCache.OpenTelemetry.Configuration;

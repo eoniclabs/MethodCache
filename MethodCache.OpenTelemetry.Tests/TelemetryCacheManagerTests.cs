@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using MethodCache.Core;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.OpenTelemetry.Instrumentation;
 using MethodCache.OpenTelemetry.Metrics;
 using MethodCache.OpenTelemetry.Propagators;

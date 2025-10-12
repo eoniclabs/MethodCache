@@ -1,15 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
-using MethodCache.Core.Configuration.Policies;
-using MethodCache.Core.Configuration.Sources;
+using MethodCache.Core.Configuration.Surfaces.ConfigFile;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Sources;
+namespace MethodCache.Core.PolicyPipeline.Sources;
 
 internal sealed class ConfigFilePolicySource : IPolicySource
 {

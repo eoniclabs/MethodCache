@@ -1,18 +1,13 @@
-using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core;
 using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime.Defaults;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Options;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.Execution;
+using MethodCache.Core.Runtime.KeyGeneration;
 using Xunit;
 
-namespace MethodCache.Core.Tests.Extensions
+namespace MethodCache.Core.Tests.Core.Extensions
 {
     public class CacheManagerExtensionsTests
     {

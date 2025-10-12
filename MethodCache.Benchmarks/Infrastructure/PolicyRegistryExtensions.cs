@@ -1,7 +1,7 @@
 using System;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.Runtime.Core;
 
 namespace MethodCache.Benchmarks.Infrastructure;
 

@@ -4,8 +4,9 @@ using MethodCache.Abstractions.Registry;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.SampleApp.Configuration;
 using MethodCache.SampleApp.Models;
 

@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Configuration.Policies;
-using MethodCache.Core.Configuration.Runtime;
+using MethodCache.Core.Configuration.Surfaces.Runtime;
+using MethodCache.Core.PolicyPipeline.Model;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;

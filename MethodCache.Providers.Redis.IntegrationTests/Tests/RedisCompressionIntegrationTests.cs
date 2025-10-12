@@ -3,13 +3,14 @@ using MethodCache.Core;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
 using Xunit;
 

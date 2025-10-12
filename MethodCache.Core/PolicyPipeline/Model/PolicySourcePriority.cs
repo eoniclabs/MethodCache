@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace MethodCache.Core.Configuration.Policies;
+namespace MethodCache.Core.PolicyPipeline.Model;
 
 public static class PolicySourcePriority
 {

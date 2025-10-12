@@ -1,12 +1,9 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Configuration.Fluent;
-using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Options;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Runtime;
+namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 
 internal sealed class RuntimeCacheConfigurator : IRuntimeCacheConfigurator
 {

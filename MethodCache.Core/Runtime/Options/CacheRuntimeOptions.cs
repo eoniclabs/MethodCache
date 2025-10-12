@@ -1,9 +1,8 @@
-using System;
-using System.Collections.Generic;
 using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Options;
+using MethodCache.Core.Runtime.Core;
 
-namespace MethodCache.Core.Runtime;
+namespace MethodCache.Core.Runtime.Options;
 
 public sealed class CacheRuntimeOptions
 {

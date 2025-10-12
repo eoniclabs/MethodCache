@@ -3,6 +3,8 @@ using MethodCache.Core.Runtime;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.SampleApp.Infrastructure
 {

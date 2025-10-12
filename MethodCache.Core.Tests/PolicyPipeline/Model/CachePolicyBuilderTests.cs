@@ -1,7 +1,7 @@
 using System;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Configuration.Policies;
-using MethodCache.Core.KeyGenerators;
+using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Core.Runtime.KeyGeneration;
 using Xunit;
 
 namespace MethodCache.Core.Tests.PolicyPipeline.Model;

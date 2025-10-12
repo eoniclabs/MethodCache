@@ -2,10 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 
-namespace MethodCache.Core.KeyGenerators;
+namespace MethodCache.Core.Runtime.KeyGeneration;
 
 /// <summary>
 /// Human-readable cache key generator using JSON serialization and SHA-256 hashing.

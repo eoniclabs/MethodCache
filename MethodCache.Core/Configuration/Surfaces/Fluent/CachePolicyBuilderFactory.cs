@@ -1,8 +1,7 @@
-using System;
-using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Options;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Fluent;
+namespace MethodCache.Core.Configuration.Surfaces.Fluent;
 
 internal static class CachePolicyBuilderFactory
 {

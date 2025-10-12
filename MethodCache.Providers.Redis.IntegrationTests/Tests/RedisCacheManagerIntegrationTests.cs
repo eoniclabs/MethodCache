@@ -3,6 +3,8 @@ using MethodCache.Core;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 

@@ -1,9 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.HttpCaching.Options;
 using MethodCache.HttpCaching.Storage;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace MethodCache.HttpCaching.Extensions;
+namespace MethodCache.HttpCaching.Configuration;
 
 public sealed class HttpCachingBuilder
 {

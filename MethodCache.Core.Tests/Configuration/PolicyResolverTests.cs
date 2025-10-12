@@ -7,10 +7,9 @@ using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
+using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Configuration.Policies;
-using MethodCache.Core.Configuration.Resolver;
-using MethodCache.Core.Configuration.Sources;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;

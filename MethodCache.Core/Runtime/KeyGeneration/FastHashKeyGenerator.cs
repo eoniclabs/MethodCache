@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using MessagePack;
 using MessagePack.Resolvers;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 
-namespace MethodCache.Core.KeyGenerators;
+namespace MethodCache.Core.Runtime.KeyGeneration;
 
 /// <summary>
 /// High-performance cache key generator using FNV-1a hashing algorithm.

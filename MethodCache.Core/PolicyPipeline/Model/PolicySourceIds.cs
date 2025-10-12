@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Configuration.Policies;
+namespace MethodCache.Core.PolicyPipeline.Model;
 
 internal static class PolicySourceIds
 {

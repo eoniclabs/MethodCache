@@ -1,10 +1,7 @@
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Resolution;
 
-namespace MethodCache.Core.Configuration.Sources;
+namespace MethodCache.Core.Configuration.Surfaces.ConfigFile;
 
 public static class PolicySourceAsyncEnumerable
 {
