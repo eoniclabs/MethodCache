@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
 using MethodCache.HttpCaching.Options;
 using MethodCache.HttpCaching.Storage;
 using NSubstitute;

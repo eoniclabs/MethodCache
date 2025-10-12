@@ -2,7 +2,10 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
 {
@@ -30,9 +33,11 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             _metricsProvider = metricsProvider;
         }
 
-        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator, bool requireIdempotent)
+        // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
+        public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
 
             // Check cache first and verify not expired
             if (_cache.TryGetValue(key, out var cacheEntry))
@@ -56,7 +61,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
                 var result = await factory();
                 if (result != null)
                 {
-                    var expiryTime = DateTime.UtcNow.Add(settings.Duration ?? TimeSpan.FromMinutes(5));
+                    var expiryTime = DateTime.UtcNow.Add(policy.Duration ?? TimeSpan.FromMinutes(5));
                     var newEntry = new CacheEntry
                     {
                         Value = result,
@@ -73,6 +78,28 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             }
         }
 
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        {
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
+
+            if (_cache.TryGetValue(key, out var cacheEntry))
+            {
+                if (!cacheEntry.IsExpired)
+                {
+                    return ValueTask.FromResult((T?)cacheEntry.Value);
+                }
+                else
+                {
+                    // Remove expired entry
+                    _cache.TryRemove(key, out _);
+                }
+            }
+
+            return ValueTask.FromResult(default(T));
+        }
+
+        // ============= Invalidation methods =============
+
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             // Record invalidation if the metrics provider supports it
@@ -80,7 +107,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             {
                 testProvider.RecordInvalidation(tags);
             }
-            
+
             // For simplicity, clear entire cache on any invalidation
             _cache.Clear();
             return Task.CompletedTask;
@@ -98,26 +125,6 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             // For simplicity, clear entire cache on any invalidation
             _cache.Clear();
             return Task.CompletedTask;
-        }
-
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheMethodSettings settings, ICacheKeyGenerator keyGenerator)
-        {
-            var key = keyGenerator.GenerateKey(methodName, args, settings);
-            
-            if (_cache.TryGetValue(key, out var cacheEntry))
-            {
-                if (!cacheEntry.IsExpired)
-                {
-                    return ValueTask.FromResult((T?)cacheEntry.Value);
-                }
-                else
-                {
-                    // Remove expired entry
-                    _cache.TryRemove(key, out _);
-                }
-            }
-            
-            return ValueTask.FromResult(default(T));
         }
     }
 }

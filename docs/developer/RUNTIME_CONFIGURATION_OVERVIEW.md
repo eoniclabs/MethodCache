@@ -1,5 +1,9 @@
 # Runtime Configuration & Management Interface Overview
 
+> **Status:** _Transitional – reflects the current dual-stack implementation._  
+> Runtime overrides still flow through `CacheMethodSettings`/`MethodCacheConfigEntry`.  
+> Improvements planned in `docs/developer/POLICY_PIPELINE_CONSOLIDATION_PLAN.md` will replace those types with policy-native APIs.
+
 ## 🔥 **What Makes This Special**
 
 MethodCache now supports **runtime configuration with the highest priority**, enabling management interfaces that can **override ALL other configuration sources** including hardcoded values. This is a game-changer for operational control.
@@ -43,6 +47,23 @@ curl -X POST /api/admin/cache/ab-test \
 
 # ✅ Overrides developer settings for experimentation
 ```
+
+## 🔍 Inspect Effective Policies
+
+MethodCache exposes a `PolicyDiagnosticsService` that surfaces the resolver output so hosts can understand exactly which configuration layers contributed to a method.
+
+```csharp
+var diagnostics = host.Services.GetRequiredService<PolicyDiagnosticsService>();
+
+foreach (var report in diagnostics.GetAllPolicies())
+{
+    var duration = report.Policy.Duration?.ToString() ?? "(default)";
+    var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
+    Console.WriteLine($"{report.MethodId}: Duration={duration}, Sources={sources}");
+}
+```
+
+Each `PolicyDiagnosticsReport` includes the effective policy plus every `PolicyContribution`, grouped by source, making it easy to diff runtime overrides against baseline attribute/programmatic configuration.
 
 ## **How It Works**
 
@@ -135,15 +156,14 @@ builder.Services.AddMethodCacheWithSources(cache => {
 [HttpGet("status")]
 public IActionResult GetCacheStatus()
 {
-    var manager = _serviceProvider.GetRequiredService<IMethodCacheConfigurationManager>();
-    var configs = manager.GetAllConfigurations();
+    var registry = _serviceProvider.GetRequiredService<IPolicyRegistry>();
+    var policies = registry.GetAllPolicies();
     
-    return Ok(configs.Select(kvp => new {
-        Method = kvp.Key,
-        Duration = kvp.Value.Duration?.ToString(),
-        Enabled = kvp.Value.Enabled ?? true,
-        Tags = kvp.Value.Tags,
-        Source = "Runtime" // Since it has highest priority
+    return Ok(policies.Select(result => new {
+        Method = result.MethodId,
+        Duration = result.Policy.Duration?.ToString(),
+        Tags = result.Policy.Tags,
+        Source = string.Join(", ", result.Contributions.Select(c => c.SourceId).Distinct())
     }));
 }
 ```

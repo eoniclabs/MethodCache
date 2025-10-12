@@ -1,9 +1,13 @@
 using FluentAssertions;
 using MethodCache.Core;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Extensions;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,10 +66,10 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         // Set up data in both instances
         var keyGenerator1 = serviceProvider1.GetRequiredService<ICacheKeyGenerator>();
         var keyGenerator2 = serviceProvider2.GetRequiredService<ICacheKeyGenerator>();
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         
-        await cacheManager1.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => Task.FromResult("value1"), settings, keyGenerator1, false);
-        await cacheManager2.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => Task.FromResult("value2"), settings, keyGenerator2, false);
+        await cacheManager1.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => Task.FromResult("value1"), settings, keyGenerator1);
+        await cacheManager2.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => Task.FromResult("value2"), settings, keyGenerator2);
 
         // Allow pub/sub to initialize
         await Task.Delay(2000);
@@ -78,8 +82,8 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
 
         // Assert - Both instances should have cache invalidated
         var callCount = 0;
-        var value1 = await cacheManager1.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => { callCount++; return Task.FromResult("new1"); }, settings, keyGenerator1, false);
-        var value2 = await cacheManager2.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => { callCount++; return Task.FromResult("new2"); }, settings, keyGenerator2, false);
+        var value1 = await cacheManager1.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => { callCount++; return Task.FromResult("new1"); }, settings, keyGenerator1);
+        var value2 = await cacheManager2.GetOrCreateAsync("SharedMethod", new object[] { "key" }, () => { callCount++; return Task.FromResult("new2"); }, settings, keyGenerator2);
 
         // Since we invalidated by a tag that doesn't exist, values should remain cached
         value1.Should().Be("value1");
@@ -113,7 +117,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
                 storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
                 storageOptions.EnableBackplane = true;
             });
-        services1.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services1.Configure<HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
             hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
@@ -140,7 +144,7 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
                 storageOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
                 storageOptions.EnableBackplane = true;
             });
-        services2.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services2.Configure<HybridCacheOptions>(hybridOptions =>
         {
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMinutes(5);
             hybridOptions.L2DefaultExpiration = TimeSpan.FromHours(1);
@@ -154,13 +158,13 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
         // Set up tagged data in both instances
         var keyGenerator1 = serviceProvider1.GetRequiredService<ICacheKeyGenerator>();
         var keyGenerator2 = serviceProvider2.GetRequiredService<ICacheKeyGenerator>();
-        var settings = new CacheMethodSettings 
-        { 
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
+        {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "user:123", "profile" }
-        };
-        await cacheManager1.GetOrCreateAsync("GetUserData", new object[] { 1 }, () => Task.FromResult("data1"), settings, keyGenerator1, false);
-        await cacheManager2.GetOrCreateAsync("GetUserData", new object[] { 2 }, () => Task.FromResult("data2"), settings, keyGenerator2, false);
+        }, CachePolicyFields.Duration | CachePolicyFields.Tags);
+        await cacheManager1.GetOrCreateAsync("GetUserData", new object[] { 1 }, () => Task.FromResult("data1"), settings, keyGenerator1);
+        await cacheManager2.GetOrCreateAsync("GetUserData", new object[] { 2 }, () => Task.FromResult("data2"), settings, keyGenerator2);
 
         // Allow pub/sub to initialize
         await Task.Delay(2000);
@@ -173,8 +177,8 @@ public class RedisPubSubIntegrationTests : RedisIntegrationTestBase
 
         // Assert - Both instances should have tagged entries invalidated
         var callCount = 0;
-        var data1 = await cacheManager1.GetOrCreateAsync("GetUserData", new object[] { 1 }, () => { callCount++; return Task.FromResult("newdata1"); }, settings, keyGenerator1, false);
-        var data2 = await cacheManager2.GetOrCreateAsync("GetUserData", new object[] { 2 }, () => { callCount++; return Task.FromResult("newdata2"); }, settings, keyGenerator2, false);
+        var data1 = await cacheManager1.GetOrCreateAsync("GetUserData", new object[] { 1 }, () => { callCount++; return Task.FromResult("newdata1"); }, settings, keyGenerator1);
+        var data2 = await cacheManager2.GetOrCreateAsync("GetUserData", new object[] { 2 }, () => { callCount++; return Task.FromResult("newdata2"); }, settings, keyGenerator2);
 
         data1.Should().Be("newdata1"); // Should be re-created (invalidated)
         data2.Should().Be("newdata2"); // Should be re-created (invalidated)

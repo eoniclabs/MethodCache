@@ -5,6 +5,7 @@ using System.Diagnostics.Metrics;
 using System.Threading;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure;
 using MethodCache.OpenTelemetry.Configuration;
 
 namespace MethodCache.OpenTelemetry.Metrics;

@@ -1,15 +1,21 @@
 using FluentAssertions;
 using MethodCache.Core;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 using MethodCache.Providers.Redis.Infrastructure;
-using MethodCache.Infrastructure.Extensions;
 using MethodCache.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 using Xunit;
+using L1EvictionPolicy = MethodCache.Core.Storage.Coordination.L1EvictionPolicy;
 
 namespace MethodCache.Providers.Redis.IntegrationTests.Tests;
 
@@ -34,21 +40,21 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             {
                 storageOptions.L2Enabled = true;
             });
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services.Configure<HybridCacheOptions>(hybridOptions =>
         {
-            hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
+            hybridOptions.Strategy = HybridStrategy.WriteThrough;
             hybridOptions.L2Enabled = true;
         });
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
-        var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
+        var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         var methodName = "TestMethod";
         var args = new object[] { 123, "test" };
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var callCount = 0;
 
         // Act - First call should execute factory and store in both caches
@@ -57,8 +63,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             args,
             () => { callCount++; return Task.FromResult($"Result-{callCount}"); },
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Second call should hit L1 cache
         var result2 = await cacheManager.GetOrCreateAsync(
@@ -66,8 +71,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             args,
             () => { callCount++; return Task.FromResult($"Result-{callCount}"); },
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Assert
         result1.Should().Be("Result-1");
@@ -103,9 +107,9 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
                 storageOptions.L2Enabled = true;
                 storageOptions.L1DefaultExpiration = TimeSpan.FromMilliseconds(100);
             });
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services.Configure<HybridCacheOptions>(hybridOptions =>
         {
-            hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
+            hybridOptions.Strategy = HybridStrategy.WriteThrough;
             hybridOptions.L2Enabled = true;
             hybridOptions.L1MaxItems = 10;
             hybridOptions.L1DefaultExpiration = TimeSpan.FromMilliseconds(100); // Very short L1 expiration
@@ -114,12 +118,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
-        var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
+        var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         var methodName = "L1MissTest";
         var args = new object[] { "test-key" };
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         var callCount = 0;
 
         // Act - Store initial value
@@ -128,8 +132,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             args,
             () => { callCount++; return Task.FromResult($"Original-{callCount}"); },
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Wait for L1 to expire
         await Task.Delay(200);
@@ -140,8 +143,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             args,
             () => { callCount++; return Task.FromResult($"ShouldNotBeCalled-{callCount}"); },
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // Assert
         result1.Should().Be("Original-1");
@@ -171,9 +173,9 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             {
                 storageOptions.L2Enabled = true;
             });
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services.Configure<HybridCacheOptions>(hybridOptions =>
         {
-            hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteBack;
+            hybridOptions.Strategy = HybridStrategy.WriteBack;
             hybridOptions.L2Enabled = true;
             hybridOptions.EnableAsyncL2Writes = true;
             hybridOptions.L1MaxItems = 1000;
@@ -182,12 +184,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
-        var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
+        var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         var methodName = "WriteBackTest";
         var args = new object[] { "writeback-key" };
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -195,8 +197,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             args,
             () => Task.FromResult("WriteBackValue"),
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         // L1 should have the value immediately
         var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
@@ -231,9 +232,9 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             {
                 storageOptions.L2Enabled = false;
             });
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services.Configure<HybridCacheOptions>(hybridOptions =>
         {
-            hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.L1Only;
+            hybridOptions.Strategy = HybridStrategy.L1Only;
             hybridOptions.L2Enabled = false;
             hybridOptions.L1MaxItems = 1000;
         });
@@ -241,12 +242,12 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
-        var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
+        var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         var methodName = "L1OnlyTest";
         var args = new object[] { "l1only-key" };
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -254,8 +255,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             args,
             () => Task.FromResult("L1OnlyValue"),
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
         var l1Value = await hybridManager.GetFromL1Async<string>(cacheKey);
@@ -288,25 +288,25 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             {
                 storageOptions.L2Enabled = true;
             });
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services.Configure<HybridCacheOptions>(hybridOptions =>
         {
-            hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
+            hybridOptions.Strategy = HybridStrategy.WriteThrough;
             hybridOptions.L2Enabled = true;
         });
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
-        var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
+        var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         var methodName = "TagInvalidateTest";
         var args = new object[] { "tagged-key" };
-        var settings = new CacheMethodSettings 
-        { 
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
+        {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "test-tag", "invalidate-tag" }
-        };
+        }, CachePolicyFields.Duration | CachePolicyFields.Tags);
 
         // Store value in cache
         await cacheManager.GetOrCreateAsync(
@@ -314,8 +314,7 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             args,
             () => Task.FromResult("TaggedValue"),
             settings,
-            keyGenerator,
-            false);
+            keyGenerator);
 
         var cacheKey = keyGenerator.GenerateKey(methodName, args, settings);
         
@@ -352,29 +351,29 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             {
                 storageOptions.L2Enabled = true;
             });
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services.Configure<HybridCacheOptions>(hybridOptions =>
         {
-            hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
+            hybridOptions.Strategy = HybridStrategy.WriteThrough;
             hybridOptions.L2Enabled = true;
         });
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
-        var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
+        var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         // Act - Generate some cache activity
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
         
         // Cache miss
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator);
         
         // Cache hit
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("ShouldNotBeCalled"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("ShouldNotBeCalled"), settings, keyGenerator);
         
         // Another cache miss
-        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, () => Task.FromResult("Value2"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, () => Task.FromResult("Value2"), settings, keyGenerator);
 
         var stats = await hybridManager.GetStatsAsync();
 
@@ -407,32 +406,32 @@ public class HybridCacheIntegrationTests : RedisIntegrationTestBase
             {
                 storageOptions.L2Enabled = true;
             });
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybridOptions =>
+        services.Configure<HybridCacheOptions>(hybridOptions =>
         {
-            hybridOptions.Strategy = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
+            hybridOptions.Strategy = HybridStrategy.WriteThrough;
             hybridOptions.L2Enabled = true;
             hybridOptions.L1MaxItems = 3; // Very small cache
-            hybridOptions.L1EvictionPolicy = MethodCache.Core.Storage.L1EvictionPolicy.LRU;
+            hybridOptions.L1EvictionPolicy = L1EvictionPolicy.LRU;
         });
 
         var serviceProvider = services.BuildServiceProvider();
         await StartHostedServicesAsync(serviceProvider);
         var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
-        var hybridManager = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IHybridCacheManager>();
+        var hybridManager = serviceProvider.GetRequiredService<IHybridCacheManager>();
         var keyGenerator = serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
-        var settings = new CacheMethodSettings { Duration = TimeSpan.FromMinutes(5) };
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act - Fill cache beyond capacity
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator, false);
-        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, () => Task.FromResult("Value2"), settings, keyGenerator, false);
-        await cacheManager.GetOrCreateAsync("Method3", new object[] { 3 }, () => Task.FromResult("Value3"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("Value1"), settings, keyGenerator);
+        await cacheManager.GetOrCreateAsync("Method2", new object[] { 2 }, () => Task.FromResult("Value2"), settings, keyGenerator);
+        await cacheManager.GetOrCreateAsync("Method3", new object[] { 3 }, () => Task.FromResult("Value3"), settings, keyGenerator);
         
         // Access Method1 to make it more recently used
-        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("ShouldNotBeCalled"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method1", new object[] { 1 }, () => Task.FromResult("ShouldNotBeCalled"), settings, keyGenerator);
         
         // Add another item to trigger eviction
-        await cacheManager.GetOrCreateAsync("Method4", new object[] { 4 }, () => Task.FromResult("Value4"), settings, keyGenerator, false);
+        await cacheManager.GetOrCreateAsync("Method4", new object[] { 4 }, () => Task.FromResult("Value4"), settings, keyGenerator);
 
         // Assert - Method1 (recently used) and Method4 (new) should still be in L1
         var key1 = keyGenerator.GenerateKey("Method1", new object[] { 1 }, settings);

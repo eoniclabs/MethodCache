@@ -1,10 +1,12 @@
+using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.OpenTelemetry.Extensions;
+using MethodCache.OpenTelemetry.Propagators;
+using MethodCache.OpenTelemetry.Samples;
 using Microsoft.AspNetCore.Mvc;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using MethodCache.Core;
-using MethodCache.OpenTelemetry.Extensions;
-using MethodCache.OpenTelemetry.Propagators;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,11 +39,11 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
         tracing.AddMethodCacheInstrumentation()
-               .AddAspNetCoreInstrumentation(options =>
-               {
-                   options.RecordException = true;
-               })
-               .AddHttpClientInstrumentation();
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.RecordException = true;
+            })
+            .AddHttpClientInstrumentation();
 
         // Add console exporter for demo
         if (builder.Environment.IsDevelopment())
@@ -58,10 +60,10 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics =>
     {
         metrics.AddMethodCacheInstrumentation()
-               .AddAspNetCoreInstrumentation()
-               .AddHttpClientInstrumentation()
-               .AddRuntimeInstrumentation()
-               .AddProcessInstrumentation();
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddProcessInstrumentation();
 
         // Add Prometheus exporter
         metrics.AddPrometheusExporter();
@@ -94,184 +96,187 @@ app.MapGet("/", () => "MethodCache OpenTelemetry Sample - Visit /weather or /use
 
 app.Run();
 
-// Sample Services
-public interface IWeatherService
+namespace MethodCache.OpenTelemetry.Samples
 {
-    [Cache(Duration = "00:01:00", Tags = new[] { "weather", "external" })]
-    Task<WeatherForecast[]> GetWeatherAsync(string city);
-}
-
-public class WeatherService : IWeatherService
-{
-    private readonly ILogger<WeatherService> _logger;
-    private static readonly string[] Summaries = new[]
+    // Sample Services
+    public interface IWeatherService
     {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
-
-    public WeatherService(ILogger<WeatherService> logger)
-    {
-        _logger = logger;
+        [Cache(Duration = "00:01:00", Tags = new[] { "weather", "external" })]
+        Task<WeatherForecast[]> GetWeatherAsync(string city);
     }
 
-    public async Task<WeatherForecast[]> GetWeatherAsync(string city)
+    public class WeatherService : IWeatherService
     {
-        _logger.LogInformation("Fetching weather for {City}", city);
-
-        // Simulate API call
-        await Task.Delay(500);
-
-        var forecast = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        private readonly ILogger<WeatherService> _logger;
+        private static readonly string[] Summaries = new[]
         {
-            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = Summaries[Random.Shared.Next(Summaries.Length)],
-            City = city
-        }).ToArray();
+            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+        };
 
-        return forecast;
-    }
-}
-
-public interface IUserService
-{
-    [Cache(Duration = "00:05:00", Tags = new[] { "user", "profile" })]
-    Task<User> GetUserAsync(int userId);
-
-    [CacheInvalidate(Tags = new[] { "user" })]
-    Task UpdateUserAsync(int userId, string name);
-}
-
-public class UserService : IUserService
-{
-    private readonly ILogger<UserService> _logger;
-    private readonly Dictionary<int, User> _users = new()
-    {
-        [1] = new User { Id = 1, Name = "Alice", Email = "alice@example.com" },
-        [2] = new User { Id = 2, Name = "Bob", Email = "bob@example.com" },
-        [3] = new User { Id = 3, Name = "Charlie", Email = "charlie@example.com" }
-    };
-
-    public UserService(ILogger<UserService> logger)
-    {
-        _logger = logger;
-    }
-
-    public async Task<User> GetUserAsync(int userId)
-    {
-        _logger.LogInformation("Fetching user {UserId}", userId);
-
-        // Simulate database call
-        await Task.Delay(200);
-
-        if (_users.TryGetValue(userId, out var user))
+        public WeatherService(ILogger<WeatherService> logger)
         {
-            return user;
+            _logger = logger;
         }
 
-        throw new KeyNotFoundException($"User {userId} not found");
-    }
-
-    public async Task UpdateUserAsync(int userId, string name)
-    {
-        _logger.LogInformation("Updating user {UserId} name to {Name}", userId, name);
-
-        await Task.Delay(100);
-
-        if (_users.TryGetValue(userId, out var user))
+        public async Task<WeatherForecast[]> GetWeatherAsync(string city)
         {
-            user.Name = name;
-        }
-    }
-}
+            _logger.LogInformation("Fetching weather for {City}", city);
 
-// Controllers
-[ApiController]
-[Route("[controller]")]
-public class WeatherController : ControllerBase
-{
-    private readonly IWeatherService _weatherService;
-    private readonly IBaggagePropagator _baggagePropagator;
+            // Simulate API call
+            await Task.Delay(500);
 
-    public WeatherController(IWeatherService weatherService, IBaggagePropagator baggagePropagator)
-    {
-        _weatherService = weatherService;
-        _baggagePropagator = baggagePropagator;
-    }
-
-    [HttpGet("{city}")]
-    public async Task<IActionResult> Get(string city)
-    {
-        // Set correlation ID for distributed tracing
-        var correlationId = HttpContext.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-            ?? Guid.NewGuid().ToString();
-
-        _baggagePropagator.SetCacheCorrelationId(correlationId);
-
-        var forecast = await _weatherService.GetWeatherAsync(city);
-        return Ok(forecast);
-    }
-}
-
-[ApiController]
-[Route("[controller]")]
-public class UsersController : ControllerBase
-{
-    private readonly IUserService _userService;
-    private readonly IBaggagePropagator _baggagePropagator;
-
-    public UsersController(IUserService userService, IBaggagePropagator baggagePropagator)
-    {
-        _userService = userService;
-        _baggagePropagator = baggagePropagator;
-    }
-
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetUser(int id)
-    {
-        try
-        {
-            // Set user context for tracing
-            if (User.Identity?.IsAuthenticated == true)
+            var forecast = Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
-                _baggagePropagator.SetCacheUserId(User.Identity.Name);
+                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                TemperatureC = Random.Shared.Next(-20, 55),
+                Summary = Summaries[Random.Shared.Next(Summaries.Length)],
+                City = city
+            }).ToArray();
+
+            return forecast;
+        }
+    }
+
+    public interface IUserService
+    {
+        [Cache(Duration = "00:05:00", Tags = new[] { "user", "profile" })]
+        Task<User> GetUserAsync(int userId);
+
+        [CacheInvalidate(Tags = new[] { "user" })]
+        Task UpdateUserAsync(int userId, string name);
+    }
+
+    public class UserService : IUserService
+    {
+        private readonly ILogger<UserService> _logger;
+        private readonly Dictionary<int, User> _users = new()
+        {
+            [1] = new User { Id = 1, Name = "Alice", Email = "alice@example.com" },
+            [2] = new User { Id = 2, Name = "Bob", Email = "bob@example.com" },
+            [3] = new User { Id = 3, Name = "Charlie", Email = "charlie@example.com" }
+        };
+
+        public UserService(ILogger<UserService> logger)
+        {
+            _logger = logger;
+        }
+
+        public async Task<User> GetUserAsync(int userId)
+        {
+            _logger.LogInformation("Fetching user {UserId}", userId);
+
+            // Simulate database call
+            await Task.Delay(200);
+
+            if (_users.TryGetValue(userId, out var user))
+            {
+                return user;
             }
 
-            var user = await _userService.GetUserAsync(id);
-            return Ok(user);
+            throw new KeyNotFoundException($"User {userId} not found");
         }
-        catch (KeyNotFoundException)
+
+        public async Task UpdateUserAsync(int userId, string name)
         {
-            return NotFound();
+            _logger.LogInformation("Updating user {UserId} name to {Name}", userId, name);
+
+            await Task.Delay(100);
+
+            if (_users.TryGetValue(userId, out var user))
+            {
+                user.Name = name;
+            }
         }
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
+// Controllers
+    [ApiController]
+    [Route("[controller]")]
+    public class WeatherController : ControllerBase
     {
-        await _userService.UpdateUserAsync(id, request.Name);
-        return NoContent();
+        private readonly IWeatherService _weatherService;
+        private readonly IBaggagePropagator _baggagePropagator;
+
+        public WeatherController(IWeatherService weatherService, IBaggagePropagator baggagePropagator)
+        {
+            _weatherService = weatherService;
+            _baggagePropagator = baggagePropagator;
+        }
+
+        [HttpGet("{city}")]
+        public async Task<IActionResult> Get(string city)
+        {
+            // Set correlation ID for distributed tracing
+            var correlationId = HttpContext.Request.Headers["X-Correlation-Id"].FirstOrDefault()
+                                ?? Guid.NewGuid().ToString();
+
+            _baggagePropagator.SetCacheCorrelationId(correlationId);
+
+            var forecast = await _weatherService.GetWeatherAsync(city);
+            return Ok(forecast);
+        }
     }
-}
+
+    [ApiController]
+    [Route("[controller]")]
+    public class UsersController : ControllerBase
+    {
+        private readonly IUserService _userService;
+        private readonly IBaggagePropagator _baggagePropagator;
+
+        public UsersController(IUserService userService, IBaggagePropagator baggagePropagator)
+        {
+            _userService = userService;
+            _baggagePropagator = baggagePropagator;
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUser(int id)
+        {
+            try
+            {
+                // Set user context for tracing
+                if (User.Identity?.IsAuthenticated == true)
+                {
+                    _baggagePropagator.SetCacheUserId(User.Identity.Name);
+                }
+
+                var user = await _userService.GetUserAsync(id);
+                return Ok(user);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
+        {
+            await _userService.UpdateUserAsync(id, request.Name);
+            return NoContent();
+        }
+    }
 
 // Models
-public record WeatherForecast
-{
-    public DateOnly Date { get; init; }
-    public int TemperatureC { get; init; }
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-    public string? Summary { get; init; }
-    public string? City { get; init; }
-}
+    public record WeatherForecast
+    {
+        public DateOnly Date { get; init; }
+        public int TemperatureC { get; init; }
+        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+        public string? Summary { get; init; }
+        public string? City { get; init; }
+    }
 
-public class User
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-}
+    public class User
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+    }
 
-public class UpdateUserRequest
-{
-    public string Name { get; set; } = string.Empty;
+    public class UpdateUserRequest
+    {
+        public string Name { get; set; } = string.Empty;
+    }
 }

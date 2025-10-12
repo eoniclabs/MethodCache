@@ -5,6 +5,7 @@ using MethodCache.Core;
 using MethodCache.Core.Extensions;
 using MethodCache.Core.KeyGenerators;
 using MethodCache.Core.Metrics;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Examples
 {
@@ -38,11 +39,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _userRepo.GetUserAsync(userId),
-                settings: new CacheMethodSettings 
-                {
-                    Duration = TimeSpan.FromHours(1),
-                    Tags = new[] { "user", $"user:{userId}" }
-                },
+                configure: opts => opts.WithDuration(TimeSpan.FromHours(1)).WithTags("user", $"user:{userId}"),
                 keyGenerator: new JsonKeyGenerator()
             );
         }

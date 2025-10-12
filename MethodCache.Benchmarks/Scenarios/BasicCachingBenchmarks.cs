@@ -2,9 +2,9 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
 using System.Runtime.CompilerServices;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
@@ -106,16 +106,13 @@ public interface IBasicCacheService
 public class BasicCacheService : IBasicCacheService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public BasicCacheService(
-        ICacheManager cacheManager, 
-        MethodCacheConfiguration configuration,
+        ICacheManager cacheManager,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
         _keyGenerator = keyGenerator;
     }
 

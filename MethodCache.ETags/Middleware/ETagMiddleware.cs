@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
+using MethodCache.ETags.Configuration;
 
 namespace MethodCache.ETags.Middleware
 {
@@ -59,7 +60,7 @@ namespace MethodCache.ETags.Middleware
                         cacheKey,
                         async () => await CaptureResponseAsync(context),
                         ifNoneMatch,
-                        _options.GetCacheSettings(),
+                        _options.GetRuntimeDescriptor(),
                         forceRefresh: true);
                 }
                 else
@@ -69,7 +70,7 @@ namespace MethodCache.ETags.Middleware
                         cacheKey,
                         async () => await CaptureResponseAsync(context),
                         ifNoneMatch,
-                        _options.GetCacheSettings());
+                        _options.GetRuntimeDescriptor());
                 }
 
                 // Handle bypass results early

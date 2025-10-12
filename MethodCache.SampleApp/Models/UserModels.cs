@@ -1,4 +1,5 @@
 using MethodCache.Core;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.SampleApp.Models
 {

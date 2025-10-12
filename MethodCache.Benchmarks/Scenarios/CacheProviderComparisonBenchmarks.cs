@@ -1,11 +1,13 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
-
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.Execution;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Providers.Redis;
 using MethodCache.Providers.Redis.Configuration;
 
@@ -74,8 +76,9 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
             
             // Test Redis connectivity
             var cacheManager = provider.GetRequiredService<ICacheManager>();
-            cacheManager.GetOrCreateAsync("test", Array.Empty<object>(), () => Task.FromResult("test"), 
-                new CacheMethodSettings(), provider.GetRequiredService<ICacheKeyGenerator>(), true)
+            var descriptor = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty, CachePolicyFields.None);
+            cacheManager.GetOrCreateAsync("test", Array.Empty<object>(), () => Task.FromResult("test"),
+                descriptor, provider.GetRequiredService<ICacheKeyGenerator>())
                 .Wait(TimeSpan.FromSeconds(5));
             
             return provider;
@@ -200,16 +203,13 @@ public interface ICacheProviderTestService
 public class CacheProviderTestService : ICacheProviderTestService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public CacheProviderTestService(
-        ICacheManager cacheManager, 
-        MethodCacheConfiguration configuration,
+        ICacheManager cacheManager,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
         _keyGenerator = keyGenerator;
     }
 

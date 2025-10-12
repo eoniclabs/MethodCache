@@ -1,6 +1,12 @@
+using System;
 using System.Collections.Generic;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Abstractions.Policies;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.SampleApp.Configuration;
 using MethodCache.SampleApp.Models;
 
@@ -13,7 +19,7 @@ namespace MethodCache.SampleApp.Services
         Task<int> GetInventoryLevelAsync(string sku);
         Task<decimal> GetPriceAsync(string sku);
         Task<string> GetCustomerOrdersAsync(string customerId);
-        IReadOnlyDictionary<string, CacheMethodSettings> GetSettingsSnapshot();
+        IReadOnlyDictionary<string, CacheRuntimePolicy> GetSettingsSnapshot();
         Task InvalidateTagsAsync(params string[] tags);
     }
 
@@ -33,54 +39,63 @@ namespace MethodCache.SampleApp.Services
         private readonly ICacheManager _cacheManager;
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider _metricsProvider;
-        private readonly IMethodCacheConfigurationManager _configurationManager;
-        private readonly Dictionary<string, CacheMethodSettings> _defaults;
+        private readonly IPolicyRegistry _policyRegistry;
+        private readonly Dictionary<string, CacheRuntimePolicy> _defaults;
         private readonly Random _random = new();
 
         public ConfigDrivenCacheService(
             ICacheManager cacheManager,
             ICacheKeyGenerator keyGenerator,
             ICacheMetricsProvider metricsProvider,
-            IMethodCacheConfigurationManager configurationManager)
+            IPolicyRegistry policyRegistry)
         {
             _cacheManager = cacheManager;
             _keyGenerator = keyGenerator;
             _metricsProvider = metricsProvider;
-            _configurationManager = configurationManager;
+            _policyRegistry = policyRegistry;
 
-            _defaults = new Dictionary<string, CacheMethodSettings>(StringComparer.Ordinal)
+            _defaults = new Dictionary<string, CacheRuntimePolicy>(StringComparer.Ordinal)
             {
-                [nameof(ICacheConfigurationShowcase.GetWeatherAsync)] = new CacheMethodSettings
-                {
-                    Duration = TimeSpan.FromSeconds(15),
-                    Tags = new List<string> { "default", "weather" },
-                    IsIdempotent = true
-                },
-                [nameof(ICacheConfigurationShowcase.GetProductAsync)] = new CacheMethodSettings
-                {
-                    Duration = TimeSpan.FromMinutes(5),
-                    Tags = new List<string> { "default", "product" },
-                    IsIdempotent = true
-                },
-                [nameof(ICacheConfigurationShowcase.GetInventoryLevelAsync)] = new CacheMethodSettings
-                {
-                    Duration = TimeSpan.FromMinutes(2),
-                    Tags = new List<string> { "default", "inventory" },
-                    IsIdempotent = true
-                },
-                [nameof(ICacheConfigurationShowcase.GetPriceAsync)] = new CacheMethodSettings
-                {
-                    Duration = TimeSpan.FromMinutes(10),
-                    Tags = new List<string> { "default", "pricing" },
-                    IsIdempotent = true
-                },
-                [nameof(ICacheConfigurationShowcase.GetCustomerOrdersAsync)] = new CacheMethodSettings
-                {
-                    Duration = TimeSpan.FromMinutes(1),
-                    Tags = new List<string> { "default", "orders" },
-                    IsIdempotent = true
-                }
+                [nameof(ICacheConfigurationShowcase.GetWeatherAsync)] = CreateDefaultDescriptor(
+                    nameof(ICacheConfigurationShowcase.GetWeatherAsync),
+                    TimeSpan.FromSeconds(15),
+                    new[] { "default", "weather" },
+                    true),
+                [nameof(ICacheConfigurationShowcase.GetProductAsync)] = CreateDefaultDescriptor(
+                    nameof(ICacheConfigurationShowcase.GetProductAsync),
+                    TimeSpan.FromMinutes(5),
+                    new[] { "default", "product" },
+                    true),
+                [nameof(ICacheConfigurationShowcase.GetInventoryLevelAsync)] = CreateDefaultDescriptor(
+                    nameof(ICacheConfigurationShowcase.GetInventoryLevelAsync),
+                    TimeSpan.FromMinutes(2),
+                    new[] { "default", "inventory" },
+                    true),
+                [nameof(ICacheConfigurationShowcase.GetPriceAsync)] = CreateDefaultDescriptor(
+                    nameof(ICacheConfigurationShowcase.GetPriceAsync),
+                    TimeSpan.FromMinutes(10),
+                    new[] { "default", "pricing" },
+                    true),
+                [nameof(ICacheConfigurationShowcase.GetCustomerOrdersAsync)] = CreateDefaultDescriptor(
+                    nameof(ICacheConfigurationShowcase.GetCustomerOrdersAsync),
+                    TimeSpan.FromMinutes(1),
+                    new[] { "default", "orders" },
+                    true)
             };
+        }
+
+        private static CacheRuntimePolicy CreateDefaultDescriptor(string methodName, TimeSpan duration, string[] tags, bool requireIdempotent)
+        {
+            var policy = CachePolicy.Empty with
+            {
+                Duration = duration,
+                Tags = tags,
+                RequireIdempotent = requireIdempotent
+            };
+            return CacheRuntimePolicy.FromPolicy(
+                methodName,
+                policy,
+                CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent);
         }
 
         public Task<string> GetWeatherAsync(string city) =>
@@ -148,13 +163,13 @@ namespace MethodCache.SampleApp.Services
                     return $"Orders for {customerId}: {string.Join(", ", GenerateOrders())}";
                 });
 
-        public IReadOnlyDictionary<string, CacheMethodSettings> GetSettingsSnapshot()
+        public IReadOnlyDictionary<string, CacheRuntimePolicy> GetSettingsSnapshot()
         {
-            var snapshot = new Dictionary<string, CacheMethodSettings>(StringComparer.Ordinal);
+            var snapshot = new Dictionary<string, CacheRuntimePolicy>(StringComparer.Ordinal);
 
             foreach (var method in MethodNames)
             {
-                snapshot[method] = ResolveSettings(method).Clone();
+                snapshot[method] = ResolveSettings(method);
             }
 
             return snapshot;
@@ -173,8 +188,8 @@ namespace MethodCache.SampleApp.Services
 
         private async Task<T> ExecuteWithCacheAsync<T>(string methodName, object[] args, Func<Task<T>> factory)
         {
-            var settings = ResolveSettings(methodName);
-            var key = _keyGenerator.GenerateKey(methodName, args, settings);
+            var descriptor = ResolveSettings(methodName);
+            var key = _keyGenerator.GenerateKey(methodName, args, descriptor);
 
             var result = await _cacheManager.GetOrCreateAsync(
                 methodName,
@@ -184,56 +199,48 @@ namespace MethodCache.SampleApp.Services
                     var value = await factory();
                     return value;
                 },
-                settings,
-                _keyGenerator,
-                settings.IsIdempotent);
+                descriptor,
+                _keyGenerator);
 
-            Console.WriteLine($"[HIT] {methodName} key={key} (duration: {settings.Duration?.TotalSeconds ?? 0}s, tags: {string.Join(", ", settings.Tags)})");
+            Console.WriteLine($"[HIT] {methodName} key={key} (duration: {descriptor.Duration?.TotalSeconds ?? 0}s, tags: {string.Join(", ", descriptor.Tags)})");
             return result;
         }
 
-        private CacheMethodSettings ResolveSettings(string methodName)
+        private CacheRuntimePolicy ResolveSettings(string methodName)
         {
-            var configured = _configurationManager.GetMethodConfiguration(ServiceType, methodName)?.Clone();
+            var methodId = $"{ServiceType}.{methodName}";
+            var policyResult = _policyRegistry.GetPolicy(methodId);
+            var policy = policyResult.Policy;
 
-            if (configured == null && _defaults.TryGetValue(methodName, out var fallbackDefault))
+            var hasConfiguredValues =
+                policy.Duration.HasValue ||
+                policy.Tags.Count > 0 ||
+                policy.KeyGeneratorType != null ||
+                policy.Version.HasValue ||
+                policy.RequireIdempotent.HasValue ||
+                policy.Metadata.Count > 0;
+
+            if (hasConfiguredValues)
             {
-                return fallbackDefault.Clone();
+                return CacheRuntimePolicy.FromResolverResult(policyResult);
             }
 
-            if (configured == null)
+            if (_defaults.TryGetValue(methodName, out var fallbackDefault))
             {
-                return new CacheMethodSettings
-                {
-                    Duration = TimeSpan.FromSeconds(30),
-                    Tags = new List<string> { "default" },
-                    IsIdempotent = true
-                };
+                return fallbackDefault;
             }
 
-            if (_defaults.TryGetValue(methodName, out var defaults))
+            // Final fallback
+            var fallbackPolicy = CachePolicy.Empty with
             {
-                configured.Duration ??= defaults.Duration;
-                configured.Version ??= defaults.Version;
-
-                if (configured.Tags.Count == 0 && defaults.Tags.Count > 0)
-                {
-                    configured.Tags = new List<string>(defaults.Tags);
-                }
-
-                if (!configured.IsIdempotent)
-                {
-                    configured.IsIdempotent = defaults.IsIdempotent;
-                }
-            }
-
-            configured.Duration ??= TimeSpan.FromSeconds(30);
-            if (configured.Tags.Count == 0)
-            {
-                configured.Tags.Add("default");
-            }
-
-            return configured;
+                Duration = TimeSpan.FromSeconds(30),
+                Tags = new[] { "default" },
+                RequireIdempotent = true
+            };
+            return CacheRuntimePolicy.FromPolicy(
+                methodName,
+                fallbackPolicy,
+                CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent);
         }
 
         private int GenerateTemperature() => _random.Next(-5, 35);

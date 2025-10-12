@@ -1,4 +1,5 @@
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Models;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;

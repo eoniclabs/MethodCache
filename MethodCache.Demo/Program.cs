@@ -1,8 +1,13 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Demo
@@ -72,20 +77,19 @@ namespace MethodCache.Demo
             // NEW WAY - Single call does everything:
             services.AddMethodCache(config =>
             {
-                config.DefaultDuration(TimeSpan.FromMinutes(5));
+                config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(5)));
             }, Assembly.GetExecutingAssembly());
 
             var serviceProvider = services.BuildServiceProvider();
 
             // Verify that core services are registered
             var cacheManager = serviceProvider.GetService<ICacheManager>();
-            var configuration = serviceProvider.GetService<IMethodCacheConfiguration>();
+            var registry = serviceProvider.GetService<IPolicyRegistry>();
             var keyGenerator = serviceProvider.GetService<ICacheKeyGenerator>();
             var metricsProvider = serviceProvider.GetService<ICacheMetricsProvider>();
-
             Console.WriteLine($"\nCore services registered:");
             Console.WriteLine($"  ICacheManager: {(cacheManager != null ? "✓" : "✗")}");
-            Console.WriteLine($"  IMethodCacheConfiguration: {(configuration != null ? "✓" : "✗")}");
+            Console.WriteLine($"  IPolicyRegistry: {(registry != null ? "✓" : "✗")}");
             Console.WriteLine($"  ICacheKeyGenerator: {(keyGenerator != null ? "✓" : "✗")}");
             Console.WriteLine($"  ICacheMetricsProvider: {(metricsProvider != null ? "✓" : "✗")}");
 
@@ -119,7 +123,7 @@ namespace MethodCache.Demo
 
             services.AddMethodCache(config =>
             {
-                config.DefaultDuration(TimeSpan.FromMinutes(10));
+                config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
             }, options);
 
             var serviceProvider = services.BuildServiceProvider();
@@ -151,7 +155,7 @@ namespace MethodCache.Demo
             // For specific assemblies
             var assemblyOptions = MethodCacheRegistrationOptions.ForAssemblies(
                 Assembly.GetExecutingAssembly(),
-                typeof(MethodCacheConfiguration).Assembly);
+                typeof(MethodCacheServiceCollectionExtensions).Assembly);
             Console.WriteLine($"  ForAssemblies(): Scans {assemblyOptions.Assemblies?.Length} specified assemblies");
 
             // For assembly containing specific type

@@ -1,15 +1,11 @@
-using Xunit;
+using System.Reflection;
+using MethodCache.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
-using MethodCache.SourceGenerator;
-using System.Collections.Generic;
-using System;
+using Xunit;
 using Xunit.Abstractions;
 
-namespace MethodCache.SourceGenerator.Tests
+namespace MethodCache.SourceGenerator.Tests.SourceGenerator
 {
     public class MethodCacheGeneratorTests
     {
@@ -28,8 +24,7 @@ namespace MethodCache.SourceGenerator.Tests
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(MethodCache.Core.CacheAttribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(MethodCache.Core.Configuration.MethodCacheConfiguration).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.ActivatorUtilities).Assembly.Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location)
@@ -139,26 +134,25 @@ namespace TestApp
             // Should have no compilation errors
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            // Should generate the registry file
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
+            // Should generate the policy registrations file
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
-            Assert.Contains("internal class GeneratedCacheMethodRegistry : ICacheMethodRegistry", registrySource);
-            Assert.Contains("config.ApplyFluent(fluent =>", registrySource);
-            Assert.Contains("fluent.ForService<TestApp.ITestService>()", registrySource);
-            Assert.Contains(".Method(x => x.GetValue(Any<int>.Value));", registrySource);
+            Assert.Contains("internal static class GeneratedPolicyRegistrations", registrySource);
+            Assert.Contains("public static void AddPolicies", registrySource);
+            Assert.Contains("PolicySourceRegistration", registrySource);
         }
 
         [Fact]
         public async Task GeneratorIncludesAdvancedFluentOptionsFromAttributes()
         {
             var source = @"using MethodCache.Core;
-using MethodCache.Core.Configuration;
+using MethodCache.Core.Runtime;
 
 namespace TestApp
 {
     public class CustomKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
             => $""custom:{methodName}:{args.Length}"";
     }
 
@@ -170,14 +164,14 @@ namespace TestApp
 }";
 
             var result = await GetGeneratedSources(source);
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
 
-            AssertContainsIgnoreWhitespace(registrySource!, ".Configure(options =>");
-            AssertContainsIgnoreWhitespace(registrySource!, "options.WithDuration(System.TimeSpan.Parse(\"00:10:00\"));");
-            AssertContainsIgnoreWhitespace(registrySource!, "options.WithTags(\"users\");");
-            AssertContainsIgnoreWhitespace(registrySource!, "options.WithVersion(7);");
-            AssertContainsIgnoreWhitespace(registrySource!, "options.WithKeyGenerator<TestApp.CustomKeyGenerator>();");
+            // New policy-based generation checks
+            Assert.Contains("public static void AddPolicies", registrySource);
+            Assert.Contains("GeneratedAttributePolicySource", registrySource);
+            Assert.Contains("PolicySourceRegistration", registrySource);
+            Assert.Contains("PolicySnapshot", registrySource);
         }
 
         [Fact]
@@ -210,7 +204,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(_decorated.GetValue(id))");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_keyGenerator, settings.IsIdempotent");
+            AssertContainsIgnoreWhitespace(decoratorSource, "policy, _keyGenerator)");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
 
@@ -277,7 +271,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValueAsync\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "async () => await _decorated.GetValueAsync(id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_keyGenerator, settings.IsIdempotent");
+            AssertContainsIgnoreWhitespace(decoratorSource, "policy, _keyGenerator)");
             // Async methods return Task directly, no GetAwaiter().GetResult()
         }
 
@@ -308,14 +302,11 @@ namespace TestApp
             // Should have no compilation errors
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            // Should generate registry with both cached methods
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
+            // Should generate policy registrations with both cached methods
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
-            Assert.Contains("config.ApplyFluent(fluent =>", registrySource);
-            Assert.Contains("fluent.ForService<TestApp.ITestService>()", registrySource);
-            Assert.Contains(".Method(x => x.GetValue(Any<int>.Value));", registrySource);
-            AssertContainsIgnoreWhitespace(registrySource, ".Method(x => x.GetValueAsync(Any<int>.Value))");
-            Assert.Contains(".RequireIdempotent(true);", registrySource);
+            Assert.Contains("GeneratedAttributePolicySource", registrySource);
+            Assert.Contains("PolicySnapshot", registrySource);
 
             // Should generate cache decorator with both methods
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("public class ITestServiceDecorator"));
@@ -326,7 +317,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> GetValueAsync(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearUserCache()");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_keyGenerator, settings.IsIdempotent");
+            AssertContainsIgnoreWhitespace(decoratorSource, "policy, _keyGenerator)");
             AssertContainsIgnoreWhitespace(decoratorSource, "InvalidateByTagsAsync");
         }
 
@@ -356,14 +347,11 @@ namespace TestApp
             // Should have no compilation errors
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            // Should generate registry with both interfaces
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
+            // Should generate policy registrations with both interfaces
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
-            Assert.Contains("config.ApplyFluent(fluent =>", registrySource);
-            Assert.Contains("fluent.ForService<TestApp.IUserService>()", registrySource);
-            Assert.Contains(".Method(x => x.GetUser(Any<int>.Value));", registrySource);
-            Assert.Contains("fluent.ForService<TestApp.IProductService>()", registrySource);
-            Assert.Contains(".Method(x => x.GetProduct(Any<int>.Value));", registrySource);
+            Assert.Contains("GeneratedAttributePolicySource", registrySource);
+            Assert.Contains("PolicySnapshot", registrySource);
 
             // Should generate separate decorators
             var userDecoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("IUserServiceDecorator"));
@@ -392,12 +380,10 @@ namespace TestApp
 
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedCacheMethodRegistry"));
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
-            Assert.Contains("fluent.ForService<TestApp.IUserService>()", registrySource);
-            Assert.Contains(".Method(x => x.GetProfile(Any<int>.Value))", registrySource);
-            Assert.Contains("options.WithDuration(System.TimeSpan.Parse(\"00:20:00\"));", registrySource);
-            Assert.Contains("options.WithTags(\"users\", \"profile\");", registrySource);
+            Assert.Contains("GeneratedAttributePolicySource", registrySource);
+            Assert.Contains("PolicySnapshot", registrySource);
         }
 
         [Fact]

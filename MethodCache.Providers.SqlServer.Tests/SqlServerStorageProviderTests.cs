@@ -7,6 +7,7 @@ using MethodCache.Providers.SqlServer.Infrastructure;
 using MethodCache.Providers.SqlServer.Services;
 using NSubstitute;
 using System.Threading.Tasks;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Providers.SqlServer.Tests;
 

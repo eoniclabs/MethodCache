@@ -4,9 +4,12 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
-using MethodCache.Infrastructure.Extensions;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.HealthChecks;
 using MethodCache.Providers.SqlServer.Infrastructure;
@@ -75,23 +78,24 @@ public static class SqlServerServiceCollectionExtensions
         // Add SQL Server L3 infrastructure (which will replace IStorageProvider)
         services.AddSqlServerInfrastructure(configureSqlServer);
 
-        // Register HybridStorageManager with L1 + L3 (SqlServer as persistent storage)
-        // Remove any existing HybridStorageManager first
-        services.RemoveAll<HybridStorageManager>();
-        services.AddSingleton<HybridStorageManager>(provider =>
+        // Register StorageCoordinator with L1 + L3 (SqlServer as persistent storage)
+        // Remove any existing StorageCoordinator first
+        services.RemoveAll<StorageCoordinator>();
+        services.AddSingleton<StorageCoordinator>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
             var l3Storage = provider.GetRequiredService<IPersistentStorageProvider>();
             var backplane = provider.GetService<IBackplane>();
+            var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
-            return new HybridStorageManager(memoryStorage, options, logger, l2Storage: null, l3Storage, backplane);
+            return StorageCoordinatorFactory.Create(memoryStorage, options, logger, l2Storage: null, l3Storage, backplane, metricsProvider);
         });
 
-        // Replace IStorageProvider with HybridStorageManager
+        // Replace IStorageProvider with StorageCoordinator
         services.RemoveAll<IStorageProvider>();
-        services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+        services.AddSingleton<IStorageProvider>(provider => provider.GetRequiredService<StorageCoordinator>());
 
         return services;
     }
@@ -144,7 +148,7 @@ public static class SqlServerServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddHybridSqlServerCache(
         this IServiceCollection services,
-        Action<MethodCache.Core.Storage.HybridCacheOptions> configureHybridOptions,
+        Action<HybridCacheOptions> configureHybridOptions,
         Action<SqlServerOptions>? configureSqlServerOptions = null)
     {
         if (configureHybridOptions == null)
@@ -156,7 +160,7 @@ public static class SqlServerServiceCollectionExtensions
         // Configure hybrid cache options for L1+L3
         if (configureHybridOptions != null)
         {
-            services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
+            services.Configure<HybridCacheOptions>(options =>
             {
                 configureHybridOptions(options);
                 options.L3Enabled = true;
@@ -173,7 +177,7 @@ public static class SqlServerServiceCollectionExtensions
     public static IServiceCollection AddHybridSqlServerCache(
         this IServiceCollection services,
         string connectionString,
-        Action<MethodCache.Core.Storage.HybridCacheOptions>? configureHybridOptions = null,
+        Action<HybridCacheOptions>? configureHybridOptions = null,
         Action<SqlServerOptions>? configureSqlServerOptions = null)
     {
         // Add SQL Server infrastructure
@@ -186,7 +190,7 @@ public static class SqlServerServiceCollectionExtensions
         // Configure hybrid cache options for L1+L3
         if (configureHybridOptions != null)
         {
-            services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
+            services.Configure<HybridCacheOptions>(options =>
             {
                 configureHybridOptions(options);
                 options.L3Enabled = true;
@@ -227,7 +231,7 @@ public static class SqlServerServiceCollectionExtensions
         });
 
         // Configure hybrid cache options
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybrid =>
+        services.Configure<HybridCacheOptions>(hybrid =>
         {
             hybrid.L1DefaultExpiration = options.L1DefaultExpiration;
             hybrid.L1MaxExpiration = options.L1MaxExpiration;
@@ -279,21 +283,22 @@ public static class SqlServerServiceCollectionExtensions
         // Add SQL Server as L3 persistent storage
         services.AddSqlServerPersistentCache(configureSqlServer);
 
-        // Register the enhanced hybrid storage manager with L3 support
-        services.TryAddSingleton<HybridStorageManager>(provider =>
+        // Register the enhanced storage coordinator with L3 support
+        services.TryAddSingleton<StorageCoordinator>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
             var l2Storage = provider.GetService<IStorageProvider>(); // Redis or other L2
             var l3Storage = provider.GetRequiredService<IPersistentStorageProvider>(); // SQL Server L3
             var backplane = provider.GetService<IBackplane>();
+            var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
-            return new HybridStorageManager(memoryStorage, options, logger, l2Storage, l3Storage, backplane);
+            return StorageCoordinatorFactory.Create(memoryStorage, options, logger, l2Storage, l3Storage, backplane, metricsProvider);
         });
 
         // Register as IStorageProvider
-        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<StorageCoordinator>());
 
         return services;
     }
@@ -321,19 +326,20 @@ public static class SqlServerServiceCollectionExtensions
         // Add SQL Server as L3 persistent storage
         services.AddSqlServerPersistentCache(configureSqlServer);
 
-        // Register the enhanced hybrid storage manager (L1 + L3, no L2)
-        services.TryAddSingleton<HybridStorageManager>(provider =>
+        // Register the enhanced storage coordinator (L1 + L3, no L2)
+        services.TryAddSingleton<StorageCoordinator>(provider =>
         {
             var memoryStorage = provider.GetRequiredService<IMemoryStorage>();
             var options = provider.GetRequiredService<IOptions<StorageOptions>>();
-            var logger = provider.GetRequiredService<ILogger<HybridStorageManager>>();
+            var logger = provider.GetRequiredService<ILogger<StorageCoordinator>>();
             var l3Storage = provider.GetRequiredService<IPersistentStorageProvider>(); // SQL Server L3
+            var metricsProvider = provider.GetService<ICacheMetricsProvider>();
 
-            return new HybridStorageManager(memoryStorage, options, logger, null, l3Storage, null);
+            return StorageCoordinatorFactory.Create(memoryStorage, options, logger, null, l3Storage, null, metricsProvider);
         });
 
         // Register as IStorageProvider
-        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<HybridStorageManager>());
+        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<StorageCoordinator>());
 
         return services;
     }
@@ -362,7 +368,7 @@ public class SqlServerHybridCacheOptions
     /// <summary>
     /// Hybrid cache strategy.
     /// </summary>
-    public MethodCache.Core.Storage.HybridStrategy Strategy { get; set; } = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
+    public HybridStrategy Strategy { get; set; } = HybridStrategy.WriteThrough;
 
     /// <summary>
     /// Whether to enable backplane coordination.

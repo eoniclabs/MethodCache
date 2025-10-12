@@ -1,16 +1,12 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime.Defaults;
-
-
-using MethodCache.Providers.Redis;
+using MethodCache.Abstractions.Registry;
 using System.Linq;
-using MethodCache.Core.Storage;
-using MethodCache.Providers.Redis.Configuration;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Execution;
 
 namespace MethodCache.Benchmarks.Core;
 
@@ -48,19 +44,12 @@ public abstract class BenchmarkBase
             .SetMinimumLevel(LogLevel.Warning)
             .AddConsole());
 
-        // Add MethodCache configuration
-        services.AddSingleton<MethodCache.Core.Configuration.MethodCacheConfiguration>(provider =>
+        services.AddMethodCache(config =>
         {
-            var config = new MethodCache.Core.Configuration.MethodCacheConfiguration();
-            config.DefaultDuration(TimeSpan.FromMinutes(10));
-            return config;
-        });
+            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        }, typeof(BenchmarkBase).Assembly);
 
-        // Add key generator
-        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
-
-        // Add default cache metrics provider
-        services.AddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+        services.AddSingleton(sp => (InMemoryCacheManager)sp.GetRequiredService<ICacheManager>());
 
         // Configure specific cache providers
         ConfigureCacheProviders(services);
@@ -71,28 +60,7 @@ public abstract class BenchmarkBase
 
     protected virtual void ConfigureCacheProviders(IServiceCollection services)
     {
-        // In-Memory Cache
-        services.AddSingleton<InMemoryCacheManager>();
-        
-        // Use InMemoryCacheManager for benchmarks instead of hybrid
-        services.AddSingleton<ICacheManager, InMemoryCacheManager>();
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
-        {
-            options.L1MaxItems = 1000;
-            options.L2DefaultExpiration = TimeSpan.FromMinutes(30);
-            options.L2Enabled = true;
-        });
-
-        // Redis Cache (if available)
-        try
-        {
-            // Skip Redis setup in base - too complex for simple benchmark base
-            // Individual benchmarks can set up Redis if needed
-        }
-        catch
-        {
-            // Redis not available, skip
-        }
+        // Derived benchmarks can override to replace the default cache provider
     }
 
     protected virtual void ConfigureBenchmarkServices(IServiceCollection services)

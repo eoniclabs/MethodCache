@@ -2,13 +2,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Services;
+using MethodCache.Core.Infrastructure.Services;
 using MethodCache.Providers.Redis.Configuration;
 using StackExchange.Redis;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Providers.Redis.Features
 {

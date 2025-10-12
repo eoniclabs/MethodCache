@@ -2,11 +2,14 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.KeyGenerators;
+using MethodCache.Core.Runtime;
+using MethodCache.Abstractions.Registry;
+using MethodCache.Benchmarks.Infrastructure;
 using System.Text.Json;
 using System.Text;
 using MessagePack;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
@@ -176,23 +179,23 @@ public interface ISerializationTestService
 public class SerializationTestService : ISerializationTestService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly MethodCacheConfiguration _configuration;
+    private readonly IPolicyRegistry _policyRegistry;
     private readonly ICacheKeyGenerator _keyGenerator;
 
     public SerializationTestService(
         ICacheManager cacheManager,
-        MethodCacheConfiguration configuration,
+        IPolicyRegistry policyRegistry,
         ICacheKeyGenerator keyGenerator)
     {
         _cacheManager = cacheManager;
-        _configuration = configuration;
+        _policyRegistry = policyRegistry;
         _keyGenerator = keyGenerator;
     }
 
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetSimpleDataAsync(int id, string type)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetSimpleDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetSimpleDataAsync));
         var args = new object[] { id, type };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -200,14 +203,13 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateSimpleDataAsync(id, type),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetComplexDataAsync(ComplexParameter param, int id, string type)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetComplexDataAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetComplexDataAsync));
         var args = new object[] { param, id, type };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -215,14 +217,13 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateComplexDataAsync(param, id, type),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetDataWithArrayAsync(int[] values)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetDataWithArrayAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetDataWithArrayAsync));
         var args = new object[] { values };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -230,14 +231,13 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateArrayDataAsync(values),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetDataWithStringAsync(string text)
     {
-        var settings = _configuration.GetMethodSettings("SerializationTestService.GetDataWithStringAsync");
+        var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetDataWithStringAsync));
         var args = new object[] { text };
 
         return await _cacheManager.GetOrCreateAsync<object>(
@@ -245,8 +245,7 @@ public class SerializationTestService : ISerializationTestService
             args,
             async () => await CreateStringDataAsync(text),
             settings,
-            _keyGenerator,
-            true);
+            _keyGenerator);
     }
 
     private async Task<object> CreateSimpleDataAsync(int id, string type)
@@ -283,13 +282,13 @@ public class SerializationTestService : ISerializationTestService
 // Custom key generators for comparison
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (settings.Version.HasValue) 
-            keyBuilder.Append($"_v{settings.Version.Value}");
+        if (policy.Version.HasValue)
+            keyBuilder.Append($"_v{policy.Version.Value}");
 
         foreach (var arg in args)
         {
@@ -307,22 +306,22 @@ public class JsonKeyGenerator : ICacheKeyGenerator
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
         var base64Hash = Convert.ToBase64String(hash);
-        
-        if (settings.Version.HasValue) 
-            return $"{base64Hash}_v{settings.Version.Value}";
+
+        if (policy.Version.HasValue)
+            return $"{base64Hash}_v{policy.Version.Value}";
         return base64Hash;
     }
 }
 
 public class ToStringKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
+    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
 
-        if (settings.Version.HasValue) 
-            keyBuilder.Append($"_v{settings.Version.Value}");
+        if (policy.Version.HasValue)
+            keyBuilder.Append($"_v{policy.Version.Value}");
 
         foreach (var arg in args)
         {
@@ -339,9 +338,9 @@ public class ToStringKeyGenerator : ICacheKeyGenerator
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
         var base64Hash = Convert.ToBase64String(hash);
-        
-        if (settings.Version.HasValue) 
-            return $"{base64Hash}_v{settings.Version.Value}";
+
+        if (policy.Version.HasValue)
+            return $"{base64Hash}_v{policy.Version.Value}";
         return base64Hash;
     }
 }
