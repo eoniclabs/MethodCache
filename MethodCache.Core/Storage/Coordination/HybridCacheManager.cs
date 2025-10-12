@@ -40,15 +40,16 @@ public class HybridCacheManager : IHybridCacheManager
         _options = options.Value;
     }
 
-    // ICacheManager implementation - delegate to the primary storage provider
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        if (descriptor == null)
+        if (policy == null)
         {
-            throw new ArgumentNullException(nameof(descriptor));
+            throw new ArgumentNullException(nameof(policy));
         }
 
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
         var cached = await _storageProvider.GetAsync<T>(cacheKey);
         if (cached != null)
@@ -59,21 +60,21 @@ public class HybridCacheManager : IHybridCacheManager
         var result = await factory();
         if (result != null)
         {
-            var expiration = descriptor.Duration ?? _options.L1DefaultExpiration;
-            await _storageProvider.SetAsync(cacheKey, result, expiration, descriptor.Tags).ConfigureAwait(false);
+            var expiration = policy.Duration ?? _options.L1DefaultExpiration;
+            await _storageProvider.SetAsync(cacheKey, result, expiration, policy.Tags).ConfigureAwait(false);
         }
 
         return result;
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        if (descriptor == null)
+        if (policy == null)
         {
-            throw new ArgumentNullException(nameof(descriptor));
+            throw new ArgumentNullException(nameof(policy));
         }
 
-        var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
         return await _storageProvider.GetAsync<T>(cacheKey);
     }
 

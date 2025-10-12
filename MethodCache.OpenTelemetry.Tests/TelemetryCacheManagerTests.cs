@@ -53,7 +53,7 @@ public class TelemetryCacheManagerTests : IDisposable
         // Arrange
         var methodName = "TestMethod";
         var args = new object[] { 1, "test" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, Abstractions.Policies.CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, Abstractions.Policies.CachePolicyFields.Duration);
         var keyGenerator = new Mock<ICacheKeyGenerator>();
         var expectedValue = "cached_value";
 
@@ -98,7 +98,7 @@ public class TelemetryCacheManagerTests : IDisposable
         // Arrange
         var methodName = "TestMethod";
         var args = new object[] { 1, "test" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, Abstractions.Policies.CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, Abstractions.Policies.CachePolicyFields.Duration);
         var keyGenerator = new Mock<ICacheKeyGenerator>();
         var expectedValue = "new_value";
 
@@ -114,7 +114,7 @@ public class TelemetryCacheManagerTests : IDisposable
                 It.IsAny<Func<Task<string>>>(),
                 settings,
                 keyGenerator.Object))
-            .Returns<string, object[], Func<Task<string>>, CacheRuntimeDescriptor, ICacheKeyGenerator>(
+            .Returns<string, object[], Func<Task<string>>, CacheRuntimePolicy, ICacheKeyGenerator>(
                 async (_, _, factory, _, _) => await factory());
 
         var activity = new Activity("test");
@@ -143,7 +143,7 @@ public class TelemetryCacheManagerTests : IDisposable
         // Arrange
         var methodName = "TestMethod";
         var args = new object[] { 1, "test" };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty, Abstractions.Policies.CachePolicyFields.None);
+        var settings = CacheRuntimePolicy.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty, Abstractions.Policies.CachePolicyFields.None);
         var keyGenerator = new Mock<ICacheKeyGenerator>();
         var exception = new InvalidOperationException("Test error");
 
@@ -204,7 +204,7 @@ public class TelemetryCacheManagerTests : IDisposable
         // Arrange
         var methodName = "TestMethod";
         var args = new object[] { 1 };
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty, Abstractions.Policies.CachePolicyFields.None);
+        var settings = CacheRuntimePolicy.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty, Abstractions.Policies.CachePolicyFields.None);
         var keyGenerator = new Mock<ICacheKeyGenerator>();
 
         keyGenerator.Setup(x => x.GenerateKey(methodName, args, settings))
@@ -249,7 +249,7 @@ public class TelemetryCacheManagerTests : IDisposable
         var args = new object[] { 1 };
         var tags = new[] { "user", "profile" };
         var metadata = new Dictionary<string, string?> { { "group", "users" } };
-        var settings = CacheRuntimeDescriptor.FromPolicy(
+        var settings = CacheRuntimePolicy.FromPolicy(
             "test",
             Abstractions.Policies.CachePolicy.Empty with
             {

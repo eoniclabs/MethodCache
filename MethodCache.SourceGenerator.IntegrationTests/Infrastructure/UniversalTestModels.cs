@@ -92,7 +92,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
     // Custom cache key generator
     public class CustomKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             return $""CUSTOM_{methodName}_{string.Join(""_"", args)}"";
         }

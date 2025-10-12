@@ -19,17 +19,17 @@ public class RedisTagManagerIntegrationTests : RedisIntegrationTestBase
         
         var keyGenerator = ServiceProvider.GetRequiredService<ICacheKeyGenerator>();
 
-        var settings1 = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings1 = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "user:123", "profile" }
         }, CachePolicyFields.Duration | CachePolicyFields.Tags);
-        var settings2 = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings2 = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "user:456", "profile" }
         }, CachePolicyFields.Duration | CachePolicyFields.Tags);
-        var settings3 = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings3 = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "user:123", "settings" }
@@ -62,17 +62,17 @@ public class RedisTagManagerIntegrationTests : RedisIntegrationTestBase
         
         var keyGenerator = ServiceProvider.GetRequiredService<ICacheKeyGenerator>();
 
-        var settings1 = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings1 = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "region:us-east", "type:user" }
         }, CachePolicyFields.Duration | CachePolicyFields.Tags);
-        var settings2 = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings2 = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "region:us-west", "type:user" }
         }, CachePolicyFields.Duration | CachePolicyFields.Tags);
-        var settings3 = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings3 = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "region:eu-west", "type:admin" }
@@ -104,7 +104,7 @@ public class RedisTagManagerIntegrationTests : RedisIntegrationTestBase
         var tagManager = ServiceProvider.GetRequiredService<IRedisTagManager>();
         
         var keyGenerator = ServiceProvider.GetRequiredService<ICacheKeyGenerator>();
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new List<string> { "existing-tag" }

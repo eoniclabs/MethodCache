@@ -17,7 +17,7 @@ namespace MethodCache.SampleApp.Services
         Task<int> GetInventoryLevelAsync(string sku);
         Task<decimal> GetPriceAsync(string sku);
         Task<string> GetCustomerOrdersAsync(string customerId);
-        IReadOnlyDictionary<string, CacheRuntimeDescriptor> GetSettingsSnapshot();
+        IReadOnlyDictionary<string, CacheRuntimePolicy> GetSettingsSnapshot();
         Task InvalidateTagsAsync(params string[] tags);
     }
 
@@ -38,7 +38,7 @@ namespace MethodCache.SampleApp.Services
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly IPolicyRegistry _policyRegistry;
-        private readonly Dictionary<string, CacheRuntimeDescriptor> _defaults;
+        private readonly Dictionary<string, CacheRuntimePolicy> _defaults;
         private readonly Random _random = new();
 
         public ConfigDrivenCacheService(
@@ -52,7 +52,7 @@ namespace MethodCache.SampleApp.Services
             _metricsProvider = metricsProvider;
             _policyRegistry = policyRegistry;
 
-            _defaults = new Dictionary<string, CacheRuntimeDescriptor>(StringComparer.Ordinal)
+            _defaults = new Dictionary<string, CacheRuntimePolicy>(StringComparer.Ordinal)
             {
                 [nameof(ICacheConfigurationShowcase.GetWeatherAsync)] = CreateDefaultDescriptor(
                     nameof(ICacheConfigurationShowcase.GetWeatherAsync),
@@ -82,7 +82,7 @@ namespace MethodCache.SampleApp.Services
             };
         }
 
-        private static CacheRuntimeDescriptor CreateDefaultDescriptor(string methodName, TimeSpan duration, string[] tags, bool requireIdempotent)
+        private static CacheRuntimePolicy CreateDefaultDescriptor(string methodName, TimeSpan duration, string[] tags, bool requireIdempotent)
         {
             var policy = CachePolicy.Empty with
             {
@@ -90,7 +90,7 @@ namespace MethodCache.SampleApp.Services
                 Tags = tags,
                 RequireIdempotent = requireIdempotent
             };
-            return CacheRuntimeDescriptor.FromPolicy(
+            return CacheRuntimePolicy.FromPolicy(
                 methodName,
                 policy,
                 CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent);
@@ -161,9 +161,9 @@ namespace MethodCache.SampleApp.Services
                     return $"Orders for {customerId}: {string.Join(", ", GenerateOrders())}";
                 });
 
-        public IReadOnlyDictionary<string, CacheRuntimeDescriptor> GetSettingsSnapshot()
+        public IReadOnlyDictionary<string, CacheRuntimePolicy> GetSettingsSnapshot()
         {
-            var snapshot = new Dictionary<string, CacheRuntimeDescriptor>(StringComparer.Ordinal);
+            var snapshot = new Dictionary<string, CacheRuntimePolicy>(StringComparer.Ordinal);
 
             foreach (var method in MethodNames)
             {
@@ -204,7 +204,7 @@ namespace MethodCache.SampleApp.Services
             return result;
         }
 
-        private CacheRuntimeDescriptor ResolveSettings(string methodName)
+        private CacheRuntimePolicy ResolveSettings(string methodName)
         {
             var methodId = $"{ServiceType}.{methodName}";
             var policyResult = _policyRegistry.GetPolicy(methodId);
@@ -220,7 +220,7 @@ namespace MethodCache.SampleApp.Services
 
             if (hasConfiguredValues)
             {
-                return CacheRuntimeDescriptor.FromPolicyResult(policyResult);
+                return CacheRuntimePolicy.FromResolverResult(policyResult);
             }
 
             if (_defaults.TryGetValue(methodName, out var fallbackDefault))
@@ -235,7 +235,7 @@ namespace MethodCache.SampleApp.Services
                 Tags = new[] { "default" },
                 RequireIdempotent = true
             };
-            return CacheRuntimeDescriptor.FromPolicy(
+            return CacheRuntimePolicy.FromPolicy(
                 methodName,
                 fallbackPolicy,
                 CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent);

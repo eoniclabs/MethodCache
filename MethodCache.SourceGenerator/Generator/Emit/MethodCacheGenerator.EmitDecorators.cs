@@ -237,7 +237,7 @@ namespace MethodCache.SourceGenerator
                 }
 
                 sb.AppendLine($"            var policyResult = _policyRegistry.GetPolicy(\"{methodId}\");");
-                sb.AppendLine("            var descriptor = CacheRuntimeDescriptor.FromPolicyResult(policyResult);");
+                sb.AppendLine("            var policy = CacheRuntimePolicy.FromResolverResult(policyResult);");
 
                 // Handle different return types
                 if (Utils.IsTask(method.ReturnType, out var taskType))
@@ -287,7 +287,7 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
-                sb.AppendLine("                descriptor,");
+                sb.AppendLine("                policy,");
                 sb.AppendLine("                _keyGenerator);");
             }
 
@@ -311,7 +311,7 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
-                sb.AppendLine("                descriptor,");
+                sb.AppendLine("                policy,");
                 sb.AppendLine("                _keyGenerator);");
                 sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
             }
@@ -341,7 +341,7 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                () => Task.FromResult({call}),");
-                sb.AppendLine("                descriptor,");
+                sb.AppendLine("                policy,");
                 sb.AppendLine("                _keyGenerator)");
                 sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
             }

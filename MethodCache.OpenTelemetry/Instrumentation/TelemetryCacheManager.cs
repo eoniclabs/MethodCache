@@ -30,11 +30,13 @@ public class TelemetryCacheManager : ICacheManager
         _baggagePropagator = baggagePropagator ?? throw new ArgumentNullException(nameof(baggagePropagator));
     }
 
+    // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
     public async Task<T> GetOrCreateAsync<T>(
         string methodName,
         object[] args,
         Func<Task<T>> factory,
-        CacheRuntimeDescriptor descriptor,
+        CacheRuntimePolicy policy,
         ICacheKeyGenerator keyGenerator)
     {
         using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
@@ -45,18 +47,18 @@ public class TelemetryCacheManager : ICacheManager
             _baggagePropagator.InjectBaggage(activity);
 
             var keyGenStopwatch = Stopwatch.StartNew();
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
             keyGenStopwatch.Stop();
 
             _meterProvider.RecordKeyGenerationDuration(methodName, keyGenStopwatch.Elapsed.TotalMilliseconds);
             _activitySource.SetCacheKey(activity, cacheKey);
 
-            if (descriptor.Tags.Count > 0)
+            if (policy.Tags.Count > 0)
             {
-                _activitySource.SetCacheTags(activity, descriptor.Tags.ToArray());
+                _activitySource.SetCacheTags(activity, policy.Tags.ToArray());
             }
 
-            SetActivityTags(activity, descriptor);
+            SetActivityTagsFromPolicy(activity, policy);
 
             // Track whether the factory was invoked to determine hit/miss
             var factoryInvoked = false;
@@ -66,7 +68,7 @@ public class TelemetryCacheManager : ICacheManager
                 return await factory();
             }
 
-            var result = await _innerManager.GetOrCreateAsync(methodName, args, InstrumentedFactory, descriptor, keyGenerator);
+            var result = await _innerManager.GetOrCreateAsync(methodName, args, InstrumentedFactory, policy, keyGenerator);
 
             stopwatch.Stop();
 
@@ -74,15 +76,15 @@ public class TelemetryCacheManager : ICacheManager
             if (factoryInvoked)
             {
                 _activitySource.SetCacheHit(activity, false);
-                _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(descriptor));
+                _meterProvider.RecordCacheMiss(methodName, CreateMetricTagsFromPolicy(policy));
             }
             else
             {
                 _activitySource.SetCacheHit(activity, true);
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(descriptor));
+                _meterProvider.RecordCacheHit(methodName, CreateMetricTagsFromPolicy(policy));
             }
 
-            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(descriptor));
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
 
             return result;
         }
@@ -90,8 +92,54 @@ public class TelemetryCacheManager : ICacheManager
         {
             stopwatch.Stop();
             _activitySource.SetCacheError(activity, ex);
-            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTags(descriptor));
-            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(descriptor));
+            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTagsFromPolicy(policy));
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
+            throw;
+        }
+    }
+
+    public async ValueTask<T?> TryGetAsync<T>(
+        string methodName,
+        object[] args,
+        CacheRuntimePolicy policy,
+        ICacheKeyGenerator keyGenerator)
+    {
+        using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            _baggagePropagator.InjectBaggage(activity);
+
+            var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
+            _activitySource.SetCacheKey(activity, cacheKey);
+            SetActivityTagsFromPolicy(activity, policy);
+
+            var result = await _innerManager.TryGetAsync<T>(methodName, args, policy, keyGenerator);
+
+            var hit = result != null && !EqualityComparer<T>.Default.Equals(result, default);
+            _activitySource.SetCacheHit(activity, hit);
+
+            stopwatch.Stop();
+
+            if (hit)
+            {
+                _meterProvider.RecordCacheHit(methodName, CreateMetricTagsFromPolicy(policy));
+            }
+            else
+            {
+                _meterProvider.RecordCacheMiss(methodName, CreateMetricTagsFromPolicy(policy));
+            }
+
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _activitySource.SetCacheError(activity, ex);
+            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTagsFromPolicy(policy));
             throw;
         }
     }
@@ -171,89 +219,45 @@ public class TelemetryCacheManager : ICacheManager
         }
     }
 
-    public async ValueTask<T?> TryGetAsync<T>(
-        string methodName,
-        object[] args,
-        CacheRuntimeDescriptor descriptor,
-        ICacheKeyGenerator keyGenerator)
-    {
-        using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
-        var stopwatch = Stopwatch.StartNew();
+    // ============= Helper methods =============
 
-        try
-        {
-            _baggagePropagator.InjectBaggage(activity);
-
-            var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
-            _activitySource.SetCacheKey(activity, cacheKey);
-            SetActivityTags(activity, descriptor);
-
-            var result = await _innerManager.TryGetAsync<T>(methodName, args, descriptor, keyGenerator);
-
-            var hit = result != null && !EqualityComparer<T>.Default.Equals(result, default);
-            _activitySource.SetCacheHit(activity, hit);
-
-            stopwatch.Stop();
-
-            if (hit)
-            {
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTags(descriptor));
-            }
-            else
-            {
-                _meterProvider.RecordCacheMiss(methodName, CreateMetricTags(descriptor));
-            }
-
-            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTags(descriptor));
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            _activitySource.SetCacheError(activity, ex);
-            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTags(descriptor));
-            throw;
-        }
-    }
-
-    private static void SetActivityTags(Activity? activity, CacheRuntimeDescriptor descriptor)
+    private static void SetActivityTagsFromPolicy(Activity? activity, CacheRuntimePolicy policy)
     {
         if (activity == null) return;
 
-        if (descriptor.Duration.HasValue)
+        if (policy.Duration.HasValue)
         {
-            activity.SetTag(TracingConstants.AttributeNames.CacheTtl, descriptor.Duration.Value.TotalSeconds);
+            activity.SetTag(TracingConstants.AttributeNames.CacheTtl, policy.Duration.Value.TotalSeconds);
         }
 
-        if (descriptor.Metadata.TryGetValue("group", out var group))
+        if (policy.Metadata.TryGetValue("group", out var group))
         {
             activity.SetTag(TracingConstants.AttributeNames.CacheGroup, group);
         }
 
-        if (descriptor.Version.HasValue)
+        if (policy.Version.HasValue)
         {
-            activity.SetTag(TracingConstants.AttributeNames.CacheVersion, descriptor.Version.Value);
+            activity.SetTag(TracingConstants.AttributeNames.CacheVersion, policy.Version.Value);
         }
     }
 
-    private static Dictionary<string, object?>? CreateMetricTags(CacheRuntimeDescriptor descriptor)
+    private static Dictionary<string, object?>? CreateMetricTagsFromPolicy(CacheRuntimePolicy policy)
     {
         var tags = new Dictionary<string, object?>();
 
-        if (descriptor.Metadata.TryGetValue("group", out var group))
+        if (policy.Metadata.TryGetValue("group", out var group))
         {
             tags["group"] = group;
         }
 
-        if (descriptor.Version.HasValue)
+        if (policy.Version.HasValue)
         {
-            tags["version"] = descriptor.Version.Value;
+            tags["version"] = policy.Version.Value;
         }
 
-        if (descriptor.Tags.Count > 0)
+        if (policy.Tags.Count > 0)
         {
-            tags["tags"] = string.Join(",", descriptor.Tags);
+            tags["tags"] = string.Join(",", policy.Tags);
         }
 
         return tags.Count > 0 ? tags : null;

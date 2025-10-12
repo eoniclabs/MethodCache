@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Extensions;
 using MethodCache.Core.KeyGenerators;
+using MethodCache.Core.Runtime;
 
 namespace MethodCache.Examples
 {
@@ -33,7 +34,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _userRepo.GetUserAsync(userId),
-                new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) }
+                opts => opts.WithDuration(TimeSpan.FromHours(1))
             );
             // Uses FastHashKeyGenerator by default
             // Key: "GetUserAsync_a1b2c3d4e5f6g7h8" (FNV hash)
@@ -46,7 +47,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _userRepo.GetUserAsync(userId),
-                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) },
+                configure: opts => opts.WithDuration(TimeSpan.FromHours(1)),
                 keyGenerator: new FastHashKeyGenerator()
             );
             // Key: "GetUserAsync_a1b2c3d4e5f6g7h8" (collision-resistant FNV hash)
@@ -59,7 +60,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _userRepo.GetUserWithProfileAsync(userId, includeProfile),
-                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) },
+                configure: opts => opts.WithDuration(TimeSpan.FromHours(1)),
                 keyGenerator: new JsonKeyGenerator()
             );
             // Key: "GetUserWithProfileAsync:userId:123:includeProfile:true" (human-readable)
@@ -72,7 +73,7 @@ namespace MethodCache.Examples
         {
             return await _cache.GetOrCreateAsync(
                 () => _dataService.GenerateReportAsync(criteria),
-                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(2) },
+                configure: opts => opts.WithDuration(TimeSpan.FromHours(2)),
                 keyGenerator: new MessagePackKeyGenerator()
             );
             // Key: "GenerateReportAsync_[binary_hash]" (efficient for complex objects)
@@ -104,7 +105,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.GetUserSettingsAsync(userId, category),
-                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(30) },
+                    configure: opts => opts.WithDuration(TimeSpan.FromMinutes(30)),
                     keyGenerator: FastHashGenerator
                 );
             }
@@ -116,7 +117,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.GetConfigDataAsync(environment, feature),
-                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(15) },
+                    configure: opts => opts.WithDuration(TimeSpan.FromMinutes(15)),
                     keyGenerator: JsonGenerator
                 );
                 // Produces: "GetConfigDataAsync:environment:prod:feature:newUi"
@@ -132,7 +133,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.ProcessDataAsync(request, options, tags),
-                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) },
+                    configure: opts => opts.WithDuration(TimeSpan.FromHours(1)),
                     keyGenerator: MessagePackGenerator
                 );
                 // Efficiently handles complex nested objects
@@ -165,7 +166,7 @@ namespace MethodCache.Examples
 
             return await _cache.GetOrCreateAsync(
                 () => _dataService.ExecuteQueryAsync(request),
-                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromMinutes(30) },
+                configure: opts => opts.WithDuration(TimeSpan.FromMinutes(30)),
                 keyGenerator: keyGenerator
             );
         }
@@ -179,7 +180,7 @@ namespace MethodCache.Examples
 
             return await _cache.GetOrCreateAsync(
                 () => _dataService.GetTenantDataAsync(tenantId, dataType),
-                settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(1) },
+                configure: opts => opts.WithDuration(TimeSpan.FromHours(1)),
                 keyGenerator: tenantKeyGenerator
             );
             // Key: "tenant:acme-corp:GetTenantDataAsync_hash"
@@ -204,7 +205,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.GetCriticalDataAsync(id),
-                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromSeconds(30) },
+                    configure: opts => opts.WithDuration(TimeSpan.FromSeconds(30)),
                     keyGenerator: new FastHashKeyGenerator()
                 );
                 // Optimized for speed and collision resistance
@@ -215,7 +216,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.GetCriticalDataAsync(id),
-                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromSeconds(30) },
+                    configure: opts => opts.WithDuration(TimeSpan.FromSeconds(30)),
                     keyGenerator: new JsonKeyGenerator()
                 );
                 // Human-readable keys: "GetCriticalDataAsync:id:123"
@@ -226,7 +227,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _dataService.GenerateLargeReportAsync(criteria),
-                    settings: new CacheRuntimeDescriptor { Duration = TimeSpan.FromHours(4) },
+                    configure: opts => opts.WithDuration(TimeSpan.FromHours(4)),
                     keyGenerator: new MessagePackKeyGenerator()
                 );
                 // Binary serialization handles large objects efficiently
@@ -260,7 +261,7 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     () => _userRepo.GetUserAsync(userId),
-                    settings: new CacheRuntimeDescriptor(),
+                    configure: null,
                     keyGenerator: new JsonKeyGenerator()
                 );
             }
@@ -271,10 +272,9 @@ namespace MethodCache.Examples
                 return await _cache.GetOrCreateAsync(
                     nameof(_userRepo.GetUserAsync),
                     new object[] { userId },
-                    () => _userRepo.GetUserAsync(userId),
-                    new CacheRuntimeDescriptor(),
-                    new FastHashKeyGenerator(),
-                    true
+                    (ctx, ct) => _userRepo.GetUserAsync(userId),
+                    configure: null,
+                    keyGenerator: new FastHashKeyGenerator()
                 );
             }
 
@@ -284,10 +284,9 @@ namespace MethodCache.Examples
                 return await _cache.GetOrCreateAsync(
                     nameof(_userRepo.GetUserAsync),
                     new object[] { userId },
-                    () => _userRepo.GetUserAsync(userId),
-                    new CacheRuntimeDescriptor(),
-                    new FastHashKeyGenerator(),
-                    true
+                    (ctx, ct) => _userRepo.GetUserAsync(userId),
+                    configure: null,
+                    keyGenerator: new FastHashKeyGenerator()
                 );
             }
 
@@ -296,8 +295,8 @@ namespace MethodCache.Examples
             {
                 return await _cache.GetOrCreateAsync(
                     key: $"user:{userId}",
-                    factory: () => _userRepo.GetUserAsync(userId),
-                    settings: new CacheRuntimeDescriptor()
+                    factory: (ctx, ct) => _userRepo.GetUserAsync(userId),
+                    configure: null
                 );
             }
         }
@@ -310,13 +309,13 @@ namespace MethodCache.Examples
     {
         private readonly FastHashKeyGenerator _baseGenerator = new();
 
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             // Get tenant from current context (HTTP context, etc.)
             var tenantId = GetCurrentTenantId();
 
             // Generate base key
-            var baseKey = _baseGenerator.GenerateKey(methodName, args, descriptor);
+            var baseKey = _baseGenerator.GenerateKey(methodName, args, policy);
 
             // Prepend tenant for isolation
             return $"tenant:{tenantId}:{baseKey}";

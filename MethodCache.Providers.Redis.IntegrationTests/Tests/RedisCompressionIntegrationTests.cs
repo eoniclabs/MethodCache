@@ -54,7 +54,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Metadata = Enumerable.Range(1, 50).ToDictionary(i => $"key-{i}", i => $"value-{i}-{new string('X', 50)}")
         };
 
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -126,7 +126,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Metadata = Enumerable.Range(1, 75).ToDictionary(i => $"brotli-key-{i}", i => $"brotli-value-{i}-{new string('Y', 60)}")
         };
 
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(
@@ -160,7 +160,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Value = "This is small data that won't be compressed"
         };
 
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await CacheManager.GetOrCreateAsync(
@@ -215,7 +215,7 @@ public class RedisCompressionIntegrationTests : RedisIntegrationTestBase
             Metadata = new Dictionary<string, string> { { "size", "medium" } }
         };
 
-        var settings = CacheRuntimeDescriptor.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
+        var settings = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5) }, CachePolicyFields.Duration);
 
         // Act
         var result = await cacheManager.GetOrCreateAsync(

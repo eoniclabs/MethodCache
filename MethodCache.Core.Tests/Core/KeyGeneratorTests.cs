@@ -49,7 +49,7 @@ namespace MethodCache.Core.Tests
         public void MessagePackKeyGenerator_WithPrimitiveArgs_ReturnsDeterministicKey()
         {
             var generator = new MessagePackKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method1", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method1", CachePolicy.Empty, CachePolicyFields.None);
 
             var key1 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
             var key2 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
@@ -63,7 +63,7 @@ namespace MethodCache.Core.Tests
         public void FastHashKeyGenerator_WithPrimitiveArgs_ReturnsDeterministicKey()
         {
             var generator = new FastHashKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method1", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method1", CachePolicy.Empty, CachePolicyFields.None);
 
             var key1 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
             var key2 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
@@ -77,7 +77,7 @@ namespace MethodCache.Core.Tests
         public void JsonKeyGenerator_WithPrimitiveArgs_ReturnsDeterministicKey()
         {
             var generator = new JsonKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method1", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method1", CachePolicy.Empty, CachePolicyFields.None);
 
             var key1 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
             var key2 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
@@ -91,7 +91,7 @@ namespace MethodCache.Core.Tests
         public void MessagePackKeyGenerator_WithPlainPOCO_ReturnsDeterministicKey()
         {
             var generator = new MessagePackKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method2", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method2", CachePolicy.Empty, CachePolicyFields.None);
 
             var obj1 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
             var obj2 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
@@ -109,7 +109,7 @@ namespace MethodCache.Core.Tests
         public void FastHashKeyGenerator_WithPlainPOCO_ReturnsDeterministicKey()
         {
             var generator = new FastHashKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method2", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method2", CachePolicy.Empty, CachePolicyFields.None);
 
             var obj1 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
             var obj2 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
@@ -127,7 +127,7 @@ namespace MethodCache.Core.Tests
         public void JsonKeyGenerator_WithPlainPOCO_ReturnsDeterministicKey()
         {
             var generator = new JsonKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method2", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method2", CachePolicy.Empty, CachePolicyFields.None);
 
             var obj1 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
             var obj2 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
@@ -145,7 +145,7 @@ namespace MethodCache.Core.Tests
         public void MessagePackKeyGenerator_WithICacheKeyProvider_UsesCacheKeyPart()
         {
             var generator = new MessagePackKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
 
             var user1 = new TestUser { Id = 1 };
             var user2 = new TestUser { Id = 1 };
@@ -163,7 +163,7 @@ namespace MethodCache.Core.Tests
         public void FastHashKeyGenerator_WithICacheKeyProvider_UsesCacheKeyPart()
         {
             var generator = new FastHashKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
 
             var user1 = new TestUser { Id = 1 };
             var user2 = new TestUser { Id = 1 };
@@ -181,7 +181,7 @@ namespace MethodCache.Core.Tests
         public void JsonKeyGenerator_WithICacheKeyProvider_UsesCacheKeyPart()
         {
             var generator = new JsonKeyGenerator();
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
 
             var user1 = new TestUser { Id = 1 };
             var user2 = new TestUser { Id = 1 };
@@ -201,8 +201,8 @@ namespace MethodCache.Core.Tests
             var generator = new MessagePackKeyGenerator();
             var policy1 = CachePolicy.Empty with { Version = 1 };
             var policy2 = CachePolicy.Empty with { Version = 2 };
-            var descriptor1 = CacheRuntimeDescriptor.FromPolicy("Method4", policy1, CachePolicyFields.Version);
-            var descriptor2 = CacheRuntimeDescriptor.FromPolicy("Method4", policy2, CachePolicyFields.Version);
+            var descriptor1 = CacheRuntimePolicy.FromPolicy("Method4", policy1, CachePolicyFields.Version);
+            var descriptor2 = CacheRuntimePolicy.FromPolicy("Method4", policy2, CachePolicyFields.Version);
 
             var key1 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
             var key2 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
@@ -218,8 +218,8 @@ namespace MethodCache.Core.Tests
             var generator = new FastHashKeyGenerator();
             var policy1 = CachePolicy.Empty with { Version = 1 };
             var policy2 = CachePolicy.Empty with { Version = 2 };
-            var descriptor1 = CacheRuntimeDescriptor.FromPolicy("Method4", policy1, CachePolicyFields.Version);
-            var descriptor2 = CacheRuntimeDescriptor.FromPolicy("Method4", policy2, CachePolicyFields.Version);
+            var descriptor1 = CacheRuntimePolicy.FromPolicy("Method4", policy1, CachePolicyFields.Version);
+            var descriptor2 = CacheRuntimePolicy.FromPolicy("Method4", policy2, CachePolicyFields.Version);
 
             var key1 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
             var key2 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
@@ -237,8 +237,8 @@ namespace MethodCache.Core.Tests
             var generator = new JsonKeyGenerator();
             var policy1 = CachePolicy.Empty with { Version = 1 };
             var policy2 = CachePolicy.Empty with { Version = 2 };
-            var descriptor1 = CacheRuntimeDescriptor.FromPolicy("Method4", policy1, CachePolicyFields.Version);
-            var descriptor2 = CacheRuntimeDescriptor.FromPolicy("Method4", policy2, CachePolicyFields.Version);
+            var descriptor1 = CacheRuntimePolicy.FromPolicy("Method4", policy1, CachePolicyFields.Version);
+            var descriptor2 = CacheRuntimePolicy.FromPolicy("Method4", policy2, CachePolicyFields.Version);
 
             var key1 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
             var key2 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
@@ -262,7 +262,7 @@ namespace MethodCache.Core.Tests
                 new JsonKeyGenerator()
             };
 
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("ComplexMethod", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("ComplexMethod", CachePolicy.Empty, CachePolicyFields.None);
             var complexObj = new ComplexClass
             {
                 Id = 1,
@@ -296,7 +296,7 @@ namespace MethodCache.Core.Tests
                 new JsonKeyGenerator()
             };
 
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("ProcessOrder", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("ProcessOrder", CachePolicy.Empty, CachePolicyFields.None);
             var order = new OrderClass
             {
                 OrderId = 123,
@@ -326,7 +326,7 @@ namespace MethodCache.Core.Tests
                 new JsonKeyGenerator()
             };
 
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("MethodWithNulls", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("MethodWithNulls", CachePolicy.Empty, CachePolicyFields.None);
             var objWithNulls = new PlainTestClass
             {
                 Id = 1,
@@ -356,7 +356,7 @@ namespace MethodCache.Core.Tests
                 new JsonKeyGenerator()
             };
 
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("MixedMethod", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("MixedMethod", CachePolicy.Empty, CachePolicyFields.None);
             var plainObj = new PlainTestClass { Id = 1, Name = "Test" };
             var userObj = new TestUser { Id = 1, Email = "test@example.com" };
 
@@ -384,7 +384,7 @@ namespace MethodCache.Core.Tests
                 new JsonKeyGenerator()
             };
 
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("EmptyCollectionMethod", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("EmptyCollectionMethod", CachePolicy.Empty, CachePolicyFields.None);
             var emptyOrder = new OrderClass
             {
                 OrderId = 0,
@@ -414,7 +414,7 @@ namespace MethodCache.Core.Tests
                 new JsonKeyGenerator()
             };
 
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("LargeObjectMethod", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("LargeObjectMethod", CachePolicy.Empty, CachePolicyFields.None);
 
             // Create a large object with many properties
             var largeOrder = new OrderClass
@@ -444,7 +444,7 @@ namespace MethodCache.Core.Tests
             var fastHashGenerator = new FastHashKeyGenerator();
             var jsonGenerator = new JsonKeyGenerator();
 
-            var descriptor = CacheRuntimeDescriptor.FromPolicy("TestMethod", CachePolicy.Empty, CachePolicyFields.None);
+            var descriptor = CacheRuntimePolicy.FromPolicy("TestMethod", CachePolicy.Empty, CachePolicyFields.None);
             var testObj = new PlainTestClass { Id = 1, Name = "Test" };
 
             var messagePackKey = messagePackGenerator.GenerateKey("TestMethod", new object[] { testObj }, descriptor);

@@ -473,9 +473,11 @@ internal class StorageProviderCacheManager : ICacheManager
         _keyGenerator = keyGenerator;
     }
 
-    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+    // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
+
+    public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
     {
-        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
 
         var cached = await _storageProvider.GetAsync<T>(key);
         if (cached != null)
@@ -486,12 +488,20 @@ internal class StorageProviderCacheManager : ICacheManager
         var value = await factory();
         if (value != null)
         {
-            var expiration = descriptor.Duration ?? TimeSpan.FromMinutes(15);
-            await _storageProvider.SetAsync(key, value, expiration, descriptor.Tags ?? new List<string>()).ConfigureAwait(false);
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageProvider.SetAsync(key, value, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
         }
 
         return value;
     }
+
+    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+    {
+        var key = keyGenerator.GenerateKey(methodName, args, policy);
+        return await _storageProvider.GetAsync<T>(key);
+    }
+
+    // ============= Invalidation methods =============
 
     public Task InvalidateByTagsAsync(params string[] tags)
     {
@@ -500,7 +510,13 @@ internal class StorageProviderCacheManager : ICacheManager
 
     public Task InvalidateAsync(string methodName, params object[] args)
     {
-        var key = _keyGenerator.GenerateKey(methodName, args, CacheRuntimeDescriptor.FromPolicy("temp", CachePolicy.Empty, CachePolicyFields.None));
+        var policy = new CacheRuntimePolicy
+        {
+            MethodId = methodName,
+            Duration = TimeSpan.FromMinutes(1),
+            Tags = new List<string>()
+        };
+        var key = _keyGenerator.GenerateKey(methodName, args, policy);
         return _storageProvider.RemoveAsync(key).AsTask();
     }
 
@@ -513,12 +529,6 @@ internal class StorageProviderCacheManager : ICacheManager
     {
         // Basic implementation - remove by single tag
         return _storageProvider.RemoveByTagAsync(pattern).AsTask();
-    }
-
-    public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
-    {
-        var key = keyGenerator.GenerateKey(methodName, args, descriptor);
-        return await _storageProvider.GetAsync<T>(key);
     }
 
     public Task ClearAsync()

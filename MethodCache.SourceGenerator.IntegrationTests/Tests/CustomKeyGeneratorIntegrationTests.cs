@@ -43,7 +43,7 @@ namespace TestNamespace
 
     public class CustomUserKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             // Custom key format: METHOD:USER_{id}
             if (args.Length > 0 && args[0] is int userId)
@@ -56,7 +56,7 @@ namespace TestNamespace
 
     public class ComplexKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             // Complex key with method name, arg types, and values
             var keyParts = new System.Collections.Generic.List<string> { methodName };
@@ -205,7 +205,7 @@ namespace TestNamespace
 {
     public class ParameterSensitiveKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
+        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
             // Create keys that are sensitive to parameter order and types
             var parts = new System.Collections.Generic.List<string> { methodName };

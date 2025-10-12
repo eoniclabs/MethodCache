@@ -7,7 +7,7 @@ namespace MethodCache.Benchmarks.Infrastructure;
 
 internal static class PolicyRegistryExtensions
 {
-    public static CacheRuntimeDescriptor GetSettingsFor<T>(this IPolicyRegistry registry, string methodName)
+    public static CacheRuntimePolicy GetSettingsFor<T>(this IPolicyRegistry registry, string methodName)
     {
         if (registry == null)
         {
@@ -29,6 +29,6 @@ internal static class PolicyRegistryExtensions
 
         var methodId = $"{typeName}.{normalized}";
         var policyResult = registry.GetPolicy(methodId);
-        return CacheRuntimeDescriptor.FromPolicyResult(policyResult);
+        return CacheRuntimePolicy.FromResolverResult(policyResult);
     }
 }

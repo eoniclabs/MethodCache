@@ -44,18 +44,18 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
     // Fast non-cryptographic hash constants (FNV-1a variant)
     private const ulong FNV_OFFSET_BASIS = 14695981039346656037UL;
     private const ulong FNV_PRIME = 1099511628211UL;
-    
+
     // Pre-configured MessagePack options for security and performance
-    private static readonly MessagePackSerializerOptions _messagePackOptions = 
+    private static readonly MessagePackSerializerOptions _messagePackOptions =
         MessagePackSerializerOptions.Standard
             .WithResolver(ContractlessStandardResolver.Instance)
             .WithCompression(MessagePackCompression.Lz4BlockArray);
-    
+
     // Hex lookup table for fast conversion
     private static ReadOnlySpan<byte> HexChars => "0123456789abcdef"u8;
 
-    public string GenerateKey(string methodName, object[] args, CacheRuntimeDescriptor descriptor)
-        => GenerateKey(methodName, args, descriptor.Version);
+    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+        => GenerateKey(methodName, args, policy.Version);
 
     private static string GenerateKey(string methodName, object[] args, int? version)
     {

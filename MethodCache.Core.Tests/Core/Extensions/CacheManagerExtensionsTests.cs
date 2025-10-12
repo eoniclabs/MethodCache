@@ -199,16 +199,16 @@ namespace MethodCache.Core.Tests.Extensions
             Assert.Contains("reports", cacheManager.LastSettings.Tags);
             Assert.Contains("metrics", cacheManager.LastSettings.Tags);
             Assert.True(cacheManager.LastSettings.RequireIdempotent);
-            Assert.Equal(TimeSpan.FromMinutes(2), cacheManager.LastDescriptor!.RuntimeOptions.SlidingExpiration);
+            Assert.Equal(TimeSpan.FromMinutes(2), cacheManager.LastPolicy!.SlidingExpiration);
 
             // Ensure the fixed key generator preserves the fluent key
             Assert.NotNull(cacheManager.LastKeyGenerator);
-            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), CreateEmptyDescriptor("ignored"));
+            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), CreateEmptyPolicy("ignored"));
             Assert.Equal("report:monthly", generatedKey);
         }
 
-        private static CacheRuntimeDescriptor CreateEmptyDescriptor(string methodName) =>
-            CacheRuntimeDescriptor.FromPolicy(methodName, CachePolicy.Empty, CachePolicyFields.None);
+        private static CacheRuntimePolicy CreateEmptyPolicy(string methodName) =>
+            CacheRuntimePolicy.Empty(methodName);
 
         [Fact]
         public async Task GetOrCreateStreamAsync_MaterializesAndCachesSequence()
@@ -295,7 +295,7 @@ namespace MethodCache.Core.Tests.Extensions
                 options => options.WithVersion(3));
 
             Assert.NotNull(cacheManager.LastKeyGenerator);
-            var generated = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), CreateEmptyDescriptor("test"));
+            var generated = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), CreateEmptyPolicy("test"));
             Assert.Equal("user:version::v3", generated);
         }
 
@@ -314,7 +314,7 @@ namespace MethodCache.Core.Tests.Extensions
             Assert.NotNull(cacheManager.LastKeyGenerator);
 
             // Test the key generator with a realistic scenario
-            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("GetUserAsync", new object[] { userId }, CreateEmptyDescriptor("test"));
+            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("GetUserAsync", new object[] { userId }, CreateEmptyPolicy("test"));
 
             // Debug output to see what we're actually getting
             System.Console.WriteLine($"Generated key: {generatedKey}");
@@ -326,7 +326,7 @@ namespace MethodCache.Core.Tests.Extensions
             Assert.False(generatedKey.StartsWith("<>"), "Key should not start with compiler-generated class name");
 
             // Should be different from the fallback generator
-            var fallbackKey = new JsonKeyGenerator().GenerateKey("GetUserAsync", new object[] { userId }, CreateEmptyDescriptor("test"));
+            var fallbackKey = new JsonKeyGenerator().GenerateKey("GetUserAsync", new object[] { userId }, CreateEmptyPolicy("test"));
             Assert.NotEqual(fallbackKey, generatedKey);
         }
 
@@ -344,7 +344,7 @@ namespace MethodCache.Core.Tests.Extensions
 
             // Test a fresh SmartKeyGenerator to verify method name simplification
             var testKeyGenerator = new SmartKeyGenerator();
-            var testKey = testKeyGenerator.GenerateKey("FetchOrdersAsync", new object[] { 100, "active" }, CreateEmptyDescriptor("test"));
+            var testKey = testKeyGenerator.GenerateKey("FetchOrdersAsync", new object[] { 100, "active" }, CreateEmptyPolicy("test"));
 
             // Should simplify "FetchOrdersAsync" to "FetchOrders" and include service name
             Assert.StartsWith("MockOrderService:FetchOrders:", testKey);
@@ -364,7 +364,7 @@ namespace MethodCache.Core.Tests.Extensions
                 .ExecuteAsync();
 
             Assert.NotNull(cacheManager.LastKeyGenerator);
-            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("ProcessDataAsync", new object[] { dataValue }, CreateEmptyDescriptor("test"));
+            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("ProcessDataAsync", new object[] { dataValue }, CreateEmptyPolicy("test"));
 
             // Should use service name and simplified method name with string value
             Assert.StartsWith("MockReportService:", generatedKey);
@@ -388,7 +388,7 @@ namespace MethodCache.Core.Tests.Extensions
 
             // Test a fresh SmartKeyGenerator to verify service name extraction and method simplification
             var testKeyGenerator = new SmartKeyGenerator();
-            var testKey = testKeyGenerator.GenerateKey("GetUserProfileAsync", new object[] { 456 }, CreateEmptyDescriptor("test"));
+            var testKey = testKeyGenerator.GenerateKey("GetUserProfileAsync", new object[] { 456 }, CreateEmptyPolicy("test"));
 
             // Should extract service name from method pattern and simplify method name
             Assert.StartsWith("UserService:GetUserProfile:", testKey);
@@ -715,8 +715,8 @@ namespace MethodCache.Core.Tests.Extensions
             var jsonKeyGen = new JsonKeyGenerator();
 
             // Test with invalid/null method name that could cause smart key generation to fail
-            var smartKey = smartKeyGen.GenerateKey("", new object[] { "test" }, CreateEmptyDescriptor("test"));
-            var jsonKey = jsonKeyGen.GenerateKey("", new object[] { "test" }, CreateEmptyDescriptor("test"));
+            var smartKey = smartKeyGen.GenerateKey("", new object[] { "test" }, CreateEmptyPolicy("test"));
+            var jsonKey = jsonKeyGen.GenerateKey("", new object[] { "test" }, CreateEmptyPolicy("test"));
 
             // Should fall back to JSON generator behavior when smart generation fails
             Assert.NotNull(smartKey);
@@ -728,7 +728,7 @@ namespace MethodCache.Core.Tests.Extensions
         {
             var keyGen = new SmartKeyGenerator();
 
-            var key = keyGen.GenerateKey("GetUserAsync", new object[] { null! }, CreateEmptyDescriptor("test"));
+            var key = keyGen.GenerateKey("GetUserAsync", new object[] { null! }, CreateEmptyPolicy("test"));
 
             Assert.Contains("null", key);
         }
@@ -738,7 +738,7 @@ namespace MethodCache.Core.Tests.Extensions
         {
             var keyGen = new SmartKeyGenerator();
 
-            var key = keyGen.GenerateKey("GetUserAsync", Array.Empty<object>(), CreateEmptyDescriptor("test"));
+            var key = keyGen.GenerateKey("GetUserAsync", Array.Empty<object>(), CreateEmptyPolicy("test"));
 
             Assert.NotNull(key);
             Assert.NotEmpty(key);
@@ -751,11 +751,11 @@ namespace MethodCache.Core.Tests.Extensions
             var keyGen = new SmartKeyGenerator();
 
             // Test different argument types
-            var intKey = keyGen.GenerateKey("Method", new object[] { 123 }, CreateEmptyDescriptor("test"));
-            var stringKey = keyGen.GenerateKey("Method", new object[] { "test" }, CreateEmptyDescriptor("test"));
-            var boolKey = keyGen.GenerateKey("Method", new object[] { true }, CreateEmptyDescriptor("test"));
-            var dateKey = keyGen.GenerateKey("Method", new object[] { DateTime.Now }, CreateEmptyDescriptor("test"));
-            var complexKey = keyGen.GenerateKey("Method", new object[] { new { Name = "Test" } }, CreateEmptyDescriptor("test"));
+            var intKey = keyGen.GenerateKey("Method", new object[] { 123 }, CreateEmptyPolicy("test"));
+            var stringKey = keyGen.GenerateKey("Method", new object[] { "test" }, CreateEmptyPolicy("test"));
+            var boolKey = keyGen.GenerateKey("Method", new object[] { true }, CreateEmptyPolicy("test"));
+            var dateKey = keyGen.GenerateKey("Method", new object[] { DateTime.Now }, CreateEmptyPolicy("test"));
+            var complexKey = keyGen.GenerateKey("Method", new object[] { new { Name = "Test" } }, CreateEmptyPolicy("test"));
 
             // Int should appear directly
             Assert.Contains("123", intKey);
@@ -775,9 +775,9 @@ namespace MethodCache.Core.Tests.Extensions
         {
             var keyGen = new SmartKeyGenerator();
 
-            var getUserKey = keyGen.GenerateKey("GetUserAsync", new object[] { 1 }, CreateEmptyDescriptor("test"));
-            var fetchOrdersKey = keyGen.GenerateKey("FetchOrdersAsync", new object[] { 1 }, CreateEmptyDescriptor("test"));
-            var generateReportKey = keyGen.GenerateKey("GenerateReportAsync", new object[] { 1 }, CreateEmptyDescriptor("test"));
+            var getUserKey = keyGen.GenerateKey("GetUserAsync", new object[] { 1 }, CreateEmptyPolicy("test"));
+            var fetchOrdersKey = keyGen.GenerateKey("FetchOrdersAsync", new object[] { 1 }, CreateEmptyPolicy("test"));
+            var generateReportKey = keyGen.GenerateKey("GenerateReportAsync", new object[] { 1 }, CreateEmptyPolicy("test"));
 
             // Should remove "Async" suffix
             Assert.Contains("GetUser:", getUserKey);
@@ -791,7 +791,7 @@ namespace MethodCache.Core.Tests.Extensions
             var keyGen = new SmartKeyGenerator();
             var longString = new string('a', 100);
 
-            var key = keyGen.GenerateKey("Method", new object[] { longString }, CreateEmptyDescriptor("test"));
+            var key = keyGen.GenerateKey("Method", new object[] { longString }, CreateEmptyPolicy("test"));
 
             // Should truncate long strings
             Assert.Contains("...", key);
@@ -968,7 +968,7 @@ namespace MethodCache.Core.Tests.Extensions
             Assert.Equal("FixedKeyGenerator", cacheManager.LastKeyGenerator?.GetType()?.Name);
 
             // Generate a test key to see if it has the smart format
-            var testKey = cacheManager.LastKeyGenerator!.GenerateKey("test", Array.Empty<object>(), CreateEmptyDescriptor("test"));
+            var testKey = cacheManager.LastKeyGenerator!.GenerateKey("test", Array.Empty<object>(), CreateEmptyPolicy("test"));
 
             // The key should contain service and method names (smart format)
             Assert.Contains("UserService", testKey);
@@ -980,31 +980,35 @@ namespace MethodCache.Core.Tests.Extensions
         {
             public string? LastMethodName { get; private set; }
             public object[]? LastArgs { get; private set; }
-            public CacheRuntimeDescriptor? LastDescriptor { get; private set; }
+            public CacheRuntimePolicy? LastPolicy { get; private set; }
             public ICacheKeyGenerator? LastKeyGenerator { get; private set; }
 
             // Compatibility property for tests that still reference LastSettings
-            public dynamic? LastSettings => LastDescriptor;
+            public dynamic? LastSettings => LastPolicy;
 
-            public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+            // Legacy property for tests that haven't migrated yet
+            public CacheRuntimePolicy? LastDescriptor => LastPolicy;
+
+            // New CacheRuntimePolicy-based methods (primary implementation)
+            public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
             {
                 LastMethodName = methodName;
                 LastArgs = args;
-                LastDescriptor = descriptor;
+                LastPolicy = policy;
                 LastKeyGenerator = keyGenerator;
 
                 // Debug: Generate and print the cache key to see if they're the same
-                var cacheKey = keyGenerator.GenerateKey(methodName, args, descriptor);
+                var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
                 System.Console.WriteLine($"MockCacheManager cache key: '{cacheKey}'");
 
                 return factory();
             }
 
-            public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimeDescriptor descriptor, ICacheKeyGenerator keyGenerator)
+            public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
             {
                 LastMethodName = methodName;
                 LastArgs = args;
-                LastDescriptor = descriptor;
+                LastPolicy = policy;
                 LastKeyGenerator = keyGenerator;
                 return new ValueTask<T?>(default(T));
             }
