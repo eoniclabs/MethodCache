@@ -214,6 +214,20 @@ public sealed class StorageCoordinator : IStorageProvider, IAsyncDisposable
         foreach (var stat in layerStats)
         {
             additionalStats[$"{stat.LayerId}Stats"] = stat;
+            // Also expose individual values for easy access
+            additionalStats[$"{stat.LayerId}Hits"] = stat.Hits;
+            additionalStats[$"{stat.LayerId}Misses"] = stat.Misses;
+            additionalStats[$"{stat.LayerId}Operations"] = stat.Operations;
+            additionalStats[$"{stat.LayerId}HitRatio"] = stat.HitRatio;
+
+            // Also expose layer-specific additional stats (like EntryCount, Evictions, etc.)
+            if (stat.AdditionalStats != null)
+            {
+                foreach (var kvp in stat.AdditionalStats)
+                {
+                    additionalStats[$"{stat.LayerId}{kvp.Key}"] = kvp.Value;
+                }
+            }
         }
 
         var stats = new StorageStats
