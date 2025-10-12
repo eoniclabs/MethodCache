@@ -38,6 +38,7 @@ public class UnifiedCacheComparisonBenchmarks
     private ICacheAdapter _lazyCache = null!;
     private ICacheAdapter _memoryCache = null!;
     private ICacheAdapter _easyCaching = null!;
+    private ICacheAdapter _fastCache = null!;
 
     [GlobalSetup]
     public void GlobalSetup()
@@ -52,6 +53,7 @@ public class UnifiedCacheComparisonBenchmarks
         _lazyCache = new LazyCacheAdapter();
         _memoryCache = new MemoryCacheAdapter();
         _easyCaching = new EasyCachingAdapter();
+        _fastCache = new FastCacheAdapter();
 
         // Initial warmup
         WarmupCaches();
@@ -75,6 +77,7 @@ public class UnifiedCacheComparisonBenchmarks
         _lazyCache?.Dispose();
         _memoryCache?.Dispose();
         _easyCaching?.Dispose();
+        _fastCache?.Dispose();
     }
 
     private void WarmupCaches()
@@ -87,6 +90,7 @@ public class UnifiedCacheComparisonBenchmarks
         _lazyCache.Set(TestKey, TestPayload, duration);
         _memoryCache.Set(TestKey, TestPayload, duration);
         _easyCaching.Set(TestKey, TestPayload, duration);
+        _fastCache.Set(TestKey, TestPayload, duration);
     }
 
     // ==================== CACHE HIT TESTS ====================
@@ -136,6 +140,12 @@ public class UnifiedCacheComparisonBenchmarks
     public bool EasyCaching_Hit()
     {
         return _easyCaching.TryGet<SamplePayload>(TestKey, out _);
+    }
+
+    [BenchmarkCategory("CacheHit"), Benchmark]
+    public bool FastCache_Hit()
+    {
+        return _fastCache.TryGet<SamplePayload>(TestKey, out _);
     }
 
     // ==================== CACHE MISS + SET TESTS ====================
@@ -189,6 +199,13 @@ public class UnifiedCacheComparisonBenchmarks
         return await _easyCaching.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
+    [BenchmarkCategory("MissAndSet"), Benchmark]
+    public async Task<SamplePayload> FastCache_MissAndSet()
+    {
+        _fastCache.Remove($"{TestKey}_miss");
+        return await _fastCache.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+    }
+
     // ==================== CONCURRENT ACCESS TESTS ====================
 
     [Params(10, 100)]
@@ -234,6 +251,12 @@ public class UnifiedCacheComparisonBenchmarks
     public async Task EasyCaching_Concurrent()
     {
         await RunConcurrentTest(_easyCaching);
+    }
+
+    [BenchmarkCategory("Concurrent"), Benchmark]
+    public async Task FastCache_Concurrent()
+    {
+        await RunConcurrentTest(_fastCache);
     }
 
     private async Task RunConcurrentTest(ICacheAdapter cache)
@@ -291,6 +314,12 @@ public class UnifiedCacheComparisonBenchmarks
     public async Task EasyCaching_Stampede()
     {
         await RunStampedeTest(_easyCaching);
+    }
+
+    [BenchmarkCategory("Stampede"), Benchmark]
+    public async Task FastCache_Stampede()
+    {
+        await RunStampedeTest(_fastCache);
     }
 
     private async Task RunStampedeTest(ICacheAdapter cache)
