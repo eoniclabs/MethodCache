@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.Core.Runtime.Defaults;
 
 namespace MethodCache.Benchmarks.Core;

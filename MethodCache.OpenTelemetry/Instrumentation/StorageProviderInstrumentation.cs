@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MethodCache.Core;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
 using MethodCache.OpenTelemetry.Metrics;
 using MethodCache.OpenTelemetry.Tracing;
 

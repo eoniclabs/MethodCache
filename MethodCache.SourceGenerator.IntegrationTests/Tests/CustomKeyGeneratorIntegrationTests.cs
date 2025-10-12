@@ -4,6 +4,7 @@ using Xunit;
 using Xunit.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Runtime;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 

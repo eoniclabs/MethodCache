@@ -14,6 +14,7 @@ using MethodCache.Core.Configuration.Diagnostics;
 using MethodCache.Abstractions.Sources;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Policies;
+using MethodCache.Core.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 

@@ -2,9 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.Core.Storage;
-using MethodCache.Core.Extensions;
-
 using MethodCache.Providers.Redis.Configuration;
 using MethodCache.Providers.Redis.HealthChecks;
 using MethodCache.Providers.Redis.Infrastructure;

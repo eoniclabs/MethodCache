@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Abstractions.Registry;
+using MethodCache.Core.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;

@@ -10,6 +10,7 @@ using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using MethodCache.Core.Storage.Abstractions;
 using Xunit;
 
 namespace MethodCache.Providers.Redis.IntegrationTests.Tests;

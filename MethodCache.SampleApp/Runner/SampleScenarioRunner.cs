@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Configuration.Runtime;
+using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Runtime;
 using MethodCache.SampleApp.Configuration;
 using MethodCache.SampleApp.Infrastructure;

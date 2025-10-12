@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
-namespace MethodCache.Core.Storage
+namespace MethodCache.Core.Storage.Abstractions
 {
     /// <summary>
     /// Defines a hybrid cache manager that coordinates L1 (in-memory), L2 (distributed), and L3 (persistent) caching.

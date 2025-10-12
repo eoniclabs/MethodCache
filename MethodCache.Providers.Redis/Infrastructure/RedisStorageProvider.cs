@@ -9,6 +9,7 @@ using Polly.CircuitBreaker;
 using Polly.Retry;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Providers.Redis.Infrastructure;
 

@@ -4,9 +4,12 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
-using MethodCache.Core.Extensions;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 using MethodCache.Providers.SqlServer.Configuration;
 using MethodCache.Providers.SqlServer.HealthChecks;
 using MethodCache.Providers.SqlServer.Infrastructure;
@@ -145,7 +148,7 @@ public static class SqlServerServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddHybridSqlServerCache(
         this IServiceCollection services,
-        Action<MethodCache.Core.Storage.HybridCacheOptions> configureHybridOptions,
+        Action<HybridCacheOptions> configureHybridOptions,
         Action<SqlServerOptions>? configureSqlServerOptions = null)
     {
         if (configureHybridOptions == null)
@@ -157,7 +160,7 @@ public static class SqlServerServiceCollectionExtensions
         // Configure hybrid cache options for L1+L3
         if (configureHybridOptions != null)
         {
-            services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
+            services.Configure<HybridCacheOptions>(options =>
             {
                 configureHybridOptions(options);
                 options.L3Enabled = true;
@@ -174,7 +177,7 @@ public static class SqlServerServiceCollectionExtensions
     public static IServiceCollection AddHybridSqlServerCache(
         this IServiceCollection services,
         string connectionString,
-        Action<MethodCache.Core.Storage.HybridCacheOptions>? configureHybridOptions = null,
+        Action<HybridCacheOptions>? configureHybridOptions = null,
         Action<SqlServerOptions>? configureSqlServerOptions = null)
     {
         // Add SQL Server infrastructure
@@ -187,7 +190,7 @@ public static class SqlServerServiceCollectionExtensions
         // Configure hybrid cache options for L1+L3
         if (configureHybridOptions != null)
         {
-            services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(options =>
+            services.Configure<HybridCacheOptions>(options =>
             {
                 configureHybridOptions(options);
                 options.L3Enabled = true;
@@ -228,7 +231,7 @@ public static class SqlServerServiceCollectionExtensions
         });
 
         // Configure hybrid cache options
-        services.Configure<MethodCache.Core.Storage.HybridCacheOptions>(hybrid =>
+        services.Configure<HybridCacheOptions>(hybrid =>
         {
             hybrid.L1DefaultExpiration = options.L1DefaultExpiration;
             hybrid.L1MaxExpiration = options.L1MaxExpiration;
@@ -365,7 +368,7 @@ public class SqlServerHybridCacheOptions
     /// <summary>
     /// Hybrid cache strategy.
     /// </summary>
-    public MethodCache.Core.Storage.HybridStrategy Strategy { get; set; } = MethodCache.Core.Storage.HybridStrategy.WriteThrough;
+    public HybridStrategy Strategy { get; set; } = HybridStrategy.WriteThrough;
 
     /// <summary>
     /// Whether to enable backplane coordination.

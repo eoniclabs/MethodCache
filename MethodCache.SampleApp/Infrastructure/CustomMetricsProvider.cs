@@ -1,5 +1,6 @@
 using MethodCache.Core;
 using System.Collections.Concurrent;
+using MethodCache.Core.Infrastructure;
 
 namespace MethodCache.SampleApp.Infrastructure
 {

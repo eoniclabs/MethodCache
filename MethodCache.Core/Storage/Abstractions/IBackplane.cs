@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Abstractions;
 
 /// <summary>
 /// Defines a backplane for coordinating cache invalidation across multiple instances.

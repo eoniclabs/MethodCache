@@ -1,15 +1,11 @@
-using System;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
 
-namespace MethodCache.Core.Extensions
+namespace MethodCache.Core.Infrastructure.Extensions
 {
     /// <summary>
     /// Expression tree-based cache extensions that provide automatic key generation.

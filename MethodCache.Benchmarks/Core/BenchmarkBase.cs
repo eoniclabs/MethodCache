@@ -5,6 +5,7 @@ using MethodCache.Core;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Abstractions.Registry;
 using System.Linq;
+using MethodCache.Core.Infrastructure.Extensions;
 
 namespace MethodCache.Benchmarks.Core;
 

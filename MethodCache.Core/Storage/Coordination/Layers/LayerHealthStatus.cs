@@ -1,7 +1,6 @@
-using System.Collections.Generic;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Layers;
 
 /// <summary>
 /// Health status for a storage layer.

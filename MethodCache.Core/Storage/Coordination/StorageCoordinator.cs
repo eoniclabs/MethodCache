@@ -1,13 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination.Layers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using MethodCache.Core.Storage.Layers;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Coordination;
 
 /// <summary>
 /// Thin coordinator that composes multiple storage layers into a unified storage strategy.

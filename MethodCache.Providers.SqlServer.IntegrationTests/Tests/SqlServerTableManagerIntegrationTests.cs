@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Providers.SqlServer.Services;
 
@@ -267,7 +268,7 @@ public class SqlServerTableManagerIntegrationTests : SqlServerIntegrationTestBas
         tablesExist.Should().BeTrue();
 
         // Verify we can perform basic operations
-        var storageProvider = serviceProvider.GetRequiredService<MethodCache.Core.Storage.IStorageProvider>();
+        var storageProvider = serviceProvider.GetRequiredService<IStorageProvider>();
         await storageProvider.SetAsync("test-key", "test-value", TimeSpan.FromMinutes(5));
         var retrieved = await storageProvider.GetAsync<string>("test-key");
         retrieved.Should().Be("test-value");

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.Core.Storage;
+using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Providers.Memory.Configuration;
 using MethodCache.Providers.Memory.Infrastructure;
 
@@ -44,7 +45,7 @@ public static class MemoryServiceCollectionExtensions
         services.AddAdvancedMemoryStorage(configureMemory);
 
         // Also add core infrastructure services
-        services.TryAddSingleton<MethodCache.Core.Storage.ISerializer,
+        services.TryAddSingleton<ISerializer,
             MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer>();
 
         return services;

@@ -1,6 +1,4 @@
-using System;
-
-namespace MethodCache.Core.Metrics
+namespace MethodCache.Core.Infrastructure.Metrics
 {
     public interface ICacheMetrics
     {

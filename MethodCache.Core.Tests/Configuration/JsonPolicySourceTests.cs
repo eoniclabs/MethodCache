@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

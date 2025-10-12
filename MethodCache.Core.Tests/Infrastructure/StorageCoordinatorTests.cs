@@ -6,6 +6,8 @@ using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
 using NSubstitute;
 using System.Threading.Tasks;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Infrastructure;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using MethodCache.Core;
+using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Runtime;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure

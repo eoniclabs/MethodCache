@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using MethodCache.Core.Metrics;
+using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Options;
 
 namespace MethodCache.Core.Runtime;

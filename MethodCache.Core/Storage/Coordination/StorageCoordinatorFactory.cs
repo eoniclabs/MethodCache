@@ -1,12 +1,15 @@
-using System;
-using System.Collections.Generic;
-using Microsoft.Extensions.DependencyInjection;
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Core.Storage.Coordination.Layers;
+using MethodCache.Core.Storage.Coordination.Supporting;
+using MethodCache.Core.Storage.Layers.Distributed;
+using MethodCache.Core.Storage.Layers.Memory;
+using MethodCache.Core.Storage.Layers.Persistent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Storage.Layers;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Coordination;
 
 /// <summary>
 /// Factory for creating StorageCoordinator instances with appropriate layer composition.

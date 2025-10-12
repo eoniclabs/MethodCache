@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Metrics;
 
 namespace MethodCache.Core.Options
 {

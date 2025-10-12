@@ -1,8 +1,8 @@
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using MethodCache.Core.Configuration;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Layers.Memory;
 
 /// <summary>
 /// Factory for creating memory L1 providers.

@@ -1,12 +1,14 @@
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging.Abstractions;
-using MethodCache.Core.Configuration;
+using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Coordination;
 
 /// <summary>
 /// Internal implementation of the MethodCache builder.

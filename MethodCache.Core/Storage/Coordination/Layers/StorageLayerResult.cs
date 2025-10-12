@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Storage.Layers;
+namespace MethodCache.Core.Storage.Coordination.Layers;
 
 /// <summary>
 /// Result from a storage layer operation, indicating whether the operation was handled

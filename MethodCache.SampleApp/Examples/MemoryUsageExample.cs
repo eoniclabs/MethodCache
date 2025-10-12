@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 

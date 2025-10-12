@@ -1,6 +1,4 @@
-using System;
-
-namespace MethodCache.Core.Storage
+namespace MethodCache.Core.Storage.Coordination
 {
     /// <summary>
     /// Configuration options for the hybrid cache.

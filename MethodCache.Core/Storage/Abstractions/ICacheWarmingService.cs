@@ -1,6 +1,4 @@
-using System.Threading.Tasks;
-
-namespace MethodCache.Core.Storage
+namespace MethodCache.Core.Storage.Abstractions
 {
     /// <summary>
     /// Service for proactively warming cache entries before they expire

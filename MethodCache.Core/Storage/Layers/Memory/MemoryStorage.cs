@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
+using MethodCache.Core.Configuration;
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.Core.Configuration;
 
-namespace MethodCache.Core.Storage;
+namespace MethodCache.Core.Storage.Layers.Memory;
 
 /// <summary>
 /// Memory storage implementation using IMemoryCache.

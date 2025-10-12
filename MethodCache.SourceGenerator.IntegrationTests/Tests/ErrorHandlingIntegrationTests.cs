@@ -5,6 +5,7 @@ using MethodCache.Core;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Models;
 using System.Reflection;
+using MethodCache.Core.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
 
