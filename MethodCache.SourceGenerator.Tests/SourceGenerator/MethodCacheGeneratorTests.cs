@@ -42,7 +42,7 @@ namespace MethodCache.SourceGenerator.Tests.SourceGenerator
         private async Task<GeneratedSourceResult> GetGeneratedSources(string source)
         {
             var compilation = await CreateCompilation(source);
-            var generator = new Generator.Utilities.MethodCacheGenerator();
+            var generator = new MethodCacheGenerator();
 
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);

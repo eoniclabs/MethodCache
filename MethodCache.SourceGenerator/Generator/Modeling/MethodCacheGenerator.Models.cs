@@ -2,7 +2,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 
-namespace MethodCache.SourceGenerator.Generator.Modeling
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {

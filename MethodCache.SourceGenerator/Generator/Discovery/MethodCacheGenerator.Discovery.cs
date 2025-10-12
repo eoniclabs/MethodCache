@@ -6,12 +6,12 @@ using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 
-namespace MethodCache.SourceGenerator.Generator.Discovery
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Discovery & Analysis ========================
-        private static Modeling.MethodCacheGenerator.InterfaceInfo? GetInterfaceInfoFromMethod(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
+        private static InterfaceInfo? GetInterfaceInfoFromMethod(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
         {
             // The target symbol is the method, we need to get the containing interface
             if (ctx.TargetSymbol is not IMethodSymbol methodSymbol)
@@ -24,14 +24,14 @@ namespace MethodCache.SourceGenerator.Generator.Discovery
             return GetInterfaceInfo(interfaceSymbol);
         }
 
-        private static Modeling.MethodCacheGenerator.InterfaceInfo? GetInterfaceInfo(INamedTypeSymbol interfaceSymbol)
+        private static InterfaceInfo? GetInterfaceInfo(INamedTypeSymbol interfaceSymbol)
         {
             var allMethods = GetAllInterfaceMethods(interfaceSymbol).ToList();
             if (allMethods.Count == 0)
                 return null;
 
-            var cachedMethods = new List<Modeling.MethodCacheGenerator.MethodModel>();
-            var invalidateMethods = new List<Modeling.MethodCacheGenerator.MethodModel>();
+            var cachedMethods = new List<MethodModel>();
+            var invalidateMethods = new List<MethodModel>();
             var diagnostics = new List<Diagnostic>();
 
             foreach (var method in allMethods)
@@ -50,7 +50,7 @@ namespace MethodCache.SourceGenerator.Generator.Discovery
                 if (cacheAttr != null && invalidateAttr != null)
                 {
                     diagnostics.Add(Diagnostic.Create(
-                        Diagnostics.MethodCacheGenerator.Diagnostics.AttributeConflict,
+                        Diagnostics.AttributeConflict,
                         method.Locations.FirstOrDefault(),
                         method.ToDisplayString()));
                     continue;
@@ -58,7 +58,7 @@ namespace MethodCache.SourceGenerator.Generator.Discovery
 
                 if (cacheAttr != null)
                 {
-                    var validation = Modeling.MethodCacheGenerator.ValidateCacheMethod(method);
+                    var validation = ValidateCacheMethod(method);
                     if (validation.diagnostic != null)
                     {
                         diagnostics.Add(validation.diagnostic);
@@ -66,41 +66,41 @@ namespace MethodCache.SourceGenerator.Generator.Discovery
                     }
 
                     // Check for sync-over-async warning
-                    if (!Utilities.MethodCacheGenerator.Utils.IsTask(method.ReturnType, out _) && !Utilities.MethodCacheGenerator.Utils.IsValueTask(method.ReturnType, out _))
+                    if (!Utils.IsTask(method.ReturnType, out _) && !Utils.IsValueTask(method.ReturnType, out _))
                     {
                         diagnostics.Add(Diagnostic.Create(
-                            Diagnostics.MethodCacheGenerator.Diagnostics.SyncOverAsyncWarning,
+                            Diagnostics.SyncOverAsyncWarning,
                             method.Locations.FirstOrDefault(),
                             method.ToDisplayString()));
                     }
 
-                    cachedMethods.Add(new Modeling.MethodCacheGenerator.MethodModel(method, cacheAttr, null));
+                    cachedMethods.Add(new MethodModel(method, cacheAttr, null));
                 }
                 else if (invalidateAttr != null)
                 {
-                    var tags = Modeling.MethodCacheGenerator.ExtractTags(invalidateAttr);
+                    var tags = ExtractTags(invalidateAttr);
                     if (!tags.Any())
                     {
                         diagnostics.Add(Diagnostic.Create(
-                            Diagnostics.MethodCacheGenerator.Diagnostics.NoInvalidateTags,
+                            Diagnostics.NoInvalidateTags,
                             method.Locations.FirstOrDefault(),
                             method.ToDisplayString()));
                     }
                     else
                     {
                         // Validate dynamic tags
-                        var dynamicTagDiagnostics = Modeling.MethodCacheGenerator.ValidateDynamicTags(tags, method);
+                        var dynamicTagDiagnostics = ValidateDynamicTags(tags, method);
                         diagnostics.AddRange(dynamicTagDiagnostics);
                     }
 
-                    invalidateMethods.Add(new Modeling.MethodCacheGenerator.MethodModel(method, null, invalidateAttr));
+                    invalidateMethods.Add(new MethodModel(method, null, invalidateAttr));
                 }
             }
 
             if (!cachedMethods.Any() && !invalidateMethods.Any() && !diagnostics.Any())
                 return null;
 
-            return new Modeling.MethodCacheGenerator.InterfaceInfo(
+            return new InterfaceInfo(
                 interfaceSymbol,
                 cachedMethods.ToImmutableArray(),
                 invalidateMethods.ToImmutableArray(),

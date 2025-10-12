@@ -3,7 +3,7 @@
 using System.Threading;
 using Microsoft.CodeAnalysis;
 
-namespace MethodCache.SourceGenerator.Generator.Utilities
+namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {
