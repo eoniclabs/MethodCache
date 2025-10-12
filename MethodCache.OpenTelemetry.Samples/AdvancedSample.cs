@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MethodCache.Core;
+using MethodCache.Core.Configuration.Surfaces.Attributes;
 using MethodCache.OpenTelemetry.Correlation;
 using MethodCache.OpenTelemetry.Exporters;
 using MethodCache.OpenTelemetry.HotReload;

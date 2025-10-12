@@ -1,5 +1,7 @@
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
-namespace MethodCache.Core.Configuration.Policies;
+
+namespace MethodCache.Core.PolicyPipeline.Model;
 
 internal static class PolicySnapshotBuilder
 {

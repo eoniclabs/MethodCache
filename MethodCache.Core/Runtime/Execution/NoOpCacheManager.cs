@@ -1,7 +1,7 @@
-using System;
-using System.Threading.Tasks;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
-namespace MethodCache.Core.Runtime.Defaults
+namespace MethodCache.Core.Runtime.Execution
 {
     public class NoOpCacheManager : ICacheManager
     {

@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-
-namespace MethodCache.Core.Runtime
+namespace MethodCache.Core.Runtime.Core
 {
     /// <summary>
     /// Extensions for CacheContext to support enhanced conditional logic.

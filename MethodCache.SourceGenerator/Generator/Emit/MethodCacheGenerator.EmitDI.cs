@@ -1,18 +1,17 @@
 #nullable enable
 
-using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Linq;
+using System.Text;
 
-namespace MethodCache.SourceGenerator
+namespace MethodCache.SourceGenerator.Generator.Emit
 {
     public sealed partial class MethodCacheGenerator
     {
         // ======================== DI Extensions Emitter ========================
         private static class DIExtensionsEmitter
         {
-            internal static string Emit(List<InterfaceInfo> interfaces)
+            internal static string Emit(List<Modeling.MethodCacheGenerator.InterfaceInfo> interfaces)
             {
                 // Only count non-generic methods since generic methods don't generate policies
                 var hasCachedMethods = interfaces.Any(i => i.CachedMethods.Any(m => !m.Method.IsGenericMethod));
@@ -47,9 +46,9 @@ namespace MethodCache.SourceGenerator
                 return sb.ToString();
             }
 
-            private static void EmitInterfaceExtensions(StringBuilder sb, InterfaceInfo info, bool hasAnyCachedMethods)
+            private static void EmitInterfaceExtensions(StringBuilder sb, Modeling.MethodCacheGenerator.InterfaceInfo info, bool hasAnyCachedMethods)
             {
-                var interfaceFqn = Utils.GetFullyQualifiedName(info.Symbol);
+                var interfaceFqn = Utilities.MethodCacheGenerator.Utils.GetFullyQualifiedName(info.Symbol);
                 var decoratorFqn = $"{info.Symbol.ContainingNamespace.ToDisplayString()}.{info.Symbol.Name}Decorator";
                 var baseName = $"{info.Symbol.Name}WithCaching";
 

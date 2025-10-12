@@ -1,10 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using MessagePack;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 
-namespace MethodCache.Core.KeyGenerators;
+namespace MethodCache.Core.Runtime.KeyGeneration;
 
 /// <summary>
 /// Efficient cache key generator using MessagePack binary serialization and SHA-256 hashing.

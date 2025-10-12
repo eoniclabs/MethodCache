@@ -2,7 +2,6 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Providers.SqlServer.HealthChecks;
 using MethodCache.Providers.SqlServer.Infrastructure;
 using MethodCache.Providers.SqlServer.Services;

@@ -1,7 +1,6 @@
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 
-namespace MethodCache.Core.Configuration
+namespace MethodCache.Core.Configuration.Surfaces
 {
     /// <summary>
     /// Service for managing cache configuration at runtime.

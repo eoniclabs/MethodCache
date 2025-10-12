@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-
-namespace MethodCache.Core.Runtime
+namespace MethodCache.Core.Runtime.Core
 {
     /// <summary>
     /// Context passed to fluent cache factories, exposing the cache key and optional services.

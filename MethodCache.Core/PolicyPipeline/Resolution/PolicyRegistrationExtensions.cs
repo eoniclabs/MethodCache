@@ -1,12 +1,10 @@
-using System.Collections.Generic;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.Configuration.Registry;
-using MethodCache.Core.Configuration.Diagnostics;
+using MethodCache.Core.PolicyPipeline.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace MethodCache.Core.Configuration.Resolver;
+namespace MethodCache.Core.PolicyPipeline.Resolution;
 
 public static class PolicyRegistrationExtensions
 {

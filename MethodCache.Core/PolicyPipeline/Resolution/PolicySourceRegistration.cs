@@ -1,6 +1,6 @@
 using MethodCache.Abstractions.Sources;
 
-namespace MethodCache.Core.Configuration.Resolver;
+namespace MethodCache.Core.PolicyPipeline.Resolution;
 
 public sealed record PolicySourceRegistration(IPolicySource Source, int Priority)
 {

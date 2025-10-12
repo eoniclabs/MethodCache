@@ -8,7 +8,6 @@ using MethodCache.Abstractions.Policies;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
 using InfraStorageOptions = MethodCache.Core.Configuration.StorageOptions;
 using MethodCache.Providers.SqlServer.Configuration;
@@ -24,6 +23,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Core.Storage.Coordination;
 

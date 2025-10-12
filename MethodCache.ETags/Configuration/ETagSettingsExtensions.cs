@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 using MethodCache.ETags.Attributes;
 using MethodCache.ETags.Extensions;
 using MethodCache.ETags.Models;

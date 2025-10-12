@@ -1,19 +1,16 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using MethodCache.Core.Options;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Infrastructure.Utilities;
+using MethodCache.Core.Options;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Runtime.Defaults
+namespace MethodCache.Core.Runtime.Execution
 {
     /// <summary>
     /// Enhanced in-memory cache manager that implements both ICacheManager and IMemoryCache interfaces.

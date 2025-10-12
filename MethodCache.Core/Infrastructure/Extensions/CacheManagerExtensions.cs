@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using MethodCache.Core.Configuration.Fluent;
-using MethodCache.Core.KeyGenerators;
+using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Runtime.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Core.Infrastructure.Extensions

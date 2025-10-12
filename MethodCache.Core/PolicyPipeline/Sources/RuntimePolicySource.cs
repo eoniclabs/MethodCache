@@ -1,13 +1,9 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.Configuration.Runtime;
 using MethodCache.Abstractions.Sources;
-using MethodCache.Core.Configuration.Policies;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Configuration.Surfaces.Runtime;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Sources;
+namespace MethodCache.Core.PolicyPipeline.Sources;
 
 internal sealed class RuntimePolicySource : IPolicySource
 {

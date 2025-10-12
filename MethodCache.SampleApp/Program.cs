@@ -1,8 +1,8 @@
 using System.Linq;
 using MethodCache.Core;
-using MethodCache.Core.Configuration.Diagnostics;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Core.PolicyPipeline.Diagnostics;
 using MethodCache.SampleApp.Configuration;
 using MethodCache.SampleApp.Infrastructure;
 using MethodCache.SampleApp.Runner;

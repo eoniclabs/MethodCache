@@ -1,15 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Threading.Tasks;
-using MethodCache.Core.Configuration.Policies;
 using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Options;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
-namespace MethodCache.Core.Configuration.Fluent
+namespace MethodCache.Core.Configuration.Surfaces.Fluent
 {
     internal sealed class FluentMethodCacheConfiguration : IFluentMethodCacheConfiguration
     {

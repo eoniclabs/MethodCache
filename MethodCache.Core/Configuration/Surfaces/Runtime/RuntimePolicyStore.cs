@@ -1,15 +1,11 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.Configuration.Policies;
+using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Runtime;
+namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 
 internal sealed class RuntimePolicyStore
 {

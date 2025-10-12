@@ -1,4 +1,4 @@
-namespace MethodCache.Core
+namespace MethodCache.Core.Configuration.Surfaces.Attributes
 {
     public static class Any<T>
     {

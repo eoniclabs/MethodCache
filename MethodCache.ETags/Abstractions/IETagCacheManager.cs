@@ -1,4 +1,5 @@
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 using MethodCache.ETags.Models;
 
 namespace MethodCache.ETags.Abstractions

@@ -1,7 +1,6 @@
-using System.Collections.Generic;
 using MethodCache.Abstractions.Policies;
 
-namespace MethodCache.Core.Configuration.Policies;
+namespace MethodCache.Core.PolicyPipeline.Model;
 
 public readonly record struct PolicyDraft(
     string MethodId,

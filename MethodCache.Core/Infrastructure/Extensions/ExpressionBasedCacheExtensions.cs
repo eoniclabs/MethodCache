@@ -4,6 +4,8 @@ using System.Reflection;
 using System.Text;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Core.Infrastructure.Extensions
 {

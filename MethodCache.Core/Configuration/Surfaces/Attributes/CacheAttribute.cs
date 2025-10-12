@@ -1,7 +1,5 @@
 
-using System;
-
-namespace MethodCache.Core
+namespace MethodCache.Core.Configuration.Surfaces.Attributes
 {
     /// <summary>
     /// Marks a method for automatic caching using MethodCache source generation.

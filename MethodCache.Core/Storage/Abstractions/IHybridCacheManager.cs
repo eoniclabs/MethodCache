@@ -1,3 +1,5 @@
+using MethodCache.Core.Runtime;
+
 namespace MethodCache.Core.Storage.Abstractions
 {
     /// <summary>

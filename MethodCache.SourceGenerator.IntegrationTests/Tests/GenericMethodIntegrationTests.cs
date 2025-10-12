@@ -8,6 +8,8 @@ using MethodCache.Core;
 using MethodCache.Core.Configuration;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;

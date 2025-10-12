@@ -1,6 +1,4 @@
-using System;
-
-namespace MethodCache.Core
+namespace MethodCache.Core.Runtime.Core
 {
     public class CacheExecutionContext
     {
