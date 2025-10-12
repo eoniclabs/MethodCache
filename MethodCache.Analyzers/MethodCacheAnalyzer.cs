@@ -82,7 +82,7 @@ namespace MethodCache.Analyzers
                 if (TryGetNamedArgument(cacheAttribute, "KeyGeneratorType", out var keyGenArg) &&
                     keyGenArg.Value is INamedTypeSymbol keyGenType)
                 {
-                    var expectedInterface = context.Compilation.GetTypeByMetadataName("MethodCache.Core.ICacheKeyGenerator");
+                    var expectedInterface = context.Compilation.GetTypeByMetadataName("MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator");
                     if (expectedInterface != null && !keyGenType.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, expectedInterface)))
                     {
                         ReportDiagnostic(context, cacheAttribute, CacheKeyGeneratorRule, keyGenType.ToDisplayString());

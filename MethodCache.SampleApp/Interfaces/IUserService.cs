@@ -1,7 +1,7 @@
 using MethodCache.Core;
 using MethodCache.SampleApp.Models;
 using System.Threading.Tasks;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 
 namespace MethodCache.SampleApp.Interfaces
 {

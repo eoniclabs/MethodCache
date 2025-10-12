@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Reflection;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using MethodCache.Core.Configuration.Surfaces.ConfigFile;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Configuration.Surfaces.Runtime;

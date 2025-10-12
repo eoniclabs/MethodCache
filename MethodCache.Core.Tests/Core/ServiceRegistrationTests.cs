@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Configuration;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Extensions;

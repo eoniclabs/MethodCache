@@ -22,9 +22,9 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using System;");
                 sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
                 sb.AppendLine("using MethodCache.Core;");
-                sb.AppendLine("using MethodCache.Core.Configuration;");
                 sb.AppendLine("using MethodCache.Abstractions.Registry;");
-                sb.AppendLine("using MethodCache.Core.Configuration.Policies;");
+                sb.AppendLine("using MethodCache.Core.Runtime;");
+                sb.AppendLine("using MethodCache.Core.Runtime.KeyGeneration;");
                 if (hasCachedMethods)
                 {
                     sb.AppendLine("using MethodCache.Generated;");

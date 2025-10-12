@@ -92,6 +92,10 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
             options.ConnectionString = SqlServerConnectionString;
             options.EnableAutoTableCreation = true;
             options.Schema = $"taghybrid_{Guid.NewGuid():N}".Replace("-", "");
+        }, configureStorage: storageOptions =>
+        {
+            storageOptions.L2Enabled = true;
+            storageOptions.EnableAsyncL2Writes = false; // Synchronous writes for testing
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -120,7 +124,7 @@ public class SqlServerHybridCacheIntegrationTests : SqlServerIntegrationTestBase
 
         // Check individual layers before invalidation
         var l1BeforeInvalidation = await memoryStorage.GetAsync<string>(key);
-        var l2Storage = serviceProvider.GetRequiredService<IStorageProvider>();
+        var l2Storage = serviceProvider.GetRequiredService<SqlServerPersistentStorageProvider>();
         var l2BeforeInvalidation = await l2Storage.GetAsync<string>(key);
 
         // Debug: Verify both layers have the item

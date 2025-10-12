@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Reflection;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;

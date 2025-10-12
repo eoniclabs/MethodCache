@@ -8,6 +8,7 @@ using NSubstitute;
 using System.Threading.Tasks;
 using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Core.Storage.Coordination;
+using MethodCache.Core.Storage.Coordination.Layers;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Infrastructure;
@@ -282,30 +283,80 @@ public class StorageCoordinatorTests : IDisposable
         await _l2Storage.Received(1).ExistsAsync(key, Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "TODO: Rewrite for new layer architecture - StorageCoordinator aggregates from multiple real layers")]
-    public async Task GetHealthAsync_WhenBothHealthy_ReturnsHealthy()
+    [Fact]
+    public async Task GetHealthAsync_WhenAllLayersHealthy_ReturnsHealthy()
     {
-        // Note: StorageCoordinator creates real layers (TagIndex, Memory, AsyncQueue, Distributed, Backplane)
-        // These tests would need to mock all layers properly or use integration tests
-        // For now, skipping until proper layer-based tests are written
-        await Task.CompletedTask;
+        // Arrange
+        var layer1 = Substitute.For<IStorageLayer>();
+        layer1.IsEnabled.Returns(true);
+        layer1.GetHealthAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(new LayerHealthStatus("Layer1", HealthStatus.Healthy)));
+
+        var layer2 = Substitute.For<IStorageLayer>();
+        layer2.IsEnabled.Returns(true);
+        layer2.GetHealthAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(new LayerHealthStatus("Layer2", HealthStatus.Healthy)));
+
+        await using var coordinator = new StorageCoordinator(
+            new[] { layer1, layer2 },
+            NullLogger<StorageCoordinator>.Instance);
+
+        // Act
+        var health = await coordinator.GetHealthAsync();
+
+        // Assert
+        health.Should().Be(HealthStatus.Healthy);
     }
 
-    [Fact(Skip = "TODO: Rewrite for new layer architecture - StorageCoordinator aggregates from multiple real layers")]
-    public async Task GetHealthAsync_WhenL2Unhealthy_ReturnsUnhealthy()
+    [Fact]
+    public async Task GetHealthAsync_WhenOneLayerUnhealthy_ReturnsUnhealthy()
     {
-        // Note: StorageCoordinator creates real layers with dependency injection
-        // Would need comprehensive layer mocking to test health aggregation properly
-        await Task.CompletedTask;
+        // Arrange
+        var healthyLayer = Substitute.For<IStorageLayer>();
+        healthyLayer.IsEnabled.Returns(true);
+        healthyLayer.GetHealthAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(new LayerHealthStatus("HealthyLayer", HealthStatus.Healthy)));
+
+        var unhealthyLayer = Substitute.For<IStorageLayer>();
+        unhealthyLayer.IsEnabled.Returns(true);
+        unhealthyLayer.GetHealthAsync(Arg.Any<CancellationToken>()).Returns(ValueTask.FromResult(new LayerHealthStatus("UnhealthyLayer", HealthStatus.Unhealthy)));
+
+        await using var coordinator = new StorageCoordinator(
+            new[] { healthyLayer, unhealthyLayer },
+            NullLogger<StorageCoordinator>.Instance);
+
+        // Act
+        var health = await coordinator.GetHealthAsync();
+
+        // Assert
+        health.Should().Be(HealthStatus.Unhealthy);
     }
 
-    [Fact(Skip = "TODO: Rewrite for new layer architecture - Stats structure changed to per-layer format")]
-    public async Task GetStatsAsync_CombinesL1AndL2Stats()
+    [Fact]
+    public async Task GetStatsAsync_AggregatesStatsFromAllLayers()
     {
-        // Note: StorageCoordinator now aggregates stats from multiple layers
-        // Stats are keyed as "{LayerId}Stats" (e.g., "TagIndexStats", "L1Stats", etc.)
-        // Would need to rewrite to test new per-layer stats structure
-        await Task.CompletedTask;
+        // Arrange
+        var layer1 = Substitute.For<IStorageLayer>();
+        layer1.IsEnabled.Returns(true);
+        layer1.LayerId.Returns("Layer1");
+        layer1.GetStats().Returns(new LayerStats("Layer1", 10, 5, 0.67, 15));
+
+        var layer2 = Substitute.For<IStorageLayer>();
+        layer2.IsEnabled.Returns(true);
+        layer2.LayerId.Returns("Layer2");
+        layer2.GetStats().Returns(new LayerStats("Layer2", 20, 10, 0.67, 30));
+
+        await using var coordinator = new StorageCoordinator(
+            new[] { layer1, layer2 },
+            NullLogger<StorageCoordinator>.Instance);
+
+        // Act
+        var stats = await coordinator.GetStatsAsync();
+
+        // Assert
+        stats.Should().NotBeNull();
+        stats!.AdditionalStats.Should().NotBeNull();
+        stats.AdditionalStats!["TotalHits"].Should().Be(30L); // 10 + 20
+        stats.AdditionalStats["TotalMisses"].Should().Be(15L); // 5 + 10
+        stats.AdditionalStats["Layer1Stats"].Should().BeOfType<LayerStats>();
+        stats.AdditionalStats["Layer2Stats"].Should().BeOfType<LayerStats>();
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 using Xunit;
 using MethodCache.Core;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 
 namespace MethodCache.Core.Tests.Core
 {
