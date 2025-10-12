@@ -31,7 +31,8 @@ public class CustomKeyGeneratorIntegrationTests
 using System;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Runtime.Core;
 
 namespace TestNamespace
 {
@@ -200,7 +201,8 @@ namespace TestNamespace
 using System;
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Runtime.Core;
 
 namespace TestNamespace
 {

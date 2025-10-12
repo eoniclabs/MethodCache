@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using MethodCache.Core.Configuration.Surfaces.ConfigFile;
 using MethodCache.Core.PolicyPipeline.Model;
 

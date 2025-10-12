@@ -66,9 +66,9 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using System.Threading.Tasks;");
                 sb.AppendLine("using MethodCache.Core;");
                 sb.AppendLine("using MethodCache.Abstractions.Registry;");
-                sb.AppendLine("using MethodCache.Core.Configuration;");
-                sb.AppendLine("using MethodCache.Core.Configuration.Policies;");
                 sb.AppendLine("using MethodCache.Core.Runtime;");
+                sb.AppendLine("using MethodCache.Core.Runtime.Core;");
+                sb.AppendLine("using MethodCache.Core.Runtime.KeyGeneration;");
                 sb.AppendLine();
                 sb.AppendLine($"namespace {ns}");
                 sb.AppendLine("{");

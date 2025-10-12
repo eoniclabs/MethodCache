@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Reflection;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -46,7 +46,8 @@ namespace TestApp
         {
             var source = @"
 using MethodCache.Core;
-using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Runtime.Core;
 
 namespace TestApp
 {

@@ -5,7 +5,7 @@ using MethodCache.Core;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Benchmarks.Infrastructure;
 using System.Collections.Concurrent;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.KeyGeneration;
 

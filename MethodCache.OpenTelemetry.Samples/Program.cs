@@ -1,4 +1,4 @@
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.OpenTelemetry.Extensions;
 using MethodCache.OpenTelemetry.Propagators;

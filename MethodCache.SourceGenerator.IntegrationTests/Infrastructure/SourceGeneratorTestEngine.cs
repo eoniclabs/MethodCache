@@ -10,7 +10,7 @@ using MethodCache.Core;
 using MethodCache.Abstractions.Sources;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Configuration.Surfaces.Attributes;
+using MethodCache.Core;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.Runtime;
@@ -281,6 +281,7 @@ namespace {namespaceName}
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(MethodCache.Abstractions.Policies.CachePolicy).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator).Assembly.Location), // Include Core assembly for Runtime types
             MetadataReference.CreateFromFile(typeof(SourceGeneratorTestEngine).Assembly.Location), // Include this assembly for test models
         };
 
