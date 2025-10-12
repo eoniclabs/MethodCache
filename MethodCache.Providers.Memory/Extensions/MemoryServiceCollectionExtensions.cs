@@ -45,7 +45,7 @@ public static class MemoryServiceCollectionExtensions
 
         // Also add core infrastructure services
         services.TryAddSingleton<MethodCache.Core.Storage.ISerializer,
-            MethodCache.Infrastructure.Implementation.MessagePackSerializer>();
+            MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer>();
 
         return services;
     }

@@ -5,7 +5,7 @@ using MethodCache.Core.Configuration;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Defaults;
 using MethodCache.Core.Storage;
-using MethodCache.Infrastructure.Extensions;
+using MethodCache.Core.Extensions;
 using MethodCache.Providers.Redis.Features;
 using MethodCache.Providers.Redis.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;

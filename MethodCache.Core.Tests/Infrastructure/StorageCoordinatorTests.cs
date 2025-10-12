@@ -8,7 +8,7 @@ using NSubstitute;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace MethodCache.Infrastructure.Tests;
+namespace MethodCache.Core.Tests.Infrastructure;
 
 public class StorageCoordinatorTests : IDisposable
 {
@@ -37,7 +37,7 @@ public class StorageCoordinatorTests : IDisposable
 
         _storageCoordinator = StorageCoordinatorFactory.Create(
             _l1Storage,
-            Options.Create(_options),
+            Microsoft.Extensions.Options.Options.Create(_options),
             NullLogger<StorageCoordinator>.Instance,
             _l2Storage,
             null,
@@ -121,7 +121,7 @@ public class StorageCoordinatorTests : IDisposable
         var optionsWithL2Disabled = new StorageOptions { L2Enabled = false };
         var hybridWithL2Disabled = StorageCoordinatorFactory.Create(
             _l1Storage,
-            Options.Create(optionsWithL2Disabled),
+            Microsoft.Extensions.Options.Options.Create(optionsWithL2Disabled),
             NullLogger<StorageCoordinator>.Instance,
             _l2Storage,
             null,
@@ -340,7 +340,7 @@ public class StorageCoordinatorTests : IDisposable
 
         await using var hybridWithAsyncWrites = StorageCoordinatorFactory.Create(
             _l1Storage,
-            Options.Create(optionsWithAsyncWrites),
+            Microsoft.Extensions.Options.Options.Create(optionsWithAsyncWrites),
             NullLogger<StorageCoordinator>.Instance,
             _l2Storage,
             null,

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using MethodCache.Core.Configuration;
 using McmMemoryCacheOptions = Microsoft.Extensions.Caching.Memory.MemoryCacheOptions;
 
-namespace MethodCache.Infrastructure.Implementation;
+namespace MethodCache.Core.Infrastructure.Configuration;
 
 internal sealed class StorageMemoryCacheConfigurator : IConfigureOptions<McmMemoryCacheOptions>
 {

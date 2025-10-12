@@ -1,8 +1,8 @@
 using FluentAssertions;
-using MethodCache.Infrastructure.Implementation;
+using MethodCache.Core.Infrastructure.Serialization;
 using Xunit;
 
-namespace MethodCache.Infrastructure.Tests;
+namespace MethodCache.Core.Tests.Infrastructure;
 
 public class MessagePackSerializerTests
 {

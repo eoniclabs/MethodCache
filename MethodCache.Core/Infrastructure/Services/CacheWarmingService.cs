@@ -5,7 +5,7 @@ using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
 using System.Collections.Concurrent;
 
-namespace MethodCache.Infrastructure.Services
+namespace MethodCache.Core.Infrastructure.Services
 {
     /// <summary>
     /// Generic cache warming service that works with any storage provider.

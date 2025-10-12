@@ -4,7 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
-using MethodCache.Infrastructure.Extensions;
+using MethodCache.Core.Extensions;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Configuration;
 using MethodCache.Providers.SqlServer.Configuration;
