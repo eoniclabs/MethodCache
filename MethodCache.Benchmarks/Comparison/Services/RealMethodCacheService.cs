@@ -1,0 +1,32 @@
+using MethodCache.Core;
+using MethodCache.Benchmarks.Comparison;
+
+namespace MethodCache.Benchmarks.Comparison.Services;
+
+/// <summary>
+/// Real MethodCache service using source generation - this is how users actually use MethodCache!
+/// </summary>
+public partial class RealMethodCacheService : ICachedDataService
+{
+    private static readonly SamplePayload _cachedPayload = new()
+    {
+        Id = 1,
+        Name = "Test",
+        Data = new byte[1024]
+    };
+
+    [Cache(Duration = "00:10:00")]
+    public virtual async Task<SamplePayload> GetDataAsync(string key)
+    {
+        // Simulate minimal async work
+        await Task.CompletedTask;
+        return _cachedPayload;
+    }
+
+    [Cache(Duration = "00:10:00")]
+    public virtual SamplePayload GetData(string key)
+    {
+        // Direct synchronous access
+        return _cachedPayload;
+    }
+}

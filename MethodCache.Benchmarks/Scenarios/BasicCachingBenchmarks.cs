@@ -100,6 +100,7 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
 public interface IBasicCacheService
 {
     Task<object> GetDataAsync(int size, string modelType);
+    Task<object> GetSlowDataAsync(int size, string modelType);
     Task InvalidateDataAsync(int size, string modelType);
 }
 
@@ -127,6 +128,14 @@ public class BasicCacheService : IBasicCacheService
     [MethodImpl(MethodImplOptions.NoInlining)]
     public async Task<object> GetDataNoCachingAsync(int size, string modelType)
     {
+        return await CreateDataAsync(size, modelType);
+    }
+
+    [Cache(Duration = "00:10:00", RequireIdempotent = false)]
+    public virtual async Task<object> GetSlowDataAsync(int size, string modelType)
+    {
+        // Simulate slow operation for stampede testing
+        await Task.Delay(50);
         return await CreateDataAsync(size, modelType);
     }
 

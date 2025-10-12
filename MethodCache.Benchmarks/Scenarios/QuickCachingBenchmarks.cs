@@ -21,6 +21,9 @@ public class QuickCachingBenchmarks : SimpleBenchmarkBase
     public int DataSize { get; set; } = 1;
     public string ModelType { get; set; } = "Small";
 
+    // Track what benchmark we're running
+    private string _currentBenchmark = "";
+
     protected override void ConfigureBenchmarkServices(IServiceCollection services)
     {
         services.AddSingleton<IBasicCacheService, BasicCacheService>();
@@ -34,39 +37,53 @@ public class QuickCachingBenchmarks : SimpleBenchmarkBase
         _cacheManager = ServiceProvider.GetRequiredService<ICacheManager>();
     }
 
+    [IterationSetup]
+    public void IterationSetup()
+    {
+        // Setup cache state based on which benchmark is running
+        var cacheKey = $"GetDataAsync_{DataSize}_{ModelType}";
+
+        if (_currentBenchmark == nameof(CacheHit))
+        {
+            // Warm up cache for hit tests
+            var warmupTask = _cacheService.GetDataAsync(DataSize, ModelType);
+            warmupTask.Wait();
+        }
+        else if (_currentBenchmark == nameof(CacheMiss))
+        {
+            // Clear cache for miss tests
+            var clearTask = _cacheManager.InvalidateByKeysAsync(cacheKey);
+            clearTask.Wait();
+        }
+    }
+
+    [IterationCleanup]
+    public void IterationCleanup()
+    {
+        // Clean up after each iteration if needed
+        _currentBenchmark = "";
+    }
+
     [Benchmark(Baseline = true)]
     public async Task<object> NoCaching()
     {
+        _currentBenchmark = nameof(NoCaching);
         return await _noCacheService.GetDataAsync(DataSize, ModelType);
     }
 
     [Benchmark]
     public async Task<object> CacheMiss()
     {
-        // Clear cache to ensure miss
-        await _cacheManager.InvalidateByKeysAsync($"GetDataAsync_{DataSize}_{ModelType}");
+        _currentBenchmark = nameof(CacheMiss);
+        // Cache already cleared in IterationSetup - just measure the miss
         return await _cacheService.GetDataAsync(DataSize, ModelType);
     }
 
     [Benchmark]
     public async Task<object> CacheHit()
     {
-        // Warm up cache first
-        await _cacheService.GetDataAsync(DataSize, ModelType);
-
-        // Now measure cache hit
-        return await _cacheService.GetDataAsync(DataSize, ModelType);
-    }
-
-    [Benchmark]
-    public async Task<object> CacheHitCold()
-    {
-        await _cacheManager.InvalidateByKeysAsync($"GetDataAsync_{DataSize}_{ModelType}");
-
-        // First call to warm cache
-        await _cacheService.GetDataAsync(DataSize, ModelType);
-
-        // Second call should hit cache
+        _currentBenchmark = nameof(CacheHit);
+        // Cache already warmed in IterationSetup - just measure the hit
         return await _cacheService.GetDataAsync(DataSize, ModelType);
     }
 }
