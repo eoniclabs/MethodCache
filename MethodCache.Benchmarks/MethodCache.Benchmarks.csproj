@@ -33,6 +33,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\MethodCache.Providers.Memory\MethodCache.Providers.Memory.csproj" />
+    <ProjectReference Include="..\MethodCache.Providers.FastCache\MethodCache.Providers.FastCache.csproj" />
     <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
     <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" />
     <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" />
