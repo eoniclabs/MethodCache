@@ -60,25 +60,15 @@ public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
             throw new ArgumentNullException(nameof(contribution));
         }
 
-        var buffer = _buffer;
-        var count = _count;
+        var newCount = _count + 1;
+        var newBuffer = new PolicyContribution[newCount];
 
-        PolicyContribution[] target;
-        if (buffer.Length == count)
+        if (_count > 0)
         {
-            var newCapacity = count == 0 ? 4 : count * 2;
-            target = new PolicyContribution[newCapacity];
-            if (count > 0)
-            {
-                Array.Copy(buffer, target, count);
-            }
-        }
-        else
-        {
-            target = buffer;
+            Array.Copy(_buffer, 0, newBuffer, 0, _count);
         }
 
-        target[count] = contribution;
-        return new PolicyProvenance(target, count + 1);
+        newBuffer[_count] = contribution;
+        return new PolicyProvenance(newBuffer, newCount);
     }
 }
