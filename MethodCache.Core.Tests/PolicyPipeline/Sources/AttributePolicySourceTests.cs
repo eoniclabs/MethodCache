@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core;
-using MethodCache.Core;
 using MethodCache.Core.PolicyPipeline.Sources;
 using MethodCache.Core.Runtime.KeyGeneration;
 using Xunit;

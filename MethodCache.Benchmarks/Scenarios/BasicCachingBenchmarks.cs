@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
 using System.Runtime.CompilerServices;
-using MethodCache.Core;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.KeyGeneration;
 

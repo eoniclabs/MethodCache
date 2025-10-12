@@ -4,7 +4,6 @@ using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
 using MethodCache.Benchmarks.Infrastructure;
 using MethodCache.Abstractions.Registry;
-using MethodCache.Core;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.KeyGeneration;
 

@@ -1,7 +1,6 @@
 
 using System.Threading.Tasks;
 using MethodCache.Core;
-using MethodCache.Core;
 
 namespace MethodCache.SampleApp
 {

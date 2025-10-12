@@ -10,7 +10,6 @@ using MethodCache.Core;
 using MethodCache.Abstractions.Sources;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.Runtime;

@@ -8,7 +8,6 @@ using MethodCache.Benchmarks.Infrastructure;
 using System.Text.Json;
 using System.Text;
 using MessagePack;
-using MethodCache.Core;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
 

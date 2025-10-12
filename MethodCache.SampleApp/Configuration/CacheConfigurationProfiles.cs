@@ -1,5 +1,4 @@
 using MethodCache.Core;
-using MethodCache.Core;
 using MethodCache.SampleApp.Models;
 
 namespace MethodCache.SampleApp.Configuration
