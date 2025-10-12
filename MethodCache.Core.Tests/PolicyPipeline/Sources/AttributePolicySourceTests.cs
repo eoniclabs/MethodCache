@@ -5,7 +5,6 @@ using MethodCache.Abstractions.Policies;
 using MethodCache.Core;
 using MethodCache.Core.Configuration.Sources;
 using MethodCache.Core.KeyGenerators;
-using MethodCache.ETags.Attributes;
 using Xunit;
 
 namespace MethodCache.Core.Tests.PolicyPipeline.Sources;
@@ -49,21 +48,6 @@ public class AttributePolicySourceTests
         Assert.False(snapshot.Policy.RequireIdempotent.HasValue);
     }
 
-    [Fact]
-    public async Task GetSnapshotAsync_MergesEtagMetadata()
-    {
-        var source = new AttributePolicySource(typeof(AttributePolicySourceTests).Assembly);
-
-        var snapshots = await source.GetSnapshotAsync();
-        var snapshot = Assert.Single(snapshots, s => s.MethodId.EndsWith(nameof(ITestEtagService.GetProfileAsync)));
-
-        Assert.Equal("LastModified", snapshot.Policy.Metadata["etag.strategy"]);
-        Assert.Equal("False", snapshot.Policy.Metadata["etag.includeParameters"]);
-        Assert.Equal(typeof(DummyETagGenerator).AssemblyQualifiedName, snapshot.Policy.Metadata["etag.generatorType"]);
-        Assert.Equal("active,premium", snapshot.Policy.Metadata["etag.metadata"]);
-        Assert.Equal("True", snapshot.Policy.Metadata["etag.useWeak"]);
-    }
-
     private interface ITestCacheService
     {
         [Cache("service", Duration = "00:05:00", Tags = new[] { "users", "profiles" }, Version = 2, RequireIdempotent = true, KeyGeneratorType = typeof(FastHashKeyGenerator))]
@@ -74,17 +58,5 @@ public class AttributePolicySourceTests
     {
         [Cache]
         Task<string> FetchAsync();
-    }
-
-    private interface ITestEtagService
-    {
-        [Cache("profiles")]
-        [ETag(ETagGenerationStrategy.LastModified, IncludeParametersInETag = false, UseWeakETag = true, Metadata = new[] { "active", "premium" }, ETagGeneratorType = typeof(DummyETagGenerator))]
-        Task<string> GetProfileAsync(int id);
-    }
-
-    private sealed class DummyETagGenerator : IETagGenerator
-    {
-        public Task<string> GenerateETagAsync(object content, ETagGenerationContext context) => Task.FromResult("etag");
     }
 }

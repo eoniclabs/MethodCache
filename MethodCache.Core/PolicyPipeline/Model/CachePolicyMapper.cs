@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Configuration.Policies;
 
@@ -61,15 +59,5 @@ public static class CachePolicyMapper
         }
 
         return fields;
-    }
-
-    public static void AppendETagMetadata(IDictionary<string, string?> metadata, ETagMetadata etag)
-    {
-        metadata["etag.strategy"] = etag.Strategy;
-        metadata["etag.includeParameters"] = etag.IncludeParametersInETag?.ToString(CultureInfo.InvariantCulture);
-        metadata["etag.generatorType"] = etag.ETagGeneratorType?.AssemblyQualifiedName;
-        metadata["etag.metadata"] = etag.Metadata == null ? null : string.Join(",", etag.Metadata);
-        metadata["etag.useWeak"] = etag.UseWeakETag?.ToString(CultureInfo.InvariantCulture);
-        metadata["etag.cacheDuration"] = etag.CacheDuration?.ToString();
     }
 }
