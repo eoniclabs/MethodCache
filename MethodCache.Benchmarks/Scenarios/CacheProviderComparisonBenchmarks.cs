@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
-using MethodCache.Core;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.Execution;
