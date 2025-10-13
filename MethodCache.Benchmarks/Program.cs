@@ -117,7 +117,7 @@ public class Program
         var isQuickMode = Environment.GetEnvironmentVariable("BENCHMARK_QUICK") == "true";
 
         var job = Job.Default
-            .WithPlatform(Platform.X64)
+            .WithPlatform(Platform.AnyCpu) // Auto-detect platform (ARM on Mac, x64 on Windows)
             .WithGcServer(true)
             .WithGcConcurrent(true)
             .WithGcRetainVm(true)
