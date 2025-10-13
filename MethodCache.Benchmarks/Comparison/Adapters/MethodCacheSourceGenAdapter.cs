@@ -36,6 +36,15 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
         }
     }
 
+    /// <summary>
+    /// Direct async cache hit test - calls GetAsync which uses source-generated caching
+    /// This properly tests cache hit performance without factory execution
+    /// </summary>
+    public async Task<SamplePayload> GetAsyncDirect(string key)
+    {
+        return await _service.GetAsync(key);
+    }
+
     public async Task<TValue> GetOrSetAsync<TValue>(string key, Func<Task<TValue>> factory, TimeSpan duration)
     {
         // Source-generated caching handles this

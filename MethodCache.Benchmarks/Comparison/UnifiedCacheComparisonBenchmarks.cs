@@ -135,7 +135,12 @@ public class UnifiedCacheComparisonBenchmarks
         _methodCache.Set(TestKey, TestPayload, duration);
         _methodCacheStatic.Set(TestKey, TestPayload, duration);
         _methodCacheDirect.Set(TestKey, TestPayload, duration);
-        _methodCacheSourceGen.Set(TestKey, TestPayload, duration);
+
+        // MethodCacheSourceGen must populate cache by calling the cached method
+        // The Set() method is a no-op for source-generated services
+        var sourceGenAdapter = (MethodCacheSourceGenAdapter)_methodCacheSourceGen;
+        _ = sourceGenAdapter.GetAsyncDirect(TestKey).GetAwaiter().GetResult();
+
         _fusionCache.Set(TestKey, TestPayload, duration);
         _lazyCache.Set(TestKey, TestPayload, duration);
         _memoryCache.Set(TestKey, TestPayload, duration);
@@ -217,9 +222,9 @@ public class UnifiedCacheComparisonBenchmarks
     public async Task<SamplePayload?> MethodCacheSourceGen_HitAsync()
     {
         // Uses async API - avoids sync-over-async overhead
-        return await _methodCacheSourceGen.GetOrSetAsync(TestKey,
-            () => Task.FromResult(TestPayload),
-            TimeSpan.FromMinutes(10));
+        // IMPORTANT: Call GetAsync directly, not GetOrSetAsync which executes factory
+        var sourceGenAdapter = (MethodCacheSourceGenAdapter)_methodCacheSourceGen;
+        return await sourceGenAdapter.GetAsyncDirect(TestKey);
     }
 
     // ==================== CACHE MISS + SET TESTS ====================
