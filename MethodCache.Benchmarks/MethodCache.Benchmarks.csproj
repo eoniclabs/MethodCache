@@ -10,6 +10,8 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <RetainVMGarbageCollection>true</RetainVMGarbageCollection>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,8 +37,8 @@
     <ProjectReference Include="..\MethodCache.Providers.Memory\MethodCache.Providers.Memory.csproj" />
     <ProjectReference Include="..\MethodCache.Providers.FastCache\MethodCache.Providers.FastCache.csproj" />
     <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
-    <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" />
-    <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" />
+    <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" />
+    <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" />
   </ItemGroup>
 
 </Project>

@@ -1,23 +1,37 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Comparison.Adapters;
+using MethodCache.Benchmarks.Comparison.Services;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.Providers.Memory.Extensions;
 
 namespace MethodCache.Benchmarks.Comparison;
 
 /// <summary>
 /// Adapter-based comparison benchmarks for all caching libraries
-/// All tests run through the same ICacheAdapter interface for normalized comparison
+/// All tests run through the same ICacheAdapter interface for apples-to-apples comparison
 ///
-/// IMPORTANT: This adds ~700ns overhead to MethodCache due to generic key generation.
-/// For MethodCache's real performance (15-58 ns), see RealMethodCacheComparison.cs
+/// IMPORTANT INTERPRETATION GUIDE:
 ///
-/// Use these results for:
-/// - Comparing stampede prevention across frameworks
-/// - Testing concurrent access patterns
-/// - Understanding normalized feature implementations
+/// MethodCacheSourceGen_* benchmarks:
+/// - Uses AdvancedMemory storage provider (with tags, stats, eviction)
+/// - Direct storage-to-storage comparison
+/// - Shows MethodCache storage performance vs other frameworks
+/// - Expected performance: ~100-200ns (full-featured storage)
 ///
-/// DON'T use these results to claim MethodCache is slower than other frameworks!
+/// MethodCacheDirect_* benchmarks:
+/// - Direct API calls (no source generation)
+/// - Shows MethodCache storage layer only
+/// - Fair storage-to-storage comparison
+///
+/// MethodCacheStatic_*/MethodCache_* benchmarks:
+/// - Legacy/research comparisons
+/// - Shows different key generation strategies
+/// - Not recommended for decision-making
+///
+/// Key Insight: Compare MethodCacheSourceGen against other frameworks - that's the real comparison!
 /// See Comparison/README.md and BENCHMARKING_GUIDE.md for full explanation.
 /// </summary>
 [MemoryDiagnoser]
@@ -34,6 +48,7 @@ public class UnifiedCacheComparisonBenchmarks
     private ICacheAdapter _methodCache = null!;
     private ICacheAdapter _methodCacheStatic = null!;
     private ICacheAdapter _methodCacheDirect = null!;
+    private ICacheAdapter _methodCacheSourceGen = null!; // NEW: Uses source generation (proper MethodCache usage)
     private ICacheAdapter _fusionCache = null!;
     private ICacheAdapter _lazyCache = null!;
     private ICacheAdapter _memoryCache = null!;
@@ -44,10 +59,31 @@ public class UnifiedCacheComparisonBenchmarks
     public void GlobalSetup()
     {
         // Initialize all cache adapters
-        // MethodCache has 3 usage modes shown here:
+        // MethodCache has 4 usage modes shown here:
         _methodCache = new MethodCacheAdapter(); // With runtime key generation (worst case: ~9,500ns)
         _methodCacheStatic = new StaticKeyMethodCacheAdapter(); // With pre-generated keys (like source gen: ~2,200ns)
         _methodCacheDirect = new DirectApiMethodCacheAdapter(); // Direct API with manual keys (fairest: ~same as others)
+
+        // NEW: Source-generated MethodCache with AdvancedMemory storage
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMethodCache(config =>
+        {
+            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        }); // Don't auto-scan assembly - we register explicitly below
+        services.AddAdvancedMemoryStorage(); // Use AdvancedMemory provider
+
+        // Register the base implementation
+        services.AddSingleton<MethodCacheBenchmarkService>();
+
+        // Use the source-generated decorator registration extension method
+        // This properly wraps the implementation with the caching decorator
+        services.AddIMethodCacheBenchmarkServiceWithCaching(sp =>
+            sp.GetRequiredService<MethodCacheBenchmarkService>());
+
+        var serviceProvider = services.BuildServiceProvider();
+        var sourceGenService = serviceProvider.GetRequiredService<IMethodCacheBenchmarkService>();
+        _methodCacheSourceGen = new MethodCacheSourceGenAdapter(sourceGenService);
 
         _fusionCache = new FusionCacheAdapter();
         _lazyCache = new LazyCacheAdapter();
@@ -73,6 +109,7 @@ public class UnifiedCacheComparisonBenchmarks
         _methodCache?.Dispose();
         _methodCacheStatic?.Dispose();
         _methodCacheDirect?.Dispose();
+        _methodCacheSourceGen?.Dispose();
         _fusionCache?.Dispose();
         _lazyCache?.Dispose();
         _memoryCache?.Dispose();
@@ -86,6 +123,7 @@ public class UnifiedCacheComparisonBenchmarks
         _methodCache.Set(TestKey, TestPayload, duration);
         _methodCacheStatic.Set(TestKey, TestPayload, duration);
         _methodCacheDirect.Set(TestKey, TestPayload, duration);
+        _methodCacheSourceGen.Set(TestKey, TestPayload, duration);
         _fusionCache.Set(TestKey, TestPayload, duration);
         _lazyCache.Set(TestKey, TestPayload, duration);
         _memoryCache.Set(TestKey, TestPayload, duration);
@@ -94,11 +132,13 @@ public class UnifiedCacheComparisonBenchmarks
     }
 
     // ==================== CACHE HIT TESTS ====================
-    // MethodCache has 3 usage modes:
-    // 1. MethodCache_Hit - Runtime key generation (shows overhead: ~9,500ns)
-    // 2. MethodCacheStatic_Hit - Pre-generated keys like source gen (~2,200ns)
-    // 3. MethodCacheDirect_Hit - Direct API with manual keys (fairest comparison)
-    // For true source-generated performance, see RealMethodCacheComparison.cs (15-58ns)
+    // MethodCache has 4 usage modes:
+    // 1. MethodCacheSourceGen_Hit - AdvancedMemory storage (full-featured: ~100-200ns)
+    // 2. MethodCacheDirect_Hit - Direct API with manual keys (storage-only comparison)
+    // 3. MethodCacheStatic_Hit - Pre-generated keys research (~2,200ns)
+    // 4. MethodCache_Hit - Runtime key generation research (~9,500ns)
+    //
+    // COMPARE: MethodCacheSourceGen (AdvancedMemory) vs other frameworks for storage comparison
 
     [BenchmarkCategory("CacheHit"), Benchmark]
     public bool MethodCache_Hit()
@@ -116,6 +156,13 @@ public class UnifiedCacheComparisonBenchmarks
     public bool MethodCacheDirect_Hit()
     {
         return _methodCacheDirect.TryGet<SamplePayload>(TestKey, out _);
+    }
+
+    [BenchmarkCategory("CacheHit"), Benchmark]
+    public bool MethodCacheSourceGen_Hit()
+    {
+        // Uses AdvancedMemory storage - full-featured cache with tags, stats, eviction
+        return _methodCacheSourceGen.TryGet<SamplePayload>(TestKey, out _);
     }
 
     [BenchmarkCategory("CacheHit"), Benchmark(Baseline = true)]
@@ -169,6 +216,13 @@ public class UnifiedCacheComparisonBenchmarks
     {
         _methodCacheDirect.Remove($"{TestKey}_miss");
         return await _methodCacheDirect.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+    }
+
+    [BenchmarkCategory("MissAndSet"), Benchmark]
+    public async Task<SamplePayload> MethodCacheSourceGen_MissAndSet()
+    {
+        _methodCacheSourceGen.Remove($"{TestKey}_miss");
+        return await _methodCacheSourceGen.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark(Baseline = true)]
@@ -227,6 +281,12 @@ public class UnifiedCacheComparisonBenchmarks
     public async Task MethodCacheDirect_Concurrent()
     {
         await RunConcurrentTest(_methodCacheDirect);
+    }
+
+    [BenchmarkCategory("Concurrent"), Benchmark]
+    public async Task MethodCacheSourceGen_Concurrent()
+    {
+        await RunConcurrentTest(_methodCacheSourceGen);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark(Baseline = true)]
@@ -290,6 +350,12 @@ public class UnifiedCacheComparisonBenchmarks
     public async Task MethodCacheDirect_Stampede()
     {
         await RunStampedeTest(_methodCacheDirect);
+    }
+
+    [BenchmarkCategory("Stampede"), Benchmark]
+    public async Task MethodCacheSourceGen_Stampede()
+    {
+        await RunStampedeTest(_methodCacheSourceGen);
     }
 
     [BenchmarkCategory("Stampede"), Benchmark(Baseline = true)]

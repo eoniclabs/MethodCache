@@ -42,7 +42,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(StaticKeyMethodCacheAdapter).Assembly);
+        }); // Don't scan assembly to avoid conflicts
 
         _serviceProvider = services.BuildServiceProvider();
 

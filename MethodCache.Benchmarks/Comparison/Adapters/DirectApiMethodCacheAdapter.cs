@@ -36,7 +36,7 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(DirectApiMethodCacheAdapter).Assembly);
+        }); // Don't scan assembly to avoid conflicts
 
         _serviceProvider = services.BuildServiceProvider();
 
