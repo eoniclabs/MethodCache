@@ -106,8 +106,17 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        private readonly ICacheKeyGenerator _keyGenerator;");
                 sb.AppendLine();
 
+                // Cached policy fields for performance (Phase 2.2 optimization)
+                foreach (var cached in info.CachedMethods)
+                {
+                    var methodId = Utils.GetMethodId(cached.Method);
+                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
+                    sb.AppendLine($"        private readonly CacheRuntimePolicy _cachedPolicy_{safeFieldName};");
+                }
+                sb.AppendLine();
+
                 // Constructor
-                EmitConstructor(sb, className, interfaceFqn, info.Symbol);
+                EmitConstructorWithPolicies(sb, className, interfaceFqn, info.Symbol, info.CachedMethods);
 
                 // Methods
                 var allMethods = info.Symbol.GetMembers()
@@ -205,11 +214,38 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
             }
 
+            private static void EmitConstructorWithPolicies(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
+            {
+                // Constructor name should NOT include generic parameters - that's invalid C# syntax
+                sb.AppendLine($"        public {className}(");
+                sb.AppendLine($"            {interfaceFqn} decorated,");
+                sb.AppendLine("            ICacheManager cacheManager,");
+                sb.AppendLine("            IPolicyRegistry policyRegistry,");
+                sb.AppendLine("            ICacheKeyGenerator keyGenerator)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
+                sb.AppendLine("            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));");
+                sb.AppendLine("            _policyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));");
+                sb.AppendLine("            _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));");
+                sb.AppendLine();
+                sb.AppendLine("            // Pre-cache policies for performance (Phase 2.2 optimization)");
+                sb.AppendLine("            // This eliminates dictionary lookup + object construction on every cache call");
+                foreach (var cached in cachedMethods)
+                {
+                    var methodId = Utils.GetMethodId(cached.Method);
+                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
+                    sb.AppendLine($"            _cachedPolicy_{safeFieldName} = CacheRuntimePolicy.FromResolverResult(_policyRegistry.GetPolicy(\"{methodId}\"));");
+                }
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
+
             private static void EmitCachedMethod(StringBuilder sb, MethodModel model, INamedTypeSymbol interfaceSymbol)
             {
                 var method = model.Method;
                 var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
                 var methodId = Utils.GetMethodId(method);
+                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
 
                 // Method signature
                 EmitMethodSignature(sb, method);
@@ -232,8 +268,8 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("            var args = new object[] { };");
                 }
 
-                sb.AppendLine($"            var policyResult = _policyRegistry.GetPolicy(\"{methodId}\");");
-                sb.AppendLine("            var policy = CacheRuntimePolicy.FromResolverResult(policyResult);");
+                // Use cached policy instead of looking it up (Phase 2.2 optimization)
+                sb.AppendLine($"            var policy = _cachedPolicy_{safeFieldName};");
 
                 // Handle different return types
                 if (Utils.IsTask(method.ReturnType, out var taskType))

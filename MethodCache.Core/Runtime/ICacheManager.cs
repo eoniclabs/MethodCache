@@ -58,6 +58,25 @@ namespace MethodCache.Core.Runtime
         ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator);
 
         /// <summary>
+        /// Ultra-fast cache lookup that bypasses key generation, policy checks, and statistics.
+        /// Use this when you have a pre-computed cache key and need minimal latency.
+        /// This method only performs basic expiration checking.
+        /// </summary>
+        /// <typeparam name="T">Type of cached value</typeparam>
+        /// <param name="cacheKey">Pre-computed cache key (must match the key used during cache population)</param>
+        /// <returns>The cached value if found and not expired, or default(T) if not in cache</returns>
+        /// <remarks>
+        /// This method is optimized for maximum performance:
+        /// - Skips key generation (uses pre-computed key)
+        /// - Skips policy lookup and construction
+        /// - Minimal expiration checking
+        /// - No statistics tracking (if disabled)
+        /// - No LRU updates (if disabled)
+        /// Use this for hot paths where every microsecond counts.
+        /// </remarks>
+        ValueTask<T?> TryGetFastAsync<T>(string cacheKey);
+
+        /// <summary>
         /// Invalidates all cache entries associated with the specified tags.
         /// Use this for bulk invalidation when related data changes.
         /// </summary>
