@@ -172,7 +172,7 @@ if [ "$SKIP_BUILD" = false ]; then
     dotnet build "$BENCHMARK_PROJECT/$BENCHMARK_PROJECT.csproj" \
         --configuration Release \
         --verbosity quiet \
-        /p:TreatWarningsAsErrors=false
+        -p:TreatWarningsAsErrors=false
 
     if [ $? -eq 0 ]; then
         print_success "Build completed successfully"
