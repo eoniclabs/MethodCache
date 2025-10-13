@@ -60,6 +60,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#nullable enable");
                 sb.AppendLine("#pragma warning disable CS8019 // Unnecessary using directive");
                 sb.AppendLine("using System;");
+                sb.AppendLine("using System.Buffers;");
                 sb.AppendLine("using System.Collections.Generic;");
                 sb.AppendLine("using System.Linq;");
                 sb.AppendLine("using System.Threading;");
@@ -107,11 +108,13 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
 
                 // Cached policy fields for performance (Phase 2.2 optimization)
+                // Cached method names for key generation (Phase 2.4 optimization)
                 foreach (var cached in info.CachedMethods)
                 {
                     var methodId = Utils.GetMethodId(cached.Method);
                     var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
                     sb.AppendLine($"        private readonly CacheRuntimePolicy _cachedPolicy_{safeFieldName};");
+                    sb.AppendLine($"        private readonly string _cachedMethodName_{safeFieldName};");
                 }
                 sb.AppendLine();
 
@@ -228,13 +231,25 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("            _policyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));");
                 sb.AppendLine("            _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));");
                 sb.AppendLine();
-                sb.AppendLine("            // Pre-cache policies for performance (Phase 2.2 optimization)");
-                sb.AppendLine("            // This eliminates dictionary lookup + object construction on every cache call");
+                sb.AppendLine("            // Pre-cache policies and method names for performance (Phase 2.2 & 2.4 optimization)");
+                sb.AppendLine("            // This eliminates dictionary lookup + object construction + method name allocation on every cache call");
                 foreach (var cached in cachedMethods)
                 {
                     var methodId = Utils.GetMethodId(cached.Method);
                     var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
+                    var methodName = cached.Method.Name;
                     sb.AppendLine($"            _cachedPolicy_{safeFieldName} = CacheRuntimePolicy.FromResolverResult(_policyRegistry.GetPolicy(\"{methodId}\"));");
+
+                    // For generic interfaces, we'll compute the method name at runtime once
+                    if (interfaceSymbol.IsGenericType)
+                    {
+                        var baseInterfaceName = interfaceSymbol.Name;
+                        sb.AppendLine($"            _cachedMethodName_{safeFieldName} = \"{baseInterfaceName}<\" + string.Join(\",\", this.GetType().GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\";");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"            _cachedMethodName_{safeFieldName} = \"{methodName}\";");
+                    }
                 }
                 sb.AppendLine("        }");
                 sb.AppendLine();
@@ -302,21 +317,11 @@ namespace MethodCache.SourceGenerator
             private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol)
             {
                 var call = BuildMethodCall(method);
+                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
 
-                // Generate dynamic cache method name for generic interfaces
-                if (interfaceSymbol.IsGenericType)
-                {
-                    var baseInterfaceName = interfaceSymbol.Name;
-                    var methodName = method.Name;
-                    sb.AppendLine($"            var cacheMethodName = \"{baseInterfaceName}<\" + string.Join(\",\", this.GetType().GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\";");
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{innerType}>(");
-                    sb.AppendLine("                cacheMethodName,");
-                }
-                else
-                {
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{innerType}>(");
-                    sb.AppendLine($"                \"{method.Name}\",");
-                }
+                // Use pre-cached method name (Phase 2.4 optimization)
+                sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{innerType}>(");
+                sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
                 sb.AppendLine("                policy,");
@@ -326,21 +331,11 @@ namespace MethodCache.SourceGenerator
             private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol)
             {
                 var call = BuildMethodCall(method);
+                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
 
-                // Generate dynamic cache method name for generic interfaces
-                if (interfaceSymbol.IsGenericType)
-                {
-                    var baseInterfaceName = interfaceSymbol.Name;
-                    var methodName = method.Name;
-                    sb.AppendLine($"            var cacheMethodName = \"{baseInterfaceName}<\" + string.Join(\",\", this.GetType().GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\";");
-                    sb.AppendLine($"            var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
-                    sb.AppendLine("                cacheMethodName,");
-                }
-                else
-                {
-                    sb.AppendLine($"            var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
-                    sb.AppendLine($"                \"{method.Name}\",");
-                }
+                // Use pre-cached method name (Phase 2.4 optimization)
+                sb.AppendLine($"            var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
+                sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
                 sb.AppendLine("                policy,");
@@ -351,26 +346,16 @@ namespace MethodCache.SourceGenerator
             private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, string returnType, INamedTypeSymbol interfaceSymbol)
             {
                 var call = BuildMethodCall(method);
+                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
 
                 // Add warning comment about sync-over-async
                 sb.AppendLine("            // WARNING: This is a sync-over-async pattern that may cause deadlocks");
                 sb.AppendLine("            // in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
                 sb.AppendLine("            // Consider making the method async to avoid potential issues.");
 
-                // Generate dynamic cache method name for generic interfaces
-                if (interfaceSymbol.IsGenericType)
-                {
-                    var baseInterfaceName = interfaceSymbol.Name;
-                    var methodName = method.Name;
-                    sb.AppendLine($"            var cacheMethodName = \"{baseInterfaceName}<\" + string.Join(\",\", this.GetType().GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\";");
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
-                    sb.AppendLine("                cacheMethodName,");
-                }
-                else
-                {
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
-                    sb.AppendLine($"                \"{method.Name}\",");
-                }
+                // Use pre-cached method name (Phase 2.4 optimization)
+                sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
+                sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
                 sb.AppendLine("                args,");
                 sb.AppendLine($"                () => Task.FromResult({call}),");
                 sb.AppendLine("                policy,");
