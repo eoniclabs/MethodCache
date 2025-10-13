@@ -1,9 +1,9 @@
 # MethodCache Performance Improvement Plan
 
 **Date Created**: 2025-10-13
-**Status**: 🟡 Phase 2 Complete - 48-54% Improvement Achieved!
-**Initial Performance**: 199µs (MethodCacheSourceGen_Hit sync benchmark on Windows)
-**Current Performance**: 85µs async, 97µs sync (after Phase 2 optimizations)
+**Status**: 🟢 Phase 2 Complete - 53-56% Improvement Achieved!
+**Initial Performance**: 147µs async, 185µs sync (baseline before Phase 2)
+**Current Performance**: 69.8µs async, 88.4µs sync (after Phase 2.2 & 2.4 optimizations)
 **Target Performance**: 10-30µs (Phase 3 goal)
 
 ---
@@ -205,35 +205,31 @@ public SamplePayload Get(string key)
 **Files to modify**:
 - `MethodCache.SourceGenerator/Templates/DecoratorTemplate.cs`
 
-#### 2.3 Use ArrayPool for Argument Arrays
-**File**: Source generator code generation
+#### 2.3 ArrayPool Experiment ❌ **REJECTED**
 
-```csharp
-public SamplePayload Get(string key)
-{
-    var args = ArrayPool<object>.Shared.Rent(1);
-    try
-    {
-        args[0] = key;
-        return _cacheManager.GetOrCreateAsync<SamplePayload>(
-            "Get", args,
-            () => Task.FromResult(_decorated.Get(key)),
-            _cachedGetPolicy,
-            _keyGenerator)
-            .ConfigureAwait(false).GetAwaiter().GetResult();
-    }
-    finally
-    {
-        ArrayPool<object>.Shared.Return(args, clearArray: true);
-    }
-}
-```
+**Initial Hypothesis**: Using ArrayPool would eliminate array allocation overhead and reduce GC pressure.
 
-**Impact**: -5-10µs (eliminates array allocation + GC pressure)
-**Files to modify**:
-- `MethodCache.SourceGenerator/Templates/DecoratorTemplate.cs`
+**Implementation**: Modified source generator to use `ArrayPool<object>.Shared.Rent()`/`Return()` with try-finally blocks.
 
-**Expected Phase 2 Result**: **500ns-2µs** (matches documentation expectations)
+**Benchmark Results**: **Performance DEGRADED significantly:**
+- **Async cache hits**: 69.8µs → 97.0µs (**39% slower**)
+- **Concurrent (100 threads)**: 592.6µs → 1,551.1µs (**162% slower**)
+- **Stampede protection**: 626.9µs → 846.1µs (**35% slower**)
+
+**Root Cause Analysis**:
+1. **ArrayPool overhead**: Rent() and Return() have synchronization costs for thread safety
+2. **try-finally overhead**: Additional branching and stack unwinding setup (~10-20ns)
+3. **Array clearing cost**: `clearArray: true` adds memset overhead to prevent memory leaks
+4. **GC Gen0 efficiency**: For small 1-2 element arrays, Gen0 collection is extremely fast (<5ns)
+
+**Key Learning**: ArrayPool is beneficial for:
+- Large arrays (>8 elements)
+- Very high-frequency allocations (>1M/sec)
+- Long-lived arrays that would promote to Gen1/Gen2
+
+For our use case (1-2 parameter methods with short-lived arrays in Gen0), simple `new object[]` allocation is faster.
+
+**Decision**: Reverted to simple array allocation: `var args = new object[] { key };`
 
 ---
 
@@ -458,10 +454,13 @@ Ensure no regressions in:
 - [x] 2.1 Implement TryGetFastAsync fast-path (added ultra-fast lookup method)
 - [x] 2.2 Cache policy objects in decorator (eliminates 10-20µs per call)
 - [x] 2.3 Cache method names in decorator (eliminates string allocation per call)
+- [x] 2.4 Test ArrayPool for args arrays ❌ **REJECTED** (39-162% slower due to overhead)
 - [x] Verify performance improvements
-  - **Results**: 48% faster async (147µs → 85µs), 54% faster sync (185µs → 97µs)
-  - **Concurrent**: 10-15x faster under load (1.2-9.4ms → 210-650µs)
-- [ ] Further optimization: Pre-compute complete cache keys
+  - **Phase 2.2 Results**: 48% faster async (147µs → 85µs), 54% faster sync (185µs → 97µs)
+  - **Phase 2.4 Results**: 53% faster async (147µs → 69.8µs), 56% faster sync (185µs → 88.4µs)
+  - **Concurrent**: 10-15x faster under load (1.2-9.4ms → 193.4-592.6µs)
+  - **Stampede**: ~80-90x faster (54-55ms → 626.9-643.7µs)
+- [ ] Further optimization: Pre-compute complete cache keys (potential 10-20µs savings)
 
 ### Phase 3: Lock-Free LRU
 - [ ] Research and design lock-free LRU approach
