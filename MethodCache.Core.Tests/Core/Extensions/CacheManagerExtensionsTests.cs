@@ -1008,6 +1008,11 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 return new ValueTask<T?>(default(T));
             }
 
+            public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+            {
+                return new ValueTask<T?>(default(T));
+            }
+
             public Task InvalidateByTagsAsync(params string[] tags) => Task.CompletedTask;
 
             public Task InvalidateByKeysAsync(params string[] keys) => Task.CompletedTask;

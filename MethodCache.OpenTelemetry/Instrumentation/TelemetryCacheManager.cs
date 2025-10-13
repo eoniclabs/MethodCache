@@ -146,6 +146,12 @@ public class TelemetryCacheManager : ICacheManager
         }
     }
 
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        // Fast path - minimal telemetry overhead for ultra-fast lookups
+        return _innerManager.TryGetFastAsync<T>(cacheKey);
+    }
+
     public async Task InvalidateByTagsAsync(params string[] tags)
     {
         using var activity = _activitySource.StartCacheOperation("InvalidateByTags", TracingConstants.Operations.Delete);

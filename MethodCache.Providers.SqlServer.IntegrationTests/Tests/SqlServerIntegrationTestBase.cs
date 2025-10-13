@@ -507,6 +507,11 @@ internal class StorageProviderCacheManager : ICacheManager
 
     // ============= Invalidation methods =============
 
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
     public Task InvalidateByTagsAsync(params string[] tags)
     {
         return Task.WhenAll(tags.Select(tag => _storageProvider.RemoveByTagAsync(tag).AsTask()));
