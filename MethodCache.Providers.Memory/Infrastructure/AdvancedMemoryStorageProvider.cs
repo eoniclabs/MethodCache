@@ -485,6 +485,33 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private void UpdateAccessOrder(string key, CacheEntry entry, bool remove)
     {
+        // Probabilistic LRU update (Phase 3 Option A optimization)
+        // Only apply to LRU updates (remove=false), not to removal operations
+        if (!remove && _options.EvictionPolicy == EvictionPolicy.LRU && _options.LruUpdateProbability < 1.0)
+        {
+            try
+            {
+                // Check if disposed before accessing ThreadLocal
+                if (_disposed) return;
+
+                var random = _threadLocalRandom?.Value;
+                if (random == null)
+                {
+                    return; // Cache is disposed or being disposed, skip update
+                }
+
+                if (random.NextDouble() >= _options.LruUpdateProbability)
+                {
+                    return; // Skip this update (99% of hits with default 1% probability)
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // ThreadLocal was disposed during access, skip this update
+                return;
+            }
+        }
+
         lock (_accessOrderLock)
         {
             if (remove)

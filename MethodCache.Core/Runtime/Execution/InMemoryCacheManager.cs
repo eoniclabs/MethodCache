@@ -538,12 +538,41 @@ namespace MethodCache.Core.Runtime.Execution
         
         /// <summary>
         /// Updates access order for eviction policies with O(1) LinkedList operations.
+        /// Uses probabilistic updates (Redis-style) to reduce lock contention by 99%.
         /// </summary>
         private void UpdateAccessOrder(string key, EnhancedCacheEntry entry)
         {
             // Only update order for LRU policy (FIFO doesn't move on access)
             if (_options.EvictionPolicy != MemoryCacheEvictionPolicy.LRU) return;
-            
+
+            // Probabilistic LRU update (Phase 3 Option A optimization)
+            // Only update access order with configured probability (default 1%)
+            // This provides approximate LRU with massive reduction in lock contention
+            if (_options.LruUpdateProbability < 1.0)
+            {
+                try
+                {
+                    // Check if disposed before accessing ThreadLocal
+                    if (_disposed) return;
+
+                    var random = ThreadLocalRandom?.Value;
+                    if (random == null)
+                    {
+                        return; // Cache is disposed or being disposed, skip update
+                    }
+
+                    if (random.NextDouble() >= _options.LruUpdateProbability)
+                    {
+                        return; // Skip this update (99% of hits with default 1% probability)
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    // ThreadLocal was disposed during access, skip this update
+                    return;
+                }
+            }
+
             lock (_accessOrderLock)
             {
                 if (entry.OrderNode != null)
