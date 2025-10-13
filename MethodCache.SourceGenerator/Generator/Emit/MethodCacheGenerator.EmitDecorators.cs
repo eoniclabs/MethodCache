@@ -60,7 +60,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#nullable enable");
                 sb.AppendLine("#pragma warning disable CS8019 // Unnecessary using directive");
                 sb.AppendLine("using System;");
-                sb.AppendLine("using System.Buffers;");
                 sb.AppendLine("using System.Collections.Generic;");
                 sb.AppendLine("using System.Linq;");
                 sb.AppendLine("using System.Threading;");
@@ -280,7 +279,7 @@ namespace MethodCache.SourceGenerator
                 }
                 else
                 {
-                    sb.AppendLine("            var args = new object[] { };");
+                    sb.AppendLine("            var args = System.Array.Empty<object>();");
                 }
 
                 // Use cached policy instead of looking it up (Phase 2.2 optimization)
@@ -361,6 +360,52 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("                policy,");
                 sb.AppendLine("                _keyGenerator)");
                 sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
+            }
+
+            // Indented versions for ArrayPool try-finally block (Phase 2.3)
+            private static void EmitTaskCachingWithIndent(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol, string indent)
+            {
+                var call = BuildMethodCall(method);
+                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
+
+                sb.AppendLine($"{indent}return _cacheManager.GetOrCreateAsync<{innerType}>(");
+                sb.AppendLine($"{indent}    _cachedMethodName_{safeFieldName},");
+                sb.AppendLine($"{indent}    args,");
+                sb.AppendLine($"{indent}    async () => await {call}.ConfigureAwait(false),");
+                sb.AppendLine($"{indent}    policy,");
+                sb.AppendLine($"{indent}    _keyGenerator);");
+            }
+
+            private static void EmitValueTaskCachingWithIndent(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol, string indent)
+            {
+                var call = BuildMethodCall(method);
+                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
+
+                sb.AppendLine($"{indent}var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
+                sb.AppendLine($"{indent}    _cachedMethodName_{safeFieldName},");
+                sb.AppendLine($"{indent}    args,");
+                sb.AppendLine($"{indent}    async () => await {call}.AsTask().ConfigureAwait(false),");
+                sb.AppendLine($"{indent}    policy,");
+                sb.AppendLine($"{indent}    _keyGenerator);");
+                sb.AppendLine($"{indent}return new ValueTask<{innerType}>(task);");
+            }
+
+            private static void EmitSyncCachingWithIndent(StringBuilder sb, IMethodSymbol method, string returnType, INamedTypeSymbol interfaceSymbol, string indent)
+            {
+                var call = BuildMethodCall(method);
+                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
+
+                sb.AppendLine($"{indent}// WARNING: This is a sync-over-async pattern that may cause deadlocks");
+                sb.AppendLine($"{indent}// in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
+                sb.AppendLine($"{indent}// Consider making the method async to avoid potential issues.");
+
+                sb.AppendLine($"{indent}return _cacheManager.GetOrCreateAsync<{returnType}>(");
+                sb.AppendLine($"{indent}    _cachedMethodName_{safeFieldName},");
+                sb.AppendLine($"{indent}    args,");
+                sb.AppendLine($"{indent}    () => Task.FromResult({call}),");
+                sb.AppendLine($"{indent}    policy,");
+                sb.AppendLine($"{indent}    _keyGenerator)");
+                sb.AppendLine($"{indent}    .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
