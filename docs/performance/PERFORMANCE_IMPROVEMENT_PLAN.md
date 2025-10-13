@@ -449,7 +449,9 @@ Ensure no regressions in:
 - [x] 1.1 Add async benchmark methods
 - [x] 1.2 Disable LRU/statistics in benchmark config
 - [x] 1.3 Document sync method overhead
-- [ ] Verify 40-99µs performance target
+- [x] 1.4 Fix async benchmark to call GetAsync directly (not GetOrSetAsync)
+- [x] 1.5 Fix cache warmup to properly populate SourceGen cache
+- [ ] Verify 40-99µs performance target (pending benchmark results)
 
 ### Phase 2: Framework Optimizations
 - [ ] 2.1 Implement TryGetFast fast-path
