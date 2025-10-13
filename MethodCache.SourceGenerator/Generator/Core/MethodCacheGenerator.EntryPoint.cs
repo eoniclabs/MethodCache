@@ -16,8 +16,7 @@ namespace MethodCache.SourceGenerator
             var interfaceProvider = context.SyntaxProvider
                 .ForAttributeWithMetadataName(
                     fullyQualifiedMetadataName: "MethodCache.Core.CacheAttribute",
-                    predicate: static (node, _) => node is MethodDeclarationSyntax method &&
-                                                   method.Parent is InterfaceDeclarationSyntax,
+                    predicate: static (node, _) => node.Parent is InterfaceDeclarationSyntax,
                     transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
                 .Where(static info => info != null)
                 .Collect();
@@ -26,8 +25,7 @@ namespace MethodCache.SourceGenerator
             var invalidateProvider = context.SyntaxProvider
                 .ForAttributeWithMetadataName(
                     fullyQualifiedMetadataName: "MethodCache.Core.CacheInvalidateAttribute",
-                    predicate: static (node, _) => node is MethodDeclarationSyntax method &&
-                                                   method.Parent is InterfaceDeclarationSyntax,
+                    predicate: static (node, _) => node.Parent is InterfaceDeclarationSyntax,
                     transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
                 .Where(static info => info != null)
                 .Collect();

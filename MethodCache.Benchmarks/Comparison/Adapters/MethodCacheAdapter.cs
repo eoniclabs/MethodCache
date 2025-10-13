@@ -27,7 +27,7 @@ public class MethodCacheAdapter : ICacheAdapter
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(MethodCacheAdapter).Assembly);
+        }); // Don't scan assembly to avoid conflicts
 
         _serviceProvider = services.BuildServiceProvider();
         _cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();
