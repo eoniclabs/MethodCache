@@ -77,6 +77,11 @@ public class HybridCacheManager : IHybridCacheManager
         return await _storageProvider.GetAsync<T>(cacheKey);
     }
 
+    public async ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return await _storageProvider.GetAsync<T>(cacheKey);
+    }
+
     public async Task InvalidateByTagsAsync(params string[] tags)
     {
         var tasks = tags.Select(tag => _storageProvider.RemoveByTagAsync(tag).AsTask());

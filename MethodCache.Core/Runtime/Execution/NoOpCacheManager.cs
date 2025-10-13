@@ -19,6 +19,12 @@ namespace MethodCache.Core.Runtime.Execution
             return new ValueTask<T?>(default(T));
         }
 
+        public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+        {
+            // Always return cache miss for no-op cache
+            return new ValueTask<T?>(default(T));
+        }
+
         // ============= Invalidation methods =============
 
         public Task InvalidateByTagsAsync(params string[] tags)

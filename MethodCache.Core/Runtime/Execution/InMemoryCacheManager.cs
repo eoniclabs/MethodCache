@@ -247,6 +247,29 @@ namespace MethodCache.Core.Runtime.Execution
             return GetAsyncInternal<T>(key, updateStatistics: false);
         }
 
+        public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+        {
+            // Ultra-fast path: minimal overhead, just dictionary lookup + expiration check
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                // Only check expiration, skip everything else for maximum performance
+                if (!entry.IsExpired)
+                {
+                    try
+                    {
+                        return new ValueTask<T?>((T)entry.Value);
+                    }
+                    catch (InvalidCastException)
+                    {
+                        // Type mismatch - treat as miss
+                        return new ValueTask<T?>(default(T));
+                    }
+                }
+            }
+
+            return new ValueTask<T?>(default(T));
+        }
+
         /// <summary>
         /// Executes a factory function with single-flight pattern to prevent duplicate concurrent executions for the same key.
         /// Multiple concurrent requests for the same key will wait for the single execution to complete.
