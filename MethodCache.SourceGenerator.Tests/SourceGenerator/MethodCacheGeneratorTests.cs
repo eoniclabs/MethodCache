@@ -453,7 +453,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearAll()");
-            AssertContainsIgnoreWhitespace(decoratorSource, "var args = new object[] { };"); // No parameters
+            AssertContainsIgnoreWhitespace(decoratorSource, "var args = System.Array.Empty<object>();"); // No parameters - using Array.Empty for efficiency
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.ClearAll()");
         }

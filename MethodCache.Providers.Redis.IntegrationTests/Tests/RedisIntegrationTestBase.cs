@@ -395,6 +395,11 @@ internal class InfrastructureCacheManager : ICacheManager
         return Task.WhenAll(tasks);
     }
 
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
     public Task InvalidateByTagsAsync(params string[] tags)
     {
         var tasks = tags.Select(tag => _storageCoordinator.RemoveByTagAsync(tag).AsTask());
@@ -445,6 +450,11 @@ internal class StorageProviderCacheManager : ICacheManager
         }
 
         return value;
+    }
+
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
     }
 
     public Task InvalidateByTagsAsync(params string[] tags)
@@ -550,6 +560,11 @@ internal class TestHybridCacheManager : IHybridCacheManager
     {
         var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
         return await _storageCoordinator.GetAsync<T>(cacheKey);
+    }
+
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
     }
 
     public async Task InvalidateByTagsAsync(params string[] tags)
@@ -742,6 +757,11 @@ internal class LazyRedisCacheManager : ICacheManager
     public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         => _lazyCacheManager.Value.GetOrCreateAsync(methodName, args, factory, policy, keyGenerator);
 
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
     public Task InvalidateByTagsAsync(params string[] tags)
         => _lazyCacheManager.Value.InvalidateByTagsAsync(tags);
 
@@ -811,6 +831,11 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
         }
 
         return value;
+    }
+
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
     }
 
     public async Task InvalidateByTagsAsync(params string[] tags)

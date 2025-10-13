@@ -98,6 +98,16 @@ namespace MethodCache.SampleApp.Infrastructure
             return new ValueTask<T?>(default(T));
         }
 
+        public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
+            {
+                return new ValueTask<T?>((T)entry.Value);
+            }
+
+            return new ValueTask<T?>(default(T));
+        }
+
         public async Task InvalidateByTagsAsync(params string[] tags)
         {
             var invalidatedCount = 0;

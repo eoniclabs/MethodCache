@@ -98,6 +98,16 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             return ValueTask.FromResult(default(T));
         }
 
+        public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+        {
+            if (_cache.TryGetValue(cacheKey, out var cacheEntry) && !cacheEntry.IsExpired)
+            {
+                return ValueTask.FromResult((T?)cacheEntry.Value);
+            }
+
+            return ValueTask.FromResult(default(T));
+        }
+
         // ============= Invalidation methods =============
 
         public Task InvalidateByTagsAsync(params string[] tags)
