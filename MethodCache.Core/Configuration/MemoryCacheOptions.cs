@@ -111,6 +111,22 @@ namespace MethodCache.Core.Configuration
         public bool EnableStatistics { get; set; } = true;
 
         /// <summary>
+        /// Whether to enable the ultra-fast cache hit path.
+        /// When enabled, skips metrics tracking, LRU updates, and refresh-ahead checks on cache hits
+        /// for zero-parameter methods returning reference types, providing 2-3x performance improvement.
+        /// Cache misses always use the full-featured path with all protections.
+        /// Default: true
+        /// </summary>
+        public bool EnableFastPath { get; set; } = true;
+
+        /// <summary>
+        /// When fast path is enabled, whether to still track metrics on cache hits.
+        /// Enabling this adds a small overhead but maintains accurate hit/miss statistics.
+        /// Default: false (prioritize performance)
+        /// </summary>
+        public bool FastPathTrackMetrics { get; set; } = false;
+
+        /// <summary>
         /// Memory usage calculation mode.
         /// </summary>
         public MemoryUsageCalculationMode MemoryCalculationMode { get; set; } = MemoryUsageCalculationMode.Fast;
@@ -164,25 +180,6 @@ namespace MethodCache.Core.Configuration
                 _evictionSamplePercentage = value;
             }
         }
-
-        private double _lruUpdateProbability = 0.01; // 1%
-
-        /// <summary>
-        /// Probability (0.0 to 1.0) of updating LRU access order on each cache hit.
-        /// Default 1% (0.01) provides approximate LRU with 99% reduction in lock contention.
-        /// Set to 1.0 for precise LRU semantics (every access updates order).
-        /// This Redis-style probabilistic approach provides ~50% performance improvement with minimal accuracy loss.
-        /// </summary>
-        public double LruUpdateProbability
-        {
-            get => _lruUpdateProbability;
-            set
-            {
-                if (value <= 0 || value > 1)
-                    throw new ArgumentOutOfRangeException(nameof(LruUpdateProbability), value, "LruUpdateProbability must be between 0 (exclusive) and 1 (inclusive).");
-                _lruUpdateProbability = value;
-            }
-        }
     }
 
     /// <summary>
@@ -192,7 +189,7 @@ namespace MethodCache.Core.Configuration
     {
         /// <summary>
         /// Least Recently Used - evicts the least recently accessed items first.
-        /// Uses O(1) LinkedList operations for precise LRU semantics.
+        /// Uses lazy timestamp-based approach: updates timestamps on hits, sorts only at eviction time.
         /// </summary>
         LRU,
 
@@ -211,7 +208,7 @@ namespace MethodCache.Core.Configuration
 
         /// <summary>
         /// First In First Out - evicts the oldest items first.
-        /// Uses O(1) LinkedList operations for precise FIFO semantics.
+        /// Uses creation timestamp sorting for precise FIFO semantics.
         /// </summary>
         FIFO,
 

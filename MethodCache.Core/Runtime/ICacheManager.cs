@@ -77,6 +77,24 @@ namespace MethodCache.Core.Runtime
         ValueTask<T?> TryGetFastAsync<T>(string cacheKey);
 
         /// <summary>
+        /// Retrieves a cached value or executes the factory function using a pre-computed cache key.
+        /// This fast-path method is optimized for methods with simple parameters where the cache key
+        /// can be computed inline without heavyweight serialization.
+        /// </summary>
+        /// <typeparam name="T">The type of value being cached</typeparam>
+        /// <param name="cacheKey">Pre-computed cache key (must be deterministic and unique for the cached method+args)</param>
+        /// <param name="methodName">Name of the method being cached (for metrics/diagnostics)</param>
+        /// <param name="factory">Factory function to execute if cache miss occurs</param>
+        /// <param name="policy">Runtime policy containing cache configuration and options</param>
+        /// <returns>The cached or newly created value</returns>
+        /// <remarks>
+        /// This overload is designed for source-generated code that can compute cache keys inline
+        /// for simple parameter types (string, int, Guid, etc.) without MessagePack serialization overhead.
+        /// Use this for maximum performance when you can deterministically generate cache keys.
+        /// </remarks>
+        Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy);
+
+        /// <summary>
         /// Invalidates all cache entries associated with the specified tags.
         /// Use this for bulk invalidation when related data changes.
         /// </summary>

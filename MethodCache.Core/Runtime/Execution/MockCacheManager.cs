@@ -56,6 +56,21 @@ namespace MethodCache.Core.Runtime.Execution
             return new ValueTask<T?>((T)value);
         }
 
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        {
+            if (ForceCacheMiss || !_cache.TryGetValue(cacheKey, out var value))
+            {
+                var result = await factory();
+                if (result != null)
+                {
+                    _cache.TryAdd(cacheKey, result);
+                }
+                return result;
+            }
+
+            return (T)value;
+        }
+
         // ============= Invalidation methods =============
 
         public Task InvalidateByTagsAsync(params string[] tags)
