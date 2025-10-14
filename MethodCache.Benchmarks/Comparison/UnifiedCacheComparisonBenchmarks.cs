@@ -51,9 +51,7 @@ public class UnifiedCacheComparisonBenchmarks
     private ICacheAdapter _methodCacheSourceGen = null!; // NEW: Uses source generation (proper MethodCache usage)
     private ICacheAdapter _fusionCache = null!;
     private ICacheAdapter _lazyCache = null!;
-    private ICacheAdapter _memoryCache = null!;
     private ICacheAdapter _easyCaching = null!;
-    private ICacheAdapter _fastCache = null!;
 
     [GlobalSetup]
     public void GlobalSetup()
@@ -72,17 +70,16 @@ public class UnifiedCacheComparisonBenchmarks
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         }); // Don't auto-scan assembly - we register explicitly below
 
-        // PERFORMANCE OPTIMIZATION: Disable LRU tracking and statistics for benchmarks
-        // This eliminates the global lock contention and Interlocked operations overhead
+        // PERFORMANCE OPTIMIZATION: Configure cache options for benchmarking
         services.Configure<MethodCache.Core.Configuration.MemoryCacheOptions>(opts =>
         {
             opts.EnableStatistics = false;  // Skip Interlocked operations (~5-10µs saved)
-            opts.EvictionPolicy = MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LRU;  // Keep LRU but disable stats
+            opts.EvictionPolicy = MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LRU;  // Use lazy LRU
         });
 
         services.AddAdvancedMemoryStorage(opts =>
         {
-            opts.EvictionPolicy = MethodCache.Providers.Memory.Configuration.EvictionPolicy.Random;  // Use cheapest eviction
+            opts.EvictionPolicy = MethodCache.Providers.Memory.Configuration.EvictionPolicy.LRU;  // Use lazy LRU for comparison
         }); // Use AdvancedMemory provider
 
         // Register the base implementation
@@ -99,9 +96,7 @@ public class UnifiedCacheComparisonBenchmarks
 
         _fusionCache = new FusionCacheAdapter();
         _lazyCache = new LazyCacheAdapter();
-        _memoryCache = new MemoryCacheAdapter();
         _easyCaching = new EasyCachingAdapter();
-        _fastCache = new FastCacheAdapter();
 
         // Initial warmup
         WarmupCaches();
@@ -124,9 +119,7 @@ public class UnifiedCacheComparisonBenchmarks
         _methodCacheSourceGen?.Dispose();
         _fusionCache?.Dispose();
         _lazyCache?.Dispose();
-        _memoryCache?.Dispose();
         _easyCaching?.Dispose();
-        _fastCache?.Dispose();
     }
 
     private void WarmupCaches()
@@ -143,9 +136,7 @@ public class UnifiedCacheComparisonBenchmarks
 
         _fusionCache.Set(TestKey, TestPayload, duration);
         _lazyCache.Set(TestKey, TestPayload, duration);
-        _memoryCache.Set(TestKey, TestPayload, duration);
         _easyCaching.Set(TestKey, TestPayload, duration);
-        _fastCache.Set(TestKey, TestPayload, duration);
     }
 
     // ==================== CACHE HIT TESTS ====================
@@ -185,11 +176,6 @@ public class UnifiedCacheComparisonBenchmarks
         return _methodCacheSourceGen.TryGet<SamplePayload>(TestKey, out _);
     }
 
-    [BenchmarkCategory("CacheHit"), Benchmark(Baseline = true)]
-    public bool MemoryCache_Hit()
-    {
-        return _memoryCache.TryGet<SamplePayload>(TestKey, out _);
-    }
 
     [BenchmarkCategory("CacheHit"), Benchmark]
     public bool FusionCache_Hit()
@@ -209,11 +195,6 @@ public class UnifiedCacheComparisonBenchmarks
         return _easyCaching.TryGet<SamplePayload>(TestKey, out _);
     }
 
-    [BenchmarkCategory("CacheHit"), Benchmark]
-    public bool FastCache_Hit()
-    {
-        return _fastCache.TryGet<SamplePayload>(TestKey, out _);
-    }
 
     // ==================== ASYNC CACHE HIT TESTS (OPTIMIZED) ====================
     // These async tests avoid the sync-over-async overhead and show true performance
@@ -257,12 +238,6 @@ public class UnifiedCacheComparisonBenchmarks
         return await _methodCacheSourceGen.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
-    [BenchmarkCategory("MissAndSet"), Benchmark(Baseline = true)]
-    public async Task<SamplePayload> MemoryCache_MissAndSet()
-    {
-        _memoryCache.Remove($"{TestKey}_miss");
-        return await _memoryCache.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
-    }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> FusionCache_MissAndSet()
@@ -285,14 +260,8 @@ public class UnifiedCacheComparisonBenchmarks
         return await _easyCaching.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
-    [BenchmarkCategory("MissAndSet"), Benchmark]
-    public async Task<SamplePayload> FastCache_MissAndSet()
-    {
-        _fastCache.Remove($"{TestKey}_miss");
-        return await _fastCache.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
-    }
 
-    // ==================== CONCURRENT ACCESS TESTS ====================
+    // ==================== BENCHMARK PARAMETERS ====================
 
     [Params(10, 100)]
     public int ConcurrentThreads { get; set; }
@@ -321,11 +290,6 @@ public class UnifiedCacheComparisonBenchmarks
         await RunConcurrentTest(_methodCacheSourceGen);
     }
 
-    [BenchmarkCategory("Concurrent"), Benchmark(Baseline = true)]
-    public async Task MemoryCache_Concurrent()
-    {
-        await RunConcurrentTest(_memoryCache);
-    }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
     public async Task FusionCache_Concurrent()
@@ -345,20 +309,70 @@ public class UnifiedCacheComparisonBenchmarks
         await RunConcurrentTest(_easyCaching);
     }
 
-    [BenchmarkCategory("Concurrent"), Benchmark]
-    public async Task FastCache_Concurrent()
-    {
-        await RunConcurrentTest(_fastCache);
-    }
 
     private async Task RunConcurrentTest(ICacheAdapter cache)
     {
+        // NOTE: This test creates a NEW key each time, so it's measuring cache MISS + stampede prevention
+        // It does NOT measure LRU update performance (see ConcurrentHits for that)
         var tasks = new Task<SamplePayload>[ConcurrentThreads];
         var key = $"{TestKey}_concurrent_{Guid.NewGuid()}";
 
         for (int i = 0; i < ConcurrentThreads; i++)
         {
             tasks[i] = cache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    // ==================== CONCURRENT HIT TESTS (LRU STRESS TEST) ====================
+    // These tests measure LRU update performance under concurrent cache HITS
+    // Multiple threads repeatedly access a small set of HOT keys
+
+    [BenchmarkCategory("ConcurrentHits"), Benchmark]
+    public async Task MethodCacheSourceGen_ConcurrentHits()
+    {
+        await RunConcurrentHitsTest(_methodCacheSourceGen);
+    }
+
+
+
+    [BenchmarkCategory("ConcurrentHits"), Benchmark]
+    public async Task LazyCache_ConcurrentHits()
+    {
+        await RunConcurrentHitsTest(_lazyCache);
+    }
+
+    [BenchmarkCategory("ConcurrentHits"), Benchmark]
+    public async Task FusionCache_ConcurrentHits()
+    {
+        await RunConcurrentHitsTest(_fusionCache);
+    }
+
+    private async Task RunConcurrentHitsTest(ICacheAdapter cache)
+    {
+        // Pre-populate cache with 10 hot keys
+        var hotKeys = new string[10];
+        for (int i = 0; i < 10; i++)
+        {
+            hotKeys[i] = $"{TestKey}_hot_{i}";
+            cache.Set(hotKeys[i], TestPayload, TimeSpan.FromMinutes(10));
+        }
+
+        // Have all threads repeatedly hit these same keys (simulates hot data)
+        var tasks = new Task[ConcurrentThreads];
+        for (int i = 0; i < ConcurrentThreads; i++)
+        {
+            int threadId = i;
+            tasks[i] = Task.Run(async () =>
+            {
+                // Each thread does 10 cache hits on rotating hot keys
+                for (int j = 0; j < 10; j++)
+                {
+                    var key = hotKeys[(threadId + j) % 10];
+                    await cache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
+                }
+            });
         }
 
         await Task.WhenAll(tasks);
@@ -390,11 +404,6 @@ public class UnifiedCacheComparisonBenchmarks
         await RunStampedeTest(_methodCacheSourceGen);
     }
 
-    [BenchmarkCategory("Stampede"), Benchmark(Baseline = true)]
-    public async Task MemoryCache_Stampede()
-    {
-        await RunStampedeTest(_memoryCache);
-    }
 
     [BenchmarkCategory("Stampede"), Benchmark]
     public async Task FusionCache_Stampede()
@@ -414,11 +423,6 @@ public class UnifiedCacheComparisonBenchmarks
         await RunStampedeTest(_easyCaching);
     }
 
-    [BenchmarkCategory("Stampede"), Benchmark]
-    public async Task FastCache_Stampede()
-    {
-        await RunStampedeTest(_fastCache);
-    }
 
     private async Task RunStampedeTest(ICacheAdapter cache)
     {
