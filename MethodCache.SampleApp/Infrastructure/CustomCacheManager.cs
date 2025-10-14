@@ -108,6 +108,55 @@ namespace MethodCache.SampleApp.Infrastructure
             return new ValueTask<T?>(default(T));
         }
 
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        {
+            var startTime = DateTime.UtcNow;
+
+            try
+            {
+                // Check if value exists and is not expired
+                if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
+                {
+                    _metricsProvider.CacheHit(methodName);
+                    _metricsProvider.CacheLatency(methodName, (long)(DateTime.UtcNow - startTime).TotalMilliseconds);
+
+                    Console.WriteLine($"[CACHE HIT] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
+                    return (T)entry.Value;
+                }
+
+                // Cache miss - execute the factory method
+                _metricsProvider.CacheMiss(methodName);
+                Console.WriteLine($"[CACHE MISS] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
+
+                var result = await factory();
+
+                // Store in cache with expiration
+                var duration = policy.Duration ?? TimeSpan.FromMinutes(5);
+                var newEntry = new CacheEntry
+                {
+                    Value = result!,
+                    ExpiresAt = DateTime.UtcNow.Add(duration),
+                    CreatedAt = DateTime.UtcNow,
+                    Tags = policy.Tags?.ToHashSet() ?? new HashSet<string>(),
+                    AccessCount = 0,
+                    LastAccessedAt = DateTime.UtcNow
+                };
+
+                _cache.AddOrUpdate(cacheKey, newEntry, (key, oldEntry) => newEntry);
+
+                _metricsProvider.CacheLatency(methodName, (long)(DateTime.UtcNow - startTime).TotalMilliseconds);
+                Console.WriteLine($"[CACHE STORE] {methodName} (TTL: {duration.TotalMinutes:F1}m)");
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _metricsProvider.CacheError(methodName, ex.Message);
+                Console.WriteLine($"[CACHE ERROR] {methodName}: {ex.Message}");
+                throw;
+            }
+        }
+
         public async Task InvalidateByTagsAsync(params string[] tags)
         {
             var invalidatedCount = 0;

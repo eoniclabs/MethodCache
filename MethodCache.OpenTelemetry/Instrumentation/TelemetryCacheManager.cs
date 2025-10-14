@@ -152,6 +152,61 @@ public class TelemetryCacheManager : ICacheManager
         return _innerManager.TryGetFastAsync<T>(cacheKey);
     }
 
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            _baggagePropagator.InjectBaggage(activity);
+            _activitySource.SetCacheKey(activity, cacheKey);
+
+            if (policy.Tags.Count > 0)
+            {
+                _activitySource.SetCacheTags(activity, policy.Tags.ToArray());
+            }
+
+            SetActivityTagsFromPolicy(activity, policy);
+
+            // Track whether the factory was invoked to determine hit/miss
+            var factoryInvoked = false;
+            async Task<T> InstrumentedFactory()
+            {
+                factoryInvoked = true;
+                return await factory();
+            }
+
+            var result = await _innerManager.GetOrCreateFastAsync(cacheKey, methodName, InstrumentedFactory, policy);
+
+            stopwatch.Stop();
+
+            // If factory was invoked, it was a cache miss
+            if (factoryInvoked)
+            {
+                _activitySource.SetCacheHit(activity, false);
+                _meterProvider.RecordCacheMiss(methodName, CreateMetricTagsFromPolicy(policy));
+            }
+            else
+            {
+                _activitySource.SetCacheHit(activity, true);
+                _meterProvider.RecordCacheHit(methodName, CreateMetricTagsFromPolicy(policy));
+            }
+
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _activitySource.SetCacheError(activity, ex);
+            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTagsFromPolicy(policy));
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
+            throw;
+        }
+    }
+
     public async Task InvalidateByTagsAsync(params string[] tags)
     {
         using var activity = _activitySource.StartCacheOperation("InvalidateByTags", TracingConstants.Operations.Delete);

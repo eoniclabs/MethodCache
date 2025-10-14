@@ -512,6 +512,26 @@ internal class StorageProviderCacheManager : ICacheManager
         return new ValueTask<T?>(default(T));
     }
 
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        // Check if the cache key exists and is not expired
+        var cached = await _storageProvider.GetAsync<T>(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        // Cache miss - execute the factory
+        var result = await factory();
+        if (result != null)
+        {
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageProvider.SetAsync(cacheKey, result, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
+        }
+
+        return result;
+    }
+
     public Task InvalidateByTagsAsync(params string[] tags)
     {
         return Task.WhenAll(tags.Select(tag => _storageProvider.RemoveByTagAsync(tag).AsTask()));

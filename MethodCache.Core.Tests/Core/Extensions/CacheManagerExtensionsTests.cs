@@ -1013,6 +1013,12 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 return new ValueTask<T?>(default(T));
             }
 
+            public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+            {
+                // For testing purposes, just execute the factory
+                return factory();
+            }
+
             public Task InvalidateByTagsAsync(params string[] tags) => Task.CompletedTask;
 
             public Task InvalidateByKeysAsync(params string[] keys) => Task.CompletedTask;

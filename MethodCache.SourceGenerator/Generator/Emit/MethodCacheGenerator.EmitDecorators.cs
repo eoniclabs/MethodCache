@@ -453,22 +453,7 @@ namespace MethodCache.SourceGenerator
                     var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
                     sb.AppendLine($"            var cacheKey = {inlineKey};");
 
-                    // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
-                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{innerType}>(cacheKey);");
-                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = cacheTask.Result;");
-                    sb.AppendLine($"                if (cachedValue != null) return cachedValue;");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine($"            else");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = await cacheTask.ConfigureAwait(false);");
-                    sb.AppendLine($"                if (cachedValue != null) return cachedValue;");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: Use fast path with pre-computed key (no key generation overhead)");
-
-                    // Use GetOrCreateFastAsync with pre-computed key (avoids args array + key generator)
+                    // Use GetOrCreateFastAsync which handles both cache checking and metrics tracking
                     sb.AppendLine($"            return await _cacheManager.GetOrCreateFastAsync<{innerType}>(");
                     sb.AppendLine($"                cacheKey,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
@@ -511,22 +496,7 @@ namespace MethodCache.SourceGenerator
                     var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
                     sb.AppendLine($"            var cacheKey = {inlineKey};");
 
-                    // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
-                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{innerType}>(cacheKey);");
-                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = cacheTask.Result;");
-                    sb.AppendLine($"                if (cachedValue != null) return cachedValue;");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine($"            else");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = await cacheTask.ConfigureAwait(false);");
-                    sb.AppendLine($"                if (cachedValue != null) return cachedValue;");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: Use fast path with pre-computed key (no key generation overhead)");
-
-                    // Use GetOrCreateFastAsync with pre-computed key (avoids args array + key generator)
+                    // Use GetOrCreateFastAsync which handles both cache checking and metrics tracking
                     sb.AppendLine($"            return await _cacheManager.GetOrCreateFastAsync<{innerType}>(");
                     sb.AppendLine($"                cacheKey,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
@@ -576,22 +546,7 @@ namespace MethodCache.SourceGenerator
                     var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
                     sb.AppendLine($"            var cacheKey = {inlineKey};");
 
-                    // OPTIMIZATION: Check if ValueTask is already completed to avoid GetAwaiter overhead
-                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{returnType}>(cacheKey);");
-                    sb.AppendLine($"            {returnType}? cachedValue;");
-                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                cachedValue = cacheTask.Result;");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine($"            else");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                cachedValue = cacheTask.ConfigureAwait(false).GetAwaiter().GetResult();");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine($"            if (cachedValue != null) return cachedValue;");
-                    sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: Use fast path with pre-computed key (no key generation overhead)");
-
-                    // Use GetOrCreateFastAsync with pre-computed key (avoids args array + key generator)
+                    // Use GetOrCreateFastAsync which handles both cache checking and metrics tracking
                     sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{returnType}>(");
                     sb.AppendLine($"                cacheKey,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
