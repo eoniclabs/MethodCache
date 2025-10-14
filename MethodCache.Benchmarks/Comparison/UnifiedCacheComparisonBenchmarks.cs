@@ -92,7 +92,8 @@ public class UnifiedCacheComparisonBenchmarks
 
         var serviceProvider = services.BuildServiceProvider();
         var sourceGenService = serviceProvider.GetRequiredService<IMethodCacheBenchmarkService>();
-        _methodCacheSourceGen = new MethodCacheSourceGenAdapter(sourceGenService);
+        var baseService = serviceProvider.GetRequiredService<MethodCacheBenchmarkService>();
+        _methodCacheSourceGen = new MethodCacheSourceGenAdapter(sourceGenService, baseService);
 
         _fusionCache = new FusionCacheAdapter();
         _lazyCache = new LazyCacheAdapter();
@@ -209,55 +210,57 @@ public class UnifiedCacheComparisonBenchmarks
     }
 
     // ==================== CACHE MISS + SET TESTS ====================
+    // NOTE: These tests use unique keys per iteration to ensure consistent cache misses.
+    // This is more reliable than Remove(), which doesn't work for all cache implementations.
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> MethodCache_MissAndSet()
     {
-        _methodCache.Remove($"{TestKey}_miss");
-        return await _methodCache.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        var key = $"{TestKey}_miss_{Guid.NewGuid()}";
+        return await _methodCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> MethodCacheStatic_MissAndSet()
     {
-        _methodCacheStatic.Remove($"{TestKey}_miss");
-        return await _methodCacheStatic.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        var key = $"{TestKey}_miss_{Guid.NewGuid()}";
+        return await _methodCacheStatic.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> MethodCacheDirect_MissAndSet()
     {
-        _methodCacheDirect.Remove($"{TestKey}_miss");
-        return await _methodCacheDirect.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        var key = $"{TestKey}_miss_{Guid.NewGuid()}";
+        return await _methodCacheDirect.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> MethodCacheSourceGen_MissAndSet()
     {
-        _methodCacheSourceGen.Remove($"{TestKey}_miss");
-        return await _methodCacheSourceGen.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        var key = $"{TestKey}_miss_{Guid.NewGuid()}";
+        return await _methodCacheSourceGen.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> FusionCache_MissAndSet()
     {
-        _fusionCache.Remove($"{TestKey}_miss");
-        return await _fusionCache.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        var key = $"{TestKey}_miss_{Guid.NewGuid()}";
+        return await _fusionCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> LazyCache_MissAndSet()
     {
-        _lazyCache.Remove($"{TestKey}_miss");
-        return await _lazyCache.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        var key = $"{TestKey}_miss_{Guid.NewGuid()}";
+        return await _lazyCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> EasyCaching_MissAndSet()
     {
-        _easyCaching.Remove($"{TestKey}_miss");
-        return await _easyCaching.GetOrSetAsync($"{TestKey}_miss", CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        var key = $"{TestKey}_miss_{Guid.NewGuid()}";
+        return await _easyCaching.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
 

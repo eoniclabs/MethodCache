@@ -9,11 +9,13 @@ namespace MethodCache.Benchmarks.Comparison.Adapters;
 public class MethodCacheSourceGenAdapter : ICacheAdapter
 {
     private readonly IMethodCacheBenchmarkService _service;
+    private readonly MethodCacheBenchmarkService _baseService;
     private readonly CacheStatistics _stats = new();
 
-    public MethodCacheSourceGenAdapter(IMethodCacheBenchmarkService service)
+    public MethodCacheSourceGenAdapter(IMethodCacheBenchmarkService service, MethodCacheBenchmarkService baseService)
     {
         _service = service;
+        _baseService = baseService;
     }
 
     public string Name => "MethodCache (Source Gen)";
@@ -68,10 +70,22 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
 
     public async Task<TValue> GetOrSetAsync<TValue>(string key, Func<Task<TValue>> factory, TimeSpan duration)
     {
-        // Source-generated caching handles this
-        var result = await _service.GetOrCreateAsync(key);
-        _stats.Hits++;
-        return (TValue)(object)result;
+        // Configure the factory on the base service so it gets called on cache miss
+        // This ensures fair comparison with other libraries that execute factories
+        _baseService.Factory = async (k) => (SamplePayload)(object)(await factory())!;
+
+        try
+        {
+            // Source-generated caching handles this - will call factory on miss
+            var result = await _service.GetOrCreateAsync(key);
+            _stats.Hits++;
+            return (TValue)(object)result;
+        }
+        finally
+        {
+            // Clear factory to avoid affecting cache hit benchmarks
+            _baseService.Factory = null;
+        }
     }
 
     public TValue? GetOrCreate<TValue>(string key, Func<TValue> factory)
