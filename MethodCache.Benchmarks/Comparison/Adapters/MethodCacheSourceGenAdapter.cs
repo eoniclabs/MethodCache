@@ -22,11 +22,32 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
     {
         try
         {
-            // The source-generated code handles caching internally
-            var result = _service.Get(key);
-            _stats.Hits++;
-            value = (TValue)(object)result!;
-            return true;
+            // OPTIMIZATION: Use GetAsync with synchronous completion check to avoid sync-over-async
+            var task = _service.GetAsync(key);
+            SamplePayload? result;
+            if (task.IsCompletedSuccessfully)
+            {
+                // Fast path: task completed synchronously
+                result = task.Result;
+            }
+            else
+            {
+                // Slow path: have to block (but cache hits should never hit this)
+                result = task.GetAwaiter().GetResult();
+            }
+
+            if (result != null)
+            {
+                _stats.Hits++;
+                value = (TValue)(object)result;
+                return true;
+            }
+            else
+            {
+                _stats.Misses++;
+                value = default;
+                return false;
+            }
         }
         catch
         {

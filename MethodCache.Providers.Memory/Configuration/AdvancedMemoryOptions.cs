@@ -1,3 +1,4 @@
+using MethodCache.Core.Configuration;
 using MethodCache.Core.Options;
 
 namespace MethodCache.Providers.Memory.Configuration;
@@ -63,14 +64,6 @@ public class AdvancedMemoryOptions
     /// Whether to enable automatic cleanup of expired entries.
     /// </summary>
     public bool EnableAutomaticCleanup { get; set; } = true;
-
-    /// <summary>
-    /// Probability (0.0 to 1.0) of updating LRU access order on each cache hit.
-    /// Default 1% (0.01) provides approximate LRU with 99% reduction in lock contention.
-    /// Set to 1.0 for precise LRU semantics (every access updates order).
-    /// This Redis-style probabilistic approach provides ~50% performance improvement with minimal accuracy loss.
-    /// </summary>
-    public double LruUpdateProbability { get; set; } = 0.01;
 }
 
 /// <summary>

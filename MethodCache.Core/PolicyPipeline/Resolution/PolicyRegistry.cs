@@ -62,6 +62,18 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
         return WatchInternalAsync(cancellationToken);
     }
 
+    public long GetPolicyVersion(string methodId)
+    {
+        if (string.IsNullOrWhiteSpace(methodId))
+        {
+            return 0;
+        }
+
+        // Fast path: Just read the version from the cached policy
+        // This is a single volatile read, extremely cheap (~1-2ns)
+        return _cache.TryGetValue(methodId, out var result) ? result.Version : 0;
+    }
+
     public async ValueTask DisposeAsync()
     {
         var initTask = Volatile.Read(ref _initializationTask);

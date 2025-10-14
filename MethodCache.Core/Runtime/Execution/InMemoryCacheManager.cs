@@ -18,19 +18,16 @@ namespace MethodCache.Core.Runtime.Execution
     /// </summary>
     public class InMemoryCacheManager : ICacheManager, IMemoryCache
     {
-        // Thread-local Random to avoid contention in hot paths
-        private static readonly ThreadLocal<Random> ThreadLocalRandom = new ThreadLocal<Random>(() => new Random(Guid.NewGuid().GetHashCode()));
         private class EnhancedCacheEntry
         {
             private long _accessCount;
-            
+
             public object Value { get; init; } = null!;
             public HashSet<string> Tags { get; init; } = new HashSet<string>();
             public DateTimeOffset AbsoluteExpiration { get; set; }
             public DateTime CreatedAt { get; init; }
             public DateTime LastAccessedAt { get; set; }
             public long AccessCount => _accessCount;
-            public LinkedListNode<string>? OrderNode { get; set; } // For O(1) eviction tracking
             public CacheEntryPolicy Policy { get; init; } = CacheEntryPolicy.Empty;
 
             public bool IsExpired => DateTime.UtcNow > AbsoluteExpiration;
@@ -73,17 +70,13 @@ namespace MethodCache.Core.Runtime.Execution
         private readonly Timer? _cleanupTimer;
         private readonly SemaphoreSlim _evictionSemaphore;
         private readonly MemoryUsageCalculator _memoryCalculator;
-        
-        // O(1) eviction tracking
-        private readonly LinkedList<string> _accessOrder = new();
-        private readonly object _accessOrderLock = new object();
-        
+
         // Tag reverse index for O(1) tag invalidation
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new();
         private readonly object _tagIndexLock = new object();
         private const int MaxTagMappings = 100000; // Prevent unbounded growth
         private int _currentTagMappings = 0;
-        
+
         // Statistics
         private long _hits;
         private long _misses;
@@ -247,14 +240,76 @@ namespace MethodCache.Core.Runtime.Execution
             return GetAsyncInternal<T>(key, updateStatistics: false);
         }
 
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        {
+            if (string.IsNullOrWhiteSpace(cacheKey))
+            {
+                throw new ArgumentException("Cache key is required", nameof(cacheKey));
+            }
+
+            if (policy == null)
+            {
+                throw new ArgumentNullException(nameof(policy));
+            }
+
+            var cachedResult = await GetAsyncInternal<T>(cacheKey, updateStatistics: false);
+            if (cachedResult != null)
+            {
+                _metricsProvider.CacheHit(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _hits);
+                }
+                return cachedResult;
+            }
+
+            var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
+            var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
+
+            return await ExecuteWithSingleFlight(cacheKey, async () =>
+            {
+                var result = await factory().ConfigureAwait(false);
+
+                if (result != null)
+                {
+                    var expiration = policy.Duration ?? _options.DefaultExpiration;
+                    var effectiveExpiration = expiration > _options.MaxExpiration
+                        ? _options.MaxExpiration
+                        : expiration;
+                    await SetAsync(cacheKey, result, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                }
+
+                _metricsProvider.CacheMiss(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _misses);
+                }
+
+                return result!;
+            }, methodName, entryPolicy).ConfigureAwait(false);
+        }
+
         public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
+            // Check if fast path is enabled
+            if (!_options.EnableFastPath)
+            {
+                // Fall back to standard path with full feature set
+                return GetAsyncInternal<T>(cacheKey, updateStatistics: false);
+            }
+
             // Ultra-fast path: minimal overhead, just dictionary lookup + expiration check
             if (_cache.TryGetValue(cacheKey, out var entry))
             {
                 // Only check expiration, skip everything else for maximum performance
                 if (!entry.IsExpired)
                 {
+                    // Optional: Track metrics if configured
+                    if (_options.FastPathTrackMetrics && _options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _hits);
+                    }
+
                     try
                     {
                         return new ValueTask<T?>((T)entry.Value);
@@ -262,12 +317,12 @@ namespace MethodCache.Core.Runtime.Execution
                     catch (InvalidCastException)
                     {
                         // Type mismatch - treat as miss
-                        return new ValueTask<T?>(default(T));
+                        return new ValueTask<T?>(default(T?));
                     }
                 }
             }
 
-            return new ValueTask<T?>(default(T));
+            return new ValueTask<T?>(default(T?));
         }
 
         /// <summary>
@@ -388,10 +443,10 @@ namespace MethodCache.Core.Runtime.Execution
 
                 ApplySlidingExpiration(entry);
 
-                // Update access tracking with O(1) LinkedList operation
+                // Lazy LRU: Just update timestamp (like Microsoft.Extensions.Caching.Memory)
+                // No locks, no LinkedList manipulation - sorting happens only at eviction time
                 entry.UpdateAccess();
-                UpdateAccessOrder(key, entry);
-                
+
                 if (updateStatistics && _options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
@@ -477,7 +532,7 @@ namespace MethodCache.Core.Runtime.Execution
                     var beta = stampede.Beta <= 0 ? 1d : stampede.Beta;
                     var ratio = Math.Min(1d, age.TotalSeconds / duration.TotalSeconds);
                     var probability = Math.Exp(-beta * ratio);
-                    var sample = ThreadLocalRandom.Value!.NextDouble();
+                    var sample = Random.Shared.NextDouble();
                     return sample > probability;
                 }
                 case StampedeProtectionMode.DistributedLock:
@@ -536,58 +591,8 @@ namespace MethodCache.Core.Runtime.Execution
             }
         }
         
-        /// <summary>
-        /// Updates access order for eviction policies with O(1) LinkedList operations.
-        /// Uses probabilistic updates (Redis-style) to reduce lock contention by 99%.
-        /// </summary>
-        private void UpdateAccessOrder(string key, EnhancedCacheEntry entry)
-        {
-            // Only update order for LRU policy (FIFO doesn't move on access)
-            if (_options.EvictionPolicy != MemoryCacheEvictionPolicy.LRU) return;
-
-            // Probabilistic LRU update (Phase 3 Option A optimization)
-            // Only update access order with configured probability (default 1%)
-            // This provides approximate LRU with massive reduction in lock contention
-            if (_options.LruUpdateProbability < 1.0)
-            {
-                try
-                {
-                    // Check if disposed before accessing ThreadLocal
-                    if (_disposed) return;
-
-                    var random = ThreadLocalRandom?.Value;
-                    if (random == null)
-                    {
-                        return; // Cache is disposed or being disposed, skip update
-                    }
-
-                    if (random.NextDouble() >= _options.LruUpdateProbability)
-                    {
-                        return; // Skip this update (99% of hits with default 1% probability)
-                    }
-                }
-                catch (ObjectDisposedException)
-                {
-                    // ThreadLocal was disposed during access, skip this update
-                    return;
-                }
-            }
-
-            lock (_accessOrderLock)
-            {
-                if (entry.OrderNode != null)
-                {
-                    // Move existing node to head (most recently used)
-                    _accessOrder.Remove(entry.OrderNode);
-                    _accessOrder.AddFirst(entry.OrderNode);
-                }
-                else
-                {
-                    // Add new node to head
-                    entry.OrderNode = _accessOrder.AddFirst(key);
-                }
-            }
-        }
+        // UpdateAccessOrder methods removed - using lazy LRU (timestamp-based) instead
+        // Timestamps are updated in UpdateAccess(), sorting happens only at eviction time
         
         /// <summary>
         /// Completely removes an entry from all data structures.
@@ -595,17 +600,7 @@ namespace MethodCache.Core.Runtime.Execution
         private void RemoveEntryCompletely(string key, EnhancedCacheEntry entry)
         {
             _cache.TryRemove(key, out _);
-            
-            // Remove from access order tracking
-            lock (_accessOrderLock)
-            {
-                if (entry.OrderNode != null)
-                {
-                    _accessOrder.Remove(entry.OrderNode);
-                    entry.OrderNode = null;
-                }
-            }
-            
+
             // Remove from tag index
             RemoveFromTagIndex(key, entry.Tags);
 
@@ -656,19 +651,7 @@ namespace MethodCache.Core.Runtime.Execution
             
             // Add the new entry to all data structures
             _cache[key] = entry;
-            AddToAccessOrder(key, entry);
             AddToTagIndex(key, entry.Tags);
-        }
-        
-        /// <summary>
-        /// Adds entry to access order tracking with O(1) operation.
-        /// </summary>
-        private void AddToAccessOrder(string key, EnhancedCacheEntry entry)
-        {
-            lock (_accessOrderLock)
-            {
-                entry.OrderNode = _accessOrder.AddFirst(key);
-            }
         }
         
         /// <summary>
@@ -772,18 +755,12 @@ namespace MethodCache.Core.Runtime.Execution
         {
             _cache.Clear();
             _singleFlightGates.Clear();
-            
-            // Clear all tracking structures
-            lock (_accessOrderLock)
-            {
-                _accessOrder.Clear();
-            }
-            
+
             lock (_tagIndexLock)
             {
                 _tagToKeys.Clear();
             }
-            
+
             // Reset statistics
             if (_options.EnableStatistics)
             {
@@ -791,7 +768,7 @@ namespace MethodCache.Core.Runtime.Execution
                 Interlocked.Exchange(ref _misses, 0);
                 Interlocked.Exchange(ref _evictions, 0);
             }
-            
+
             return ValueTask.CompletedTask;
         }
 
@@ -903,34 +880,32 @@ namespace MethodCache.Core.Runtime.Execution
         }
         
         /// <summary>
-        /// O(1) eviction for LRU and FIFO policies using LinkedList.
+        /// Lazy LRU/FIFO eviction using timestamp-based sorting (like Microsoft.Extensions.Caching.Memory).
+        /// No locks during cache hits, sorting only happens here during eviction.
         /// </summary>
         private int EvictFromAccessOrderO1(int maxEvictions)
         {
+            // Sort by LastAccessedAt (LRU) or CreatedAt (FIFO)
+            var sortKey = _options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU
+                ? (Func<KeyValuePair<string, EnhancedCacheEntry>, DateTime>)(kvp => kvp.Value.LastAccessedAt)
+                : (Func<KeyValuePair<string, EnhancedCacheEntry>, DateTime>)(kvp => kvp.Value.CreatedAt);
+
+            var candidates = _cache
+                .OrderBy(sortKey)
+                .Take(maxEvictions)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
             int evicted = 0;
-            
-            lock (_accessOrderLock)
+            foreach (var key in candidates)
             {
-                for (int i = 0; i < maxEvictions && _accessOrder.Count > 0; i++)
+                if (_cache.TryGetValue(key, out var entry))
                 {
-                    var lastNode = _accessOrder.Last;
-                    if (lastNode == null) break;
-                    
-                    var keyToEvict = lastNode.Value;
-                    
-                    // Remove from access order first
-                    _accessOrder.RemoveLast();
-                    
-                    // Try to remove from cache
-                    if (_cache.TryRemove(keyToEvict, out var entry))
-                    {
-                        entry.OrderNode = null; // Clear the reference
-                        RemoveFromTagIndex(keyToEvict, entry.Tags);
-                        evicted++;
-                    }
+                    RemoveEntryCompletely(key, entry);
+                    evicted++;
                 }
             }
-            
+
             return evicted;
         }
         
@@ -1128,7 +1103,6 @@ namespace MethodCache.Core.Runtime.Execution
                 _evictionSemaphore?.Dispose();
                 _cache.Clear();
                 _singleFlightGates.Clear();
-                ThreadLocalRandom?.Dispose();
                 _disposed = true;
             }
         }

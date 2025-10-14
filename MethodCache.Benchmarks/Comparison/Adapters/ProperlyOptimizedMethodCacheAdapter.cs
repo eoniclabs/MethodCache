@@ -38,10 +38,17 @@ public class ProperlyOptimizedMethodCacheAdapter : ICacheAdapter
 
         _serviceProvider = services.BuildServiceProvider();
 
-        // Get ICacheManager and cast to IMemoryCache
+        // Register IMemoryCache as an alias for ICacheManager
         // InMemoryCacheManager implements both ICacheManager and IMemoryCache
         var cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();
-        _memoryCache = (IMemoryCache)cacheManager;
+        if (cacheManager is IMemoryCache memCache)
+        {
+            _memoryCache = memCache;
+        }
+        else
+        {
+            throw new InvalidOperationException("ICacheManager does not implement IMemoryCache");
+        }
         _keyGenerator = _serviceProvider.GetRequiredService<ICacheKeyGenerator>();
 
         // Pre-create a default policy to avoid allocations
