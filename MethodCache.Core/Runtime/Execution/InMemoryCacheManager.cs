@@ -431,7 +431,8 @@ namespace MethodCache.Core.Runtime.Execution
         {
             if (_cache.TryGetValue(key, out var entry))
             {
-                if (entry.IsExpired || ShouldForceRefresh(entry))
+                // FAST PATH: Check expiration first (like FusionCache)
+                if (entry.IsExpired)
                 {
                     RemoveEntryCompletely(key, entry);
                     if (updateStatistics && _options.EnableStatistics)
@@ -441,17 +442,42 @@ namespace MethodCache.Core.Runtime.Execution
                     return new ValueTask<T?>(default(T));
                 }
 
-                ApplySlidingExpiration(entry);
+                // Check if we need advanced features (refresh-ahead, sliding expiration, etc.)
+                var needsAdvancedFeatures =
+                    entry.Policy.SlidingExpiration.HasValue ||
+                    entry.Policy.RefreshAhead.HasValue ||
+                    entry.Policy.StampedeProtection != null;
 
-                // Lazy LRU: Just update timestamp (like Microsoft.Extensions.Caching.Memory)
-                // No locks, no LinkedList manipulation - sorting happens only at eviction time
-                entry.UpdateAccess();
+                if (needsAdvancedFeatures)
+                {
+                    // SLOW PATH: Full feature set
+                    if (ShouldForceRefresh(entry))
+                    {
+                        RemoveEntryCompletely(key, entry);
+                        if (updateStatistics && _options.EnableStatistics)
+                        {
+                            Interlocked.Increment(ref _misses);
+                        }
+                        return new ValueTask<T?>(default(T));
+                    }
+
+                    ApplySlidingExpiration(entry);
+                    entry.UpdateAccess();
+                }
+                else if (_options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU ||
+                         _options.EvictionPolicy == MemoryCacheEvictionPolicy.LFU ||
+                         _options.EvictionPolicy == MemoryCacheEvictionPolicy.LFU_Precise)
+                {
+                    // Only update access for LRU/LFU policies when no advanced features
+                    entry.UpdateAccess();
+                }
+                // FAST PATH: Skip UpdateAccess for FIFO/TTL policies with no advanced features
 
                 if (updateStatistics && _options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
                 }
-                
+
                 try
                 {
                     return new ValueTask<T?>((T)entry.Value);

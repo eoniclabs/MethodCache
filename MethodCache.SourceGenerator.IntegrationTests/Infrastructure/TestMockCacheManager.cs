@@ -115,7 +115,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             {
                 if (!cacheEntry.IsExpired)
                 {
-                    _metricsProvider.CacheHit(methodName);
+                    // Metrics are tracked in the generated decorator code, not here
                     return (T)cacheEntry.Value;
                 }
                 else
@@ -126,7 +126,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             }
 
             // Cache miss - call factory
-            _metricsProvider.CacheMiss(methodName);
+            // Metrics are tracked in the generated decorator code, not here
             try
             {
                 var result = await factory();

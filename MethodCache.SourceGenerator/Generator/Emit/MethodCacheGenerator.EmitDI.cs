@@ -25,6 +25,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using MethodCache.Abstractions.Registry;");
                 sb.AppendLine("using MethodCache.Core.Runtime;");
                 sb.AppendLine("using MethodCache.Core.Runtime.KeyGeneration;");
+                sb.AppendLine("using MethodCache.Core.Infrastructure;");
                 if (hasCachedMethods)
                 {
                     sb.AppendLine("using MethodCache.Generated;");
@@ -69,7 +70,8 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("                    implementationFactory(sp),");
                 sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
                 sb.AppendLine("                    sp.GetRequiredService<IPolicyRegistry>(),");
-                sb.AppendLine("                    sp.GetRequiredService<ICacheKeyGenerator>()));");
+                sb.AppendLine("                    sp.GetRequiredService<ICacheKeyGenerator>(),");
+                sb.AppendLine("                    sp.GetService<ICacheMetricsProvider>()));");
                 sb.AppendLine("        }");
                 sb.AppendLine();
 
@@ -90,7 +92,8 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("                    implementationFactory(sp),");
                     sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
                     sb.AppendLine("                    sp.GetRequiredService<IPolicyRegistry>(),");
-                    sb.AppendLine("                    sp.GetRequiredService<ICacheKeyGenerator>()));");
+                    sb.AppendLine("                    sp.GetRequiredService<ICacheKeyGenerator>(),");
+                    sb.AppendLine("                    sp.GetService<ICacheMetricsProvider>()));");
                     sb.AppendLine("        }");
                     sb.AppendLine();
                 }
