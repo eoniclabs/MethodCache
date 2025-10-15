@@ -446,13 +446,18 @@ public class UnifiedCacheComparisonBenchmarks
 
     private static async Task<SamplePayload> CreatePayloadAsync()
     {
-        await Task.Delay(1); // Simulate minimal async work
+        // OPTIMIZED: Use Task.Yield() instead of Task.Delay(1)
+        // Task.Delay(1) = ~1ms (masks cache overhead completely)
+        // Task.Yield() = ~100ns (exposes cache overhead differences)
+        await Task.Yield();
         return new SamplePayload { Id = 1, Name = "Generated", Data = new byte[1024] };
     }
 
     private static async Task<SamplePayload> CreateSlowPayloadAsync()
     {
-        await Task.Delay(50); // Simulate expensive operation
+        // OPTIMIZED: Use Task.Yield() to force async without adding significant time
+        // This hides factory duration so we can measure stampede coordination overhead
+        await Task.Yield();
         return new SamplePayload { Id = 1, Name = "Generated", Data = new byte[1024] };
     }
 }
