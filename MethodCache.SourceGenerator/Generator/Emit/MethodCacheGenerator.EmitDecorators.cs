@@ -69,6 +69,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using MethodCache.Core.Runtime;");
                 sb.AppendLine("using MethodCache.Core.Runtime.Core;");
                 sb.AppendLine("using MethodCache.Core.Runtime.KeyGeneration;");
+                sb.AppendLine("using MethodCache.Core.Infrastructure;");
                 sb.AppendLine();
                 sb.AppendLine($"namespace {ns}");
                 sb.AppendLine("{");
@@ -104,6 +105,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        private readonly ICacheManager _cacheManager;");
                 sb.AppendLine("        private readonly IPolicyRegistry _policyRegistry;");
                 sb.AppendLine("        private readonly ICacheKeyGenerator _keyGenerator;");
+                sb.AppendLine("        private readonly ICacheMetricsProvider? _metricsProvider;");
                 sb.AppendLine();
 
                 // Cached policy fields for performance (Phase 2.2 optimization)
@@ -231,12 +233,14 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"            {interfaceFqn} decorated,");
                 sb.AppendLine("            ICacheManager cacheManager,");
                 sb.AppendLine("            IPolicyRegistry policyRegistry,");
-                sb.AppendLine("            ICacheKeyGenerator keyGenerator)");
+                sb.AppendLine("            ICacheKeyGenerator keyGenerator,");
+                sb.AppendLine("            ICacheMetricsProvider? metricsProvider = null)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
                 sb.AppendLine("            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));");
                 sb.AppendLine("            _policyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));");
                 sb.AppendLine("            _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));");
+                sb.AppendLine("            _metricsProvider = metricsProvider;");
                 sb.AppendLine();
                 sb.AppendLine("            // Pre-cache policies and method names for performance (Phase 2.2 & 2.4 optimization)");
                 sb.AppendLine("            // This eliminates dictionary lookup + object construction + method name allocation on every cache call");
@@ -453,7 +457,31 @@ namespace MethodCache.SourceGenerator
                     var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
                     sb.AppendLine($"            var cacheKey = {inlineKey};");
 
-                    // Use GetOrCreateFastAsync which handles both cache checking and metrics tracking
+                    // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
+                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{innerType}>(cacheKey);");
+                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                var cachedValue = cacheTask.Result;");
+                    sb.AppendLine($"                if (cachedValue != null)");
+                    sb.AppendLine($"                {{");
+                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"                    return cachedValue;");
+                    sb.AppendLine($"                }}");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine($"            else");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                var cachedValue = await cacheTask.ConfigureAwait(false);");
+                    sb.AppendLine($"                if (cachedValue != null)");
+                    sb.AppendLine($"                {{");
+                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"                    return cachedValue;");
+                    sb.AppendLine($"                }}");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine();
+                    sb.AppendLine($"            // Cache miss: track metric and use fast path");
+                    sb.AppendLine($"            _metricsProvider?.CacheMiss(_cachedMethodName_{safeFieldName});");
+
+                    // Use GetOrCreateFastAsync (metrics already tracked above)
                     sb.AppendLine($"            return await _cacheManager.GetOrCreateFastAsync<{innerType}>(");
                     sb.AppendLine($"                cacheKey,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
@@ -496,7 +524,31 @@ namespace MethodCache.SourceGenerator
                     var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
                     sb.AppendLine($"            var cacheKey = {inlineKey};");
 
-                    // Use GetOrCreateFastAsync which handles both cache checking and metrics tracking
+                    // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
+                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{innerType}>(cacheKey);");
+                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                var cachedValue = cacheTask.Result;");
+                    sb.AppendLine($"                if (cachedValue != null)");
+                    sb.AppendLine($"                {{");
+                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"                    return cachedValue;");
+                    sb.AppendLine($"                }}");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine($"            else");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                var cachedValue = await cacheTask.ConfigureAwait(false);");
+                    sb.AppendLine($"                if (cachedValue != null)");
+                    sb.AppendLine($"                {{");
+                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"                    return cachedValue;");
+                    sb.AppendLine($"                }}");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine();
+                    sb.AppendLine($"            // Cache miss: track metric and use fast path");
+                    sb.AppendLine($"            _metricsProvider?.CacheMiss(_cachedMethodName_{safeFieldName});");
+
+                    // Use GetOrCreateFastAsync (metrics already tracked above)
                     sb.AppendLine($"            return await _cacheManager.GetOrCreateFastAsync<{innerType}>(");
                     sb.AppendLine($"                cacheKey,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
@@ -546,7 +598,27 @@ namespace MethodCache.SourceGenerator
                     var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
                     sb.AppendLine($"            var cacheKey = {inlineKey};");
 
-                    // Use GetOrCreateFastAsync which handles both cache checking and metrics tracking
+                    // OPTIMIZATION: Check if ValueTask is already completed to avoid GetAwaiter overhead
+                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{returnType}>(cacheKey);");
+                    sb.AppendLine($"            {returnType}? cachedValue;");
+                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                cachedValue = cacheTask.Result;");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine($"            else");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                cachedValue = cacheTask.ConfigureAwait(false).GetAwaiter().GetResult();");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine($"            if (cachedValue != null)");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"                return cachedValue;");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine();
+                    sb.AppendLine($"            // Cache miss: track metric and use fast path");
+                    sb.AppendLine($"            _metricsProvider?.CacheMiss(_cachedMethodName_{safeFieldName});");
+
+                    // Use GetOrCreateFastAsync (metrics already tracked above)
                     sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{returnType}>(");
                     sb.AppendLine($"                cacheKey,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");

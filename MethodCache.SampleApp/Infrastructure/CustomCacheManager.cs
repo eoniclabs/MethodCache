@@ -117,7 +117,7 @@ namespace MethodCache.SampleApp.Infrastructure
                 // Check if value exists and is not expired
                 if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
                 {
-                    _metricsProvider.CacheHit(methodName);
+                    // Metrics are tracked in the generated decorator code, not here
                     _metricsProvider.CacheLatency(methodName, (long)(DateTime.UtcNow - startTime).TotalMilliseconds);
 
                     Console.WriteLine($"[CACHE HIT] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
@@ -125,7 +125,7 @@ namespace MethodCache.SampleApp.Infrastructure
                 }
 
                 // Cache miss - execute the factory method
-                _metricsProvider.CacheMiss(methodName);
+                // Metrics are tracked in the generated decorator code, not here
                 Console.WriteLine($"[CACHE MISS] {methodName} (Key: {cacheKey[..Math.Min(20, cacheKey.Length)]}...)");
 
                 var result = await factory();

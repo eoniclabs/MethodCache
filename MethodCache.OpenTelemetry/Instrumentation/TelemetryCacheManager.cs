@@ -169,29 +169,11 @@ public class TelemetryCacheManager : ICacheManager
 
             SetActivityTagsFromPolicy(activity, policy);
 
-            // Track whether the factory was invoked to determine hit/miss
-            var factoryInvoked = false;
-            async Task<T> InstrumentedFactory()
-            {
-                factoryInvoked = true;
-                return await factory();
-            }
-
-            var result = await _innerManager.GetOrCreateFastAsync(cacheKey, methodName, InstrumentedFactory, policy);
+            // Metrics are tracked in the generated decorator code, not here
+            // Just pass through to inner manager without instrumentation
+            var result = await _innerManager.GetOrCreateFastAsync(cacheKey, methodName, factory, policy);
 
             stopwatch.Stop();
-
-            // If factory was invoked, it was a cache miss
-            if (factoryInvoked)
-            {
-                _activitySource.SetCacheHit(activity, false);
-                _meterProvider.RecordCacheMiss(methodName, CreateMetricTagsFromPolicy(policy));
-            }
-            else
-            {
-                _activitySource.SetCacheHit(activity, true);
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTagsFromPolicy(policy));
-            }
 
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
 

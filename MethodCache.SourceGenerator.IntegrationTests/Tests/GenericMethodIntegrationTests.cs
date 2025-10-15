@@ -228,7 +228,8 @@ namespace TestNamespace
                     userRepoImpl,
                     sp.GetRequiredService<ICacheManager>(),
                     sp.GetRequiredService<IPolicyRegistry>(),
-                    sp.GetRequiredService<ICacheKeyGenerator>())!;
+                    sp.GetRequiredService<ICacheKeyGenerator>(),
+                    sp.GetService<ICacheMetricsProvider>())!;
             });
 
             services.AddSingleton(productRepoInterfaceType, sp =>
@@ -240,7 +241,8 @@ namespace TestNamespace
                     productRepoImpl,
                     sp.GetRequiredService<ICacheManager>(),
                     sp.GetRequiredService<IPolicyRegistry>(),
-                    sp.GetRequiredService<ICacheKeyGenerator>())!;
+                    sp.GetRequiredService<ICacheKeyGenerator>(),
+                    sp.GetService<ICacheMetricsProvider>())!;
             });
         });
 

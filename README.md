@@ -106,7 +106,7 @@ Perfect for caching external APIs, legacy code, or when you prefer explicit cont
 
 ### vs IMemoryCache
 - ✅ **75% less code** – Declarative instead of manual cache-aside pattern
-- ✅ **8276x faster cache hits** – Zero-reflection with source generation (~145ns)
+- ✅ **Competitive performance** – Direct API: ~650ns, comparable to industry-leading solutions
 - ✅ **Built-in tag invalidation** – No manual tracking needed
 - ✅ **Better developer experience** – IntelliSense, analyzers, clear error messages
 
@@ -263,38 +263,60 @@ Drop caching onto external interfaces (Stripe, AWS SDKs, GraphQL clients, etc.) 
 
 ### ⚡ Performance
 
-![Cache Hit Performance](https://img.shields.io/badge/Cache%20Hit-145ns-brightgreen) ![Cache Miss Performance](https://img.shields.io/badge/Cache%20Miss-1.3ms-yellow) ![Benchmark Version](https://img.shields.io/badge/Benchmarked-v2.0.0-preview-blue)
+![Cache Hit Performance](https://img.shields.io/badge/Cache%20Hit-650ns--4.8μs-brightgreen) ![Cache Miss Performance](https://img.shields.io/badge/Cache%20Miss-14--28μs-yellow) ![Benchmark Version](https://img.shields.io/badge/Benchmarked-v1.1.0-blue)
 
-MethodCache delivers exceptional performance with microsecond-level cache hits:
-🚀 **Cache speedup: 8276x faster** than no caching
+MethodCache delivers competitive performance across all cache operations, comparing favorably with industry-leading solutions like FusionCache and LazyCache.
 
-| Operation | Small Model (1 item) | Medium Model (1 item) | Large Model (1 item) |
-|-----------|---------------------|----------------------|---------------------|
-| No Caching | **1.2 ms** | N/A | N/A |
-| Cache Miss | **1.3 ms** | N/A | N/A |
-| Cache Hit | **145 ns** | N/A | N/A |
-| Cache HitCold | **245 ns** | N/A | N/A |
-| Cache Invalidation | **89 ns** | N/A | N/A |
+#### Cache Hit Performance (Lower is Better)
 
-> 📊 **Benchmarks** run on .NET 9.0 with BenchmarkDotNet. Results from December 20, 2024.
+| Implementation | Performance | Use Case |
+|----------------|-------------|----------|
+| **MethodCacheDirect** | **~650ns** | Direct API - Fastest option, ideal for high-throughput scenarios |
+| **LazyCache** | ~950ns | Industry baseline |
+| **FusionCache** | ~2.3μs | Full-featured enterprise caching |
+| **MethodCacheSourceGen** | ~4.8μs | Source-generated with advanced features (tags, stats, eviction) |
+
+#### Cache Miss + Set Performance
+
+| Implementation | Performance |
+|----------------|-------------|
+| **All frameworks** | ~14-28μs |
+
+*All frameworks perform competitively on cache misses, with performance dominated by factory execution time.*
+
+#### Stampede Protection
+
+| Implementation | Performance | Protection |
+|----------------|-------------|------------|
+| **FusionCache** | ~19μs | ✅ Single-flight |
+| **LazyCache** | ~30μs | ✅ Single-flight |
+| **MethodCache (all)** | ~36-130μs | ✅ Single-flight |
+| **EasyCaching** | ~301ms | ❌ No protection (executes 50x factories) |
+
+> 📊 **Benchmarks** run on .NET 9.0 (Apple Silicon) with BenchmarkDotNet. Results from October 2025.
 >
-> 📈 [View detailed performance trends](PERFORMANCE.md) | 🔍 [Raw benchmark data](.performance-data/)
+> 🔍 See [MethodCache.Benchmarks/Comparison/](MethodCache.Benchmarks/Comparison/) for full benchmark source code.
 
 ### Performance Highlights
 
-- **Cache Hits**: Sub-microsecond response times for cached data
-- **Memory Efficient**: Minimal memory allocations during cache operations
-- **Scalable**: Consistent performance across different data sizes
-- **Zero-Overhead**: Negligible impact when caching is disabled
-- **Method Chaining**: No performance penalty - compiles to same efficient code as callback-based API
+- **Industry-leading cache hits** – MethodCacheDirect at ~650ns outperforms FusionCache (~2.3μs) and LazyCache (~950ns)
+- **Stampede protection** – Built-in single-flight pattern prevents cache stampedes
+- **Competitive cache misses** – 14-28μs range across all operations
+- **Memory efficient** – Minimal allocations (0-240 bytes for cache hits)
+- **Zero-reflection** – Source generation eliminates runtime reflection overhead
 
 ### Key Generators Performance
 
-| Generator | Use Case | Performance | Key Format |
-|-----------|----------|-------------|------------|
-| `FastHashKeyGenerator` | High-throughput scenarios | Fastest (~50ns) | `MethodName_hash` |
-| `JsonKeyGenerator` | Development/debugging | Medium (~200ns) | `MethodName:param1:value1:param2:value2` |
-| `MessagePackKeyGenerator` | Complex objects | Fast (~100ns) | `MethodName_binary_hash` |
+| Generator | Use Case | Best For | Key Format |
+|-----------|----------|----------|------------|
+| `FastHashKeyGenerator` | High-throughput scenarios | Maximum performance | `MethodName_hash` |
+| `MessagePackKeyGenerator` | Complex objects | Balanced performance + flexibility | `MethodName_binary_hash` |
+| `JsonKeyGenerator` | Development/debugging | Human-readable keys | `MethodName:param1:value1` |
+
+*Key generator performance is negligible compared to cache operations (~50-200ns overhead).*
+
+---
+
 ## 🏗️ Architecture at a Glance
 
 ```mermaid
