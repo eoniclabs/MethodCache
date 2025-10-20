@@ -18,7 +18,7 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
         _baseService = baseService;
     }
 
-    public string Name => "MethodCache (Source Gen)";
+    public string Name => "MethodCache (SourceGen + AdvancedMemory)";
 
     public bool TryGet<TValue>(string key, out TValue? value)
     {

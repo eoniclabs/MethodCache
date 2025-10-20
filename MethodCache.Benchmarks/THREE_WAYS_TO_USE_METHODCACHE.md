@@ -25,7 +25,7 @@ public partial class MyService
 ```
 
 **Performance**: 15-58 ns  
-**Benchmark**: `RealMethodCacheComparison.cs`  
+**Benchmark**: `MethodCache_SourceGen_Hit` in `UnifiedCacheComparisonBenchmarks.cs`  
 **Use this**: For production applications
 
 **Why so fast?**
@@ -53,7 +53,7 @@ if (value == null)
 ```
 
 **Performance**: ~2,000-3,000 ns (competitive with other frameworks)  
-**Benchmark**: `MethodCacheDirect_Hit` in `UnifiedCacheComparisonBenchmarks.cs`  
+**Benchmark**: `MethodCache_ManualKey_Hit` in `UnifiedCacheComparisonBenchmarks.cs`  
 **Use this**: When you need dynamic keys or don't want source generation
 
 **Why competitive?**
@@ -77,7 +77,7 @@ return await _cache.GetAsync<SamplePayload>(cacheKey);
 ```
 
 **Performance**: ~2,200 ns  
-**Benchmark**: `MethodCacheStatic_Hit` in `UnifiedCacheComparisonBenchmarks.cs`  
+**Benchmark**: `MethodCache_Static_Hit` in `UnifiedCacheComparisonBenchmarks.cs`  
 **Use this**: When you want key generation benefits but through an adapter
 
 **Why similar to Direct API?**
@@ -99,7 +99,7 @@ var cacheKey = _keyGenerator.GenerateKey(
 ```
 
 **Performance**: ~9,500 ns  
-**Benchmark**: `MethodCache_Hit` in `UnifiedCacheComparisonBenchmarks.cs`  
+**Benchmark**: `MethodCache_Legacy_Hit` in `UnifiedCacheComparisonBenchmarks.cs`  
 **Use this**: NEVER (shown for comparison only)
 
 **Why so slow?**
@@ -115,7 +115,7 @@ var cacheKey = _keyGenerator.GenerateKey(
 | Method | Median Time | vs Direct API | vs Source Gen | Use Case |
 |--------|-------------|---------------|---------------|----------|
 | **Source Generation** | **20-58 ns** | **100x faster** | - | Production apps |
-| **Direct API** | **~2,500 ns** | - | 40-125x slower | Dynamic keys |
+| **Manual Keys (Direct API)** | **~2,500 ns** | - | 40-125x slower | Dynamic keys |
 | **Static Keys** | **~2,200 ns** | 1.1x faster | 40-110x slower | Adapter pattern |
 | **Runtime Keys** | **~9,500 ns** | 3.8x slower | 160-475x slower | Never use |
 | LazyCache | ~2,300 ns | 1.1x slower | 40-115x slower | Reference |

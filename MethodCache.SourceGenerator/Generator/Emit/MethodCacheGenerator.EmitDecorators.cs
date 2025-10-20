@@ -449,7 +449,11 @@ namespace MethodCache.SourceGenerator
                 {
                     var expr = GetParameterStringExpression(keyParams[0]);
                     sb.AppendLine($"{indent}var keySegment = {expr};");
-                    sb.AppendLine($"{indent}var cacheKey = _cacheKeyCache_{safeFieldName}.GetOrAdd(keySegment, segment => _cachedMethodName_{safeFieldName} + \":\" + segment);");
+                    sb.AppendLine($"{indent}if (!_cacheKeyCache_{safeFieldName}.TryGetValue(keySegment, out var cacheKey))");
+                    sb.AppendLine($"{indent}{{");
+                    sb.AppendLine($"{indent}    cacheKey = string.Concat(_cachedMethodName_{safeFieldName}, \":\", keySegment);");
+                    sb.AppendLine($"{indent}    _cacheKeyCache_{safeFieldName}.TryAdd(keySegment, cacheKey);");
+                    sb.AppendLine($"{indent}}}");
                     return;
                 }
 
@@ -462,8 +466,19 @@ namespace MethodCache.SourceGenerator
                 var tupleElements = string.Join(", ", Enumerable.Range(0, keyParams.Count).Select(i => $"keyPart{i}"));
                 sb.AppendLine($"{indent}var keyTuple = ({tupleElements});");
 
-                var tupleAccess = string.Join(" + \":\" + ", Enumerable.Range(0, keyParams.Count).Select(i => $"tuple.Item{i + 1}"));
-                sb.AppendLine($"{indent}var cacheKey = _cacheKeyCache_{safeFieldName}.GetOrAdd(keyTuple, tuple => _cachedMethodName_{safeFieldName} + \":\" + {tupleAccess});");
+                var concatArgs = new List<string> { $"_cachedMethodName_{safeFieldName}" };
+                foreach (var partIndex in Enumerable.Range(0, keyParams.Count))
+                {
+                    concatArgs.Add("\":\"");
+                    concatArgs.Add($"keyPart{partIndex}");
+                }
+
+                var concatExpression = string.Join(", ", concatArgs);
+                sb.AppendLine($"{indent}if (!_cacheKeyCache_{safeFieldName}.TryGetValue(keyTuple, out var cacheKey))");
+                sb.AppendLine($"{indent}{{");
+                sb.AppendLine($"{indent}    cacheKey = string.Concat({concatExpression});");
+                sb.AppendLine($"{indent}    _cacheKeyCache_{safeFieldName}.TryAdd(keyTuple, cacheKey);");
+                sb.AppendLine($"{indent}}}");
             }
 
             private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)

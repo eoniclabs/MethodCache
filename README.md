@@ -271,10 +271,10 @@ MethodCache delivers competitive performance across all cache operations, compar
 
 | Implementation | Performance | Use Case |
 |----------------|-------------|----------|
-| **MethodCacheDirect** | **~650ns** | Direct API - Fastest option, ideal for high-throughput scenarios |
+| **MethodCache (Manual Key)** | **~650ns** | Direct API - Fastest option, ideal for high-throughput scenarios |
 | **LazyCache** | ~950ns | Industry baseline |
 | **FusionCache** | ~2.3μs | Full-featured enterprise caching |
-| **MethodCacheSourceGen** | ~4.8μs | Source-generated with advanced features (tags, stats, eviction) |
+| **MethodCache (SourceGen + AdvancedMemory)** | ~4.8�s | Source-generated with advanced features (tags, stats, eviction) |
 
 #### Cache Miss + Set Performance
 
@@ -299,7 +299,7 @@ MethodCache delivers competitive performance across all cache operations, compar
 
 ### Performance Highlights
 
-- **Industry-leading cache hits** – MethodCacheDirect at ~650ns outperforms FusionCache (~2.3μs) and LazyCache (~950ns)
+- **Industry-leading cache hits** – **MethodCache (Manual Key)** at ~650ns outperforms FusionCache (~2.3μs) and LazyCache (~950ns)
 - **Stampede protection** – Built-in single-flight pattern prevents cache stampedes
 - **Competitive cache misses** – 14-28μs range across all operations
 - **Memory efficient** – Minimal allocations (0-240 bytes for cache hits)
@@ -373,6 +373,10 @@ We welcome issues, ideas, and pull requests. Please read the contribution guidel
 ---
 
 Built with ❤️ for the .NET community.
+
+
+
+
 
 
 

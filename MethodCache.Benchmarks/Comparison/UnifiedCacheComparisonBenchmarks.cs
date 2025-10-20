@@ -15,23 +15,23 @@ namespace MethodCache.Benchmarks.Comparison;
 ///
 /// IMPORTANT INTERPRETATION GUIDE:
 ///
-/// MethodCacheSourceGen_* benchmarks:
+/// MethodCache_SourceGen_** benchmarks:
 /// - Uses AdvancedMemory storage provider (with tags, stats, eviction)
 /// - Direct storage-to-storage comparison
 /// - Shows MethodCache storage performance vs other frameworks
 /// - Expected performance: ~100-200ns (full-featured storage)
 ///
-/// MethodCacheDirect_* benchmarks:
+/// MethodCache_ManualKey_** benchmarks:
 /// - Direct API calls (no source generation)
 /// - Shows MethodCache storage layer only
 /// - Fair storage-to-storage comparison
 ///
-/// MethodCache_* benchmarks:
+/// MethodCache_Legacy_** benchmarks:
 /// - Legacy/research comparison (runtime reflection-based)
 /// - Shows runtime key generation performance
 /// - Not recommended for decision-making
 ///
-/// Key Insight: Compare MethodCacheSourceGen against other frameworks - that's the real comparison!
+/// Key Insight: Compare MethodCache_SourceGen against other frameworks - that's the real comparison!
 /// See Comparison/README.md and BENCHMARKING_GUIDE.md for full explanation.
 /// </summary>
 [MemoryDiagnoser]
@@ -43,11 +43,12 @@ public class UnifiedCacheComparisonBenchmarks
 {
     private const string TestKey = "benchmark_key";
     private static readonly SamplePayload TestPayload = new() { Id = 1, Name = "Test", Data = new byte[1024] };
+    private const int ConcurrentHitIterationsPerThread = 256;
 
     // All cache adapters - easily extensible!
-    private ICacheAdapter _methodCache = null!;
-    private ICacheAdapter _methodCacheDirect = null!;
-    private ICacheAdapter _methodCacheSourceGen = null!; // NEW: Uses source generation (proper MethodCache usage)
+    private ICacheAdapter _legacyMethodCache = null!;
+    private ICacheAdapter _manualKeyMethodCache = null!;
+    private ICacheAdapter _sourceGenMethodCache = null!; // NEW: Uses source generation (proper MethodCache usage)
     private ICacheAdapter _fusionCache = null!;
     private ICacheAdapter _lazyCache = null!;
     private ICacheAdapter _easyCaching = null!;
@@ -57,8 +58,8 @@ public class UnifiedCacheComparisonBenchmarks
     {
         // Initialize all cache adapters
         // MethodCache has 3 usage modes shown here:
-        _methodCache = new MethodCacheAdapter(); // With runtime key generation (worst case: ~9,500ns)
-        _methodCacheDirect = new DirectApiMethodCacheAdapter(); // Direct API with manual keys (fairest: ~same as others)
+        _legacyMethodCache = new MethodCacheAdapter(); // Runtime key generation (legacy path)
+        _manualKeyMethodCache = new DirectApiMethodCacheAdapter(); // Direct API with manual keys (raw storage comparison)
 
         // NEW: Source-generated MethodCache with AdvancedMemory storage
         var services = new ServiceCollection();
@@ -91,7 +92,7 @@ public class UnifiedCacheComparisonBenchmarks
         var serviceProvider = services.BuildServiceProvider();
         var sourceGenService = serviceProvider.GetRequiredService<IMethodCacheBenchmarkService>();
         var baseService = serviceProvider.GetRequiredService<MethodCacheBenchmarkService>();
-        _methodCacheSourceGen = new MethodCacheSourceGenAdapter(sourceGenService, baseService);
+        _sourceGenMethodCache = new MethodCacheSourceGenAdapter(sourceGenService, baseService);
 
         _fusionCache = new FusionCacheAdapter();
         _lazyCache = new LazyCacheAdapter();
@@ -112,9 +113,9 @@ public class UnifiedCacheComparisonBenchmarks
     [GlobalCleanup]
     public void GlobalCleanup()
     {
-        _methodCache?.Dispose();
-        _methodCacheDirect?.Dispose();
-        _methodCacheSourceGen?.Dispose();
+        _legacyMethodCache?.Dispose();
+        _manualKeyMethodCache?.Dispose();
+        _sourceGenMethodCache?.Dispose();
         _fusionCache?.Dispose();
         _lazyCache?.Dispose();
         _easyCaching?.Dispose();
@@ -123,12 +124,12 @@ public class UnifiedCacheComparisonBenchmarks
     private void WarmupCaches()
     {
         var duration = TimeSpan.FromMinutes(10);
-        _methodCache.Set(TestKey, TestPayload, duration);
-        _methodCacheDirect.Set(TestKey, TestPayload, duration);
+        _legacyMethodCache.Set(TestKey, TestPayload, duration);
+        _manualKeyMethodCache.Set(TestKey, TestPayload, duration);
 
-        // MethodCacheSourceGen must populate cache by calling the cached method
+        // MethodCache_SourceGen must populate cache by calling the cached method
         // The Set() method is a no-op for source-generated services
-        var sourceGenAdapter = (MethodCacheSourceGenAdapter)_methodCacheSourceGen;
+        var sourceGenAdapter = (MethodCacheSourceGenAdapter)_sourceGenMethodCache;
         _ = sourceGenAdapter.GetAsyncDirect(TestKey).GetAwaiter().GetResult();
 
         _fusionCache.Set(TestKey, TestPayload, duration);
@@ -138,32 +139,32 @@ public class UnifiedCacheComparisonBenchmarks
 
     // ==================== CACHE HIT TESTS ====================
     // MethodCache has 3 usage modes:
-    // 1. MethodCacheSourceGen_Hit - AdvancedMemory storage (full-featured: ~100-200ns)
-    // 2. MethodCacheDirect_Hit - Direct API with manual keys (storage-only comparison)
-    // 3. MethodCache_Hit - Runtime key generation research (~9,500ns)
+    // 1. MethodCache_SourceGen_*Hit - AdvancedMemory storage (full-featured: ~100-200ns)
+    // 2. MethodCache_ManualKey_*Hit - Direct API with manual keys (storage-only comparison)
+    // 3. MethodCache_Legacy_*Hit - Runtime key generation research (~9,500ns)
     //
-    // COMPARE: MethodCacheSourceGen (AdvancedMemory) vs other frameworks for storage comparison
+    // COMPARE: MethodCache_SourceGen (AdvancedMemory) vs other frameworks for storage comparison
     //
-    // NOTE: Synchronous benchmark methods (MethodCacheSourceGen_Hit) suffer from sync-over-async
-    // overhead (~50-100µs on Windows). Use MethodCacheSourceGen_HitAsync for true performance.
+    // NOTE: Synchronous benchmark methods (MethodCache_SourceGen_*Hit) suffer from sync-over-async
+    // overhead (~50-100µs on Windows). Use MethodCache_SourceGen_*HitAsync for true performance.
 
     [BenchmarkCategory("CacheHit"), Benchmark]
-    public bool MethodCache_Hit()
+    public bool MethodCache_Legacy_Hit()
     {
-        return _methodCache.TryGet<SamplePayload>(TestKey, out _);
+        return _legacyMethodCache.TryGet<SamplePayload>(TestKey, out _);
     }
 
     [BenchmarkCategory("CacheHit"), Benchmark]
-    public bool MethodCacheDirect_Hit()
+    public bool MethodCache_ManualKey_Hit()
     {
-        return _methodCacheDirect.TryGet<SamplePayload>(TestKey, out _);
+        return _manualKeyMethodCache.TryGet<SamplePayload>(TestKey, out _);
     }
 
     [BenchmarkCategory("CacheHit"), Benchmark]
-    public bool MethodCacheSourceGen_Hit()
+    public bool MethodCache_SourceGen_Hit()
     {
         // Uses AdvancedMemory storage - full-featured cache with tags, stats, eviction
-        return _methodCacheSourceGen.TryGet<SamplePayload>(TestKey, out _);
+        return _sourceGenMethodCache.TryGet<SamplePayload>(TestKey, out _);
     }
 
 
@@ -190,11 +191,11 @@ public class UnifiedCacheComparisonBenchmarks
     // These async tests avoid the sync-over-async overhead and show true performance
 
     [BenchmarkCategory("CacheHitAsync"), Benchmark]
-    public async Task<SamplePayload?> MethodCacheSourceGen_HitAsync()
+    public async Task<SamplePayload?> MethodCache_SourceGen_HitAsync()
     {
         // Uses async API - avoids sync-over-async overhead
         // IMPORTANT: Call GetAsync directly, not GetOrSetAsync which executes factory
-        var sourceGenAdapter = (MethodCacheSourceGenAdapter)_methodCacheSourceGen;
+        var sourceGenAdapter = (MethodCacheSourceGenAdapter)_sourceGenMethodCache;
         return await sourceGenAdapter.GetAsyncDirect(TestKey);
     }
 
@@ -203,24 +204,24 @@ public class UnifiedCacheComparisonBenchmarks
     // This is more reliable than Remove(), which doesn't work for all cache implementations.
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
-    public async Task<SamplePayload> MethodCache_MissAndSet()
+    public async Task<SamplePayload> MethodCache_Legacy_MissAndSet()
     {
         var key = $"{TestKey}_miss_{Guid.NewGuid()}";
-        return await _methodCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        return await _legacyMethodCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
-    public async Task<SamplePayload> MethodCacheDirect_MissAndSet()
+    public async Task<SamplePayload> MethodCache_ManualKey_MissAndSet()
     {
         var key = $"{TestKey}_miss_{Guid.NewGuid()}";
-        return await _methodCacheDirect.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        return await _manualKeyMethodCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
-    public async Task<SamplePayload> MethodCacheSourceGen_MissAndSet()
+    public async Task<SamplePayload> MethodCache_SourceGen_MissAndSet()
     {
         var key = $"{TestKey}_miss_{Guid.NewGuid()}";
-        return await _methodCacheSourceGen.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        return await _sourceGenMethodCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
 
@@ -251,25 +252,25 @@ public class UnifiedCacheComparisonBenchmarks
     [BenchmarkCategory("Concurrent"), Benchmark]
     [Arguments(10)]
     [Arguments(100)]
-    public async Task MethodCache_Concurrent(int threadCount)
+    public async Task MethodCache_Legacy_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_methodCache, threadCount);
+        await RunConcurrentTest(_legacyMethodCache, threadCount);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
     [Arguments(10)]
     [Arguments(100)]
-    public async Task MethodCacheDirect_Concurrent(int threadCount)
+    public async Task MethodCache_ManualKey_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_methodCacheDirect, threadCount);
+        await RunConcurrentTest(_manualKeyMethodCache, threadCount);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
     [Arguments(10)]
     [Arguments(100)]
-    public async Task MethodCacheSourceGen_Concurrent(int threadCount)
+    public async Task MethodCache_SourceGen_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_methodCacheSourceGen, threadCount);
+        await RunConcurrentTest(_sourceGenMethodCache, threadCount);
     }
 
 
@@ -320,9 +321,9 @@ public class UnifiedCacheComparisonBenchmarks
     [BenchmarkCategory("ConcurrentHits"), Benchmark]
     [Arguments(10)]
     [Arguments(100)]
-    public async Task MethodCacheSourceGen_ConcurrentHits(int threadCount)
+    public async Task MethodCache_SourceGen_ConcurrentHits(int threadCount)
     {
-        await RunConcurrentHitsTest(_methodCacheSourceGen, threadCount);
+        await RunConcurrentHitsTest(_sourceGenMethodCache, threadCount);
     }
 
 
@@ -360,10 +361,10 @@ public class UnifiedCacheComparisonBenchmarks
             int threadId = i;
             tasks[i] = Task.Run(async () =>
             {
-                // Each thread does 10 cache hits on rotating hot keys
-                for (int j = 0; j < 10; j++)
+                // Each thread performs a large number of hits to ensure BenchmarkDotNet meets its minimum iteration time guidance.
+                for (int j = 0; j < ConcurrentHitIterationsPerThread; j++)
                 {
-                    var key = hotKeys[(threadId + j) % 10];
+                    var key = hotKeys[(threadId + j) % hotKeys.Length];
                     await cache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
                 }
             });
@@ -375,21 +376,21 @@ public class UnifiedCacheComparisonBenchmarks
     // ==================== CACHE STAMPEDE TESTS ====================
 
     [BenchmarkCategory("Stampede"), Benchmark]
-    public async Task MethodCache_Stampede()
+    public async Task MethodCache_Legacy_Stampede()
     {
-        await RunStampedeTest(_methodCache);
+        await RunStampedeTest(_legacyMethodCache);
     }
 
     [BenchmarkCategory("Stampede"), Benchmark]
-    public async Task MethodCacheDirect_Stampede()
+    public async Task MethodCache_ManualKey_Stampede()
     {
-        await RunStampedeTest(_methodCacheDirect);
+        await RunStampedeTest(_manualKeyMethodCache);
     }
 
     [BenchmarkCategory("Stampede"), Benchmark]
-    public async Task MethodCacheSourceGen_Stampede()
+    public async Task MethodCache_SourceGen_Stampede()
     {
-        await RunStampedeTest(_methodCacheSourceGen);
+        await RunStampedeTest(_sourceGenMethodCache);
     }
 
 

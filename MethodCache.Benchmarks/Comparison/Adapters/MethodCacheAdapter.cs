@@ -18,7 +18,7 @@ public class MethodCacheAdapter : ICacheAdapter
     private readonly IServiceProvider _serviceProvider;
     private readonly CacheStatistics _stats = new();
 
-    public string Name => "MethodCache";
+    public string Name => "MethodCache (Legacy Runtime)";
 
     public MethodCacheAdapter()
     {

@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-Performance profiling revealed that `MethodCacheSourceGen_Hit` benchmark performs at **199µs**, which is **30-60x slower** than competing frameworks (3-7µs). Analysis identified multiple critical bottlenecks in the execution path, with the most significant being:
+Performance profiling revealed that `MethodCache_SourceGen_Hit` benchmark performs at **199µs**, which is **30-60x slower** than competing frameworks (3-7µs). Analysis identified multiple critical bottlenecks in the execution path, with the most significant being:
 
 1. **Sync-over-async pattern** (50-100µs overhead)
 2. **Global lock contention** on LRU tracking (20-40µs overhead)
@@ -32,7 +32,7 @@ Performance profiling revealed that `MethodCacheSourceGen_Hit` benchmark perform
 
 ## Execution Path Analysis
 
-### Current Flow for `MethodCacheSourceGen_Hit`:
+### Current Flow for `MethodCache_SourceGen_Hit`:
 
 ```
 1. Benchmark: MethodCacheSourceGenAdapter.TryGet()
@@ -91,7 +91,7 @@ Performance profiling revealed that `MethodCacheSourceGen_Hit` benchmark perform
 
 ```csharp
 [BenchmarkCategory("CacheHit"), Benchmark]
-public async Task<bool> MethodCacheSourceGen_HitAsync()
+public async Task<bool> MethodCache_SourceGen_HitAsync()
 {
     var result = await _service.GetAsync(TestKey);  // Use async method!
     return result != null;
@@ -616,17 +616,17 @@ Expected results after each phase:
 
 **Phase 1**:
 ```
-MethodCacheSourceGen_HitAsync: 40-99µs (down from 199µs)
+MethodCache_SourceGen_HitAsync: 40-99µs (down from 199µs)
 ```
 
 **Phase 2**:
 ```
-MethodCacheSourceGen_HitAsync: 500ns-2µs
+MethodCache_SourceGen_HitAsync: 500ns-2µs
 ```
 
 **Phase 3**:
 ```
-MethodCacheSourceGen_HitAsync: 100-500ns
+MethodCache_SourceGen_HitAsync: 100-500ns
 ```
 
 ### Regression Testing
@@ -686,3 +686,4 @@ Ensure no regressions in:
 
 **Last Updated**: 2025-10-13
 **Next Review**: After Phase 1 completion
+
