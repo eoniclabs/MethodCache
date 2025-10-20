@@ -61,6 +61,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#pragma warning disable CS8019 // Unnecessary using directive");
                 sb.AppendLine("using System;");
                 sb.AppendLine("using System.Collections.Generic;");
+                sb.AppendLine("using System.Collections.Concurrent;");
                 sb.AppendLine("using System.Linq;");
                 sb.AppendLine("using System.Threading;");
                 sb.AppendLine("using System.Threading.Tasks;");
@@ -118,11 +119,20 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"        private readonly CacheRuntimePolicy _cachedPolicy_{safeFieldName};");
                     sb.AppendLine($"        private readonly string _cachedMethodName_{safeFieldName};");
 
-                    // For methods with no cache-key parameters, pre-compute the full cache key
-                    var hasKeyParams = ImmutableArrayExtensions.Any(cached.Method.Parameters, p => !Utils.IsCancellationToken(p.Type));
-                    if (!hasKeyParams)
+                    var keyParamCount = cached.Method.Parameters.Count(p => !Utils.IsCancellationToken(p.Type));
+                    if (keyParamCount == 0)
                     {
                         sb.AppendLine($"        private readonly string _cachedKey_{safeFieldName};");
+                    }
+                    else if (keyParamCount == 1)
+                    {
+                        sb.AppendLine($"        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _cacheKeyCache_{safeFieldName} = new(System.StringComparer.Ordinal);");
+                    }
+                    else
+                    {
+                        var tupleElements = string.Join(", ", Enumerable.Repeat("string", keyParamCount));
+                        var tupleType = $"({tupleElements})";
+                        sb.AppendLine($"        private readonly System.Collections.Concurrent.ConcurrentDictionary<{tupleType}, string> _cacheKeyCache_{safeFieldName} = new();");
                     }
                 }
                 sb.AppendLine();
@@ -405,43 +415,55 @@ namespace MethodCache.SourceGenerator
                        typeName == "sbyte";
             }
 
-            /// <summary>
-            /// Generates inline C# code to construct a cache key from simple parameters
-            /// </summary>
-            private static string GenerateInlineCacheKey(string safeFieldName, List<IParameterSymbol> keyParams)
+            private static string GetParameterStringExpression(IParameterSymbol param)
+            {
+                var typeName = param.Type.ToDisplayString();
+
+                if (typeName == "string")
+                {
+                    return $"{param.Name} ?? \"null\"";
+                }
+
+                if (param.Type.IsValueType)
+                {
+                    if (param.Type.NullableAnnotation == NullableAnnotation.Annotated)
+                    {
+                        return $"{param.Name}?.ToString() ?? \"null\"";
+                    }
+
+                    return $"{param.Name}.ToString()";
+                }
+
+                return $"{param.Name}?.ToString() ?? \"null\"";
+            }
+
+            private static void EmitCacheKeyAcquisition(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams, string indent)
             {
                 if (keyParams.Count == 0)
                 {
-                    return $"_cachedKey_{safeFieldName}";
+                    sb.AppendLine($"{indent}var cacheKey = _cachedKey_{safeFieldName};");
+                    return;
                 }
 
-                var parts = new System.Collections.Generic.List<string>();
-                parts.Add($"_cachedMethodName_{safeFieldName}");
-                parts.Add("\":\"");  // Separator
+                if (keyParams.Count == 1)
+                {
+                    var expr = GetParameterStringExpression(keyParams[0]);
+                    sb.AppendLine($"{indent}var keySegment = {expr};");
+                    sb.AppendLine($"{indent}var cacheKey = _cacheKeyCache_{safeFieldName}.GetOrAdd(keySegment, segment => _cachedMethodName_{safeFieldName} + \":\" + segment);");
+                    return;
+                }
 
                 for (int i = 0; i < keyParams.Count; i++)
                 {
-                    var param = keyParams[i];
-                    if (i > 0)
-                        parts.Add("\":\"");  // Separator between params
-
-                    // Handle nullable types
-                    var typeName = param.Type.ToDisplayString();
-                    if (typeName == "string")
-                    {
-                        parts.Add($"({param.Name} ?? \"null\")");
-                    }
-                    else if (param.Type.IsValueType && param.Type.NullableAnnotation == NullableAnnotation.Annotated)
-                    {
-                        parts.Add($"({param.Name}?.ToString() ?? \"null\")");
-                    }
-                    else
-                    {
-                        parts.Add($"{param.Name}.ToString()");
-                    }
+                    var expr = GetParameterStringExpression(keyParams[i]);
+                    sb.AppendLine($"{indent}var keyPart{i} = {expr};");
                 }
 
-                return string.Join(" + ", parts);
+                var tupleElements = string.Join(", ", Enumerable.Range(0, keyParams.Count).Select(i => $"keyPart{i}"));
+                sb.AppendLine($"{indent}var keyTuple = ({tupleElements});");
+
+                var tupleAccess = string.Join(" + \":\" + ", Enumerable.Range(0, keyParams.Count).Select(i => $"tuple.Item{i + 1}"));
+                sb.AppendLine($"{indent}var cacheKey = _cacheKeyCache_{safeFieldName}.GetOrAdd(keyTuple, tuple => _cachedMethodName_{safeFieldName} + \":\" + {tupleAccess});");
             }
 
             private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
@@ -454,8 +476,8 @@ namespace MethodCache.SourceGenerator
                 {
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
-                    var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
-                    sb.AppendLine($"            var cacheKey = {inlineKey};");
+                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
+                    sb.AppendLine();
 
                     // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
                     sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{innerType}>(cacheKey);");
@@ -521,8 +543,8 @@ namespace MethodCache.SourceGenerator
                 {
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
-                    var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
-                    sb.AppendLine($"            var cacheKey = {inlineKey};");
+                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
+                    sb.AppendLine();
 
                     // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
                     sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{innerType}>(cacheKey);");
@@ -595,8 +617,8 @@ namespace MethodCache.SourceGenerator
                 {
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
-                    var inlineKey = GenerateInlineCacheKey(safeFieldName, keyParams);
-                    sb.AppendLine($"            var cacheKey = {inlineKey};");
+                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
+                    sb.AppendLine();
 
                     // OPTIMIZATION: Check if ValueTask is already completed to avoid GetAwaiter overhead
                     sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{returnType}>(cacheKey);");

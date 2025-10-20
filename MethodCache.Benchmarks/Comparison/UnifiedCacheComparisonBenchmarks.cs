@@ -248,55 +248,64 @@ public class UnifiedCacheComparisonBenchmarks
 
     // ==================== BENCHMARK PARAMETERS ====================
 
-    [Params(10, 100)]
-    public int ConcurrentThreads { get; set; }
-
     [BenchmarkCategory("Concurrent"), Benchmark]
-    public async Task MethodCache_Concurrent()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task MethodCache_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_methodCache);
+        await RunConcurrentTest(_methodCache, threadCount);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
-    public async Task MethodCacheDirect_Concurrent()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task MethodCacheDirect_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_methodCacheDirect);
+        await RunConcurrentTest(_methodCacheDirect, threadCount);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
-    public async Task MethodCacheSourceGen_Concurrent()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task MethodCacheSourceGen_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_methodCacheSourceGen);
+        await RunConcurrentTest(_methodCacheSourceGen, threadCount);
     }
 
 
     [BenchmarkCategory("Concurrent"), Benchmark]
-    public async Task FusionCache_Concurrent()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task FusionCache_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_fusionCache);
+        await RunConcurrentTest(_fusionCache, threadCount);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
-    public async Task LazyCache_Concurrent()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task LazyCache_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_lazyCache);
+        await RunConcurrentTest(_lazyCache, threadCount);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
-    public async Task EasyCaching_Concurrent()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task EasyCaching_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_easyCaching);
+        await RunConcurrentTest(_easyCaching, threadCount);
     }
 
 
-    private async Task RunConcurrentTest(ICacheAdapter cache)
+    private async Task RunConcurrentTest(ICacheAdapter cache, int threadCount)
     {
         // NOTE: This test creates a NEW key each time, so it's measuring cache MISS + stampede prevention
         // It does NOT measure LRU update performance (see ConcurrentHits for that)
-        var tasks = new Task<SamplePayload>[ConcurrentThreads];
+        var tasks = new Task<SamplePayload>[threadCount];
         var key = $"{TestKey}_concurrent_{Guid.NewGuid()}";
 
-        for (int i = 0; i < ConcurrentThreads; i++)
+        for (int i = 0; i < threadCount; i++)
         {
             tasks[i] = cache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
         }
@@ -309,26 +318,32 @@ public class UnifiedCacheComparisonBenchmarks
     // Multiple threads repeatedly access a small set of HOT keys
 
     [BenchmarkCategory("ConcurrentHits"), Benchmark]
-    public async Task MethodCacheSourceGen_ConcurrentHits()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task MethodCacheSourceGen_ConcurrentHits(int threadCount)
     {
-        await RunConcurrentHitsTest(_methodCacheSourceGen);
+        await RunConcurrentHitsTest(_methodCacheSourceGen, threadCount);
     }
 
 
 
     [BenchmarkCategory("ConcurrentHits"), Benchmark]
-    public async Task LazyCache_ConcurrentHits()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task LazyCache_ConcurrentHits(int threadCount)
     {
-        await RunConcurrentHitsTest(_lazyCache);
+        await RunConcurrentHitsTest(_lazyCache, threadCount);
     }
 
     [BenchmarkCategory("ConcurrentHits"), Benchmark]
-    public async Task FusionCache_ConcurrentHits()
+    [Arguments(10)]
+    [Arguments(100)]
+    public async Task FusionCache_ConcurrentHits(int threadCount)
     {
-        await RunConcurrentHitsTest(_fusionCache);
+        await RunConcurrentHitsTest(_fusionCache, threadCount);
     }
 
-    private async Task RunConcurrentHitsTest(ICacheAdapter cache)
+    private async Task RunConcurrentHitsTest(ICacheAdapter cache, int threadCount)
     {
         // Pre-populate cache with 10 hot keys
         var hotKeys = new string[10];
@@ -339,8 +354,8 @@ public class UnifiedCacheComparisonBenchmarks
         }
 
         // Have all threads repeatedly hit these same keys (simulates hot data)
-        var tasks = new Task[ConcurrentThreads];
-        for (int i = 0; i < ConcurrentThreads; i++)
+        var tasks = new Task[threadCount];
+        for (int i = 0; i < threadCount; i++)
         {
             int threadId = i;
             tasks[i] = Task.Run(async () =>
