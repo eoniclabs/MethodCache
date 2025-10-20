@@ -32,6 +32,9 @@
 .PARAMETER Verbose
     Enable verbose output
 
+.PARAMETER Quick
+    Use the lightweight benchmark job (same as --quick option)
+
 .EXAMPLE
     .\run-benchmarks.ps1 -Category basic -OutputFormat html
     Runs basic benchmarks and generates HTML report
@@ -64,7 +67,8 @@ param(
     
     [switch]$Redis,
     
-    [switch]$Verbose
+    [switch]$Verbose,
+    [switch]$Quick
 )
 
 # Set error action preference
@@ -157,11 +161,18 @@ if ($Filter) {
     $benchmarkArgs += $Filter
 }
 
+if ($Quick) {
+    $benchmarkArgs += "--quick"
+}
+
 # Set environment variables for configuration
 $env:BENCHMARK_OUTPUT_FORMAT = $OutputFormat
 $env:BENCHMARK_WARMUP_COUNT = $Warmup
 $env:BENCHMARK_ITERATION_COUNT = $Iterations
 $env:BENCHMARK_VERBOSE = if ($Verbose) { "true" } else { "false" }
+if ($Quick) {
+    $env:BENCHMARK_QUICK = "true"
+}
 
 # Create output directory
 $outputDir = Join-Path $ProjectDir "BenchmarkResults"
