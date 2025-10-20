@@ -191,7 +191,6 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             var key = keyGenerator.GenerateKey(methodName, args, policy);
-            var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
 
             var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
             if (cachedResult != null)
@@ -203,7 +202,8 @@ namespace MethodCache.Core.Runtime.Execution
                 }
                 return cachedResult;
             }
-
+            
+            var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
             var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
 
             return await ExecuteWithSingleFlight(key, async () =>
@@ -263,8 +263,8 @@ namespace MethodCache.Core.Runtime.Execution
                 return cachedResult;
             }
 
-            var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
             var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
+            var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
 
             return await ExecuteWithSingleFlight(cacheKey, async () =>
             {

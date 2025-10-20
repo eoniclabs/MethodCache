@@ -24,6 +24,11 @@ namespace MethodCache.Core.Runtime.KeyGeneration
 
         public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         {
+            if (TryGenerateSimpleKey(methodName, args, policy, out var simpleKey))
+            {
+                return simpleKey;
+            }
+
             try
             {
                 return GenerateSmartKey(methodName, args);
@@ -125,6 +130,20 @@ namespace MethodCache.Core.Runtime.KeyGeneration
             }
 
             return key.ToString();
+        }
+
+        private static bool TryGenerateSimpleKey(string methodName, object[]? args, CacheRuntimePolicy? policy, out string key)
+        {
+            if (!string.IsNullOrEmpty(methodName)
+                && (args == null || args.Length == 0)
+                && (policy == null || (!policy.HasRuntimeOptions && !policy.HasTags && !policy.HasVersion)))
+            {
+                key = methodName;
+                return true;
+            }
+
+            key = string.Empty;
+            return false;
         }
 
         private object[] ExtractArgumentsFromFactory()

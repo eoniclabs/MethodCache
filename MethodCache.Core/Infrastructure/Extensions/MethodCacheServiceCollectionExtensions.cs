@@ -133,7 +133,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
         {
             services.TryAddSingleton<ICacheManager, InMemoryCacheManager>();
             services.TryAddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
-            services.TryAddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();
 
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
 

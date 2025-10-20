@@ -25,7 +25,7 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
     private readonly IServiceProvider _serviceProvider;
     private readonly CacheStatistics _stats = new();
 
-    public string Name => "DirectApiMethodCache";
+    public string Name => "MethodCache (Manual Key)";
 
     public DirectApiMethodCacheAdapter()
     {
