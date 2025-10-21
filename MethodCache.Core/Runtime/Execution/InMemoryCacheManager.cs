@@ -23,7 +23,7 @@ namespace MethodCache.Core.Runtime.Execution
             private long _accessCount;
 
             public object Value { get; init; } = null!;
-            public HashSet<string> Tags { get; init; } = new HashSet<string>();
+            public HashSet<string>? Tags { get; init; }
             public DateTimeOffset AbsoluteExpiration { get; set; }
             public DateTime CreatedAt { get; init; }
             public DateTime LastAccessedAt { get; set; }
@@ -266,6 +266,28 @@ namespace MethodCache.Core.Runtime.Execution
             var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
             var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
 
+            if (!RequiresSingleFlight(entryPolicy))
+            {
+                var result = await factory().ConfigureAwait(false);
+
+                _metricsProvider.CacheMiss(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _misses);
+                }
+
+                if (result != null)
+                {
+                    var expiration = policy.Duration ?? _options.DefaultExpiration;
+                    var effectiveExpiration = expiration > _options.MaxExpiration
+                        ? _options.MaxExpiration
+                        : expiration;
+                    await SetAsync(cacheKey, result, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                }
+
+                return result!;
+            }
+
             return await ExecuteWithSingleFlight(cacheKey, async () =>
             {
                 var result = await factory().ConfigureAwait(false);
@@ -418,6 +440,28 @@ namespace MethodCache.Core.Runtime.Execution
                 stampedeProtection,
                 distributedLock,
                 null); // Metrics are extracted from metadata if needed
+        }
+
+        private static bool RequiresSingleFlight(CacheEntryPolicy policy)
+        {
+            if (policy.DistributedLock != null)
+            {
+                return true;
+            }
+
+            var stampede = policy.StampedeProtection;
+            if (stampede == null)
+            {
+                return false;
+            }
+
+            return stampede.Mode switch
+            {
+                StampedeProtectionMode.DistributedLock => true,
+                StampedeProtectionMode.RefreshAhead => true,
+                StampedeProtectionMode.Probabilistic => true,
+                _ => false
+            };
         }
 
         #region IMemoryCache Implementation
@@ -650,10 +694,13 @@ namespace MethodCache.Core.Runtime.Execution
                 ? _options.MaxExpiration 
                 : expiration;
 
+            var hasTags = tags.Length > 0;
+            var tagSet = hasTags ? new HashSet<string>(tags) : null;
+
             var entry = new EnhancedCacheEntry
             {
                 Value = value!,
-                Tags = new HashSet<string>(tags),
+                Tags = tagSet,
                 CreatedAt = DateTime.UtcNow,
                 AbsoluteExpiration = DateTimeOffset.UtcNow.Add(effectiveExpiration),
                 LastAccessedAt = DateTime.UtcNow,
@@ -683,8 +730,13 @@ namespace MethodCache.Core.Runtime.Execution
         /// <summary>
         /// Adds entry to tag reverse index with size limit protection.
         /// </summary>
-        private void AddToTagIndex(string key, HashSet<string> tags)
+        private void AddToTagIndex(string key, HashSet<string>? tags)
         {
+            if (tags == null || tags.Count == 0)
+            {
+                return;
+            }
+
             lock (_tagIndexLock)
             {
                 // Check if we're approaching the limit
@@ -708,8 +760,13 @@ namespace MethodCache.Core.Runtime.Execution
         /// <summary>
         /// Removes entry from tag reverse index.
         /// </summary>
-        private void RemoveFromTagIndex(string key, HashSet<string> tags)
+        private void RemoveFromTagIndex(string key, HashSet<string>? tags)
         {
+            if (tags == null || tags.Count == 0)
+            {
+                return;
+            }
+
             lock (_tagIndexLock)
             {
                 foreach (var tag in tags)
