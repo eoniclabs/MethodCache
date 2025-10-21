@@ -64,6 +64,7 @@ namespace MethodCache.Core.Runtime.Execution
 
         private readonly ConcurrentDictionary<string, EnhancedCacheEntry> _cache = new();
         private readonly ConcurrentDictionary<string, TaskCompletionSource<object>> _singleFlightGates = new();
+        private readonly ConcurrentDictionary<string, Task<object>> _lightweightGates = new(); // Lightweight coordination gate per cache key
         private readonly ConcurrentDictionary<string, DistributedLockState> _distributedLocks = new();
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly MemoryCacheOptions _options;
@@ -268,24 +269,28 @@ namespace MethodCache.Core.Runtime.Execution
 
             if (!RequiresSingleFlight(entryPolicy))
             {
-                var result = await factory().ConfigureAwait(false);
-
-                _metricsProvider.CacheMiss(methodName);
-                if (_options.EnableStatistics)
+                // Lightweight coordination: prevents duplicate work without TCS overhead
+                return await ExecuteWithLightweightCoordination<T>(cacheKey, async () =>
                 {
-                    Interlocked.Increment(ref _misses);
-                }
+                    var result = await factory().ConfigureAwait(false);
 
-                if (result != null)
-                {
-                    var expiration = policy.Duration ?? _options.DefaultExpiration;
-                    var effectiveExpiration = expiration > _options.MaxExpiration
-                        ? _options.MaxExpiration
-                        : expiration;
-                    await SetAsync(cacheKey, result, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
-                }
+                    _metricsProvider.CacheMiss(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _misses);
+                    }
 
-                return result!;
+                    if (result != null)
+                    {
+                        var expiration = policy.Duration ?? _options.DefaultExpiration;
+                        var effectiveExpiration = expiration > _options.MaxExpiration
+                            ? _options.MaxExpiration
+                            : expiration;
+                        await SetAsync(cacheKey, result, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                    }
+
+                    return (object)result!;
+                }).ConfigureAwait(false);
             }
 
             return await ExecuteWithSingleFlight(cacheKey, async () =>
@@ -345,6 +350,47 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             return new ValueTask<T?>(default(T?));
+        }
+
+        /// <summary>
+        /// Lightweight coordination to prevent duplicate work without TCS allocation overhead.
+        /// Uses the Task itself as the coordination primitive for better performance.
+        /// </summary>
+        private async Task<T> ExecuteWithLightweightCoordination<T>(string key, Func<Task<object>> factory)
+        {
+            while (true)
+            {
+                // Try to observe an in-flight request
+                if (_lightweightGates.TryGetValue(key, out var existingTask))
+                {
+                    var existingResult = await existingTask.ConfigureAwait(false);
+                    return (T)existingResult;
+                }
+
+                var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                // Attempt to register this request as the coordinator
+                if (_lightweightGates.TryAdd(key, tcs.Task))
+                {
+                    try
+                    {
+                        var result = await factory().ConfigureAwait(false);
+                        tcs.TrySetResult(result);
+                        return (T)result;
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                        throw;
+                    }
+                    finally
+                    {
+                        _lightweightGates.TryRemove(key, out _);
+                    }
+                }
+
+                // Lost the race, loop around and await the winner
+            }
         }
 
         /// <summary>
@@ -444,6 +490,24 @@ namespace MethodCache.Core.Runtime.Execution
 
         private static bool RequiresSingleFlight(CacheEntryPolicy policy)
         {
+            // Fast path: Empty or minimal policy doesn't need heavy single-flight coordination
+            if (policy == CacheEntryPolicy.Empty)
+            {
+                return false;
+            }
+
+            // Check for minimal policy (only duration, no advanced features)
+            var hasOnlyDuration = policy.Duration.HasValue &&
+                                  !policy.SlidingExpiration.HasValue &&
+                                  !policy.RefreshAhead.HasValue &&
+                                  policy.StampedeProtection == null &&
+                                  policy.DistributedLock == null;
+
+            if (hasOnlyDuration)
+            {
+                return false; // Use lightweight coordination instead
+            }
+
             if (policy.DistributedLock != null)
             {
                 return true;
@@ -690,14 +754,54 @@ namespace MethodCache.Core.Runtime.Execution
                 return;
             }
 
-            var effectiveExpiration = expiration > _options.MaxExpiration 
-                ? _options.MaxExpiration 
+            var effectiveExpiration = expiration > _options.MaxExpiration
+                ? _options.MaxExpiration
                 : expiration;
 
+            // FAST PATH: No tags, under capacity, no complex features
+            // This path avoids HashSet allocation, tag index locking, and eviction checks
             var hasTags = tags.Length > 0;
+            var hasComplexPolicy = policy != null && policy != CacheEntryPolicy.Empty &&
+                                   (policy.SlidingExpiration.HasValue ||
+                                    policy.RefreshAhead.HasValue ||
+                                    policy.StampedeProtection != null ||
+                                    policy.DistributedLock != null);
+
+            var currentCount = _cache.Count;
+            var capacityThreshold = (int)(_options.MaxItems * 0.9); // 90% capacity
+
+            if (!hasTags && !hasComplexPolicy && currentCount < capacityThreshold)
+            {
+                // Ultra-fast path: minimal allocations, no locks, no eviction
+                var entry = new EnhancedCacheEntry
+                {
+                    Value = value!,
+                    Tags = null, // No HashSet allocation
+                    CreatedAt = DateTime.UtcNow,
+                    AbsoluteExpiration = DateTimeOffset.UtcNow.Add(effectiveExpiration),
+                    LastAccessedAt = DateTime.UtcNow,
+                    Policy = CacheEntryPolicy.Empty
+                };
+
+                // Check if updating existing entry
+                if (_cache.TryGetValue(key, out var oldEntry))
+                {
+                    // Only remove from tag index if old entry had tags
+                    if (oldEntry.Tags != null && oldEntry.Tags.Count > 0)
+                    {
+                        RemoveFromTagIndex(key, oldEntry.Tags);
+                    }
+                }
+
+                // Simple dictionary insert - lock-free for ConcurrentDictionary
+                _cache[key] = entry;
+                return; // Skip tag index, skip eviction semaphore
+            }
+
+            // SLOW PATH: Complex scenarios with tags, eviction, or advanced features
             var tagSet = hasTags ? new HashSet<string>(tags) : null;
 
-            var entry = new EnhancedCacheEntry
+            var fullEntry = new EnhancedCacheEntry
             {
                 Value = value!,
                 Tags = tagSet,
@@ -708,23 +812,23 @@ namespace MethodCache.Core.Runtime.Execution
             };
 
             // Check if this is an update to existing entry
-            var isUpdate = _cache.TryGetValue(key, out var oldEntry);
-            
+            var isUpdate = _cache.TryGetValue(key, out var existingEntry);
+
             // Only evict if this is a new entry and we're at capacity
             if (!isUpdate && _cache.Count >= _options.MaxItems)
             {
                 await TryEvictAsync();
             }
-            
+
             // Remove old entry completely if updating
-            if (isUpdate && oldEntry != null)
+            if (isUpdate && existingEntry != null)
             {
-                RemoveEntryCompletely(key, oldEntry);
+                RemoveEntryCompletely(key, existingEntry);
             }
-            
+
             // Add the new entry to all data structures
-            _cache[key] = entry;
-            AddToTagIndex(key, entry.Tags);
+            _cache[key] = fullEntry;
+            AddToTagIndex(key, fullEntry.Tags);
         }
         
         /// <summary>
@@ -838,6 +942,7 @@ namespace MethodCache.Core.Runtime.Execution
         {
             _cache.Clear();
             _singleFlightGates.Clear();
+            _lightweightGates.Clear();
 
             lock (_tagIndexLock)
             {
