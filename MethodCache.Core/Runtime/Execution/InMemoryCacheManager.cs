@@ -64,7 +64,7 @@ namespace MethodCache.Core.Runtime.Execution
 
         private readonly ConcurrentDictionary<string, EnhancedCacheEntry> _cache = new();
         private readonly ConcurrentDictionary<string, TaskCompletionSource<object>> _singleFlightGates = new();
-        private readonly ConcurrentDictionary<string, Task<object>> _lightweightGates = new(); // Lightweight coordination gate per cache key
+        private readonly ConcurrentDictionary<string, Lazy<Task<object>>> _lightweightGates = new(); // Lightweight coordination gate per cache key
         private readonly ConcurrentDictionary<string, DistributedLockState> _distributedLocks = new();
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly MemoryCacheOptions _options;
@@ -74,9 +74,9 @@ namespace MethodCache.Core.Runtime.Execution
 
         // Tag reverse index for O(1) tag invalidation
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new();
-        private readonly object _tagIndexLock = new object();
         private const int MaxTagMappings = 100000; // Prevent unbounded growth
         private int _currentTagMappings = 0;
+        private int _cleanupScheduled = 0;
 
         // Statistics
         private long _hits;
@@ -103,24 +103,22 @@ namespace MethodCache.Core.Runtime.Execution
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             if (tags == null || !tags.Any()) return Task.CompletedTask;
-            
+
             var keysToRemove = new HashSet<string>();
-            
-            // Use O(1) reverse index lookup instead of iterating entire cache
-            lock (_tagIndexLock)
+
+            // Lock-free O(1) reverse index lookup
+            foreach (var tag in tags)
             {
-                foreach (var tag in tags)
+                if (_tagToKeys.TryGetValue(tag, out var tagKeys))
                 {
-                    if (_tagToKeys.TryGetValue(tag, out var tagKeys))
+                    // Snapshot the keys - ConcurrentDictionary.Keys is thread-safe
+                    foreach (var key in tagKeys.Keys)
                     {
-                        foreach (var key in tagKeys.Keys)
-                        {
-                            keysToRemove.Add(key);
-                        }
+                        keysToRemove.Add(key);
                     }
                 }
             }
-            
+
             // Remove all collected keys completely
             foreach (var key in keysToRemove)
             {
@@ -129,7 +127,7 @@ namespace MethodCache.Core.Runtime.Execution
                     RemoveEntryCompletely(key, entry);
                 }
             }
-            
+
             return Task.CompletedTask;
         }
 
@@ -270,27 +268,45 @@ namespace MethodCache.Core.Runtime.Execution
             if (!RequiresSingleFlight(entryPolicy))
             {
                 // Lightweight coordination: prevents duplicate work without TCS overhead
-                return await ExecuteWithLightweightCoordination<T>(cacheKey, async () =>
+                // Track if we're the coordinator (executing factory) or a waiter (getting cached result from coordinator)
+                var isCoordinator = false;
+                var result = await ExecuteWithLightweightCoordination<T>(cacheKey, async () =>
                 {
-                    var result = await factory().ConfigureAwait(false);
+                    isCoordinator = true;
+                    var factoryResult = await factory().ConfigureAwait(false);
 
-                    _metricsProvider.CacheMiss(methodName);
-                    if (_options.EnableStatistics)
-                    {
-                        Interlocked.Increment(ref _misses);
-                    }
-
-                    if (result != null)
+                    if (factoryResult != null)
                     {
                         var expiration = policy.Duration ?? _options.DefaultExpiration;
                         var effectiveExpiration = expiration > _options.MaxExpiration
                             ? _options.MaxExpiration
                             : expiration;
-                        await SetAsync(cacheKey, result, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                        await SetAsync(cacheKey, factoryResult, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
                     }
 
-                    return (object)result!;
+                    return (object)factoryResult!;
                 }).ConfigureAwait(false);
+
+                // Track metrics based on whether we coordinated or waited
+                if (isCoordinator)
+                {
+                    _metricsProvider.CacheMiss(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _misses);
+                    }
+                }
+                else
+                {
+                    // Waiter got result from coordinator - treat as cache hit
+                    _metricsProvider.CacheHit(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _hits);
+                    }
+                }
+
+                return result;
             }
 
             return await ExecuteWithSingleFlight(cacheKey, async () =>
@@ -353,43 +369,44 @@ namespace MethodCache.Core.Runtime.Execution
         }
 
         /// <summary>
-        /// Lightweight coordination to prevent duplicate work without TCS allocation overhead.
-        /// Uses the Task itself as the coordination primitive for better performance.
+        /// Lightweight coordination to prevent duplicate work using Lazy&lt;Task&lt;object&gt;&gt; pattern.
+        /// This eliminates TaskCompletionSource allocations and while-loop churn under stampede scenarios.
+        /// Waiters are treated as cache hits for accurate metrics.
         /// </summary>
         private async Task<T> ExecuteWithLightweightCoordination<T>(string key, Func<Task<object>> factory)
         {
-            while (true)
+            // Create a Lazy that executes the factory exactly once, thread-safely
+            var newGate = new Lazy<Task<object>>(
+                () => factory(),
+                LazyThreadSafetyMode.ExecutionAndPublication);
+
+            // GetOrAdd ensures only one Lazy wins - all waiters get the same Lazy instance
+            var gate = _lightweightGates.GetOrAdd(key, newGate);
+
+            // Track whether we're the coordinator (won the race) or a waiter
+            var isCoordinator = gate == newGate;
+
+            try
             {
-                // Try to observe an in-flight request
-                if (_lightweightGates.TryGetValue(key, out var existingTask))
+                // Fast-path: If the task is already completed successfully, avoid await overhead
+                var task = gate.Value;
+                if (task.IsCompletedSuccessfully)
                 {
-                    var existingResult = await existingTask.ConfigureAwait(false);
-                    return (T)existingResult;
+                    return (T)task.Result;
                 }
 
-                var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-                // Attempt to register this request as the coordinator
-                if (_lightweightGates.TryAdd(key, tcs.Task))
+                // Await the task (either our own factory or someone else's)
+                var result = await task.ConfigureAwait(false);
+                return (T)result;
+            }
+            finally
+            {
+                // Clean up: only remove the gate if the dictionary still points at the same Lazy instance.
+                // This protects against a new coordinator installing a replacement gate while a waiter finishes.
+                if (isCoordinator || gate.Value.IsCompleted)
                 {
-                    try
-                    {
-                        var result = await factory().ConfigureAwait(false);
-                        tcs.TrySetResult(result);
-                        return (T)result;
-                    }
-                    catch (Exception ex)
-                    {
-                        tcs.TrySetException(ex);
-                        throw;
-                    }
-                    finally
-                    {
-                        _lightweightGates.TryRemove(key, out _);
-                    }
+                    _lightweightGates.TryRemove(new KeyValuePair<string, Lazy<Task<object>>>(key, gate));
                 }
-
-                // Lost the race, loop around and await the winner
             }
         }
 
@@ -833,7 +850,30 @@ namespace MethodCache.Core.Runtime.Execution
         
         /// <summary>
         /// Adds entry to tag reverse index with size limit protection.
+        /// Lock-free implementation using CAS operations for high concurrency.
         /// </summary>
+        private void TryScheduleTagCleanup()
+        {
+            if (Interlocked.CompareExchange(ref _cleanupScheduled, 1, 0) == 0)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await CleanupStaleTagsAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _metricsProvider.CacheError(nameof(InMemoryCacheManager), $"Tag cleanup failed: {ex.Message}");
+                    }
+                    finally
+                    {
+                        Interlocked.Exchange(ref _cleanupScheduled, 0);
+                    }
+                });
+            }
+        }
+
         private void AddToTagIndex(string key, HashSet<string>? tags)
         {
             if (tags == null || tags.Count == 0)
@@ -841,28 +881,26 @@ namespace MethodCache.Core.Runtime.Execution
                 return;
             }
 
-            lock (_tagIndexLock)
+            // Check if we're approaching the limit (lock-free read)
+            if (_currentTagMappings >= MaxTagMappings)
             {
-                // Check if we're approaching the limit
-                if (_currentTagMappings >= MaxTagMappings)
+                TryScheduleTagCleanup();
+            }
+
+            // Lock-free tag additions using ConcurrentDictionary
+            foreach (var tag in tags)
+            {
+                var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
+                if (tagKeys.TryAdd(key, 0))
                 {
-                    // Perform cleanup of stale entries
-                    CleanupStaleTags();
-                }
-                
-                foreach (var tag in tags)
-                {
-                    var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
-                    if (tagKeys.TryAdd(key, 0))
-                    {
-                        Interlocked.Increment(ref _currentTagMappings);
-                    }
+                    Interlocked.Increment(ref _currentTagMappings);
                 }
             }
         }
         
         /// <summary>
         /// Removes entry from tag reverse index.
+        /// Lock-free implementation using ConcurrentDictionary operations.
         /// </summary>
         private void RemoveFromTagIndex(string key, HashSet<string>? tags)
         {
@@ -871,21 +909,19 @@ namespace MethodCache.Core.Runtime.Execution
                 return;
             }
 
-            lock (_tagIndexLock)
+            // Lock-free tag removals
+            foreach (var tag in tags)
             {
-                foreach (var tag in tags)
+                if (_tagToKeys.TryGetValue(tag, out var tagKeys))
                 {
-                    if (_tagToKeys.TryGetValue(tag, out var tagKeys))
+                    if (tagKeys.TryRemove(key, out _))
                     {
-                        if (tagKeys.TryRemove(key, out _))
-                        {
-                            Interlocked.Decrement(ref _currentTagMappings);
-                        }
-                        // Clean up empty tag entries
-                        if (tagKeys.IsEmpty)
-                        {
-                            _tagToKeys.TryRemove(tag, out _);
-                        }
+                        Interlocked.Decrement(ref _currentTagMappings);
+                    }
+                    // Clean up empty tag entries
+                    if (tagKeys.IsEmpty)
+                    {
+                        _tagToKeys.TryRemove(tag, out _);
                     }
                 }
             }
@@ -893,11 +929,15 @@ namespace MethodCache.Core.Runtime.Execution
         
         /// <summary>
         /// Cleanup stale tag mappings to prevent memory leaks.
+        /// Lock-free async implementation that runs in background.
         /// </summary>
-        private void CleanupStaleTags()
+        private async Task CleanupStaleTagsAsync()
         {
+            // Yield to ensure we're running on thread pool
+            await Task.Yield();
+
             var keysToRemove = new List<string>();
-            
+
             // Check all tag mappings and remove entries that no longer exist in cache
             foreach (var tagEntry in _tagToKeys)
             {
@@ -908,8 +948,8 @@ namespace MethodCache.Core.Runtime.Execution
                         keysToRemove.Add(key);
                     }
                 }
-                
-                // Remove stale keys from this tag
+
+                // Remove stale keys from this tag (lock-free)
                 foreach (var key in keysToRemove)
                 {
                     if (tagEntry.Value.TryRemove(key, out _))
@@ -917,10 +957,10 @@ namespace MethodCache.Core.Runtime.Execution
                         Interlocked.Decrement(ref _currentTagMappings);
                     }
                 }
-                
+
                 keysToRemove.Clear();
-                
-                // Remove empty tag entries
+
+                // Remove empty tag entries (lock-free)
                 if (tagEntry.Value.IsEmpty)
                 {
                     _tagToKeys.TryRemove(tagEntry.Key, out _);
@@ -944,10 +984,9 @@ namespace MethodCache.Core.Runtime.Execution
             _singleFlightGates.Clear();
             _lightweightGates.Clear();
 
-            lock (_tagIndexLock)
-            {
-                _tagToKeys.Clear();
-            }
+            // Lock-free clear - ConcurrentDictionary.Clear() is thread-safe
+            _tagToKeys.Clear();
+            Interlocked.Exchange(ref _currentTagMappings, 0);
 
             // Reset statistics
             if (_options.EnableStatistics)

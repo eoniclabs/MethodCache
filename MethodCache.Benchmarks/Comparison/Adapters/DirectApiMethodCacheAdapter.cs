@@ -1,9 +1,11 @@
-using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Infrastructure.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
+using MethodCache.Abstractions.Policies;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Benchmarks.Comparison.Adapters;
 
@@ -21,7 +23,10 @@ namespace MethodCache.Benchmarks.Comparison.Adapters;
 /// </summary>
 public class DirectApiMethodCacheAdapter : ICacheAdapter
 {
+    private const string ManualMethodName = "ManualKey";
+
     private readonly IMemoryCache _cache;
+    private readonly ICacheManager _cacheManager;
     private readonly IServiceProvider _serviceProvider;
     private readonly CacheStatistics _stats = new();
 
@@ -40,10 +45,10 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
 
         _serviceProvider = services.BuildServiceProvider();
 
-        // Get the underlying IMemoryCache directly
-        // This is MethodCache's cache storage without any wrappers
-        var cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();
-        _cache = (IMemoryCache)cacheManager;
+        // Access both the high-level cache manager (for fast path helpers)
+        // and the raw IMemoryCache interface for maintenance operations.
+        _cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();
+        _cache = (IMemoryCache)_cacheManager;
     }
 
     public async Task<TValue> GetOrSetAsync<TValue>(
@@ -51,11 +56,11 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
         Func<Task<TValue>> factory,
         TimeSpan duration)
     {
-        // Direct cache access with user key - NO KEY GENERATION!
-        var valueTask = _cache.GetAsync<TValue>(key);
-        var cached = valueTask.IsCompletedSuccessfully
-            ? valueTask.Result
-            : await valueTask;
+        // Try the optimized fast-path lookup first (no key generation, no extra allocations)
+        var cachedTask = _cacheManager.TryGetFastAsync<TValue>(key);
+        var cached = cachedTask.IsCompletedSuccessfully
+            ? cachedTask.Result
+            : await cachedTask.ConfigureAwait(false);
 
         if (cached != null && !EqualityComparer<TValue>.Default.Equals(cached, default))
         {
@@ -65,25 +70,35 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
 
         // Cache miss - execute factory
         _stats.Misses++;
-        _stats.FactoryCalls++;
-        var sw = Stopwatch.StartNew();
-        var result = await factory();
-        sw.Stop();
-        _stats.TotalFactoryDuration += sw.Elapsed;
 
-        // Set in cache with user key
-        await _cache.SetAsync(key, result, duration);
+        // Build a minimal runtime policy (duration only) so the manual path can
+        // take advantage of lightweight coordination within InMemoryCacheManager.
+        var policy = CacheRuntimePolicy.FromPolicy(
+            key,
+            CachePolicy.Empty with { Duration = duration },
+            CachePolicyFields.Duration);
 
-        return result;
+        // Use the fast-path setter; this will coordinate concurrent misses without TCS churn
+        // and only execute the factory for the winning request.
+        return await _cacheManager.GetOrCreateFastAsync(
+            key,
+            ManualMethodName,
+            async () =>
+            {
+                _stats.FactoryCalls++;
+                var sw = Stopwatch.StartNew();
+                var created = await factory().ConfigureAwait(false);
+                sw.Stop();
+                _stats.TotalFactoryDuration += sw.Elapsed;
+                return created;
+            },
+            policy).ConfigureAwait(false);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGet<TValue>(string key, out TValue? value)
     {
-        // Direct cache Get with user-provided key
-        // This is IDENTICAL to how LazyCache, FusionCache, etc. work
-        var valueTask = _cache.GetAsync<TValue>(key);
-
+        var valueTask = _cacheManager.TryGetFastAsync<TValue>(key);
         value = valueTask.IsCompletedSuccessfully
             ? valueTask.Result
             : valueTask.GetAwaiter().GetResult();
