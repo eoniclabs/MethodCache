@@ -15,6 +15,7 @@ REDIS_ENABLED=false
 FILTER=""
 WARMUP=3
 ITERATIONS=5
+QUICK=false
 
 # Colors
 RED='\033[0;31m'
@@ -69,6 +70,7 @@ Options:
   --filter PATTERN        Filter benchmarks by method name pattern
   --warmup COUNT          Number of warmup iterations [default: 3]
   --iterations COUNT      Number of measurement iterations [default: 5]
+  --quick                 Use lightweight benchmark job (same as -- -q)
   --redis                 Enable Redis provider benchmarks (requires Redis server)
   --verbose               Enable verbose output
   -h, --help              Show this help message
@@ -145,11 +147,18 @@ run_benchmarks() {
         benchmark_args+=("--filter" "$FILTER")
     fi
     
+    if [[ "$QUICK" == true ]]; then
+        benchmark_args+=("--quick")
+    fi
+    
     # Set environment variables
     export BENCHMARK_OUTPUT_FORMAT="$OUTPUT_FORMAT"
     export BENCHMARK_WARMUP_COUNT="$WARMUP"
     export BENCHMARK_ITERATION_COUNT="$ITERATIONS"
     export BENCHMARK_VERBOSE="$VERBOSE"
+    if [[ "$QUICK" == true ]]; then
+        export BENCHMARK_QUICK="true"
+    fi
     
     # Create output directory
     local output_dir="$PROJECT_DIR/BenchmarkResults"
@@ -290,6 +299,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --verbose)
             VERBOSE=true
+            shift
+            ;;
+        --quick)
+            QUICK=true
             shift
             ;;
         -h|--help)

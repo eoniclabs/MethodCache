@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 using System.Reflection;
 using MethodCache.Core.Configuration;
 using MethodCache.Core;
@@ -132,7 +133,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
         {
             services.TryAddSingleton<ICacheManager, InMemoryCacheManager>();
             services.TryAddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
-            services.TryAddSingleton<ICacheMetricsProvider, ConsoleCacheMetricsProvider>();
+            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();
 
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
@@ -445,12 +446,34 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 var method = extensionType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
                 if (method != null)
                 {
-                    // Create a factory function that resolves the concrete implementation
+                    // Create a strongly-typed factory function that resolves the concrete implementation
+                    // The factory must be Func<IServiceProvider, TInterface> not Func<IServiceProvider, object>
                     var lifetime = options.ServiceLifetimeResolver?.Invoke(implementationType) ?? options.DefaultServiceLifetime;
 
-                    Func<IServiceProvider, object> factory = provider => provider.GetRequiredService(implementationType);
+                    // Use Expression trees to create a strongly-typed delegate
+                    // Expression: (IServiceProvider provider) => (TInterface)provider.GetRequiredService<TImplementation>()
+                    var providerParam = Expression.Parameter(typeof(IServiceProvider), "provider");
 
-                    // Call the generated extension method
+                    // Get the GetRequiredService<T> method
+                    var getRequiredServiceMethod = typeof(ServiceProviderServiceExtensions)
+                        .GetMethods()
+                        .First(m => m.Name == nameof(ServiceProviderServiceExtensions.GetRequiredService)
+                                    && m.IsGenericMethodDefinition
+                                    && m.GetParameters().Length == 1)
+                        .MakeGenericMethod(implementationType);
+
+                    // Call GetRequiredService<TImplementation>(provider)
+                    var getServiceCall = Expression.Call(null, getRequiredServiceMethod, providerParam);
+
+                    // Cast to interface type if needed
+                    var castToInterface = Expression.Convert(getServiceCall, interfaceType);
+
+                    // Create Func<IServiceProvider, TInterface>
+                    var factoryDelegateType = typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType);
+                    var lambda = Expression.Lambda(factoryDelegateType, castToInterface, providerParam);
+                    var factory = lambda.Compile();
+
+                    // Call the generated extension method with the strongly-typed factory
                     method.Invoke(null, new object[] { services, factory });
                     return;
                 }

@@ -201,10 +201,11 @@ namespace TestApp
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
+            // Sync methods with simple parameters still use object[] args and GetOrCreateAsync
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(_decorated.GetValue(id))");
-            AssertContainsIgnoreWhitespace(decoratorSource, "policy, _keyGenerator)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_cachedPolicy_");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
 
@@ -267,11 +268,15 @@ namespace TestApp
             
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
-            AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> GetValueAsync(int id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync");
+            AssertContainsIgnoreWhitespace(decoratorSource, "async System.Threading.Tasks.Task<string> GetValueAsync(int id)");
+            // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastAsync");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheMiss");
+            AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValueAsync\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "async () => await _decorated.GetValueAsync(id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "policy, _keyGenerator)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_cachedPolicy_");
             // Async methods return Task directly, no GetAwaiter().GetResult()
         }
 
@@ -317,7 +322,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> GetValueAsync(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearUserCache()");
-            AssertContainsIgnoreWhitespace(decoratorSource, "policy, _keyGenerator)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_cachedPolicy_");
             AssertContainsIgnoreWhitespace(decoratorSource, "InvalidateByTagsAsync");
         }
 
@@ -453,7 +458,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearAll()");
-            AssertContainsIgnoreWhitespace(decoratorSource, "var args = new object[] { };"); // No parameters
+            AssertContainsIgnoreWhitespace(decoratorSource, "var args = System.Array.Empty<object>();"); // No parameters - using Array.Empty for efficiency
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.ClearAll()");
         }
@@ -563,8 +568,12 @@ namespace TestApp
             
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
-            AssertContainsIgnoreWhitespace(decoratorSource, "public System.Threading.Tasks.Task<string> GetValueAsync(int id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync<string>");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public async System.Threading.Tasks.Task<string> GetValueAsync(int id)");
+            // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastAsync<string>");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheMiss");
+            AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "async () => await _decorated.GetValueAsync(id)");
         }
 
@@ -653,14 +662,17 @@ namespace TestApp
             
             // Should generate all methods including non-cached ones
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "public System.Threading.Tasks.Task<string> GetValueAsync(int id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public async System.Threading.Tasks.Task<string> GetValueAsync(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearAll()");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void RegularMethod()");
-            
-            // Check caching logic for cached methods
-            AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateAsync<string>");
+
+            // Check caching logic for cached methods (should use fast path for simple int parameter with inline metrics)
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastAsync<string>");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
+            AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheMiss");
+            AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.InvalidateByTagsAsync");
-            
+
             // Check pass-through for regular method
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.RegularMethod()");
         }

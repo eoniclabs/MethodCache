@@ -17,7 +17,6 @@ public class QuickMethodCacheTest
     private ICacheAdapter _original = null!;
     private ICacheAdapter _fixedSimple = null!;
     private ICacheAdapter _optimized = null!;
-    private ICacheAdapter _baseline = null!;
 
     [GlobalSetup]
     public void GlobalSetup()
@@ -25,7 +24,6 @@ public class QuickMethodCacheTest
         _original = new MethodCacheAdapter();
         _fixedSimple = new SimpleFixedMethodCacheAdapter();
         _optimized = new ProperlyOptimizedMethodCacheAdapter();
-        _baseline = new MemoryCacheAdapter();
 
         WarmupCaches();
     }
@@ -42,7 +40,6 @@ public class QuickMethodCacheTest
         _original?.Dispose();
         _fixedSimple?.Dispose();
         _optimized?.Dispose();
-        _baseline?.Dispose();
     }
 
     private void WarmupCaches()
@@ -51,7 +48,6 @@ public class QuickMethodCacheTest
         _original.Set(TestKey, TestPayload, duration);
         _fixedSimple.Set(TestKey, TestPayload, duration);
         _optimized.Set(TestKey, TestPayload, duration);
-        _baseline.Set(TestKey, TestPayload, duration);
     }
 
     [Benchmark]
@@ -72,9 +68,4 @@ public class QuickMethodCacheTest
         return _optimized.TryGet<SamplePayload>(TestKey, out _);
     }
 
-    [Benchmark(Baseline = true)]
-    public bool Baseline_Hit()
-    {
-        return _baseline.TryGet<SamplePayload>(TestKey, out _);
-    }
 }

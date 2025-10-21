@@ -13,6 +13,13 @@ public class MethodCacheBenchmarkService : IMethodCacheBenchmarkService
         Data = new byte[1024]
     };
 
+    /// <summary>
+    /// Optional factory function for GetOrCreateAsync/GetOrCreate methods.
+    /// When null, returns static payload immediately (for cache hit benchmarks).
+    /// When set, executes the factory (for cache miss benchmarks with realistic delays).
+    /// </summary>
+    public Func<string, Task<SamplePayload>>? Factory { get; set; }
+
     public async Task<SamplePayload> GetAsync(string key)
     {
         await Task.CompletedTask;
@@ -26,12 +33,28 @@ public class MethodCacheBenchmarkService : IMethodCacheBenchmarkService
 
     public async Task<SamplePayload> GetOrCreateAsync(string key)
     {
+        // If a factory is configured (for MissAndSet benchmarks), use it
+        var factory = Factory;
+        if (factory != null)
+        {
+            return await factory(key);
+        }
+
+        // Otherwise return immediately (for cache hit benchmarks)
         await Task.CompletedTask;
         return _payload;
     }
 
     public SamplePayload GetOrCreate(string key)
     {
+        // If a factory is configured (for MissAndSet benchmarks), use it
+        var factory = Factory;
+        if (factory != null)
+        {
+            return factory(key).GetAwaiter().GetResult();
+        }
+
+        // Otherwise return immediately (for cache hit benchmarks)
         return _payload;
     }
 

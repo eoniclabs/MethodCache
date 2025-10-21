@@ -277,6 +277,7 @@ namespace {namespaceName}
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.Collections.Concurrent.ConcurrentDictionary<,>).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(MethodCache.Abstractions.Policies.CachePolicy).Assembly.Location),
