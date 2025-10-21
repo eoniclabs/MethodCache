@@ -34,9 +34,10 @@ public class MethodCacheBenchmarkService : IMethodCacheBenchmarkService
     public async Task<SamplePayload> GetOrCreateAsync(string key)
     {
         // If a factory is configured (for MissAndSet benchmarks), use it
-        if (Factory != null)
+        var factory = Factory;
+        if (factory != null)
         {
-            return await Factory(key);
+            return await factory(key);
         }
 
         // Otherwise return immediately (for cache hit benchmarks)
@@ -47,9 +48,10 @@ public class MethodCacheBenchmarkService : IMethodCacheBenchmarkService
     public SamplePayload GetOrCreate(string key)
     {
         // If a factory is configured (for MissAndSet benchmarks), use it
-        if (Factory != null)
+        var factory = Factory;
+        if (factory != null)
         {
-            return Factory(key).GetAwaiter().GetResult();
+            return factory(key).GetAwaiter().GetResult();
         }
 
         // Otherwise return immediately (for cache hit benchmarks)
