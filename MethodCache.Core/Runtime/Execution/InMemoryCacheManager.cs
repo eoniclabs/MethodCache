@@ -911,19 +911,28 @@ namespace MethodCache.Core.Runtime.Execution
         /// </summary>
         private int EvictFromAccessOrderO1(int maxEvictions)
         {
-            // Sort by LastAccessedAt (LRU) or CreatedAt (FIFO)
-            var sortKey = _options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU
-                ? (Func<KeyValuePair<string, EnhancedCacheEntry>, DateTime>)(kvp => kvp.Value.LastAccessedAt)
-                : (Func<KeyValuePair<string, EnhancedCacheEntry>, DateTime>)(kvp => kvp.Value.CreatedAt);
+            var totalItems = _cache.Count;
+            if (totalItems == 0 || maxEvictions <= 0)
+            {
+                return 0;
+            }
 
-            var candidates = _cache
-                .OrderBy(sortKey)
+            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * _options.EvictionSamplePercentage));
+            sampleSize = Math.Min(sampleSize, totalItems);
+
+            var candidates = sampleSize >= totalItems
+                ? _cache.ToList()
+                : TakeRandomSample(sampleSize);
+
+            var ordered = (_options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU
+                    ? candidates.OrderBy(kvp => kvp.Value.LastAccessedAt)
+                    : candidates.OrderBy(kvp => kvp.Value.CreatedAt))
                 .Take(maxEvictions)
                 .Select(kvp => kvp.Key)
                 .ToList();
 
-            int evicted = 0;
-            foreach (var key in candidates)
+            var evicted = 0;
+            foreach (var key in ordered)
             {
                 if (_cache.TryGetValue(key, out var entry))
                 {
@@ -1041,8 +1050,34 @@ namespace MethodCache.Core.Runtime.Execution
                     evicted++;
                 }
             }
-            
+
             return evicted;
+        }
+
+        private List<KeyValuePair<string, EnhancedCacheEntry>> TakeRandomSample(int sampleSize)
+        {
+            var reservoir = new List<KeyValuePair<string, EnhancedCacheEntry>>(sampleSize);
+            var count = 0;
+
+            foreach (var kvp in _cache)
+            {
+                if (count < sampleSize)
+                {
+                    reservoir.Add(kvp);
+                }
+                else
+                {
+                    var index = Random.Shared.Next(count + 1);
+                    if (index < sampleSize)
+                    {
+                        reservoir[index] = kvp;
+                    }
+                }
+
+                count++;
+            }
+
+            return reservoir;
         }
 
 

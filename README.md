@@ -83,6 +83,8 @@ builder.Services.AddMethodCache(config =>
 });
 ```
 
+> ℹ️ **Observability**: Metrics are disabled by default via the `NullCacheMetricsProvider`. Call `services.AddConsoleCacheMetrics()` (or register your own provider) whenever you need hit/miss logging during development.
+
 That's it – the source generator emits decorators, `ICacheManager` handles storage, and you retain clean business code.
 
 ### ✨ Alternative: New Method Chaining API

@@ -9,6 +9,8 @@ namespace MethodCache.Core.PolicyPipeline.Resolution;
 
 internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
 {
+    private const long EmptyPolicyVersion = 0;
+
     private readonly IReadOnlyList<PolicySourceRegistration> _registrations;
     private readonly ConcurrentDictionary<string, PolicyAggregator> _aggregators = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, PolicyResolutionResult> _resolutions = new(StringComparer.Ordinal);
@@ -51,7 +53,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
             return result;
         }
 
-        return new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow, version: 0);
+        return new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow, version: EmptyPolicyVersion);
     }
 
     public async IAsyncEnumerable<PolicyResolutionResult> WatchAsync(string? methodId = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -268,7 +270,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
         public PolicyAggregator(string methodId)
         {
             _methodId = methodId;
-            _current = new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow, version: 0);
+            _current = new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow, version: EmptyPolicyVersion);
         }
 
         public PolicyResolutionResult SetLayer(PolicyLayer layer)
