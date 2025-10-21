@@ -432,6 +432,8 @@ public class UnifiedCacheComparisonBenchmarks
 
     private static async Task<SamplePayload> CreatePayloadAsync()
     {
+        // NOTE: We intentionally use Task.Yield() instead of Task.Delay to expose cache overhead
+        // rather than simulate real-world latency. See README for how to reintroduce realistic work.
         // OPTIMIZED: Use Task.Yield() instead of Task.Delay(1)
         // Task.Delay(1) = ~1ms (masks cache overhead completely)
         // Task.Yield() = ~100ns (exposes cache overhead differences)
@@ -457,3 +459,4 @@ public class SamplePayload
     public string Name { get; set; } = string.Empty;
     public byte[] Data { get; set; } = Array.Empty<byte>();
 }
+
