@@ -98,12 +98,25 @@ await cacheManager.InvalidateByKeysAsync("GetUser_123");
 
 ## 📦 Packages
 
+**Stable** - Production-ready with stable APIs:
 | Package | Purpose |
 |---------|---------|
+| `MethodCache` | Meta-package (Core + SourceGenerator + Analyzers) |
 | `MethodCache.Core` | Core abstractions, in-memory manager |
 | `MethodCache.SourceGenerator` | Roslyn generator (recommended) |
 | `MethodCache.Analyzers` | Compile-time validation |
-| `MethodCache.Providers.Redis` | Redis L2 distributed caching |
+
+**Beta** - Functional, APIs may change:
+| Package | Purpose |
+|---------|---------|
+| `MethodCache.Providers.Redis` | Redis distributed caching |
+| `MethodCache.Providers.Memory` | Advanced in-memory with eviction |
+| `MethodCache.OpenTelemetry` | Observability integration |
+
+**Experimental** - Under development:
+| Package | Purpose |
+|---------|---------|
+| `MethodCache.Providers.SqlServer` | SQL Server persistent cache |
 | `MethodCache.ETags` | HTTP ETag integration |
 
 ## 🔧 Common Scenarios

@@ -1,36 +1,36 @@
 # MethodCache.Providers.SqlServer
 
 [![NuGet](https://img.shields.io/nuget/v/MethodCache.Providers.SqlServer.svg)](https://www.nuget.org/packages/MethodCache.Providers.SqlServer)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-SQL Server storage provider for MethodCache using the Infrastructure layer pattern. Provides distributed caching capabilities with automatic table management, resilience policies, and comprehensive health monitoring.
+SQL Server storage provider for MethodCache with automatic table management, resilience policies, tag-based invalidation, and backplane coordination.
 
 ## Features
 
-- 🗄️ **SQL Server Storage**: Enterprise-grade distributed caching using SQL Server
-- 🏗️ **Infrastructure Pattern**: Clean abstraction layer following MethodCache architecture
-- 🔧 **Auto Table Management**: Automatic database schema and table creation
-- 🔄 **Resilience Policies**: Built-in retry logic and circuit breaker patterns
-- 🏷️ **Tag Support**: Efficient tag-based cache invalidation with optimized indexes
-- 🩺 **Health Monitoring**: Comprehensive health checks and performance metrics
-- 📦 **Multiple Serializers**: Support for JSON, MessagePack, and Binary serialization
-- 🔄 **Hybrid Cache Ready**: Seamless L1+L2 caching integration
-- 🧹 **Background Cleanup**: Automatic expired entry cleanup
+- **SQL Server Storage**: Enterprise-grade distributed caching
+- **Auto Table Management**: Automatic schema and table creation
+- **Resilience Policies**: Retry logic and circuit breaker patterns
+- **Tag Support**: Efficient tag-based cache invalidation with indexes
+- **Health Monitoring**: Built-in health checks
+- **Multiple Serializers**: JSON, MessagePack, and Binary
+- **Hybrid Cache Ready**: L1+L2/L3 caching integration
+- **Background Cleanup**: Automatic expired entry removal
+- **Backplane Support**: SQL-based cross-instance coordination
 
 ## Quick Start
 
-### 1. Installation
+### Installation
 
 ```bash
 dotnet add package MethodCache.Providers.SqlServer
 ```
 
-### 2. Basic Configuration
+### Basic Configuration
 
 ```csharp
 using MethodCache.Providers.SqlServer.Extensions;
 
-// Basic SQL Server caching
 services.AddSqlServerCache(options =>
 {
     options.ConnectionString = "Server=localhost;Database=MyApp;Trusted_Connection=true;";
@@ -39,30 +39,21 @@ services.AddSqlServerCache(options =>
 });
 ```
 
-### 3. Hybrid L1+L2 Configuration
+### Hybrid L1+L3 Cache
 
 ```csharp
-// Hybrid cache with SQL Server as L2
 services.AddHybridSqlServerCache(
     connectionString: "Server=localhost;Database=MyApp;Trusted_Connection=true;",
-    configureHybrid: options =>
+    configureHybridOptions: options =>
     {
         options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
         options.L2DefaultExpiration = TimeSpan.FromHours(4);
-        options.Strategy = HybridStrategy.WriteThrough;
-    },
-    configureSqlServer: options =>
-    {
-        options.Schema = "cache";
-        options.DefaultSerializer = SqlServerSerializerType.MessagePack;
-        options.EnableAutoTableCreation = true;
     });
 ```
 
-### 4. Complete Setup (Recommended)
+### Complete Setup (Recommended)
 
 ```csharp
-// One-line setup with sensible defaults
 services.AddSqlServerHybridCacheComplete(
     connectionString: "Server=localhost;Database=MyApp;Trusted_Connection=true;",
     configure: options =>
@@ -72,12 +63,57 @@ services.AddSqlServerHybridCacheComplete(
         options.L2DefaultExpiration = TimeSpan.FromHours(4);
         options.EnableAutoTableCreation = true;
         options.SqlServerSerializer = SqlServerSerializerType.MessagePack;
+        options.EnableBackplane = true;
     });
+```
+
+## Configuration Options
+
+```csharp
+services.AddSqlServerInfrastructure(options =>
+{
+    // Connection
+    options.ConnectionString = "your-connection-string";
+    options.Schema = "cache";
+    options.EntriesTableName = "Entries";
+    options.TagsTableName = "Tags";
+    options.InvalidationsTableName = "Invalidations";
+    options.KeyPrefix = "methodcache:";
+
+    // Serialization
+    options.DefaultSerializer = SqlServerSerializerType.MessagePack; // Json, MessagePack, Binary
+
+    // Timeouts
+    options.CommandTimeoutSeconds = 30;
+    options.ConnectionTimeoutSeconds = 15;
+    options.HealthCheckTimeoutSeconds = 5;
+    options.IsolationLevel = IsolationLevel.ReadCommitted;
+
+    // Resilience
+    options.MaxRetryAttempts = 3;
+    options.RetryBaseDelay = TimeSpan.FromMilliseconds(500);
+    options.RetryBackoffType = SqlServerRetryBackoffType.Exponential; // Linear, Exponential
+    options.CircuitBreakerFailureRatio = 0.5;
+    options.CircuitBreakerMinimumThroughput = 10;
+    options.CircuitBreakerBreakDuration = TimeSpan.FromSeconds(30);
+
+    // Maintenance
+    options.EnableAutoTableCreation = true;
+    options.EnableBackgroundCleanup = true;
+    options.CleanupInterval = TimeSpan.FromMinutes(5);
+    options.CleanupBatchSize = 1000;
+    options.EnableDetailedLogging = false;
+
+    // Backplane
+    options.EnableBackplane = false;
+    options.BackplanePollingInterval = TimeSpan.FromSeconds(2);
+    options.BackplaneMessageRetention = TimeSpan.FromHours(1);
+});
 ```
 
 ## Database Schema
 
-The provider automatically creates the following tables when `EnableAutoTableCreation = true`:
+The provider automatically creates these tables when `EnableAutoTableCreation = true`:
 
 ### Cache Entries Table
 ```sql
@@ -105,56 +141,20 @@ CREATE TABLE [cache].[Tags] (
 - `IX_cache_Tags_Tag` - Fast tag-based lookups
 - `IX_cache_Entries_CreatedAt` - Time-based queries
 
-## Configuration Options
-
-```csharp
-services.AddSqlServerInfrastructure(options =>
-{
-    // Connection settings
-    options.ConnectionString = "your-connection-string";
-    options.Schema = "cache";
-    options.EntriesTableName = "Entries";
-    options.TagsTableName = "Tags";
-
-    // Serialization
-    options.DefaultSerializer = SqlServerSerializerType.MessagePack;
-    options.KeyPrefix = "methodcache:";
-
-    // Performance
-    options.CommandTimeoutSeconds = 30;
-    options.ConnectionTimeoutSeconds = 15;
-    options.IsolationLevel = IsolationLevel.ReadCommitted;
-
-    // Resilience
-    options.MaxRetryAttempts = 3;
-    options.RetryBaseDelay = TimeSpan.FromMilliseconds(500);
-    options.RetryBackoffType = SqlServerRetryBackoffType.Exponential;
-    options.CircuitBreakerFailureRatio = 0.5;
-    options.CircuitBreakerMinimumThroughput = 10;
-    options.CircuitBreakerBreakDuration = TimeSpan.FromSeconds(30);
-
-    // Maintenance
-    options.EnableAutoTableCreation = true;
-    options.EnableBackgroundCleanup = true;
-    options.CleanupInterval = TimeSpan.FromMinutes(5);
-    options.CleanupBatchSize = 1000;
-    options.EnableDetailedLogging = false;
-});
-```
-
 ## Usage Examples
 
 ### Method Caching
+
 ```csharp
 public class UserService
 {
-    [Cache(Duration = "1h", Tags = ["users"])]
+    [Cache(Duration = "1h", Tags = new[] { "users" })]
     public async Task<User> GetUserAsync(int userId)
     {
         return await _repository.GetUserAsync(userId);
     }
 
-    [Cache(Duration = "30m", Tags = ["users", "profiles"])]
+    [Cache(Duration = "30m", Tags = new[] { "users", "profiles" })]
     public async Task<UserProfile> GetUserProfileAsync(int userId)
     {
         return await _repository.GetUserProfileAsync(userId);
@@ -163,6 +163,7 @@ public class UserService
 ```
 
 ### Direct Storage Access
+
 ```csharp
 public class CacheService
 {
@@ -186,16 +187,12 @@ public class CacheService
 ```
 
 ### Health Checks
+
 ```csharp
-// Add health checks
 services.AddSqlServerInfrastructureWithHealthChecks(
-    configureSqlServer: options =>
-    {
-        options.ConnectionString = connectionString;
-    },
+    options => { options.ConnectionString = connectionString; },
     healthCheckName: "sql_server_cache");
 
-// Configure health check endpoint
 app.MapHealthChecks("/health");
 ```
 
@@ -203,103 +200,92 @@ app.MapHealthChecks("/health");
 
 ### MessagePack (Recommended)
 - Best performance and smallest size
-- Binary format, cross-platform compatible
+- Binary format, cross-platform
 - Requires types to be marked with `[MessagePackObject]`
 
 ### JSON
 - Human-readable format
 - Good for debugging and interoperability
-- Slightly larger payload size
+- Slightly larger payload
 
 ### Binary
 - Uses System.Text.Json as fallback
 - Compatible with most .NET types
-- Moderate performance
 
-## Performance Characteristics
+## Multi-Layer Caching
 
-### Typical Performance
-- **Cache Hit**: 1-5ms (depending on network latency)
-- **Cache Miss**: Normal query time + ~2ms overhead
-- **Tag Invalidation**: 5-50ms (depending on number of tagged entries)
+### L1 + L3 (Memory + SQL Server)
 
-### Optimization Tips
-- Use MessagePack serialization for best performance
-- Keep tag names short and meaningful
-- Use appropriate connection pooling settings
-- Monitor cleanup operations in high-write scenarios
+```csharp
+services.AddL1L3CacheWithSqlServer(
+    configureStorage: options => { /* storage options */ },
+    configureSqlServer: options =>
+    {
+        options.ConnectionString = connectionString;
+    });
+```
+
+### Triple Layer (L1 + L2 + L3)
+
+```csharp
+services.AddTripleLayerCacheWithSqlServer(
+    configureStorage: options => { /* storage options */ },
+    configureSqlServer: options =>
+    {
+        options.ConnectionString = connectionString;
+    });
+```
 
 ## Best Practices
 
-### 1. Connection String Configuration
+### Connection String
+
 ```csharp
-// Recommended connection string settings
-"Server=your-server;Database=your-db;Trusted_Connection=true;
-MultipleActiveResultSets=true;Connection Timeout=15;Command Timeout=30;"
+// Recommended settings
+"Server=your-server;Database=your-db;Trusted_Connection=true;MultipleActiveResultSets=true;Connection Timeout=15;Command Timeout=30;"
 ```
 
-### 2. Schema Design
+### Schema Design
 - Use a dedicated schema (e.g., `cache`) for isolation
 - Grant appropriate permissions to the application user
 - Consider partitioning for very large datasets
 
-### 3. Tag Strategy
-```csharp
-// Good tag design
-[Cache(Tags = ["user:123", "department:sales", "role:admin"])]
+### Tag Strategy
 
-// Avoid overly broad tags
-[Cache(Tags = ["data"])] // Too broad - will invalidate everything
-```
-
-### 4. Error Handling
 ```csharp
-// The provider includes automatic retry policies
-// Configure circuit breaker for graceful degradation
-services.Configure<SqlServerOptions>(options =>
-{
-    options.CircuitBreakerFailureRatio = 0.5; // 50% failure rate
-    options.CircuitBreakerBreakDuration = TimeSpan.FromSeconds(30);
-});
+// Good: Hierarchical, meaningful tags
+Tags = new[] { "user:123", "department:sales", "role:admin" }
+
+// Avoid: Overly broad tags
+Tags = new[] { "data" } // Too broad - will invalidate everything
 ```
 
 ## Troubleshooting
 
-### Common Issues
-
-#### Connection Failures
+### Connection Failures
 - Verify connection string and SQL Server accessibility
 - Check firewall and network connectivity
 - Ensure SQL Server allows remote connections
 
-#### Table Creation Errors
+### Table Creation Errors
 - Verify database permissions (DDL rights required)
 - Check if schema exists and is accessible
-- Review SQL Server error logs for detailed messages
+- Review SQL Server error logs
 
-#### Performance Issues
+### Performance Issues
 - Monitor SQL Server performance counters
-- Check for missing indexes on custom queries
+- Check for missing indexes
 - Review cleanup job frequency and batch sizes
 
-#### Tag Invalidation Not Working
-- Verify foreign key constraints are properly set up
+### Tag Invalidation Not Working
+- Verify foreign key constraints are set up
 - Check for transaction isolation issues
 - Monitor for deadlocks in high-concurrency scenarios
-
-### Logging
-Enable detailed logging for troubleshooting:
-
-```csharp
-services.Configure<SqlServerOptions>(options =>
-{
-    options.EnableDetailedLogging = true;
-});
-```
 
 ## Migration from Other Providers
 
 ### From Redis
+
 ```csharp
 // Before (Redis)
 services.AddRedisCache(options =>
@@ -315,11 +301,12 @@ services.AddSqlServerCache(options =>
 ```
 
 ### From In-Memory
+
 ```csharp
-// Before (In-Memory)
+// Before
 services.AddMethodCache();
 
-// After (SQL Server with L1+L2)
+// After (SQL Server with L1+L3)
 services.AddHybridSqlServerCache(connectionString, options =>
 {
     options.L1DefaultExpiration = TimeSpan.FromMinutes(5);
@@ -327,20 +314,24 @@ services.AddHybridSqlServerCache(connectionString, options =>
 });
 ```
 
+## Comparison with Other Providers
+
+| Feature | SQL Server | Redis | Memory |
+|---------|------------|-------|--------|
+| **Latency** | 5-20ms | 1-5ms | < 1μs |
+| **Persistence** | Yes | Optional | No |
+| **Distributed** | Yes | Yes | No |
+| **Backplane** | Polling | PubSub | N/A |
+| **Large Values** | Yes | Limited | Yes |
+| **Transactions** | Yes | Limited | No |
+
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](../LICENSE) file for details.
 
-## Contributing
+## Related Packages
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
-
-## Support
-
-- 📚 [Documentation](https://github.com/methodcache/methodcache/wiki)
-- 🐛 [Issues](https://github.com/methodcache/methodcache/issues)
-- 💬 [Discussions](https://github.com/methodcache/methodcache/discussions)
+- [MethodCache](https://www.nuget.org/packages/MethodCache) - Meta-package with everything included
+- [MethodCache.Core](https://www.nuget.org/packages/MethodCache.Core) - Core caching functionality
+- [MethodCache.Providers.Memory](https://www.nuget.org/packages/MethodCache.Providers.Memory) - Advanced in-memory caching
+- [MethodCache.Providers.Redis](https://www.nuget.org/packages/MethodCache.Providers.Redis) - Redis distributed caching

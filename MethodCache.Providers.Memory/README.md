@@ -1,19 +1,20 @@
 # MethodCache.Providers.Memory
 
 [![NuGet](https://img.shields.io/nuget/v/MethodCache.Providers.Memory.svg)](https://www.nuget.org/packages/MethodCache.Providers.Memory)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Advanced in-memory storage provider for MethodCache with sophisticated eviction policies, memory tracking, and tag-based invalidation support.
 
 ## Features
 
-- 🚀 **High Performance**: Sub-microsecond response times with concurrent dictionary
-- 🎯 **Multiple Eviction Policies**: LRU, LFU, MRU, Random, and Time-based eviction
-- 📊 **Memory Tracking**: Configurable memory limits with automatic eviction
-- 🏷️ **Tag Support**: Efficient tag-based cache invalidation
-- 📈 **Detailed Metrics**: Hit/miss ratios, memory usage, and operation counters
-- 🔄 **Background Cleanup**: Automatic expired entry removal
-- 🧩 **Infrastructure Pattern**: Clean integration with MethodCache.Infrastructure
+- **High Performance**: Sub-microsecond cache hits with concurrent dictionary
+- **Multiple Eviction Policies**: LRU, LFU, TTL, and Random eviction
+- **Memory Tracking**: Configurable memory limits with automatic eviction
+- **Tag Support**: Efficient tag-based cache invalidation
+- **Detailed Metrics**: Hit/miss ratios, memory usage, and operation counters
+- **Background Cleanup**: Automatic expired entry removal with adaptive frequency
+- **Memory Pressure Handling**: Automatic cleanup frequency adjustment under pressure
 
 ## Quick Start
 
@@ -29,14 +30,14 @@ dotnet add package MethodCache.Providers.Memory
 using MethodCache.Providers.Memory.Extensions;
 
 // Simple in-memory caching
-services.AddAdvancedMemoryInfrastructure();
+services.AddAdvancedMemoryStorage();
 
 // With custom configuration
-services.AddAdvancedMemoryInfrastructure(options =>
+services.AddAdvancedMemoryStorage(options =>
 {
-    options.MaxMemorySize = 100 * 1024 * 1024; // 100 MB
-    options.EvictionPolicy = MemoryEvictionPolicy.LRU;
-    options.EnableBackgroundCleanup = true;
+    options.MaxMemoryUsage = 100 * 1024 * 1024; // 100 MB
+    options.EvictionPolicy = EvictionPolicy.LRU;
+    options.EnableAutomaticCleanup = true;
 });
 ```
 
@@ -44,18 +45,18 @@ services.AddAdvancedMemoryInfrastructure(options =>
 
 ```csharp
 // Register with MethodCache core
-services.AddMethodCache()
-    .AddAdvancedMemoryInfrastructure(options =>
-    {
-        options.MaxMemorySize = 50 * 1024 * 1024; // 50 MB
-        options.EvictionPolicy = MemoryEvictionPolicy.LRU;
-        options.CleanupInterval = TimeSpan.FromMinutes(5);
-    });
+services.AddMethodCache();
+services.AddAdvancedMemoryStorage(options =>
+{
+    options.MaxMemoryUsage = 50 * 1024 * 1024; // 50 MB
+    options.EvictionPolicy = EvictionPolicy.LRU;
+    options.CleanupInterval = TimeSpan.FromMinutes(5);
+});
 
 // Use in services
 public class ProductService
 {
-    [Cache(Duration = "1h", Tags = ["products"])]
+    [Cache(Duration = "1h", Tags = new[] { "products" })]
     public async Task<Product> GetProductAsync(int id)
     {
         return await _repository.GetProductAsync(id);
@@ -66,42 +67,60 @@ public class ProductService
 ## Configuration Options
 
 ```csharp
-public class MemoryStorageOptions
+public class AdvancedMemoryOptions
 {
     /// <summary>
-    /// Maximum memory size in bytes (0 = unlimited)
+    /// Maximum number of entries to store in memory.
     /// </summary>
-    public long MaxMemorySize { get; set; } = 100 * 1024 * 1024; // 100 MB
+    public long MaxEntries { get; set; } = 100000;
 
     /// <summary>
-    /// Maximum number of entries (0 = unlimited)
+    /// Maximum memory usage in bytes (approximate).
+    /// Default: 256MB
     /// </summary>
-    public int MaxEntries { get; set; } = 10000;
+    public long MaxMemoryUsage { get; set; } = 256 * 1024 * 1024;
 
     /// <summary>
-    /// Eviction policy when limits are reached
+    /// Eviction policy to use when limits are reached.
     /// </summary>
-    public MemoryEvictionPolicy EvictionPolicy { get; set; } = MemoryEvictionPolicy.LRU;
+    public EvictionPolicy EvictionPolicy { get; set; } = EvictionPolicy.LRU;
 
     /// <summary>
-    /// Enable automatic background cleanup
-    /// </summary>
-    public bool EnableBackgroundCleanup { get; set; } = true;
-
-    /// <summary>
-    /// Interval between cleanup runs
+    /// How often to run cleanup for expired entries.
+    /// Under high memory pressure, cleanup can occur more frequently.
     /// </summary>
     public TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Enable detailed memory tracking (has performance impact)
+    /// Minimum cleanup interval when under memory pressure.
     /// </summary>
-    public bool EnableMemoryTracking { get; set; } = true;
+    public TimeSpan MinCleanupInterval { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// Percentage of memory to free when limit is reached
+    /// Memory pressure threshold (0.0 to 1.0) at which to increase cleanup frequency.
+    /// Default is 0.8 (80%).
     /// </summary>
-    public double EvictionPercentage { get; set; } = 0.1; // 10%
+    public double MemoryPressureThreshold { get; set; } = 0.8;
+
+    /// <summary>
+    /// Memory usage calculation mode: Estimated (faster) or Accurate (higher overhead).
+    /// </summary>
+    public MemoryUsageCalculationMode MemoryCalculationMode { get; set; } = MemoryUsageCalculationMode.Accurate;
+
+    /// <summary>
+    /// Maximum number of tag mappings to prevent unbounded growth.
+    /// </summary>
+    public int MaxTagMappings { get; set; } = 100000;
+
+    /// <summary>
+    /// Whether to enable detailed statistics tracking.
+    /// </summary>
+    public bool EnableDetailedStats { get; set; } = true;
+
+    /// <summary>
+    /// Whether to enable automatic cleanup of expired entries.
+    /// </summary>
+    public bool EnableAutomaticCleanup { get; set; } = true;
 }
 ```
 
@@ -111,49 +130,43 @@ public class MemoryStorageOptions
 Evicts entries that haven't been accessed for the longest time. Best for most scenarios.
 
 ```csharp
-options.EvictionPolicy = MemoryEvictionPolicy.LRU;
+options.EvictionPolicy = EvictionPolicy.LRU;
 ```
 
 ### LFU (Least Frequently Used)
 Evicts entries with the lowest access count. Good for hot-spot scenarios.
 
 ```csharp
-options.EvictionPolicy = MemoryEvictionPolicy.LFU;
+options.EvictionPolicy = EvictionPolicy.LFU;
 ```
 
-### MRU (Most Recently Used)
-Evicts the most recently accessed entries. Useful for cyclic access patterns.
+### TTL (Time To Live)
+Evicts entries that are closest to expiration. Good for time-sensitive data.
 
 ```csharp
-options.EvictionPolicy = MemoryEvictionPolicy.MRU;
+options.EvictionPolicy = EvictionPolicy.TTL;
 ```
 
 ### Random
 Evicts random entries. Simple and fast, no tracking overhead.
 
 ```csharp
-options.EvictionPolicy = MemoryEvictionPolicy.Random;
-```
-
-### Time-Based
-Evicts oldest entries first (FIFO). Good for time-sensitive data.
-
-```csharp
-options.EvictionPolicy = MemoryEvictionPolicy.TimeBased;
+options.EvictionPolicy = EvictionPolicy.Random;
 ```
 
 ## Advanced Features
 
 ### Memory Pressure Handling
 
-The provider automatically handles memory pressure:
+The provider automatically handles memory pressure by increasing cleanup frequency:
 
 ```csharp
-services.AddAdvancedMemoryInfrastructure(options =>
+services.AddAdvancedMemoryStorage(options =>
 {
-    options.MaxMemorySize = 100 * 1024 * 1024; // 100 MB limit
-    options.EvictionPercentage = 0.2; // Free 20% when limit reached
-    options.EnableMemoryTracking = true; // Track actual memory usage
+    options.MaxMemoryUsage = 100 * 1024 * 1024; // 100 MB limit
+    options.MemoryPressureThreshold = 0.8; // Start aggressive cleanup at 80%
+    options.MinCleanupInterval = TimeSpan.FromSeconds(30); // Minimum cleanup interval
+    options.MemoryCalculationMode = MemoryUsageCalculationMode.Accurate;
 });
 ```
 
@@ -170,49 +183,17 @@ await storageProvider.SetAsync("user:124", userData2, expiration, new[] { "users
 await storageProvider.RemoveByTagAsync("tenant:456");
 ```
 
-### Performance Metrics
-
-Access detailed performance metrics:
-
-```csharp
-var stats = await storageProvider.GetStatsAsync();
-
-Console.WriteLine($"Hit Rate: {stats.HitRate:P2}");
-Console.WriteLine($"Memory Usage: {stats.MemoryUsageBytes:N0} bytes");
-Console.WriteLine($"Entry Count: {stats.EntryCount:N0}");
-Console.WriteLine($"Eviction Count: {stats.EvictionCount:N0}");
-```
-
-## Performance Characteristics
-
-### Benchmarks (Intel i7, 16GB RAM)
-
-| Operation | Throughput | Latency (p50) | Latency (p99) |
-|-----------|------------|---------------|---------------|
-| Get (Hit) | 15M ops/sec | 65 ns | 150 ns |
-| Get (Miss) | 20M ops/sec | 50 ns | 100 ns |
-| Set | 8M ops/sec | 125 ns | 300 ns |
-| Remove | 12M ops/sec | 85 ns | 200 ns |
-| Tag Invalidation | 500K ops/sec | 2 μs | 10 μs |
-
-### Memory Overhead
-
-- **Base overhead**: ~64 bytes per entry
-- **With LRU tracking**: +16 bytes per entry
-- **With tags**: +40 bytes per tag association
-- **With memory tracking**: +8 bytes per entry
-
 ## Comparison with Other Providers
 
 | Feature | Memory | Redis | SQL Server |
 |---------|--------|-------|------------|
 | **Latency** | < 1μs | 1-5ms | 5-20ms |
 | **Throughput** | Very High | High | Medium |
-| **Persistence** | ❌ | ✅ | ✅ |
-| **Distributed** | ❌ | ✅ | ✅ |
-| **Memory Efficient** | ✅ | ❌ | ❌ |
-| **Tag Support** | ✅ | ✅ | ✅ |
-| **No Dependencies** | ✅ | ❌ | ❌ |
+| **Persistence** | No | Yes | Yes |
+| **Distributed** | No | Yes | Yes |
+| **Memory Efficient** | Yes | No | No |
+| **Tag Support** | Yes | Yes | Yes |
+| **No Dependencies** | Yes | No | No |
 
 ## Best Practices
 
@@ -220,11 +201,11 @@ Console.WriteLine($"Eviction Count: {stats.EvictionCount:N0}");
 
 ```csharp
 // For small applications
-options.MaxMemorySize = 50 * 1024 * 1024; // 50 MB
+options.MaxMemoryUsage = 50 * 1024 * 1024; // 50 MB
 options.MaxEntries = 5000;
 
 // For large applications
-options.MaxMemorySize = 500 * 1024 * 1024; // 500 MB
+options.MaxMemoryUsage = 500 * 1024 * 1024; // 500 MB
 options.MaxEntries = 50000;
 ```
 
@@ -232,31 +213,17 @@ options.MaxEntries = 50000;
 
 - **Web APIs**: LRU (handles varying access patterns well)
 - **Read-heavy with hot data**: LFU (keeps frequently accessed data)
-- **Streaming/Sequential**: MRU or Time-Based
-- **Unpredictable**: Random (lowest overhead)
+- **Time-sensitive data**: TTL (evicts near-expiration entries first)
+- **Unpredictable patterns**: Random (lowest overhead)
 
-### 3. Monitor Memory Usage
-
-```csharp
-// Enable monitoring
-services.Configure<MemoryStorageOptions>(options =>
-{
-    options.EnableMemoryTracking = true;
-});
-
-// Add health checks
-services.AddHealthChecks()
-    .AddCheck<MemoryStorageHealthCheck>("memory_cache");
-```
-
-### 4. Use Tags Wisely
+### 3. Use Tags Wisely
 
 ```csharp
 // Good: Hierarchical, meaningful tags
-Tags = ["products", "category:electronics", "store:west"]
+Tags = new[] { "products", "category:electronics", "store:west" }
 
 // Bad: Too many unique tags
-Tags = [$"timestamp:{DateTime.Now.Ticks}"] // Creates unique tag per entry!
+Tags = new[] { $"timestamp:{DateTime.Now.Ticks}" } // Creates unique tag per entry!
 ```
 
 ## Limitations
@@ -270,33 +237,12 @@ For distributed scenarios, consider:
 - `MethodCache.Providers.Redis` for distributed caching
 - `MethodCache.Providers.SqlServer` for persistent caching
 
-## Migration from MemoryCache
-
-If migrating from standard `IMemoryCache`:
-
-```csharp
-// Before (IMemoryCache)
-services.AddMemoryCache();
-_memoryCache.Set("key", value, TimeSpan.FromHours(1));
-
-// After (Advanced Memory Provider)
-services.AddAdvancedMemoryInfrastructure();
-await _storageProvider.SetAsync("key", value, TimeSpan.FromHours(1));
-```
-
-Key differences:
-- Async API throughout
-- Built-in tag support
-- Better memory management
-- Detailed metrics
-- Multiple eviction policies
-
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](../LICENSE) file for details.
 
-## Support
+## Related Packages
 
-- 📚 [Documentation](https://github.com/methodcache/methodcache/wiki)
-- 🐛 [Issues](https://github.com/methodcache/methodcache/issues)
-- 💬 [Discussions](https://github.com/methodcache/methodcache/discussions)
+- [MethodCache](https://www.nuget.org/packages/MethodCache) - Meta-package with everything included
+- [MethodCache.Core](https://www.nuget.org/packages/MethodCache.Core) - Core caching functionality
+- [MethodCache.Providers.Redis](https://www.nuget.org/packages/MethodCache.Providers.Redis) - Redis distributed caching
