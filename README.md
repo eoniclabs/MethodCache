@@ -370,14 +370,38 @@ Configuration precedence:
 
 **Supported frameworks:** .NET 8.0, .NET 9.0, .NET 10.0
 
+### Stable
+
+Production-ready packages with full test coverage and stable APIs.
+
 | Package | Description |
 |---------|-------------|
 | `MethodCache` | **Meta-package** – includes Core, SourceGenerator, and Analyzers. |
 | `MethodCache.Core` | Core abstractions, in-memory cache manager, attributes. |
 | `MethodCache.SourceGenerator` | Roslyn generator emitting decorators and fluent registry. |
 | `MethodCache.Analyzers` | Roslyn analyzers (MC0001–MC0004) ensuring safe usage. |
+| `MethodCache.Abstractions` | Shared interfaces and policy definitions. |
+
+### Beta
+
+Functional and tested, but APIs may change. Suitable for non-critical production use.
+
+| Package | Description |
+|---------|-------------|
 | `MethodCache.Providers.Redis` | Redis provider with hybrid orchestration, compression, locking. |
+| `MethodCache.Providers.Memory` | Advanced in-memory provider with eviction policies. |
+| `MethodCache.OpenTelemetry` | Tracing, metrics, and observability integration. |
+
+### Experimental
+
+Under active development. APIs will change. Use for evaluation only.
+
+| Package | Description |
+|---------|-------------|
+| `MethodCache.Providers.SqlServer` | SQL Server persistent cache provider. |
 | `MethodCache.ETags` | HTTP ETag integration layered on MethodCache. |
+| `MethodCache.HttpCaching` | HTTP response caching middleware. |
+| `MethodCache.Providers.FastCache` | High-performance cache using FastCache library. |
 
 ---
 
