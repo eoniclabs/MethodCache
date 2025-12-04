@@ -1,6 +1,7 @@
 # MethodCache
 
 [![NuGet Version](https://img.shields.io/nuget/v/MethodCache.Core)](https://www.nuget.org/packages/MethodCache.Core)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/methodcache/ci.yml)](https://github.com/yourusername/methodcache/actions)
 [![Coverage](https://img.shields.io/codecov/c/github/yourusername/methodcache)](https://codecov.io/gh/yourusername/methodcache)
 [![License](https://img.shields.io/github/license/yourusername/methodcache)](LICENSE)
@@ -367,8 +368,11 @@ Configuration precedence:
 
 ## 📦 Packages
 
+**Supported frameworks:** .NET 8.0, .NET 9.0, .NET 10.0
+
 | Package | Description |
 |---------|-------------|
+| `MethodCache` | **Meta-package** – includes Core, SourceGenerator, and Analyzers. |
 | `MethodCache.Core` | Core abstractions, in-memory cache manager, attributes. |
 | `MethodCache.SourceGenerator` | Roslyn generator emitting decorators and fluent registry. |
 | `MethodCache.Analyzers` | Roslyn analyzers (MC0001–MC0004) ensuring safe usage. |

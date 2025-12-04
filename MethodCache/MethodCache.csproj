@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
     <PackageId>MethodCache</PackageId>
     <Description>A comprehensive caching library for .NET with support for attributes, source generation, and a fluent API.</Description>
     <IsPackable>true</IsPackable>
