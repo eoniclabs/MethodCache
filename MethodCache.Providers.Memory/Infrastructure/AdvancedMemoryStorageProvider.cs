@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MethodCache.Core.Configuration;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Providers.Memory.Configuration;
@@ -24,7 +25,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         public required long CreatedAtTicks { get; init; }
         public long LastAccessedAtTicks { get; set; }
         public long AccessCount => _accessCount;
-        public LinkedListNode<string>? OrderNode { get; set; }
 
         public bool IsExpired(long currentTicks) => currentTicks > ExpirationTicks;
 
@@ -34,9 +34,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             Interlocked.Increment(ref _accessCount);
         }
 
-        public long EstimateSize(MemoryUsageCalculationMode mode)
+        public long EstimateSize(Configuration.MemoryUsageCalculationMode mode)
         {
-            if (mode == MemoryUsageCalculationMode.Estimated)
+            if (mode == Configuration.MemoryUsageCalculationMode.Estimated)
             {
                 // Fast estimation
                 const int baseSize = 64; // Base object overhead
@@ -61,7 +61,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                 size += referenceSize; // Value reference
                 size += hashSetOverhead + (Tags.Count * 32); // Tags with string overhead
                 size += longSize * 4; // ExpirationTicks, CreatedAtTicks, LastAccessedAtTicks, AccessCount
-                size += referenceSize; // OrderNode reference
 
                 // Value size
                 size += Value switch
@@ -79,13 +78,10 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new();
-    private readonly LinkedList<string> _accessOrder = new();
-    private readonly object _accessOrderLock = new();
     private readonly object _tagIndexLock = new();
     private readonly Timer? _cleanupTimer;
     private readonly AdvancedMemoryOptions _options;
     private readonly ILogger<AdvancedMemoryStorageProvider> _logger;
-    private readonly ThreadLocal<Random> _threadLocalRandom = new(() => new Random(Guid.NewGuid().GetHashCode()));
 
     // Statistics
     private long _hits;
@@ -123,13 +119,14 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
-                RemoveFromAccessOrder(entry);
                 Interlocked.Increment(ref _misses);
                 return ValueTask.FromResult<T?>(default);
             }
 
+            // Lazy LRU: Just update timestamp (like Microsoft.Extensions.Caching.Memory)
+            // No locks, no LinkedList manipulation - sorting happens only at eviction time
             entry.UpdateAccess(currentTicks);
-            UpdateAccessOrder(key, entry, remove: false);
+
             Interlocked.Increment(ref _hits);
 
             if (entry.Value is T typedValue)
@@ -181,8 +178,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         {
             // Remove old tag mappings
             RemoveFromTagIndex(k, existing.Tags);
-            // Remove from access order while we still have the entry
-            RemoveFromAccessOrder(existing);
             // Subtract the old entry's size from memory usage
             Interlocked.Add(ref _estimatedMemoryUsage, -existing.EstimateSize(_options.MemoryCalculationMode));
             return entry;
@@ -190,18 +185,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         // Add to tag index
         AddToTagIndex(key, tagSet);
-
-        // Update access order atomically with the entry we just added
-        lock (_accessOrderLock)
-        {
-            // Remove from current position if it exists
-            if (entry.OrderNode != null)
-            {
-                _accessOrder.Remove(entry.OrderNode);
-            }
-            // Add to end (most recently used)
-            entry.OrderNode = _accessOrder.AddLast(key);
-        }
 
         _logger.LogDebug("Set cache entry {Key} with expiration {Expiration} and tags {Tags}",
             key, expiration, string.Join(", ", tagSet));
@@ -212,8 +195,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         if (_cache.TryRemove(key, out var entry))
         {
             RemoveFromTagIndex(key, entry.Tags);
-            // Remove from access order using the entry we still have
-            RemoveFromAccessOrder(entry);
             Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize(_options.MemoryCalculationMode));
 
             _logger.LogDebug("Removed cache entry {Key}", key);
@@ -246,7 +227,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
-                RemoveFromAccessOrder(entry);
                 return ValueTask.FromResult(false);
             }
             return ValueTask.FromResult(true);
@@ -328,7 +308,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             if (_cache.TryRemove(key, out var entry))
             {
                 RemoveFromTagIndex(key, entry.Tags);
-                RemoveFromAccessOrder(entry);
                 Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize(_options.MemoryCalculationMode));
                 Interlocked.Increment(ref _evictions);
                 evicted++;
@@ -357,24 +336,62 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         };
     }
 
+    /// <summary>
+    /// Lazy LRU eviction candidates using timestamp-based sorting with sampling.
+    /// Uses sampling for O(1) performance on large caches.
+    /// </summary>
     private IEnumerable<string> GetLRUCandidates()
     {
-        lock (_accessOrderLock)
+        // Use sampling for O(N) performance instead of O(N log N) sorting of entire cache
+        const int sampleSize = 100;
+        
+        // If cache is small, sort everything for precision
+        if (_cache.Count <= sampleSize * 2)
         {
-            // Return an iterator instead of copying the entire list
-            // This yields items one at a time as needed
-            foreach (var key in _accessOrder)
-            {
-                yield return key;
-            }
+             return _cache
+                .OrderBy(kvp => kvp.Value.LastAccessedAtTicks)
+                .Select(kvp => kvp.Key);
         }
+        
+        var candidates = new List<(string key, long lastAccessed)>(sampleSize);
+        int inspected = 0;
+
+        foreach (var kvp in _cache)
+        {
+            if (candidates.Count < sampleSize)
+            {
+                candidates.Add((kvp.Key, kvp.Value.LastAccessedAtTicks));
+                if (candidates.Count == sampleSize)
+                {
+                    candidates.Sort((a, b) => a.lastAccessed.CompareTo(b.lastAccessed));
+                }
+            }
+            else if (kvp.Value.LastAccessedAtTicks < candidates[^1].lastAccessed)
+            {
+                candidates[^1] = (kvp.Key, kvp.Value.LastAccessedAtTicks);
+                // Re-sort
+                for (int i = candidates.Count - 2; i >= 0; i--)
+                {
+                    if (candidates[i].lastAccessed > candidates[i + 1].lastAccessed)
+                    {
+                        (candidates[i], candidates[i + 1]) = (candidates[i + 1], candidates[i]);
+                    }
+                    else break;
+                }
+            }
+            
+            // Limit inspection to ensure O(1) eviction time
+            if (++inspected >= sampleSize * 10) break;
+        }
+
+        return candidates.Select(c => c.key);
     }
 
     private IEnumerable<string> GetLFUCandidates()
     {
-        // Use a min-heap approach with limited sampling for O(n) instead of O(n log n)
         const int sampleSize = 100;
         var candidates = new List<(string key, long accessCount)>(sampleSize);
+        int inspected = 0;
 
         foreach (var kvp in _cache)
         {
@@ -388,9 +405,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             }
             else if (kvp.Value.AccessCount < candidates[^1].accessCount)
             {
-                // Replace the highest access count with this lower one
                 candidates[^1] = (kvp.Key, kvp.Value.AccessCount);
-                // Re-sort only if needed (using insertion sort for small changes)
                 for (int i = candidates.Count - 2; i >= 0; i--)
                 {
                     if (candidates[i].accessCount > candidates[i + 1].accessCount)
@@ -400,6 +415,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     else break;
                 }
             }
+            
+            // Limit inspection
+            if (++inspected >= sampleSize * 10) break;
         }
 
         return candidates.Select(c => c.key);
@@ -407,9 +425,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private IEnumerable<string> GetTTLCandidates()
     {
-        // Use sampling approach similar to LFU
         const int sampleSize = 100;
         var candidates = new List<(string key, long expirationTicks)>(sampleSize);
+        int inspected = 0;
 
         foreach (var kvp in _cache)
         {
@@ -433,6 +451,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     else break;
                 }
             }
+            
+            // Limit inspection
+            if (++inspected >= sampleSize * 10) break;
         }
 
         return candidates.Select(c => c.key);
@@ -440,8 +461,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private IEnumerable<string> GetRandomCandidates()
     {
-        var random = _threadLocalRandom.Value!;
+        var random = new Random();
         var candidatesNeeded = Math.Min(_cache.Count / 4, 100);
+        int inspected = 0;
 
         // For small caches, just iterate and yield randomly
         if (_cache.Count <= 100)
@@ -456,7 +478,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             yield break;
         }
 
-        // For large caches, use reservoir sampling to avoid full allocation
+        // For large caches, use reservoir sampling
         var reservoir = new List<string>(candidatesNeeded);
         var itemIndex = 0;
 
@@ -474,7 +496,11 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     reservoir[j] = key;
                 }
             }
+            
             itemIndex++;
+            
+            // Limit inspection
+            if (++inspected >= candidatesNeeded * 10) break;
         }
 
         foreach (var key in reservoir)
@@ -483,43 +509,8 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         }
     }
 
-    private void UpdateAccessOrder(string key, CacheEntry entry, bool remove)
-    {
-        lock (_accessOrderLock)
-        {
-            if (remove)
-            {
-                if (entry.OrderNode != null)
-                {
-                    _accessOrder.Remove(entry.OrderNode);
-                    entry.OrderNode = null;
-                }
-            }
-            else
-            {
-                // Remove from current position if it exists
-                if (entry.OrderNode != null)
-                {
-                    _accessOrder.Remove(entry.OrderNode);
-                }
-
-                // Add to end (most recently used)
-                entry.OrderNode = _accessOrder.AddLast(key);
-            }
-        }
-    }
-
-    private void RemoveFromAccessOrder(CacheEntry entry)
-    {
-        lock (_accessOrderLock)
-        {
-            if (entry.OrderNode != null)
-            {
-                _accessOrder.Remove(entry.OrderNode);
-                entry.OrderNode = null;
-            }
-        }
-    }
+    // UpdateAccessOrder methods removed - using lazy LRU (timestamp-based) instead
+    // Timestamps are updated in UpdateAccess(), sorting happens only at eviction time
 
     private void AddToTagIndex(string key, HashSet<string> tags)
     {
@@ -614,7 +605,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             if (_cache.TryRemove(key, out var entry))
             {
                 RemoveFromTagIndex(key, entry.Tags);
-                RemoveFromAccessOrder(entry);
                 Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize(_options.MemoryCalculationMode));
                 removed++;
             }
@@ -635,14 +625,8 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         if (_disposed) return;
 
         _cleanupTimer?.Dispose();
-        _threadLocalRandom?.Dispose();
         _cache.Clear();
         _tagToKeys.Clear();
-
-        lock (_accessOrderLock)
-        {
-            _accessOrder.Clear();
-        }
 
         _disposed = true;
         _logger.LogInformation("AdvancedMemoryStorageProvider disposed");
@@ -663,11 +647,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         _cache.Clear();
         _tagToKeys.Clear();
-
-        lock (_accessOrderLock)
-        {
-            _accessOrder.Clear();
-        }
 
         // Reset statistics
         Interlocked.Exchange(ref _hits, 0);

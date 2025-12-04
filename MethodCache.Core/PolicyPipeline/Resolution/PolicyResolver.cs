@@ -9,6 +9,8 @@ namespace MethodCache.Core.PolicyPipeline.Resolution;
 
 internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
 {
+    private const long EmptyPolicyVersion = 0;
+
     private readonly IReadOnlyList<PolicySourceRegistration> _registrations;
     private readonly ConcurrentDictionary<string, PolicyAggregator> _aggregators = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, PolicyResolutionResult> _resolutions = new(StringComparer.Ordinal);
@@ -51,7 +53,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
             return result;
         }
 
-        return new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow);
+        return new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow, version: EmptyPolicyVersion);
     }
 
     public async IAsyncEnumerable<PolicyResolutionResult> WatchAsync(string? methodId = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -263,11 +265,12 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
         private readonly SortedDictionary<int, PolicyLayer> _layers = new();
         private PolicyResolutionResult _current;
         private readonly object _sync = new();
+        private long _version = 0; // Increments on each policy change
 
         public PolicyAggregator(string methodId)
         {
             _methodId = methodId;
-            _current = new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow);
+            _current = new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow, version: EmptyPolicyVersion);
         }
 
         public PolicyResolutionResult SetLayer(PolicyLayer layer)
@@ -294,9 +297,12 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
         {
             var resolvedAt = timestampOverride ?? DateTimeOffset.UtcNow;
 
+            // Increment version on each rebuild (policy update)
+            var currentVersion = ++_version;
+
             if (_layers.Count == 0)
             {
-                return new PolicyResolutionResult(_methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), resolvedAt);
+                return new PolicyResolutionResult(_methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), resolvedAt, currentVersion);
             }
 
             TimeSpan? duration = null;
@@ -383,7 +389,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
                 Provenance = provenance
             };
 
-            return new PolicyResolutionResult(_methodId, effectivePolicy, contributions, resolvedAt);
+            return new PolicyResolutionResult(_methodId, effectivePolicy, contributions, resolvedAt, currentVersion);
         }
     }
 }

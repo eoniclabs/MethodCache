@@ -146,6 +146,49 @@ public class TelemetryCacheManager : ICacheManager
         }
     }
 
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        // Fast path - minimal telemetry overhead for ultra-fast lookups
+        return _innerManager.TryGetFastAsync<T>(cacheKey);
+    }
+
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            _baggagePropagator.InjectBaggage(activity);
+            _activitySource.SetCacheKey(activity, cacheKey);
+
+            if (policy.Tags.Count > 0)
+            {
+                _activitySource.SetCacheTags(activity, policy.Tags.ToArray());
+            }
+
+            SetActivityTagsFromPolicy(activity, policy);
+
+            // Metrics are tracked in the generated decorator code, not here
+            // Just pass through to inner manager without instrumentation
+            var result = await _innerManager.GetOrCreateFastAsync(cacheKey, methodName, factory, policy);
+
+            stopwatch.Stop();
+
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _activitySource.SetCacheError(activity, ex);
+            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTagsFromPolicy(policy));
+            _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
+            throw;
+        }
+    }
+
     public async Task InvalidateByTagsAsync(params string[] tags)
     {
         using var activity = _activitySource.StartCacheOperation("InvalidateByTags", TracingConstants.Operations.Delete);

@@ -395,6 +395,31 @@ internal class InfrastructureCacheManager : ICacheManager
         return Task.WhenAll(tasks);
     }
 
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        // Try to get from cache first (this will search L1, then L2)
+        var cached = await _storageCoordinator.GetAsync<T>(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        // Execute factory and cache result
+        var result = await factory();
+        if (result != null)
+        {
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageCoordinator.SetAsync(cacheKey, result, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
+        }
+
+        return result;
+    }
+
     public Task InvalidateByTagsAsync(params string[] tags)
     {
         var tasks = tags.Select(tag => _storageCoordinator.RemoveByTagAsync(tag).AsTask());
@@ -445,6 +470,29 @@ internal class StorageProviderCacheManager : ICacheManager
         }
 
         return value;
+    }
+
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        var cached = await _storageProvider.GetAsync<T>(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        var result = await factory();
+        if (result != null)
+        {
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+            await _storageProvider.SetAsync(cacheKey, result, expiration, policy.Tags ?? new List<string>()).ConfigureAwait(false);
+        }
+
+        return result;
     }
 
     public Task InvalidateByTagsAsync(params string[] tags)
@@ -550,6 +598,37 @@ internal class TestHybridCacheManager : IHybridCacheManager
     {
         var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
         return await _storageCoordinator.GetAsync<T>(cacheKey);
+    }
+
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        // Try to get from cache first (this will search L1, then L2)
+        var cached = await _storageCoordinator.GetAsync<T>(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        // Execute factory and cache result
+        var result = await factory();
+        if (result != null)
+        {
+            var expiration = policy.Duration ?? TimeSpan.FromMinutes(10);
+            var tags = policy.Tags ?? new List<string>();
+
+            // Store via hybrid storage (handles L1+L2 coordination)
+            await _storageCoordinator.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
+
+            // Also explicitly store in L1 to ensure it's populated for the tests
+            await _l1Storage.SetAsync(cacheKey, result, expiration, tags).ConfigureAwait(false);
+        }
+
+        return result;
     }
 
     public async Task InvalidateByTagsAsync(params string[] tags)
@@ -742,6 +821,14 @@ internal class LazyRedisCacheManager : ICacheManager
     public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         => _lazyCacheManager.Value.GetOrCreateAsync(methodName, args, factory, policy, keyGenerator);
 
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
+    public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        => _lazyCacheManager.Value.GetOrCreateFastAsync(cacheKey, methodName, factory, policy);
+
     public Task InvalidateByTagsAsync(params string[] tags)
         => _lazyCacheManager.Value.InvalidateByTagsAsync(tags);
 
@@ -811,6 +898,48 @@ internal class SimpleRedisCacheManager : ICacheManager, IDisposable
         }
 
         return value;
+    }
+
+    public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return new ValueTask<T?>(default(T));
+    }
+
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        var redisKey = $"{_options.KeyPrefix}{cacheKey}";
+
+        try
+        {
+            var cachedValue = await _database.StringGetAsync(redisKey);
+            if (cachedValue.HasValue)
+            {
+                var deserialized = System.Text.Json.JsonSerializer.Deserialize<T>(cachedValue!);
+                if (deserialized != null)
+                    return deserialized;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to get cached value for key {Key}", redisKey);
+        }
+
+        var result = await factory();
+        if (result != null)
+        {
+            try
+            {
+                var serialized = System.Text.Json.JsonSerializer.Serialize(result);
+                var expiration = policy.Duration ?? TimeSpan.FromMinutes(15);
+                await _database.StringSetAsync(redisKey, serialized, expiration);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to cache value for key {Key}", redisKey);
+            }
+        }
+
+        return result;
     }
 
     public async Task InvalidateByTagsAsync(params string[] tags)

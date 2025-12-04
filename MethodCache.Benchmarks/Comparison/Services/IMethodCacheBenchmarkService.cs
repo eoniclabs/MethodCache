@@ -12,7 +12,7 @@ public interface IMethodCacheBenchmarkService
     Task<SamplePayload> GetAsync(string key);
 
     [Cache(Duration = "00:10:00")]
-    SamplePayload Get(string key);
+    SamplePayload Get([CacheKey(UseAsRawKey = true)] string key);
 
     [Cache(Duration = "00:10:00")]
     Task<SamplePayload> GetOrCreateAsync(string key);

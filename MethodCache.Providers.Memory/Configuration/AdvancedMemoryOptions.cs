@@ -1,3 +1,4 @@
+using MethodCache.Core.Configuration;
 using MethodCache.Core.Options;
 
 namespace MethodCache.Providers.Memory.Configuration;

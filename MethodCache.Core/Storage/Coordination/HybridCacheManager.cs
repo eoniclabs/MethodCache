@@ -77,6 +77,29 @@ public class HybridCacheManager : IHybridCacheManager
         return await _storageProvider.GetAsync<T>(cacheKey);
     }
 
+    public async ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+    {
+        return await _storageProvider.GetAsync<T>(cacheKey);
+    }
+
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        var cached = await _storageProvider.GetAsync<T>(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        var result = await factory();
+        if (result != null)
+        {
+            var expiration = policy.Duration ?? _options.L1DefaultExpiration;
+            await _storageProvider.SetAsync(cacheKey, result, expiration, policy.Tags).ConfigureAwait(false);
+        }
+
+        return result;
+    }
+
     public async Task InvalidateByTagsAsync(params string[] tags)
     {
         var tasks = tags.Select(tag => _storageProvider.RemoveByTagAsync(tag).AsTask());
