@@ -496,12 +496,14 @@ namespace MethodCache.SourceGenerator
 
             private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, ITypeSymbol? innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
             {
-                var call = BuildMethodCall(method);
                 var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
                 var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type)).ToList();
 
                 if (canUseUltraFastPath)
                 {
+                    // In ultra-fast path, we handle nulls in cache key generation, so suppress nullable warnings
+                    var call = BuildMethodCall(method, suppressNullableWarnings: true);
+
                     sb.AppendLine($"            // Ultra-fast path only runs for reference types; null comparison is valid here.");
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
@@ -536,6 +538,7 @@ namespace MethodCache.SourceGenerator
                 else
                 {
                     // Standard path: allocate args first
+                    var call = BuildMethodCall(method);
                     if (keyParams.Any())
                     {
                         sb.Append("            var args = new object[] { ");
@@ -558,12 +561,14 @@ namespace MethodCache.SourceGenerator
 
             private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, ITypeSymbol? innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
             {
-                var call = BuildMethodCall(method);
                 var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
                 var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type)).ToList();
 
                 if (canUseUltraFastPath)
                 {
+                    // In ultra-fast path, we handle nulls in cache key generation, so suppress nullable warnings
+                    var call = BuildMethodCall(method, suppressNullableWarnings: true);
+
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
                     EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
@@ -604,6 +609,7 @@ namespace MethodCache.SourceGenerator
                 else
                 {
                     // Standard path: allocate args first
+                    var call = BuildMethodCall(method);
                     if (keyParams.Any())
                     {
                         sb.Append("            var args = new object[] { ");
@@ -628,7 +634,6 @@ namespace MethodCache.SourceGenerator
 
             private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, ITypeSymbol? returnType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
             {
-                var call = BuildMethodCall(method);
                 var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
                 var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type)).ToList();
 
@@ -639,6 +644,9 @@ namespace MethodCache.SourceGenerator
 
                 if (canUseUltraFastPath)
                 {
+                    // In ultra-fast path, we handle nulls in cache key generation, so suppress nullable warnings
+                    var call = BuildMethodCall(method, suppressNullableWarnings: true);
+
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
                     EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
@@ -675,6 +683,7 @@ namespace MethodCache.SourceGenerator
                 else
                 {
                     // Standard path: allocate args first
+                    var call = BuildMethodCall(method);
                     if (keyParams.Any())
                     {
                         sb.Append("            var args = new object[] { ");
@@ -955,7 +964,7 @@ namespace MethodCache.SourceGenerator
                 }
             }
 
-            private static string BuildMethodCall(IMethodSymbol method)
+            private static string BuildMethodCall(IMethodSymbol method, bool suppressNullableWarnings = false)
             {
                 var typeArgs = method.TypeParameters.Any()
                     ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
@@ -970,7 +979,12 @@ namespace MethodCache.SourceGenerator
                         RefKind.In => "in ",
                         _ => ""
                     };
-                    return $"{modifier}{p.Name}";
+                    // Add null-forgiving operator for reference type parameters when suppressNullableWarnings is true.
+                    // This is safe because we've already handled null in cache key generation (e.g., key ?? "null").
+                    // We need this for all reference types that are declared as non-nullable in the interface,
+                    // because the compiler can't see our null handling in the cache key expression.
+                    var nullForgiving = suppressNullableWarnings && p.Type.IsReferenceType ? "!" : "";
+                    return $"{modifier}{p.Name}{nullForgiving}";
                 }));
 
                 return $"_decorated.{method.Name}{typeArgs}({args})";
