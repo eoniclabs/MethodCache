@@ -12,12 +12,13 @@ Whether you are wrapping your own services or slapping caching onto third-party 
 
 ## 🚀 Quick Start
 
-### 1. Install packages
+### 1. Install the package
 
 ```bash
-dotnet add package MethodCache.Core
-dotnet add package MethodCache.SourceGenerator
+dotnet add package MethodCache
 ```
+
+This meta-package includes Core, SourceGenerator, and Analyzers.
 
 ### 2. Mark methods with `[Cache]`
 
