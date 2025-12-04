@@ -183,6 +183,17 @@ namespace MethodCache.Core.Runtime.Execution
 
         // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
+        /// <summary>
+        /// Static cache for converted CacheEntryPolicy objects. Uses ConditionalWeakTable to:
+        /// 1. Avoid repeated allocations of CacheEntryPolicy on every cache miss
+        /// 2. Automatically clean up entries when the CacheRuntimePolicy is garbage collected
+        ///
+        /// This cache is intentionally static and shared across all InMemoryCacheManager instances.
+        /// Since CacheRuntimePolicy objects are typically singletons (created once per decorated method
+        /// and cached in the generated decorator), sharing the converted policies is safe and beneficial.
+        /// The ConditionalWeakTable ensures no memory leaks - when a CacheRuntimePolicy is collected,
+        /// its associated CacheEntryPolicy is also eligible for collection.
+        /// </summary>
         private static readonly ConditionalWeakTable<CacheRuntimePolicy, CacheEntryPolicy> _policyCache = new();
 
         private static CacheEntryPolicy GetCacheEntryPolicy(CacheRuntimePolicy policy)
