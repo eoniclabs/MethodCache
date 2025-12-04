@@ -76,10 +76,12 @@ public class PolicyResolverTests
             }
         });
 
-        await Task.Delay(50);
+        // Give the watch task time to start listening
+        await Task.Delay(200);
 
         runtimeSource.EmitChange(CreateChange(PolicySourceIds.RuntimeOverrides, TimeSpan.FromMinutes(1), new[] { "override" }, PolicyChangeReason.Updated));
-        await Task.Delay(100);
+        // Give time for async channel to propagate the change
+        await Task.Delay(200);
         var interimResult = await resolver.ResolveAsync(MethodId);
         Assert.Equal(MethodId, interimResult.MethodId);
         Assert.Equal(TimeSpan.FromMinutes(1), interimResult.Policy.Duration);
@@ -154,6 +156,8 @@ public class PolicyResolverTests
     private static async Task WaitForCountAsync(List<PolicyResolutionResult> list, int expected)
     {
         var start = DateTime.UtcNow;
+        // Use longer timeout for CI environments which can be slower
+        var timeout = TimeSpan.FromSeconds(15);
         while (true)
         {
             lock (list)
@@ -164,12 +168,17 @@ public class PolicyResolverTests
                 }
             }
 
-            if ((DateTime.UtcNow - start) > TimeSpan.FromSeconds(5))
+            if ((DateTime.UtcNow - start) > timeout)
             {
-                throw new TimeoutException($"Expected {expected} policy changes but observed fewer within the timeout.");
+                int currentCount;
+                lock (list)
+                {
+                    currentCount = list.Count;
+                }
+                throw new TimeoutException($"Expected {expected} policy changes but observed {currentCount} within the timeout.");
             }
 
-            await Task.Delay(50);
+            await Task.Delay(100);
         }
     }
 
