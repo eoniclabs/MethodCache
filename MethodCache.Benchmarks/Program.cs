@@ -85,7 +85,16 @@ public class Program
                 break;
 
             case "comparison":
-                BenchmarkRunner.Run<Comparison.UnifiedCacheComparisonBenchmarks>(config);
+                var comparisonArgs = cleanedArgs.Skip(1).ToArray();
+                if (comparisonArgs.Length > 0)
+                {
+                    BenchmarkSwitcher.FromTypes(new[] { typeof(Comparison.UnifiedCacheComparisonBenchmarks) })
+                        .Run(comparisonArgs, config);
+                }
+                else
+                {
+                    BenchmarkRunner.Run<Comparison.UnifiedCacheComparisonBenchmarks>(config);
+                }
                 break;
 
             case "quickcompare":
