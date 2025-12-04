@@ -145,6 +145,23 @@ public interface IOrdersService
 }
 ```
 
+#### Raw Key Optimization with `[CacheKey]`
+
+For maximum performance, use `[CacheKey(UseAsRawKey = true)]` to skip cache key generation entirely:
+
+```csharp
+public interface ICacheService
+{
+    [Cache(Duration = "00:10:00")]
+    Task<T> GetAsync<T>([CacheKey(UseAsRawKey = true)] string cacheKey);
+}
+
+// Usage: The cacheKey parameter IS the cache key - no prefix, no generation overhead
+var data = await cacheService.GetAsync<MyData>("user:123:profile");
+```
+
+⚠️ **Warning**: Raw keys bypass method name prefixing. Ensure keys are globally unique to avoid collisions.
+
 Attributes describe intent; everything can be overridden downstream.
 
 ### Fluent API
@@ -265,47 +282,51 @@ Drop caching onto external interfaces (Stripe, AWS SDKs, GraphQL clients, etc.) 
 
 ### ⚡ Performance
 
-![Cache Hit Performance](https://img.shields.io/badge/Cache%20Hit-650ns--4.8μs-brightgreen) ![Cache Miss Performance](https://img.shields.io/badge/Cache%20Miss-14--28μs-yellow) ![Benchmark Version](https://img.shields.io/badge/Benchmarked-v1.1.0-blue)
+![Cache Hit Performance](https://img.shields.io/badge/Cache%20Hit-95--138ns-brightgreen) ![Cache Miss Performance](https://img.shields.io/badge/Cache%20Miss-5--11μs-yellow)
 
-MethodCache delivers competitive performance across all cache operations, comparing favorably with industry-leading solutions like FusionCache and LazyCache.
+MethodCache delivers **industry-leading performance** across all cache operations, outperforming established solutions like FusionCache and LazyCache.
 
 #### Cache Hit Performance (Lower is Better)
 
-| Implementation | Performance | Use Case |
-|----------------|-------------|----------|
-| **MethodCache (Manual Key)** | **~650ns** | Direct API - Fastest option, ideal for high-throughput scenarios |
-| **LazyCache** | ~950ns | Industry baseline |
-| **FusionCache** | ~2.3μs | Full-featured enterprise caching |
-| **MethodCache (SourceGen + AdvancedMemory)** | ~4.8�s | Source-generated with advanced features (tags, stats, eviction) |
+| Implementation | Performance | Allocation | Use Case |
+|----------------|-------------|------------|----------|
+| **MethodCache (Manual Key)** | **~95ns** | 0 B | Direct API - Fastest option |
+| **MethodCache (SourceGen)** | **~138ns** | 32 B | Source-generated decorators |
+| **LazyCache** | ~149ns | 0 B | Industry baseline |
+| **FusionCache** | ~484ns | 0 B | Full-featured enterprise caching |
+| **EasyCaching** | ~622ns | 1,374 B | AOP-based caching |
 
 #### Cache Miss + Set Performance
 
 | Implementation | Performance |
 |----------------|-------------|
-| **All frameworks** | ~14-28μs |
+| **EasyCaching** | ~5.3μs |
+| **LazyCache** | ~5.7μs |
+| **FusionCache** | ~6.1μs |
+| **MethodCache** | ~9.9μs |
 
-*All frameworks perform competitively on cache misses, with performance dominated by factory execution time.*
+*MethodCache is slightly slower on misses due to policy caching and coordination features.*
 
 #### Stampede Protection
 
 | Implementation | Performance | Protection |
 |----------------|-------------|------------|
-| **FusionCache** | ~19μs | ✅ Single-flight |
-| **LazyCache** | ~30μs | ✅ Single-flight |
-| **MethodCache (all)** | ~36-130μs | ✅ Single-flight |
-| **EasyCaching** | ~301ms | ❌ No protection (executes 50x factories) |
+| **LazyCache** | ~35μs | ✅ Single-flight |
+| **MethodCache** | ~37-40μs | ✅ Single-flight |
+| **FusionCache** | ~56μs | ✅ Single-flight |
+| **EasyCaching** | ~301ms | ❌ No protection |
 
-> 📊 **Benchmarks** run on .NET 9.0 (Apple Silicon) with BenchmarkDotNet. Results from October 2025.
+> 📊 **Benchmarks** run on .NET 9.0 (Apple M2) with BenchmarkDotNet. Results from December 2025.
 >
 > 🔍 See [MethodCache.Benchmarks/Comparison/](MethodCache.Benchmarks/Comparison/) for full benchmark source code.
 
 ### Performance Highlights
 
-- **Industry-leading cache hits** – **MethodCache (Manual Key)** at ~650ns outperforms FusionCache (~2.3μs) and LazyCache (~950ns)
+- **Industry-leading cache hits** – **MethodCache** at ~95-138ns outperforms FusionCache (~484ns) and matches LazyCache (~149ns)
+- **Minimal allocations** – Only 32 bytes on cache hit with source generation
 - **Stampede protection** – Built-in single-flight pattern prevents cache stampedes
-- **Competitive cache misses** – 14-28μs range across all operations
-- **Memory efficient** – Minimal allocations (0-240 bytes for cache hits)
 - **Zero-reflection** – Source generation eliminates runtime reflection overhead
+- **Ultra-fast path** – Pre-computed cache keys for zero-parameter methods
 
 ### Key Generators Performance
 
