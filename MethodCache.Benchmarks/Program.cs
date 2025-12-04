@@ -96,6 +96,10 @@ public class Program
                 BenchmarkRunner.Run<Comparison.RealMethodCacheComparison>(config);
                 break;
 
+            case "profile":
+                BenchmarkRunner.Run<Microbenchmarks.SourceGenSyncPathProfiler>(config);
+                break;
+
             case "all":
                 RunAllBenchmarks(config);
                 break;
