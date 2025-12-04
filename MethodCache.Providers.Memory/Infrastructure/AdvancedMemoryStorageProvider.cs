@@ -337,22 +337,61 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     }
 
     /// <summary>
-    /// Lazy LRU eviction candidates using timestamp-based sorting (like Microsoft.Extensions.Caching.Memory).
-    /// No locks during cache hits, sorting only happens here during eviction.
+    /// Lazy LRU eviction candidates using timestamp-based sorting with sampling.
+    /// Uses sampling for O(1) performance on large caches.
     /// </summary>
     private IEnumerable<string> GetLRUCandidates()
     {
-        // Sort by LastAccessedAtTicks (oldest first)
-        return _cache
-            .OrderBy(kvp => kvp.Value.LastAccessedAtTicks)
-            .Select(kvp => kvp.Key);
+        // Use sampling for O(N) performance instead of O(N log N) sorting of entire cache
+        const int sampleSize = 100;
+        
+        // If cache is small, sort everything for precision
+        if (_cache.Count <= sampleSize * 2)
+        {
+             return _cache
+                .OrderBy(kvp => kvp.Value.LastAccessedAtTicks)
+                .Select(kvp => kvp.Key);
+        }
+        
+        var candidates = new List<(string key, long lastAccessed)>(sampleSize);
+        int inspected = 0;
+
+        foreach (var kvp in _cache)
+        {
+            if (candidates.Count < sampleSize)
+            {
+                candidates.Add((kvp.Key, kvp.Value.LastAccessedAtTicks));
+                if (candidates.Count == sampleSize)
+                {
+                    candidates.Sort((a, b) => a.lastAccessed.CompareTo(b.lastAccessed));
+                }
+            }
+            else if (kvp.Value.LastAccessedAtTicks < candidates[^1].lastAccessed)
+            {
+                candidates[^1] = (kvp.Key, kvp.Value.LastAccessedAtTicks);
+                // Re-sort
+                for (int i = candidates.Count - 2; i >= 0; i--)
+                {
+                    if (candidates[i].lastAccessed > candidates[i + 1].lastAccessed)
+                    {
+                        (candidates[i], candidates[i + 1]) = (candidates[i + 1], candidates[i]);
+                    }
+                    else break;
+                }
+            }
+            
+            // Limit inspection to ensure O(1) eviction time
+            if (++inspected >= sampleSize * 10) break;
+        }
+
+        return candidates.Select(c => c.key);
     }
 
     private IEnumerable<string> GetLFUCandidates()
     {
-        // Use a min-heap approach with limited sampling for O(n) instead of O(n log n)
         const int sampleSize = 100;
         var candidates = new List<(string key, long accessCount)>(sampleSize);
+        int inspected = 0;
 
         foreach (var kvp in _cache)
         {
@@ -366,9 +405,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             }
             else if (kvp.Value.AccessCount < candidates[^1].accessCount)
             {
-                // Replace the highest access count with this lower one
                 candidates[^1] = (kvp.Key, kvp.Value.AccessCount);
-                // Re-sort only if needed (using insertion sort for small changes)
                 for (int i = candidates.Count - 2; i >= 0; i--)
                 {
                     if (candidates[i].accessCount > candidates[i + 1].accessCount)
@@ -378,6 +415,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     else break;
                 }
             }
+            
+            // Limit inspection
+            if (++inspected >= sampleSize * 10) break;
         }
 
         return candidates.Select(c => c.key);
@@ -385,9 +425,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private IEnumerable<string> GetTTLCandidates()
     {
-        // Use sampling approach similar to LFU
         const int sampleSize = 100;
         var candidates = new List<(string key, long expirationTicks)>(sampleSize);
+        int inspected = 0;
 
         foreach (var kvp in _cache)
         {
@@ -411,6 +451,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     else break;
                 }
             }
+            
+            // Limit inspection
+            if (++inspected >= sampleSize * 10) break;
         }
 
         return candidates.Select(c => c.key);
@@ -420,6 +463,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         var random = new Random();
         var candidatesNeeded = Math.Min(_cache.Count / 4, 100);
+        int inspected = 0;
 
         // For small caches, just iterate and yield randomly
         if (_cache.Count <= 100)
@@ -434,7 +478,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             yield break;
         }
 
-        // For large caches, use reservoir sampling to avoid full allocation
+        // For large caches, use reservoir sampling
         var reservoir = new List<string>(candidatesNeeded);
         var itemIndex = 0;
 
@@ -452,7 +496,11 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     reservoir[j] = key;
                 }
             }
+            
             itemIndex++;
+            
+            // Limit inspection
+            if (++inspected >= candidatesNeeded * 10) break;
         }
 
         foreach (var key in reservoir)
