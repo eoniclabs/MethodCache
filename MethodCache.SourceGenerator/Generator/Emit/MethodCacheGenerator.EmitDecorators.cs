@@ -112,7 +112,6 @@ namespace MethodCache.SourceGenerator
                 // Cached policy fields for performance (Phase 2.2 optimization)
                 // Cached method names for key generation (Phase 2.4 optimization)
                 // Pre-computed cache keys for zero-parameter methods (Phase 3 ultra-fast path)
-                var requiresKeyCacheCapacity = info.CachedMethods.Any(m => m.Method.Parameters.Any(p => !Utils.IsCancellationToken(p.Type)));
                 foreach (var cached in info.CachedMethods)
                 {
                     var methodId = Utils.GetMethodId(cached.Method);
@@ -123,22 +122,11 @@ namespace MethodCache.SourceGenerator
                     var keyParamCount = cached.Method.Parameters.Count(p => !Utils.IsCancellationToken(p.Type));
                     if (keyParamCount == 0)
                     {
+                        // Pre-computed key for zero-parameter methods (ultra-fast path)
                         sb.AppendLine($"        private readonly string _cachedKey_{safeFieldName};");
                     }
-                    else if (keyParamCount == 1)
-                    {
-                        sb.AppendLine($"        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _cacheKeyCache_{safeFieldName} = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(System.StringComparer.Ordinal);");
-                    }
-                    else
-                    {
-                        var tupleElements = string.Join(", ", Enumerable.Repeat("string", keyParamCount));
-                        var tupleType = $"({tupleElements})";
-                        sb.AppendLine($"        private readonly System.Collections.Concurrent.ConcurrentDictionary<{tupleType}, string> _cacheKeyCache_{safeFieldName} = new System.Collections.Concurrent.ConcurrentDictionary<{tupleType}, string>();");
-                    }
-                }
-                if (requiresKeyCacheCapacity)
-                {
-                    sb.AppendLine("        private const int KeyCacheCapacity = 1024;");
+                    // For methods with parameters, we use direct string.Concat at call site
+                    // This is faster than ConcurrentDictionary lookup + caching overhead
                 }
                 sb.AppendLine();
 
@@ -444,64 +432,30 @@ namespace MethodCache.SourceGenerator
 
             private static void EmitCacheKeyAcquisition(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams, string indent)
             {
+                // Zero parameters: use pre-computed key (ultra-fast path)
                 if (keyParams.Count == 0)
                 {
                     sb.AppendLine($"{indent}var cacheKey = _cachedKey_{safeFieldName};");
                     return;
                 }
 
+                // One parameter: direct string.Concat (faster than ConcurrentDictionary lookup)
                 if (keyParams.Count == 1)
                 {
                     var expr = GetParameterStringExpression(keyParams[0]);
-                    sb.AppendLine($"{indent}var keySegment = {expr};");
-                    sb.AppendLine($"{indent}string cacheKey;");
-                    sb.AppendLine($"{indent}if (!_cacheKeyCache_{safeFieldName}.TryGetValue(keySegment, out cacheKey))");
-                    sb.AppendLine($"{indent}{{");
-                    sb.AppendLine($"{indent}    if (_cacheKeyCache_{safeFieldName}.Count >= KeyCacheCapacity)");
-                    sb.AppendLine($"{indent}    {{");
-                    sb.AppendLine($"{indent}        cacheKey = string.Concat(_cachedMethodName_{safeFieldName}, \":\", keySegment);");
-                    sb.AppendLine($"{indent}    }}");
-                    sb.AppendLine($"{indent}    else");
-                    sb.AppendLine($"{indent}    {{");
-                    sb.AppendLine($"{indent}        cacheKey = _cacheKeyCache_{safeFieldName}.GetOrAdd(keySegment, segment => string.Concat(_cachedMethodName_{safeFieldName}, \":\", segment));");
-                    sb.AppendLine($"{indent}    }}");
-                    sb.AppendLine($"{indent}}}");
+                    sb.AppendLine($"{indent}var cacheKey = string.Concat(_cachedMethodName_{safeFieldName}, \":\", {expr});");
                     return;
                 }
 
-                for (int i = 0; i < keyParams.Count; i++)
+                // Multiple parameters: direct string.Concat with all parts
+                var concatPieces = new List<string> { $"_cachedMethodName_{safeFieldName}" };
+                foreach (var param in keyParams)
                 {
-                    var expr = GetParameterStringExpression(keyParams[i]);
-                    sb.AppendLine($"{indent}var keyPart{i} = {expr};");
+                    concatPieces.Add("\":\"");
+                    concatPieces.Add(GetParameterStringExpression(param));
                 }
-
-                var tupleElements = string.Join(", ", Enumerable.Range(0, keyParams.Count).Select(i => $"keyPart{i}"));
-                sb.AppendLine($"{indent}var keyTuple = ({tupleElements});");
-
-                var tupleConcatPieces = new List<string> { $"_cachedMethodName_{safeFieldName}" };
-                var keyPartConcatPieces = new List<string> { $"_cachedMethodName_{safeFieldName}" };
-                foreach (var partIndex in Enumerable.Range(0, keyParams.Count))
-                {
-                    tupleConcatPieces.Add("\":\"");
-                    tupleConcatPieces.Add($"tuple.Item{partIndex + 1}");
-                    keyPartConcatPieces.Add("\":\"");
-                    keyPartConcatPieces.Add($"keyPart{partIndex}");
-                }
-
-                var tupleConcatExpression = string.Join(", ", tupleConcatPieces);
-                var keyPartConcatExpression = string.Join(", ", keyPartConcatPieces);
-                sb.AppendLine($"{indent}string cacheKey;");
-                sb.AppendLine($"{indent}if (!_cacheKeyCache_{safeFieldName}.TryGetValue(keyTuple, out cacheKey))");
-                sb.AppendLine($"{indent}{{");
-                sb.AppendLine($"{indent}    if (_cacheKeyCache_{safeFieldName}.Count >= KeyCacheCapacity)");
-                sb.AppendLine($"{indent}    {{");
-                sb.AppendLine($"{indent}        cacheKey = string.Concat({keyPartConcatExpression});");
-                sb.AppendLine($"{indent}    }}");
-                sb.AppendLine($"{indent}    else");
-                sb.AppendLine($"{indent}    {{");
-                sb.AppendLine($"{indent}        cacheKey = _cacheKeyCache_{safeFieldName}.GetOrAdd(keyTuple, tuple => string.Concat({tupleConcatExpression}));");
-                sb.AppendLine($"{indent}    }}");
-                sb.AppendLine($"{indent}}}");
+                var concatExpression = string.Join(", ", concatPieces);
+                sb.AppendLine($"{indent}var cacheKey = string.Concat({concatExpression});");
             }
 
             private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, string innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
