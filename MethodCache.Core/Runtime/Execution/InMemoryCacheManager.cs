@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Infrastructure;
@@ -182,6 +183,14 @@ namespace MethodCache.Core.Runtime.Execution
 
         // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
+        private static readonly ConditionalWeakTable<CacheRuntimePolicy, CacheEntryPolicy> _policyCache = new();
+
+        private static CacheEntryPolicy GetCacheEntryPolicy(CacheRuntimePolicy policy)
+        {
+            ArgumentNullException.ThrowIfNull(policy);
+            return _policyCache.GetValue(policy, static p => CreatePolicyFromRuntimePolicy(p));
+        }
+
         public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             if (policy == null)
@@ -202,7 +211,7 @@ namespace MethodCache.Core.Runtime.Execution
                 return cachedResult;
             }
             
-            var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
+            var entryPolicy = GetCacheEntryPolicy(policy);
             var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
 
             if (!RequiresSingleFlight(entryPolicy))
@@ -306,7 +315,7 @@ namespace MethodCache.Core.Runtime.Execution
                 return cachedResult;
             }
 
-            var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
+            var entryPolicy = GetCacheEntryPolicy(policy);
             var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
 
             if (!RequiresSingleFlight(entryPolicy))
@@ -419,34 +428,23 @@ namespace MethodCache.Core.Runtime.Execution
         /// </summary>
         private async Task<T> ExecuteWithLightweightCoordination<T>(string key, Func<Task<object>> factory)
         {
-            // Create a Lazy that executes the factory exactly once, thread-safely
-            var newGate = new Lazy<Task<object>>(
-                () => factory(),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-
-            // GetOrAdd ensures only one Lazy wins - all waiters get the same Lazy instance
+            var newGate = new Lazy<Task<object>>(factory, LazyThreadSafetyMode.ExecutionAndPublication);
             var gate = _lightweightGates.GetOrAdd(key, newGate);
-
-            // Track whether we're the coordinator (won the race) or a waiter
             var isCoordinator = gate == newGate;
 
             try
             {
-                // Fast-path: If the task is already completed successfully, avoid await overhead
                 var task = gate.Value;
                 if (task.IsCompletedSuccessfully)
                 {
                     return (T)task.Result;
                 }
 
-                // Await the task (either our own factory or someone else's)
                 var result = await task.ConfigureAwait(false);
                 return (T)result;
             }
             finally
             {
-                // Clean up: only remove the gate if the dictionary still points at the same Lazy instance.
-                // This protects against a new coordinator installing a replacement gate while a waiter finishes.
                 if (isCoordinator || gate.Value.IsCompleted)
                 {
                     _lightweightGates.TryRemove(new KeyValuePair<string, Lazy<Task<object>>>(key, gate));

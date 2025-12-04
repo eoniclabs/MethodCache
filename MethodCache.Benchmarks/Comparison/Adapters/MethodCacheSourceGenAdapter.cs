@@ -24,19 +24,8 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
     {
         try
         {
-            // OPTIMIZATION: Use GetAsync with synchronous completion check to avoid sync-over-async
-            var task = _service.GetAsync(key);
-            SamplePayload? result;
-            if (task.IsCompletedSuccessfully)
-            {
-                // Fast path: task completed synchronously
-                result = task.Result;
-            }
-            else
-            {
-                // Slow path: have to block (but cache hits should never hit this)
-                result = task.GetAwaiter().GetResult();
-            }
+            // OPTIMIZATION: Use synchronous Get to avoid Task allocation and sync-over-async overhead
+            var result = _service.Get(key);
 
             if (result != null)
             {
@@ -98,8 +87,21 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
 
     public void Set<TValue>(string key, TValue value, TimeSpan duration)
     {
-        // Not used in read benchmarks
-        _service.Set(key, (SamplePayload)(object)value!);
+        if (value is not SamplePayload payload)
+        {
+            throw new InvalidOperationException("MethodCache benchmarks only support SamplePayload values.");
+        }
+
+        // Inject a one-time factory so the cache stores the provided payload
+        _baseService.Factory = _ => Task.FromResult(payload);
+        try
+        {
+            _service.GetOrCreateAsync(key).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            _baseService.Factory = null;
+        }
     }
 
     public void Remove(string key)

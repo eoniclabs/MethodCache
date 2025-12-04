@@ -127,10 +127,10 @@ public class UnifiedCacheComparisonBenchmarks
         _legacyMethodCache.Set(TestKey, TestPayload, duration);
         _manualKeyMethodCache.Set(TestKey, TestPayload, duration);
 
-        // MethodCache_SourceGen must populate cache by calling the cached method
-        // The Set() method is a no-op for source-generated services
+        // MethodCache_SourceGen must populate cache by calling the cached method so the decorator path runs
         var sourceGenAdapter = (MethodCacheSourceGenAdapter)_sourceGenMethodCache;
         _ = sourceGenAdapter.GetAsyncDirect(TestKey).GetAwaiter().GetResult();
+        sourceGenAdapter.TryGet<SamplePayload>(TestKey, out _);
 
         _fusionCache.Set(TestKey, TestPayload, duration);
         _lazyCache.Set(TestKey, TestPayload, duration);
@@ -459,4 +459,3 @@ public class SamplePayload
     public string Name { get; set; } = string.Empty;
     public byte[] Data { get; set; } = Array.Empty<byte>();
 }
-
