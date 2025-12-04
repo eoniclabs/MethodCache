@@ -58,9 +58,17 @@ Perfect for caching external APIs, legacy code, or when you prefer explicit cont
 ## 🎯 Key Features
 
 ### Performance
-- **Cache Hit**: 145ns
-- **Cache Miss**: 1.3ms
-- **8276x faster** than no caching
+- **Cache Hit**: ~95-138ns (industry-leading)
+- **Allocation**: 0-32 bytes per hit
+- **Stampede Protection**: ~37μs
+
+### Comparison with Alternatives
+| Framework | Cache Hit | Allocation |
+|-----------|-----------|------------|
+| **MethodCache** | **~95-138ns** | **0-32 B** |
+| LazyCache | ~149ns | 0 B |
+| FusionCache | ~484ns | 0 B |
+| EasyCaching | ~622ns | 1,374 B |
 
 ### Key Generators
 | Generator | Performance | Use Case |
@@ -106,6 +114,14 @@ await cacheManager.InvalidateByKeysAsync("GetUser_123");
     Tags = new[] { "users", "user:{userId}" },
     RequireIdempotent = true)]
 Task<User> GetUserAsync(int userId);
+```
+
+### Raw Key Optimization (NEW!)
+```csharp
+// Use [CacheKey(UseAsRawKey = true)] for maximum performance
+// The parameter becomes the cache key directly - no prefix, no overhead
+[Cache(Duration = "00:10:00")]
+Task<T> GetAsync<T>([CacheKey(UseAsRawKey = true)] string cacheKey);
 ```
 
 ### Automatic Invalidation

@@ -380,17 +380,17 @@ All libraries can coexist in the same project. Migrate gradually:
 
 ## Benchmarks
 
-Performance measured on .NET 9.0, December 2024:
+Performance measured on .NET 9.0, December 2025:
 
 | Library | Cache Hit Latency | Allocations |
 |---------|------------------|-------------|
-| MethodCache | **145ns** | 0 B |
-| IMemoryCache | 500ns | 32 B |
-| LazyCache | 600ns | 48 B |
-| FusionCache | 400ns | 40 B |
-| EasyCaching | 450ns | 56 B |
+| MethodCache (Manual Key) | **~95ns** | 0 B |
+| MethodCache (SourceGen) | **~138ns** | 32 B |
+| LazyCache | ~149ns | 0 B |
+| FusionCache | ~484ns | 0 B |
+| EasyCaching | ~622ns | 1,374 B |
 
-*Lower is better. Benchmarked with BenchmarkDotNet on M1 Mac.*
+*Lower is better. Benchmarked with BenchmarkDotNet on Apple M2.*
 
 ---
 
