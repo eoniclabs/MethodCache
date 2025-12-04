@@ -32,33 +32,47 @@ namespace MethodCache.SourceGenerator
                 => type.Name == nameof(CancellationToken) &&
                    type.ContainingNamespace?.ToDisplayString() == "System.Threading";
         
-            internal static bool IsTask(ITypeSymbol type, out string? typeArg)
+            internal static bool IsTask(ITypeSymbol type, out ITypeSymbol? innerType)
             {
-                typeArg = null;
-                if (type is INamedTypeSymbol nt && nt.Name == "Task" &&
-                    nt.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
+                if (type is INamedTypeSymbol namedType)
                 {
-                    if (nt.IsGenericType && nt.TypeArguments.Length == 1)
+                    if (namedType.IsGenericType &&
+                        namedType.ConstructedFrom.ToDisplayString() == "System.Threading.Tasks.Task<TResult>")
                     {
-                        typeArg = Utils.GetReturnTypeForSignature(nt.TypeArguments[0]);
+                        innerType = namedType.TypeArguments[0];
+                        return true;
+                    }
+
+                    if (namedType.ToDisplayString() == "System.Threading.Tasks.Task")
+                    {
+                        innerType = null; // Non-generic Task is conceptually void
                         return true;
                     }
                 }
+
+                innerType = null;
                 return false;
             }
         
-            internal static bool IsValueTask(ITypeSymbol type, out string? typeArg)
+            internal static bool IsValueTask(ITypeSymbol type, out ITypeSymbol? innerType)
             {
-                typeArg = null;
-                if (type is INamedTypeSymbol nt && nt.Name == "ValueTask" &&
-                    nt.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks")
+                if (type is INamedTypeSymbol namedType)
                 {
-                    if (nt.IsGenericType && nt.TypeArguments.Length == 1)
+                    if (namedType.IsGenericType &&
+                        namedType.ConstructedFrom.ToDisplayString() == "System.Threading.Tasks.ValueTask<TResult>")
                     {
-                        typeArg = Utils.GetReturnTypeForSignature(nt.TypeArguments[0]);
+                        innerType = namedType.TypeArguments[0];
+                        return true;
+                    }
+
+                    if (namedType.ToDisplayString() == "System.Threading.Tasks.ValueTask")
+                    {
+                        innerType = null; // Non-generic ValueTask is conceptually void
                         return true;
                     }
                 }
+
+                innerType = null;
                 return false;
             }
         

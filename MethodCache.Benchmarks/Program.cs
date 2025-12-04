@@ -2,7 +2,6 @@ using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Environments;
-using BenchmarkDotNet.Toolchains.InProcess.Emit;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Exporters.Json;
 using MethodCache.Benchmarks.Core;
@@ -23,9 +22,31 @@ public class Program
             return;
         }
 
-        var config = CreateBenchmarkConfig();
+        var quickRequested = false;
+        var cleanedArgs = new List<string>(args.Length);
 
-        switch (args[0].ToLowerInvariant())
+        foreach (var arg in args)
+        {
+            if (string.Equals(arg, "--quick", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(arg, "-q", StringComparison.OrdinalIgnoreCase))
+            {
+                quickRequested = true;
+            }
+            else
+            {
+                cleanedArgs.Add(arg);
+            }
+        }
+
+        if (cleanedArgs.Count == 0)
+        {
+            ShowHelp();
+            return;
+        }
+
+        var config = CreateBenchmarkConfig(quickRequested);
+
+        switch (cleanedArgs[0].ToLowerInvariant())
         {
             case "basic":
                 BenchmarkRunner.Run<BasicCachingBenchmarks>(config);
@@ -64,7 +85,16 @@ public class Program
                 break;
 
             case "comparison":
-                BenchmarkRunner.Run<Comparison.UnifiedCacheComparisonBenchmarks>(config);
+                var comparisonArgs = cleanedArgs.Skip(1).ToArray();
+                if (comparisonArgs.Length > 0)
+                {
+                    BenchmarkSwitcher.FromTypes(new[] { typeof(Comparison.UnifiedCacheComparisonBenchmarks) })
+                        .Run(comparisonArgs, config);
+                }
+                else
+                {
+                    BenchmarkRunner.Run<Comparison.UnifiedCacheComparisonBenchmarks>(config);
+                }
                 break;
 
             case "quickcompare":
@@ -75,12 +105,16 @@ public class Program
                 BenchmarkRunner.Run<Comparison.RealMethodCacheComparison>(config);
                 break;
 
+            case "profile":
+                BenchmarkRunner.Run<Microbenchmarks.SourceGenSyncPathProfiler>(config);
+                break;
+
             case "all":
                 RunAllBenchmarks(config);
                 break;
 
             default:
-                Console.WriteLine($"Unknown benchmark category: {args[0]}");
+                Console.WriteLine($"Unknown benchmark category: {cleanedArgs[0]}");
                 ShowHelp();
                 break;
         }
@@ -109,19 +143,23 @@ public class Program
         Console.WriteLine("  dotnet run -- comparison");
         Console.WriteLine("  dotnet run -- providers");
         Console.WriteLine("  dotnet run -- all");
+        Console.WriteLine("");
+        Console.WriteLine("Options:");
+        Console.WriteLine("  --quick, -q  Run using the lightweight benchmark job (same as BENCHMARK_QUICK=true)");
     }
 
-    private static IConfig CreateBenchmarkConfig()
+    private static IConfig CreateBenchmarkConfig(bool quickRequested)
     {
         // Check if we're in quick mode for development
-        var isQuickMode = Environment.GetEnvironmentVariable("BENCHMARK_QUICK") == "true";
+        var isQuickMode = quickRequested || Environment.GetEnvironmentVariable("BENCHMARK_QUICK") == "true";
 
         var job = Job.Default
             .WithPlatform(Platform.AnyCpu) // Auto-detect platform (ARM on Mac, x64 on Windows)
             .WithGcServer(true)
             .WithGcConcurrent(true)
             .WithGcRetainVm(true)
-            .WithToolchain(InProcessEmitToolchain.Instance);
+            .WithInvocationCount(32)
+            .WithUnrollFactor(8);
 
         if (isQuickMode)
         {

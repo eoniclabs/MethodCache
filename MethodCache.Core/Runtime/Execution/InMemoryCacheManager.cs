@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Infrastructure;
@@ -18,19 +19,16 @@ namespace MethodCache.Core.Runtime.Execution
     /// </summary>
     public class InMemoryCacheManager : ICacheManager, IMemoryCache
     {
-        // Thread-local Random to avoid contention in hot paths
-        private static readonly ThreadLocal<Random> ThreadLocalRandom = new ThreadLocal<Random>(() => new Random(Guid.NewGuid().GetHashCode()));
         private class EnhancedCacheEntry
         {
             private long _accessCount;
-            
+
             public object Value { get; init; } = null!;
-            public HashSet<string> Tags { get; init; } = new HashSet<string>();
+            public HashSet<string>? Tags { get; init; }
             public DateTimeOffset AbsoluteExpiration { get; set; }
             public DateTime CreatedAt { get; init; }
             public DateTime LastAccessedAt { get; set; }
             public long AccessCount => _accessCount;
-            public LinkedListNode<string>? OrderNode { get; set; } // For O(1) eviction tracking
             public CacheEntryPolicy Policy { get; init; } = CacheEntryPolicy.Empty;
 
             public bool IsExpired => DateTime.UtcNow > AbsoluteExpiration;
@@ -67,23 +65,20 @@ namespace MethodCache.Core.Runtime.Execution
 
         private readonly ConcurrentDictionary<string, EnhancedCacheEntry> _cache = new();
         private readonly ConcurrentDictionary<string, TaskCompletionSource<object>> _singleFlightGates = new();
+        private readonly ConcurrentDictionary<string, Lazy<Task<object>>> _lightweightGates = new(); // Lightweight coordination gate per cache key
         private readonly ConcurrentDictionary<string, DistributedLockState> _distributedLocks = new();
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly MemoryCacheOptions _options;
         private readonly Timer? _cleanupTimer;
         private readonly SemaphoreSlim _evictionSemaphore;
         private readonly MemoryUsageCalculator _memoryCalculator;
-        
-        // O(1) eviction tracking
-        private readonly LinkedList<string> _accessOrder = new();
-        private readonly object _accessOrderLock = new object();
-        
+
         // Tag reverse index for O(1) tag invalidation
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new();
-        private readonly object _tagIndexLock = new object();
         private const int MaxTagMappings = 100000; // Prevent unbounded growth
         private int _currentTagMappings = 0;
-        
+        private int _cleanupScheduled = 0;
+
         // Statistics
         private long _hits;
         private long _misses;
@@ -109,24 +104,22 @@ namespace MethodCache.Core.Runtime.Execution
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             if (tags == null || !tags.Any()) return Task.CompletedTask;
-            
+
             var keysToRemove = new HashSet<string>();
-            
-            // Use O(1) reverse index lookup instead of iterating entire cache
-            lock (_tagIndexLock)
+
+            // Lock-free O(1) reverse index lookup
+            foreach (var tag in tags)
             {
-                foreach (var tag in tags)
+                if (_tagToKeys.TryGetValue(tag, out var tagKeys))
                 {
-                    if (_tagToKeys.TryGetValue(tag, out var tagKeys))
+                    // Snapshot the keys - ConcurrentDictionary.Keys is thread-safe
+                    foreach (var key in tagKeys.Keys)
                     {
-                        foreach (var key in tagKeys.Keys)
-                        {
-                            keysToRemove.Add(key);
-                        }
+                        keysToRemove.Add(key);
                     }
                 }
             }
-            
+
             // Remove all collected keys completely
             foreach (var key in keysToRemove)
             {
@@ -135,7 +128,7 @@ namespace MethodCache.Core.Runtime.Execution
                     RemoveEntryCompletely(key, entry);
                 }
             }
-            
+
             return Task.CompletedTask;
         }
 
@@ -190,6 +183,25 @@ namespace MethodCache.Core.Runtime.Execution
 
         // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
+        /// <summary>
+        /// Static cache for converted CacheEntryPolicy objects. Uses ConditionalWeakTable to:
+        /// 1. Avoid repeated allocations of CacheEntryPolicy on every cache miss
+        /// 2. Automatically clean up entries when the CacheRuntimePolicy is garbage collected
+        ///
+        /// This cache is intentionally static and shared across all InMemoryCacheManager instances.
+        /// Since CacheRuntimePolicy objects are typically singletons (created once per decorated method
+        /// and cached in the generated decorator), sharing the converted policies is safe and beneficial.
+        /// The ConditionalWeakTable ensures no memory leaks - when a CacheRuntimePolicy is collected,
+        /// its associated CacheEntryPolicy is also eligible for collection.
+        /// </summary>
+        private static readonly ConditionalWeakTable<CacheRuntimePolicy, CacheEntryPolicy> _policyCache = new();
+
+        private static CacheEntryPolicy GetCacheEntryPolicy(CacheRuntimePolicy policy)
+        {
+            ArgumentNullException.ThrowIfNull(policy);
+            return _policyCache.GetValue(policy, static p => CreatePolicyFromRuntimePolicy(p));
+        }
+
         public async Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             if (policy == null)
@@ -198,7 +210,6 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             var key = keyGenerator.GenerateKey(methodName, args, policy);
-            var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
 
             var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
             if (cachedResult != null)
@@ -210,8 +221,53 @@ namespace MethodCache.Core.Runtime.Execution
                 }
                 return cachedResult;
             }
-
+            
+            var entryPolicy = GetCacheEntryPolicy(policy);
             var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
+
+            if (!RequiresSingleFlight(entryPolicy))
+            {
+                // Lightweight coordination: prevents duplicate work without TCS overhead
+                // Track if we're the coordinator (executing factory) or a waiter (getting cached result from coordinator)
+                var isCoordinator = false;
+                var result = await ExecuteWithLightweightCoordination<T>(key, async () =>
+                {
+                    isCoordinator = true;
+                    var factoryResult = await factory().ConfigureAwait(false);
+
+                    if (factoryResult != null)
+                    {
+                        var expiration = policy.Duration ?? _options.DefaultExpiration;
+                        var effectiveExpiration = expiration > _options.MaxExpiration
+                            ? _options.MaxExpiration
+                            : expiration;
+                        await SetAsync(key, factoryResult, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                    }
+
+                    return (object)factoryResult!;
+                }).ConfigureAwait(false);
+
+                // Track metrics based on whether we coordinated or waited
+                if (isCoordinator)
+                {
+                    _metricsProvider.CacheMiss(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _misses);
+                    }
+                }
+                else
+                {
+                    // Waiter got result from coordinator - treat as cache hit
+                    _metricsProvider.CacheHit(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _hits);
+                    }
+                }
+
+                return result;
+            }
 
             return await ExecuteWithSingleFlight(key, async () =>
             {
@@ -245,6 +301,166 @@ namespace MethodCache.Core.Runtime.Execution
 
             var key = keyGenerator.GenerateKey(methodName, args, policy);
             return GetAsyncInternal<T>(key, updateStatistics: false);
+        }
+
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        {
+            if (string.IsNullOrWhiteSpace(cacheKey))
+            {
+                throw new ArgumentException("Cache key is required", nameof(cacheKey));
+            }
+
+            if (policy == null)
+            {
+                throw new ArgumentNullException(nameof(policy));
+            }
+
+            var cachedResult = await GetAsyncInternal<T>(cacheKey, updateStatistics: false);
+            if (cachedResult != null)
+            {
+                _metricsProvider.CacheHit(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _hits);
+                }
+                return cachedResult;
+            }
+
+            var entryPolicy = GetCacheEntryPolicy(policy);
+            var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
+
+            if (!RequiresSingleFlight(entryPolicy))
+            {
+                // Lightweight coordination: prevents duplicate work without TCS overhead
+                // Track if we're the coordinator (executing factory) or a waiter (getting cached result from coordinator)
+                var isCoordinator = false;
+                var result = await ExecuteWithLightweightCoordination<T>(cacheKey, async () =>
+                {
+                    isCoordinator = true;
+                    var factoryResult = await factory().ConfigureAwait(false);
+
+                    if (factoryResult != null)
+                    {
+                        var expiration = policy.Duration ?? _options.DefaultExpiration;
+                        var effectiveExpiration = expiration > _options.MaxExpiration
+                            ? _options.MaxExpiration
+                            : expiration;
+                        await SetAsync(cacheKey, factoryResult, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                    }
+
+                    return (object)factoryResult!;
+                }).ConfigureAwait(false);
+
+                // Track metrics based on whether we coordinated or waited
+                if (isCoordinator)
+                {
+                    _metricsProvider.CacheMiss(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _misses);
+                    }
+                }
+                else
+                {
+                    // Waiter got result from coordinator - treat as cache hit
+                    _metricsProvider.CacheHit(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _hits);
+                    }
+                }
+
+                return result;
+            }
+
+            return await ExecuteWithSingleFlight(cacheKey, async () =>
+            {
+                var result = await factory().ConfigureAwait(false);
+
+                if (result != null)
+                {
+                    var expiration = policy.Duration ?? _options.DefaultExpiration;
+                    var effectiveExpiration = expiration > _options.MaxExpiration
+                        ? _options.MaxExpiration
+                        : expiration;
+                    await SetAsync(cacheKey, result, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                }
+
+                _metricsProvider.CacheMiss(methodName);
+                if (_options.EnableStatistics)
+                {
+                    Interlocked.Increment(ref _misses);
+                }
+
+                return result!;
+            }, methodName, entryPolicy).ConfigureAwait(false);
+        }
+
+        public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+        {
+            // Check if fast path is enabled
+            if (!_options.EnableFastPath)
+            {
+                // Fall back to standard path with full feature set
+                return GetAsyncInternal<T>(cacheKey, updateStatistics: false);
+            }
+
+            // Ultra-fast path: minimal overhead, just dictionary lookup + expiration check
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                // Only check expiration, skip everything else for maximum performance
+                if (!entry.IsExpired)
+                {
+                    // Optional: Track metrics if configured
+                    if (_options.FastPathTrackMetrics && _options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _hits);
+                    }
+
+                    try
+                    {
+                        return new ValueTask<T?>((T)entry.Value);
+                    }
+                    catch (InvalidCastException)
+                    {
+                        // Type mismatch - treat as miss
+                        return new ValueTask<T?>(default(T?));
+                    }
+                }
+            }
+
+            return new ValueTask<T?>(default(T?));
+        }
+
+        /// <summary>
+        /// Lightweight coordination to prevent duplicate work using Lazy&lt;Task&lt;object&gt;&gt; pattern.
+        /// This eliminates TaskCompletionSource allocations and while-loop churn under stampede scenarios.
+        /// Waiters are treated as cache hits for accurate metrics.
+        /// </summary>
+        private async Task<T> ExecuteWithLightweightCoordination<T>(string key, Func<Task<object>> factory)
+        {
+            var newGate = new Lazy<Task<object>>(factory, LazyThreadSafetyMode.ExecutionAndPublication);
+            var gate = _lightweightGates.GetOrAdd(key, newGate);
+            var isCoordinator = gate == newGate;
+
+            try
+            {
+                var task = gate.Value;
+                if (task.IsCompletedSuccessfully)
+                {
+                    return (T)task.Result;
+                }
+
+                var result = await task.ConfigureAwait(false);
+                return (T)result;
+            }
+            finally
+            {
+                if (isCoordinator || gate.Value.IsCompleted)
+                {
+                    _lightweightGates.TryRemove(new KeyValuePair<string, Lazy<Task<object>>>(key, gate));
+                }
+            }
         }
 
         /// <summary>
@@ -342,6 +558,46 @@ namespace MethodCache.Core.Runtime.Execution
                 null); // Metrics are extracted from metadata if needed
         }
 
+        private static bool RequiresSingleFlight(CacheEntryPolicy policy)
+        {
+            // Fast path: Empty or minimal policy doesn't need heavy single-flight coordination
+            if (policy == CacheEntryPolicy.Empty)
+            {
+                return false;
+            }
+
+            // Check for minimal policy (only duration, no advanced features)
+            var hasOnlyDuration = policy.Duration.HasValue &&
+                                  !policy.SlidingExpiration.HasValue &&
+                                  !policy.RefreshAhead.HasValue &&
+                                  policy.StampedeProtection == null &&
+                                  policy.DistributedLock == null;
+
+            if (hasOnlyDuration)
+            {
+                return false; // Use lightweight coordination instead
+            }
+
+            if (policy.DistributedLock != null)
+            {
+                return true;
+            }
+
+            var stampede = policy.StampedeProtection;
+            if (stampede == null)
+            {
+                return false;
+            }
+
+            return stampede.Mode switch
+            {
+                StampedeProtectionMode.DistributedLock => true,
+                StampedeProtectionMode.RefreshAhead => true,
+                StampedeProtectionMode.Probabilistic => true,
+                _ => false
+            };
+        }
+
         #region IMemoryCache Implementation
 
         public ValueTask<T?> GetAsync<T>(string key)
@@ -353,7 +609,8 @@ namespace MethodCache.Core.Runtime.Execution
         {
             if (_cache.TryGetValue(key, out var entry))
             {
-                if (entry.IsExpired || ShouldForceRefresh(entry))
+                // FAST PATH: Check expiration first (like FusionCache)
+                if (entry.IsExpired)
                 {
                     RemoveEntryCompletely(key, entry);
                     if (updateStatistics && _options.EnableStatistics)
@@ -363,17 +620,42 @@ namespace MethodCache.Core.Runtime.Execution
                     return new ValueTask<T?>(default(T));
                 }
 
-                ApplySlidingExpiration(entry);
+                // Check if we need advanced features (refresh-ahead, sliding expiration, etc.)
+                var needsAdvancedFeatures =
+                    entry.Policy.SlidingExpiration.HasValue ||
+                    entry.Policy.RefreshAhead.HasValue ||
+                    entry.Policy.StampedeProtection != null;
 
-                // Update access tracking with O(1) LinkedList operation
-                entry.UpdateAccess();
-                UpdateAccessOrder(key, entry);
-                
+                if (needsAdvancedFeatures)
+                {
+                    // SLOW PATH: Full feature set
+                    if (ShouldForceRefresh(entry))
+                    {
+                        RemoveEntryCompletely(key, entry);
+                        if (updateStatistics && _options.EnableStatistics)
+                        {
+                            Interlocked.Increment(ref _misses);
+                        }
+                        return new ValueTask<T?>(default(T));
+                    }
+
+                    ApplySlidingExpiration(entry);
+                    entry.UpdateAccess();
+                }
+                else if (_options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU ||
+                         _options.EvictionPolicy == MemoryCacheEvictionPolicy.LFU ||
+                         _options.EvictionPolicy == MemoryCacheEvictionPolicy.LFU_Precise)
+                {
+                    // Only update access for LRU/LFU policies when no advanced features
+                    entry.UpdateAccess();
+                }
+                // FAST PATH: Skip UpdateAccess for FIFO/TTL policies with no advanced features
+
                 if (updateStatistics && _options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
                 }
-                
+
                 try
                 {
                     return new ValueTask<T?>((T)entry.Value);
@@ -454,7 +736,7 @@ namespace MethodCache.Core.Runtime.Execution
                     var beta = stampede.Beta <= 0 ? 1d : stampede.Beta;
                     var ratio = Math.Min(1d, age.TotalSeconds / duration.TotalSeconds);
                     var probability = Math.Exp(-beta * ratio);
-                    var sample = ThreadLocalRandom.Value!.NextDouble();
+                    var sample = Random.Shared.NextDouble();
                     return sample > probability;
                 }
                 case StampedeProtectionMode.DistributedLock:
@@ -513,29 +795,8 @@ namespace MethodCache.Core.Runtime.Execution
             }
         }
         
-        /// <summary>
-        /// Updates access order for eviction policies with O(1) LinkedList operations.
-        /// </summary>
-        private void UpdateAccessOrder(string key, EnhancedCacheEntry entry)
-        {
-            // Only update order for LRU policy (FIFO doesn't move on access)
-            if (_options.EvictionPolicy != MemoryCacheEvictionPolicy.LRU) return;
-            
-            lock (_accessOrderLock)
-            {
-                if (entry.OrderNode != null)
-                {
-                    // Move existing node to head (most recently used)
-                    _accessOrder.Remove(entry.OrderNode);
-                    _accessOrder.AddFirst(entry.OrderNode);
-                }
-                else
-                {
-                    // Add new node to head
-                    entry.OrderNode = _accessOrder.AddFirst(key);
-                }
-            }
-        }
+        // UpdateAccessOrder methods removed - using lazy LRU (timestamp-based) instead
+        // Timestamps are updated in UpdateAccess(), sorting happens only at eviction time
         
         /// <summary>
         /// Completely removes an entry from all data structures.
@@ -543,17 +804,7 @@ namespace MethodCache.Core.Runtime.Execution
         private void RemoveEntryCompletely(string key, EnhancedCacheEntry entry)
         {
             _cache.TryRemove(key, out _);
-            
-            // Remove from access order tracking
-            lock (_accessOrderLock)
-            {
-                if (entry.OrderNode != null)
-                {
-                    _accessOrder.Remove(entry.OrderNode);
-                    entry.OrderNode = null;
-                }
-            }
-            
+
             // Remove from tag index
             RemoveFromTagIndex(key, entry.Tags);
 
@@ -573,14 +824,57 @@ namespace MethodCache.Core.Runtime.Execution
                 return;
             }
 
-            var effectiveExpiration = expiration > _options.MaxExpiration 
-                ? _options.MaxExpiration 
+            var effectiveExpiration = expiration > _options.MaxExpiration
+                ? _options.MaxExpiration
                 : expiration;
 
-            var entry = new EnhancedCacheEntry
+            // FAST PATH: No tags, under capacity, no complex features
+            // This path avoids HashSet allocation, tag index locking, and eviction checks
+            var hasTags = tags.Length > 0;
+            var hasComplexPolicy = policy != null && policy != CacheEntryPolicy.Empty &&
+                                   (policy.SlidingExpiration.HasValue ||
+                                    policy.RefreshAhead.HasValue ||
+                                    policy.StampedeProtection != null ||
+                                    policy.DistributedLock != null);
+
+            var currentCount = _cache.Count;
+            var capacityThreshold = (int)(_options.MaxItems * 0.9); // 90% capacity
+
+            if (!hasTags && !hasComplexPolicy && currentCount < capacityThreshold)
+            {
+                // Ultra-fast path: minimal allocations, no locks, no eviction
+                var entry = new EnhancedCacheEntry
+                {
+                    Value = value!,
+                    Tags = null, // No HashSet allocation
+                    CreatedAt = DateTime.UtcNow,
+                    AbsoluteExpiration = DateTimeOffset.UtcNow.Add(effectiveExpiration),
+                    LastAccessedAt = DateTime.UtcNow,
+                    Policy = CacheEntryPolicy.Empty
+                };
+
+                // Check if updating existing entry
+                if (_cache.TryGetValue(key, out var oldEntry))
+                {
+                    // Only remove from tag index if old entry had tags
+                    if (oldEntry.Tags != null && oldEntry.Tags.Count > 0)
+                    {
+                        RemoveFromTagIndex(key, oldEntry.Tags);
+                    }
+                }
+
+                // Simple dictionary insert - lock-free for ConcurrentDictionary
+                _cache[key] = entry;
+                return; // Skip tag index, skip eviction semaphore
+            }
+
+            // SLOW PATH: Complex scenarios with tags, eviction, or advanced features
+            var tagSet = hasTags ? new HashSet<string>(tags) : null;
+
+            var fullEntry = new EnhancedCacheEntry
             {
                 Value = value!,
-                Tags = new HashSet<string>(tags),
+                Tags = tagSet,
                 CreatedAt = DateTime.UtcNow,
                 AbsoluteExpiration = DateTimeOffset.UtcNow.Add(effectiveExpiration),
                 LastAccessedAt = DateTime.UtcNow,
@@ -588,82 +882,99 @@ namespace MethodCache.Core.Runtime.Execution
             };
 
             // Check if this is an update to existing entry
-            var isUpdate = _cache.TryGetValue(key, out var oldEntry);
-            
+            var isUpdate = _cache.TryGetValue(key, out var existingEntry);
+
             // Only evict if this is a new entry and we're at capacity
             if (!isUpdate && _cache.Count >= _options.MaxItems)
             {
                 await TryEvictAsync();
             }
-            
+
             // Remove old entry completely if updating
-            if (isUpdate && oldEntry != null)
+            if (isUpdate && existingEntry != null)
             {
-                RemoveEntryCompletely(key, oldEntry);
+                RemoveEntryCompletely(key, existingEntry);
             }
-            
+
             // Add the new entry to all data structures
-            _cache[key] = entry;
-            AddToAccessOrder(key, entry);
-            AddToTagIndex(key, entry.Tags);
-        }
-        
-        /// <summary>
-        /// Adds entry to access order tracking with O(1) operation.
-        /// </summary>
-        private void AddToAccessOrder(string key, EnhancedCacheEntry entry)
-        {
-            lock (_accessOrderLock)
-            {
-                entry.OrderNode = _accessOrder.AddFirst(key);
-            }
+            _cache[key] = fullEntry;
+            AddToTagIndex(key, fullEntry.Tags);
         }
         
         /// <summary>
         /// Adds entry to tag reverse index with size limit protection.
+        /// Lock-free implementation using CAS operations for high concurrency.
         /// </summary>
-        private void AddToTagIndex(string key, HashSet<string> tags)
+        private void TryScheduleTagCleanup()
         {
-            lock (_tagIndexLock)
+            if (Interlocked.CompareExchange(ref _cleanupScheduled, 1, 0) == 0)
             {
-                // Check if we're approaching the limit
-                if (_currentTagMappings >= MaxTagMappings)
+                _ = Task.Run(async () =>
                 {
-                    // Perform cleanup of stale entries
-                    CleanupStaleTags();
-                }
-                
-                foreach (var tag in tags)
-                {
-                    var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
-                    if (tagKeys.TryAdd(key, 0))
+                    try
                     {
-                        Interlocked.Increment(ref _currentTagMappings);
+                        await CleanupStaleTagsAsync().ConfigureAwait(false);
                     }
+                    catch (Exception ex)
+                    {
+                        _metricsProvider.CacheError(nameof(InMemoryCacheManager), $"Tag cleanup failed: {ex.Message}");
+                    }
+                    finally
+                    {
+                        Interlocked.Exchange(ref _cleanupScheduled, 0);
+                    }
+                });
+            }
+        }
+
+        private void AddToTagIndex(string key, HashSet<string>? tags)
+        {
+            if (tags == null || tags.Count == 0)
+            {
+                return;
+            }
+
+            // Check if we're approaching the limit (lock-free read)
+            if (_currentTagMappings >= MaxTagMappings)
+            {
+                TryScheduleTagCleanup();
+            }
+
+            // Lock-free tag additions using ConcurrentDictionary
+            foreach (var tag in tags)
+            {
+                var tagKeys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
+                if (tagKeys.TryAdd(key, 0))
+                {
+                    Interlocked.Increment(ref _currentTagMappings);
                 }
             }
         }
         
         /// <summary>
         /// Removes entry from tag reverse index.
+        /// Lock-free implementation using ConcurrentDictionary operations.
         /// </summary>
-        private void RemoveFromTagIndex(string key, HashSet<string> tags)
+        private void RemoveFromTagIndex(string key, HashSet<string>? tags)
         {
-            lock (_tagIndexLock)
+            if (tags == null || tags.Count == 0)
             {
-                foreach (var tag in tags)
+                return;
+            }
+
+            // Lock-free tag removals
+            foreach (var tag in tags)
+            {
+                if (_tagToKeys.TryGetValue(tag, out var tagKeys))
                 {
-                    if (_tagToKeys.TryGetValue(tag, out var tagKeys))
+                    if (tagKeys.TryRemove(key, out _))
                     {
-                        if (tagKeys.TryRemove(key, out _))
-                        {
-                            Interlocked.Decrement(ref _currentTagMappings);
-                        }
-                        // Clean up empty tag entries
-                        if (tagKeys.IsEmpty)
-                        {
-                            _tagToKeys.TryRemove(tag, out _);
-                        }
+                        Interlocked.Decrement(ref _currentTagMappings);
+                    }
+                    // Clean up empty tag entries
+                    if (tagKeys.IsEmpty)
+                    {
+                        _tagToKeys.TryRemove(tag, out _);
                     }
                 }
             }
@@ -671,11 +982,15 @@ namespace MethodCache.Core.Runtime.Execution
         
         /// <summary>
         /// Cleanup stale tag mappings to prevent memory leaks.
+        /// Lock-free async implementation that runs in background.
         /// </summary>
-        private void CleanupStaleTags()
+        private async Task CleanupStaleTagsAsync()
         {
+            // Yield to ensure we're running on thread pool
+            await Task.Yield();
+
             var keysToRemove = new List<string>();
-            
+
             // Check all tag mappings and remove entries that no longer exist in cache
             foreach (var tagEntry in _tagToKeys)
             {
@@ -686,8 +1001,8 @@ namespace MethodCache.Core.Runtime.Execution
                         keysToRemove.Add(key);
                     }
                 }
-                
-                // Remove stale keys from this tag
+
+                // Remove stale keys from this tag (lock-free)
                 foreach (var key in keysToRemove)
                 {
                     if (tagEntry.Value.TryRemove(key, out _))
@@ -695,10 +1010,10 @@ namespace MethodCache.Core.Runtime.Execution
                         Interlocked.Decrement(ref _currentTagMappings);
                     }
                 }
-                
+
                 keysToRemove.Clear();
-                
-                // Remove empty tag entries
+
+                // Remove empty tag entries (lock-free)
                 if (tagEntry.Value.IsEmpty)
                 {
                     _tagToKeys.TryRemove(tagEntry.Key, out _);
@@ -720,18 +1035,12 @@ namespace MethodCache.Core.Runtime.Execution
         {
             _cache.Clear();
             _singleFlightGates.Clear();
-            
-            // Clear all tracking structures
-            lock (_accessOrderLock)
-            {
-                _accessOrder.Clear();
-            }
-            
-            lock (_tagIndexLock)
-            {
-                _tagToKeys.Clear();
-            }
-            
+            _lightweightGates.Clear();
+
+            // Lock-free clear - ConcurrentDictionary.Clear() is thread-safe
+            _tagToKeys.Clear();
+            Interlocked.Exchange(ref _currentTagMappings, 0);
+
             // Reset statistics
             if (_options.EnableStatistics)
             {
@@ -739,7 +1048,7 @@ namespace MethodCache.Core.Runtime.Execution
                 Interlocked.Exchange(ref _misses, 0);
                 Interlocked.Exchange(ref _evictions, 0);
             }
-            
+
             return ValueTask.CompletedTask;
         }
 
@@ -851,34 +1160,41 @@ namespace MethodCache.Core.Runtime.Execution
         }
         
         /// <summary>
-        /// O(1) eviction for LRU and FIFO policies using LinkedList.
+        /// Lazy LRU/FIFO eviction using timestamp-based sorting (like Microsoft.Extensions.Caching.Memory).
+        /// No locks during cache hits, sorting only happens here during eviction.
         /// </summary>
         private int EvictFromAccessOrderO1(int maxEvictions)
         {
-            int evicted = 0;
-            
-            lock (_accessOrderLock)
+            var totalItems = _cache.Count;
+            if (totalItems == 0 || maxEvictions <= 0)
             {
-                for (int i = 0; i < maxEvictions && _accessOrder.Count > 0; i++)
+                return 0;
+            }
+
+            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * _options.EvictionSamplePercentage));
+            sampleSize = Math.Min(sampleSize, totalItems);
+
+            var candidates = sampleSize >= totalItems
+                ? _cache.ToList()
+                : TakeRandomSample(sampleSize);
+
+            var ordered = (_options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU
+                    ? candidates.OrderBy(kvp => kvp.Value.LastAccessedAt)
+                    : candidates.OrderBy(kvp => kvp.Value.CreatedAt))
+                .Take(maxEvictions)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            var evicted = 0;
+            foreach (var key in ordered)
+            {
+                if (_cache.TryGetValue(key, out var entry))
                 {
-                    var lastNode = _accessOrder.Last;
-                    if (lastNode == null) break;
-                    
-                    var keyToEvict = lastNode.Value;
-                    
-                    // Remove from access order first
-                    _accessOrder.RemoveLast();
-                    
-                    // Try to remove from cache
-                    if (_cache.TryRemove(keyToEvict, out var entry))
-                    {
-                        entry.OrderNode = null; // Clear the reference
-                        RemoveFromTagIndex(keyToEvict, entry.Tags);
-                        evicted++;
-                    }
+                    RemoveEntryCompletely(key, entry);
+                    evicted++;
                 }
             }
-            
+
             return evicted;
         }
         
@@ -988,8 +1304,34 @@ namespace MethodCache.Core.Runtime.Execution
                     evicted++;
                 }
             }
-            
+
             return evicted;
+        }
+
+        private List<KeyValuePair<string, EnhancedCacheEntry>> TakeRandomSample(int sampleSize)
+        {
+            var reservoir = new List<KeyValuePair<string, EnhancedCacheEntry>>(sampleSize);
+            var count = 0;
+
+            foreach (var kvp in _cache)
+            {
+                if (count < sampleSize)
+                {
+                    reservoir.Add(kvp);
+                }
+                else
+                {
+                    var index = Random.Shared.Next(count + 1);
+                    if (index < sampleSize)
+                    {
+                        reservoir[index] = kvp;
+                    }
+                }
+
+                count++;
+            }
+
+            return reservoir;
         }
 
 
@@ -1076,7 +1418,6 @@ namespace MethodCache.Core.Runtime.Execution
                 _evictionSemaphore?.Dispose();
                 _cache.Clear();
                 _singleFlightGates.Clear();
-                ThreadLocalRandom?.Dispose();
                 _disposed = true;
             }
         }

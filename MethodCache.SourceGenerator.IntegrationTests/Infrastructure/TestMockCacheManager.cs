@@ -98,6 +98,57 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             return ValueTask.FromResult(default(T));
         }
 
+        public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+        {
+            if (_cache.TryGetValue(cacheKey, out var cacheEntry) && !cacheEntry.IsExpired)
+            {
+                return ValueTask.FromResult((T?)cacheEntry.Value);
+            }
+
+            return ValueTask.FromResult(default(T));
+        }
+
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        {
+            // Check cache first and verify not expired
+            if (_cache.TryGetValue(cacheKey, out var cacheEntry))
+            {
+                if (!cacheEntry.IsExpired)
+                {
+                    // Metrics are tracked in the generated decorator code, not here
+                    return (T)cacheEntry.Value;
+                }
+                else
+                {
+                    // Remove expired entry
+                    _cache.TryRemove(cacheKey, out _);
+                }
+            }
+
+            // Cache miss - call factory
+            // Metrics are tracked in the generated decorator code, not here
+            try
+            {
+                var result = await factory();
+                if (result != null)
+                {
+                    var expiryTime = DateTime.UtcNow.Add(policy.Duration ?? TimeSpan.FromMinutes(5));
+                    var newEntry = new CacheEntry
+                    {
+                        Value = result,
+                        ExpiryTime = expiryTime
+                    };
+                    _cache.TryAdd(cacheKey, newEntry);
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _metricsProvider.CacheError(methodName, ex.Message);
+                throw;
+            }
+        }
+
         // ============= Invalidation methods =============
 
         public Task InvalidateByTagsAsync(params string[] tags)
