@@ -313,16 +313,9 @@ namespace MethodCache.SourceGenerator
                 var isReferenceType = innerReturnType != null && innerReturnType.IsReferenceType;
                 var canUseUltraFastPath = CanGenerateInlineKey(keyParams) && isReferenceType;
 
-                // Method signature - use async for Task/ValueTask methods with ultra-fast path
-                var isAsyncReturn = Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _);
-                if (isAsyncReturn && canUseUltraFastPath)
-                {
-                    EmitAsyncMethodSignature(sb, method);
-                }
-                else
-                {
-                    EmitMethodSignature(sb, method);
-                }
+                // Method signature - use standard signature (no async) for Task/ValueTask methods with ultra-fast path
+                // to avoid state machine allocation
+                EmitMethodSignature(sb, method);
                 sb.AppendLine("        {");
 
                 // Don't allocate args array yet - only allocate on cache miss (ultra-fast path optimization)
@@ -472,7 +465,6 @@ namespace MethodCache.SourceGenerator
                     EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
                     sb.AppendLine();
 
-                    // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
                     sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{innerType}>(cacheKey);");
                     sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
                     sb.AppendLine($"            {{");
@@ -480,28 +472,22 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                if (cachedValue != null)");
                     sb.AppendLine($"                {{");
                     sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                    return cachedValue;");
+                    sb.AppendLine($"                    return Task.FromResult(cachedValue);");
                     sb.AppendLine($"                }}");
                     sb.AppendLine($"            }}");
-                    sb.AppendLine($"            else");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = await cacheTask.ConfigureAwait(false);");
-                    sb.AppendLine($"                if (cachedValue != null)");
-                    sb.AppendLine($"                {{");
-                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                    return cachedValue;");
-                    sb.AppendLine($"                }}");
-                    sb.AppendLine($"            }}");
+                    // No 'else' block for cacheTask because InMemoryCacheManager.TryGetFastAsync always completes synchronously.
+                    // Fall through to GetOrCreateFastAsync in case of miss or non-successful completion (e.g. type mismatch)
+
                     sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: track metric and use fast path");
+                    sb.AppendLine($"            // Cache miss or non-successful TryGet: track metric and use fast path GetOrCreate");
                     sb.AppendLine($"            _metricsProvider?.CacheMiss(_cachedMethodName_{safeFieldName});");
 
                     // Use GetOrCreateFastAsync (metrics already tracked above)
-                    sb.AppendLine($"            return await _cacheManager.GetOrCreateFastAsync<{innerType}>(");
+                    sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{innerType}>(");
                     sb.AppendLine($"                cacheKey,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
                     sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName}).ConfigureAwait(false);");
+                    sb.AppendLine($"                _cachedPolicy_{safeFieldName});");
                 }
                 else
                 {

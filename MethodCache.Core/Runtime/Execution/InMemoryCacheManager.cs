@@ -205,6 +205,50 @@ namespace MethodCache.Core.Runtime.Execution
             var entryPolicy = CreatePolicyFromRuntimePolicy(policy);
             var tags = policy.Tags.Count > 0 ? policy.Tags.ToArray() : Array.Empty<string>();
 
+            if (!RequiresSingleFlight(entryPolicy))
+            {
+                // Lightweight coordination: prevents duplicate work without TCS overhead
+                // Track if we're the coordinator (executing factory) or a waiter (getting cached result from coordinator)
+                var isCoordinator = false;
+                var result = await ExecuteWithLightweightCoordination<T>(key, async () =>
+                {
+                    isCoordinator = true;
+                    var factoryResult = await factory().ConfigureAwait(false);
+
+                    if (factoryResult != null)
+                    {
+                        var expiration = policy.Duration ?? _options.DefaultExpiration;
+                        var effectiveExpiration = expiration > _options.MaxExpiration
+                            ? _options.MaxExpiration
+                            : expiration;
+                        await SetAsync(key, factoryResult, effectiveExpiration, tags, entryPolicy).ConfigureAwait(false);
+                    }
+
+                    return (object)factoryResult!;
+                }).ConfigureAwait(false);
+
+                // Track metrics based on whether we coordinated or waited
+                if (isCoordinator)
+                {
+                    _metricsProvider.CacheMiss(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _misses);
+                    }
+                }
+                else
+                {
+                    // Waiter got result from coordinator - treat as cache hit
+                    _metricsProvider.CacheHit(methodName);
+                    if (_options.EnableStatistics)
+                    {
+                        Interlocked.Increment(ref _hits);
+                    }
+                }
+
+                return result;
+            }
+
             return await ExecuteWithSingleFlight(key, async () =>
             {
                 var result = await factory().ConfigureAwait(false);
