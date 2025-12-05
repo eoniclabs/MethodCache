@@ -261,12 +261,6 @@
       "description": "Redis L2 provider with hybrid orchestration",
       "required": false,
       "useCases": ["Distributed caching", "Multi-instance applications"]
-    },
-    {
-      "name": "MethodCache.ETags",
-      "description": "HTTP ETag integration",
-      "required": false,
-      "useCases": ["HTTP caching", "Conditional requests"]
     }
   ],
 

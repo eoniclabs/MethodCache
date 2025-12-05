@@ -399,9 +399,7 @@ Under active development. APIs will change. Use for evaluation only.
 | Package | Description |
 |---------|-------------|
 | `MethodCache.Providers.SqlServer` | SQL Server persistent cache provider. |
-| `MethodCache.ETags` | HTTP ETag integration layered on MethodCache. |
 | `MethodCache.HttpCaching` | HTTP response caching middleware. |
-| `MethodCache.Providers.FastCache` | High-performance cache using FastCache library. |
 
 ---
 

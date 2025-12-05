@@ -23,7 +23,6 @@ PACKAGES=(
     "MethodCache.Abstractions"
     "MethodCache.Analyzers"
     "MethodCache.Core"
-    "MethodCache.ETags"
     "MethodCache.Providers.Redis"
     "MethodCache.SourceGenerator"
 )

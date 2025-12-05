@@ -241,7 +241,6 @@ Potential additions:
 1. **More Libraries**:
    - CacheManager
    - CacheTower
-   - FastCache
    - Microsoft.Extensions.Caching.Hybrid
 
 2. **More Scenarios**:

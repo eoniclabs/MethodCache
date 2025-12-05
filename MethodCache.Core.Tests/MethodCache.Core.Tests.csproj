@@ -32,6 +32,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
-    <ProjectReference Include="..\MethodCache.ETags\MethodCache.ETags.csproj" />
   </ItemGroup>
 </Project>
