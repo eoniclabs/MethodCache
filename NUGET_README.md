@@ -117,7 +117,6 @@ await cacheManager.InvalidateByKeysAsync("GetUser_123");
 | Package | Purpose |
 |---------|---------|
 | `MethodCache.Providers.SqlServer` | SQL Server persistent cache |
-| `MethodCache.ETags` | HTTP ETag integration |
 
 ## 🔧 Common Scenarios
 
