@@ -56,6 +56,18 @@ namespace MethodCache.Core.Runtime.Execution
             return new ValueTask<T?>((T)value);
         }
 
+        public bool TryGetFast<T>(string cacheKey, out T? value)
+        {
+            if (ForceCacheMiss || !_cache.TryGetValue(cacheKey, out var stored))
+            {
+                value = default;
+                return false;
+            }
+
+            value = (T)stored;
+            return true;
+        }
+
         public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
         {
             if (ForceCacheMiss || !_cache.TryGetValue(cacheKey, out var value))

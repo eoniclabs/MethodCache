@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
 
@@ -75,6 +76,28 @@ namespace MethodCache.Core.Runtime
         /// Use this for hot paths where every microsecond counts.
         /// </remarks>
         ValueTask<T?> TryGetFastAsync<T>(string cacheKey);
+
+        /// <summary>
+        /// Tries to retrieve a cached value synchronously using the ultra-fast path.
+        /// </summary>
+        /// <typeparam name="T">Type of cached value</typeparam>
+        /// <param name="cacheKey">Pre-computed cache key</param>
+        /// <param name="value">The cached value if found</param>
+        /// <returns>True if the value exists and is not expired</returns>
+        bool TryGetFast<T>(string cacheKey, out T? value)
+        {
+            var fast = TryGetFastAsync<T>(cacheKey);
+            if (!fast.IsCompletedSuccessfully)
+            {
+                value = fast.AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            else
+            {
+                value = fast.Result;
+            }
+
+            return value != null && !EqualityComparer<T>.Default.Equals(value, default);
+        }
 
         /// <summary>
         /// Retrieves a cached value or executes the factory function using a pre-computed cache key.

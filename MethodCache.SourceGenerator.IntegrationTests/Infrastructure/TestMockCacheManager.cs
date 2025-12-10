@@ -108,6 +108,18 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             return ValueTask.FromResult(default(T));
         }
 
+        public bool TryGetFast<T>(string cacheKey, out T? value)
+        {
+            if (_cache.TryGetValue(cacheKey, out var cacheEntry) && !cacheEntry.IsExpired)
+            {
+                value = (T)cacheEntry.Value;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
         public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
         {
             // Check cache first and verify not expired

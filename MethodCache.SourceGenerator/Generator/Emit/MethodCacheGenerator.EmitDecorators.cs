@@ -510,6 +510,14 @@ namespace MethodCache.SourceGenerator
                     EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
                     sb.AppendLine();
 
+                    var fastType = Utils.GetReturnTypeForSignature(innerType!);
+                    sb.AppendLine($"            if (_cacheManager.TryGetFast(cacheKeyValue, out {fastType}? cachedValueFast) && cachedValueFast != null)");
+                    sb.AppendLine("            {");
+                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine("                return Task.FromResult(cachedValueFast);");
+                    sb.AppendLine("            }");
+                    sb.AppendLine();
+
                     sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{Utils.GetReturnTypeForSignature(innerType!)}>(cacheKeyValue);");
                     sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
                     sb.AppendLine($"            {{");
@@ -572,6 +580,14 @@ namespace MethodCache.SourceGenerator
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
                     EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
+                    sb.AppendLine();
+
+                    var fastType = Utils.GetReturnTypeForSignature(innerType!);
+                    sb.AppendLine($"            if (_cacheManager.TryGetFast(cacheKeyValue, out {fastType}? cachedValueFast) && cachedValueFast != null)");
+                    sb.AppendLine("            {");
+                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"                return new ValueTask<{fastType}>(cachedValueFast);");
+                    sb.AppendLine("            }");
                     sb.AppendLine();
 
                     // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
@@ -650,6 +666,13 @@ namespace MethodCache.SourceGenerator
                     // Generate inline cache key without allocating args array
                     sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
                     EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
+                    sb.AppendLine();
+
+                    sb.AppendLine($"            if (_cacheManager.TryGetFast(cacheKeyValue, out {returnType}? cachedFastValue) && cachedFastValue != null)");
+                    sb.AppendLine("            {");
+                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine("                return cachedFastValue;");
+                    sb.AppendLine("            }");
                     sb.AppendLine();
 
                     // OPTIMIZATION: Check if ValueTask is already completed to avoid GetAwaiter overhead
