@@ -82,6 +82,12 @@ public class HybridCacheManager : IHybridCacheManager
         return await _storageProvider.GetAsync<T>(cacheKey);
     }
 
+    public bool TryGetFast<T>(string cacheKey, out T? value)
+    {
+        value = default;
+        return false;
+    }
+
     public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
     {
         var cached = await _storageProvider.GetAsync<T>(cacheKey);

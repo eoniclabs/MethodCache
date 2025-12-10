@@ -398,38 +398,46 @@ namespace MethodCache.Core.Runtime.Execution
 
         public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
-            // Check if fast path is enabled
+            if (TryGetFastInternal(cacheKey, out T? value))
+            {
+                return new ValueTask<T?>(value);
+            }
+            return new ValueTask<T?>((T?)default);
+        }
+
+        public bool TryGetFast<T>(string cacheKey, out T? value)
+        {
+            return TryGetFastInternal(cacheKey, out value);
+        }
+
+        private bool TryGetFastInternal<T>(string cacheKey, out T? value)
+        {
+            value = default;
+
             if (!_options.EnableFastPath)
             {
-                // Fall back to standard path with full feature set
-                return GetAsyncInternal<T>(cacheKey, updateStatistics: false);
+                return false;
             }
 
-            // Ultra-fast path: minimal overhead, just dictionary lookup + expiration check
-            if (_cache.TryGetValue(cacheKey, out var entry))
+            if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
             {
-                // Only check expiration, skip everything else for maximum performance
-                if (!entry.IsExpired)
+                if (_options.FastPathTrackMetrics && _options.EnableStatistics)
                 {
-                    // Optional: Track metrics if configured
-                    if (_options.FastPathTrackMetrics && _options.EnableStatistics)
-                    {
-                        Interlocked.Increment(ref _hits);
-                    }
+                    Interlocked.Increment(ref _hits);
+                }
 
-                    try
-                    {
-                        return new ValueTask<T?>((T)entry.Value);
-                    }
-                    catch (InvalidCastException)
-                    {
-                        // Type mismatch - treat as miss
-                        return new ValueTask<T?>(default(T?));
-                    }
+                try
+                {
+                    value = (T)entry.Value;
+                    return true;
+                }
+                catch (InvalidCastException)
+                {
+                    value = default;
                 }
             }
 
-            return new ValueTask<T?>(default(T?));
+            return false;
         }
 
         /// <summary>

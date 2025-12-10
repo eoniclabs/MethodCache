@@ -152,6 +152,11 @@ public class TelemetryCacheManager : ICacheManager
         return _innerManager.TryGetFastAsync<T>(cacheKey);
     }
 
+    public bool TryGetFast<T>(string cacheKey, out T? value)
+    {
+        return _innerManager.TryGetFast(cacheKey, out value);
+    }
+
     public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
     {
         using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
