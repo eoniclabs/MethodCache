@@ -94,6 +94,17 @@ namespace MethodCache.Providers.Redis.Tests.Configuration
             Assert.Equal(testObject.Name, result.Name);
         }
 
+        [Fact]
+        public async Task SerializeAsync_WithLargePayload_DoesNotTruncate()
+        {
+            var largePayload = new string('x', 128_000);
+
+            var bytes = await _serializer.SerializeAsync(largePayload);
+            var roundTrip = await _serializer.DeserializeAsync<string>(bytes);
+
+            Assert.Equal(largePayload, roundTrip);
+        }
+
         public class TestData
         {
             public int Id { get; set; }

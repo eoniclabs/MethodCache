@@ -55,16 +55,21 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
         _logger = logger;
 
         // Build resilience pipeline using Redis options
+        var retryBackoffType = _options.Retry.BackoffType switch
+        {
+            RetryBackoffType.Linear => DelayBackoffType.Linear,
+            RetryBackoffType.ExponentialWithJitter => DelayBackoffType.Exponential,
+            RetryBackoffType.Exponential => DelayBackoffType.Exponential,
+            _ => DelayBackoffType.Exponential
+        };
+        var useJitter = _options.Retry.BackoffType == RetryBackoffType.ExponentialWithJitter;
+
         _resilience = new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions()
             {
                 MaxRetryAttempts = _options.Retry.MaxRetries,
-                BackoffType = _options.Retry.BackoffType switch
-                {
-                    RetryBackoffType.Linear => DelayBackoffType.Linear,
-                    RetryBackoffType.Exponential => DelayBackoffType.Exponential,
-                    _ => DelayBackoffType.Exponential
-                },
+                BackoffType = retryBackoffType,
+                UseJitter = useJitter,
                 Delay = _options.Retry.BaseDelay,
                 OnRetry = args =>
                 {
@@ -183,21 +188,16 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             await _resilience.ExecuteAsync(async _ =>
             {
                 var database = _connectionManager.GetDatabase();
-                var fullKey = _options.KeyPrefix + key;
+                var fullKey = NormalizeCacheKey(key);
+                await RemoveKeyWithTagsAsync(database, fullKey).ConfigureAwait(false);
 
-                // Remove the key and its tag associations in parallel
-                await Task.WhenAll(
-                    database.KeyDeleteAsync(fullKey),
-                    _tagManager.RemoveAllTagAssociationsAsync(fullKey)
-                ).ConfigureAwait(false);
-
-                _logger.LogDebug("Removed key {Key} and its tag associations", fullKey);
+                _logger.LogDebug("Atomically removed key {Key} and its tag associations using Lua script", fullKey);
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             Interlocked.Increment(ref _errorCount);
-            _logger.LogError(ex, "Error removing key {Key}", key);
+            _logger.LogError(ex, "Error removing key {Key} atomically", key);
         }
         finally
         {
@@ -221,9 +221,16 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
                     return;
                 }
 
-                // Remove keys atomically
-                await InvalidateKeysAtomicallyAsync(keys, new[] { tag }).ConfigureAwait(false);
-                _logger.LogDebug("Removed {KeyCount} keys for tag {Tag}", keys.Length, tag);
+                var normalizedKeys = keys.Select(NormalizeCacheKey).ToArray();
+                var database = _connectionManager.GetDatabase();
+                var removalTasks = normalizedKeys.Select(k => RemoveKeyWithTagsAsync(database, k));
+                await Task.WhenAll(removalTasks).ConfigureAwait(false);
+
+                // Remove the tag set itself to avoid leaks
+                var tagSetKey = $"{_options.KeyPrefix}tags:{tag}";
+                await database.KeyDeleteAsync(tagSetKey).ConfigureAwait(false);
+
+                _logger.LogDebug("Removed {KeyCount} keys for tag {Tag}", normalizedKeys.Length, tag);
 
                 // Publish invalidation event for cross-instance coordination
                 if (_options.EnablePubSubInvalidation && _backplane != null)
@@ -351,47 +358,46 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
     {
         if (tags.Length == 0) return;
 
-        // Lua script that atomically performs:
-        // 1. SET the cache value with expiry
-        // 2. SADD key to each tag set
-        // 3. SADD each tag to key's reverse lookup set
         const string luaScript = @"
-            -- Set the cache value with expiry
-            redis.call('SETEX', KEYS[1], ARGV[1], ARGV[2])
+            local ttlMs = tonumber(ARGV[1])
+            local tagTtlMs = tonumber(ARGV[2])
+            local payload = ARGV[3]
+            local cacheKey = KEYS[1]
+            local keyPrefix = KEYS[2]
 
-            -- Associate tags (forward mapping: tag -> keys)
-            for i = 3, #ARGV do
+            redis.call('PSETEX', cacheKey, ttlMs, payload)
+
+            for i = 4, #ARGV do
                 if ARGV[i] ~= '' then
-                    local tagKey = KEYS[2] .. 'tags:' .. ARGV[i]
-                    redis.call('SADD', tagKey, KEYS[1])
-                    -- Set TTL on tag set to prevent memory leaks
-                    redis.call('EXPIRE', tagKey, ARGV[1] * 2)
+                    local tagKey = keyPrefix .. 'tags:' .. ARGV[i]
+                    redis.call('SADD', tagKey, cacheKey)
+                    redis.call('PEXPIRE', tagKey, tagTtlMs)
                 end
             end
 
-            -- Reverse mapping: key -> tags (for cleanup)
-            if #ARGV > 2 then
-                local keyTagsKey = KEYS[2] .. 'key-tags:' .. KEYS[1]
-                for i = 3, #ARGV do
+            if #ARGV > 3 then
+                local keyTagsKey = keyPrefix .. 'key-tags:' .. cacheKey
+                for i = 4, #ARGV do
                     if ARGV[i] ~= '' then
                         redis.call('SADD', keyTagsKey, ARGV[i])
                     end
                 end
-                -- Set TTL on reverse mapping
-                redis.call('EXPIRE', keyTagsKey, ARGV[1] * 2)
+                redis.call('PEXPIRE', keyTagsKey, tagTtlMs)
             end
 
             return 1";
 
-        // Prepare arguments: expiry (seconds), serialized data, then all tags
-        var scriptArgs = new RedisValue[tags.Length + 2];
-        scriptArgs[0] = (int)expiry.TotalSeconds;  // ARGV[1] - expiry in seconds
-        scriptArgs[1] = data;                      // ARGV[2] - serialized cache data
+        var ttlMs = Math.Max(1, (long)Math.Ceiling(expiry.TotalMilliseconds));
+        var tagTtl = Math.Max(1, Math.Min(ttlMs * 2, (long)TimeSpan.FromDays(365).TotalMilliseconds));
 
-        // ARGV[3+] - tags
+        var scriptArgs = new RedisValue[tags.Length + 3];
+        scriptArgs[0] = ttlMs;
+        scriptArgs[1] = tagTtl;
+        scriptArgs[2] = data;
+
         for (int i = 0; i < tags.Length; i++)
         {
-            scriptArgs[i + 2] = tags[i];
+            scriptArgs[i + 3] = tags[i];
         }
 
         var keys = new RedisKey[]
@@ -400,53 +406,38 @@ public class RedisStorageProvider : IStorageProvider, IAsyncDisposable
             _options.KeyPrefix  // KEYS[2] - key prefix for tag keys
         };
 
-        await database.ScriptEvaluateAsync(luaScript, keys, scriptArgs);
+        await database.ScriptEvaluateAsync(luaScript, keys, scriptArgs).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Atomically removes cache keys and their tag associations using Redis transactions.
-    /// </summary>
-    private async Task InvalidateKeysAtomicallyAsync(string[] keys, string[] tags)
+    private static readonly string RemoveKeyWithTagsScript = @"
+        local cacheKey = KEYS[1]
+        local keyPrefix = ARGV[1]
+        local keyTagsKey = keyPrefix .. 'key-tags:' .. cacheKey
+
+        local tags = redis.call('SMEMBERS', keyTagsKey)
+
+        for i, tag in ipairs(tags) do
+            local tagKey = keyPrefix .. 'tags:' .. tag
+            redis.call('SREM', tagKey, cacheKey)
+        end
+
+        redis.call('DEL', cacheKey)
+        redis.call('DEL', keyTagsKey)
+
+        return 1";
+
+    private Task RemoveKeyWithTagsAsync(IDatabase database, string cacheKey)
     {
-        try
-        {
-            var database = _connectionManager.GetDatabase();
-            var transaction = database.CreateTransaction();
+        var keys = new RedisKey[] { cacheKey };
+        var args = new RedisValue[] { _options.KeyPrefix };
+        return database.ScriptEvaluateAsync(RemoveKeyWithTagsScript, keys, args);
+    }
 
-            // Delete cache keys
-            var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
-            var deleteKeysTask = transaction.KeyDeleteAsync(redisKeys);
-
-            // Execute atomically
-            var committed = await transaction.ExecuteAsync();
-
-            if (committed)
-            {
-                // Remove tag associations after successful key deletion
-                await _tagManager.RemoveTagAssociationsAsync(keys, tags);
-            }
-            else
-            {
-                _logger.LogWarning("Invalidation transaction failed, falling back to pipelined operations");
-
-                // Fallback using pipelining for better performance
-                var batch = database.CreateBatch();
-                var deleteTask = batch.KeyDeleteAsync(redisKeys);
-                batch.Execute();
-                await deleteTask;
-                await _tagManager.RemoveTagAssociationsAsync(keys, tags);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error in atomic invalidation, attempting non-atomic fallback");
-
-            // Final fallback
-            var database = _connectionManager.GetDatabase();
-            var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
-            await database.KeyDeleteAsync(redisKeys);
-            await _tagManager.RemoveTagAssociationsAsync(keys, tags);
-        }
+    private string NormalizeCacheKey(string key)
+    {
+        return key.StartsWith(_options.KeyPrefix, StringComparison.Ordinal)
+            ? key
+            : _options.KeyPrefix + key;
     }
 
     private void RecordOperationTime(string operation, DateTimeOffset start)

@@ -17,6 +17,7 @@ public class RedisBackplane : IBackplane
     private readonly IRedisConnectionManager _connectionManager;
     private readonly RedisOptions _options;
     private readonly ILogger<RedisBackplane> _logger;
+    private readonly IBackplaneSerializer _backplaneSerializer;
     private ISubscriber? _subscriber;
     private bool _isListening;
     private bool _disposed;
@@ -26,8 +27,7 @@ public class RedisBackplane : IBackplane
     private readonly string _tagInvalidationChannel;
     private readonly string _clearAllChannel;
 
-    // Cached JsonSerializerOptions to avoid allocation on every serialization
-    private static readonly JsonSerializerOptions s_jsonOptions = new();
+
 
     /// <summary>
     /// Gets the instance ID for this backplane.
@@ -37,11 +37,13 @@ public class RedisBackplane : IBackplane
     public RedisBackplane(
         IRedisConnectionManager connectionManager,
         IOptions<RedisOptions> options,
-        ILogger<RedisBackplane> logger)
+        ILogger<RedisBackplane> logger,
+        IBackplaneSerializer backplaneSerializer)
     {
         _connectionManager = connectionManager;
         _options = options.Value;
         _logger = logger;
+        _backplaneSerializer = backplaneSerializer;
 
         // Set instance ID
         InstanceId = Environment.MachineName + "_" + Environment.ProcessId;
@@ -70,7 +72,8 @@ public class RedisBackplane : IBackplane
             {
                 try
                 {
-                    var backplaneMessage = DeserializeMessage(message!, BackplaneMessageType.KeyInvalidation);
+                    var payload = (byte[])message!;
+                    var backplaneMessage = DeserializeMessage(payload, BackplaneMessageType.KeyInvalidation);
                     if (backplaneMessage != null)
                     {
                         await onMessage(backplaneMessage);
@@ -87,7 +90,8 @@ public class RedisBackplane : IBackplane
             {
                 try
                 {
-                    var backplaneMessage = DeserializeMessage(message!, BackplaneMessageType.TagInvalidation);
+                    var payload = (byte[])message!;
+                    var backplaneMessage = DeserializeMessage(payload, BackplaneMessageType.TagInvalidation);
                     if (backplaneMessage != null)
                     {
                         await onMessage(backplaneMessage);
@@ -104,7 +108,8 @@ public class RedisBackplane : IBackplane
             {
                 try
                 {
-                    var backplaneMessage = DeserializeMessage(message!, BackplaneMessageType.ClearAll);
+                    var payload = (byte[])message!;
+                    var backplaneMessage = DeserializeMessage(payload, BackplaneMessageType.ClearAll);
                     if (backplaneMessage != null)
                     {
                         await onMessage(backplaneMessage);
@@ -138,7 +143,7 @@ public class RedisBackplane : IBackplane
             {
                 Type = BackplaneMessageType.KeyInvalidation,
                 Key = key,
-                InstanceId = Environment.MachineName,
+                InstanceId = InstanceId,
                 Timestamp = DateTimeOffset.UtcNow
             };
 
@@ -164,7 +169,7 @@ public class RedisBackplane : IBackplane
             {
                 Type = BackplaneMessageType.TagInvalidation,
                 Tag = tag,
-                InstanceId = Environment.MachineName,
+                InstanceId = InstanceId,
                 Timestamp = DateTimeOffset.UtcNow
             };
 
@@ -189,7 +194,7 @@ public class RedisBackplane : IBackplane
             var message = new BackplaneMessage
             {
                 Type = BackplaneMessageType.ClearAll,
-                InstanceId = Environment.MachineName,
+                InstanceId = InstanceId,
                 Timestamp = DateTimeOffset.UtcNow
             };
 
@@ -226,16 +231,16 @@ public class RedisBackplane : IBackplane
     }
 
 
-    private string SerializeMessage(BackplaneMessage message)
+    private byte[] SerializeMessage(BackplaneMessage message)
     {
-        return JsonSerializer.Serialize(message, s_jsonOptions);
+        return _backplaneSerializer.Serialize(message);
     }
 
-    private BackplaneMessage? DeserializeMessage(string message, BackplaneMessageType expectedType)
+    private BackplaneMessage? DeserializeMessage(byte[] message, BackplaneMessageType expectedType)
     {
         try
         {
-            var backplaneMessage = JsonSerializer.Deserialize<BackplaneMessage>(message);
+            var backplaneMessage = _backplaneSerializer.Deserialize(message);
 
             // Validate message type matches expected channel
             if (backplaneMessage?.Type != expectedType)
@@ -247,7 +252,7 @@ public class RedisBackplane : IBackplane
 
             return backplaneMessage;
         }
-        catch (JsonException ex)
+        catch (Exception ex)
         {
             _logger.LogError(ex, "Error deserializing backplane message: {Message}", message);
             return null;
@@ -293,4 +298,3 @@ public class RedisBackplane : IBackplane
         }
     }
 }
-
