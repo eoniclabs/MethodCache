@@ -151,21 +151,22 @@ namespace MethodCache.Providers.Redis.Tests
             var keys = new[] { "key1", "key2", "key3" };
 
             _tagManagerMock.GetKeysByTagsAsync(Arg.Is<string[]>(tags => tags.Length == 1 && tags[0] == tag)).Returns(keys);
-            _databaseMock.CreateTransaction().Returns(_transactionMock);
-            _transactionMock.ExecuteAsync().Returns(true);
-            _transactionMock.KeyDeleteAsync(Arg.Any<RedisKey[]>()).Returns(Task.FromResult(3L));
+            _databaseMock.ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>())
+                         .Returns(Task.FromResult(RedisResult.Create(1)));
+            _databaseMock.KeyDeleteAsync(Arg.Any<RedisKey>()).Returns(true);
 
             // Act
             await _storageProvider.RemoveByTagAsync(tag);
 
             // Assert
             await _tagManagerMock.Received(1).GetKeysByTagsAsync(Arg.Is<string[]>(tags => tags.Length == 1 && tags[0] == tag));
-            _databaseMock.Received(1).CreateTransaction();
+            await _databaseMock.Received(keys.Length).ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>());
+            await _databaseMock.Received(1).KeyDeleteAsync(Arg.Is<RedisKey>(k => k.ToString() == $"test:tags:{tag}"));
             await _backplaneMock.Received(1).PublishTagInvalidationAsync(tag, Arg.Any<CancellationToken>());
         }
 
         [Fact]
-        public async Task RemoveByTagAsync_WithNoKeysFound_DoesNotCreateTransaction()
+        public async Task RemoveByTagAsync_WithNoKeysFound_DoesNotTriggerDeletes()
         {
             // Arrange
             var tag = "test-tag";
@@ -178,7 +179,7 @@ namespace MethodCache.Providers.Redis.Tests
 
             // Assert
             await _tagManagerMock.Received(1).GetKeysByTagsAsync(Arg.Is<string[]>(tags => tags.Length == 1 && tags[0] == tag));
-            _databaseMock.DidNotReceive().CreateTransaction();
+            await _databaseMock.DidNotReceive().ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>());
             await _backplaneMock.DidNotReceive().PublishTagInvalidationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         }
 
@@ -189,14 +190,15 @@ namespace MethodCache.Providers.Redis.Tests
             var cacheKey = "test-key";
             var fullKey = "test:" + cacheKey;
 
-            _databaseMock.KeyDeleteAsync(fullKey).Returns(true);
+            _databaseMock.ScriptEvaluateAsync(Arg.Any<string>(), Arg.Is<RedisKey[]>(keys => keys[0] == fullKey), Arg.Any<RedisValue[]>())
+                         .Returns(Task.FromResult(RedisResult.Create(1)));
 
             // Act
             await _storageProvider.RemoveAsync(cacheKey);
 
             // Assert
-            await _databaseMock.Received(1).KeyDeleteAsync(fullKey);
-            await _tagManagerMock.Received(1).RemoveAllTagAssociationsAsync(fullKey);
+            await _databaseMock.Received(1).ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>());
+            await _tagManagerMock.DidNotReceive().RemoveAllTagAssociationsAsync(Arg.Any<string>());
         }
 
         [Fact]

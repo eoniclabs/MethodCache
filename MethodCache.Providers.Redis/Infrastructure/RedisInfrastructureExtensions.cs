@@ -87,6 +87,20 @@ public static class RedisInfrastructureExtensions
             return baseSerializer;
         });
         services.AddSingleton<IRedisTagManager, RedisTagManager>();
+        services.AddSingleton<RedisCacheWarmingService>();
+        services.AddSingleton<ICacheWarmingService>(provider => provider.GetRequiredService<RedisCacheWarmingService>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RedisCacheWarmingService>());
+        
+        // Register backplane serializer
+        services.AddSingleton<IBackplaneSerializer>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<RedisOptions>>().Value;
+            return options.BackplaneSerializer switch
+            {
+                BackplaneSerializerType.MessagePack => new MessagePackBackplaneSerializer(),
+                _ => new JsonBackplaneSerializer() // Default to Json
+            };
+        });
 
         // Register Redis infrastructure components
         services.TryAddSingleton<IStorageProvider, RedisStorageProvider>();

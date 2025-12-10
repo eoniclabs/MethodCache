@@ -231,6 +231,18 @@ internal static class RedisInfrastructureTestExtensions
             return baseSerializer;
         });
         services.AddSingleton<IRedisTagManager, RedisTagManager>();
+        services.AddSingleton<IBackplaneSerializer>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<RedisOptions>>().Value;
+            return options.BackplaneSerializer switch
+            {
+                BackplaneSerializerType.MessagePack => new MessagePackBackplaneSerializer(),
+                _ => new JsonBackplaneSerializer()
+            };
+        });
+        services.AddSingleton<RedisCacheWarmingService>();
+        services.AddSingleton<ICacheWarmingService>(provider => provider.GetRequiredService<RedisCacheWarmingService>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RedisCacheWarmingService>());
 
         // Register Redis infrastructure components - using TryAdd to avoid conflicts
         services.TryAddSingleton<RedisStorageProvider>();

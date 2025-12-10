@@ -1,6 +1,5 @@
 using MessagePack;
 using MessagePack.Resolvers;
-using System.Buffers;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -50,22 +49,10 @@ namespace MethodCache.Providers.Redis.Configuration
             if (value == null)
                 return Array.Empty<byte>();
 
-            // Use ArrayPool for efficient memory usage
-            var buffer = ArrayPool<byte>.Shared.Rent(65536); // 64KB initial buffer
-            try
-            {
-                using var stream = new MemoryStream(buffer, 0, buffer.Length, writable: true, publiclyVisible: true);
-                var options = _useContractless ? _contractlessOptions : _performantOptions;
-                
-                await MessagePackSerializer.SerializeAsync(stream, value, options);
-                
-                // Return only the used portion
-                return stream.ToArray();
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
+            using var stream = new MemoryStream();
+            var options = _useContractless ? _contractlessOptions : _performantOptions;
+            await MessagePackSerializer.SerializeAsync(stream, value, options).ConfigureAwait(false);
+            return stream.ToArray();
         }
 
         public async Task<T> DeserializeAsync<T>(byte[] data)

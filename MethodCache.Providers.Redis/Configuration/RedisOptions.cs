@@ -30,10 +30,17 @@ namespace MethodCache.Providers.Redis.Configuration
         
         // Cross-Instance Communication
         public string BackplaneChannel { get; set; } = "methodcache-shared";
+        public BackplaneSerializerType BackplaneSerializer { get; set; } = BackplaneSerializerType.Json;
         
         // Monitoring
         public bool EnableDetailedMetrics { get; set; } = true;
         public bool EnableSlowLogMonitoring { get; set; } = false;
+    }
+
+    public enum BackplaneSerializerType
+    {
+        Json,
+        MessagePack
     }
 
     public class CircuitBreakerOptions

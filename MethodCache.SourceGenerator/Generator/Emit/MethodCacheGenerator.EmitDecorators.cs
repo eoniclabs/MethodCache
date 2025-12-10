@@ -582,7 +582,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                if (cachedValue != null)");
                     sb.AppendLine($"                {{");
                     sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                    return new ValueTask<{innerType}>(cachedValue);");
+                    sb.AppendLine($"                    return new ValueTask<{Utils.GetReturnTypeForSignature(innerType!)}>(cachedValue);");
                     sb.AppendLine($"                }}");
                     sb.AppendLine($"            }}");
                     sb.AppendLine($"            else");
@@ -591,7 +591,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                if (cachedValue != null)");
                     sb.AppendLine($"                {{");
                     sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                    return new ValueTask<{innerType}>(cachedValue);");
+                    sb.AppendLine($"                    return new ValueTask<{Utils.GetReturnTypeForSignature(innerType!)}>(cachedValue);");
                     sb.AppendLine($"                }}");
                     sb.AppendLine($"            }}");
                     sb.AppendLine();
