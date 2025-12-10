@@ -69,7 +69,10 @@ $Packages = @(
     "MethodCache.Abstractions"
     "MethodCache.Analyzers"
     "MethodCache.Core"
+    "MethodCache.OpenTelemetry"
+    "MethodCache.Providers.Memory"
     "MethodCache.Providers.Redis"
+    "MethodCache.Providers.SqlServer"
     "MethodCache.SourceGenerator"
 )
 
