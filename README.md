@@ -284,28 +284,28 @@ Drop caching onto external interfaces (Stripe, AWS SDKs, GraphQL clients, etc.) 
 
 ### ⚡ Performance
 
-![Cache Hit Performance](https://img.shields.io/badge/Cache%20Hit-95--138ns-brightgreen) ![Cache Miss Performance](https://img.shields.io/badge/Cache%20Miss-5--11μs-yellow)
+![Cache Hit Performance](https://img.shields.io/badge/Cache%20Hit-190--230ns-brightgreen) ![Cache Miss Performance](https://img.shields.io/badge/Cache%20Miss-8--11μs-yellow)
 
-MethodCache delivers **industry-leading performance** across all cache operations, outperforming established solutions like FusionCache and LazyCache.
+MethodCache delivers **excellent performance** across all cache operations, matching or outperforming established solutions like FusionCache and LazyCache.
 
 #### Cache Hit Performance (Lower is Better)
 
 | Implementation | Performance | Allocation | Use Case |
 |----------------|-------------|------------|----------|
-| **MethodCache (Manual Key)** | **~95ns** | 0 B | Direct API - Fastest option |
-| **MethodCache (SourceGen)** | **~138ns** | 32 B | Source-generated decorators |
-| **LazyCache** | ~149ns | 0 B | Industry baseline |
-| **FusionCache** | ~484ns | 0 B | Full-featured enterprise caching |
-| **EasyCaching** | ~622ns | 1,374 B | AOP-based caching |
+| **MethodCache (Manual Key)** | **~190ns** | 0 B | Direct API - Fastest option |
+| **MethodCache (SourceGen)** | **~230ns** | 32 B | Source-generated decorators |
+| **LazyCache** | ~236ns | 0 B | Industry baseline |
+| **FusionCache** | ~627ns | 0 B | Full-featured enterprise caching |
+| **EasyCaching** | ~1,016ns | 1,374 B | AOP-based caching |
 
 #### Cache Miss + Set Performance
 
 | Implementation | Performance |
 |----------------|-------------|
-| **EasyCaching** | ~5.3μs |
-| **LazyCache** | ~5.7μs |
-| **FusionCache** | ~6.1μs |
-| **MethodCache** | ~9.9μs |
+| **EasyCaching** | ~5.2μs |
+| **FusionCache** | ~6.0μs |
+| **LazyCache** | ~6.3μs |
+| **MethodCache** | ~8-10μs |
 
 *MethodCache is slightly slower on misses due to policy caching and coordination features.*
 
@@ -313,10 +313,19 @@ MethodCache delivers **industry-leading performance** across all cache operation
 
 | Implementation | Performance | Protection |
 |----------------|-------------|------------|
-| **LazyCache** | ~35μs | ✅ Single-flight |
-| **MethodCache** | ~37-40μs | ✅ Single-flight |
+| **LazyCache** | ~30μs | ✅ Single-flight |
+| **MethodCache** | ~35-41μs | ✅ Single-flight |
 | **FusionCache** | ~56μs | ✅ Single-flight |
-| **EasyCaching** | ~301ms | ❌ No protection |
+| **EasyCaching** | ~296ms | ❌ No protection |
+
+#### Concurrent Access (100 threads)
+
+| Implementation | Performance | Allocation |
+|----------------|-------------|------------|
+| **MethodCache (Manual Key)** | **~58μs** | 36 KB |
+| **LazyCache** | ~65μs | 68 KB |
+| **MethodCache (SourceGen)** | ~67μs | 72 KB |
+| **FusionCache** | ~95μs | 56 KB |
 
 > 📊 **Benchmarks** run on .NET 9.0 (Apple M2) with BenchmarkDotNet. Results from December 2025.
 >
@@ -324,11 +333,11 @@ MethodCache delivers **industry-leading performance** across all cache operation
 
 ### Performance Highlights
 
-- **Industry-leading cache hits** – **MethodCache** at ~95-138ns outperforms FusionCache (~484ns) and matches LazyCache (~149ns)
+- **Competitive cache hits** – **MethodCache** at ~190-230ns matches LazyCache (~236ns) and outperforms FusionCache (~627ns) by 2.7x
 - **Minimal allocations** – Only 32 bytes on cache hit with source generation
+- **Excellent scalability** – Best-in-class performance at high concurrency (100 threads)
 - **Stampede protection** – Built-in single-flight pattern prevents cache stampedes
 - **Zero-reflection** – Source generation eliminates runtime reflection overhead
-- **Ultra-fast path** – Pre-computed cache keys for zero-parameter methods
 
 ### Key Generators Performance
 
