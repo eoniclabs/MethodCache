@@ -1,10 +1,10 @@
 # MethodCache
 
-[![NuGet Version](https://img.shields.io/nuget/v/MethodCache.Core)](https://www.nuget.org/packages/MethodCache.Core)
+[![NuGet Version](https://img.shields.io/badge/NuGet%20Version-not%20published-lightgrey)](https://www.nuget.org/packages?q=MethodCache)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/eoniclabs/MethodCache/publish.yml)](https://github.com/eoniclabs/MethodCache/actions/workflows/publish.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/eoniclabs/MethodCache)](https://codecov.io/gh/eoniclabs/MethodCache)
-[![License](https://img.shields.io/github/license/eoniclabs/MethodCache)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 MethodCache is a .NET caching library that supports two usage styles:
 
@@ -170,7 +170,28 @@ await configurator.ApplyAsync(fluent =>
 
 ### Third-party Library Caching
 
-You can configure caching for interface-based external clients without modifying their source code.
+You can cache third-party libraries in two ways:
+
+1. Fluent API in your wrapper/service code (most direct for application developers).
+2. Central JSON/YAML policy configuration (useful for centralized operations control).
+
+Fluent API example:
+
+```csharp
+public sealed class WeatherFacade
+{
+    private readonly IWeatherApiClient _client;
+    private readonly ICacheManager _cache;
+
+    public Task<WeatherResponse> GetCurrentAsync(string city) =>
+        _cache.Cache(() => _client.GetCurrentAsync(city))
+              .WithDuration(TimeSpan.FromMinutes(5))
+              .WithTags("weather", $"city:{city}")
+              .ExecuteAsync();
+}
+```
+
+JSON/YAML policy example:
 
 ```json
 {
