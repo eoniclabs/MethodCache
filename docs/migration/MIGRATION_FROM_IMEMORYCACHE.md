@@ -1,12 +1,12 @@
 # Migration Guide: From IMemoryCache to MethodCache
 
-This guide helps you migrate from ASP.NET Core's `IMemoryCache` to MethodCache for better performance, cleaner code, and enhanced features.
+This guide helps you migrate from ASP.NET Core's `IMemoryCache` to MethodCache with a focus on cleaner cache usage, policy consistency, and easier invalidation.
 
 ## Why Migrate?
 
 | Feature | IMemoryCache | MethodCache |
 |---------|--------------|-------------|
-| **Performance** | Manual implementation | 8276x faster with cache hit (~145ns) |
+| **Performance model** | Manual and explicit | Source-generated and fluent options; benchmark in your workload |
 | **Code Cleanliness** | Manual cache-aside pattern | Declarative attributes or fluent API |
 | **Tag-based Invalidation** | Manual tracking required | Built-in support |
 | **Distributed Caching** | Separate IDistributedCache | Unified L1/L2 hybrid caching |
@@ -462,14 +462,18 @@ Task<UserProfile> GetUserProfileAsync(int userId);
 Task<UserSettings> GetUserSettingsAsync(int userId);
 ```
 
-## Performance Comparison
+## Performance Notes
 
-| Scenario | IMemoryCache | MethodCache | Improvement |
-|----------|-------------|-------------|-------------|
-| Cache Hit | ~500ns | ~145ns | 3.4x faster |
-| Cache Miss | ~1.5ms | ~1.3ms | Comparable |
-| Tag Invalidation | Manual tracking | Built-in | Much easier |
-| Code Lines (typical service) | ~40 lines | ~10 lines | 75% reduction |
+Performance depends on provider choice, key generation strategy, and workload shape (hit rate, payload size, concurrency).
+
+Use this guide to migrate behavior first, then validate performance with your own benchmarks.
+
+| Scenario | IMemoryCache | MethodCache |
+|----------|-------------|-------------|
+| Cache hit path | Manual hot path | Source-generated or fluent path |
+| Cache miss path | Manual cache-aside | Built-in get-or-create patterns |
+| Invalidation | Key-based unless you add your own grouping | Built-in tag and key invalidation |
+| Configuration changes | Code and config changes | Attributes, config, and runtime overrides |
 
 ## Next Steps
 
@@ -481,6 +485,6 @@ Task<UserSettings> GetUserSettingsAsync(int userId);
 ## Resources
 
 - [Configuration Guide](../user-guide/CONFIGURATION_GUIDE.md)
-- [Fluent API Reference](../user-guide/fluent-api.md)
+- [Fluent API Reference](../user-guide/FLUENT_API.md)
 - [Third-Party Library Caching](../user-guide/THIRD_PARTY_CACHING.md)
 - [GitHub Repository](https://github.com/eoniclabs/MethodCache)

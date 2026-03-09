@@ -2,7 +2,7 @@
 
 ## Overview
 
-MethodCache's runtime configuration system allows you to add caching behavior to third-party libraries without modifying their source code. This is incredibly powerful for:
+MethodCache's runtime configuration system lets you add caching behavior to third-party libraries without modifying their source code. Typical use cases:
 
 - **Reducing API costs** - Cache expensive external API calls
 - **Improving performance** - Avoid redundant database queries
@@ -11,7 +11,7 @@ MethodCache's runtime configuration system allows you to add caching behavior to
 
 ## How It Works
 
-Since runtime configuration has the **highest priority (40)**, it can override all other configuration sources. This means you can:
+Since runtime configuration has the highest priority, it can override all other configuration sources. This means you can:
 
 1. **Configure caching for any interface-based library** via JSON/YAML configuration
 2. **Control caching behavior** through your management interface
@@ -20,7 +20,7 @@ Since runtime configuration has the **highest priority (40)**, it can override a
 
 ## Supported Library Types
 
-### ✅ **CAN Cache**
+### Can Cache
 
 | Library Type | Examples | How |
 |--------------|----------|-----|
@@ -31,7 +31,7 @@ Since runtime configuration has the **highest priority (40)**, it can override a
 | **GraphQL clients** | GraphQL.Client, Hot Chocolate | Query interfaces |
 | **Payment gateways** | Stripe, PayPal, Square | Client interfaces |
 
-### ❌ **CANNOT Cache (Directly)**
+### Cannot Cache Directly
 
 | Library Type | Why | Workaround |
 |--------------|-----|------------|
@@ -627,11 +627,11 @@ public async Task<IActionResult> ConfigureCache(...) { }
 
 ## Summary
 
-Third-party library caching is one of MethodCache's most powerful features, enabling:
+Third-party library caching helps with:
 
 - **Cost reduction** through fewer API calls
 - **Performance improvement** via cached responses
 - **Operational control** through runtime configuration
 - **Emergency management** via highest-priority overrides
 
-Remember: Runtime configuration has the **highest priority**, giving you ultimate control over all caching behavior, including third-party libraries!
+Runtime configuration has the highest priority, so it can override lower-priority settings for third-party caching scenarios.
