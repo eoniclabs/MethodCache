@@ -2,9 +2,9 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/MethodCache.Core)](https://www.nuget.org/packages/MethodCache.Core)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/methodcache/ci.yml)](https://github.com/yourusername/methodcache/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/yourusername/methodcache)](https://codecov.io/gh/yourusername/methodcache)
-[![License](https://img.shields.io/github/license/yourusername/methodcache)](LICENSE)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/eoniclabs/MethodCache/publish.yml)](https://github.com/eoniclabs/MethodCache/actions/workflows/publish.yml)
+[![Coverage](https://img.shields.io/codecov/c/github/eoniclabs/MethodCache)](https://codecov.io/gh/eoniclabs/MethodCache)
+[![License](https://img.shields.io/github/license/eoniclabs/MethodCache)](LICENSE)
 
 > **Declarative caching for .NET with attributes and source generation**
 >
@@ -432,7 +432,6 @@ We welcome issues, ideas, and pull requests. Please read the contribution guidel
 ---
 
 Built with ❤️ for the .NET community.
-
 
 
 

@@ -4,7 +4,6 @@ using MethodCache.Benchmarks.Core;
 using MethodCache.Core;
 using System.Runtime.CompilerServices;
 using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
@@ -17,8 +16,7 @@ namespace MethodCache.Benchmarks.Scenarios;
 public class BasicCachingBenchmarks : SimpleBenchmarkBase
 {
     private IBasicCacheService _cacheService = null!;
-    private IBasicCacheService _noCacheService = null!;
-    private ICacheManager _cacheManager = null!;
+    private BasicCacheService _baselineService = null!;
 
     [Params(1, 10, 100, 1000)]
     public int DataSize { get; set; }
@@ -28,28 +26,44 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
 
     protected override void ConfigureBenchmarkServices(IServiceCollection services)
     {
-        services.AddSingleton<IBasicCacheService, BasicCacheService>();
         services.AddSingleton<BasicCacheService>();
+        services.AddIBasicCacheServiceWithCaching(sp => sp.GetRequiredService<BasicCacheService>());
     }
 
     protected override void OnSetupComplete()
     {
         _cacheService = ServiceProvider.GetRequiredService<IBasicCacheService>();
-        _noCacheService = ServiceProvider.GetRequiredService<BasicCacheService>();
-        _cacheManager = ServiceProvider.GetRequiredService<ICacheManager>();
+        _baselineService = ServiceProvider.GetRequiredService<BasicCacheService>();
+    }
+
+    [IterationSetup(Target = nameof(CacheMiss))]
+    public void SetupCacheMiss()
+    {
+        _cacheService.InvalidateDataAsync(DataSize, ModelType).GetAwaiter().GetResult();
+    }
+
+    [IterationSetup(Target = nameof(CacheHit))]
+    public void SetupCacheHit()
+    {
+        _cacheService.InvalidateDataAsync(DataSize, ModelType).GetAwaiter().GetResult();
+        _cacheService.GetDataAsync(DataSize, ModelType).GetAwaiter().GetResult();
+    }
+
+    [IterationSetup(Target = nameof(CacheHitCold))]
+    public void SetupCacheHitCold()
+    {
+        _cacheService.InvalidateDataAsync(DataSize, ModelType).GetAwaiter().GetResult();
     }
 
     [Benchmark(Baseline = true)]
     public async Task<object> NoCaching()
     {
-        return await _noCacheService.GetDataAsync(DataSize, ModelType);
+        return await _baselineService.GetDataNoCachingAsync(DataSize, ModelType);
     }
 
     [Benchmark]
     public async Task<object> CacheMiss()
     {
-        // Clear cache to ensure miss
-        await _cacheManager.InvalidateByKeysAsync($"GetDataAsync_{DataSize}_{ModelType}");
         return await _cacheService.GetDataAsync(DataSize, ModelType);
     }
 
@@ -99,28 +113,28 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
 
 public interface IBasicCacheService
 {
+    [Cache(Duration = "00:10:00", Tags = new[] { "data" }, RequireIdempotent = false)]
     Task<object> GetDataAsync(int size, string modelType);
+
+    [Cache(Duration = "00:10:00", Tags = new[] { "data" }, RequireIdempotent = false)]
     Task<object> GetSlowDataAsync(int size, string modelType);
+
+    [CacheInvalidate(Tags = new[] { "data" })]
     Task InvalidateDataAsync(int size, string modelType);
 }
 
 public class BasicCacheService : IBasicCacheService
 {
     private readonly ICacheManager _cacheManager;
-    private readonly ICacheKeyGenerator _keyGenerator;
 
     public BasicCacheService(
-        ICacheManager cacheManager,
-        ICacheKeyGenerator keyGenerator)
+        ICacheManager cacheManager)
     {
         _cacheManager = cacheManager;
-        _keyGenerator = keyGenerator;
     }
 
-    [Cache(Duration = "00:10:00", RequireIdempotent = false)]
-    public virtual async Task<object> GetDataAsync(int size, string modelType)
+    public async Task<object> GetDataAsync(int size, string modelType)
     {
-        // Source generator handles caching - just call the business logic
         return await CreateDataAsync(size, modelType);
     }
 
@@ -131,16 +145,14 @@ public class BasicCacheService : IBasicCacheService
         return await CreateDataAsync(size, modelType);
     }
 
-    [Cache(Duration = "00:10:00", RequireIdempotent = false)]
-    public virtual async Task<object> GetSlowDataAsync(int size, string modelType)
+    public async Task<object> GetSlowDataAsync(int size, string modelType)
     {
         // Simulate slow operation for stampede testing
         await Task.Delay(50);
         return await CreateDataAsync(size, modelType);
     }
 
-    [CacheInvalidate(Tags = new[] { "data" })]
-    public virtual async Task InvalidateDataAsync(int size, string modelType)
+    public async Task InvalidateDataAsync(int size, string modelType)
     {
         await _cacheManager.InvalidateByTagsAsync("data");
     }

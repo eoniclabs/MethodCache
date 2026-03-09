@@ -16,6 +16,7 @@ using MethodCache.Providers.SqlServer.Infrastructure;
 using MethodCache.Providers.SqlServer.Services;
 using Testcontainers.MsSql;
 using Xunit;
+using Xunit.Sdk;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using System.Runtime.InteropServices;
@@ -42,6 +43,8 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
     private static MsSqlContainer? SharedContainer;
     private static bool DockerAvailabilityChecked = false;
     private static bool DockerAvailable = false;
+    private static readonly bool RequireInfrastructureTests =
+        string.Equals(Environment.GetEnvironmentVariable("METHODCACHE_REQUIRE_INFRA_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
 
     public async Task InitializeAsync()
     {
@@ -66,11 +69,13 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
 
                     if (!DockerAvailable)
                     {
-                        Console.WriteLine("Docker not available. To run integration tests:");
-                        Console.WriteLine("1. Install and start Docker Desktop");
-                        Console.WriteLine("2. Or set METHODCACHE_SQLSERVER_URL for external SQL Server");
-                        Console.WriteLine("Example: export METHODCACHE_SQLSERVER_URL='Server=localhost;Database=TestCache;Trusted_Connection=true;'");
-                        throw new InvalidOperationException("Docker not available for SQL Server integration tests. Set METHODCACHE_SQLSERVER_URL to use external SQL Server.");
+                        var message = "Docker not available for SQL Server integration tests. Set METHODCACHE_SQLSERVER_URL to use external SQL Server.";
+                        if (RequireInfrastructureTests)
+                        {
+                            throw new InvalidOperationException(message);
+                        }
+
+                        throw SkipException.ForSkip(message);
                     }
 
                     try
@@ -148,10 +153,13 @@ public abstract class SqlServerIntegrationTestBase : IAsyncLifetime
                     }
                     catch (Exception ex)
                     {
-                        // If Docker startup fails, provide clear guidance
-                        Console.WriteLine($"Docker container startup failed: {ex.Message}");
-                        Console.WriteLine("To run tests faster, set METHODCACHE_SQLSERVER_URL to use external SQL Server");
-                        throw new InvalidOperationException($"Failed to start SQL Server container: {ex.Message}. Set METHODCACHE_SQLSERVER_URL environment variable for external SQL Server.");
+                        var message = $"Failed to start SQL Server container: {ex.Message}. Set METHODCACHE_SQLSERVER_URL environment variable for external SQL Server.";
+                        if (RequireInfrastructureTests)
+                        {
+                            throw new InvalidOperationException(message, ex);
+                        }
+
+                        throw SkipException.ForSkip(message);
                     }
                 }
                 else

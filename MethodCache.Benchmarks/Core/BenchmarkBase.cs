@@ -33,8 +33,27 @@ public abstract class BenchmarkBase
     public virtual void GlobalCleanup()
     {
         OnCleanupStart();
-        if (ServiceProvider is IDisposable disposableProvider)
-            disposableProvider.Dispose();
+        try
+        {
+            if (ServiceProvider is IAsyncDisposable asyncDisposableProvider)
+            {
+                asyncDisposableProvider.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                return;
+            }
+
+            if (ServiceProvider is IDisposable disposableProvider)
+            {
+                disposableProvider.Dispose();
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // Benchmark teardown can race with already-disposed internals in transient runners.
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("CancellationTokenSource has been disposed", StringComparison.Ordinal))
+        {
+            // Ignore duplicate disposal failures during benchmark process shutdown.
+        }
     }
 
     protected virtual void ConfigureServices(IServiceCollection services)

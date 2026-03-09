@@ -26,14 +26,14 @@ public abstract class SimpleBenchmarkBase
             .SetMinimumLevel(LogLevel.Warning)
             .AddConsole());
 
+        ConfigureBenchmarkServices(services);
+
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         }, typeof(SimpleBenchmarkBase).Assembly);
 
         services.AddSingleton(sp => (InMemoryCacheManager)sp.GetRequiredService<ICacheManager>());
-
-        ConfigureBenchmarkServices(services);
         
         ServiceProvider = services.BuildServiceProvider();
         CacheManager = ServiceProvider.GetRequiredService<ICacheManager>();
@@ -45,8 +45,27 @@ public abstract class SimpleBenchmarkBase
     public virtual void GlobalCleanup()
     {
         OnCleanupStart();
-        if (ServiceProvider is IDisposable disposableProvider)
-            disposableProvider.Dispose();
+        try
+        {
+            if (ServiceProvider is IAsyncDisposable asyncDisposableProvider)
+            {
+                asyncDisposableProvider.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                return;
+            }
+
+            if (ServiceProvider is IDisposable disposableProvider)
+            {
+                disposableProvider.Dispose();
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // Benchmark teardown can race with already-disposed internals in transient runners.
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("CancellationTokenSource has been disposed", StringComparison.Ordinal))
+        {
+            // Ignore duplicate disposal failures during benchmark process shutdown.
+        }
     }
 
     protected virtual void ConfigureBenchmarkServices(IServiceCollection services)

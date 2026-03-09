@@ -19,6 +19,7 @@ using MethodCache.Providers.Redis.Infrastructure;
 using MethodCache.Providers.Redis.Services;
 using Testcontainers.Redis;
 using Xunit;
+using Xunit.Sdk;
 using DotNet.Testcontainers.Builders;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Extensions;
@@ -41,6 +42,8 @@ public abstract class RedisIntegrationTestBase : IAsyncLifetime
     // Share a single Redis container across all test classes to reduce startup cost
     private static readonly SemaphoreSlim InitLock = new(1, 1);
     private static RedisContainer? SharedContainer;
+    private static readonly bool RequireInfrastructureTests =
+        string.Equals(Environment.GetEnvironmentVariable("METHODCACHE_REQUIRE_INFRA_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
 
     public async Task InitializeAsync()
     {
@@ -69,8 +72,13 @@ public abstract class RedisIntegrationTestBase : IAsyncLifetime
                     }
                     catch (Exception ex)
                     {
-                        // If Docker is unavailable, fail initialization with clear guidance
-                        throw new InvalidOperationException($"Docker not available for Redis integration tests. {ex.Message}\nSet METHODCACHE_REDIS_URL or REDIS_URL to run against an external Redis, or start Docker.");
+                        var message = $"Docker not available for Redis integration tests. {ex.Message}\nSet METHODCACHE_REDIS_URL or REDIS_URL to run against an external Redis, or start Docker.";
+                        if (RequireInfrastructureTests)
+                        {
+                            throw new InvalidOperationException(message, ex);
+                        }
+
+                        throw SkipException.ForSkip(message);
                     }
                 }
                 else
