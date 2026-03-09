@@ -1,5 +1,7 @@
 using System.Threading.Tasks;
+using System.Threading;
 using MethodCache.Abstractions.Policies;
+using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
 using MethodCache.Core.Options;
 using MethodCache.Core.PolicyPipeline.Model;
@@ -121,5 +123,106 @@ public class RuntimeCacheConfiguratorTests
         await configurator.ClearAsync();
 
         Assert.Empty(store.GetSnapshots());
+    }
+
+    [Fact]
+    public async Task UpsertBatchAsync_StoresAllEntries()
+    {
+        var store = new RuntimePolicyStore();
+        var configurator = new RuntimeCacheConfigurator(store);
+
+        var entries = new[]
+        {
+            new RuntimeOverrideEntry("Batch.One", CachePolicy.Empty with { Duration = System.TimeSpan.FromMinutes(1) }, CachePolicyFields.Duration),
+            new RuntimeOverrideEntry("Batch.Two", CachePolicy.Empty with { Duration = System.TimeSpan.FromMinutes(2), Tags = new[] { "runtime" } }, CachePolicyFields.Duration | CachePolicyFields.Tags)
+        };
+
+        await configurator.UpsertBatchAsync(entries);
+
+        var snapshots = await configurator.GetOverridesAsync();
+        Assert.Equal(2, snapshots.Count);
+    }
+
+    [Fact]
+    public async Task GetOverrideAsync_ReturnsNull_WhenMethodIsMissing()
+    {
+        var store = new RuntimePolicyStore();
+        var configurator = new RuntimeCacheConfigurator(store);
+
+        var snapshot = await configurator.GetOverrideAsync("Missing.Method");
+
+        Assert.Null(snapshot);
+    }
+
+    [Fact]
+    public async Task UpsertAsync_WithMetadataAndExpiration_ExpiresOverride()
+    {
+        var store = new RuntimePolicyStore();
+        var configurator = new RuntimeCacheConfigurator(store);
+        var metadata = new RuntimeOverrideMetadata(
+            Owner: "ops-team",
+            Reason: "incident mitigation",
+            Ticket: "INC-1234",
+            ExpiresAt: DateTimeOffset.UtcNow.AddMilliseconds(150));
+
+        await configurator.UpsertAsync(
+            "Expiring.Method",
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)).WithTags("runtime"),
+            metadata);
+
+        var current = await configurator.GetOverrideAsync("Expiring.Method");
+        Assert.NotNull(current);
+        Assert.Equal("ops-team", current!.Policy.Metadata["runtime.owner"]);
+        Assert.Equal("incident mitigation", current.Policy.Metadata["runtime.reason"]);
+
+        await Task.Delay(250);
+
+        var expired = await configurator.GetOverrideAsync("Expiring.Method");
+        Assert.Null(expired);
+    }
+
+    [Fact]
+    public async Task RemoveAsync_WithTypedExpression_RemovesOverride()
+    {
+        var store = new RuntimePolicyStore();
+        IRuntimeCacheConfigurator configurator = new RuntimeCacheConfigurator(store);
+
+        var typeName = (typeof(IRuntimeDocService).FullName ?? nameof(IRuntimeDocService)).Replace('+', '.');
+        var methodId = $"{typeName}.{nameof(IRuntimeDocService.GetAsync)}";
+
+        await configurator.UpsertAsync(methodId, (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromMinutes(1)));
+        await configurator.RemoveAsync<IRuntimeDocService, string>(x => x.GetAsync(default));
+
+        var snapshots = await configurator.GetOverridesAsync();
+        Assert.Empty(snapshots);
+    }
+
+    [Fact]
+    public async Task WatchAsync_EmitsAddedAndRemovedChanges()
+    {
+        var store = new RuntimePolicyStore();
+        var configurator = new RuntimeCacheConfigurator(store);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var changes = new List<PolicyChange>();
+
+        var watcher = Task.Run(async () =>
+        {
+            await foreach (var change in configurator.WatchAsync(cts.Token))
+            {
+                changes.Add(change);
+                if (changes.Count >= 2)
+                {
+                    break;
+                }
+            }
+        }, cts.Token);
+
+        await configurator.UpsertAsync("Watch.Method", (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromMinutes(1)));
+        await configurator.RemoveAsync("Watch.Method");
+        await watcher;
+
+        Assert.Equal(2, changes.Count);
+        Assert.Equal(PolicyChangeReason.Added, changes[0].Reason);
+        Assert.Equal(PolicyChangeReason.Removed, changes[1].Reason);
     }
 }

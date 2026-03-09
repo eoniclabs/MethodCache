@@ -33,7 +33,14 @@ internal static class PolicySnapshotBuilder
         return new PolicySnapshot(sourceId, methodId, enriched, timestamp, metadata);
     }
 
-    public static PolicyChange CreateChange(string sourceId, string methodId, CachePolicy policy, CachePolicyFields fields, PolicyChangeReason reason, DateTimeOffset timestamp)
+    public static PolicyChange CreateChange(
+        string sourceId,
+        string methodId,
+        CachePolicy policy,
+        CachePolicyFields fields,
+        PolicyChangeReason reason,
+        DateTimeOffset timestamp,
+        IReadOnlyDictionary<string, string?>? metadata = null)
     {
         var clearedFields = CachePolicyFields.Duration |
                             CachePolicyFields.Tags |
@@ -46,6 +53,6 @@ internal static class PolicySnapshotBuilder
             reason == PolicyChangeReason.Removed ? CachePolicyFields.None : fields,
             reason == PolicyChangeReason.Removed ? clearedFields : CachePolicyFields.None,
             policy);
-        return new PolicyChange(sourceId, methodId, delta, reason, timestamp);
+        return new PolicyChange(sourceId, methodId, delta, reason, timestamp, metadata);
     }
 }
