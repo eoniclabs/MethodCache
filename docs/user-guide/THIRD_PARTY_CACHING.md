@@ -9,11 +9,58 @@ MethodCache's runtime configuration system lets you add caching behavior to thir
 - **Enhancing reliability** - Reduce dependency on external services
 - **Controlling behavior** - Manage third-party library performance from your code
 
+## Choose Your Approach
+
+You can use either approach, or mix both:
+
+| Approach | Best For | Typical Owner |
+|----------|----------|---------------|
+| **Fluent API in application code** | Teams that prefer explicit, code-reviewed cache behavior near call sites | Application developers |
+| **JSON/YAML policy config** | Centralized policy management without code changes | Operations/platform teams |
+
+Most teams start with the fluent API and add JSON/YAML for central policy control later.
+
+## Fluent API Examples
+
+### Wrapper around third-party client (recommended starting point)
+
+```csharp
+public sealed class WeatherClientFacade
+{
+    private readonly IWeatherClient _client;
+    private readonly ICacheManager _cache;
+
+    public WeatherClientFacade(IWeatherClient client, ICacheManager cache)
+    {
+        _client = client;
+        _cache = cache;
+    }
+
+    public Task<CurrentWeather> GetCurrentAsync(string city) =>
+        _cache.Cache(() => _client.GetCurrentAsync(city))
+              .WithDuration(TimeSpan.FromMinutes(5))
+              .WithTags("weather", $"city:{city}")
+              .ExecuteAsync();
+}
+```
+
+### Service-level fluent configuration
+
+```csharp
+builder.Services.AddMethodCache(config =>
+{
+    config.ForService<IWeatherFacade>()
+          .Method(x => x.GetCurrentAsync(default))
+          .Duration(TimeSpan.FromMinutes(5))
+          .Tags("weather");
+});
+```
+
 ## How It Works
 
 Since runtime configuration has the highest priority, it can override all other configuration sources. This means you can:
 
-1. **Configure caching for any interface-based library** via JSON/YAML configuration
+1. **Configure caching for any interface-based library** via fluent API and/or JSON/YAML configuration
 2. **Control caching behavior** through your management interface
 3. **Emergency disable** problematic caches instantly
 4. **A/B test** different caching strategies for external calls
@@ -39,7 +86,7 @@ Since runtime configuration has the highest priority, it can override all other 
 | **Sealed classes** | Cannot inherit | Create adapter pattern |
 | **Extension methods** | Static by nature | Wrap in service class |
 
-## Configuration Examples
+## JSON/YAML Configuration Examples
 
 ### Basic Configuration
 
