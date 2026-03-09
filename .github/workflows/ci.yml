@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore MethodCache.sln
+
+      - name: Build
+        run: dotnet build MethodCache.sln --configuration Release --no-restore
+
+      - name: Test with coverage
+        run: dotnet test MethodCache.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        env:
+          METHODCACHE_REQUIRE_INFRA_TESTS: "false"
+
+      - name: Upload test results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+          if-no-files-found: ignore
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./TestResults/**/coverage.cobertura.xml
+          use_oidc: true
+          fail_ci_if_error: false

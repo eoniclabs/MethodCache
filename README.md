@@ -2,8 +2,8 @@
 
 [![NuGet Version](https://img.shields.io/badge/NuGet%20Version-not%20published-lightgrey)](https://www.nuget.org/packages?q=MethodCache)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/eoniclabs/MethodCache/publish.yml)](https://github.com/eoniclabs/MethodCache/actions/workflows/publish.yml)
-[![Coverage](https://img.shields.io/codecov/c/github/eoniclabs/MethodCache)](https://codecov.io/gh/eoniclabs/MethodCache)
+[![Build Status](https://github.com/eoniclabs/MethodCache/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/eoniclabs/MethodCache/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/eoniclabs/MethodCache/graph/badge.svg?branch=main)](https://codecov.io/gh/eoniclabs/MethodCache)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 MethodCache is a .NET caching library that supports two usage styles:
@@ -26,6 +26,7 @@ It is designed for teams that want caching behavior to be easy to add, easy to r
   - [Third-party Library Caching](#third-party-library-caching)
 - [Packages](#packages)
 - [Benchmarks](#benchmarks)
+- [CI and Coverage](#ci-and-coverage)
 - [Documentation and Samples](#documentation-and-samples)
 - [Contributing](#contributing)
 
@@ -240,6 +241,19 @@ Supported frameworks: .NET 8.0, .NET 9.0, .NET 10.0.
 Benchmark sources and reports are in [MethodCache.Benchmarks](MethodCache.Benchmarks/) and [BenchmarkDotNet.Artifacts](MethodCache.Benchmarks/BenchmarkDotNet.Artifacts/results/).
 
 Use these to compare scenarios (hit, miss-and-set, concurrent access, stampede protection) in your own environment.
+
+## CI and Coverage
+
+- Workflow: `.github/workflows/ci.yml`
+- Triggers: push and pull request to `main`
+- Steps: restore, build (Release), test with `XPlat Code Coverage`, upload test-results artifact
+- Coverage upload: Codecov via GitHub OIDC
+
+To enable coverage badges in your fork or org:
+
+1. Ensure the repository is connected in Codecov.
+2. Run the CI workflow at least once on GitHub Actions.
+3. If your Codecov setup requires it, add `CODECOV_TOKEN` in repository secrets.
 
 ## Documentation and Samples
 
