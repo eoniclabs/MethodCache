@@ -29,4 +29,9 @@
     <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(METHODCACHE_REQUIRE_INFRA_TESTS)' != 'true'">
+    <Compile Remove="Tests\**\*.cs" />
+    <Compile Remove="Fixtures\**\*.cs" />
+  </ItemGroup>
+
 </Project>

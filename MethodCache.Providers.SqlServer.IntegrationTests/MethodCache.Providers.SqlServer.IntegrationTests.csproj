@@ -29,6 +29,10 @@
     <ProjectReference Include="..\MethodCache.Providers.SqlServer\MethodCache.Providers.SqlServer.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(METHODCACHE_REQUIRE_INFRA_TESTS)' != 'true'">
+    <Compile Remove="Tests\**\*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>

@@ -43,10 +43,27 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build
         env:
-          MethodCache_Redis_ConnectionString: "localhost:6379"
+          METHODCACHE_REDIS_URL: "localhost:6379"
+          METHODCACHE_REQUIRE_INFRA_TESTS: "true"
 
       - name: Pack
-        run: dotnet pack --configuration Release --no-build -o ./artifacts
+        run: |
+          projects=(
+            "MethodCache/MethodCache.csproj"
+            "MethodCache.Core/MethodCache.Core.csproj"
+            "MethodCache.Abstractions/MethodCache.Abstractions.csproj"
+            "MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj"
+            "MethodCache.Analyzers/MethodCache.Analyzers.csproj"
+            "MethodCache.Providers.Memory/MethodCache.Providers.Memory.csproj"
+            "MethodCache.Providers.Redis/MethodCache.Providers.Redis.csproj"
+            "MethodCache.Providers.SqlServer/MethodCache.Providers.SqlServer.csproj"
+            "MethodCache.HttpCaching/MethodCache.HttpCaching.csproj"
+            "MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj"
+          )
+
+          for project in "${projects[@]}"; do
+            dotnet pack "$project" --configuration Release --no-build -o ./artifacts
+          done
 
       - name: Publish to GitHub Packages
         run: dotnet nuget push "./artifacts/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "https://nuget.pkg.github.com/eoniclabs/index.json" --skip-duplicate
