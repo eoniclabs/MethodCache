@@ -1,43 +1,45 @@
-# MethodCache Fluent API Specification
+# MethodCache Fluent API Guide
 
 ## Overview
-This document defines the fluent API that will sit on top of MethodCache's existing caching infrastructure. The goal is to provide an intuitive, discoverable, and type-safe developer experience while retaining compatibility with the current attribute-based and configuration-centric workflows. The fluent API must compose cleanly with dependency injection (DI), work across MethodCache's L1/L2 layers, and unlock richer policy control without sacrificing performance.
 
-## Goals
-- Deliver a fluent, chainable API surface that is easy to discover via IntelliSense.
-- Maintain strong typing across cache operations, configuration, invalidation, and observability.
-- Preserve performance characteristics expected from MethodCache, including low allocation hot paths.
-- Offer first-class support for multi-layer caching, tagging, ETags, distributed locking, and cache stampede prevention.
-- Provide a configuration experience that aligns with modern .NET DI patterns.
-- Enable straightforward unit testing, integration testing, and production observability.
+This guide explains how to use MethodCache's fluent API for explicit cache operations.
 
-## Non-Goals
-- Replacing or deprecating attribute-based caching in the initial release.
-- Shipping transport or provider changes beyond what is required to support the fluent API.
-- Introducing breaking changes to the public surface of MethodCache.Core outside of the newly proposed namespaces.
+Use the fluent API when:
 
-## Design Principles
-- **Fluent & Composable**: APIs should support readable chains while remaining explicit about behavior.
-- **Discoverable**: Naming, overloads, and XML documentation will be curated to guide developers toward best practices.
-- **Type-Safe**: Generics and typed builders reduce runtime casting and key mismatches.
-- **Performance-Aware**: Favor `ValueTask`, pooled builders, struct-based results, and minimized allocations on hot paths.
-- **Testable**: Avoid statics; rely on DI-friendly abstractions to ease mocking and unit testing.
-- **Layer-Agnostic**: API semantics should not leak internal cache layer specifics but must allow configuration of L1/L2 providers.
-- **Production-Ready**: Include primitives required for real-world deployments (locking, stampede protection, metrics, bulk operations).
+- You do not want attribute-based caching on service contracts.
+- You are caching third-party libraries or SDK clients.
+- You need per-call policy control (duration, tags, key generator, conditions).
+
+## Quick Start
+
+```csharp
+var result = await cache.Cache(() => repository.GetByIdAsync(id))
+    .WithDuration(TimeSpan.FromMinutes(30))
+    .WithTags("orders", $"order:{id}")
+    .ExecuteAsync();
+```
+
+## What the Fluent API Provides
+
+- A chainable API surface on top of `ICacheManager`.
+- Type-safe configuration for key generation, expiration, tags, and versioning.
+- Access to advanced options such as stampede protection and distributed locking.
+- Compatibility with existing MethodCache providers and runtime configuration.
 
 ## High-Level Architecture
-The fluent API is delivered via extension methods on existing public abstractions to avoid large-scale refactoring:
 
-1. **Core API** — `MethodCache.Core.Extensions` contains `ICacheManager` extensions for single/bulk get-create, try-get, streaming, and invalidation.
-2. **ETag API** — `MethodCache.ETags.Extensions` extends `IETagCacheManager` with fluent helpers that align with controller usage patterns.
-3. **Configuration API** — `MethodCache.Core.Configuration.Fluent` introduces fluent builders wired into `IServiceCollection.AddMethodCache`.
-4. **Supporting Types** — New option builders (`CacheEntryOptions`), context objects (`CacheContext`), key builders, MVC helpers, metrics contracts, and streaming options.
+The fluent API is exposed through extension methods and builders:
 
-The fluent API composes with existing middleware, providers, and analyzers. Source generators will be updated to rely on the shared fluent configuration primitives internally, maintaining a single source of truth for policy defaults.
+1. `MethodCache.Core.Extensions`: `ICacheManager` extensions for get/create and invalidation flows.
+2. `MethodCache.ETags.Extensions`: ETag-aware fluent helpers.
+3. `MethodCache.Core.Configuration.Fluent`: builder APIs used during `AddMethodCache` setup.
+4. Supporting types: option builders, contexts, and key builder helpers.
+
+This keeps fluent usage aligned with the same policy pipeline used by attributes and runtime overrides.
 
 ## API Surface Details
 
-### Method Chaining API (NEW!)
+### Method Chaining API
 Namespace: `MethodCache.Core.Extensions` and `MethodCache.Core.Fluent`.
 
 **Overview**: The Method Chaining API provides an intuitive, chainable interface for configuring cache operations. This API transforms the callback-based configuration into a more readable and discoverable fluent interface.
@@ -187,6 +189,8 @@ public static class CacheManagerExtensions
 - `GetOrCreateManyAsync` batches cache lookups and invokes the factory with only missing keys, enabling single round trips to L2 providers.
 - `GetOrCreateStreamAsync` supports caching of streaming data. Implementations may buffer segments or apply windowing based on `StreamCacheOptions`.
 - Invalidation APIs accept `IEnumerable<string>` to support streaming scenarios; params overloads forward to the core method for convenience. `InvalidateByTagPatternAsync` enables wildcard invalidation in providers that support it (e.g., Redis key scanning).
+- `InvalidateByTagPatternAsync` wildcard syntax is `*` (zero or more chars) and `?` (exactly one char). Other characters are literal, and matching is against the full tag string.
+- Provider caveat: behavior is provider-dependent. `InMemoryCacheManager` supports wildcard matching; `HybridCacheManager` currently logs a warning and performs no pattern invalidation.
 
 ### ETag Caching Extensions
 Namespace: `MethodCache.ETags.Extensions`.

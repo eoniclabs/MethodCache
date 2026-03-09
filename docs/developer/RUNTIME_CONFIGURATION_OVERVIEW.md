@@ -113,18 +113,10 @@ public sealed class CacheManagementController : ControllerBase
     [HttpPost("emergency-disable")]
     public async Task<IActionResult> EmergencyDisableCache([FromBody] DisableRequest request)
     {
-        await _configurator.ApplyOverridesAsync(new[]
+        await _configurator.UpsertAsync(request.MethodId, builder =>
         {
-            new MethodCacheConfigEntry
-            {
-                ServiceType = request.Service,
-                MethodName = request.Method,
-                Settings = new CacheMethodSettings
-                {
-                    Duration = TimeSpan.Zero,
-                    Tags = new List<string> { "disabled" }
-                }
-            }
+            builder.WithDuration(TimeSpan.Zero);
+            builder.WithTags("disabled");
         });
 
         return Ok("Cache disabled - effective immediately");

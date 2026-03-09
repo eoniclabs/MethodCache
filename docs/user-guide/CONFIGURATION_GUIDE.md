@@ -1,24 +1,25 @@
 # MethodCache Configuration Guide
 
-This guide covers all the ways you can configure MethodCache, from simple attribute-based configuration to complex multi-source configurations with runtime updates.
+This guide explains how to configure MethodCache, from simple attribute-based setup to layered configuration with runtime overrides.
 
-## 🔥 Key Feature: Runtime Management Interface
+## Runtime Management Interface
 
-**MethodCache supports runtime configuration overrides with the highest priority**, enabling powerful management interfaces that can override ALL other configuration sources (including code). This allows operations teams to:
+Runtime overrides have the highest precedence. They are useful when you need to adjust caching behavior without changing code or redeploying.
 
-- **🚨 Emergency disable** problematic caches instantly
-- **⚡ Live tune** performance during incidents  
-- **🔬 A/B test** different caching strategies
-- **🛡️ Override** developer settings for compliance
-- **📊 Dynamically optimize** based on real usage
+Common runtime use cases:
 
-[Jump to Management Interface Examples →](#management-interface--runtime-overrides)
+- Disable or reduce caching for a method during an incident.
+- Tune durations for a hot path while investigating latency.
+- Run temporary experiments with alternate policy settings.
+- Inspect the effective policy currently applied to each method.
+
+[Jump to Management Interface Examples](#management-interface--runtime-overrides)
 
 ## Table of Contents
 
 1. [Configuration Overview](#configuration-overview)
 2. [Attribute-Based Configuration](#attribute-based-configuration)
-3. [Method Chaining API Configuration](#method-chaining-api-configuration) 🆕
+3. [Method Chaining API Configuration](#method-chaining-api-configuration)
 4. [Programmatic Configuration](#programmatic-configuration)
 5. [JSON Configuration](#json-configuration)
 6. [YAML Configuration](#yaml-configuration)
@@ -35,10 +36,10 @@ MethodCache supports multiple configuration sources that can be combined:
 
 | Source | Priority | Runtime Updates | Use Case |
 |--------|----------|-----------------|----------|
-| Attributes | 10 (lowest) | ❌ | Development, defaults |
-| Fluent/Programmatic | 40 | ❌ | Code-based overrides |
-| JSON/YAML Configuration | 50 | ✅ | Operations, environments, complex configs |
-| Runtime Overrides | 100 (highest) | ✅ | Management interface, emergency overrides |
+| Attributes | Lowest | No | Development defaults |
+| Fluent/Programmatic | Medium | No | Code-based overrides |
+| JSON/YAML Configuration | High | Yes | Environment and operations config |
+| Runtime Overrides | Highest | Yes | Management APIs and temporary overrides |
 
 **How it works:** All configuration sources flow through a unified **policy pipeline**. Each source contributes policies with a specific priority. When multiple sources configure the same method, the highest priority wins. This architecture enables powerful runtime management while keeping your codebase clean.
 
@@ -66,7 +67,7 @@ builder.Services.AddMethodCache(assemblies: Assembly.GetExecutingAssembly());
 
 ## Method Chaining API Configuration
 
-**NEW!** The Method Chaining API provides an intuitive, chainable interface for configuring cache operations. Perfect for caching third-party libraries, legacy code, or when you prefer explicit control over attribute-based configuration.
+The Method Chaining API provides a chainable interface for configuring cache operations. Use it when attributes are not practical, such as third-party integrations or legacy code paths.
 
 ### Basic Usage
 
@@ -381,18 +382,18 @@ foreach (var policy in diagnostics.GetAllPolicies())
 Each report exposes the full set of `PolicyContribution`s so you can see exactly which layer (attributes, JSON/YAML, programmatic, runtime) produced the effective configuration.
 
 
-**🔥 CRITICAL FEATURE:** The runtime layer has the **highest priority** and overrides every other configuration surface. The DI container exposes `IRuntimeCacheConfigurator`, giving you a single entry point for management UIs, incident tooling, or scripting.
+The runtime layer has the highest priority and overrides every other configuration surface. The DI container exposes `IRuntimeCacheConfigurator`, which gives you one entry point for management UIs, incident tooling, or scripting.
 
 ### Runtime management API surface
 
 | Method | What it does |
 |--------|---------------|
-| `ApplyFluentAsync(Action<IFluentMethodCacheConfiguration>)` | Reuses the fluent builders you already use at startup. Great for strongly typed overrides. |
-| `ApplyOverridesAsync(IEnumerable<MethodCacheConfigEntry>)` | Accepts raw method keys/settings – perfect for UI forms or persisted runtime rules. |
-| `GetOverridesAsync()` | Returns every live override (cloned so callers can edit safely). |
-| `RemoveOverrideAsync(serviceType, methodName)` | Removes a single method override; returns `false` if nothing was there. |
-| `ClearOverridesAsync()` | Drops the runtime layer entirely. |
-| `GetEffectiveConfigurationAsync()` | Provides the fully merged view after attributes, config files, and runtime overrides. |
+| `ApplyAsync(Action<IFluentMethodCacheConfiguration>)` | Applies one or more runtime overrides using fluent service/method selectors. |
+| `UpsertAsync(string methodId, Action<CacheEntryOptions.Builder>)` | Applies or replaces one override for a specific method id. |
+| `UpsertAsync(string methodId, Action<CachePolicyBuilder>)` | Applies or replaces one override with direct policy builder control. |
+| `UpsertAsync(string methodId, CachePolicy, CachePolicyFields)` | Applies an explicit policy snapshot. |
+| `RemoveAsync(string methodId)` | Removes one runtime override by method id. |
+| `ClearAsync()` | Removes all runtime overrides. |
 
 ### Example: Cache management endpoints
 
@@ -402,15 +403,21 @@ Each report exposes the full set of `PolicyContribution`s so you can see exactly
 public sealed class CacheManagementController : ControllerBase
 {
     private readonly IRuntimeCacheConfigurator _configurator;
+    private readonly PolicyDiagnosticsService _diagnostics;
 
-    public CacheManagementController(IRuntimeCacheConfigurator configurator)
-        => _configurator = configurator;
+    public CacheManagementController(
+        IRuntimeCacheConfigurator configurator,
+        PolicyDiagnosticsService diagnostics)
+    {
+        _configurator = configurator;
+        _diagnostics = diagnostics;
+    }
 
     // Strongly-typed override (great for known hotspots)
     [HttpPost("orders/boost")]
     public async Task<IActionResult> BoostOrdersAsync([FromBody] TimeSpan duration)
     {
-        await _configurator.ApplyFluentAsync(fluent =>
+        await _configurator.ApplyAsync(fluent =>
         {
             fluent.ForService<IOrdersService>()
                   .Method(s => s.GetAsync(default))
@@ -426,69 +433,56 @@ public sealed class CacheManagementController : ControllerBase
     [HttpPost("overrides")]
     public async Task<IActionResult> UpsertOverride([FromBody] CacheOverrideRequest request)
     {
-        var entry = new MethodCacheConfigEntry
+        await _configurator.UpsertAsync(request.MethodId, builder =>
         {
-            ServiceType = request.ServiceType,
-            MethodName = request.MethodName,
-            Settings = new CacheMethodSettings
+            if (request.Duration.HasValue)
             {
-                Duration = request.Duration,
-                Tags = request.Tags?.ToList() ?? new List<string>(),
-                IsIdempotent = request.RequireIdempotency
+                builder.WithDuration(request.Duration.Value);
             }
-        };
 
-        await _configurator.ApplyOverridesAsync(new[] { entry });
+            if (request.Tags is { Length: > 0 })
+            {
+                builder.WithTags(request.Tags);
+            }
+        });
+
         return Ok();
     }
 
     [HttpDelete("overrides")]
-    public async Task<IActionResult> RemoveOverride([FromQuery] string service, [FromQuery] string method)
+    public async Task<IActionResult> RemoveOverride([FromQuery] string methodId)
     {
-        var removed = await _configurator.RemoveOverrideAsync(service, method);
-        return removed ? NoContent() : NotFound();
+        await _configurator.RemoveAsync(methodId);
+        return NoContent();
     }
 
     [HttpDelete("overrides/all")]
     public async Task<IActionResult> ClearOverrides()
     {
-        await _configurator.ClearOverridesAsync();
+        await _configurator.ClearAsync();
         return NoContent();
     }
 
-    [HttpGet("overrides")]
-    public async Task<IReadOnlyList<MethodCacheConfigEntry>> GetOverrides()
-        => await _configurator.GetOverridesAsync();
-
     [HttpGet("effective")]
-    public async Task<IActionResult> GetEffectiveConfiguration()
+    public IActionResult GetEffectiveConfiguration()
     {
-        var entries = await _configurator.GetEffectiveConfigurationAsync();
-        return Ok(entries.Select(e => new
-        {
-            e.ServiceType,
-            e.MethodName,
-            Duration = e.Settings.Duration,
-            Tags = e.Settings.Tags,
-            e.Priority
-        }));
+        var reports = _diagnostics.GetAllPolicies();
+        return Ok(reports.Select(r => new { r.MethodId, r.Policy.Duration, r.Policy.Tags }));
     }
 }
 
 public sealed record CacheOverrideRequest(
-    string ServiceType,
-    string MethodName,
+    string MethodId,
     TimeSpan? Duration,
-    string[]? Tags,
-    bool RequireIdempotency);
+    string[]? Tags);
 ```
 
 With these endpoints you can build dashboards that:
 
-- **🚨 Kill a cache** during incidents (`ClearOverridesAsync` or `RemoveOverrideAsync`).
-- **⚡ Tune durations** on the fly (`ApplyOverridesAsync`).
-- **🔬 Run experiments** by applying different overrides and comparing metrics.
-- **📊 Visualize the truth** with `GetEffectiveConfigurationAsync` – what the system is actually using right now.
+- Disable or remove overrides during incidents (`ClearAsync` or `RemoveAsync`).
+- Tune durations on the fly (`UpsertAsync` or `ApplyAsync`).
+- Run experiments by applying different overrides and comparing metrics.
+- Show effective policies (`PolicyDiagnosticsService.GetAllPolicies()`).
 
 ### Integration with External Configuration Stores
 
@@ -571,7 +565,7 @@ public class ConfigurationChangeMonitor
 
 ### Configuration Override Examples
 
-To demonstrate the power of runtime overrides:
+To demonstrate override precedence:
 
 ```csharp
 // 1. Code says cache for 1 hour
@@ -586,14 +580,14 @@ config.ForService<IUserService>()
       .Method(x => x.GetUserProfileAsync(default))
       .Duration(TimeSpan.FromHours(2));
 
-// 4. 🔥 RUNTIME CONFIG WINS - Management interface sets 5 minutes
+// 4. Runtime override sets 5 minutes
 // POST /api/admin/cache/emergency-tune
 // { "Duration": "00:05:00" }
 
-// ✅ Result: 5 minutes (runtime override wins!)
+// Result: 5 minutes (runtime override wins)
 ```
 
-This architecture ensures that **operations teams have ultimate control** over caching behavior, which is essential for production systems.
+This architecture ensures operations teams can safely adjust caching behavior in production.
 
 ## Multi-Source Configuration
 
@@ -863,21 +857,12 @@ With runtime configuration having the highest priority, you can build powerful m
 ```csharp
 // Management API endpoint
 [HttpPost("/admin/cache/emergency-disable")]
-public async Task EmergencyDisableCache(string service, string method)
+public async Task EmergencyDisableCache(string methodId)
 {
-    // This will override ALL other configuration sources
-    await _configurator.ApplyOverridesAsync(new[]
+    await _configurator.UpsertAsync(methodId, builder =>
     {
-        new MethodCacheConfigEntry
-        {
-            ServiceType = service,
-            MethodName = method,
-            Settings = new CacheMethodSettings
-            {
-                Duration = TimeSpan.Zero,
-                Tags = new List<string> { "emergency-disable" }
-            }
-        }
+        builder.WithDuration(TimeSpan.Zero);
+        builder.WithTags("emergency-disable");
     });
 }
 ```
@@ -885,21 +870,12 @@ public async Task EmergencyDisableCache(string service, string method)
 ### Live Performance Tuning
 ```csharp
 [HttpPost("/admin/cache/tune-performance")]
-public async Task TunePerformance(string service, string method, TimeSpan duration)
+public async Task TunePerformance(string methodId, TimeSpan duration)
 {
-    // Override programmatic settings for live tuning
-    await _configurator.ApplyOverridesAsync(new[]
+    await _configurator.UpsertAsync(methodId, builder =>
     {
-        new MethodCacheConfigEntry
-        {
-            ServiceType = service,
-            MethodName = method,
-            Settings = new CacheMethodSettings
-            {
-                Duration = duration,
-                Tags = new List<string> { "performance-tuned" }
-            }
-        }
+        builder.WithDuration(duration);
+        builder.WithTags("performance-tuned");
     });
 }
 ```
@@ -907,7 +883,7 @@ public async Task TunePerformance(string service, string method, TimeSpan durati
 ### A/B Testing Framework
 ```csharp
 [HttpPost("/admin/cache/ab-test")]
-public async Task SetupABTest(string service, string method, string variant)
+public async Task SetupABTest(string methodId, string variant)
 {
     var settings = variant switch
     {
@@ -916,18 +892,10 @@ public async Task SetupABTest(string service, string method, string variant)
         _ => throw new ArgumentException("Invalid variant")
     };
 
-    await _configurator.ApplyOverridesAsync(new[]
+    await _configurator.UpsertAsync(methodId, builder =>
     {
-        new MethodCacheConfigEntry
-        {
-            ServiceType = service,
-            MethodName = method,
-            Settings = new CacheMethodSettings
-            {
-                Duration = settings.Duration,
-                Tags = settings.Tags.ToList()
-            }
-        }
+        builder.WithDuration(settings.Duration);
+        builder.WithTags(settings.Tags);
     });
 }
 ```
@@ -948,19 +916,19 @@ This layered approach gives you maximum flexibility while maintaining simplicity
 
 | Priority | Source | Can Override | Runtime Updates | Best For |
 |----------|--------|--------------|-----------------|----------|
-| **40** 🔥 | **Runtime (IOptionsMonitor)** | **Everything** | ✅ Yes | Management interfaces, emergency overrides |
-| **30** | **Programmatic (Code)** | JSON/YAML/Attributes | ❌ No | Application logic, business rules |
-| **20** | **JSON/YAML** | Attributes only | ✅ Yes | Environment configs, operations |
-| **10** | **Attributes** | Nothing | ❌ No | Development defaults |
+| **40** | **Runtime (IOptionsMonitor)** | **Everything** | Yes | Management interfaces and temporary overrides |
+| **30** | **Programmatic (Code)** | JSON/YAML/Attributes | No | Application logic and business rules |
+| **20** | **JSON/YAML** | Attributes only | Yes | Environment configuration |
+| **10** | **Attributes** | Nothing | No | Development defaults |
 
-### 🚨 Emergency Override Example
+### Emergency Override Example
 
 ```bash
 # Emergency: Disable all user profile caching via management API
 curl -X POST /api/admin/cache/emergency-disable \
   -d '{"ServiceName": "IUserService", "MethodName": "GetUserProfile"}'
 
-# ✅ Instantly overrides ALL other configuration sources!
+# Overrides all lower-priority configuration sources.
 ```
 
-**Remember: Runtime configuration = Ultimate operational control** 🎯
+Runtime configuration is the top-priority layer in MethodCache.
