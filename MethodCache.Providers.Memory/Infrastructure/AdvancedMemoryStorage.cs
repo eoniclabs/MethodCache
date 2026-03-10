@@ -10,7 +10,17 @@ public class AdvancedMemoryStorage : IMemoryStorage, IAsyncDisposable, IDisposab
 {
     private readonly AdvancedMemoryStorageProvider _provider;
     private readonly ILogger<AdvancedMemoryStorage> _logger;
+    private readonly bool _ownsProvider;
     private bool _disposed;
+
+    public AdvancedMemoryStorage(
+        AdvancedMemoryStorageProvider provider,
+        ILogger<AdvancedMemoryStorage> logger)
+    {
+        _provider = provider;
+        _logger = logger;
+        _ownsProvider = false;
+    }
 
     public AdvancedMemoryStorage(
         IOptions<AdvancedMemoryOptions> options,
@@ -19,55 +29,49 @@ public class AdvancedMemoryStorage : IMemoryStorage, IAsyncDisposable, IDisposab
     {
         _logger = logger;
         _provider = new AdvancedMemoryStorageProvider(options, providerLogger);
+        _ownsProvider = true;
     }
 
     public T? Get<T>(string key)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        // Memory operations are synchronous, so this is safe
-        var task = _provider.GetAsync<T>(key);
-        return task.IsCompleted ? task.Result : task.AsTask().GetAwaiter().GetResult();
+        return _provider.Get<T>(key);
     }
 
     public void Set<T>(string key, T value, TimeSpan expiration)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        var task = _provider.SetAsync(key, value, expiration, Array.Empty<string>());
-        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
+        _provider.Set(key, value, expiration, Array.Empty<string>());
     }
 
     public void Set<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        var task = _provider.SetAsync(key, value, expiration, tags);
-        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
+        _provider.Set(key, value, expiration, tags);
     }
 
     public void Remove(string key)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        var task = _provider.RemoveAsync(key);
-        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
+        _provider.Remove(key);
     }
 
     public void RemoveByTag(string tag)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        var task = _provider.RemoveByTagAsync(tag);
-        if (!task.IsCompleted) task.AsTask().GetAwaiter().GetResult();
+        _provider.RemoveByTag(tag);
     }
 
     public bool Exists(string key)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        var task = _provider.ExistsAsync(key);
-        return task.IsCompleted ? task.Result : task.AsTask().GetAwaiter().GetResult();
+        return _provider.Exists(key);
     }
 
     public MemoryStorageStats GetStats()
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AdvancedMemoryStorage));
-        var storageStats = _provider.GetStatsAsync().GetAwaiter().GetResult();
+        var storageStats = _provider.GetStats();
 
         if (storageStats == null)
         {
@@ -125,7 +129,10 @@ public class AdvancedMemoryStorage : IMemoryStorage, IAsyncDisposable, IDisposab
     {
         if (_disposed) return;
 
-        _provider.Dispose();
+        if (_ownsProvider)
+        {
+            _provider.Dispose();
+        }
         _disposed = true;
         _logger.LogInformation("AdvancedMemoryStorage disposed");
     }
