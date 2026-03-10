@@ -21,6 +21,7 @@ public class HttpCacheHandler : DelegatingHandler
     // Instance-level variant tracking prevents memory leaks across handler instances
     // Each handler instance manages its own variant limits independently
     private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _variantIndex = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, byte> _revalidationsInFlight = new(StringComparer.Ordinal);
 
     private readonly IHttpCacheStorage _storage;
     private readonly IOptionsMonitor<HttpCacheOptions> _optionsMonitor;
@@ -107,7 +108,10 @@ public class HttpCacheHandler : DelegatingHandler
                 var stale = CreateCacheHitResponse(cachedEntry, "STALE", options, freshnessLifetime);
                 RecordStaleMetrics(request, stale, stopwatch, metricsEnabled);
 
-                _ = QueueRevalidationAsync(request, cachedEntry, cacheKey, options);
+                if (_revalidationsInFlight.TryAdd(cacheKey, 0))
+                {
+                    _ = QueueRevalidationAsync(request, cachedEntry, cacheKey, options);
+                }
                 return stale;
             }
         }
@@ -348,7 +352,6 @@ public class HttpCacheHandler : DelegatingHandler
         }
 
         if (!response.IsSuccessStatusCode &&
-            response.StatusCode != HttpStatusCode.NotModified &&
             response.StatusCode != HttpStatusCode.MovedPermanently &&
             response.StatusCode != HttpStatusCode.NotFound)
         {
@@ -375,7 +378,8 @@ public class HttpCacheHandler : DelegatingHandler
 
     private static bool HasFreshnessInfo(HttpResponseMessage response, HttpCacheOptions options)
     {
-        return response.Headers.CacheControl?.MaxAge != null ||
+        return ((options.Behavior.IsSharedCache && response.Headers.CacheControl?.SharedMaxAge != null) ||
+                response.Headers.CacheControl?.MaxAge != null) ||
                response.Content?.Headers.Expires != null ||
                (response.Content?.Headers.LastModified != null && options.Freshness.AllowHeuristicFreshness);
     }
@@ -442,6 +446,10 @@ public class HttpCacheHandler : DelegatingHandler
             catch (OperationCanceledException) when (revalidationCts.IsCancellationRequested)
             {
                 _logger.LogDebug("Background revalidation timed out for {Uri}", originalRequest.RequestUri);
+            }
+            finally
+            {
+                _revalidationsInFlight.TryRemove(baseKey, out _);
             }
         }, CancellationToken.None);
     }

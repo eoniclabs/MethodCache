@@ -145,6 +145,38 @@ public class HttpCacheHandlerTests
 
         Assert.Equal(2, _innerHandler.RequestCount);
     }
+
+    [Fact]
+    public async Task NotModified_ResponseWithoutCachedEntry_IsNotCached()
+    {
+        var notModified = new HttpResponseMessage(HttpStatusCode.NotModified)
+        {
+            Headers =
+            {
+                Date = DateTimeOffset.UtcNow,
+                ETag = new EntityTagHeaderValue("\"v1\"")
+            }
+        };
+
+        var ok = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("fresh body"),
+            Headers =
+            {
+                Date = DateTimeOffset.UtcNow,
+                CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(5) }
+            }
+        };
+
+        _innerHandler.SetResponses(notModified, ok);
+
+        var response1 = await _httpClient.GetAsync("https://api.example.com/data");
+        var response2 = await _httpClient.GetAsync("https://api.example.com/data");
+
+        Assert.Equal(HttpStatusCode.NotModified, response1.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
+        Assert.Equal(2, _innerHandler.RequestCount);
+    }
 }
 
 public class TestHttpMessageHandler : HttpMessageHandler

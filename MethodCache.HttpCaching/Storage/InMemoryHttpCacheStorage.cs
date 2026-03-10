@@ -53,6 +53,10 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
         {
             Priority = DetermineEntryPriority(entry)
         };
+        if (_storage.MaxCacheSize > 0)
+        {
+            cacheEntryOptions.Size = Math.Max(1, entry.Content.Length);
+        }
 
         var lifetime = CalculateEntryLifetime(entry) ?? _freshness.DefaultMaxAge ?? TimeSpan.FromMinutes(5);
         if (lifetime < _freshness.MinExpiration)

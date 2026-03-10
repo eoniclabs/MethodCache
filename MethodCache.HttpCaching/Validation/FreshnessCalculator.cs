@@ -39,14 +39,14 @@ public class FreshnessCalculator
 
     private TimeSpan? CalculateFreshnessLifetime(HttpCacheEntry entry)
     {
-        if (_behavior.RespectCacheControl && entry.CacheControl?.MaxAge.HasValue == true)
-        {
-            return entry.CacheControl.MaxAge.Value;
-        }
-
         if (_behavior.IsSharedCache && _behavior.RespectCacheControl && entry.CacheControl?.SharedMaxAge.HasValue == true)
         {
             return entry.CacheControl.SharedMaxAge.Value;
+        }
+
+        if (_behavior.RespectCacheControl && entry.CacheControl?.MaxAge.HasValue == true)
+        {
+            return entry.CacheControl.MaxAge.Value;
         }
 
         if (entry.Expires.HasValue && entry.Date.HasValue)
