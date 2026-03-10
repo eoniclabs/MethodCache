@@ -53,7 +53,13 @@ public class InstrumentedStorageProvider : IInstrumentedStorageProvider
             stopwatch.Stop();
             _meterProvider.RecordStorageOperationDuration(ProviderName, "get", stopwatch.Elapsed.TotalMilliseconds);
 
-            var hit = result != null;
+            var requiresExistenceCheck =
+                typeof(T).IsValueType &&
+                Nullable.GetUnderlyingType(typeof(T)) is null &&
+                EqualityComparer<T>.Default.Equals(result!, default!);
+            var hit = requiresExistenceCheck
+                ? await _innerProvider.ExistsAsync(key, cancellationToken)
+                : result is not null;
             activity?.SetTag(TracingConstants.AttributeNames.CacheHit, hit);
 
             return result;

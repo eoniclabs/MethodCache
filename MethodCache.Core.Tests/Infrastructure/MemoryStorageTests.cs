@@ -70,6 +70,19 @@ public class MemoryStorageTests : IDisposable
     }
 
     [Fact]
+    public void Get_WithMissingValueType_ReturnsDefaultAndCountsMiss()
+    {
+        // Act
+        var result = _storage.Get<int>("missing-int");
+        var stats = _storage.GetStats();
+
+        // Assert
+        result.Should().Be(0);
+        stats.Hits.Should().Be(0);
+        stats.Misses.Should().Be(1);
+    }
+
+    [Fact]
     public void Set_WithExpiration_StoresValue()
     {
         // Arrange
@@ -261,6 +274,23 @@ public class MemoryStorageTests : IDisposable
         stats.HitRatio.Should().BeApproximately(2.0 / 3.0, 0.01);
         stats.TagMappingCount.Should().Be(2);
         stats.EstimatedMemoryUsage.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void GetStats_EntryCount_IsNotDerivedFromHitCount()
+    {
+        // Arrange
+        _storage.Set("entry-key", "value", TimeSpan.FromMinutes(1));
+        _storage.Get<string>("entry-key");
+        _storage.Get<string>("entry-key");
+        _storage.Get<string>("entry-key");
+
+        // Act
+        var stats = _storage.GetStats();
+
+        // Assert
+        stats.EntryCount.Should().Be(1);
+        stats.Hits.Should().Be(3);
     }
 
     [Fact]

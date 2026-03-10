@@ -51,9 +51,9 @@ public class HybridCacheManager : IHybridCacheManager
         var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
         var cached = await _storageProvider.GetAsync<T>(cacheKey);
-        if (cached != null)
+        if (await IsCacheHitAsync(cacheKey, cached).ConfigureAwait(false))
         {
-            return cached;
+            return cached!;
         }
 
         var result = await factory();
@@ -84,16 +84,33 @@ public class HybridCacheManager : IHybridCacheManager
 
     public bool TryGetFast<T>(string cacheKey, out T? value)
     {
-        value = default;
-        return false;
+        var lookup = _storageProvider.GetAsync<T>(cacheKey);
+        if (lookup.IsCompletedSuccessfully)
+        {
+            value = lookup.Result;
+        }
+        else
+        {
+            value = lookup.AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        if (RequiresExistenceCheck(value))
+        {
+            var existsTask = _storageProvider.ExistsAsync(cacheKey);
+            return existsTask.IsCompletedSuccessfully
+                ? existsTask.Result
+                : existsTask.AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        return value is not null;
     }
 
     public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
     {
         var cached = await _storageProvider.GetAsync<T>(cacheKey);
-        if (cached != null)
+        if (await IsCacheHitAsync(cacheKey, cached).ConfigureAwait(false))
         {
-            return cached;
+            return cached!;
         }
 
         var result = await factory();
@@ -308,5 +325,22 @@ public class HybridCacheManager : IHybridCacheManager
         // For now, just log that it's not implemented
         _logger.LogDebug("SyncL1CacheAsync called - not implemented");
         await Task.CompletedTask;
+    }
+
+    private async ValueTask<bool> IsCacheHitAsync<T>(string cacheKey, T? value)
+    {
+        if (RequiresExistenceCheck(value))
+        {
+            return await _storageProvider.ExistsAsync(cacheKey).ConfigureAwait(false);
+        }
+
+        return value is not null;
+    }
+
+    private static bool RequiresExistenceCheck<T>(T? value)
+    {
+        return typeof(T).IsValueType &&
+               Nullable.GetUnderlyingType(typeof(T)) is null &&
+               EqualityComparer<T>.Default.Equals(value!, default!);
     }
 }

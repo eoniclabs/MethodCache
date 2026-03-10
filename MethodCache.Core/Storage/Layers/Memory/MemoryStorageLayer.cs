@@ -54,7 +54,14 @@ public sealed class MemoryStorageLayer : IStorageLayer
     {
         var result = await _memoryStorage.GetAsync<T>(key, cancellationToken);
 
-        if (result != null)
+        var requiresExistenceCheck =
+            typeof(T).IsValueType &&
+            Nullable.GetUnderlyingType(typeof(T)) is null &&
+            EqualityComparer<T>.Default.Equals(result!, default!);
+
+        var isHit = requiresExistenceCheck ? _memoryStorage.Exists(key) : result is not null;
+
+        if (isHit)
         {
             Interlocked.Increment(ref _hits);
             context.LayersHit.Add(LayerId);
@@ -62,7 +69,7 @@ public sealed class MemoryStorageLayer : IStorageLayer
             _logger.LogDebug("{LayerId} cache hit for key {Key}", LayerId, key);
 
             // Memory layer always stops propagation on hit
-            return StorageLayerResult<T>.Hit(result);
+            return StorageLayerResult<T>.Hit(result!);
         }
 
         Interlocked.Increment(ref _misses);

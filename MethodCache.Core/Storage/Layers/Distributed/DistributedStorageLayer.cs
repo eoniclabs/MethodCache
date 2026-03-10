@@ -83,8 +83,15 @@ public sealed class DistributedStorageLayer : IStorageLayer
             waitSucceeded = true;
 
             var result = await _l2Storage.GetAsync<T>(key, cancellationToken);
+            var requiresExistenceCheck =
+                typeof(T).IsValueType &&
+                Nullable.GetUnderlyingType(typeof(T)) is null &&
+                EqualityComparer<T>.Default.Equals(result!, default!);
+            var isHit = requiresExistenceCheck
+                ? await _l2Storage.ExistsAsync(key, cancellationToken)
+                : result is not null;
 
-            if (result != null)
+            if (isHit)
             {
                 Interlocked.Increment(ref _hits);
                 context.LayersHit.Add(LayerId);
@@ -94,7 +101,7 @@ public sealed class DistributedStorageLayer : IStorageLayer
                 // Promote to L1 with shorter expiration
                 await PromoteToL1Async(key, result, context.Tags ?? Array.Empty<string>(), cancellationToken);
 
-                return StorageLayerResult<T>.Hit(result);
+                return StorageLayerResult<T>.Hit(result!);
             }
 
             Interlocked.Increment(ref _misses);
