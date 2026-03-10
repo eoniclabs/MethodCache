@@ -87,8 +87,15 @@ public sealed class PersistentStorageLayer : IStorageLayer
             waitSucceeded = true;
 
             var result = await _l3Storage.GetAsync<T>(key, cancellationToken);
+            var requiresExistenceCheck =
+                typeof(T).IsValueType &&
+                Nullable.GetUnderlyingType(typeof(T)) is null &&
+                EqualityComparer<T>.Default.Equals(result!, default!);
+            var isHit = requiresExistenceCheck
+                ? await _l3Storage.ExistsAsync(key, cancellationToken)
+                : result is not null;
 
-            if (result != null)
+            if (isHit)
             {
                 Interlocked.Increment(ref _hits);
                 context.LayersHit.Add(LayerId);
@@ -101,7 +108,7 @@ public sealed class PersistentStorageLayer : IStorageLayer
                     await PromoteToHigherLayersAsync(key, result, context.Tags ?? Array.Empty<string>(), cancellationToken);
                 }
 
-                return StorageLayerResult<T>.Hit(result);
+                return StorageLayerResult<T>.Hit(result!);
             }
 
             Interlocked.Increment(ref _misses);

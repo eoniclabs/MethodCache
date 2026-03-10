@@ -42,6 +42,9 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </example>
 public class MessagePackKeyGenerator : ICacheKeyGenerator
 {
+    private const byte KeyProviderFrame = 0x01;
+    private const byte SerializedFrame = 0x02;
+
     public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
         => GenerateKeyInternal(methodName, args, policy.Version);
 
@@ -66,13 +69,13 @@ public class MessagePackKeyGenerator : ICacheKeyGenerator
                 if (arg is ICacheKeyProvider keyProvider)
                 {
                     var keyPartBytes = Encoding.UTF8.GetBytes(keyProvider.CacheKeyPart);
-                    sha256.TransformBlock(keyPartBytes, 0, keyPartBytes.Length, null, 0);
+                    HashFramedPayload(sha256, KeyProviderFrame, keyPartBytes);
                 }
                 else
                 {
                     // Serialize and hash the bytes directly
                     var serializedArg = MessagePackSerializer.Typeless.Serialize(arg);
-                    sha256.TransformBlock(serializedArg, 0, serializedArg.Length, null, 0);
+                    HashFramedPayload(sha256, SerializedFrame, serializedArg);
                 }
             }
 
@@ -80,5 +83,16 @@ public class MessagePackKeyGenerator : ICacheKeyGenerator
             sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
             return Convert.ToBase64String(sha256.Hash!);
         }
+    }
+
+    private static void HashFramedPayload(SHA256 sha256, byte frameType, byte[] payload)
+    {
+        var frameHeader = new byte[5];
+        frameHeader[0] = frameType;
+        var payloadLength = BitConverter.GetBytes(payload.Length);
+        Buffer.BlockCopy(payloadLength, 0, frameHeader, 1, payloadLength.Length);
+
+        sha256.TransformBlock(frameHeader, 0, frameHeader.Length, null, 0);
+        sha256.TransformBlock(payload, 0, payload.Length, null, 0);
     }
 }

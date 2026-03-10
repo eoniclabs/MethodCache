@@ -318,11 +318,30 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
             var policy = CreateRuntimePolicy(FluentMethodName, BuildOptions(null));
 
-            var value = await cacheManager.TryGetAsync<T>(
+            if (cacheManager.TryGetFast<T>(key, out var value))
+            {
+                return CacheLookupResult<T>.Hit(value!);
+            }
+
+            // Fallback to slower path for managers that don't implement TryGetFast.
+            value = await cacheManager.TryGetAsync<T>(
                 FluentMethodName,
                 EmptyArgs,
                 policy,
                 new FixedKeyGenerator(key)).ConfigureAwait(false);
+
+            if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) is null)
+            {
+                if (EqualityComparer<T>.Default.Equals(value!, default!))
+                {
+                    var exists = cacheManager.TryGetFast<T>(key, out _);
+                    return exists
+                        ? CacheLookupResult<T>.Hit(value!)
+                        : CacheLookupResult<T>.Miss;
+                }
+
+                return CacheLookupResult<T>.Hit(value!);
+            }
 
             return value is null
                 ? CacheLookupResult<T>.Miss

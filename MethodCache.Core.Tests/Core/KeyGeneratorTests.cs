@@ -34,6 +34,12 @@ namespace MethodCache.Core.Tests.Core
             public string CacheKeyPart => $"user-{Id}";
         }
 
+        private sealed class TestKeyPart : ICacheKeyProvider
+        {
+            public required string Part { get; init; }
+            public string CacheKeyPart => Part;
+        }
+
         // Class with nested objects
         public class ComplexClass
         {
@@ -154,6 +160,24 @@ namespace MethodCache.Core.Tests.Core
 
             Assert.Equal(key1, key2);
             Assert.NotEqual(key1, key3);
+        }
+
+        [Fact]
+        public void MessagePackKeyGenerator_WithMultipleICacheKeyProviderArgs_AvoidsConcatenationCollisions()
+        {
+            var generator = new MessagePackKeyGenerator();
+            var descriptor = CacheRuntimePolicy.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
+
+            var key1 = generator.GenerateKey(
+                "Method3",
+                new object[] { new TestKeyPart { Part = "ab" }, new TestKeyPart { Part = "c" } },
+                descriptor);
+            var key2 = generator.GenerateKey(
+                "Method3",
+                new object[] { new TestKeyPart { Part = "a" }, new TestKeyPart { Part = "bc" } },
+                descriptor);
+
+            Assert.NotEqual(key1, key2);
         }
 
         [Fact]

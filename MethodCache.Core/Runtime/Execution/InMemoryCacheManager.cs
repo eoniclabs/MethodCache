@@ -211,15 +211,14 @@ namespace MethodCache.Core.Runtime.Execution
 
             var key = keyGenerator.GenerateKey(methodName, args, policy);
 
-            var cachedResult = await GetAsyncInternal<T>(key, updateStatistics: false);
-            if (cachedResult != null)
+            if (TryGetInternal<T>(key, updateStatistics: false, out var cachedResult))
             {
                 _metricsProvider.CacheHit(methodName);
                 if (_options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
                 }
-                return cachedResult;
+                return cachedResult!;
             }
             
             var entryPolicy = GetCacheEntryPolicy(policy);
@@ -315,15 +314,14 @@ namespace MethodCache.Core.Runtime.Execution
                 throw new ArgumentNullException(nameof(policy));
             }
 
-            var cachedResult = await GetAsyncInternal<T>(cacheKey, updateStatistics: false);
-            if (cachedResult != null)
+            if (TryGetInternal<T>(cacheKey, updateStatistics: false, out var cachedResult))
             {
                 _metricsProvider.CacheHit(methodName);
                 if (_options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
                 }
-                return cachedResult;
+                return cachedResult!;
             }
 
             var entryPolicy = GetCacheEntryPolicy(policy);
@@ -615,6 +613,18 @@ namespace MethodCache.Core.Runtime.Execution
         
         private ValueTask<T?> GetAsyncInternal<T>(string key, bool updateStatistics)
         {
+            if (TryGetInternal<T>(key, updateStatistics, out var value))
+            {
+                return new ValueTask<T?>(value);
+            }
+
+            return new ValueTask<T?>((T?)default);
+        }
+
+        private bool TryGetInternal<T>(string key, bool updateStatistics, out T? value)
+        {
+            value = default;
+
             if (_cache.TryGetValue(key, out var entry))
             {
                 // FAST PATH: Check expiration first (like FusionCache)
@@ -625,7 +635,7 @@ namespace MethodCache.Core.Runtime.Execution
                     {
                         Interlocked.Increment(ref _misses);
                     }
-                    return new ValueTask<T?>(default(T));
+                    return false;
                 }
 
                 // Check if we need advanced features (refresh-ahead, sliding expiration, etc.)
@@ -644,7 +654,7 @@ namespace MethodCache.Core.Runtime.Execution
                         {
                             Interlocked.Increment(ref _misses);
                         }
-                        return new ValueTask<T?>(default(T));
+                        return false;
                     }
 
                     ApplySlidingExpiration(entry);
@@ -666,7 +676,8 @@ namespace MethodCache.Core.Runtime.Execution
 
                 try
                 {
-                    return new ValueTask<T?>((T)entry.Value);
+                    value = (T)entry.Value;
+                    return true;
                 }
                 catch (InvalidCastException)
                 {
@@ -677,7 +688,7 @@ namespace MethodCache.Core.Runtime.Execution
                         // Compensate for the hit we incorrectly incremented
                         Interlocked.Decrement(ref _hits);
                     }
-                    return new ValueTask<T?>(default(T));
+                    return false;
                 }
             }
 
@@ -685,7 +696,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 Interlocked.Increment(ref _misses);
             }
-            return new ValueTask<T?>(default(T));
+            return false;
         }
 
         private static void ApplySlidingExpiration(EnhancedCacheEntry entry)
@@ -816,7 +827,10 @@ namespace MethodCache.Core.Runtime.Execution
             // Remove from tag index
             RemoveFromTagIndex(key, entry.Tags);
 
-            _distributedLocks.TryRemove(key, out _);
+            if (_distributedLocks.TryRemove(key, out var state))
+            {
+                state.Semaphore.Dispose();
+            }
         }
 
         public async Task SetAsync<T>(string key, T value, TimeSpan expiration)
@@ -864,11 +878,8 @@ namespace MethodCache.Core.Runtime.Execution
                 // Check if updating existing entry
                 if (_cache.TryGetValue(key, out var oldEntry))
                 {
-                    // Only remove from tag index if old entry had tags
-                    if (oldEntry.Tags != null && oldEntry.Tags.Count > 0)
-                    {
-                        RemoveFromTagIndex(key, oldEntry.Tags);
-                    }
+                    // Use full cleanup to avoid stale distributed lock state.
+                    RemoveEntryCompletely(key, oldEntry);
                 }
 
                 // Simple dictionary insert - lock-free for ConcurrentDictionary
@@ -1044,6 +1055,11 @@ namespace MethodCache.Core.Runtime.Execution
             _cache.Clear();
             _singleFlightGates.Clear();
             _lightweightGates.Clear();
+            foreach (var state in _distributedLocks.Values)
+            {
+                state.Semaphore.Dispose();
+            }
+            _distributedLocks.Clear();
 
             // Lock-free clear - ConcurrentDictionary.Clear() is thread-safe
             _tagToKeys.Clear();
@@ -1424,8 +1440,15 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 _cleanupTimer?.Dispose();
                 _evictionSemaphore?.Dispose();
+                foreach (var state in _distributedLocks.Values)
+                {
+                    state.Semaphore.Dispose();
+                }
                 _cache.Clear();
                 _singleFlightGates.Clear();
+                _lightweightGates.Clear();
+                _distributedLocks.Clear();
+                _tagToKeys.Clear();
                 _disposed = true;
             }
         }

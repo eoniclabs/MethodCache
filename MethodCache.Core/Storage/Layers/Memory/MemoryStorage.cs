@@ -19,6 +19,7 @@ public class MemoryStorage : IMemoryStorage
     // Tag tracking infrastructure for efficient L1 invalidation
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys;
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _keyToTags;
+    private readonly ConcurrentDictionary<string, byte> _knownKeys;
     private readonly ReaderWriterLockSlim _tagMappingLock;
     private volatile int _tagMappingCount;
 
@@ -38,23 +39,20 @@ public class MemoryStorage : IMemoryStorage
 
         _tagToKeys = new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>();
         _keyToTags = new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>();
+        _knownKeys = new ConcurrentDictionary<string, byte>();
         _tagMappingLock = new ReaderWriterLockSlim();
     }
 
     public T? Get<T>(string key)
     {
-        var result = _cache.Get<T>(key);
-
-        if (result != null)
+        if (_cache.TryGetValue(key, out T? result))
         {
             Interlocked.Increment(ref _hits);
-        }
-        else
-        {
-            Interlocked.Increment(ref _misses);
+            return result;
         }
 
-        return result;
+        Interlocked.Increment(ref _misses);
+        return default;
     }
 
     public ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
@@ -81,6 +79,7 @@ public class MemoryStorage : IMemoryStorage
         };
 
         _cache.Set(key, value, cacheOptions);
+        _knownKeys[key] = 0;
 
         // Track tags if enabled and tags are provided
         var tagArray = tags.ToArray();
@@ -107,6 +106,7 @@ public class MemoryStorage : IMemoryStorage
     public void Remove(string key)
     {
         _cache.Remove(key);
+        _knownKeys.TryRemove(key, out _);
         RemoveTagMappings(key);
         _logger.LogDebug("Removed key {Key} from memory storage", key);
     }
@@ -177,9 +177,7 @@ public class MemoryStorage : IMemoryStorage
         var hits = Interlocked.Read(ref _hits);
         var misses = Interlocked.Read(ref _misses);
         var evictions = Interlocked.Read(ref _evictions);
-
-        // Use hits as proxy for entry count since we don't track precise entry count
-        var approximateEntryCount = Math.Max(hits, 0);
+        var entryCount = _knownKeys.Count;
 
         return new MemoryStorageStats
         {
@@ -187,8 +185,8 @@ public class MemoryStorage : IMemoryStorage
             Misses = misses,
             Evictions = evictions,
             TagMappingCount = _tagMappingCount,
-            EntryCount = approximateEntryCount,
-            EstimatedMemoryUsage = _tagMappingCount * 50 + approximateEntryCount * 200
+            EntryCount = entryCount,
+            EstimatedMemoryUsage = _tagMappingCount * 50 + entryCount * 200
         };
     }
 
@@ -205,6 +203,7 @@ public class MemoryStorage : IMemoryStorage
         {
             _tagToKeys.Clear();
             _keyToTags.Clear();
+            _knownKeys.Clear();
             _tagMappingCount = 0;
         }
         finally
@@ -343,6 +342,7 @@ public class MemoryStorage : IMemoryStorage
 
         if (state is string keyString)
         {
+            _knownKeys.TryRemove(keyString, out _);
             RemoveTagMappings(keyString);
         }
 
