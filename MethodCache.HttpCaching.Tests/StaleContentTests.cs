@@ -185,6 +185,58 @@ public class StaleContentTests
         Assert.Equal("stale content", content);
         Assert.Equal("STALE-IF-ERROR", response2.Headers.GetValues("X-Cache").FirstOrDefault());
     }
+
+    [Fact]
+    public async Task StaleWhileRevalidate_ConcurrentRequests_QueuesSingleBackgroundRevalidation()
+    {
+        var options = new HttpCacheOptions();
+        options.Behavior.EnableStaleWhileRevalidate = true;
+        options.Diagnostics.AddDiagnosticHeaders = true;
+
+        using var handler = new SlowOriginHandler();
+        using var httpClient = new HttpClient(HttpCacheTestFactory.CreateHandler(options, handler));
+
+        _ = await httpClient.GetAsync("https://api.example.com/concurrent-swr");
+        await Task.Delay(20);
+
+        var tasks = Enumerable.Range(0, 10)
+            .Select(_ => httpClient.GetAsync("https://api.example.com/concurrent-swr"));
+        await Task.WhenAll(tasks);
+
+        await Task.Delay(100);
+
+        Assert.Equal(2, handler.RequestCount);
+    }
+
+    private sealed class SlowOriginHandler : HttpMessageHandler
+    {
+        private int _requestCount;
+        public int RequestCount => Volatile.Read(ref _requestCount);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var requestNumber = Interlocked.Increment(ref _requestCount);
+
+            if (requestNumber > 1)
+            {
+                await Task.Delay(300, cancellationToken);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent($"payload-{requestNumber}"),
+                Headers =
+                {
+                    Date = DateTimeOffset.UtcNow.AddMinutes(-2),
+                    CacheControl = new CacheControlHeaderValue
+                    {
+                        MaxAge = TimeSpan.FromMilliseconds(1),
+                        Extensions = { new NameValueHeaderValue("stale-while-revalidate", "300") }
+                    }
+                }
+            };
+        }
+    }
 }
 
 

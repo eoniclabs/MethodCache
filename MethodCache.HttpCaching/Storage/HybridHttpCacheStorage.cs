@@ -186,18 +186,18 @@ public class HybridHttpCacheStorage : IHttpCacheStorage
     {
         var now = DateTimeOffset.UtcNow;
 
-        if (_behavior.RespectCacheControl && entry.CacheControl?.MaxAge.HasValue == true)
+        if (_behavior.IsSharedCache && _behavior.RespectCacheControl && entry.CacheControl?.SharedMaxAge.HasValue == true)
         {
-            var remaining = entry.CacheControl.MaxAge.Value - entry.GetAge();
+            var remaining = entry.CacheControl.SharedMaxAge.Value - entry.GetAge();
             if (remaining > TimeSpan.Zero)
             {
                 return ClampExpiration(remaining);
             }
         }
 
-        if (_behavior.IsSharedCache && _behavior.RespectCacheControl && entry.CacheControl?.SharedMaxAge.HasValue == true)
+        if (_behavior.RespectCacheControl && entry.CacheControl?.MaxAge.HasValue == true)
         {
-            var remaining = entry.CacheControl.SharedMaxAge.Value - entry.GetAge();
+            var remaining = entry.CacheControl.MaxAge.Value - entry.GetAge();
             if (remaining > TimeSpan.Zero)
             {
                 return ClampExpiration(remaining);

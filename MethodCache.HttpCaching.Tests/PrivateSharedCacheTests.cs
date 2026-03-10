@@ -107,6 +107,57 @@ public class PrivateSharedCacheTests
     }
 
     [Fact]
+    public async Task SharedCache_PrefersSMaxAge_WhenSMaxAgeExpiresBeforeMaxAge()
+    {
+        var options = new HttpCacheOptions();
+        options.Behavior.IsSharedCache = true;
+        options.Diagnostics.AddDiagnosticHeaders = true;
+
+        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
+
+        var firstResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("first"),
+            Headers =
+            {
+                CacheControl = new CacheControlHeaderValue
+                {
+                    MaxAge = TimeSpan.FromSeconds(2),
+                    SharedMaxAge = TimeSpan.FromMilliseconds(150)
+                },
+                Date = DateTimeOffset.UtcNow
+            }
+        };
+
+        var secondResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("second"),
+            Headers =
+            {
+                CacheControl = new CacheControlHeaderValue
+                {
+                    MaxAge = TimeSpan.FromSeconds(2),
+                    SharedMaxAge = TimeSpan.FromMilliseconds(150)
+                },
+                Date = DateTimeOffset.UtcNow
+            }
+        };
+
+        innerHandler.SetResponses(firstResponse, secondResponse);
+
+        var response1 = await client.GetAsync("https://api.example.com/shared-expiry");
+        await Task.Delay(250);
+        var response2 = await client.GetAsync("https://api.example.com/shared-expiry");
+
+        var content1 = await response1.Content.ReadAsStringAsync();
+        var content2 = await response2.Content.ReadAsStringAsync();
+
+        Assert.Equal("first", content1);
+        Assert.Equal("second", content2);
+        Assert.Equal(2, innerHandler.RequestCount);
+    }
+
+    [Fact]
     public async Task PrivateCache_IgnoresSMaxAge_UsesMaxAge()
     {
         var options = new HttpCacheOptions();
