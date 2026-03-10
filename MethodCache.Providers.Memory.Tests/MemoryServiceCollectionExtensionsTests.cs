@@ -92,4 +92,24 @@ public class MemoryServiceCollectionExtensionsTests
         storage1.Should().BeSameAs(storage2);
         provider1.Should().BeSameAs(provider2);
     }
+
+    [Fact]
+    public async Task IMemoryStorage_And_IStorageProvider_ShouldShareBackingCache()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddAdvancedMemoryStorage();
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var memoryStorage = serviceProvider.GetRequiredService<IMemoryStorage>();
+        var storageProvider = serviceProvider.GetRequiredService<IStorageProvider>();
+
+        await memoryStorage.SetAsync("shared-key", "shared-value", TimeSpan.FromMinutes(1));
+        var fromProvider = await storageProvider.GetAsync<string>("shared-key");
+        fromProvider.Should().Be("shared-value");
+
+        await storageProvider.SetAsync("shared-key-2", "shared-value-2", TimeSpan.FromMinutes(1), Array.Empty<string>());
+        var fromMemoryStorage = await memoryStorage.GetAsync<string>("shared-key-2");
+        fromMemoryStorage.Should().Be("shared-value-2");
+    }
 }

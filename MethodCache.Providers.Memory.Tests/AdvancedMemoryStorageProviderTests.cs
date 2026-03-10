@@ -175,6 +175,48 @@ public class AdvancedMemoryStorageProviderTests
         stats.AdditionalStats.Should().ContainKey("HitRatio");
     }
 
+    [Fact]
+    public async Task GetStatsAsync_ShouldTrackSetAndRemoveOperations()
+    {
+        await _provider.SetAsync("s1", "v1", TimeSpan.FromMinutes(5));
+        await _provider.SetAsync("s2", "v2", TimeSpan.FromMinutes(5));
+        await _provider.RemoveAsync("s1");
+
+        var stats = await _provider.GetStatsAsync();
+
+        stats.Should().NotBeNull();
+        stats!.SetOperations.Should().Be(2);
+        stats.RemoveOperations.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetStatsAsync_WhenDetailedStatsDisabled_ShouldNotTrackHitsAndMisses()
+    {
+        var options = new AdvancedMemoryOptions
+        {
+            MaxEntries = 100,
+            MaxMemoryUsage = 1024 * 1024,
+            EvictionPolicy = EvictionPolicy.LRU,
+            EnableDetailedStats = false
+        };
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<AdvancedMemoryStorageProvider>>();
+        var provider = new AdvancedMemoryStorageProvider(Options.Create(options), logger);
+
+        await provider.SetAsync("key1", "value1", TimeSpan.FromMinutes(5));
+        await provider.GetAsync<string>("key1");
+        await provider.GetAsync<string>("missing");
+
+        var stats = await provider.GetStatsAsync();
+
+        stats.Should().NotBeNull();
+        Convert.ToInt64(stats!.AdditionalStats["Hits"]).Should().Be(0);
+        Convert.ToInt64(stats.AdditionalStats["Misses"]).Should().Be(0);
+    }
+
     [Theory]
     [InlineData(EvictionPolicy.LRU)]
     [InlineData(EvictionPolicy.LFU)]

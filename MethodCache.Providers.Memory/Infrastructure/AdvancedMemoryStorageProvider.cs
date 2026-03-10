@@ -78,7 +78,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _tagToKeys = new();
-    private readonly object _tagIndexLock = new();
     private readonly Timer? _cleanupTimer;
     private readonly AdvancedMemoryOptions _options;
     private readonly ILogger<AdvancedMemoryStorageProvider> _logger;
@@ -87,8 +86,11 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     private long _hits;
     private long _misses;
     private long _evictions;
+    private long _setOperations;
+    private long _removeOperations;
     private long _estimatedMemoryUsage;
     private long _currentTagMappings;
+    private long _currentCleanupIntervalTicks;
     private bool _disposed;
 
     public string Name => "AdvancedMemory";
@@ -102,7 +104,9 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         if (_options.EnableAutomaticCleanup)
         {
-            _cleanupTimer = new Timer(CleanupExpiredEntries, null, _options.CleanupInterval, _options.CleanupInterval);
+            var initialInterval = ClampCleanupInterval(_options.CleanupInterval);
+            _currentCleanupIntervalTicks = initialInterval.Ticks;
+            _cleanupTimer = new Timer(CleanupExpiredEntries, null, initialInterval, initialInterval);
         }
 
         _logger.LogInformation("AdvancedMemoryStorageProvider initialized with policy {Policy}, max entries {MaxEntries}",
@@ -110,6 +114,69 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     }
 
     public ValueTask<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    {
+        return ValueTask.FromResult(Get<T>(key));
+    }
+
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    {
+        Set(key, value, expiration, Array.Empty<string>());
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    {
+        Set(key, value, expiration, tags);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        Remove(key);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    {
+        RemoveByTag(tag);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+    {
+        return ValueTask.FromResult(Exists(key));
+    }
+
+    public ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var entryCount = _cache.Count;
+            var memoryUsage = Interlocked.Read(ref _estimatedMemoryUsage);
+            var hitRatio = GetHitRatio();
+
+            // Health checks
+            var isHealthy = entryCount < _options.MaxEntries * 0.9 && // Not near capacity
+                           memoryUsage < _options.MaxMemoryUsage * 0.9 && // Not near memory limit
+                           (!_options.EnableDetailedStats || hitRatio > 0.1); // Reasonable hit ratio if stats enabled
+
+            var status = isHealthy ? HealthStatus.Healthy : HealthStatus.Degraded;
+
+            return ValueTask.FromResult(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Health check failed for AdvancedMemoryStorageProvider");
+            return ValueTask.FromResult(HealthStatus.Unhealthy);
+        }
+    }
+
+    public ValueTask<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
+    {
+        return ValueTask.FromResult<StorageStats?>(GetStats());
+    }
+
+    internal T? Get<T>(string key)
     {
         var currentTicks = Environment.TickCount64;
 
@@ -119,35 +186,39 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
-                Interlocked.Increment(ref _misses);
-                return ValueTask.FromResult<T?>(default);
+                if (_options.EnableDetailedStats)
+                {
+                    Interlocked.Increment(ref _misses);
+                }
+                return default;
             }
 
             // Lazy LRU: Just update timestamp (like Microsoft.Extensions.Caching.Memory)
             // No locks, no LinkedList manipulation - sorting happens only at eviction time
             entry.UpdateAccess(currentTicks);
 
-            Interlocked.Increment(ref _hits);
+            if (_options.EnableDetailedStats)
+            {
+                Interlocked.Increment(ref _hits);
+            }
 
             if (entry.Value is T typedValue)
             {
-                return ValueTask.FromResult<T?>(typedValue);
+                return typedValue;
             }
 
             _logger.LogWarning("Cache entry for key {Key} is not of expected type {Type}", key, typeof(T));
-            return ValueTask.FromResult<T?>(default);
+            return default;
         }
 
-        Interlocked.Increment(ref _misses);
-        return ValueTask.FromResult<T?>(default);
+        if (_options.EnableDetailedStats)
+        {
+            Interlocked.Increment(ref _misses);
+        }
+        return default;
     }
 
-    public ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
-    {
-        return SetAsync(key, value, expiration, Array.Empty<string>(), cancellationToken);
-    }
-
-    public async ValueTask SetAsync<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags, CancellationToken cancellationToken = default)
+    internal void Set<T>(string key, T value, TimeSpan expiration, IEnumerable<string> tags)
     {
         if (value == null) return;
 
@@ -172,7 +243,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         Interlocked.Add(ref _estimatedMemoryUsage, estimatedSize);
 
         // Check if we need to evict entries before adding
-        await CheckAndEvictIfNeeded(key, entry).ConfigureAwait(false);
+        CheckAndEvictIfNeeded();
 
         _cache.AddOrUpdate(key, entry, (k, existing) =>
         {
@@ -185,39 +256,49 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
         // Add to tag index
         AddToTagIndex(key, tagSet);
+        Interlocked.Increment(ref _setOperations);
+        UpdateCleanupIntervalBasedOnPressure();
 
         _logger.LogDebug("Set cache entry {Key} with expiration {Expiration} and tags {Tags}",
             key, expiration, string.Join(", ", tagSet));
     }
 
-    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+    internal bool Remove(string key)
     {
         if (_cache.TryRemove(key, out var entry))
         {
             RemoveFromTagIndex(key, entry.Tags);
             Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize(_options.MemoryCalculationMode));
+            Interlocked.Increment(ref _removeOperations);
+            UpdateCleanupIntervalBasedOnPressure();
 
             _logger.LogDebug("Removed cache entry {Key}", key);
+            return true;
         }
-        return ValueTask.CompletedTask;
+        return false;
     }
 
-    public async ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    internal int RemoveByTag(string tag)
     {
+        var removed = 0;
         if (_tagToKeys.TryGetValue(tag, out var keys))
         {
             var keysToRemove = keys.Keys.ToList();
 
             foreach (var key in keysToRemove)
             {
-                await RemoveAsync(key, cancellationToken).ConfigureAwait(false);
+                if (Remove(key))
+                {
+                    removed++;
+                }
             }
 
             _logger.LogDebug("Removed {Count} cache entries with tag {Tag}", keysToRemove.Count, tag);
         }
+        return removed;
     }
 
-    public ValueTask<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+    internal bool Exists(string key)
     {
         var currentTicks = Environment.TickCount64;
 
@@ -227,44 +308,20 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             {
                 _cache.TryRemove(key, out _);
                 RemoveFromTagIndex(key, entry.Tags);
-                return ValueTask.FromResult(false);
+                return false;
             }
-            return ValueTask.FromResult(true);
+            return true;
         }
-        return ValueTask.FromResult(false);
+        return false;
     }
 
-    public ValueTask<HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
+    internal StorageStats GetStats()
     {
-        try
-        {
-            var entryCount = _cache.Count;
-            var memoryUsage = Interlocked.Read(ref _estimatedMemoryUsage);
-            var hitRatio = GetHitRatio();
-
-            // Health checks
-            var isHealthy = entryCount < _options.MaxEntries * 0.9 && // Not near capacity
-                           memoryUsage < _options.MaxMemoryUsage * 0.9 && // Not near memory limit
-                           hitRatio > 0.1; // Reasonable hit ratio
-
-            var status = isHealthy ? HealthStatus.Healthy : HealthStatus.Degraded;
-
-            return ValueTask.FromResult(status);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Health check failed for AdvancedMemoryStorageProvider");
-            return ValueTask.FromResult(HealthStatus.Unhealthy);
-        }
-    }
-
-    public ValueTask<StorageStats?> GetStatsAsync(CancellationToken cancellationToken = default)
-    {
-        var stats = new StorageStats
+        return new StorageStats
         {
             GetOperations = Interlocked.Read(ref _hits) + Interlocked.Read(ref _misses),
-            SetOperations = _cache.Count,
-            RemoveOperations = Interlocked.Read(ref _evictions),
+            SetOperations = Interlocked.Read(ref _setOperations),
+            RemoveOperations = Interlocked.Read(ref _removeOperations),
             AverageResponseTimeMs = 0.1, // Memory operations are very fast
             ErrorCount = 0,
             AdditionalStats = new Dictionary<string, object>
@@ -281,24 +338,21 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                 ["MaxMemoryUsage"] = _options.MaxMemoryUsage
             }
         };
-
-        return ValueTask.FromResult<StorageStats?>(stats);
     }
 
-    private async ValueTask CheckAndEvictIfNeeded(string newKey, CacheEntry newEntry)
+    private void CheckAndEvictIfNeeded()
     {
         var currentCount = _cache.Count;
-        var estimatedSize = newEntry.EstimateSize(_options.MemoryCalculationMode);
         var currentMemory = Interlocked.Read(ref _estimatedMemoryUsage);
 
-        // Note: Memory already added in SetAsync (line 172) to ensure accurate eviction decisions
+        // Note: memory is already added before this check in Set.
         if (currentCount >= _options.MaxEntries || currentMemory > _options.MaxMemoryUsage)
         {
-            await EvictEntries(1).ConfigureAwait(false); // Evict at least one entry
+            EvictEntries(1); // Evict at least one entry
         }
     }
 
-    private ValueTask EvictEntries(int minToEvict)
+    private void EvictEntries(int minToEvict)
     {
         var evicted = 0;
         var candidates = GetEvictionCandidates();
@@ -309,7 +363,10 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
             {
                 RemoveFromTagIndex(key, entry.Tags);
                 Interlocked.Add(ref _estimatedMemoryUsage, -entry.EstimateSize(_options.MemoryCalculationMode));
-                Interlocked.Increment(ref _evictions);
+                if (_options.EnableDetailedStats)
+                {
+                    Interlocked.Increment(ref _evictions);
+                }
                 evicted++;
 
                 if (evicted >= minToEvict)
@@ -321,7 +378,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         {
             _logger.LogDebug("Evicted {Count} entries using {Policy} policy", evicted, _options.EvictionPolicy);
         }
-        return ValueTask.CompletedTask;
     }
 
     private IEnumerable<string> GetEvictionCandidates()
@@ -354,7 +410,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         }
         
         var candidates = new List<(string key, long lastAccessed)>(sampleSize);
-        int inspected = 0;
 
         foreach (var kvp in _cache)
         {
@@ -379,9 +434,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     else break;
                 }
             }
-            
-            // Limit inspection to ensure O(1) eviction time
-            if (++inspected >= sampleSize * 10) break;
         }
 
         return candidates.Select(c => c.key);
@@ -391,7 +443,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         const int sampleSize = 100;
         var candidates = new List<(string key, long accessCount)>(sampleSize);
-        int inspected = 0;
 
         foreach (var kvp in _cache)
         {
@@ -415,9 +466,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     else break;
                 }
             }
-            
-            // Limit inspection
-            if (++inspected >= sampleSize * 10) break;
         }
 
         return candidates.Select(c => c.key);
@@ -427,7 +475,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
     {
         const int sampleSize = 100;
         var candidates = new List<(string key, long expirationTicks)>(sampleSize);
-        int inspected = 0;
 
         foreach (var kvp in _cache)
         {
@@ -451,9 +498,6 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     else break;
                 }
             }
-            
-            // Limit inspection
-            if (++inspected >= sampleSize * 10) break;
         }
 
         return candidates.Select(c => c.key);
@@ -461,9 +505,8 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private IEnumerable<string> GetRandomCandidates()
     {
-        var random = new Random();
-        var candidatesNeeded = Math.Min(_cache.Count / 4, 100);
-        int inspected = 0;
+        var random = Random.Shared;
+        var candidatesNeeded = Math.Min(Math.Max(_cache.Count / 4, 1), 100);
 
         // For small caches, just iterate and yield randomly
         if (_cache.Count <= 100)
@@ -496,11 +539,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
                     reservoir[j] = key;
                 }
             }
-            
             itemIndex++;
-            
-            // Limit inspection
-            if (++inspected >= candidatesNeeded * 10) break;
         }
 
         foreach (var key in reservoir)
@@ -514,15 +553,16 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
 
     private void AddToTagIndex(string key, HashSet<string> tags)
     {
-        if (Interlocked.Read(ref _currentTagMappings) >= _options.MaxTagMappings)
-        {
-            _logger.LogWarning("Tag mapping limit reached, skipping tag indexing for key {Key}", key);
-            return;
-        }
-
         // Reduce lock contention by doing operations per-tag instead of locking entire loop
         foreach (var tag in tags)
         {
+            if (_options.MaxTagMappings > 0 &&
+                Interlocked.Read(ref _currentTagMappings) >= _options.MaxTagMappings)
+            {
+                _logger.LogWarning("Tag mapping limit reached, skipping remaining tags for key {Key}", key);
+                break;
+            }
+
             var keys = _tagToKeys.GetOrAdd(tag, _ => new ConcurrentDictionary<string, byte>());
             if (keys.TryAdd(key, 0))
             {
@@ -595,6 +635,8 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         {
             _logger.LogDebug("Cleaned up {Count} expired entries", cleanedCount);
         }
+
+        UpdateCleanupIntervalBasedOnPressure();
     }
 
     private int RemoveBatch(List<string> keys)
@@ -612,6 +654,47 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         return removed;
     }
 
+    private void UpdateCleanupIntervalBasedOnPressure()
+    {
+        if (_cleanupTimer == null || _disposed)
+        {
+            return;
+        }
+
+        var desiredInterval = ClampCleanupInterval(_options.CleanupInterval);
+        if (_options.MaxMemoryUsage > 0)
+        {
+            var pressure = (double)Interlocked.Read(ref _estimatedMemoryUsage) / _options.MaxMemoryUsage;
+            var threshold = Math.Clamp(_options.MemoryPressureThreshold, 0.0, 1.0);
+            if (pressure >= threshold)
+            {
+                desiredInterval = ClampCleanupInterval(_options.MinCleanupInterval);
+            }
+        }
+
+        var currentTicks = Interlocked.Read(ref _currentCleanupIntervalTicks);
+        if (currentTicks == desiredInterval.Ticks)
+        {
+            return;
+        }
+
+        _cleanupTimer.Change(desiredInterval, desiredInterval);
+        Interlocked.Exchange(ref _currentCleanupIntervalTicks, desiredInterval.Ticks);
+        _logger.LogDebug("Adjusted cleanup interval to {Interval}", desiredInterval);
+    }
+
+    private TimeSpan ClampCleanupInterval(TimeSpan interval)
+    {
+        var defaultInterval = TimeSpan.FromMinutes(5);
+        var configuredBase = _options.CleanupInterval > TimeSpan.Zero ? _options.CleanupInterval : defaultInterval;
+        var configuredMin = _options.MinCleanupInterval > TimeSpan.Zero ? _options.MinCleanupInterval : TimeSpan.FromSeconds(30);
+
+        var min = configuredMin <= configuredBase ? configuredMin : configuredBase;
+        var max = configuredMin <= configuredBase ? configuredBase : configuredMin;
+        var candidate = interval > TimeSpan.Zero ? interval : configuredBase;
+        return TimeSpan.FromTicks(Math.Clamp(candidate.Ticks, min.Ticks, max.Ticks));
+    }
+
     private double GetHitRatio()
     {
         var hits = Interlocked.Read(ref _hits);
@@ -627,6 +710,7 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         _cleanupTimer?.Dispose();
         _cache.Clear();
         _tagToKeys.Clear();
+        Interlocked.Exchange(ref _currentTagMappings, 0);
 
         _disposed = true;
         _logger.LogInformation("AdvancedMemoryStorageProvider disposed");
@@ -652,6 +736,8 @@ public class AdvancedMemoryStorageProvider : IStorageProvider, IAsyncDisposable,
         Interlocked.Exchange(ref _hits, 0);
         Interlocked.Exchange(ref _misses, 0);
         Interlocked.Exchange(ref _evictions, 0);
+        Interlocked.Exchange(ref _setOperations, 0);
+        Interlocked.Exchange(ref _removeOperations, 0);
         Interlocked.Exchange(ref _estimatedMemoryUsage, 0);
         Interlocked.Exchange(ref _currentTagMappings, 0);
 

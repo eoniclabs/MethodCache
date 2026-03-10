@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Providers.Memory.Configuration;
@@ -20,8 +21,11 @@ public static class MemoryServiceCollectionExtensions
             services.Configure(configure);
         }
 
-        services.TryAddSingleton<IMemoryStorage, AdvancedMemoryStorage>();
-        services.TryAddSingleton<IStorageProvider, AdvancedMemoryStorageProvider>();
+        services.TryAddSingleton<AdvancedMemoryStorageProvider>();
+        services.TryAddSingleton<IStorageProvider>(provider => provider.GetRequiredService<AdvancedMemoryStorageProvider>());
+        services.TryAddSingleton<IMemoryStorage>(provider => new AdvancedMemoryStorage(
+            provider.GetRequiredService<AdvancedMemoryStorageProvider>(),
+            provider.GetRequiredService<ILogger<AdvancedMemoryStorage>>()));
 
         return services;
     }
