@@ -1,86 +1,39 @@
 # Policy Diagnostics
 
-Runtime inspection and debugging tools for the policy pipeline.
+`PolicyDiagnosticsService` shows the resolved cache policies and how they were assembled from the policy sources. `AddMethodCache()` registers it.
 
-## PolicyDiagnosticsService
-
-Service for inspecting resolved cache policies at runtime. Provides visibility into how policies were assembled from multiple sources.
-
-### Features
-
-#### 1. Policy Inspection
-Get the fully resolved policy for any method:
+## API
 
 ```csharp
-var policy = await diagnostics.GetResolvedPolicyAsync("MyClass.MyMethod");
+var diagnostics = services.GetRequiredService<PolicyDiagnosticsService>();
+
+PolicyDiagnosticsReport report = diagnostics.GetPolicy("MyApp.Services.IUserService.GetUserAsync");
+IReadOnlyList<PolicyDiagnosticsReport> all = diagnostics.GetAllPolicies();
+IReadOnlyList<PolicyContribution> fromConfig = diagnostics.GetContributions("MyApp.Services.IUserService.GetUserAsync", "configuration-files");
+IReadOnlyList<PolicyDiagnosticsReport> overridden = diagnostics.FindBySource("runtime-overrides");
 ```
 
-Returns the merged `CachePolicy` actually used by the cache.
+A `PolicyDiagnosticsReport` has the `MethodId`, the effective `Policy`, every `PolicyContribution` (source id and the fields it set), the contributions grouped by source (`ContributionsBySource`, `GetContributionsFrom(sourceId)`) and `ResolvedAt`.
 
-#### 2. Provenance Tracking
-See which source set each field:
-
-```csharp
-var provenance = await diagnostics.GetPolicyProvenanceAsync("MyClass.MyMethod");
-// Shows: Duration set by ConfigFile (priority 40)
-//        Tags set by FluentApi (priority 50)
-```
-
-#### 3. Source Contributions
-View individual contributions from each source before merging:
-
-```csharp
-var contributions = await diagnostics.GetSourceContributionsAsync("MyClass.MyMethod");
-// Returns: List of (Source, Priority, Policy) tuples
-```
-
-#### 4. Conflict Detection
-Identify when multiple sources configure the same field:
-
-```csharp
-var conflicts = await diagnostics.DetectConflictsAsync("MyClass.MyMethod");
-// Shows fields where multiple sources disagreed
-```
-
-## Use Cases
-
-### Debugging Configuration
-When cache behavior is unexpected, use diagnostics to:
-1. Check which policy is actually applied
-2. Identify which source "won" for each field
-3. Detect unintended overrides
-
-### Runtime Monitoring
-Expose diagnostics via health checks or admin endpoints:
-- Policy audit trails
-- Configuration validation
-- Runtime override tracking
-
-### Development Tools
-Build developer tools on top of diagnostics:
-- Configuration diff viewers
-- Policy simulation ("what if" scenarios)
-- Source impact analysis
+Source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtime-overrides`.
 
 ## Example: Troubleshooting
 
-**Problem:** Method caches for 10 minutes instead of expected 5 minutes.
+**Problem:** A method caches for 10 minutes instead of the expected 5.
 
-**Investigation:**
 ```csharp
-var policy = await diagnostics.GetResolvedPolicyAsync("GetUser");
-// Duration: 600 seconds
+var report = diagnostics.GetPolicy("MyApp.Services.IUserService.GetUserAsync");
+// report.Policy.Duration: 00:10:00
 
-var provenance = await diagnostics.GetPolicyProvenanceAsync("GetUser");
-// Duration: Set by RuntimeOverride (priority 100)
+var durationSources = report.Contributions
+    .Where(c => c.Fields.HasFlag(CachePolicyFields.Duration))
+    .Select(c => c.SourceId);
+// "attributes", "runtime-overrides"
 ```
 
-**Solution:** A runtime override is setting duration. Check runtime configuration or feature flags.
+**Solution:** A runtime override sets the duration and wins over the attribute. Remove it with `IRuntimeCacheConfigurator.RemoveAsync`.
 
-## Thread Safety
+## Notes
 
-`PolicyDiagnosticsService` is thread-safe and read-only. Safe to call from multiple threads concurrently.
-
-## Performance Impact
-
-Minimal - diagnostics read from already-resolved policies in the registry. No additional resolution occurs during diagnostic queries.
+- The service reads the already resolved policies from `IPolicyRegistry`; queries do not resolve anything again.
+- It is thread-safe and read-only.

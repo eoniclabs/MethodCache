@@ -26,22 +26,22 @@ You always pass the cache key yourself. MethodCache does not derive keys from la
 
 - Explicit-key `GetOrCreateAsync`, `TryGetAsync`, bulk and streaming helpers on top of `ICacheManager`.
 - Type-safe configuration for expiration (absolute, sliding, refresh-ahead), tags, and versioning.
-- Compatibility with existing MethodCache providers and runtime configuration.
+- The same in-memory cache, distributed cache and invalidation as `[Cache]` methods. Policies passed here live in code; configuration files and runtime overrides do not change them.
 
 ## High-Level Architecture
 
 The fluent API is exposed through extension methods and builders:
 
-1. `MethodCache.Core.Extensions`: `ICacheManager` extensions for get/create and invalidation flows.
+1. `MethodCache.Core.Infrastructure.Extensions`: `ICacheManager` extensions for get/create flows.
 2. `MethodCache.Core.Configuration.Surfaces.Fluent`: builder APIs used during `AddMethodCache` setup.
 3. Supporting types: option builders and contexts.
 
-This keeps fluent usage aligned with the same policy pipeline used by attributes and runtime overrides.
+The configuration builders feed the same policy pipeline as attributes, appsettings.json and runtime overrides.
 
 ## API Surface Details
 
 ### ICacheManager Extensions
-Namespace: `MethodCache.Core.Extensions`.
+Namespace: `MethodCache.Core.Infrastructure.Extensions`.
 
 ```csharp
 public static class CacheManagerExtensions
@@ -117,7 +117,7 @@ public interface IFluentGroupConfiguration
 }
 ```
 
-- Settings are applied in order: the default policy, then the method's group, then the method itself.
+- Settings are applied in order: the default policy, then the method's group (set with `WithGroup`), then the method itself. `DefaultPolicy` and `ForGroup` only apply to methods listed with `ForService<T>().Method(...)`.
 - Cached methods take duration, tags, sliding expiration, refresh-ahead and version from here. `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to `GetOrCreateAsync`; configuring them for a cached method throws `InvalidOperationException` at startup instead of being ignored.
 
 ### Supporting Types
@@ -217,8 +217,8 @@ public interface ICacheMetrics
 ### Basic Caching
 ```csharp
 var user = await cacheManager.GetOrCreateAsync(
-    key: CacheKeys.Users.ById(userId),
-    factory: static async (context, ct) => await repository.GetUserAsync(userId, ct),
+    key: $"user:{userId}",
+    factory: async (context, ct) => await repository.GetUserAsync(userId, ct),
     configure: options => options.WithDuration(TimeSpan.FromHours(1))
 );
 ```
@@ -226,8 +226,8 @@ var user = await cacheManager.GetOrCreateAsync(
 ### Conditional Caching with Tags and Refresh-Ahead
 ```csharp
 var products = await cacheManager.GetOrCreateAsync(
-    key: CacheKeys.Products.All,
-    factory: static (context, ct) => repository.GetProductsAsync(ct),
+    key: "products:all",
+    factory: async (context, ct) => await repository.GetProductsAsync(ct),
     configure: options => options
         .WithDuration(TimeSpan.FromMinutes(30))
         .RefreshAhead(TimeSpan.FromMinutes(5))
@@ -239,11 +239,11 @@ var products = await cacheManager.GetOrCreateAsync(
 ### Bulk Get with Single Round Trip
 ```csharp
 var users = await cacheManager.GetOrCreateManyAsync(
-    keys: userIds.Select(CacheKeys.Users.ById),
-    factory: static async (missing, context, ct) =>
+    keys: userIds.Select(id => $"user:{id}"),
+    factory: async (missing, context, ct) =>
     {
         var results = await repository.GetUsersByIdsAsync(missing, ct);
-        return results.ToDictionary(user => CacheKeys.Users.ById(user.Id), user => user);
+        return results.ToDictionary(user => $"user:{user.Id}", user => user);
     },
     configure: options => options.WithDuration(TimeSpan.FromHours(1))
 );
@@ -252,8 +252,8 @@ var users = await cacheManager.GetOrCreateManyAsync(
 ### Streaming Cache
 ```csharp
 await foreach (var dto in cacheManager.GetOrCreateStreamAsync(
-    key: CacheKeys.Reports.ByMonth(year, month),
-    factory: static (context, ct) => reportService.GetMonthlyReportStreamAsync(year, month, ct),
+    key: $"report:{year}-{month:00}",
+    factory: (context, ct) => reportService.GetMonthlyReportStreamAsync(year, month, ct),
     configure: options => options
         .WithDuration(TimeSpan.FromMinutes(10))
         .WithSegmentSize(500)
@@ -281,12 +281,11 @@ services.AddMethodCache(config =>
 ```
 
 ### Unit Testing
+`GetOrCreateAsync` is an extension method, so mock libraries cannot intercept it. Pass a real `ICacheManager` instead:
+
 ```csharp
-var cacheManager = Substitute.For<ICacheManager>();
-cacheManager.GetOrCreateAsync(
-    Arg.Any<string>(),
-    Arg.Any<Func<CacheContext, CancellationToken, ValueTask<User>>>(),
-    Arg.Any<Action<CacheEntryOptions.Builder>>(),
-    Arg.Any<CancellationToken>())
-.Returns(new ValueTask<User>(user));
+ICacheManager cacheManager = new NoOpCacheManager(); // never caches: the factory runs on every call
+var service = new OrderService(repository, cacheManager);
 ```
+
+`NoOpCacheManager` is in `MethodCache.Core.Runtime.Execution`.

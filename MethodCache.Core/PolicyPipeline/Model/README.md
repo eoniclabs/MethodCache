@@ -1,52 +1,34 @@
 # Policy Models
 
-Core data models and mapping utilities for the policy pipeline.
+Data models and helpers for the policy pipeline. The `CachePolicy` record itself is in `MethodCache.Abstractions.Policies`.
 
 ## Key Files
 
-### CachePolicyMapper
-- Converts `CacheMethodSettings` → `CachePolicy`
-- Tracks which fields were set via `CachePolicyFields` flags
-- Used by configuration sources to create policy contributions
+### CachePolicyBuilder
+- Builds a `CachePolicy` field by field (`WithDuration`, `WithSlidingExpiration`, `WithRefreshAhead`, `WithVersion`, `SetTags`, `AddMetadata`)
+- Tracks which fields were set as `CachePolicyFields` flags
+- Used by the configuration file source and by `IRuntimeCacheConfigurator.UpsertAsync(methodId, Action<CachePolicyBuilder>)`
 
-### CachePolicyConversion
-- Bidirectional conversion utilities
-- Handles complex mappings (e.g., TimeSpan ↔ duration strings)
-- Type-safe conversions between configuration formats
+### CachePolicyMapper
+- `DetectFields` infers which fields a `CachePolicy` sets
+- `AttachContribution` records a source's contribution on a policy
 
 ### PolicySnapshotBuilder
-- Creates immutable snapshots of resolved policies
-- Used for diagnostics and debugging
-- Captures policy state at a point in time
+- Creates the `PolicySnapshot` and `PolicyChange` records that sources publish
+
+### MethodIds
+- Builds method ids: the interface's full name, a dot, and the method name
 
 ### PolicySourceIds
-- Constants defining source identifiers
-- Examples: `Attribute`, `FluentApi`, `ConfigFile`, `RuntimeOverride`
-- Used for blame tracking and diagnostics
+- Source identifiers: `attributes`, `startup-fluent`, `configuration-files`, `runtime-overrides`
 
 ### PolicySourcePriority
-- Constants defining priority levels
-- 10 (Attribute), 40 (ConfigFile), 50 (FluentApi), 100 (RuntimeOverride)
-- Drives conflict resolution in `PolicyResolver`
+- Priorities: `Attributes` (10), `StartupFluent` (40), `ConfigurationFiles` (50), `RuntimeOverrides` (100)
 
 ## Policy Structure
 
-The core `CachePolicy` record is defined in `MethodCache.Abstractions.Policies`. It contains:
+`CachePolicy` contains `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Metadata` and `Provenance`. Each field can be set by a different source.
 
-- Duration settings
-- Key generation configuration
-- Tags for invalidation
-- Version/concurrency control
-- Idempotency requirements
-- Distributed cache settings
+## Provenance
 
-Each field can be independently set by different sources.
-
-## Provenance Tracking
-
-`PolicyProvenance` records:
-- Which source set each field
-- Priority level of that source
-- Timestamp of last update
-
-This enables rich diagnostics via `PolicyDiagnosticsService`.
+`PolicyProvenance` is the list of `PolicyContribution`s: which source contributed, which fields it set, and when. `PolicyDiagnosticsService` exposes it.

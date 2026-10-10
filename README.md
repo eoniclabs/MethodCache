@@ -129,14 +129,34 @@ You choose the key, so two calls share an entry only when their keys are equal.
 
 ### Configuration Sources
 
-MethodCache supports layered configuration. Higher-priority sources override lower-priority ones:
+MethodCache supports layered configuration. Higher-priority sources override lower-priority ones, field by field:
 
-1. Attributes
-2. Startup code configuration
-3. JSON/YAML configuration
-4. Runtime overrides
+1. Attributes (`[Cache]`)
+2. Startup code (`AddMethodCache(config => ...)`)
+3. Configuration such as appsettings.json (`AddMethodCacheFromConfiguration`)
+4. Runtime overrides (`IRuntimeCacheConfigurator`)
 
-This lets you keep safe defaults in code while still adapting behavior in operations.
+```csharp
+builder.Services.AddMethodCache(config =>
+{
+    config.ForService<IOrdersService>()
+          .Method(s => s.GetByCustomerAsync(default))
+          .Configure(o => o.WithDuration(TimeSpan.FromMinutes(5)));
+});
+builder.Services.AddMethodCacheFromConfiguration(builder.Configuration); // "MethodCache" section
+```
+
+```json
+{
+  "MethodCache": {
+    "Services": {
+      "MyApp.IOrdersService.GetByCustomerAsync": { "Duration": "00:10:00", "Tags": ["orders"] }
+    }
+  }
+}
+```
+
+Changes to the configuration section apply while the application runs; invalid values throw at startup. This lets you keep safe defaults in code while still adapting behavior in operations. See the [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md).
 
 ### Invalidation
 
@@ -209,8 +229,8 @@ await configurator.ApplyAsync(fluent =>
 
 You can cache third-party libraries in two ways:
 
-1. Manual caching (`GetOrCreateAsync` with an explicit key) in your wrapper/service code (most direct for application developers).
-2. Central JSON/YAML policy configuration (useful for centralized operations control).
+1. A wrapper interface in your project with `[Cache]` attributes, whose implementation calls the library. Its policies can then be tuned in appsettings.json or at runtime.
+2. Manual caching (`GetOrCreateAsync` with an explicit key) in your wrapper or service code.
 
 Manual caching example:
 
@@ -229,20 +249,7 @@ public sealed class WeatherFacade
 }
 ```
 
-JSON/YAML policy example:
-
-```json
-{
-  "MethodCache": {
-    "Services": {
-      "WeatherApi.Client.IWeatherApiClient.GetCurrentWeatherAsync": {
-        "Duration": "00:05:00",
-        "Tags": ["weather", "external-api"]
-      }
-    }
-  }
-}
-```
+See the [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md) for the wrapper approach.
 
 ## Packages
 

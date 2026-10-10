@@ -15,10 +15,7 @@ dotnet add package MethodCache.SourceGenerator
 
 ```csharp
 // In Program.cs or Startup.cs
-builder.Services.AddMethodCache(config =>
-{
-    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
-});
+builder.Services.AddMethodCache(); // durations come from the [Cache] attributes
 ```
 
 ### Step 2: Extract Interface (if needed)
@@ -219,6 +216,7 @@ public class OrderService : IOrderService
 
 ```csharp
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddMethodCache(); // after your own registrations
 ```
 
 ## Alternative: Fluent API (No Interface Changes)
@@ -440,10 +438,7 @@ public async Task UpdateProduct_ShouldInvalidateCache()
 Add metrics to track cache effectiveness:
 
 ```csharp
-builder.Services.AddMethodCache(config =>
-{
-    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
-});
+builder.Services.AddMethodCache(); // durations come from the [Cache] attributes
 
 // Custom metrics provider
 builder.Services.AddSingleton<ICacheMetricsProvider, CustomMetricsProvider>();
@@ -459,15 +454,15 @@ builder.Services.AddSingleton<ICacheMetricsProvider, CustomMetricsProvider>();
 - [ ] Is `AddMethodCache()` called in DI?
 - [ ] Is interface registered in DI?
 - [ ] Is `Duration` set on `[Cache]` attribute?
-- [ ] Is method virtual or interface member?
+- [ ] Is the method declared on an interface?
 - [ ] Is source generator running? (check generated files)
 
 **Solution:**
 ```csharp
 // Ensure proper registration
-builder.Services.AddMethodCache(config =>
-    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10))));
+// Register the service first; AddMethodCache() only decorates services registered before it
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddMethodCache();
 ```
 
 ### Cache Not Invalidating
