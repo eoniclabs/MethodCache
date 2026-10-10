@@ -540,10 +540,9 @@ namespace MethodCache.SourceGenerator
                     // Fall through to GetOrCreateFastAsync in case of miss or non-successful completion (e.g. type mismatch)
 
                     sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss or non-successful TryGet: track metric and use fast path GetOrCreate");
-                    sb.AppendLine($"            _metricsProvider?.CacheMiss(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"            // Cache miss: the cache manager records the hit or miss, so it is counted once");
 
-                    // Use GetOrCreateFastAsync (metrics already tracked above)
+                    // GetOrCreateFastAsync records the hit or miss (another caller may have loaded the value meanwhile)
                     sb.AppendLine($"            var createdTask = _cacheManager.GetOrCreateFastAsync<{innerType}>(");
                     sb.AppendLine($"                cacheKeyValue,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
@@ -619,10 +618,9 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                }}");
                     sb.AppendLine($"            }}");
                     sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: track metric and use fast path");
-                    sb.AppendLine($"            _metricsProvider?.CacheMiss(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"            // Cache miss: the cache manager records the hit or miss, so it is counted once");
 
-                    // Use GetOrCreateFastAsync (metrics already tracked above)
+                    // GetOrCreateFastAsync records the hit or miss (another caller may have loaded the value meanwhile)
                     sb.AppendLine($"            var createdTask = _cacheManager.GetOrCreateFastAsync<{innerType}>(");
                     sb.AppendLine($"                cacheKeyValue,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
@@ -700,10 +698,9 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                return cachedValue;");
                     sb.AppendLine($"            }}");
                     sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: track metric and use fast path");
-                    sb.AppendLine($"            _metricsProvider?.CacheMiss(_cachedMethodName_{safeFieldName});");
+                    sb.AppendLine($"            // Cache miss: the cache manager records the hit or miss, so it is counted once");
 
-                    // Use GetOrCreateFastAsync (metrics already tracked above)
+                    // GetOrCreateFastAsync records the hit or miss (another caller may have loaded the value meanwhile)
                     sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{returnType}>(");
                     sb.AppendLine($"                cacheKeyValue,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");

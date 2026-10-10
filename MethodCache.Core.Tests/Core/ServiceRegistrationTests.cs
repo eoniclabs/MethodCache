@@ -9,6 +9,7 @@ using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
@@ -71,6 +72,33 @@ namespace MethodCache.Core.Tests.Core
             Assert.NotNull(serviceProvider.GetService<ICacheManager>());
             Assert.NotNull(serviceProvider.GetService<ICacheKeyGenerator>());
             Assert.NotNull(serviceProvider.GetService<ICacheMetricsProvider>());
+        }
+
+        [Fact]
+        public void AddMethodCache_ExposesTheCacheManagerAsMemoryCache()
+        {
+            var services = new ServiceCollection();
+            services.AddMethodCache(null, Assembly.GetExecutingAssembly());
+
+            using var serviceProvider = services.BuildServiceProvider();
+
+            var cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
+            var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();
+            Assert.Same(cacheManager, memoryCache);
+        }
+
+        [Fact]
+        public void AddMethodCache_KeepsACustomCacheManager()
+        {
+            var services = new ServiceCollection();
+            var custom = NSubstitute.Substitute.For<ICacheManager>();
+            services.AddSingleton(custom);
+            services.AddMethodCache(null, Assembly.GetExecutingAssembly());
+
+            using var serviceProvider = services.BuildServiceProvider();
+
+            Assert.Same(custom, serviceProvider.GetRequiredService<ICacheManager>());
+            Assert.Null(serviceProvider.GetService<IMemoryCache>());
         }
 
         [Fact]

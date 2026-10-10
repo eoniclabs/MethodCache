@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Runtime;
@@ -13,6 +14,14 @@ using MethodCache.OpenTelemetry.Tracing;
 
 namespace MethodCache.OpenTelemetry.Instrumentation;
 
+/// <summary>
+/// Adds tracing spans and operation durations around an <see cref="ICacheManager"/>.
+/// </summary>
+/// <remarks>
+/// Hit, miss and load-failure counters are not recorded here: the inner cache manager and the generated
+/// decorators report them through <see cref="MethodCache.Core.Infrastructure.ICacheMetricsProvider"/>, which
+/// <see cref="CacheMeterProvider"/> implements. Recording them here as well would count every call twice.
+/// </remarks>
 public class TelemetryCacheManager : ICacheManager
 {
     private readonly ICacheManager _innerManager;
@@ -62,30 +71,12 @@ public class TelemetryCacheManager : ICacheManager
 
             SetActivityTagsFromPolicy(activity, policy);
 
-            // Track whether the factory was invoked to determine hit/miss
-            var factoryInvoked = false;
-            async Task<T> InstrumentedFactory()
-            {
-                factoryInvoked = true;
-                return await factory();
-            }
-
-            var result = await _innerManager.GetOrCreateAsync(methodName, args, InstrumentedFactory, policy, keyGenerator);
+            var tracked = new TrackedFactory<T>(factory);
+            var result = await tracked.Run(f => _innerManager.GetOrCreateAsync(methodName, args, f, policy, keyGenerator));
 
             stopwatch.Stop();
 
-            // If factory was invoked, it was a cache miss
-            if (factoryInvoked)
-            {
-                _activitySource.SetCacheHit(activity, false);
-                _meterProvider.RecordCacheMiss(methodName, CreateMetricTagsFromPolicy(policy));
-            }
-            else
-            {
-                _activitySource.SetCacheHit(activity, true);
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTagsFromPolicy(policy));
-            }
-
+            _activitySource.SetCacheHit(activity, !tracked.LoadedForCaller);
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
 
             return result;
@@ -94,7 +85,6 @@ public class TelemetryCacheManager : ICacheManager
         {
             stopwatch.Stop();
             _activitySource.SetCacheError(activity, ex);
-            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTagsFromPolicy(policy));
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
             throw;
         }
@@ -128,16 +118,6 @@ public class TelemetryCacheManager : ICacheManager
             _activitySource.SetCacheHit(activity, hit);
 
             stopwatch.Stop();
-
-            if (hit)
-            {
-                _meterProvider.RecordCacheHit(methodName, CreateMetricTagsFromPolicy(policy));
-            }
-            else
-            {
-                _meterProvider.RecordCacheMiss(methodName, CreateMetricTagsFromPolicy(policy));
-            }
-
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
 
             return result;
@@ -179,11 +159,11 @@ public class TelemetryCacheManager : ICacheManager
 
             SetActivityTagsFromPolicy(activity, policy);
 
-            // Metrics are tracked in the generated decorator code, not here
-            // Just pass through to inner manager without instrumentation
-            var result = await _innerManager.GetOrCreateFastAsync(cacheKey, methodName, factory, policy);
+            var tracked = new TrackedFactory<T>(factory);
+            var result = await tracked.Run(f => _innerManager.GetOrCreateFastAsync(cacheKey, methodName, f, policy));
 
             stopwatch.Stop();
+            _activitySource.SetCacheHit(activity, !tracked.LoadedForCaller);
 
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
 
@@ -193,7 +173,6 @@ public class TelemetryCacheManager : ICacheManager
         {
             stopwatch.Stop();
             _activitySource.SetCacheError(activity, ex);
-            _meterProvider.RecordCacheError(methodName, ex.GetType().Name, CreateMetricTagsFromPolicy(policy));
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
             throw;
         }
@@ -275,6 +254,53 @@ public class TelemetryCacheManager : ICacheManager
     }
 
     // ============= Helper methods =============
+
+    /// <summary>
+    /// Wraps a factory to tell whether the inner manager ran it to answer this call, which marks the call as a miss.
+    /// </summary>
+    /// <remarks>
+    /// A refresh-ahead hit returns the cached value at once and runs the factory on the thread pool, so a factory
+    /// call alone does not mean a miss. When the inner call completes synchronously, only a factory call made inline
+    /// on the calling thread counts; when it completes later, the caller waited for the factory.
+    /// </remarks>
+    private sealed class TrackedFactory<T>
+    {
+        // Set while this call runs, so it flows into the inner manager's foreground work (including awaits)
+        // but not into background refreshes, which the manager starts without the caller's execution context.
+        private static readonly AsyncLocal<object?> CurrentCall = new();
+
+        private readonly Func<Task<T>> _factory;
+        private volatile bool _loadedForCaller;
+
+        public TrackedFactory(Func<Task<T>> factory) => _factory = factory;
+
+        /// <summary>True when the factory ran as part of this call rather than in a background refresh.</summary>
+        public bool LoadedForCaller => _loadedForCaller;
+
+        public Task<T> Run(Func<Func<Task<T>>, Task<T>> call)
+        {
+            var previous = CurrentCall.Value;
+            CurrentCall.Value = this;
+            try
+            {
+                return call(InvokeAsync);
+            }
+            finally
+            {
+                CurrentCall.Value = previous;
+            }
+        }
+
+        private Task<T> InvokeAsync()
+        {
+            if (ReferenceEquals(CurrentCall.Value, this))
+            {
+                _loadedForCaller = true;
+            }
+
+            return _factory();
+        }
+    }
 
     private static void SetActivityTagsFromPolicy(Activity? activity, CacheRuntimePolicy policy)
     {

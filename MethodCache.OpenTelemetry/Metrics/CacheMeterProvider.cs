@@ -6,6 +6,7 @@ using System.Threading;
 using Microsoft.Extensions.Options;
 using MethodCache.Core;
 using MethodCache.Core.Infrastructure;
+using MethodCache.Core.Storage.Abstractions;
 using MethodCache.OpenTelemetry.Configuration;
 
 namespace MethodCache.OpenTelemetry.Metrics;
@@ -35,10 +36,12 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
     private readonly Counter<long> _errorsCounter;
     private readonly Counter<long> _evictionsCounter;
     private readonly Histogram<double> _operationDuration;
+    private readonly Histogram<double> _loadDuration;
     private readonly Histogram<double> _keyGenerationDuration;
     private readonly Histogram<double> _serializationDuration;
     private readonly Histogram<double> _storageOperationDuration;
 
+    private IMemoryCache? _observedCache;
     private long _currentEntries;
     private long _currentMemoryBytes;
     private double _currentHitRatio;
@@ -62,6 +65,7 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
             _errorsCounter = _meter.CreateCounter<long>(MetricInstruments.Names.ErrorsTotal);
             _evictionsCounter = _meter.CreateCounter<long>(MetricInstruments.Names.EvictionsTotal);
             _operationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.OperationDuration);
+            _loadDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.LoadDuration);
             _keyGenerationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.KeyGenerationDuration);
             _serializationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.SerializationDuration);
             _storageOperationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.StorageOperationDuration);
@@ -95,6 +99,11 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
             MetricInstruments.Units.Milliseconds,
             MetricInstruments.Descriptions.OperationDuration);
 
+        _loadDuration = _meter.CreateHistogram<double>(
+            MetricInstruments.Names.LoadDuration,
+            MetricInstruments.Units.Milliseconds,
+            MetricInstruments.Descriptions.LoadDuration);
+
         _keyGenerationDuration = _meter.CreateHistogram<double>(
             MetricInstruments.Names.KeyGenerationDuration,
             MetricInstruments.Units.Milliseconds,
@@ -112,13 +121,13 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
 
         _meter.CreateObservableGauge(
             MetricInstruments.Names.EntriesCount,
-            () => _currentEntries,
+            () => ReadObservedStats()?.Entries ?? Interlocked.Read(ref _currentEntries),
             MetricInstruments.Units.Count,
             MetricInstruments.Descriptions.EntriesCount);
 
         _meter.CreateObservableGauge(
             MetricInstruments.Names.MemoryBytes,
-            () => _currentMemoryBytes,
+            () => ReadObservedStats()?.MemoryUsage ?? Interlocked.Read(ref _currentMemoryBytes),
             MetricInstruments.Units.Bytes,
             MetricInstruments.Descriptions.MemoryBytes);
 
@@ -127,6 +136,16 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
             () => _currentHitRatio,
             MetricInstruments.Units.Ratio,
             MetricInstruments.Descriptions.HitRatio);
+    }
+
+    /// <summary>
+    /// Reports the entry count and memory usage gauges from <paramref name="cache"/> instead of from
+    /// <see cref="UpdateEntriesCount"/> and <see cref="UpdateMemoryUsage"/>.
+    /// </summary>
+    public void ObserveCache(IMemoryCache cache)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        Volatile.Write(ref _observedCache, cache);
     }
 
     public void RecordCacheHit(string methodName, Dictionary<string, object?>? tags = null)
@@ -233,15 +252,29 @@ public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, ID
 
     void ICacheMetricsProvider.CacheError(string methodName, string errorMessage)
     {
-        RecordCacheError(methodName, "generic", new Dictionary<string, object?>
-        {
-            ["error.message"] = errorMessage
-        });
+        // The message is left out on purpose: as a metric tag it would create a time series per distinct message.
+        RecordCacheError(methodName, "load_failed");
     }
 
     void ICacheMetricsProvider.CacheLatency(string methodName, long elapsedMilliseconds)
     {
-        RecordOperationDuration(methodName, elapsedMilliseconds);
+        if (!_options.EnableMetrics) return;
+
+        _loadDuration.Record(elapsedMilliseconds, new KeyValuePair<string, object?>("method", methodName));
+    }
+
+    private ICacheStats? ReadObservedStats()
+    {
+        var cache = Volatile.Read(ref _observedCache);
+        if (cache == null)
+        {
+            return null;
+        }
+
+        // Gauge callbacks are synchronous, so a cache whose statistics are not immediately available is skipped
+        // rather than blocked on.
+        var pending = cache.GetStatsAsync();
+        return pending.IsCompletedSuccessfully ? pending.Result : null;
     }
 
     private void UpdateHitRatioInternal()

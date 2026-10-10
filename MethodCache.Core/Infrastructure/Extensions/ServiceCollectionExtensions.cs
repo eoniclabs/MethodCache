@@ -61,7 +61,7 @@ public static class ServiceCollectionExtensions
     private static void RegisterCoreServices(IServiceCollection services)
     {
         // Register core cache manager
-        services.TryAddSingleton<ICacheManager, InMemoryCacheManager>();
+        MethodCacheServiceCollectionExtensions.AddDefaultCacheManager(services);
 
         // Register default storage options
         services.TryAddSingleton<StorageOptions>();
