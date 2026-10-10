@@ -152,7 +152,7 @@ await cacheManager.InvalidateByTagPatternAsync("user:??");      // user:12, not 
 await cacheManager.InvalidateByTagPatternAsync("*:profile");    // any tag ending with :profile
 ```
 
-Provider note: pattern support is provider-dependent. `InMemoryCacheManager` supports the wildcard syntax above. `HybridCacheManager` currently logs a warning and treats `InvalidateByTagPatternAsync` as a no-op.
+Provider note: pattern support is provider-dependent. `InMemoryCacheManager` supports the wildcard syntax above. `HybridCacheManager` does not support it yet and throws `NotSupportedException`.
 
 ### Runtime Overrides
 
