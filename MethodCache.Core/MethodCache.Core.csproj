@@ -43,11 +43,6 @@
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.Core.Tests" />
     <InternalsVisibleTo Include="MethodCache.SourceGenerator" />
-    <!-- Storage plumbing used by the providers until they are wired into method caching -->
-    <InternalsVisibleTo Include="MethodCache.Providers.Redis" />
-    <InternalsVisibleTo Include="MethodCache.Providers.Redis.IntegrationTests" />
-    <InternalsVisibleTo Include="MethodCache.Providers.SqlServer" />
-    <InternalsVisibleTo Include="MethodCache.Providers.SqlServer.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

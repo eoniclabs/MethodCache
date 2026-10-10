@@ -238,7 +238,7 @@ rmdir /s %USERPROFILE%\.methodcache\test-config  # Windows
 
 ## 📚 Additional Resources
 
-- [Integration Test Strategy](../../INTEGRATION_TEST_STRATEGY.md)
+- [Integration Test Strategy](../../docs/developer/INTEGRATION_TEST_STRATEGY.md)
 - [Platform Setup Scripts](../../scripts/)
 - [VSCode Configuration](../../.vscode/)
 

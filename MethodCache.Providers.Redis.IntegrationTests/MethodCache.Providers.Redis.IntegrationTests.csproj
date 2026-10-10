@@ -16,22 +16,15 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.9" />
     <PackageReference Include="Testcontainers.Redis" Version="4.7.0" />
     <PackageReference Include="FluentAssertions" Version="8.7.0" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(METHODCACHE_REQUIRE_INFRA_TESTS)' != 'true'">
-    <Compile Remove="Tests\**\*.cs" />
-    <Compile Remove="Fixtures\**\*.cs" />
   </ItemGroup>
 
 </Project>

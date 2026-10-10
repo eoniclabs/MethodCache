@@ -12,7 +12,7 @@
   <PropertyGroup>
     <PackageId>MethodCache.Providers.SqlServer</PackageId>
     <Title>MethodCache SQL Server Provider</Title>
-    <Description>SQL Server storage provider for MethodCache using the Infrastructure layer</Description>
+    <Description>SQL Server as MethodCache's distributed cache, with a polling backplane that keeps every instance's in-memory cache in sync</Description>
     <PackageTags>cache;sql-server;database;dotnet;performance;infrastructure</PackageTags>
   </PropertyGroup>
 
@@ -22,12 +22,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.9" />
-    <PackageReference Include="Polly" Version="8.6.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.Providers.SqlServer.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Providers.SqlServer.IntegrationTests" />
   </ItemGroup>
 
 </Project>
