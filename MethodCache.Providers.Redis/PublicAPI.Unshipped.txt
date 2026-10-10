@@ -1,0 +1,260 @@
+#nullable enable
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor.BrotliRedisCompressor(int compressionThreshold = 1024, System.IO.Compression.CompressionLevel compressionLevel = System.IO.Compression.CompressionLevel.Optimal) -> void
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor.Compress(byte[]? data) -> byte[]?
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor.CompressAsync(byte[]? data) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor.CompressionType.get -> string!
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor.Decompress(byte[]? compressedData) -> byte[]?
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor.DecompressAsync(byte[]? compressedData) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.BrotliRedisCompressor.ShouldCompress(byte[]? data) -> bool
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor.Compress(byte[]? data) -> byte[]?
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor.CompressAsync(byte[]? data) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor.CompressionType.get -> string!
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor.Decompress(byte[]? compressedData) -> byte[]?
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor.DecompressAsync(byte[]? compressedData) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor.GzipRedisCompressor(int compressionThreshold = 1024, System.IO.Compression.CompressionLevel compressionLevel = System.IO.Compression.CompressionLevel.Optimal) -> void
+MethodCache.Providers.Redis.Compression.GzipRedisCompressor.ShouldCompress(byte[]? data) -> bool
+MethodCache.Providers.Redis.Compression.IRedisCompressionFactory
+MethodCache.Providers.Redis.Compression.IRedisCompressionFactory.Create(MethodCache.Providers.Redis.Configuration.RedisCompressionType compressionType, int compressionThreshold = 1024) -> MethodCache.Providers.Redis.Compression.IRedisCompressor!
+MethodCache.Providers.Redis.Compression.IRedisCompressor
+MethodCache.Providers.Redis.Compression.IRedisCompressor.Compress(byte[]? data) -> byte[]?
+MethodCache.Providers.Redis.Compression.IRedisCompressor.CompressAsync(byte[]? data) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.IRedisCompressor.CompressionType.get -> string!
+MethodCache.Providers.Redis.Compression.IRedisCompressor.Decompress(byte[]? compressedData) -> byte[]?
+MethodCache.Providers.Redis.Compression.IRedisCompressor.DecompressAsync(byte[]? compressedData) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.IRedisCompressor.ShouldCompress(byte[]? data) -> bool
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor.Compress(byte[]? data) -> byte[]?
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor.CompressAsync(byte[]? data) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor.CompressionType.get -> string!
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor.Decompress(byte[]? compressedData) -> byte[]?
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor.DecompressAsync(byte[]? compressedData) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor.NoCompressionRedisCompressor() -> void
+MethodCache.Providers.Redis.Compression.NoCompressionRedisCompressor.ShouldCompress(byte[]? data) -> bool
+MethodCache.Providers.Redis.Compression.RedisCompressionFactory
+MethodCache.Providers.Redis.Compression.RedisCompressionFactory.Create(MethodCache.Providers.Redis.Configuration.RedisCompressionType compressionType, int compressionThreshold = 1024) -> MethodCache.Providers.Redis.Compression.IRedisCompressor!
+MethodCache.Providers.Redis.Compression.RedisCompressionFactory.RedisCompressionFactory() -> void
+MethodCache.Providers.Redis.Configuration.BackplaneSerializerType
+MethodCache.Providers.Redis.Configuration.BackplaneSerializerType.Json = 0 -> MethodCache.Providers.Redis.Configuration.BackplaneSerializerType
+MethodCache.Providers.Redis.Configuration.BackplaneSerializerType.MessagePack = 1 -> MethodCache.Providers.Redis.Configuration.BackplaneSerializerType
+MethodCache.Providers.Redis.Configuration.BinaryRedisSerializer
+MethodCache.Providers.Redis.Configuration.BinaryRedisSerializer.BinaryRedisSerializer() -> void
+MethodCache.Providers.Redis.Configuration.BinaryRedisSerializer.Deserialize<T>(byte[]! data) -> T
+MethodCache.Providers.Redis.Configuration.BinaryRedisSerializer.DeserializeAsync<T>(byte[]! data) -> System.Threading.Tasks.Task<T>!
+MethodCache.Providers.Redis.Configuration.BinaryRedisSerializer.Serialize<T>(T value) -> byte[]!
+MethodCache.Providers.Redis.Configuration.BinaryRedisSerializer.SerializeAsync<T>(T value) -> System.Threading.Tasks.Task<byte[]!>!
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions.BreakDuration.get -> System.TimeSpan
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions.BreakDuration.set -> void
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions.CircuitBreakerOptions() -> void
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions.FailureRatio.get -> double
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions.FailureRatio.set -> void
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions.MinimumThroughput.get -> int
+MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions.MinimumThroughput.set -> void
+MethodCache.Providers.Redis.Configuration.CompressedRedisSerializer
+MethodCache.Providers.Redis.Configuration.CompressedRedisSerializer.CompressedRedisSerializer(MethodCache.Providers.Redis.Configuration.IRedisSerializer! innerSerializer, MethodCache.Providers.Redis.Compression.IRedisCompressor! compressor, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Configuration.CompressedRedisSerializer!>! logger) -> void
+MethodCache.Providers.Redis.Configuration.CompressedRedisSerializer.Deserialize<T>(byte[]! data) -> T
+MethodCache.Providers.Redis.Configuration.CompressedRedisSerializer.DeserializeAsync<T>(byte[]! data) -> System.Threading.Tasks.Task<T>!
+MethodCache.Providers.Redis.Configuration.CompressedRedisSerializer.Serialize<T>(T value) -> byte[]!
+MethodCache.Providers.Redis.Configuration.CompressedRedisSerializer.SerializeAsync<T>(T value) -> System.Threading.Tasks.Task<byte[]!>!
+MethodCache.Providers.Redis.Configuration.IBackplaneSerializer
+MethodCache.Providers.Redis.Configuration.IBackplaneSerializer.Deserialize(byte[]! message) -> MethodCache.Core.Storage.Abstractions.BackplaneMessage?
+MethodCache.Providers.Redis.Configuration.IBackplaneSerializer.Serialize(MethodCache.Core.Storage.Abstractions.BackplaneMessage! message) -> byte[]!
+MethodCache.Providers.Redis.Configuration.IRedisConnectionManager
+MethodCache.Providers.Redis.Configuration.IRedisConnectionManager.GetDatabase() -> StackExchange.Redis.IDatabase!
+MethodCache.Providers.Redis.Configuration.IRedisConnectionManager.GetSubscriber() -> StackExchange.Redis.ISubscriber!
+MethodCache.Providers.Redis.Configuration.IRedisConnectionManager.IsConnectedAsync() -> System.Threading.Tasks.Task<bool>!
+MethodCache.Providers.Redis.Configuration.IRedisSerializer
+MethodCache.Providers.Redis.Configuration.IRedisSerializer.Deserialize<T>(byte[]! data) -> T
+MethodCache.Providers.Redis.Configuration.IRedisSerializer.DeserializeAsync<T>(byte[]! data) -> System.Threading.Tasks.Task<T>!
+MethodCache.Providers.Redis.Configuration.IRedisSerializer.Serialize<T>(T value) -> byte[]!
+MethodCache.Providers.Redis.Configuration.IRedisSerializer.SerializeAsync<T>(T value) -> System.Threading.Tasks.Task<byte[]!>!
+MethodCache.Providers.Redis.Configuration.IRedisSerializerFactory
+MethodCache.Providers.Redis.Configuration.IRedisSerializerFactory.Create(MethodCache.Providers.Redis.Configuration.RedisSerializerType serializerType) -> MethodCache.Providers.Redis.Configuration.IRedisSerializer!
+MethodCache.Providers.Redis.Configuration.JsonBackplaneSerializer
+MethodCache.Providers.Redis.Configuration.JsonBackplaneSerializer.Deserialize(byte[]! message) -> MethodCache.Core.Storage.Abstractions.BackplaneMessage?
+MethodCache.Providers.Redis.Configuration.JsonBackplaneSerializer.JsonBackplaneSerializer() -> void
+MethodCache.Providers.Redis.Configuration.JsonBackplaneSerializer.Serialize(MethodCache.Core.Storage.Abstractions.BackplaneMessage! message) -> byte[]!
+MethodCache.Providers.Redis.Configuration.JsonRedisSerializer
+MethodCache.Providers.Redis.Configuration.JsonRedisSerializer.Deserialize<T>(byte[]! data) -> T
+MethodCache.Providers.Redis.Configuration.JsonRedisSerializer.DeserializeAsync<T>(byte[]! data) -> System.Threading.Tasks.Task<T>!
+MethodCache.Providers.Redis.Configuration.JsonRedisSerializer.JsonRedisSerializer(System.Text.Json.JsonSerializerOptions? options = null) -> void
+MethodCache.Providers.Redis.Configuration.JsonRedisSerializer.Serialize<T>(T value) -> byte[]!
+MethodCache.Providers.Redis.Configuration.JsonRedisSerializer.SerializeAsync<T>(T value) -> System.Threading.Tasks.Task<byte[]!>!
+MethodCache.Providers.Redis.Configuration.MessagePackBackplaneSerializer
+MethodCache.Providers.Redis.Configuration.MessagePackBackplaneSerializer.Deserialize(byte[]! message) -> MethodCache.Core.Storage.Abstractions.BackplaneMessage?
+MethodCache.Providers.Redis.Configuration.MessagePackBackplaneSerializer.MessagePackBackplaneSerializer() -> void
+MethodCache.Providers.Redis.Configuration.MessagePackBackplaneSerializer.Serialize(MethodCache.Core.Storage.Abstractions.BackplaneMessage! message) -> byte[]!
+MethodCache.Providers.Redis.Configuration.MessagePackRedisSerializer
+MethodCache.Providers.Redis.Configuration.MessagePackRedisSerializer.Deserialize<T>(byte[]! data) -> T
+MethodCache.Providers.Redis.Configuration.MessagePackRedisSerializer.DeserializeAsync<T>(byte[]! data) -> System.Threading.Tasks.Task<T>!
+MethodCache.Providers.Redis.Configuration.MessagePackRedisSerializer.MessagePackRedisSerializer(bool useContractless = true) -> void
+MethodCache.Providers.Redis.Configuration.MessagePackRedisSerializer.Serialize<T>(T value) -> byte[]!
+MethodCache.Providers.Redis.Configuration.MessagePackRedisSerializer.SerializeAsync<T>(T value) -> System.Threading.Tasks.Task<byte[]!>!
+MethodCache.Providers.Redis.Configuration.RedisCompressionType
+MethodCache.Providers.Redis.Configuration.RedisCompressionType.Brotli = 2 -> MethodCache.Providers.Redis.Configuration.RedisCompressionType
+MethodCache.Providers.Redis.Configuration.RedisCompressionType.Gzip = 1 -> MethodCache.Providers.Redis.Configuration.RedisCompressionType
+MethodCache.Providers.Redis.Configuration.RedisCompressionType.None = 0 -> MethodCache.Providers.Redis.Configuration.RedisCompressionType
+MethodCache.Providers.Redis.Configuration.RedisConnectionManager
+MethodCache.Providers.Redis.Configuration.RedisConnectionManager.Dispose() -> void
+MethodCache.Providers.Redis.Configuration.RedisConnectionManager.GetDatabase() -> StackExchange.Redis.IDatabase!
+MethodCache.Providers.Redis.Configuration.RedisConnectionManager.GetSubscriber() -> StackExchange.Redis.ISubscriber!
+MethodCache.Providers.Redis.Configuration.RedisConnectionManager.IsConnectedAsync() -> System.Threading.Tasks.Task<bool>!
+MethodCache.Providers.Redis.Configuration.RedisConnectionManager.RedisConnectionManager(StackExchange.Redis.IConnectionMultiplexer! connection, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Configuration.RedisConnectionManager!>! logger) -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions
+MethodCache.Providers.Redis.Configuration.RedisOptions.BackplaneChannel.get -> string!
+MethodCache.Providers.Redis.Configuration.RedisOptions.BackplaneChannel.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.BackplaneSerializer.get -> MethodCache.Providers.Redis.Configuration.BackplaneSerializerType
+MethodCache.Providers.Redis.Configuration.RedisOptions.BackplaneSerializer.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.CircuitBreaker.get -> MethodCache.Providers.Redis.Configuration.CircuitBreakerOptions!
+MethodCache.Providers.Redis.Configuration.RedisOptions.CircuitBreaker.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.Compression.get -> MethodCache.Providers.Redis.Configuration.RedisCompressionType
+MethodCache.Providers.Redis.Configuration.RedisOptions.Compression.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.CompressionThreshold.get -> int
+MethodCache.Providers.Redis.Configuration.RedisOptions.CompressionThreshold.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.ConnectionString.get -> string!
+MethodCache.Providers.Redis.Configuration.RedisOptions.ConnectionString.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.ConnectTimeout.get -> System.TimeSpan
+MethodCache.Providers.Redis.Configuration.RedisOptions.ConnectTimeout.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.DatabaseNumber.get -> int
+MethodCache.Providers.Redis.Configuration.RedisOptions.DatabaseNumber.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.DefaultExpiration.get -> System.TimeSpan
+MethodCache.Providers.Redis.Configuration.RedisOptions.DefaultExpiration.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.DefaultSerializer.get -> MethodCache.Providers.Redis.Configuration.RedisSerializerType
+MethodCache.Providers.Redis.Configuration.RedisOptions.DefaultSerializer.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableCacheWarming.get -> bool
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableCacheWarming.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableDetailedMetrics.get -> bool
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableDetailedMetrics.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableDistributedLocking.get -> bool
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableDistributedLocking.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnablePubSubInvalidation.get -> bool
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnablePubSubInvalidation.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableSlowLogMonitoring.get -> bool
+MethodCache.Providers.Redis.Configuration.RedisOptions.EnableSlowLogMonitoring.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.KeyPrefix.get -> string!
+MethodCache.Providers.Redis.Configuration.RedisOptions.KeyPrefix.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.MaxConnections.get -> int
+MethodCache.Providers.Redis.Configuration.RedisOptions.MaxConnections.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.RedisOptions() -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.Retry.get -> MethodCache.Providers.Redis.Configuration.RetryOptions!
+MethodCache.Providers.Redis.Configuration.RedisOptions.Retry.set -> void
+MethodCache.Providers.Redis.Configuration.RedisOptions.SyncTimeout.get -> System.TimeSpan
+MethodCache.Providers.Redis.Configuration.RedisOptions.SyncTimeout.set -> void
+MethodCache.Providers.Redis.Configuration.RedisSerializerFactory
+MethodCache.Providers.Redis.Configuration.RedisSerializerFactory.Create(MethodCache.Providers.Redis.Configuration.RedisSerializerType serializerType) -> MethodCache.Providers.Redis.Configuration.IRedisSerializer!
+MethodCache.Providers.Redis.Configuration.RedisSerializerFactory.RedisSerializerFactory() -> void
+MethodCache.Providers.Redis.Configuration.RedisSerializerType
+MethodCache.Providers.Redis.Configuration.RedisSerializerType.Binary = 2 -> MethodCache.Providers.Redis.Configuration.RedisSerializerType
+MethodCache.Providers.Redis.Configuration.RedisSerializerType.Json = 1 -> MethodCache.Providers.Redis.Configuration.RedisSerializerType
+MethodCache.Providers.Redis.Configuration.RedisSerializerType.MessagePack = 0 -> MethodCache.Providers.Redis.Configuration.RedisSerializerType
+MethodCache.Providers.Redis.Configuration.RetryBackoffType
+MethodCache.Providers.Redis.Configuration.RetryBackoffType.Exponential = 1 -> MethodCache.Providers.Redis.Configuration.RetryBackoffType
+MethodCache.Providers.Redis.Configuration.RetryBackoffType.ExponentialWithJitter = 2 -> MethodCache.Providers.Redis.Configuration.RetryBackoffType
+MethodCache.Providers.Redis.Configuration.RetryBackoffType.Linear = 0 -> MethodCache.Providers.Redis.Configuration.RetryBackoffType
+MethodCache.Providers.Redis.Configuration.RetryOptions
+MethodCache.Providers.Redis.Configuration.RetryOptions.BackoffType.get -> MethodCache.Providers.Redis.Configuration.RetryBackoffType
+MethodCache.Providers.Redis.Configuration.RetryOptions.BackoffType.set -> void
+MethodCache.Providers.Redis.Configuration.RetryOptions.BaseDelay.get -> System.TimeSpan
+MethodCache.Providers.Redis.Configuration.RetryOptions.BaseDelay.set -> void
+MethodCache.Providers.Redis.Configuration.RetryOptions.MaxRetries.get -> int
+MethodCache.Providers.Redis.Configuration.RetryOptions.MaxRetries.set -> void
+MethodCache.Providers.Redis.Configuration.RetryOptions.RetryOptions() -> void
+MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.EnableAsyncL2Writes.get -> bool
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.EnableAsyncL2Writes.set -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.EnableBackplane.get -> bool
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.EnableBackplane.set -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.L1DefaultExpiration.get -> System.TimeSpan
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.L1DefaultExpiration.set -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.L1MaxExpiration.get -> System.TimeSpan
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.L1MaxExpiration.set -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.L2DefaultExpiration.get -> System.TimeSpan
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.L2DefaultExpiration.set -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.RedisCompression.get -> MethodCache.Providers.Redis.Configuration.RedisCompressionType
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.RedisCompression.set -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.RedisHybridCacheOptions() -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.RedisSerializer.get -> MethodCache.Providers.Redis.Configuration.RedisSerializerType
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.RedisSerializer.set -> void
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.Strategy.get -> MethodCache.Core.Storage.Coordination.HybridStrategy
+MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions.Strategy.set -> void
+MethodCache.Providers.Redis.Extensions.RedisServiceCollectionExtensions
+MethodCache.Providers.Redis.Features.IRedisTagManager
+MethodCache.Providers.Redis.Features.IRedisTagManager.AssociateTagsAsync(string! key, System.Collections.Generic.IEnumerable<string!>! tags) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.IRedisTagManager.GetKeysByTagsAsync(string![]! tags) -> System.Threading.Tasks.Task<string![]!>!
+MethodCache.Providers.Redis.Features.IRedisTagManager.RemoveAllTagAssociationsAsync(string! key) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.IRedisTagManager.RemoveTagAssociationsAsync(System.Collections.Generic.IEnumerable<string!>! keys, string![]! tags) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.RedisCacheWarmingService
+MethodCache.Providers.Redis.Features.RedisCacheWarmingService.RedisCacheWarmingService(MethodCache.Providers.Redis.Configuration.IRedisConnectionManager! connectionManager, MethodCache.Providers.Redis.Configuration.IRedisSerializer! serializer, MethodCache.Providers.Redis.Features.IRedisTagManager! tagManager, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Features.RedisCacheWarmingService!>! logger) -> void
+MethodCache.Providers.Redis.Features.RedisCacheWarmingService.RegisterWarmupKeyAsync(string! key, System.Func<System.Threading.Tasks.Task<object!>!>! factory, System.TimeSpan refreshInterval, string![]? tags = null) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.RedisCacheWarmingService.StartAsync() -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.RedisCacheWarmingService.StopAsync() -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.RedisCacheWarmingService.UnregisterWarmupKeyAsync(string! key) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.RedisDistributedLock
+MethodCache.Providers.Redis.Features.RedisDistributedLock.AcquireAsync(string! resource, System.TimeSpan expiry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<MethodCache.Core.Storage.Abstractions.ILockHandle!>!
+MethodCache.Providers.Redis.Features.RedisDistributedLock.RedisDistributedLock(MethodCache.Providers.Redis.Configuration.IRedisConnectionManager! connectionManager, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Features.RedisDistributedLock!>! logger) -> void
+MethodCache.Providers.Redis.Features.RedisTagManager
+MethodCache.Providers.Redis.Features.RedisTagManager.AssociateTagsAsync(string! key, System.Collections.Generic.IEnumerable<string!>! tags) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.RedisTagManager.GetKeysByTagsAsync(string![]! tags) -> System.Threading.Tasks.Task<string![]!>!
+MethodCache.Providers.Redis.Features.RedisTagManager.RedisTagManager(MethodCache.Providers.Redis.Configuration.IRedisConnectionManager! connectionManager, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Features.RedisTagManager!>! logger) -> void
+MethodCache.Providers.Redis.Features.RedisTagManager.RemoveAllTagAssociationsAsync(string! key) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Features.RedisTagManager.RemoveTagAssociationsAsync(System.Collections.Generic.IEnumerable<string!>! keys, string![]! tags) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.HealthChecks.RedisHealthCheck
+MethodCache.Providers.Redis.HealthChecks.RedisHealthCheck.CheckHealthAsync(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult>!
+MethodCache.Providers.Redis.HealthChecks.RedisHealthCheck.RedisHealthCheck(MethodCache.Providers.Redis.Configuration.IRedisConnectionManager! connectionManager, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.HealthChecks.RedisHealthCheck!>! logger) -> void
+MethodCache.Providers.Redis.HealthChecks.RedisInfrastructureHealthCheck
+MethodCache.Providers.Redis.HealthChecks.RedisInfrastructureHealthCheck.CheckHealthAsync(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult>!
+MethodCache.Providers.Redis.HealthChecks.RedisInfrastructureHealthCheck.RedisInfrastructureHealthCheck(MethodCache.Core.Storage.Abstractions.IStorageProvider! storageProvider, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.HealthChecks.RedisInfrastructureHealthCheck!>! logger) -> void
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.Dispose() -> void
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.DisposeAsync() -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.InstanceId.get -> string!
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.PublishClearAllAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.PublishInvalidationAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.PublishTagInvalidationAsync(string! tag, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.RedisBackplane(MethodCache.Providers.Redis.Configuration.IRedisConnectionManager! connectionManager, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Infrastructure.RedisBackplane!>! logger, MethodCache.Providers.Redis.Configuration.IBackplaneSerializer! backplaneSerializer) -> void
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.SubscribeAsync(System.Func<MethodCache.Core.Storage.Abstractions.BackplaneMessage!, System.Threading.Tasks.Task!>! onMessage, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Infrastructure.RedisBackplane.UnsubscribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureExtensions
+MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureHealthCheck
+MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureHealthCheck.CheckHealthAsync(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult>!
+MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureHealthCheck.RedisInfrastructureHealthCheck(MethodCache.Core.Storage.Abstractions.IStorageProvider! storageProvider, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureHealthCheck!>! logger) -> void
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.DisposeAsync() -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.ExistsAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.GetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T?>
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.GetHealthAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus>
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.GetStatsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.Core.Storage.Abstractions.StorageStats?>
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.Name.get -> string!
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.RedisStorageProvider(MethodCache.Providers.Redis.Configuration.IRedisConnectionManager! connectionManager, MethodCache.Providers.Redis.Configuration.IRedisSerializer! serializer, MethodCache.Providers.Redis.Features.IRedisTagManager! tagManager, MethodCache.Core.Storage.Abstractions.IBackplane? backplane, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider!>! logger) -> void
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.RemoveByTagAsync(string! tag, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.SetAsync<T>(string! key, T value, System.TimeSpan expiration, System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.Redis.Infrastructure.RedisStorageProvider.SetAsync<T>(string! key, T value, System.TimeSpan expiration, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.Redis.Services.RedisConnectionService
+MethodCache.Providers.Redis.Services.RedisConnectionService.DisposeAsync() -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.Redis.Services.RedisConnectionService.GetConnectionAsync() -> System.Threading.Tasks.Task<StackExchange.Redis.IConnectionMultiplexer!>!
+MethodCache.Providers.Redis.Services.RedisConnectionService.RedisConnectionService(Microsoft.Extensions.Options.IOptions<MethodCache.Providers.Redis.Configuration.RedisOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.Redis.Services.RedisConnectionService!>! logger) -> void
+MethodCache.Providers.Redis.Services.RedisConnectionService.StartAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+MethodCache.Providers.Redis.Services.RedisConnectionService.StopAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+override MethodCache.Providers.Redis.Features.RedisCacheWarmingService.Dispose() -> void
+override MethodCache.Providers.Redis.Features.RedisCacheWarmingService.ExecuteAsync(System.Threading.CancellationToken stoppingToken) -> System.Threading.Tasks.Task!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.AddHybridRedisCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! connectionString, System.Action<MethodCache.Core.Storage.Coordination.HybridCacheOptions!>? configureHybridOptions = null, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedisOptions = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.AddHybridRedisCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Storage.Coordination.HybridCacheOptions!>! configureHybridOptions, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedisOptions = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.AddRedisHybridCacheComplete(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! connectionString, System.Action<MethodCache.Providers.Redis.Extensions.RedisHybridCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.WithAdvancedFeatures(this MethodCache.Core.Storage.Coordination.HybridCacheOptions! options, bool enableBackplane = true) -> MethodCache.Core.Storage.Coordination.HybridCacheOptions!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.WithL1Configuration(this MethodCache.Core.Storage.Coordination.HybridCacheOptions! options, long maxItems = 10000, System.TimeSpan? defaultExpiration = null, MethodCache.Core.Storage.Coordination.L1EvictionPolicy evictionPolicy = MethodCache.Core.Storage.Coordination.L1EvictionPolicy.LRU) -> MethodCache.Core.Storage.Coordination.HybridCacheOptions!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.WithL2Configuration(this MethodCache.Core.Storage.Coordination.HybridCacheOptions! options, System.TimeSpan? defaultExpiration = null, bool enabled = true) -> MethodCache.Core.Storage.Coordination.HybridCacheOptions!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.WithPerformanceSettings(this MethodCache.Core.Storage.Coordination.HybridCacheOptions! options, int maxConcurrentL2Operations = 10) -> MethodCache.Core.Storage.Coordination.HybridCacheOptions!
+static MethodCache.Providers.Redis.Extensions.HybridCacheServiceCollectionExtensions.WithStrategy(this MethodCache.Core.Storage.Coordination.HybridCacheOptions! options, MethodCache.Core.Storage.Coordination.HybridStrategy strategy, bool enableL1Warming = true, bool enableAsyncL2Writes = true) -> MethodCache.Core.Storage.Coordination.HybridCacheOptions!
+static MethodCache.Providers.Redis.Extensions.RedisServiceCollectionExtensions.AddRedisCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureOptions = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Extensions.RedisServiceCollectionExtensions.AddRedisHybridInfrastructure(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedis = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Extensions.RedisServiceCollectionExtensions.AddRedisInfrastructure(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedis = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Extensions.RedisServiceCollectionExtensions.AddRedisInfrastructureWithHealthChecks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedis = null, string! healthCheckName = "redis_infrastructure") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureExtensions.AddRedisHybridInfrastructure(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedis = null, System.Action<MethodCache.Core.Configuration.StorageOptions!>? configureStorage = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureExtensions.AddRedisInfrastructure(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! connectionString, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedis = null, System.Action<MethodCache.Core.Configuration.StorageOptions!>? configureStorage = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureExtensions.AddRedisInfrastructure(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedis = null, System.Action<MethodCache.Core.Configuration.StorageOptions!>? configureStorage = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureExtensions.AddRedisInfrastructureWithHealthChecks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.Redis.Configuration.RedisOptions!>? configureRedis = null, System.Action<MethodCache.Core.Configuration.StorageOptions!>? configureStorage = null, string! healthCheckName = "redis_infrastructure") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.Redis.Infrastructure.RedisInfrastructureExtensions.ToStorageOptions(this MethodCache.Providers.Redis.Configuration.RedisOptions! redisOptions) -> MethodCache.Core.Configuration.StorageOptions!
