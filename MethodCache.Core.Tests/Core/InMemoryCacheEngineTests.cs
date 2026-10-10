@@ -252,6 +252,12 @@ public class InMemoryCacheEngineTests
         gate.SetException(new TimeoutException());
 
         (await joined).Should().Be("stale");
+
+        // Throttled like the foreground path: the next caller is served the stale value without a retry.
+        var retried = false;
+        (await manager.GetOrCreateFastAsync("key", "M", () => { retried = true; return Task.FromResult("fresh"); }, policy))
+            .Should().Be("stale");
+        retried.Should().BeFalse();
     }
 
     [Fact]

@@ -437,7 +437,14 @@ namespace MethodCache.Core.Runtime.Execution
 
                     // Callers that joined this refresh after the entry went logically stale get the fail-safe
                     // value, exactly as they would from a foreground load.
-                    if (_failSafeDuration > 0 && !node.IsPhysicallyExpired(_engine.Now) && TryRead(node, out T? stale))
+                    var now = _engine.Now;
+                    T? stale = default;
+                    var served = _failSafeDuration > 0 && (node.IsLogicallyExpired(now)
+                        // Joined callers get a stale value, so hold it for the throttle period like a foreground load.
+                        ? TryServeStale(node, out stale)
+                        : !node.IsPhysicallyExpired(now) && TryRead(node, out stale));
+
+                    if (served)
                     {
                         flight.Complete(stale);
                     }
