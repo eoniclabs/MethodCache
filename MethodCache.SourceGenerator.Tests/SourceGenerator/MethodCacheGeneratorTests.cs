@@ -205,7 +205,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateFastAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(_decorated.GetValue(id))");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_cachedPolicy_");
+            AssertContainsIgnoreWhitespace(decoratorSource, "cacheSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
 
@@ -278,7 +278,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValueAsync\"");
             AssertContainsIgnoreWhitespace(decoratorSource, "async () => await _decorated.GetValueAsync(id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_cachedPolicy_");
+            AssertContainsIgnoreWhitespace(decoratorSource, "cacheSnapshot.Policy");
             // Ultra-fast path returns Task.FromResult or createdTask directly, no async/await on the method
         }
 
@@ -324,7 +324,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> GetValueAsync(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearUserCache()");
-            AssertContainsIgnoreWhitespace(decoratorSource, "_cachedPolicy_");
+            AssertContainsIgnoreWhitespace(decoratorSource, "cacheSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, "InvalidateByTagsAsync");
         }
 
@@ -460,8 +460,8 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearAll()");
-            // Zero-parameter methods use pre-computed cache key (ultra-fast path)
-            AssertContainsIgnoreWhitespace(decoratorSource, "_cachedKey_GetConstantValue");
+            // Zero-parameter methods use the key prefix as the whole key
+            AssertContainsIgnoreWhitespace(decoratorSource, "var cacheKeyValue = cacheSnapshot.KeyPrefix;");
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.ClearAll()");
         }

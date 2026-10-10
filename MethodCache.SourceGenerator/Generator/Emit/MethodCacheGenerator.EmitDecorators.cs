@@ -127,31 +127,17 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        private readonly ICacheMetricsProvider? _metricsProvider;");
                 sb.AppendLine();
 
-                // Cached policy fields for performance (Phase 2.2 optimization)
-                // Cached method names for key generation (Phase 2.4 optimization)
-                // Pre-computed cache keys for zero-parameter methods (Phase 3 ultra-fast path)
+                // Each cached method reads its live policy and key prefix from a CachedMethod shared per registry
                 foreach (var cached in info.CachedMethods)
                 {
-                    var methodId = Utils.GetMethodId(cached.Method);
                     var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
-                    sb.AppendLine($"        private readonly CacheRuntimePolicy _cachedPolicy_{safeFieldName};");
-                    sb.AppendLine($"        private readonly string _cachedMethodName_{safeFieldName};");
-                    sb.AppendLine($"        private readonly string _keyMethod_{safeFieldName};");
-                    sb.AppendLine($"        private readonly string _keyPrefix_{safeFieldName};");
-
-                    var keyParamCount = cached.Method.Parameters.Count(p => !Utils.IsCancellationToken(p.Type));
-                    if (keyParamCount == 0)
-                    {
-                        // Pre-computed key for zero-parameter methods (ultra-fast path)
-                        sb.AppendLine($"        private readonly string _cachedKey_{safeFieldName};");
-                    }
-                    // For methods with parameters, we use direct string.Concat at call site
-                    // This is faster than ConcurrentDictionary lookup + caching overhead
+                    sb.AppendLine($"        private readonly CachedMethod _method_{safeFieldName};");
                 }
                 sb.AppendLine();
 
                 // Constructor
                 EmitConstructorWithPolicies(sb, className, interfaceFqn, info.Symbol, info.CachedMethods);
+                EmitCachedMethodSites(sb, interfaceFqn, info.Symbol, info.CachedMethods);
 
                 // Methods
                 var allMethods = info.Symbol.GetMembers()
@@ -232,6 +218,41 @@ namespace MethodCache.SourceGenerator
                 }
             }
 
+            private static void EmitCachedMethodSites(StringBuilder sb, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
+            {
+                if (cachedMethods.Length == 0)
+                {
+                    return;
+                }
+
+                sb.AppendLine("        private sealed class CachedMethodSites");
+                sb.AppendLine("        {");
+                foreach (var cached in cachedMethods)
+                {
+                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
+                    sb.AppendLine($"            public readonly CachedMethod {safeFieldName};");
+                }
+                sb.AppendLine();
+                sb.AppendLine("            public CachedMethodSites(IPolicyRegistry registry)");
+                sb.AppendLine("            {");
+                foreach (var cached in cachedMethods)
+                {
+                    var methodId = Utils.GetMethodId(cached.Method);
+                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
+                    var methodName = cached.Method.Name;
+
+                    // Generic interfaces report the closed type in their name, for example IRepository<User>.Get
+                    var displayName = interfaceSymbol.IsGenericType
+                        ? $"\"{interfaceSymbol.Name}<\" + string.Join(\",\", typeof({interfaceFqn}).GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\""
+                        : $"\"{methodName}\"";
+
+                    sb.AppendLine($"                {safeFieldName} = new CachedMethod(PolicyHandle.For(registry, \"{methodId}\"), typeof({interfaceFqn}), \"{methodName}\", {displayName});");
+                }
+                sb.AppendLine("            }");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
+
             private static void EmitConstructor(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol)
             {
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
@@ -265,37 +286,15 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("            _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));");
                 sb.AppendLine("            _metricsProvider = metricsProvider;");
                 sb.AppendLine();
-                sb.AppendLine("            // Pre-cache policies and method names for performance (Phase 2.2 & 2.4 optimization)");
-                sb.AppendLine("            // This eliminates dictionary lookup + object construction + method name allocation on every cache call");
-                sb.AppendLine("            // Phase 3: Pre-compute cache keys for zero-parameter methods (ultra-fast path)");
-                foreach (var cached in cachedMethods)
+                if (cachedMethods.Length > 0)
                 {
-                    var methodId = Utils.GetMethodId(cached.Method);
-                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
-                    var methodName = cached.Method.Name;
-                    sb.AppendLine($"            _cachedPolicy_{safeFieldName} = CacheRuntimePolicy.FromResolverResult(_policyRegistry.GetPolicy(\"{methodId}\"));");
-
-                    // For generic interfaces, we'll compute the method name at runtime once
-                    if (interfaceSymbol.IsGenericType)
+                    sb.AppendLine();
+                    sb.AppendLine("            // Created once per policy registry, so a scoped or transient decorator costs only these field copies");
+                    sb.AppendLine("            var sites = CachedMethod.GetSites(_policyRegistry, static registry => new CachedMethodSites(registry));");
+                    foreach (var cached in cachedMethods)
                     {
-                        var baseInterfaceName = interfaceSymbol.Name;
-                        sb.AppendLine($"            _cachedMethodName_{safeFieldName} = \"{baseInterfaceName}<\" + string.Join(\",\", this.GetType().GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\";");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"            _cachedMethodName_{safeFieldName} = \"{methodName}\";");
-                    }
-
-                    // Keys start with the service type and method name, plus the policy version for inline keys;
-                    // see MethodCacheKeys for the format.
-                    sb.AppendLine($"            _keyMethod_{safeFieldName} = MethodCacheKeys.Prefix(typeof({interfaceFqn}), \"{methodName}\");");
-                    sb.AppendLine($"            _keyPrefix_{safeFieldName} = MethodCacheKeys.Prefix(typeof({interfaceFqn}), \"{methodName}\", _cachedPolicy_{safeFieldName}.Version);");
-
-                    // For methods with no cache-key parameters, the prefix is the whole key
-                    var hasKeyParams = ImmutableArrayExtensions.Any(cached.Method.Parameters, p => !Utils.IsCancellationToken(p.Type));
-                    if (!hasKeyParams)
-                    {
-                        sb.AppendLine($"            _cachedKey_{safeFieldName} = _keyPrefix_{safeFieldName};");
+                        var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
+                        sb.AppendLine($"            _method_{safeFieldName} = sites.{safeFieldName};");
                     }
                 }
                 sb.AppendLine("        }");
@@ -339,6 +338,9 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("            // Consider making the method async to avoid potential issues.");
                 }
 
+                // One read gives the policy and key prefix for this call, even if the policy changes meanwhile
+                sb.AppendLine($"            var cacheSnapshot = _method_{safeFieldName}.Current;");
+
                 // Simple arguments are formatted inline; anything else goes through the key generator.
                 if (GetRawKeyParameter(keyParams) != null || CanGenerateInlineKey(keyParams))
                 {
@@ -377,7 +379,7 @@ namespace MethodCache.SourceGenerator
 
                 sb.AppendLine($"            if (_cacheManager.TryGetFast<{type}>(cacheKeyValue, out var cachedValue))");
                 sb.AppendLine("            {");
-                sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                sb.AppendLine($"                _metricsProvider?.CacheHit(_method_{safeFieldName}.Name);");
                 switch (kind)
                 {
                     case ResultKind.Task:
@@ -398,7 +400,7 @@ namespace MethodCache.SourceGenerator
                 var factory = kind == ResultKind.Sync
                     ? $"() => Task.FromResult({call})"
                     : $"async () => await {call}.ConfigureAwait(false)";
-                var policy = $"_cachedPolicy_{safeFieldName}";
+                var policy = "cacheSnapshot.Policy";
                 if (tagParameters.Count > 0)
                 {
                     // Tags such as "user:{userId}" get this call's arguments, matching what [CacheInvalidate] removes
@@ -408,7 +410,7 @@ namespace MethodCache.SourceGenerator
                     policy = "cachedPolicyWithTags";
                 }
 
-                var load = $"_cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _cachedMethodName_{safeFieldName}, {factory}, {policy})";
+                var load = $"_cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _method_{safeFieldName}.Name, {factory}, {policy})";
 
                 switch (kind)
                 {
@@ -565,7 +567,7 @@ namespace MethodCache.SourceGenerator
                 // Zero parameters: use pre-computed key (ultra-fast path)
                 if (keyParams.Count == 0)
                 {
-                    sb.AppendLine($"{indent}var cacheKeyValue = _cachedKey_{safeFieldName};");
+                    sb.AppendLine($"{indent}var cacheKeyValue = cacheSnapshot.KeyPrefix;");
                     return;
                 }
 
@@ -573,12 +575,12 @@ namespace MethodCache.SourceGenerator
                 if (keyParams.Count == 1)
                 {
                     var expr = GetParameterStringExpression(keyParams[0]);
-                    sb.AppendLine($"{indent}var cacheKeyValue = string.Concat(_keyPrefix_{safeFieldName}, MethodCacheKeys.Separator, {expr});");
+                    sb.AppendLine($"{indent}var cacheKeyValue = string.Concat(cacheSnapshot.KeyPrefix, MethodCacheKeys.Separator, {expr});");
                     return;
                 }
 
                 // Multiple parameters: direct string.Concat with all parts
-                var concatPieces = new List<string> { $"_keyPrefix_{safeFieldName}" };
+                var concatPieces = new List<string> { "cacheSnapshot.KeyPrefix" };
                 foreach (var param in keyParams)
                 {
                     concatPieces.Add("MethodCacheKeys.Separator");
@@ -592,16 +594,16 @@ namespace MethodCache.SourceGenerator
             {
                 if (keyParams.Count == 0)
                 {
-                    sb.AppendLine($"            var cacheKeyValue = _cachedKey_{safeFieldName};");
+                    sb.AppendLine("            var cacheKeyValue = cacheSnapshot.KeyPrefix;");
                     return;
                 }
 
                 // Arguments that have no inline key format go through the registered key generator,
                 // which keeps the service and method prefix so keys stay recognizable.
                 sb.Append("            var cacheKeyValue = _keyGenerator.GenerateKey(");
-                sb.Append($"_keyMethod_{safeFieldName}, new object[] {{ ");
+                sb.Append($"_method_{safeFieldName}.KeyMethod, new object[] {{ ");
                 sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
-                sb.AppendLine($" }}, _cachedPolicy_{safeFieldName});");
+                sb.AppendLine(" }, cacheSnapshot.Policy);");
             }
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
