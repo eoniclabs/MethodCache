@@ -104,36 +104,35 @@ public class HybridCacheManager : IHybridCacheManager
 
     private async Task<T> GetOrLoadAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
     {
-        var cached = await _storageProvider.GetAsync<T>(cacheKey);
-        if (await IsCacheHitAsync(cacheKey, cached).ConfigureAwait(false))
-        {
-            _metricsProvider?.CacheHit(methodName);
-            return cached!;
-        }
-
-        _metricsProvider?.CacheMiss(methodName);
-
-        T result;
-        var start = Stopwatch.GetTimestamp();
         try
         {
-            result = await factory();
+            var cached = await _storageProvider.GetAsync<T>(cacheKey);
+            if (await IsCacheHitAsync(cacheKey, cached).ConfigureAwait(false))
+            {
+                _metricsProvider?.CacheHit(methodName);
+                return cached!;
+            }
+
+            _metricsProvider?.CacheMiss(methodName);
+
+            var start = Stopwatch.GetTimestamp();
+            var result = await factory();
+            _metricsProvider?.CacheLatency(methodName, (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+
+            if (result != null)
+            {
+                var expiration = policy.Duration ?? _options.L1DefaultExpiration;
+                await _storageProvider.SetAsync(cacheKey, result, expiration, policy.Tags).ConfigureAwait(false);
+            }
+
+            return result;
         }
         catch (Exception ex)
         {
+            // Covers storage failures as well as the factory, so every failed call is reported once.
             _metricsProvider?.CacheError(methodName, ex.Message);
             throw;
         }
-
-        _metricsProvider?.CacheLatency(methodName, (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds);
-
-        if (result != null)
-        {
-            var expiration = policy.Duration ?? _options.L1DefaultExpiration;
-            await _storageProvider.SetAsync(cacheKey, result, expiration, policy.Tags).ConfigureAwait(false);
-        }
-
-        return result;
     }
 
     public async Task InvalidateByTagsAsync(params string[] tags)
