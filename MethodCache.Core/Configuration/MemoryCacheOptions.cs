@@ -28,7 +28,8 @@ namespace MethodCache.Core.Configuration
         private long _maxMemoryBytes = 1000 * 1024 * 1024; // 1000MB
         
         /// <summary>
-        /// Maximum memory size for the cache in bytes.
+        /// Maximum total weight of the cache when a <see cref="Weigher"/> is configured (typically bytes).
+        /// Ignored without a weigher, since object sizes cannot be measured reliably at runtime.
         /// </summary>
         public long MaxMemoryBytes 
         { 
@@ -78,9 +79,77 @@ namespace MethodCache.Core.Configuration
         }
 
         /// <summary>
-        /// Eviction policy when the cache reaches capacity.
+        /// Eviction policy when the cache reaches capacity. Defaults to <see cref="MemoryCacheEvictionPolicy.TinyLfu"/>.
         /// </summary>
-        public MemoryCacheEvictionPolicy EvictionPolicy { get; set; } = MemoryCacheEvictionPolicy.LRU;
+        public MemoryCacheEvictionPolicy EvictionPolicy { get; set; } = MemoryCacheEvictionPolicy.TinyLfu;
+
+        /// <summary>
+        /// Optional function returning the cost of an entry (for example its size in bytes). When set, the
+        /// cache is bounded by <see cref="MaxMemoryBytes"/> measured in these units instead of by <see cref="MaxItems"/>.
+        /// Must be fast, thread-safe and return a non-negative value.
+        /// </summary>
+        public Func<string, object?, long>? Weigher { get; set; }
+
+        /// <summary>
+        /// When true, <c>null</c> results are cached like any other value, so a method returning null is not
+        /// re-executed on every call. Default false.
+        /// </summary>
+        public bool CacheNullValues { get; set; }
+
+        /// <summary>
+        /// When true, expired values are kept for <see cref="FailSafeMaxDuration"/> and returned if refreshing
+        /// them throws, so a failing dependency degrades to slightly stale data instead of errors. Default false.
+        /// </summary>
+        public bool EnableFailSafe { get; set; }
+
+        private TimeSpan _failSafeMaxDuration = TimeSpan.FromHours(1);
+
+        /// <summary>
+        /// How long an expired value is kept as a fail-safe fallback. Default 1 hour.
+        /// </summary>
+        public TimeSpan FailSafeMaxDuration
+        {
+            get => _failSafeMaxDuration;
+            set
+            {
+                if (value <= TimeSpan.Zero)
+                    throw new ArgumentOutOfRangeException(nameof(FailSafeMaxDuration), value, "FailSafeMaxDuration must be greater than zero.");
+                _failSafeMaxDuration = value;
+            }
+        }
+
+        private TimeSpan _failSafeThrottleDuration = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// After a fail-safe fallback, how long the stale value is served before the factory is tried again. Default 30 seconds.
+        /// </summary>
+        public TimeSpan FailSafeThrottleDuration
+        {
+            get => _failSafeThrottleDuration;
+            set
+            {
+                if (value <= TimeSpan.Zero)
+                    throw new ArgumentOutOfRangeException(nameof(FailSafeThrottleDuration), value, "FailSafeThrottleDuration must be greater than zero.");
+                _failSafeThrottleDuration = value;
+            }
+        }
+
+        private TimeSpan _jitterMaxDuration = TimeSpan.Zero;
+
+        /// <summary>
+        /// Adds a random extra lifetime in [0, value) to each entry so entries created together do not all
+        /// expire at the same moment. Default zero (disabled).
+        /// </summary>
+        public TimeSpan JitterMaxDuration
+        {
+            get => _jitterMaxDuration;
+            set
+            {
+                if (value < TimeSpan.Zero)
+                    throw new ArgumentOutOfRangeException(nameof(JitterMaxDuration), value, "JitterMaxDuration cannot be negative.");
+                _jitterMaxDuration = value;
+            }
+        }
 
         private TimeSpan _cleanupInterval = TimeSpan.FromMinutes(1);
         
@@ -166,10 +235,9 @@ namespace MethodCache.Core.Configuration
         private double _evictionSamplePercentage = 0.1; // 10%
 
         /// <summary>
-        /// Sample size percentage for approximate eviction policies (LFU, TTL).
-        /// Default 10% provides good approximation with much better performance.
-        /// Set to 100% to scan entire cache (equivalent to precise policies).
+        /// No longer used: eviction is O(1) and does not sample.
         /// </summary>
+        [Obsolete("Eviction no longer samples; this setting has no effect.")]
         public double EvictionSamplePercentage
         {
             get => _evictionSamplePercentage;
@@ -189,40 +257,43 @@ namespace MethodCache.Core.Configuration
     {
         /// <summary>
         /// Least Recently Used - evicts the least recently accessed items first.
-        /// Uses lazy timestamp-based approach: updates timestamps on hits, sorts only at eviction time.
         /// </summary>
         LRU,
 
         /// <summary>
-        /// Least Frequently Used - evicts the least frequently accessed items first.
-        /// WARNING: Uses sampling approximation for performance. Not guaranteed to be globally optimal.
-        /// See LFU_Precise for exact semantics with O(N) performance cost.
+        /// Superseded by <see cref="TinyLfu"/>, which tracks frequency with far better hit rates and O(1) eviction.
         /// </summary>
+        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
         LFU,
 
         /// <summary>
-        /// Least Frequently Used (Precise) - evicts the globally least frequently used item.
-        /// Guarantees precise LFU semantics but with O(N log N) performance cost on eviction.
+        /// Superseded by <see cref="TinyLfu"/>.
         /// </summary>
+        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
         LFU_Precise,
 
         /// <summary>
-        /// First In First Out - evicts the oldest items first.
-        /// Uses creation timestamp sorting for precise FIFO semantics.
+        /// First In First Out - evicts the oldest items first; reads do not change the order.
         /// </summary>
         FIFO,
 
         /// <summary>
-        /// Time To Live - evicts items closest to expiration first.
-        /// WARNING: Uses sampling approximation for performance. Not guaranteed to be globally optimal.
-        /// See TTL_Precise for exact semantics with O(N) performance cost.
+        /// Superseded by <see cref="TinyLfu"/>. Expired entries are always removed first by the timer wheel.
         /// </summary>
+        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
         TTL,
-        
+
         /// <summary>
-        /// Time To Live (Precise) - evicts the item globally closest to expiration.
-        /// Guarantees precise TTL semantics but with O(N log N) performance cost on eviction.
+        /// Superseded by <see cref="TinyLfu"/>.
         /// </summary>
-        TTL_Precise
+        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
+        TTL_Precise,
+
+        /// <summary>
+        /// W-TinyLFU (the default): a small LRU admission window in front of a segmented LRU, where a
+        /// frequency sketch decides whether a new entry may displace an existing one. Gives near-optimal
+        /// hit rates, resists one-off scans and evicts in O(1). Same algorithm as Caffeine.
+        /// </summary>
+        TinyLfu
     }
 }
