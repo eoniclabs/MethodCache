@@ -518,7 +518,7 @@ namespace MethodCache.SourceGenerator
                         memberPieces.Add("MethodCacheKeys.Separator");
                     }
 
-                    memberPieces.Add(FormatSimpleValue($"{name}.{member.Name}", member.Type));
+                    memberPieces.Add(FormatSimpleValue($"{name}.@{member.Name}", member.Type));
                 }
 
                 if (type.IsValueType)
