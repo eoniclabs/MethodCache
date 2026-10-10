@@ -361,13 +361,13 @@ namespace TestApp
 {
     public class TestService
     {
-        [Cache(RequireIdempotent = true)]
+        [Cache(Duration = ""00:05:00"")]
         public string GetValue(int id)
         {
             return $""Value {id}"";
         }
 
-        [Cache(RequireIdempotent = true)]
+        [Cache(Duration = ""00:05:00"")]
         public virtual string GetVirtualValue(int id)
         {
             return $""Virtual Value {id}"";

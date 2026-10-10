@@ -26,9 +26,9 @@ public class PolicyDiagnosticsServiceTests
         {
             Duration = TimeSpan.FromMinutes(5),
             Tags = new[] { "attr" },
-            RequireIdempotent = true
+            SlidingExpiration = TimeSpan.FromMinutes(2)
         };
-        var attributeFields = CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent;
+        var attributeFields = CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.SlidingExpiration;
 
         var runtimePolicy = CachePolicy.Empty with
         {
@@ -126,10 +126,10 @@ public class PolicyDiagnosticsServiceTests
     {
         var fieldsToClear = CachePolicyFields.Duration |
                             CachePolicyFields.Tags |
-                            CachePolicyFields.KeyGenerator |
+                            CachePolicyFields.SlidingExpiration |
                             CachePolicyFields.Version |
                             CachePolicyFields.Metadata |
-                            CachePolicyFields.RequireIdempotent;
+                            CachePolicyFields.RefreshAhead;
 
         var delta = new CachePolicyDelta(CachePolicyFields.None, fieldsToClear, CachePolicy.Empty);
         return new PolicyChange(sourceId, MethodId, delta, PolicyChangeReason.Removed, DateTimeOffset.UtcNow);

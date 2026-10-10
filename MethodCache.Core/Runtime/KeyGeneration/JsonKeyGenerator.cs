@@ -26,15 +26,9 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </remarks>
 /// <example>
 /// <code>
-/// // Configure globally for debugging
-/// services.AddMethodCache(config =>
-/// {
-///     config.DefaultKeyGenerator&lt;JsonKeyGenerator&gt;();
-/// });
-///
-/// // Or use per-method during development
-/// [Cache(KeyGeneratorType = typeof(JsonKeyGenerator))]
-/// Task&lt;Order&gt; GetOrderAsync(int orderId, bool includeDetails);
+/// // Readable keys while debugging; the key generator applies to every cached method
+/// services.AddMethodCache();
+/// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, JsonKeyGenerator&gt;());
 /// </code>
 /// </example>
 public class JsonKeyGenerator : ICacheKeyGenerator

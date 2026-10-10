@@ -266,7 +266,7 @@ namespace MethodCache.Core.Runtime.Execution
 
             // A load that started before this write must not overwrite it with an older result.
             InvalidateFlight(key);
-            Store(key, value, EntryPolicy.Plain, computeDuration: 0, duration: Math.Max(1, ToNanos(expiration)));
+            Store(key, value, EntryPolicy.Plain, duration: Math.Max(1, ToNanos(expiration)));
 
             return _distributed == null
                 ? Task.CompletedTask
@@ -395,9 +395,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 // Another caller is already loading this key: share its result.
                 RecordHit(methodName);
-                var shared = policy.LockTimeout is { } timeout
-                    ? await existing.Task.WaitAsync(timeout).ConfigureAwait(false)
-                    : await existing.Task.ConfigureAwait(false);
+                var shared = await existing.Task.ConfigureAwait(false);
 
                 if (shared is T typed)
                 {
@@ -420,7 +418,7 @@ namespace MethodCache.Core.Runtime.Execution
                     var stored = await TryReadDistributedAsync<T>(key, methodName).ConfigureAwait(false);
                     if (stored.Found)
                     {
-                        StoreLoaded(key, stored.Value, policy, flight, computeDuration: 0, duration: Math.Max(1, ToNanos(stored.RemainingLifetime)));
+                        StoreLoaded(key, stored.Value, policy, flight, duration: Math.Max(1, ToNanos(stored.RemainingLifetime)));
                         flight.Complete(stored.Value);
                         RecordHit(methodName);
                         return stored.Value!;
@@ -434,7 +432,7 @@ namespace MethodCache.Core.Runtime.Execution
                 var result = await factory().ConfigureAwait(false);
                 var elapsed = ElapsedSince(start);
 
-                StoreLoaded(key, result, policy, flight, elapsed);
+                StoreLoaded(key, result, policy, flight);
                 if (_distributed != null)
                 {
                     await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
@@ -489,7 +487,7 @@ namespace MethodCache.Core.Runtime.Execution
 
                     // Replace only the node being refreshed, so a write or removal that slipped in before this
                     // refresh registered its flight is never overwritten or resurrected.
-                    StoreLoaded(key, result, policy, flight, elapsed, replacing: node);
+                    StoreLoaded(key, result, policy, flight, replacing: node);
                     if (_distributed != null)
                     {
                         await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
@@ -550,7 +548,7 @@ namespace MethodCache.Core.Runtime.Execution
         /// Stores a factory result unless its key or tags were invalidated while it loaded. Invalidators flag the
         /// flight before removing entries, so either they remove this node or the re-check below sees the flag.
         /// </summary>
-        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, long computeDuration, Node? replacing = null, long? duration = null)
+        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, Node? replacing = null, long? duration = null)
         {
             if (flight.Invalidated)
             {
@@ -576,7 +574,7 @@ namespace MethodCache.Core.Runtime.Execution
                 return;
             }
 
-            var node = Store(key, result, policy, computeDuration, duration, replacing);
+            var node = Store(key, result, policy, duration, replacing);
             Interlocked.MemoryBarrier();
             if (node != null && flight.Invalidated)
             {
@@ -584,7 +582,7 @@ namespace MethodCache.Core.Runtime.Execution
             }
         }
 
-        private Node? Store<T>(string key, T value, EntryPolicy policy, long computeDuration, long? duration = null, Node? replacing = null)
+        private Node? Store<T>(string key, T value, EntryPolicy policy, long? duration = null, Node? replacing = null)
         {
             if (value == null && !_options.CacheNullValues)
             {
@@ -613,7 +611,6 @@ namespace MethodCache.Core.Runtime.Execution
                 LogicalExpiresAt = logicalExpiresAt,
                 PhysicalExpiresAt = logicalExpiresAt + _failSafeDuration,
                 AbsoluteExpiresAt = now + _maxDuration,
-                ComputeDuration = computeDuration,
                 Tags = policy.Tags,
                 Policy = policy,
                 Weight = _weigher == null ? 1 : Math.Max(0, _weigher(key, value))
@@ -683,15 +680,6 @@ namespace MethodCache.Core.Runtime.Execution
             if (policy.RefreshWindow > 0 && now >= expiresAt - policy.RefreshWindow)
             {
                 return true;
-            }
-
-            if (policy.Beta > 0)
-            {
-                // XFetch (Vattani et al., "Optimal Probabilistic Cache Stampede Prevention"): refresh early with a
-                // probability that rises as expiry approaches, scaled by how long the value takes to compute.
-                var sample = Random.Shared.NextDouble();
-                var delta = Math.Max(node.ComputeDuration, 1);
-                return now - delta * policy.Beta * Math.Log(sample <= 0 ? double.Epsilon : sample) >= expiresAt;
             }
 
             return false;
@@ -855,8 +843,8 @@ namespace MethodCache.Core.Runtime.Execution
         private static long ToNanos(TimeSpan value) => value.Ticks >= MaxNanos / NanosPerTick ? MaxNanos : value.Ticks * NanosPerTick;
 
         /// <summary>
-        /// Factory timings feed XFetch, which needs sub-millisecond resolution. The default engine clock ticks in
-        /// milliseconds, so with the system clock a high-resolution timestamp is used instead.
+        /// Factory timings feed the load-latency metric, which needs sub-millisecond resolution. The default engine
+        /// clock ticks in milliseconds, so with the system clock a high-resolution timestamp is used instead.
         /// </summary>
         private long StartTiming() => _highResolutionTiming ? Stopwatch.GetTimestamp() : _engine.Now;
 
@@ -907,39 +895,18 @@ namespace MethodCache.Core.Runtime.Execution
 
             public long RefreshWindow { get; init; }
 
-            public double Beta { get; init; }
-
-            public TimeSpan? LockTimeout { get; init; }
-
             public string[]? Tags { get; init; }
 
             /// <summary>The policy this was built from. The weak table does not let this back-reference keep the key alive.</summary>
             public CacheRuntimePolicy? Source { get; init; }
 
-            public bool NeedsReadCheck => Sliding > 0 || RefreshWindow > 0 || Beta > 0;
+            public bool NeedsReadCheck => Sliding > 0 || RefreshWindow > 0;
 
             public static EntryPolicy From(CacheRuntimePolicy policy)
             {
-                var stampede = policy.StampedeProtection;
-
                 var refreshWindow = policy.RefreshAhead is { } refreshAhead && refreshAhead > TimeSpan.Zero
                     ? ToNanos(refreshAhead)
                     : 0;
-                if (stampede is { Mode: StampedeProtectionMode.RefreshAhead, RefreshAheadWindow: { } window } && window > TimeSpan.Zero)
-                {
-                    refreshWindow = Math.Max(refreshWindow, ToNanos(window));
-                }
-
-                TimeSpan? lockTimeout = policy.DistributedLock?.Timeout;
-                if (lockTimeout == null && stampede?.Mode == StampedeProtectionMode.DistributedLock)
-                {
-                    lockTimeout = TimeSpan.FromSeconds(30);
-                }
-
-                if (lockTimeout <= TimeSpan.Zero)
-                {
-                    lockTimeout = TimeSpan.FromSeconds(30);
-                }
 
                 return new EntryPolicy
                 {
@@ -947,8 +914,6 @@ namespace MethodCache.Core.Runtime.Execution
                     Duration = policy.Duration is { } duration && duration > TimeSpan.Zero ? ToNanos(duration) : null,
                     Sliding = policy.SlidingExpiration is { } sliding && sliding > TimeSpan.Zero ? ToNanos(sliding) : 0,
                     RefreshWindow = refreshWindow,
-                    Beta = stampede?.Mode == StampedeProtectionMode.Probabilistic ? (stampede.Beta > 0 ? stampede.Beta : 1d) : 0,
-                    LockTimeout = lockTimeout,
                     Tags = policy.Tags.Count > 0 ? policy.Tags.Distinct(StringComparer.Ordinal).ToArray() : null
                 };
             }

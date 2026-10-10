@@ -39,8 +39,7 @@ public class InMemoryCacheManagerTests
         var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
         var policy = CacheRuntimePolicy.Empty("MethodB") with
         {
-            Duration = TimeSpan.FromMinutes(1),
-            DistributedLock = new DistributedLockOptions(TimeSpan.FromSeconds(5), 2)
+            Duration = TimeSpan.FromMinutes(1)
         };
         var keyGenerator = new DefaultCacheKeyGenerator();
         var calls = 0;

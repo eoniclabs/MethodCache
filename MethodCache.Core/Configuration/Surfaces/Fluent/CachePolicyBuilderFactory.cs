@@ -5,6 +5,15 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent;
 
 internal static class CachePolicyBuilderFactory
 {
+    /// <summary>
+    /// Builds the policy for a cached method, rejecting options that only apply to <c>GetOrCreateAsync</c>.
+    /// </summary>
+    public static CachePolicyBuilder ForMethod(string methodId, CacheEntryOptions options)
+    {
+        EnsureAppliesToMethods(methodId, options);
+        return FromOptions(options);
+    }
+
     public static CachePolicyBuilder FromOptions(CacheEntryOptions options)
     {
         if (options == null)
@@ -24,9 +33,14 @@ internal static class CachePolicyBuilderFactory
             builder.SetTags(options.Tags);
         }
 
-        if (options.KeyGeneratorType != null)
+        if (options.SlidingExpiration.HasValue)
         {
-            builder.WithKeyGenerator(options.KeyGeneratorType);
+            builder.WithSlidingExpiration(options.SlidingExpiration.Value);
+        }
+
+        if (options.RefreshAhead.HasValue)
+        {
+            builder.WithRefreshAhead(options.RefreshAhead.Value);
         }
 
         if (options.Version.HasValue)
@@ -35,5 +49,28 @@ internal static class CachePolicyBuilderFactory
         }
 
         return builder;
+    }
+
+    /// <summary>
+    /// Callbacks, metrics and predicates only apply to a single <c>GetOrCreateAsync</c> call. Rejecting them here
+    /// keeps a cached method from silently ignoring them.
+    /// </summary>
+    private static void EnsureAppliesToMethods(string methodId, CacheEntryOptions options)
+    {
+        string? unsupported = options switch
+        {
+            { OnHitCallbacks.Count: > 0 } => nameof(CacheEntryOptions.Builder.OnHit),
+            { OnMissCallbacks.Count: > 0 } => nameof(CacheEntryOptions.Builder.OnMiss),
+            { Metrics: not null } => nameof(CacheEntryOptions.Builder.WithMetrics),
+            { Predicate: not null } => nameof(CacheEntryOptions.Builder.When),
+            _ => null
+        };
+
+        if (unsupported != null)
+        {
+            throw new InvalidOperationException(
+                $"{unsupported}() only applies to GetOrCreateAsync and cannot be configured for cached method '{methodId}'. " +
+                "Configure duration, tags, sliding expiration, refresh-ahead and version here instead.");
+        }
     }
 }

@@ -5,7 +5,7 @@ namespace MethodCache.SampleApp.Configuration
 {
     public interface ICacheConfigurationShowcase
     {
-        [Cache("attribute-weather", Duration = "00:00:25", Tags = new[] { "attribute", "weather" }, RequireIdempotent = true)]
+        [Cache("attribute-weather", Duration = "00:00:25", Tags = new[] { "attribute", "weather" })]
         Task<string> GetWeatherAsync(string city);
 
         Task<Product> GetProductAsync(string sku);

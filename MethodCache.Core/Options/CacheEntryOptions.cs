@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Core.Options
 {
@@ -20,11 +19,8 @@ namespace MethodCache.Core.Options
             IReadOnlyList<string> tags,
             IReadOnlyList<Action<CacheContext>> onHitCallbacks,
             IReadOnlyList<Action<CacheContext>> onMissCallbacks,
-            StampedeProtectionOptions? stampedeProtection,
-            DistributedLockOptions? distributedLock,
             ICacheMetrics? metrics,
             int? version,
-            Type? keyGeneratorType,
             Func<CacheContext, bool>? predicate)
         {
             Duration = duration;
@@ -33,11 +29,8 @@ namespace MethodCache.Core.Options
             Tags = tags;
             OnHitCallbacks = onHitCallbacks;
             OnMissCallbacks = onMissCallbacks;
-            StampedeProtection = stampedeProtection;
-            DistributedLock = distributedLock;
             Metrics = metrics;
             Version = version;
-            KeyGeneratorType = keyGeneratorType;
             Predicate = predicate;
         }
 
@@ -70,11 +63,19 @@ namespace MethodCache.Core.Options
         /// Gets callbacks executed when the cache entry is resolved from the factory.
         /// </summary>
         public IReadOnlyList<Action<CacheContext>> OnMissCallbacks { get; }
-        public StampedeProtectionOptions? StampedeProtection { get; }
-        public DistributedLockOptions? DistributedLock { get; }
+        /// <summary>
+        /// Gets the metrics sink for this call.
+        /// </summary>
         public ICacheMetrics? Metrics { get; }
+
+        /// <summary>
+        /// Gets the version that is added to the key, so changing it skips entries stored under the old one.
+        /// </summary>
         public int? Version { get; }
-        public Type? KeyGeneratorType { get; }
+
+        /// <summary>
+        /// Gets the predicate that decides whether a result is cached.
+        /// </summary>
         public Func<CacheContext, bool>? Predicate { get; }
 
         /// <summary>
@@ -88,11 +89,8 @@ namespace MethodCache.Core.Options
             private readonly List<string> _tags = new();
             private readonly List<Action<CacheContext>> _onHitCallbacks = new();
             private readonly List<Action<CacheContext>> _onMissCallbacks = new();
-            private StampedeProtectionOptions? _stampedeProtection;
-            private DistributedLockOptions? _distributedLock;
             private ICacheMetrics? _metrics;
             private int? _version;
-            private Type? _keyGeneratorType;
             private Func<CacheContext, bool>? _predicate;
 
             /// <summary>
@@ -188,42 +186,6 @@ namespace MethodCache.Core.Options
                 return this;
             }
 
-            public Builder WithStampedeProtection(StampedeProtectionOptions options)
-            {
-                _stampedeProtection = options ?? throw new ArgumentNullException(nameof(options));
-                return this;
-            }
-
-            public Builder WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0, TimeSpan? refreshAheadWindow = null)
-            {
-                if (beta <= 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(beta), "Beta must be positive.");
-                }
-                if (refreshAheadWindow.HasValue && refreshAheadWindow.Value <= TimeSpan.Zero)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(refreshAheadWindow), "Refresh ahead window must be positive.");
-                }
-
-                _stampedeProtection = new StampedeProtectionOptions(mode, beta, refreshAheadWindow);
-                return this;
-            }
-
-            public Builder WithDistributedLock(TimeSpan timeout, int maxConcurrency = 1)
-            {
-                if (timeout <= TimeSpan.Zero)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive.");
-                }
-                if (maxConcurrency <= 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(maxConcurrency), "Max concurrency must be positive.");
-                }
-
-                _distributedLock = new DistributedLockOptions(timeout, maxConcurrency);
-                return this;
-            }
-
             public Builder WithMetrics(ICacheMetrics metrics)
             {
                 _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
@@ -238,18 +200,6 @@ namespace MethodCache.Core.Options
                 }
 
                 _version = version;
-                return this;
-            }
-
-            public Builder WithKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator, new()
-            {
-                _keyGeneratorType = typeof(TGenerator);
-                return this;
-            }
-
-            internal Builder WithKeyGenerator(Type generatorType)
-            {
-                _keyGeneratorType = generatorType ?? throw new ArgumentNullException(nameof(generatorType));
                 return this;
             }
 
@@ -277,11 +227,8 @@ namespace MethodCache.Core.Options
                     new ReadOnlyCollection<string>(_tags),
                     new ReadOnlyCollection<Action<CacheContext>>(_onHitCallbacks),
                     new ReadOnlyCollection<Action<CacheContext>>(_onMissCallbacks),
-                    _stampedeProtection,
-                    _distributedLock,
                     _metrics,
                     _version,
-                    _keyGeneratorType,
                     _predicate);
             }
         }

@@ -25,8 +25,7 @@ You always pass the cache key yourself. MethodCache does not derive keys from la
 ## What the Fluent API Provides
 
 - Explicit-key `GetOrCreateAsync`, `TryGetAsync`, bulk and streaming helpers on top of `ICacheManager`.
-- Type-safe configuration for key generation, expiration, tags, and versioning.
-- Access to advanced options such as stampede protection and distributed locking.
+- Type-safe configuration for expiration (absolute, sliding, refresh-ahead), tags, and versioning.
 - Compatibility with existing MethodCache providers and runtime configuration.
 
 ## High-Level Architecture
@@ -34,9 +33,8 @@ You always pass the cache key yourself. MethodCache does not derive keys from la
 The fluent API is exposed through extension methods and builders:
 
 1. `MethodCache.Core.Extensions`: `ICacheManager` extensions for get/create and invalidation flows.
-2. `MethodCache.ETags.Extensions`: ETag-aware fluent helpers.
-3. `MethodCache.Core.Configuration.Fluent`: builder APIs used during `AddMethodCache` setup.
-4. Supporting types: option builders, contexts, and key builder helpers.
+2. `MethodCache.Core.Configuration.Surfaces.Fluent`: builder APIs used during `AddMethodCache` setup.
+3. Supporting types: option builders and contexts.
 
 This keeps fluent usage aligned with the same policy pipeline used by attributes and runtime overrides.
 
@@ -66,6 +64,7 @@ public static class CacheManagerExtensions
         IEnumerable<string> keys,
         Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
         Action<CacheEntryOptions.Builder>? configure = null,
+        IServiceProvider? services = null,
         CancellationToken cancellationToken = default);
 
     public static IAsyncEnumerable<T> GetOrCreateStreamAsync<T>(
@@ -73,102 +72,53 @@ public static class CacheManagerExtensions
         string key,
         Func<CacheContext, CancellationToken, IAsyncEnumerable<T>> factory,
         Action<StreamCacheOptions.Builder>? configure = null,
+        IServiceProvider? services = null,
         CancellationToken cancellationToken = default);
 
-    public static Task InvalidateByKeysAsync(
-        this ICacheManager cacheManager,
-        IEnumerable<string> keys,
-        CancellationToken cancellationToken = default);
-
-    public static Task InvalidateByTagsAsync(
-        this ICacheManager cacheManager,
-        IEnumerable<string> tags,
-        CancellationToken cancellationToken = default);
-
-    public static Task InvalidateByTagPatternAsync(
-        this ICacheManager cacheManager,
-        string pattern,
-        CancellationToken cancellationToken = default);
 }
 ```
 
 - `CacheLookupResult<T>` is an allocation-free struct containing `bool Found` and `T? Value`. When `Found` is false, `Value` is default.
 - `GetOrCreateManyAsync` batches cache lookups and invokes the factory with only missing keys, enabling single round trips to L2 providers.
 - `GetOrCreateStreamAsync` supports caching of streaming data. Implementations may buffer segments or apply windowing based on `StreamCacheOptions`.
-- Invalidation APIs accept `IEnumerable<string>` to support streaming scenarios; params overloads forward to the core method for convenience. `InvalidateByTagPatternAsync` enables wildcard invalidation in providers that support it .
+- Invalidation lives on `ICacheManager` itself: `InvalidateByKeysAsync(params string[] keys)`, `InvalidateByTagsAsync(params string[] tags)` and `InvalidateByTagPatternAsync(string pattern)`.
 - `InvalidateByTagPatternAsync` wildcard syntax is `*` (zero or more chars) and `?` (exactly one char). Other characters are literal, and matching is against the full tag string.
 - Distributed cache caveat: pattern invalidation works on the in-memory cache only. With a distributed cache configured it throws `NotSupportedException`, because the distributed cache cannot list its tags.
 
-### ETag Caching Extensions
-Namespace: `MethodCache.ETags.Extensions`.
-
-```csharp
-public static class ETagCacheManagerExtensions
-{
-    public static ValueTask<ETagCacheResult<T>> GetOrCreateWithETagAsync<T>(
-        this IETagCacheManager manager,
-        string key,
-        Func<CacheContext, CancellationToken, ValueTask<ETagCacheEntry<T>>> factory,
-        string? ifNoneMatch = null,
-        Action<ETagCacheEntryOptions.Builder>? configure = null,
-        CancellationToken cancellationToken = default);
-}
-```
-
-- `ETagCacheResult<T>` carries status (`NotModified`, `Hit`, `Miss`) and the value where applicable.
-- `ETagCacheEntry<T>` is unchanged but builder hooks allow fluent configuration of ETag strategy, weak/strong semantics, and stampede protection alignment.
-
 ### Fluent Configuration API
-Namespace: `MethodCache.Core.Configuration.Fluent`.
+Namespace: `MethodCache.Core.Configuration.Surfaces.Fluent`. Use it inside `AddMethodCache` to configure `[Cache]` methods without changing the attributes.
 
 ```csharp
-public static class MethodCacheServiceCollectionExtensions
+public interface IFluentMethodCacheConfiguration
 {
-    public static IServiceCollection AddMethodCache(
-        this IServiceCollection services,
-        Action<IMethodCacheConfiguration> configure);
+    IFluentMethodCacheConfiguration DefaultPolicy(Action<CacheEntryOptions.Builder> configure);
+    IFluentServiceConfiguration<TService> ForService<TService>();
+    IFluentGroupConfiguration ForGroup(string name);
 }
 
-public interface IMethodCacheConfiguration
+public interface IFluentServiceConfiguration<TService>
 {
-    IMethodCacheConfiguration DefaultPolicy(Action<CachePolicy.Builder> configure);
-    IMethodCacheConfiguration AddPolicy(string name, Action<CachePolicy.Builder> configure);
-    IServiceConfiguration<TService> ForService<TService>();
-    IGroupConfiguration ForGroup(string name);
+    IFluentMethodConfiguration Method(Expression<Action<TService>> method);
+    IFluentMethodConfiguration Method<TResult>(Expression<Func<TService, TResult>> method);
+    IFluentMethodConfiguration Method(Expression<Func<TService, Task>> method);
+    IFluentMethodConfiguration Method<TResult>(Expression<Func<TService, Task<TResult>>> method);
 }
 
-public interface IServiceConfiguration<TService>
+public interface IFluentMethodConfiguration
 {
-    IMethodConfiguration<TService> Method(Expression<Func<TService, Task>> method);
-    IMethodConfiguration<TService, TResult> Method<TResult>(Expression<Func<TService, Task<TResult>>> method);
-    IMethodConfiguration<TService> Method(Expression<Action<TService>> method);
+    IFluentMethodConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
+    IFluentMethodConfiguration WithGroup(string groupName);
+    IFluentMethodConfiguration WithVersion(int version);
 }
 
-public interface IMethodConfiguration<TService>
+public interface IFluentGroupConfiguration
 {
-    IMethodConfiguration<TService> WithPolicy(string name);
-    IMethodConfiguration<TService> Configure(Action<CacheEntryOptions.Builder> configure);
-    IMethodConfiguration<TService> When(Func<CacheContext, bool> predicate);
-    IMethodConfiguration<TService> WithDistributedLock(TimeSpan? timeout = null, int maxConcurrency = 1);
-}
-
-public interface IMethodConfiguration<TService, TResult> : IMethodConfiguration<TService>
-{
-    IMethodConfiguration<TService, TResult> TransformResult(Func<TResult, TResult> transform);
-}
-
-public interface IGroupConfiguration
-{
-    IGroupConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
-    IGroupConfiguration WithPolicy(string name);
-    IGroupConfiguration WithDistributedLock(TimeSpan? timeout = null, int maxConcurrency = 1);
+    IFluentGroupConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
 }
 ```
 
-- Distributed locking metadata is captured at configuration time and mapped to underlying providers supporting lock semantics (e.g., Redis RedLock).
-- Async overloads accept `Task`/`Task<TResult>` expressions, enabling configuration of both synchronous and asynchronous methods.
-- Builders fan out to the existing options infrastructure, centralizing validation and defaults.
-- Group configuration targets cross-cutting concerns (e.g., `"catalog"` group) and can apply distributed lock policies.
+- Settings are applied in order: the default policy, then the method's group, then the method itself.
+- Cached methods take duration, tags, sliding expiration, refresh-ahead and version from here. `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to `GetOrCreateAsync`; configuring them for a cached method throws `InvalidOperationException` at startup instead of being ignored.
 
 ### Supporting Types
 
@@ -179,56 +129,34 @@ Namespace: `MethodCache.Core.Options`.
 public sealed class CacheEntryOptions
 {
     public TimeSpan? Duration { get; }
+    public TimeSpan? SlidingExpiration { get; }
+    public TimeSpan? RefreshAhead { get; }
     public IReadOnlyList<string> Tags { get; }
-    public int? Version { get; }
-    public Type? KeyGeneratorType { get; }
-    public Func<CacheContext, bool>? Predicate { get; }
     public IReadOnlyList<Action<CacheContext>> OnHitCallbacks { get; }
     public IReadOnlyList<Action<CacheContext>> OnMissCallbacks { get; }
-    public TimeSpan? RefreshAhead { get; }
-    public StampedeProtectionOptions? StampedeProtection { get; }
-    public DistributedLockOptions? DistributedLock { get; }
-    public IReadOnlyList<string> DependentKeys { get; }
-    public IReadOnlyList<string> CascadeKeys { get; }
     public ICacheMetrics? Metrics { get; }
-    public CacheFallbackPolicy? FallbackPolicy { get; }
+    public int? Version { get; }
+    public Func<CacheContext, bool>? Predicate { get; }
 
     public sealed class Builder
     {
         public Builder WithDuration(TimeSpan duration);
         public Builder WithTags(params string[] tags);
-        public Builder WithVersion(int version);
-        public Builder WithKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator;
-        public Builder When(Func<CacheContext, bool> predicate);
-        public Builder OnHit(Action<CacheContext> onHit);
-        public Builder OnMiss(Action<CacheContext> onMiss);
-        public Builder RefreshAhead(TimeSpan leadDuration);
-        public Builder WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0);
+        public Builder WithSlidingExpiration(TimeSpan slidingExpiration);
+        public Builder RefreshAhead(TimeSpan window);
+        public Builder OnHit(Action<CacheContext> callback);
+        public Builder OnMiss(Action<CacheContext> callback);
         public Builder WithMetrics(ICacheMetrics metrics);
+        public Builder WithVersion(int version);
+        public Builder When(Func<CacheContext, bool> predicate);
         public CacheEntryOptions Build();
     }
 }
 ```
 
-- `CacheEntryOptions` instances are immutable. Builders are pooled via `ObjectPool<CacheEntryOptions.Builder>` and reset between uses.
-
-#### Supporting Option Types
-
-```csharp
-public sealed record StampedeProtectionOptions(StampedeProtectionMode Mode, double Beta, TimeSpan? RefreshAheadWindow);
-public enum StampedeProtectionMode { None, DistributedLock, Probabilistic, RefreshAhead }
-
-public sealed record DistributedLockOptions(TimeSpan Timeout, int MaxConcurrency);
-
-public sealed record CacheFallbackPolicy(
-    IReadOnlyDictionary<Type, Func<Exception, CacheContext, ValueTask<object?>>> Handlers,
-    CircuitBreakerOptions? CircuitBreaker);
-
-public sealed record CircuitBreakerOptions(int HandledEventsAllowedBeforeBreaking, TimeSpan DurationOfBreak);
-```
-
-- `StampedeProtectionOptions` unifies probabilistic early refresh, distributed locking, and refresh-ahead strategies.
-- `DistributedLockOptions` is interpreted by providers; when `Timeout` is null, providers fallback to default lock timeout.
+- `WithSlidingExpiration` extends an entry's lifetime each time it is read, but never past `Duration`.
+- `RefreshAhead` reloads an entry in the background when a read happens within the window before it expires, so callers keep getting the cached value instead of waiting for the factory.
+- `When` skips the cache for a call when the predicate returns false.
 
 #### CacheContext
 Namespace: `MethodCache.Core.Runtime.Core`.
@@ -246,22 +174,6 @@ public sealed class CacheContext
 - `Services` is the service provider you passed in, if any.
 - `Items` is scoped per call, so callbacks such as `OnHit`, `OnMiss` and `When` can share data without leaking state.
 
-#### CacheKeyBuilder
-Namespace: `MethodCache.Core.Keys`.
-
-```csharp
-public sealed class CacheKeyBuilder
-{
-    public CacheKeyBuilder(string prefix);
-    public CacheKeyBuilder Append(string name, ReadOnlySpan<char> value);
-    public CacheKeyBuilder Append<T>(string name, T value, string? format = null, IFormatProvider? provider = null);
-    public string Build();
-}
-```
-
-- `Append` enforces invariant casing and null-safe formatting.
-- `Build` returns pooled `string` instances via `StringBuilderCache` to reduce allocations.
-
 #### StreamCacheOptions
 Namespace: `MethodCache.Core.Options`.
 
@@ -270,12 +182,14 @@ public sealed class StreamCacheOptions
 {
     public TimeSpan? Duration { get; }
     public int SegmentSize { get; }
+    public int MaxMemorySize { get; }
     public bool EnableWindowing { get; }
 
     public sealed class Builder
     {
         public Builder WithDuration(TimeSpan duration);
         public Builder WithSegmentSize(int segmentSize);
+        public Builder WithMaxMemorySize(int maxMemorySize);
         public Builder EnableWindowing(bool enabled = true);
         public StreamCacheOptions Build();
     }
@@ -284,32 +198,19 @@ public sealed class StreamCacheOptions
 
 - Streaming options allow providers to tune buffering strategies for `IAsyncEnumerable` payloads.
 
-#### Controller Helper
-Namespace: `MethodCache.ETags.Mvc`.
-
-```csharp
-public static class MethodCacheControllerExtensions
-{
-    public static IActionResult From<T>(this ControllerBase controller, ETagCacheResult<T> result, Func<T, IActionResult>? onHit = null);
-}
-```
-
-- Defaults map `NotModified` to `StatusCodeResult(304)` and `Miss`/`Hit` to `OkObjectResult` unless `onHit` overrides serialization.
-- Result helpers live in a dedicated MVC package (`MethodCache.ETags.Mvc`) to avoid hard dependencies from core libraries to ASP.NET Core.
-
 #### Observability Interfaces
-Namespace: `MethodCache.Core.Metrics`.
+Namespace: `MethodCache.Core.Infrastructure.Metrics`.
 
 ```csharp
 public interface ICacheMetrics
 {
-    void RecordHit(string key, TimeSpan duration, CacheLayer layer);
-    void RecordMiss(string key, TimeSpan duration);
-    void RecordEviction(string key, EvictionReason reason);
+    void RecordHit(string key, TimeSpan? duration, object? value);
+    void RecordMiss(string key);
+    void RecordError(string key, Exception exception);
 }
 ```
 
-- Providers opt-in to metrics by wiring `ICacheMetrics` implementations via DI. `WithMetrics` attaches metrics observers on a per-entry basis.
+- `WithMetrics` attaches an `ICacheMetrics` observer to a single `GetOrCreateAsync` call.
 
 ## Usage Examples
 
@@ -322,16 +223,16 @@ var user = await cacheManager.GetOrCreateAsync(
 );
 ```
 
-### Conditional Caching with Tags and Stampede Protection
+### Conditional Caching with Tags and Refresh-Ahead
 ```csharp
 var products = await cacheManager.GetOrCreateAsync(
     key: CacheKeys.Products.All,
     factory: static (context, ct) => repository.GetProductsAsync(ct),
     configure: options => options
         .WithDuration(TimeSpan.FromMinutes(30))
+        .RefreshAhead(TimeSpan.FromMinutes(5))
         .WithTags("products", "catalog")
         .When(ctx => includePremium)
-        .WithStampedeProtection(StampedeProtectionMode.Probabilistic, beta: 1.25)
 );
 ```
 
@@ -363,23 +264,19 @@ await foreach (var dto in cacheManager.GetOrCreateStreamAsync(
 }
 ```
 
-### Distributed Lock in Configuration
+### Configuring Cached Methods
 ```csharp
 services.AddMethodCache(config =>
 {
-    config.DefaultPolicy(policy => policy
+    config.DefaultPolicy(options => options
         .WithDuration(TimeSpan.FromMinutes(15))
-        .RefreshAhead(TimeSpan.FromMinutes(5))
-        .WithStampedeProtection(StampedeProtectionMode.DistributedLock)
-    );
+        .RefreshAhead(TimeSpan.FromMinutes(5)));
 
     config.ForService<IUserService>()
           .Method(s => s.GetUserAsync(default))
           .Configure(options => options
-              .WithDistributedLock(TimeSpan.FromSeconds(5), maxConcurrency: 2)
-              .WithTags("users")
-              .WithMetrics(metrics)
-          );
+              .WithSlidingExpiration(TimeSpan.FromMinutes(5))
+              .WithTags("users"));
 });
 ```
 

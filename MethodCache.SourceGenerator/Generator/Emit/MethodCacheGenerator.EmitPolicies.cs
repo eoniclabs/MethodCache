@@ -184,11 +184,9 @@ namespace MethodCache.SourceGenerator
                     }
                 }
 
-                if (TryGetNamedArgument(cacheAttr, "Duration", out var durationArg) && durationArg.Value is string duration && !string.IsNullOrWhiteSpace(duration))
-                {
-                    definition.PolicyStatements.Add($"policy = policy with {{ Duration = System.TimeSpan.Parse({ToLiteral(duration)}, System.Globalization.CultureInfo.InvariantCulture) }};");
-                    definition.PolicyStatements.Add("fields |= CachePolicyFields.Duration;");
-                }
+                AddTimeSpan(definition, cacheAttr, "Duration");
+                AddTimeSpan(definition, cacheAttr, "SlidingExpiration");
+                AddTimeSpan(definition, cacheAttr, "RefreshAhead");
 
                 if (TryGetNamedArgument(cacheAttr, "Tags", out var tagsArg) && tagsArg.Kind == TypedConstantKind.Array)
                 {
@@ -210,18 +208,18 @@ namespace MethodCache.SourceGenerator
                     definition.PolicyStatements.Add($"policy = policy with {{ Version = {versionValue} }};");
                     definition.PolicyStatements.Add("fields |= CachePolicyFields.Version;");
                 }
+            }
 
-                if (TryGetNamedArgument(cacheAttr, "KeyGeneratorType", out var keyGeneratorArg) && keyGeneratorArg.Value is INamedTypeSymbol keyGeneratorType)
+            private static void AddTimeSpan(PolicyDefinition definition, AttributeData cacheAttr, string name)
+            {
+                // The analyzer reports values that do not parse (MC0004); skipping them here keeps the build going
+                if (TryGetNamedArgument(cacheAttr, name, out var argument) &&
+                    argument.Value is string text &&
+                    TimeSpan.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var value) &&
+                    value > TimeSpan.Zero)
                 {
-                    var typeName = Utils.GetFullyQualifiedName(keyGeneratorType);
-                    definition.PolicyStatements.Add($"policy = policy with {{ KeyGeneratorType = typeof({typeName}) }};");
-                    definition.PolicyStatements.Add("fields |= CachePolicyFields.KeyGenerator;");
-                }
-
-                if (TryGetNamedArgument(cacheAttr, "RequireIdempotent", out var idempotentArg) && idempotentArg.Value is bool requireIdempotent && requireIdempotent)
-                {
-                    definition.PolicyStatements.Add($"policy = policy with {{ RequireIdempotent = {requireIdempotent.ToString().ToLowerInvariant()} }};");
-                    definition.PolicyStatements.Add("fields |= CachePolicyFields.RequireIdempotent;");
+                    definition.PolicyStatements.Add($"policy = policy with {{ {name} = System.TimeSpan.FromTicks({value.Ticks}L) }};");
+                    definition.PolicyStatements.Add($"fields |= CachePolicyFields.{name};");
                 }
             }
 

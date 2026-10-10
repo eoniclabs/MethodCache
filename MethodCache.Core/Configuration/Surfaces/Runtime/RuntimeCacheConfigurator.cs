@@ -25,13 +25,7 @@ internal sealed class RuntimeCacheConfigurator : IRuntimeCacheConfigurator
         var builder = new CacheEntryOptions.Builder();
         configure(builder);
         var options = builder.Build();
-        var policyBuilder = CachePolicyBuilderFactory.FromOptions(options);
-        if (options.Predicate != null)
-        {
-            policyBuilder.RequireIdempotent();
-        }
-
-        var draft = policyBuilder.Build(methodId);
+        var draft = CachePolicyBuilderFactory.ForMethod(methodId, options).Build(methodId);
         return _store.UpsertAsync(methodId, draft.Policy, draft.Fields, metadata);
     }
 

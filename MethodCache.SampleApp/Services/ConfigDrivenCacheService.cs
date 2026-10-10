@@ -59,43 +59,37 @@ namespace MethodCache.SampleApp.Services
                 [nameof(ICacheConfigurationShowcase.GetWeatherAsync)] = CreateDefaultDescriptor(
                     nameof(ICacheConfigurationShowcase.GetWeatherAsync),
                     TimeSpan.FromSeconds(15),
-                    new[] { "default", "weather" },
-                    true),
+                    new[] { "default", "weather" }),
                 [nameof(ICacheConfigurationShowcase.GetProductAsync)] = CreateDefaultDescriptor(
                     nameof(ICacheConfigurationShowcase.GetProductAsync),
                     TimeSpan.FromMinutes(5),
-                    new[] { "default", "product" },
-                    true),
+                    new[] { "default", "product" }),
                 [nameof(ICacheConfigurationShowcase.GetInventoryLevelAsync)] = CreateDefaultDescriptor(
                     nameof(ICacheConfigurationShowcase.GetInventoryLevelAsync),
                     TimeSpan.FromMinutes(2),
-                    new[] { "default", "inventory" },
-                    true),
+                    new[] { "default", "inventory" }),
                 [nameof(ICacheConfigurationShowcase.GetPriceAsync)] = CreateDefaultDescriptor(
                     nameof(ICacheConfigurationShowcase.GetPriceAsync),
                     TimeSpan.FromMinutes(10),
-                    new[] { "default", "pricing" },
-                    true),
+                    new[] { "default", "pricing" }),
                 [nameof(ICacheConfigurationShowcase.GetCustomerOrdersAsync)] = CreateDefaultDescriptor(
                     nameof(ICacheConfigurationShowcase.GetCustomerOrdersAsync),
                     TimeSpan.FromMinutes(1),
-                    new[] { "default", "orders" },
-                    true)
+                    new[] { "default", "orders" })
             };
         }
 
-        private static CacheRuntimePolicy CreateDefaultDescriptor(string methodName, TimeSpan duration, string[] tags, bool requireIdempotent)
+        private static CacheRuntimePolicy CreateDefaultDescriptor(string methodName, TimeSpan duration, string[] tags)
         {
             var policy = CachePolicy.Empty with
             {
                 Duration = duration,
-                Tags = tags,
-                RequireIdempotent = requireIdempotent
+                Tags = tags
             };
             return CacheRuntimePolicy.FromPolicy(
                 methodName,
                 policy,
-                CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent);
+                CachePolicyFields.Duration | CachePolicyFields.Tags);
         }
 
         public Task<string> GetWeatherAsync(string city) =>
@@ -215,9 +209,9 @@ namespace MethodCache.SampleApp.Services
             var hasConfiguredValues =
                 policy.Duration.HasValue ||
                 policy.Tags.Count > 0 ||
-                policy.KeyGeneratorType != null ||
+                policy.SlidingExpiration.HasValue ||
+                policy.RefreshAhead.HasValue ||
                 policy.Version.HasValue ||
-                policy.RequireIdempotent.HasValue ||
                 policy.Metadata.Count > 0;
 
             if (hasConfiguredValues)
@@ -234,13 +228,12 @@ namespace MethodCache.SampleApp.Services
             var fallbackPolicy = CachePolicy.Empty with
             {
                 Duration = TimeSpan.FromSeconds(30),
-                Tags = new[] { "default" },
-                RequireIdempotent = true
+                Tags = new[] { "default" }
             };
             return CacheRuntimePolicy.FromPolicy(
                 methodName,
                 fallbackPolicy,
-                CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.RequireIdempotent);
+                CachePolicyFields.Duration | CachePolicyFields.Tags);
         }
 
         private int GenerateTemperature() => _random.Next(-5, 35);

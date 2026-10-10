@@ -247,7 +247,7 @@ namespace TestApp
 
     public interface ITestService
     {
-        [Cache(Duration = ""00:10:00"", Tags = new[] { ""users"" }, Version = 7, KeyGeneratorType = typeof(CustomKeyGenerator))]
+        [Cache(Duration = ""00:10:00"", Tags = new[] { ""users"" }, Version = 7, SlidingExpiration = ""00:02:00"", RefreshAhead = ""00:00:30"")]
         string GetValue(int id);
     }
 }";
@@ -261,6 +261,10 @@ namespace TestApp
             Assert.Contains("GeneratedAttributePolicySource", registrySource);
             Assert.Contains("PolicySourceRegistration", registrySource);
             Assert.Contains("PolicySnapshot", registrySource);
+            AssertContainsIgnoreWhitespace(registrySource, $"SlidingExpiration = System.TimeSpan.FromTicks({TimeSpan.FromMinutes(2).Ticks}L)");
+            AssertContainsIgnoreWhitespace(registrySource, $"RefreshAhead = System.TimeSpan.FromTicks({TimeSpan.FromSeconds(30).Ticks}L)");
+            AssertContainsIgnoreWhitespace(registrySource, "fields |= CachePolicyFields.SlidingExpiration;");
+            AssertContainsIgnoreWhitespace(registrySource, "fields |= CachePolicyFields.RefreshAhead;");
         }
 
         [Fact]
@@ -331,7 +335,7 @@ namespace TestApp
         }
 
         [Fact]
-        public async Task GeneratesCacheDecoratorWithRequireIdempotentTrue()
+        public async Task GeneratesCacheDecoratorForAsyncMethod()
         {
             var source = @"using MethodCache.Core;
 using System.Threading.Tasks;
@@ -340,7 +344,7 @@ namespace TestApp
 {
     public interface ITestService
     {
-        [Cache(RequireIdempotent = true)]
+        [Cache]
         Task<string> GetValueAsync(int id);
     }
 }";
@@ -351,7 +355,7 @@ namespace TestApp
             // Should have no compilation errors
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            // Should generate the cache decorator with idempotent flag
+            // Should generate the cache decorator
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("public class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
             
@@ -384,7 +388,7 @@ namespace TestApp
         [Cache]
         string GetValue(int id);
 
-        [Cache(RequireIdempotent = true)]
+        [Cache]
         Task<string> GetValueAsync(int id);
 
         [CacheInvalidate(Tags = new[] { ""user"" })]

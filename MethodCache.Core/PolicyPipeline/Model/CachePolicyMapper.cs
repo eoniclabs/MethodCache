@@ -35,9 +35,9 @@ public static class CachePolicyMapper
             fields |= CachePolicyFields.Tags;
         }
 
-        if (policy.KeyGeneratorType != null)
+        if (policy.SlidingExpiration.HasValue)
         {
-            fields |= CachePolicyFields.KeyGenerator;
+            fields |= CachePolicyFields.SlidingExpiration;
         }
 
         if (policy.Version.HasValue)
@@ -45,9 +45,9 @@ public static class CachePolicyMapper
             fields |= CachePolicyFields.Version;
         }
 
-        if (policy.RequireIdempotent.HasValue)
+        if (policy.RefreshAhead.HasValue)
         {
-            fields |= CachePolicyFields.RequireIdempotent;
+            fields |= CachePolicyFields.RefreshAhead;
         }
 
         if (policy.Metadata.Count > 0)
