@@ -32,4 +32,21 @@
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md')">
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
+
+  <!--
+    Locks the public API of the shipped libraries. A project opts in with
+    <TrackPublicApi>true</TrackPublicApi>; any public API change must then be
+    recorded in its PublicAPI.Unshipped.txt (RS0016/RS0017 fail the build).
+  -->
+  <!-- Unconditional: properties are evaluated before the project sets TrackPublicApi, and the ids are inert without the analyzer. -->
+  <PropertyGroup>
+    <WarningsAsErrors>$(WarningsAsErrors);RS0016;RS0017</WarningsAsErrors>
+    <!-- Optional-parameter overload rules would force API changes, not just tracking. -->
+    <NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TrackPublicApi)' == 'true'">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt" />
+  </ItemGroup>
 </Project>

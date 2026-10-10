@@ -1,0 +1,93 @@
+#nullable enable
+MethodCache.Abstractions.Policies.CachePolicy
+MethodCache.Abstractions.Policies.CachePolicy.Duration.get -> System.TimeSpan?
+MethodCache.Abstractions.Policies.CachePolicy.Duration.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.KeyGeneratorType.get -> System.Type?
+MethodCache.Abstractions.Policies.CachePolicy.KeyGeneratorType.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
+MethodCache.Abstractions.Policies.CachePolicy.Metadata.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.Provenance.get -> MethodCache.Abstractions.Policies.PolicyProvenance!
+MethodCache.Abstractions.Policies.CachePolicy.Provenance.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.RequireIdempotent.get -> bool?
+MethodCache.Abstractions.Policies.CachePolicy.RequireIdempotent.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.Abstractions.Policies.CachePolicy.Tags.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.Version.get -> int?
+MethodCache.Abstractions.Policies.CachePolicy.Version.init -> void
+MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.Duration = 1 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.KeyGenerator = 4 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.Metadata = 16 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.None = 0 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.RequireIdempotent = 32 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.Tags = 2 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.Version = 8 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.PolicyContribution
+MethodCache.Abstractions.Policies.PolicyContribution.AppliedAt.get -> System.DateTimeOffset
+MethodCache.Abstractions.Policies.PolicyContribution.AppliedAt.init -> void
+MethodCache.Abstractions.Policies.PolicyContribution.Fields.get -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.PolicyContribution.Fields.init -> void
+MethodCache.Abstractions.Policies.PolicyContribution.Kind.get -> MethodCache.Abstractions.Policies.PolicyContributionKind
+MethodCache.Abstractions.Policies.PolicyContribution.Kind.init -> void
+MethodCache.Abstractions.Policies.PolicyContribution.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
+MethodCache.Abstractions.Policies.PolicyContribution.Metadata.init -> void
+MethodCache.Abstractions.Policies.PolicyContribution.Notes.get -> string?
+MethodCache.Abstractions.Policies.PolicyContribution.Notes.init -> void
+MethodCache.Abstractions.Policies.PolicyContribution.PolicyContribution(string! SourceId, MethodCache.Abstractions.Policies.CachePolicyFields Fields, MethodCache.Abstractions.Policies.PolicyContributionKind Kind, System.DateTimeOffset AppliedAt, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? Metadata = null, string? Notes = null) -> void
+MethodCache.Abstractions.Policies.PolicyContribution.SourceId.get -> string!
+MethodCache.Abstractions.Policies.PolicyContribution.SourceId.init -> void
+MethodCache.Abstractions.Policies.PolicyContributionKind
+MethodCache.Abstractions.Policies.PolicyContributionKind.Set = 0 -> MethodCache.Abstractions.Policies.PolicyContributionKind
+MethodCache.Abstractions.Policies.PolicyProvenance
+MethodCache.Abstractions.Policies.PolicyProvenance.Append(MethodCache.Abstractions.Policies.PolicyContribution! contribution) -> MethodCache.Abstractions.Policies.PolicyProvenance!
+MethodCache.Abstractions.Policies.PolicyProvenance.Count.get -> int
+MethodCache.Abstractions.Policies.PolicyProvenance.GetEnumerator() -> System.Collections.Generic.IEnumerator<MethodCache.Abstractions.Policies.PolicyContribution!>!
+MethodCache.Abstractions.Policies.PolicyProvenance.PolicyProvenance(System.Collections.Generic.IReadOnlyList<MethodCache.Abstractions.Policies.PolicyContribution!>! contributions) -> void
+MethodCache.Abstractions.Registry.IPolicyRegistry
+MethodCache.Abstractions.Registry.IPolicyRegistry.GetAllPolicies() -> System.Collections.Generic.IReadOnlyCollection<MethodCache.Abstractions.Resolution.PolicyResolutionResult!>!
+MethodCache.Abstractions.Registry.IPolicyRegistry.GetPolicy(string! methodId) -> MethodCache.Abstractions.Resolution.PolicyResolutionResult!
+MethodCache.Abstractions.Registry.IPolicyRegistry.GetPolicyVersion(string! methodId) -> long
+MethodCache.Abstractions.Registry.IPolicyRegistry.WatchAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Abstractions.Resolution.PolicyResolutionResult!>!
+MethodCache.Abstractions.Resolution.CachePolicyDelta
+MethodCache.Abstractions.Resolution.CachePolicyDelta.CachePolicyDelta(MethodCache.Abstractions.Policies.CachePolicyFields setMask, MethodCache.Abstractions.Policies.CachePolicyFields clearMask, MethodCache.Abstractions.Policies.CachePolicy! snapshot) -> void
+MethodCache.Abstractions.Resolution.CachePolicyDelta.ClearMask.get -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Resolution.CachePolicyDelta.IsEmpty.get -> bool
+MethodCache.Abstractions.Resolution.CachePolicyDelta.SetMask.get -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Resolution.CachePolicyDelta.Snapshot.get -> MethodCache.Abstractions.Policies.CachePolicy!
+MethodCache.Abstractions.Resolution.IPolicyResolver
+MethodCache.Abstractions.Resolution.IPolicyResolver.ResolveAsync(string! methodId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.Abstractions.Resolution.PolicyResolutionResult!>
+MethodCache.Abstractions.Resolution.IPolicyResolver.WatchAsync(string? methodId = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Abstractions.Resolution.PolicyResolutionResult!>!
+MethodCache.Abstractions.Resolution.PolicyChange
+MethodCache.Abstractions.Resolution.PolicyChange.Delta.get -> MethodCache.Abstractions.Resolution.CachePolicyDelta!
+MethodCache.Abstractions.Resolution.PolicyChange.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
+MethodCache.Abstractions.Resolution.PolicyChange.MethodId.get -> string!
+MethodCache.Abstractions.Resolution.PolicyChange.PolicyChange(string! sourceId, string! methodId, MethodCache.Abstractions.Resolution.CachePolicyDelta! delta, MethodCache.Abstractions.Resolution.PolicyChangeReason reason, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> void
+MethodCache.Abstractions.Resolution.PolicyChange.Reason.get -> MethodCache.Abstractions.Resolution.PolicyChangeReason
+MethodCache.Abstractions.Resolution.PolicyChange.SourceId.get -> string!
+MethodCache.Abstractions.Resolution.PolicyChange.Timestamp.get -> System.DateTimeOffset
+MethodCache.Abstractions.Resolution.PolicyChangeReason
+MethodCache.Abstractions.Resolution.PolicyChangeReason.Added = 1 -> MethodCache.Abstractions.Resolution.PolicyChangeReason
+MethodCache.Abstractions.Resolution.PolicyChangeReason.InitialLoad = 0 -> MethodCache.Abstractions.Resolution.PolicyChangeReason
+MethodCache.Abstractions.Resolution.PolicyChangeReason.Reloaded = 4 -> MethodCache.Abstractions.Resolution.PolicyChangeReason
+MethodCache.Abstractions.Resolution.PolicyChangeReason.Removed = 3 -> MethodCache.Abstractions.Resolution.PolicyChangeReason
+MethodCache.Abstractions.Resolution.PolicyChangeReason.Updated = 2 -> MethodCache.Abstractions.Resolution.PolicyChangeReason
+MethodCache.Abstractions.Resolution.PolicyResolutionResult
+MethodCache.Abstractions.Resolution.PolicyResolutionResult.Contributions.get -> System.Collections.Generic.IReadOnlyList<MethodCache.Abstractions.Policies.PolicyContribution!>!
+MethodCache.Abstractions.Resolution.PolicyResolutionResult.MethodId.get -> string!
+MethodCache.Abstractions.Resolution.PolicyResolutionResult.Policy.get -> MethodCache.Abstractions.Policies.CachePolicy!
+MethodCache.Abstractions.Resolution.PolicyResolutionResult.PolicyResolutionResult(string! methodId, MethodCache.Abstractions.Policies.CachePolicy! policy, System.Collections.Generic.IReadOnlyList<MethodCache.Abstractions.Policies.PolicyContribution!>! contributions, System.DateTimeOffset resolvedAt, long version = 0) -> void
+MethodCache.Abstractions.Resolution.PolicyResolutionResult.ResolvedAt.get -> System.DateTimeOffset
+MethodCache.Abstractions.Resolution.PolicyResolutionResult.Version.get -> long
+MethodCache.Abstractions.Resolution.PolicySnapshot
+MethodCache.Abstractions.Resolution.PolicySnapshot.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
+MethodCache.Abstractions.Resolution.PolicySnapshot.MethodId.get -> string!
+MethodCache.Abstractions.Resolution.PolicySnapshot.Policy.get -> MethodCache.Abstractions.Policies.CachePolicy!
+MethodCache.Abstractions.Resolution.PolicySnapshot.PolicySnapshot(string! sourceId, string! methodId, MethodCache.Abstractions.Policies.CachePolicy! policy, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> void
+MethodCache.Abstractions.Resolution.PolicySnapshot.SourceId.get -> string!
+MethodCache.Abstractions.Resolution.PolicySnapshot.Timestamp.get -> System.DateTimeOffset
+MethodCache.Abstractions.Sources.IPolicySource
+MethodCache.Abstractions.Sources.IPolicySource.GetSnapshotAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.Abstractions.Resolution.PolicySnapshot!>!>!
+MethodCache.Abstractions.Sources.IPolicySource.SourceId.get -> string!
+MethodCache.Abstractions.Sources.IPolicySource.WatchAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Abstractions.Resolution.PolicyChange!>!
+static MethodCache.Abstractions.Policies.CachePolicy.Empty.get -> MethodCache.Abstractions.Policies.CachePolicy!
+static MethodCache.Abstractions.Policies.PolicyProvenance.Empty.get -> MethodCache.Abstractions.Policies.PolicyProvenance!

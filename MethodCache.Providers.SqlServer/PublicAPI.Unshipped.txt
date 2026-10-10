@@ -1,0 +1,158 @@
+#nullable enable
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.BackplaneMessageRetention.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.BackplaneMessageRetention.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.BackplanePollingInterval.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.BackplanePollingInterval.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CircuitBreakerBreakDuration.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CircuitBreakerBreakDuration.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CircuitBreakerFailureRatio.get -> double
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CircuitBreakerFailureRatio.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CircuitBreakerMinimumThroughput.get -> int
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CircuitBreakerMinimumThroughput.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CleanupBatchSize.get -> int
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CleanupBatchSize.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CleanupInterval.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CleanupInterval.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CommandTimeoutSeconds.get -> int
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.CommandTimeoutSeconds.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.ConnectionString.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.ConnectionString.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.ConnectionTimeoutSeconds.get -> int
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.ConnectionTimeoutSeconds.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.DefaultSerializer.get -> MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.DefaultSerializer.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableAutoTableCreation.get -> bool
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableAutoTableCreation.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableBackgroundCleanup.get -> bool
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableBackgroundCleanup.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableBackplane.get -> bool
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableBackplane.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableDetailedLogging.get -> bool
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EnableDetailedLogging.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EntriesTableName.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.EntriesTableName.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.FullEntriesTableName.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.FullInvalidationsTableName.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.FullTagsTableName.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.HealthCheckTimeoutSeconds.get -> int
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.HealthCheckTimeoutSeconds.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.InvalidationsTableName.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.InvalidationsTableName.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.IsolationLevel.get -> System.Data.IsolationLevel
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.IsolationLevel.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.KeyPrefix.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.KeyPrefix.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.MaxRetryAttempts.get -> int
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.MaxRetryAttempts.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.RetryBackoffType.get -> MethodCache.Providers.SqlServer.Configuration.SqlServerRetryBackoffType
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.RetryBackoffType.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.RetryBaseDelay.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.RetryBaseDelay.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.Schema.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.Schema.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.SqlServerOptions() -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.TagsTableName.get -> string!
+MethodCache.Providers.SqlServer.Configuration.SqlServerOptions.TagsTableName.set -> void
+MethodCache.Providers.SqlServer.Configuration.SqlServerRetryBackoffType
+MethodCache.Providers.SqlServer.Configuration.SqlServerRetryBackoffType.Exponential = 1 -> MethodCache.Providers.SqlServer.Configuration.SqlServerRetryBackoffType
+MethodCache.Providers.SqlServer.Configuration.SqlServerRetryBackoffType.Linear = 0 -> MethodCache.Providers.SqlServer.Configuration.SqlServerRetryBackoffType
+MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType
+MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType.Binary = 2 -> MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType
+MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType.Json = 0 -> MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType
+MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType.MessagePack = 1 -> MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.BackplaneMessageRetention.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.BackplaneMessageRetention.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.BackplanePollingInterval.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.BackplanePollingInterval.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.CommandTimeoutSeconds.get -> int
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.CommandTimeoutSeconds.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.EnableAsyncL2Writes.get -> bool
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.EnableAsyncL2Writes.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.EnableAutoTableCreation.get -> bool
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.EnableAutoTableCreation.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.EnableBackplane.get -> bool
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.EnableBackplane.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.L1DefaultExpiration.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.L1DefaultExpiration.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.L1MaxExpiration.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.L1MaxExpiration.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.L2DefaultExpiration.get -> System.TimeSpan
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.L2DefaultExpiration.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.MaxRetryAttempts.get -> int
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.MaxRetryAttempts.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.Schema.get -> string!
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.Schema.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.SqlServerHybridCacheOptions() -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.SqlServerSerializer.get -> MethodCache.Providers.SqlServer.Configuration.SqlServerSerializerType
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.SqlServerSerializer.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.Strategy.get -> MethodCache.Core.Storage.Coordination.HybridStrategy
+MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions.Strategy.set -> void
+MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions
+MethodCache.Providers.SqlServer.HealthChecks.SqlServerInfrastructureHealthCheck
+MethodCache.Providers.SqlServer.HealthChecks.SqlServerInfrastructureHealthCheck.CheckHealthAsync(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult>!
+MethodCache.Providers.SqlServer.HealthChecks.SqlServerInfrastructureHealthCheck.SqlServerInfrastructureHealthCheck(MethodCache.Core.Storage.Abstractions.IStorageProvider! storageProvider, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.SqlServer.HealthChecks.SqlServerInfrastructureHealthCheck!>! logger) -> void
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane.DisposeAsync() -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane.InstanceId.get -> string!
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane.PublishInvalidationAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane.PublishTagInvalidationAsync(string! tag, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane.SqlServerBackplane(MethodCache.Providers.SqlServer.Services.ISqlServerConnectionManager! connectionManager, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane!>! logger) -> void
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane.SubscribeAsync(System.Func<MethodCache.Core.Storage.Abstractions.BackplaneMessage!, System.Threading.Tasks.Task!>! onMessage, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerBackplane.UnsubscribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.CleanupExpiredEntriesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.DisposeAsync() -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.ExistsAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.GetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T?>
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.GetHealthAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus>
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.GetStatsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.Core.Storage.Abstractions.PersistentStorageStats?>
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.GetStorageSizeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<long>
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.Name.get -> string!
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.RemoveByTagAsync(string! tag, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.SetAsync<T>(string! key, T value, System.TimeSpan expiration, System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.SetAsync<T>(string! key, T value, System.TimeSpan expiration, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider.SqlServerPersistentStorageProvider(MethodCache.Providers.SqlServer.Services.ISqlServerConnectionManager! connectionManager, MethodCache.Providers.SqlServer.Services.ISqlServerSerializer! serializer, MethodCache.Providers.SqlServer.Services.ISqlServerTableManager! tableManager, MethodCache.Core.Storage.Abstractions.IBackplane? backplane, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.SqlServer.Infrastructure.SqlServerPersistentStorageProvider!>! logger) -> void
+MethodCache.Providers.SqlServer.Services.ISqlServerConnectionManager
+MethodCache.Providers.SqlServer.Services.ISqlServerConnectionManager.GetConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Data.SqlClient.SqlConnection!>!
+MethodCache.Providers.SqlServer.Services.ISqlServerConnectionManager.TestConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+MethodCache.Providers.SqlServer.Services.ISqlServerSerializer
+MethodCache.Providers.SqlServer.Services.ISqlServerSerializer.DeserializeAsync<T>(byte[]? data) -> System.Threading.Tasks.Task<T?>!
+MethodCache.Providers.SqlServer.Services.ISqlServerSerializer.SerializeAsync<T>(T value) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager.CreateEntriesTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager.CreateIndexesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager.CreateInvalidationsTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager.CreateSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager.CreateTagsTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager.EnsureTablesExistAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.ISqlServerTableManager.TablesExistAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+MethodCache.Providers.SqlServer.Services.SqlServerConnectionManager
+MethodCache.Providers.SqlServer.Services.SqlServerConnectionManager.GetConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Data.SqlClient.SqlConnection!>!
+MethodCache.Providers.SqlServer.Services.SqlServerConnectionManager.SqlServerConnectionManager(Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.SqlServer.Services.SqlServerConnectionManager!>! logger) -> void
+MethodCache.Providers.SqlServer.Services.SqlServerConnectionManager.TestConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+MethodCache.Providers.SqlServer.Services.SqlServerSerializer
+MethodCache.Providers.SqlServer.Services.SqlServerSerializer.DeserializeAsync<T>(byte[]? data) -> System.Threading.Tasks.Task<T?>!
+MethodCache.Providers.SqlServer.Services.SqlServerSerializer.SerializeAsync<T>(T value) -> System.Threading.Tasks.Task<byte[]?>!
+MethodCache.Providers.SqlServer.Services.SqlServerSerializer.SqlServerSerializer(Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>! options) -> void
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.CreateEntriesTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.CreateIndexesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.CreateInvalidationsTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.CreateSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.CreateTagsTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.EnsureTablesExistAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.SqlServerTableManager(MethodCache.Providers.SqlServer.Services.ISqlServerConnectionManager! connectionManager, Microsoft.Extensions.Options.IOptions<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Providers.SqlServer.Services.SqlServerTableManager!>! logger) -> void
+MethodCache.Providers.SqlServer.Services.SqlServerTableManager.TablesExistAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddHybridSqlServerCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! connectionString, System.Action<MethodCache.Core.Storage.Coordination.HybridCacheOptions!>? configureHybridOptions = null, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServerOptions = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddHybridSqlServerCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Storage.Coordination.HybridCacheOptions!>! configureHybridOptions, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServerOptions = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddL1L3CacheWithSqlServer(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Configuration.StorageOptions!>? configureStorage = null, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServer = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddSqlServerCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureOptions = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddSqlServerHybridCacheComplete(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! connectionString, System.Action<MethodCache.Providers.SqlServer.Extensions.SqlServerHybridCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddSqlServerHybridInfrastructure(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServer = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddSqlServerInfrastructure(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServer = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddSqlServerInfrastructureWithHealthChecks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServer = null, string! healthCheckName = "sql_server_infrastructure") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddSqlServerPersistentCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServer = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Providers.SqlServer.Extensions.SqlServerServiceCollectionExtensions.AddTripleLayerCacheWithSqlServer(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Configuration.StorageOptions!>? configureStorage = null, System.Action<MethodCache.Providers.SqlServer.Configuration.SqlServerOptions!>? configureSqlServer = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
