@@ -1,183 +1,71 @@
 using System;
-using System.Reflection;
+using System.Diagnostics;
 using System.Threading.Tasks;
-using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.KeyGeneration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Demo
 {
-    // Demo interface with cache attributes
     public interface IDemoService
     {
-        [Cache]
+        [Cache(Duration = "00:05:00", Tags = new[] { "demo" })]
         Task<string> GetDataAsync(string key);
 
         [CacheInvalidate(Tags = new[] { "demo" })]
         Task ClearCacheAsync();
     }
 
-    // Demo implementation
     public class DemoService : IDemoService
     {
-        public virtual async Task<string> GetDataAsync(string key)
+        public async Task<string> GetDataAsync(string key)
         {
-            await Task.Delay(100); // Simulate work
+            await Task.Delay(100); // Simulate slow work
             return $"Demo data for {key} at {DateTime.Now:HH:mm:ss.fff}";
         }
 
-        public virtual async Task ClearCacheAsync()
-        {
-            Console.WriteLine("Cache cleared!");
-            await Task.CompletedTask;
-        }
+        public Task ClearCacheAsync() => Task.CompletedTask;
     }
 
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task Main()
         {
-            Console.WriteLine("=== MethodCache Enhanced Service Registration Demo ===\n");
+            Console.WriteLine("=== MethodCache registration demo ===\n");
 
-            // Demonstrate the new simplified registration
-            await DemonstrateSimplifiedRegistration();
-
-            Console.WriteLine("\n" + new string('=', 60) + "\n");
-
-            // Demonstrate registration with options
-            await DemonstrateRegistrationWithOptions();
-
-            Console.WriteLine("\n" + new string('=', 60) + "\n");
-
-            // Demonstrate the registration options functionality
-            DemonstrateRegistrationOptions();
-        }
-
-        static Task DemonstrateSimplifiedRegistration()
-        {
-            Console.WriteLine("1. Simplified Registration Demo");
-            Console.WriteLine("-------------------------------");
-
+            // 1. Register your services as usual, with any lifetime, then call AddMethodCache().
+            //    Your registration keeps its lifetime and is wrapped in the generated cache decorator.
             var services = new ServiceCollection();
+            services.AddScoped<IDemoService, DemoService>();
+            services.AddMethodCache();
+            await RunAsync("Your own registration (scoped)", services);
 
-            // OLD WAY (what users had to do before):
-            Console.WriteLine("OLD WAY - Manual registration:");
-            Console.WriteLine("  services.AddMethodCache();");
-            Console.WriteLine("  services.AddSingleton<DemoService>();");
-            Console.WriteLine("  services.AddIDemoServiceWithCaching(provider => provider.GetRequiredService<DemoService>());");
-
-            Console.WriteLine("\nNEW WAY - Automatic registration:");
-            Console.WriteLine("  services.AddMethodCache(null, Assembly.GetExecutingAssembly());");
-
-            // NEW WAY - Single call does everything:
-            services.AddMethodCache(config =>
-            {
-                config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(5)));
-            }, Assembly.GetExecutingAssembly());
-
-            var serviceProvider = services.BuildServiceProvider();
-
-            // Verify that core services are registered
-            var cacheManager = serviceProvider.GetService<ICacheManager>();
-            var registry = serviceProvider.GetService<IPolicyRegistry>();
-            var keyGenerator = serviceProvider.GetService<ICacheKeyGenerator>();
-            var metricsProvider = serviceProvider.GetService<ICacheMetricsProvider>();
-            Console.WriteLine($"\nCore services registered:");
-            Console.WriteLine($"  ICacheManager: {(cacheManager != null ? "✓" : "✗")}");
-            Console.WriteLine($"  IPolicyRegistry: {(registry != null ? "✓" : "✗")}");
-            Console.WriteLine($"  ICacheKeyGenerator: {(keyGenerator != null ? "✓" : "✗")}");
-            Console.WriteLine($"  ICacheMetricsProvider: {(metricsProvider != null ? "✓" : "✗")}");
-
-            // Verify that concrete implementation is registered
-            var demoService = serviceProvider.GetService<DemoService>();
-            Console.WriteLine($"  DemoService: {(demoService != null ? "✓" : "✗")}");
-
-            // Note: The cached interface would be registered by the source generator
-            // which isn't working in this demo, but the registration logic is there
-            Console.WriteLine("\nNote: Cached interface registration depends on source generator");
-            return Task.CompletedTask;
+            // 2. Or let AddMethodCache() find and register the implementation for you.
+            var scanned = new ServiceCollection();
+            scanned.AddMethodCache();
+            await RunAsync("Registered by AddMethodCache()", scanned);
         }
 
-        static Task DemonstrateRegistrationWithOptions()
+        static async Task RunAsync(string title, IServiceCollection services)
         {
-            Console.WriteLine("2. Registration with Custom Options Demo");
-            Console.WriteLine("----------------------------------------");
+            Console.WriteLine(title);
 
-            var services = new ServiceCollection();
+            await using var provider = services.BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var service = scope.ServiceProvider.GetRequiredService<IDemoService>();
+            Console.WriteLine($"  Resolved: {service.GetType().Name}");
 
-            // Use custom registration options
-            var options = new MethodCacheRegistrationOptions
+            for (var i = 1; i <= 2; i++)
             {
-                Assemblies = new[] { Assembly.GetExecutingAssembly() },
-                DefaultServiceLifetime = ServiceLifetime.Singleton,
-                RegisterConcreteImplementations = true,
-                ThrowOnMissingImplementation = false,
-                InterfaceFilter = type => type.Name.StartsWith("IDemo"),
-                ImplementationFilter = type => type.Name.Contains("Demo")
-            };
+                var stopwatch = Stopwatch.StartNew();
+                var value = await service.GetDataAsync("key");
+                Console.WriteLine($"  Call {i}: {stopwatch.ElapsedMilliseconds,3} ms  {value}");
+            }
 
-            services.AddMethodCache(config =>
-            {
-                config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-            }, options);
-
-            var serviceProvider = services.BuildServiceProvider();
-
-            Console.WriteLine("Custom options applied:");
-            Console.WriteLine($"  Default lifetime: {options.DefaultServiceLifetime}");
-            Console.WriteLine($"  Register concrete implementations: {options.RegisterConcreteImplementations}");
-            Console.WriteLine($"  Interface filter: Only interfaces starting with 'IDemo'");
-            Console.WriteLine($"  Implementation filter: Only classes containing 'Demo'");
-
-            // Verify registration
-            var demoService = serviceProvider.GetService<DemoService>();
-            Console.WriteLine($"\nDemoService registered: {(demoService != null ? "✓" : "✗")}");
-            return Task.CompletedTask;
-        }
-
-        static void DemonstrateRegistrationOptions()
-        {
-            Console.WriteLine("3. Registration Options API Demo");
-            Console.WriteLine("--------------------------------");
-
-            // Show different ways to create registration options
-            Console.WriteLine("Available registration option patterns:");
-
-            // Default options
-            var defaultOptions = MethodCacheRegistrationOptions.Default();
-            Console.WriteLine($"  Default(): Scans calling assembly");
-
-            // For specific assemblies
-            var assemblyOptions = MethodCacheRegistrationOptions.ForAssemblies(
-                Assembly.GetExecutingAssembly(),
-                typeof(MethodCacheServiceCollectionExtensions).Assembly);
-            Console.WriteLine($"  ForAssemblies(): Scans {assemblyOptions.Assemblies?.Length} specified assemblies");
-
-            // For assembly containing specific type
-            var typeOptions = MethodCacheRegistrationOptions.ForAssemblyContaining<Program>();
-            Console.WriteLine($"  ForAssemblyContaining<T>(): Scans assembly containing specified type");
-
-            // Custom options
-            var customOptions = new MethodCacheRegistrationOptions
-            {
-                DefaultServiceLifetime = ServiceLifetime.Scoped,
-                ScanReferencedAssemblies = true,
-                InterfaceFilter = type => type.IsPublic,
-                ServiceLifetimeResolver = type => type.Name.EndsWith("Service") ? ServiceLifetime.Singleton : ServiceLifetime.Scoped
-            };
-            Console.WriteLine($"  Custom options: Full control over registration behavior");
-
-            Console.WriteLine("\nRegistration options provide:");
-            Console.WriteLine("  ✓ Assembly scanning control");
-            Console.WriteLine("  ✓ Service lifetime configuration");
-            Console.WriteLine("  ✓ Interface and implementation filtering");
-            Console.WriteLine("  ✓ Custom service lifetime resolution");
-            Console.WriteLine("  ✓ Error handling configuration");
+            await service.ClearCacheAsync();
+            var afterClear = Stopwatch.StartNew();
+            await service.GetDataAsync("key");
+            Console.WriteLine($"  After invalidation: {afterClear.ElapsedMilliseconds,3} ms\n");
         }
     }
 }

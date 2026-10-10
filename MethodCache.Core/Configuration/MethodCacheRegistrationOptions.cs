@@ -6,7 +6,7 @@ namespace MethodCache.Core.Configuration
     /// <summary>
     /// Options for configuring automatic service registration with MethodCache.
     /// </summary>
-    public class MethodCacheRegistrationOptions
+    internal class MethodCacheRegistrationOptions
     {
         /// <summary>
         /// Assemblies to scan for services with cache attributes. If null or empty, scans the calling assembly.
