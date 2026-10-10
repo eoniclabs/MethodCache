@@ -1,3 +1,4 @@
+using System.CodeDom.Compiler;
 using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -312,7 +313,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
             {
                 foreach (var type in types)
                 {
-                    if (type == null || type.IsInterface || type.IsAbstract)
+                    if (type == null || type.IsInterface || type.IsAbstract || IsGeneratedDecorator(type))
                     {
                         continue;
                     }
@@ -330,6 +331,14 @@ namespace MethodCache.Core.Infrastructure.Extensions
             }
 
             return candidates;
+        }
+
+        // Generated decorators implement the interface they wrap, so they must never be picked as its implementation
+        private static bool IsGeneratedDecorator(Type type)
+        {
+            return type.GetCustomAttributes(typeof(GeneratedCodeAttribute), false)
+                .OfType<GeneratedCodeAttribute>()
+                .Any(attribute => attribute.Tool == "MethodCacheGenerator");
         }
 
         private static bool HasCacheAttributes(Type interfaceType)
