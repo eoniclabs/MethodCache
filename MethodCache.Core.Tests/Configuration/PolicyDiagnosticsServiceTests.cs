@@ -49,7 +49,7 @@ public class PolicyDiagnosticsServiceTests
         var resolver = new PolicyResolver(registrations);
         await resolver.ResolveAsync(MethodId);
 
-        var registry = new PolicyRegistry(resolver, registrations);
+        var registry = new PolicyRegistry(resolver);
         var diagnostics = new PolicyDiagnosticsService(registry);
 
         // Baseline from attributes
@@ -87,7 +87,7 @@ public class PolicyDiagnosticsServiceTests
         var resolver = new PolicyResolver(registrations);
         await resolver.ResolveAsync(MethodId);
 
-        var registry = new PolicyRegistry(resolver, registrations);
+        var registry = new PolicyRegistry(resolver);
         var diagnostics = new PolicyDiagnosticsService(registry);
 
         var bySource = diagnostics.FindBySource(PolicySourceIds.Attributes);

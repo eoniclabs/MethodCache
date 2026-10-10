@@ -7,7 +7,7 @@ using MethodCache.Core.PolicyPipeline.Model;
 
 namespace MethodCache.Core.PolicyPipeline.Resolution;
 
-internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
+internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDisposable
 {
     private const long EmptyPolicyVersion = 0;
 
@@ -22,6 +22,13 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
     private volatile bool _initialized;
 
     private event EventHandler<PolicyResolutionResult>? PolicyChanged;
+
+    /// <summary>
+    /// Raised synchronously, on the thread that applied the change, after a method's resolved policy changes.
+    /// Results for one method can arrive out of order when sources change concurrently; compare
+    /// <see cref="PolicyResolutionResult.Version"/> to keep the newest.
+    /// </summary>
+    internal event Action<PolicyResolutionResult>? Changed;
 
     public PolicyResolver(IEnumerable<PolicySourceRegistration> registrations)
     {
@@ -94,6 +101,29 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
             PolicyChanged -= Handler;
             channel.Writer.TryComplete();
         }
+    }
+
+    /// <summary>
+    /// Returns every resolved policy, loading the sources first if needed.
+    /// </summary>
+    internal async ValueTask<IReadOnlyCollection<PolicyResolutionResult>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+        return _resolutions.Values.ToList();
+    }
+
+    /// <summary>
+    /// Stops the source watchers without waiting for them, so disposing the container synchronously works too.
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        // The watchers still observe the token, so the source is cancelled but not disposed
+        _cts.Cancel();
     }
 
     public async ValueTask DisposeAsync()
@@ -215,7 +245,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
                 break;
 
             case PolicyChangeReason.Removed:
-                RemoveLayer(change.MethodId, registration.Priority, change.Timestamp);
+                RemoveLayer(change.MethodId, new LayerKey(registration.Priority, registration.SourceId), change.Timestamp);
                 break;
         }
     }
@@ -245,14 +275,14 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
         return result;
     }
 
-    private void RemoveLayer(string methodId, int priority, DateTimeOffset timestamp)
+    private void RemoveLayer(string methodId, LayerKey key, DateTimeOffset timestamp)
     {
         if (!_aggregators.TryGetValue(methodId, out var aggregator))
         {
             return;
         }
 
-        var result = aggregator.RemoveLayer(priority, timestamp);
+        var result = aggregator.RemoveLayer(key, timestamp);
         _resolutions[methodId] = result;
         if (_initialized)
         {
@@ -262,15 +292,32 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
 
     private void RaisePolicyChanged(PolicyResolutionResult result)
     {
+        Changed?.Invoke(result);
         PolicyChanged?.Invoke(this, result);
     }
 
-    private sealed record PolicyLayer(string SourceId, int Priority, CachePolicy Policy, CachePolicyFields Fields, DateTimeOffset Timestamp);
+    private sealed record PolicyLayer(string SourceId, int Priority, CachePolicy Policy, CachePolicyFields Fields, DateTimeOffset Timestamp)
+    {
+        public LayerKey Key => new(Priority, SourceId);
+    }
+
+    /// <summary>
+    /// Identifies a layer by priority and source, so two sources with the same priority each keep their own layer
+    /// instead of replacing each other depending on registration order.
+    /// </summary>
+    private readonly record struct LayerKey(int Priority, string SourceId) : IComparable<LayerKey>
+    {
+        public int CompareTo(LayerKey other)
+        {
+            var byPriority = Priority.CompareTo(other.Priority);
+            return byPriority != 0 ? byPriority : string.CompareOrdinal(SourceId, other.SourceId);
+        }
+    }
 
     private sealed class PolicyAggregator
     {
         private readonly string _methodId;
-        private readonly SortedDictionary<int, PolicyLayer> _layers = new();
+        private readonly SortedDictionary<LayerKey, PolicyLayer> _layers = new();
         private PolicyResolutionResult _current;
         private readonly object _sync = new();
         private long _version = 0; // Increments on each policy change
@@ -285,17 +332,17 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
         {
             lock (_sync)
             {
-                _layers[layer.Priority] = layer;
+                _layers[layer.Key] = layer;
                 _current = BuildResult();
                 return _current;
             }
         }
 
-        public PolicyResolutionResult RemoveLayer(int priority, DateTimeOffset timestamp)
+        public PolicyResolutionResult RemoveLayer(LayerKey key, DateTimeOffset timestamp)
         {
             lock (_sync)
             {
-                _layers.Remove(priority);
+                _layers.Remove(key);
                 _current = BuildResult(timestamp);
                 return _current;
             }

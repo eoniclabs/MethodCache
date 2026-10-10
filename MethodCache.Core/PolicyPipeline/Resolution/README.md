@@ -32,7 +32,7 @@ Priority-based merging of configuration sources into unified cache policies.
 2. **Sort** - Order by priority (ascending)
 3. **Merge** - Field-by-field merge, higher priority wins
 4. **Track** - Record provenance for each field
-5. **Cache** - Store in `PolicyRegistry` for fast lookup
+5. **Publish** - Update the method's `PolicyHandle`, which every decorator for the method shares
 
 ## Example
 
@@ -53,12 +53,13 @@ Given three sources for method `GetUserById`:
 ## Thread Safety
 
 `PolicyResolver` is designed for concurrent access:
-- Lock-free reads from registry
-- Atomic updates for runtime overrides
+- Decorators read `PolicyHandle.Current` with one volatile read and no lock
+- A change replaces the whole policy at once, so a call never sees half of an update
 - Safe to call from multiple threads
 
 ## Performance
 
-- Policies resolved **once** and cached
-- Subsequent calls use registry (fast lookup)
-- Runtime overrides invalidate only affected entries
+- Policies are resolved once per change, not per call or per resolve
+- Runtime overrides and configuration reloads reach services that already exist, including singletons
+- A version change gives the method new keys, so old entries are no longer read
+- Two sources with the same priority both contribute; ties are ordered by source id

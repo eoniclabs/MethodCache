@@ -1,0 +1,80 @@
+using MethodCache.Abstractions.Registry;
+using MethodCache.Abstractions.Resolution;
+using MethodCache.Core.PolicyPipeline.Resolution;
+
+namespace MethodCache.Core.Runtime.Core
+{
+    /// <summary>
+    /// The live policy of one cached method. Every decorator for the method shares the same handle and reads
+    /// <see cref="Current"/> on each call, so a runtime override or a configuration reload reaches services that
+    /// were already created, at the cost of one volatile read.
+    /// </summary>
+    public sealed class PolicyHandle
+    {
+        private readonly object _sync = new();
+        private CacheRuntimePolicy _current;
+        private long _version;
+
+        internal PolicyHandle(PolicyResolutionResult result)
+        {
+            MethodId = result.MethodId;
+            _current = CacheRuntimePolicy.FromResolverResult(result);
+            _version = result.Version;
+        }
+
+        private PolicyHandle(CacheRuntimePolicy policy)
+        {
+            MethodId = policy.MethodId;
+            _current = policy;
+        }
+
+        /// <summary>
+        /// The method the policy applies to.
+        /// </summary>
+        public string MethodId { get; }
+
+        /// <summary>
+        /// The method's policy as it is right now.
+        /// </summary>
+        public CacheRuntimePolicy Current => Volatile.Read(ref _current);
+
+        /// <summary>
+        /// Returns the shared handle for a method. Registries other than MethodCache's own cannot report changes,
+        /// so for those the handle keeps the policy the registry returns now.
+        /// </summary>
+        public static PolicyHandle For(IPolicyRegistry registry, string methodId)
+        {
+            if (registry == null) throw new ArgumentNullException(nameof(registry));
+
+            return registry is PolicyRegistry policyRegistry
+                ? policyRegistry.GetHandle(methodId)
+                : new PolicyHandle(registry.GetPolicy(methodId));
+        }
+
+        /// <summary>
+        /// Creates a handle that always returns the same policy, for tests and hand-written decorators.
+        /// </summary>
+        public static PolicyHandle Fixed(CacheRuntimePolicy policy)
+        {
+            if (policy == null) throw new ArgumentNullException(nameof(policy));
+            return new PolicyHandle(policy);
+        }
+
+        /// <summary>
+        /// Publishes a newly resolved policy unless the handle already holds the same or a newer version.
+        /// </summary>
+        internal void Update(PolicyResolutionResult result)
+        {
+            lock (_sync)
+            {
+                if (result.Version <= _version)
+                {
+                    return;
+                }
+
+                _version = result.Version;
+                Volatile.Write(ref _current, CacheRuntimePolicy.FromResolverResult(result));
+            }
+        }
+    }
+}
