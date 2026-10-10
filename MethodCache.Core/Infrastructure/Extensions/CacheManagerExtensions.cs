@@ -399,12 +399,8 @@ private static CacheRuntimePolicy CreateRuntimePolicy(string methodId, CacheEntr
         throw new ArgumentException("Method id must be provided.", nameof(methodId));
     }
 
-    var runtimeOptions = CacheRuntimeOptions.From(options);
-    var builder = CachePolicyBuilderFactory.FromOptions(options);
-    builder.RequireIdempotent(true);
-    var (policy, fields) = builder.BuildPolicy();
-    var runtimePolicy = CacheRuntimePolicy.FromPolicy(methodId, policy, fields, metadata: null, runtimeOptions);
-    return runtimePolicy;
+    var (policy, fields) = CachePolicyBuilderFactory.FromOptions(options).BuildPolicy();
+    return CacheRuntimePolicy.FromPolicy(methodId, policy, fields);
 }
 
 private static void InvokeHitCallbacks(CacheRuntimeOptions options, CacheContext context)

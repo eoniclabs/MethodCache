@@ -22,13 +22,11 @@ Common runtime use cases:
 3. [Method Chaining API Configuration](#method-chaining-api-configuration)
 4. [Programmatic Configuration](#programmatic-configuration)
 5. [JSON Configuration](#json-configuration)
-6. [YAML Configuration](#yaml-configuration)
-7. [Runtime Configuration](#runtime-configuration)
-8. [Management Interface & Runtime Overrides](#management-interface--runtime-overrides)
-9. [Multi-Source Configuration](#multi-source-configuration)
-10. [Configuration Priorities](#configuration-priorities)
-11. [Configuration Validation](#configuration-validation)
-12. [Examples](#examples)
+6. [Management Interface & Runtime Overrides](#management-interface--runtime-overrides)
+7. [Multi-Source Configuration](#multi-source-configuration)
+8. [Configuration Priorities](#configuration-priorities)
+9. [Configuration Validation](#configuration-validation)
+10. [Examples](#examples)
 
 ## Configuration Overview
 
@@ -85,7 +83,7 @@ public class UserService
 }
 ```
 
-The options builder supports the same settings as attribute-based caching:
+`GetOrCreateAsync` accepts every option, including callbacks and a predicate that only make sense per call:
 
 ```csharp
 var orders = await _cache.GetOrCreateAsync(
@@ -95,7 +93,6 @@ var orders = await _cache.GetOrCreateAsync(
           .WithSlidingExpiration(TimeSpan.FromMinutes(10))
           .RefreshAhead(TimeSpan.FromMinutes(5))
           .WithTags("orders", $"customer:{customerId}")
-          .WithStampedeProtection(StampedeProtectionMode.Probabilistic, beta: 1.5)
           .WithVersion(2)
           .OnHit(ctx => _logger.LogInformation("Cache hit: {Key}", ctx.Key))
           .OnMiss(ctx => _logger.LogInformation("Cache miss: {Key}", ctx.Key))
@@ -109,44 +106,41 @@ var orders = await _cache.GetOrCreateAsync(
 Configure caching entirely in code:
 
 ```csharp
-builder.Services.AddMethodCache(config => {
+builder.Services.AddMethodCache(config =>
+{
     // Global defaults
-    config.DefaultDuration(TimeSpan.FromMinutes(15));
-    
-    // Service-specific configuration
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(15)));
+
+    // Group configuration, for methods marked [Cache("user-data")]
+    config.ForGroup("user-data")
+          .Configure(options => options
+              .WithDuration(TimeSpan.FromMinutes(30))
+              .WithTags("user"));
+
+    // Method-specific configuration
     config.ForService<IUserService>()
           .Method(x => x.GetUserProfileAsync(default))
-          .Duration(TimeSpan.FromHours(1))
-          .Tags("user", "profile")
-          .Version(5)
-          .KeyGenerator<StableUserKeyGenerator>()
-          .When(ctx => ctx.GetArg<int>(0) != 0)
-          .OnHit(ctx => Console.WriteLine("Cache hit!"));
-          
-    // Group configuration
-    config.ForGroup("user-data")
-          .Duration(TimeSpan.FromMinutes(30))
-          .Tags("user");
+          .WithVersion(5)
+          .Configure(options => options
+              .WithDuration(TimeSpan.FromHours(1))
+              .WithSlidingExpiration(TimeSpan.FromMinutes(10))
+              .RefreshAhead(TimeSpan.FromMinutes(5))
+              .WithTags("user", "profile"));
 });
 ```
 
+Settings are applied in order: the default policy, then the group, then the method.
+
+The key generator applies to every cached method. Replace the default one through dependency injection:
+
 ```csharp
-public sealed class StableUserKeyGenerator : ICacheKeyGenerator
-{
-    public string GenerateKey(string methodName, object[] args, CacheMethodSettings settings)
-    {
-        if (args.Length == 0)
-        {
-            throw new ArgumentException("Key generation requires at least one argument for this generator.", nameof(args));
-        }
-        return $"{methodName}:{args[0]}";
-    }
-}
+builder.Services.AddMethodCache();
+builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, JsonKeyGenerator>());
 ```
 
 ## JSON Configuration
 
-Configure via `appsettings.json` or other JSON configuration sources:
+Configure cached methods from `appsettings.json` or any other `IConfiguration` source:
 
 ### appsettings.json
 ```json
@@ -154,22 +148,15 @@ Configure via `appsettings.json` or other JSON configuration sources:
   "MethodCache": {
     "Defaults": {
       "Duration": "00:15:00",
-      "Tags": ["default"],
-      "ETag": {
-        "Strategy": "ContentHash",
-        "IncludeParametersInETag": true
-      }
+      "Tags": ["default"]
     },
     "Services": {
       "MyApp.Services.IUserService.GetUserProfile": {
         "Duration": "01:00:00",
+        "SlidingExpiration": "00:10:00",
+        "RefreshAhead": "00:05:00",
         "Tags": ["user", "profile"],
-        "Version": 1,
-        "ETag": {
-          "Strategy": "ContentHash",
-          "UseWeakETag": false,
-          "CacheDuration": "02:00:00"
-        }
+        "Version": 1
       },
       "MyApp.Services.IProductService.GetProduct": {
         "Duration": "00:30:00",
@@ -180,102 +167,12 @@ Configure via `appsettings.json` or other JSON configuration sources:
 }
 ```
 
-### Usage
-```csharp
-builder.Services.AddMethodCacheWithSources(cache => {
-    cache.AddJsonConfiguration(builder.Configuration);
-    cache.AddAttributeSource(); // Still include attributes as fallback
-});
-```
-
-## YAML Configuration
-
-Use YAML for more readable configuration files:
-
-### cache-config.yaml
-```yaml
-defaults:
-  duration: "00:15:00"
-  tags:
-    - "default"
-  etag:
-    strategy: "ContentHash"
-    includeParametersInETag: true
-
-services:
-  "MyApp.Services.IUserService.GetUserProfile":
-    duration: "01:00:00"
-    tags:
-      - "user"
-      - "profile"
-    version: 1
-    etag:
-      strategy: "ContentHash"
-      useWeakETag: false
-      cacheDuration: "02:00:00"
-  
-  "MyApp.Services.IProductService.GetProduct":
-    duration: "00:30:00"
-    tags:
-      - "product"
-      - "catalog"
-```
+Each key under `Services` is the method id: the interface's full name, a dot, and the method name. Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group` and `Metadata`.
 
 ### Usage
 ```csharp
-builder.Services.AddMethodCacheWithSources(cache => {
-    cache.AddYamlConfiguration("cache-config.yaml");
-    cache.AddAttributeSource();
-});
-```
-
-## Runtime Configuration
-
-Configure caching that can be updated at runtime using IOptionsMonitor:
-
-### appsettings.json
-```json
-{
-  "MethodCache": {
-    "DefaultDuration": "00:15:00",
-    "GlobalTags": ["runtime"],
-    "EnableDebugLogging": true,
-    "EnableMetrics": true,
-    "Services": {
-      "MyApp.Services.IUserService": {
-        "DefaultDuration": "01:00:00",
-        "DefaultTags": ["user"],
-        "Methods": {
-          "GetUserProfile": {
-            "Duration": "02:00:00",
-            "Tags": ["profile"],
-            "Enabled": true,
-            "ETag": {
-              "Strategy": "ContentHash",
-              "IncludeParametersInETag": true
-            }
-          },
-          "GetUserSettings": {
-            "Enabled": false
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### Usage
-```csharp
-builder.Services.AddMethodCacheWithSources(cache => {
-    cache.AddRuntimeConfiguration(options => {
-        // Additional programmatic configuration
-        options.EnableMetrics = true;
-    });
-    cache.AddAttributeSource();
-});
-
-// Configuration will automatically reload when appsettings.json changes
+builder.Services.AddMethodCache();
+builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 ```
 
 ## Management Interface & Runtime Overrides
@@ -566,10 +463,6 @@ MethodCache performs comprehensive validation to ensure configuration integrity:
 | Duration | Must be positive (> 0) | "Duration must be positive" |
 | SlidingExpiration | Must be positive (> 0) | "Sliding expiration must be positive" |
 | RefreshAhead | Must be positive (> 0) | "Refresh window must be positive" |
-| StampedeProtection.Beta | Must be positive (> 0) | "Beta must be positive" |
-| StampedeProtection.RefreshAheadWindow | Must be positive (> 0) | "Refresh ahead window must be positive" |
-| DistributedLock.Timeout | Must be positive (> 0) | "Timeout must be positive" |
-| DistributedLock.MaxConcurrency | Must be positive (> 0) | "Max concurrency must be positive" |
 | Version | Must be non-negative (>= 0) | "Version must be non-negative" |
 | SegmentSize | Must be positive (> 0) | "Segment size must be positive" |
 | MaxMemorySize | Must be positive (> 0) | "Max memory size must be positive" |
@@ -598,45 +491,11 @@ config.ForService<IUserService>()
     });
 ```
 
-### Custom Validation
+### Settings That Only Apply to GetOrCreateAsync
 
-You can add custom validation logic:
+`OnHit`, `OnMiss`, `WithMetrics` and `When` run around a single `GetOrCreateAsync` call. Cached `[Cache]` methods cannot use them, so configuring them through `DefaultPolicy`, `ForGroup` or `ForService(...).Method(...)` throws `InvalidOperationException` at startup rather than being silently ignored.
 
-```csharp
-builder.Services.AddMethodCache(config =>
-{
-    config.OnConfiguring(settings =>
-    {
-        // Custom validation
-        if (settings.Duration > TimeSpan.FromDays(7))
-        {
-            throw new InvalidOperationException("Cache duration cannot exceed 7 days");
-        }
-
-        if (settings.Tags.Contains("temp") && settings.Duration > TimeSpan.FromHours(1))
-        {
-            throw new InvalidOperationException("Temporary caches cannot exceed 1 hour");
-        }
-    });
-});
-```
-
-### Idempotency Validation
-
-Methods marked with `RequireIdempotent` enforce idempotency at runtime:
-
-```csharp
-[Cache(RequireIdempotent = true)]
-Task<Data> GetDataAsync(int id); // Must be marked as idempotent in config
-
-// Configuration
-config.ForService<IService>()
-    .Method(x => x.GetDataAsync(default))
-    .RequireIdempotent(true); // ✅ Matches requirement
-
-// Runtime error if not idempotent:
-// InvalidOperationException: Method GetDataAsync is not marked as idempotent, but caching requires it.
-```
+Values in `[Cache]` attributes are checked at compile time: a `Duration`, `SlidingExpiration` or `RefreshAhead` that is not a positive `TimeSpan` is reported as error MC0004.
 
 ## Examples
 

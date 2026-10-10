@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -13,7 +15,7 @@ namespace MethodCache.Analyzers
         public const string CacheDiagnosticId = "MC0001";
         public const string InvalidateDiagnosticId = "MC0002";
         public const string ConfigurationOverrideDiagnosticId = "MC0003";
-        public const string CacheKeyGeneratorDiagnosticId = "MC0004";
+        public const string InvalidTimeSpanDiagnosticId = "MC0004";
 
         private static readonly LocalizableString CacheTitle = "MethodCache Analyzer";
         private static readonly LocalizableString CacheMessageFormat = "Method '{0}' is marked with [Cache] but is not virtual, abstract, or an interface implementation. Caching may not work as expected.";
@@ -27,18 +29,20 @@ namespace MethodCache.Analyzers
         private static readonly LocalizableString ConfigurationOverrideMessageFormat = "Method '{0}' has a [Cache] attribute, but programmatic configuration can override these settings. Consider using configuration-only approach for consistency.";
         private static readonly LocalizableString ConfigurationOverrideDescription = "When using AddMethodCache with a configuration delegate, programmatic settings will override attribute-based cache settings. This may cause confusion when the attribute specifies different values than what is actually used at runtime.";
 
-        private static readonly LocalizableString CacheKeyGeneratorTitle = "Invalid Key Generator";
-        private static readonly LocalizableString CacheKeyGeneratorMessageFormat = "Type '{0}' specified as KeyGeneratorType must implement ICacheKeyGenerator";
-        private static readonly LocalizableString CacheKeyGeneratorDescription = "When using the KeyGeneratorType property on [Cache], the provided type must implement MethodCache.Core.ICacheKeyGenerator.";
+        private static readonly LocalizableString InvalidTimeSpanTitle = "Invalid time span";
+        private static readonly LocalizableString InvalidTimeSpanMessageFormat = "{0} = \"{1}\" is not a positive time span; use a value such as \"00:05:00\"";
+        private static readonly LocalizableString InvalidTimeSpanDescription = "Duration, SlidingExpiration and RefreshAhead on [Cache] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\".";
 
         private const string Category = "Usage";
 
         private static readonly DiagnosticDescriptor CacheRule = new DiagnosticDescriptor(CacheDiagnosticId, CacheTitle, CacheMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: CacheDescription);
         private static readonly DiagnosticDescriptor InvalidateRule = new DiagnosticDescriptor(InvalidateDiagnosticId, InvalidateTitle, InvalidateMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: InvalidateDescription);
         internal static readonly DiagnosticDescriptor ConfigurationOverrideRule = new DiagnosticDescriptor(ConfigurationOverrideDiagnosticId, ConfigurationOverrideTitle, ConfigurationOverrideMessageFormat, Category, DiagnosticSeverity.Info, isEnabledByDefault: true, description: ConfigurationOverrideDescription);
-        private static readonly DiagnosticDescriptor CacheKeyGeneratorRule = new DiagnosticDescriptor(CacheKeyGeneratorDiagnosticId, CacheKeyGeneratorTitle, CacheKeyGeneratorMessageFormat, Category, DiagnosticSeverity.Error, isEnabledByDefault: true, description: CacheKeyGeneratorDescription);
+        private static readonly DiagnosticDescriptor InvalidTimeSpanRule = new DiagnosticDescriptor(InvalidTimeSpanDiagnosticId, InvalidTimeSpanTitle, InvalidTimeSpanMessageFormat, Category, DiagnosticSeverity.Error, isEnabledByDefault: true, description: InvalidTimeSpanDescription);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(CacheRule, InvalidateRule, ConfigurationOverrideRule, CacheKeyGeneratorRule); } }
+        private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead" };
+
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(CacheRule, InvalidateRule, ConfigurationOverrideRule, InvalidTimeSpanRule); } }
 
         public override void Initialize(AnalysisContext context)
         {
@@ -79,13 +83,13 @@ namespace MethodCache.Analyzers
                     }
                 }
 
-                if (TryGetNamedArgument(cacheAttribute, "KeyGeneratorType", out var keyGenArg) &&
-                    keyGenArg.Value is INamedTypeSymbol keyGenType)
+                foreach (var property in TimeSpanProperties)
                 {
-                    var expectedInterface = context.Compilation.GetTypeByMetadataName("MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator");
-                    if (expectedInterface != null && !keyGenType.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, expectedInterface)))
+                    if (TryGetNamedArgument(cacheAttribute, property, out var argument) &&
+                        argument.Value is string text &&
+                        (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero))
                     {
-                        ReportDiagnostic(context, cacheAttribute, CacheKeyGeneratorRule, keyGenType.ToDisplayString());
+                        ReportDiagnostic(context, cacheAttribute, InvalidTimeSpanRule, property, text);
                     }
                 }
             }

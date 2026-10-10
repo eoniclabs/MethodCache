@@ -27,7 +27,7 @@ public class RuntimeCacheConfiguratorTests
         {
             builder.WithDuration(System.TimeSpan.FromMinutes(2));
             builder.AddTag("runtime");
-            builder.RequireIdempotent();
+            builder.WithRefreshAhead(System.TimeSpan.FromSeconds(20));
         });
 
         var snapshots = store.GetSnapshots();
@@ -35,11 +35,11 @@ public class RuntimeCacheConfiguratorTests
         Assert.Equal("Sample.Method", snapshot.MethodId);
         Assert.Equal(System.TimeSpan.FromMinutes(2), snapshot.Policy.Duration);
         Assert.Contains("runtime", snapshot.Policy.Tags);
-        Assert.True(snapshot.Policy.RequireIdempotent);
+        Assert.Equal(System.TimeSpan.FromSeconds(20), snapshot.Policy.RefreshAhead);
         var fields = CachePolicyMapper.DetectFields(snapshot.Policy);
         Assert.Equal(CachePolicyFields.Duration |
                      CachePolicyFields.Tags |
-                     CachePolicyFields.RequireIdempotent,
+                     CachePolicyFields.RefreshAhead,
             fields);
     }
 

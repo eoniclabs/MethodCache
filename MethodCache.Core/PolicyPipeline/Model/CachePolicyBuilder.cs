@@ -10,14 +10,14 @@ public sealed class CachePolicyBuilder
     private readonly List<string> _tags = new();
     private bool _tagsSet;
 
-    private Type? _keyGeneratorType;
-    private bool _keyGeneratorSet;
+    private TimeSpan? _slidingExpiration;
+    private bool _slidingExpirationSet;
 
     private int? _version;
     private bool _versionSet;
 
-    private bool? _requireIdempotent;
-    private bool _requireIdempotentSet;
+    private TimeSpan? _refreshAhead;
+    private bool _refreshAheadSet;
 
     private readonly Dictionary<string, string?> _metadata = new(StringComparer.Ordinal);
     private bool _metadataSet;
@@ -25,9 +25,9 @@ public sealed class CachePolicyBuilder
     public bool HasChanges =>
         _durationSet ||
         _tagsSet ||
-        _keyGeneratorSet ||
+        _slidingExpirationSet ||
         _versionSet ||
-        _requireIdempotentSet ||
+        _refreshAheadSet ||
         _metadataSet;
 
     public CachePolicyBuilder WithDuration(TimeSpan? duration)
@@ -78,10 +78,10 @@ public sealed class CachePolicyBuilder
         return this;
     }
 
-    public CachePolicyBuilder WithKeyGenerator(Type? keyGeneratorType)
+    public CachePolicyBuilder WithSlidingExpiration(TimeSpan? slidingExpiration)
     {
-        _keyGeneratorType = keyGeneratorType;
-        _keyGeneratorSet = true;
+        _slidingExpiration = slidingExpiration;
+        _slidingExpirationSet = true;
         return this;
     }
 
@@ -92,17 +92,10 @@ public sealed class CachePolicyBuilder
         return this;
     }
 
-    public CachePolicyBuilder RequireIdempotent(bool require = true)
+    public CachePolicyBuilder WithRefreshAhead(TimeSpan? refreshAhead)
     {
-        _requireIdempotent = require;
-        _requireIdempotentSet = true;
-        return this;
-    }
-
-    public CachePolicyBuilder ClearRequireIdempotent()
-    {
-        _requireIdempotent = null;
-        _requireIdempotentSet = true;
+        _refreshAhead = refreshAhead;
+        _refreshAheadSet = true;
         return this;
     }
 
@@ -152,10 +145,10 @@ public sealed class CachePolicyBuilder
             _tagsSet = true;
         }
 
-        if (source._keyGeneratorSet && (overwriteExisting || !_keyGeneratorSet))
+        if (source._slidingExpirationSet && (overwriteExisting || !_slidingExpirationSet))
         {
-            _keyGeneratorType = source._keyGeneratorType;
-            _keyGeneratorSet = true;
+            _slidingExpiration = source._slidingExpiration;
+            _slidingExpirationSet = true;
         }
 
         if (source._versionSet && (overwriteExisting || !_versionSet))
@@ -164,10 +157,10 @@ public sealed class CachePolicyBuilder
             _versionSet = true;
         }
 
-        if (source._requireIdempotentSet && (overwriteExisting || !_requireIdempotentSet))
+        if (source._refreshAheadSet && (overwriteExisting || !_refreshAheadSet))
         {
-            _requireIdempotent = source._requireIdempotent;
-            _requireIdempotentSet = true;
+            _refreshAhead = source._refreshAhead;
+            _refreshAheadSet = true;
         }
 
         if (source._metadataSet && (overwriteExisting || !_metadataSet))
@@ -190,12 +183,12 @@ public sealed class CachePolicyBuilder
         {
             _duration = _duration,
             _durationSet = _durationSet,
-            _keyGeneratorType = _keyGeneratorType,
-            _keyGeneratorSet = _keyGeneratorSet,
+            _slidingExpiration = _slidingExpiration,
+            _slidingExpirationSet = _slidingExpirationSet,
             _version = _version,
             _versionSet = _versionSet,
-            _requireIdempotent = _requireIdempotent,
-            _requireIdempotentSet = _requireIdempotentSet,
+            _refreshAhead = _refreshAhead,
+            _refreshAheadSet = _refreshAheadSet,
             _metadataSet = _metadataSet,
             _tagsSet = _tagsSet
         };
@@ -246,10 +239,10 @@ public sealed class CachePolicyBuilder
             fields |= CachePolicyFields.Tags;
         }
 
-        if (_keyGeneratorSet)
+        if (_slidingExpirationSet)
         {
-            policy = policy with { KeyGeneratorType = _keyGeneratorType };
-            fields |= CachePolicyFields.KeyGenerator;
+            policy = policy with { SlidingExpiration = _slidingExpiration };
+            fields |= CachePolicyFields.SlidingExpiration;
         }
 
         if (_versionSet)
@@ -258,10 +251,10 @@ public sealed class CachePolicyBuilder
             fields |= CachePolicyFields.Version;
         }
 
-        if (_requireIdempotentSet)
+        if (_refreshAheadSet)
         {
-            policy = policy with { RequireIdempotent = _requireIdempotent };
-            fields |= CachePolicyFields.RequireIdempotent;
+            policy = policy with { RefreshAhead = _refreshAhead };
+            fields |= CachePolicyFields.RefreshAhead;
         }
 
         if (_metadataSet)

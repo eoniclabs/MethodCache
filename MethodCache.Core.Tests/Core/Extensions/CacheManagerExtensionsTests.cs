@@ -191,7 +191,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
         }
 
         [Fact]
-        public async Task GetOrCreateAsync_MapsOptionsToLegacySettings()
+        public async Task GetOrCreateAsync_MapsOptionsToRuntimePolicy()
         {
             // Arrange
             var cacheManager = new CapturingCacheManager();
@@ -223,7 +223,6 @@ namespace MethodCache.Core.Tests.Core.Extensions
             Assert.Equal(duration, cacheManager.LastSettings!.Duration);
             Assert.Contains("reports", cacheManager.LastSettings.Tags);
             Assert.Contains("metrics", cacheManager.LastSettings.Tags);
-            Assert.True(cacheManager.LastSettings.RequireIdempotent);
             Assert.Equal(TimeSpan.FromMinutes(2), cacheManager.LastPolicy!.SlidingExpiration);
 
             // Ensure the fixed key generator preserves the fluent key

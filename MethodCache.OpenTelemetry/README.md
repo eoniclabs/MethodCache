@@ -44,7 +44,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add MethodCache with OpenTelemetry
 builder.Services.AddMethodCache(config =>
 {
-    config.DefaultDuration(TimeSpan.FromMinutes(10));
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
 });
 
 // Add OpenTelemetry instrumentation (after AddMethodCache, which registers the cache it instruments)

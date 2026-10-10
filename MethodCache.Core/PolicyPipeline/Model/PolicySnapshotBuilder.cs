@@ -44,10 +44,10 @@ internal static class PolicySnapshotBuilder
     {
         var clearedFields = CachePolicyFields.Duration |
                             CachePolicyFields.Tags |
-                            CachePolicyFields.KeyGenerator |
+                            CachePolicyFields.SlidingExpiration |
                             CachePolicyFields.Version |
                             CachePolicyFields.Metadata |
-                            CachePolicyFields.RequireIdempotent;
+                            CachePolicyFields.RefreshAhead;
 
         var delta = new CachePolicyDelta(
             reason == PolicyChangeReason.Removed ? CachePolicyFields.None : fields,

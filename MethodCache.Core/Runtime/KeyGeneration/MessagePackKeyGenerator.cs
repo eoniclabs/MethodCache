@@ -27,17 +27,9 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </remarks>
 /// <example>
 /// <code>
-/// // Configure for services with complex parameters
-/// services.AddMethodCache(config =>
-/// {
-///     config.ForService&lt;IProductService&gt;()
-///         .Method(s => s.SearchProductsAsync(default))
-///         .WithKeyGenerator&lt;MessagePackKeyGenerator&gt;();
-/// });
-///
-/// // Or use with attribute for complex search queries
-/// [Cache(KeyGeneratorType = typeof(MessagePackKeyGenerator))]
-/// Task&lt;SearchResults&gt; SearchProductsAsync(SearchCriteria criteria);
+/// // The key generator applies to every cached method
+/// services.AddMethodCache();
+/// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, MessagePackKeyGenerator&gt;());
 /// </code>
 /// </example>
 public class MessagePackKeyGenerator : ICacheKeyGenerator

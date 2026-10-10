@@ -23,8 +23,8 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </remarks>
 /// <example>
 /// <code>
-/// [Cache(KeyGeneratorType = typeof(FastHashKeyGenerator))]
-/// Task&lt;User&gt; GetUserAsync(UserQuery query);
+/// // FastHashKeyGenerator is the default; register it explicitly to replace another generator
+/// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, FastHashKeyGenerator&gt;());
 /// </code>
 /// </example>
 public class FastHashKeyGenerator : ICacheKeyGenerator

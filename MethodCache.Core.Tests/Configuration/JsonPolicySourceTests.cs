@@ -20,7 +20,8 @@ public sealed class JsonPolicySourceTests
             ["MethodCache:Defaults:Tags:0"] = "default",
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:05:00",
             ["MethodCache:Services:Sample.Type.Method:Tags:0"] = "json",
-            ["MethodCache:Services:Sample.Type.Method:RequireIdempotent"] = "true"
+            ["MethodCache:Services:Sample.Type.Method:SlidingExpiration"] = "00:01:00",
+            ["MethodCache:Services:Sample.Type.Method:RefreshAhead"] = "00:00:10"
         };
 
         var configuration = new ConfigurationBuilder()
@@ -36,7 +37,8 @@ public sealed class JsonPolicySourceTests
         var result = registry.GetPolicy("Sample.Type.Method");
         Assert.Equal(TimeSpan.FromMinutes(5), result.Policy.Duration);
         Assert.Contains("json", result.Policy.Tags);
-        Assert.True(result.Policy.RequireIdempotent);
+        Assert.Equal(TimeSpan.FromMinutes(1), result.Policy.SlidingExpiration);
+        Assert.Equal(TimeSpan.FromSeconds(10), result.Policy.RefreshAhead);
     }
 
     [Fact]
