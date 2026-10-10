@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
@@ -18,10 +19,33 @@ public class CacheKeyFormatIntegrationTests
 using System;
 using System.Threading.Tasks;
 using MethodCache.Core;
+using MethodCache.Core.Runtime;
 
 namespace KeyFormat
 {
     public sealed record Query(string Text, int Page);
+    public sealed record Batch(int[] Ids);
+    public record Range(string? From, int To);
+    public record NamedRange(string? From, int To, string Name) : Range(From, To);
+    public readonly record struct Point(int X, int Y);
+    public sealed class Tenant : ICacheKeyProvider
+    {
+        public Tenant(string id) => Id = id;
+        public string Id { get; }
+        public string CacheKeyPart => Id;
+    }
+    public class Region : ICacheKeyProvider
+    {
+        public Region(string code) => Code = code;
+        public string Code { get; }
+        string ICacheKeyProvider.CacheKeyPart => Code;
+    }
+    public class SubRegion : Region, ICacheKeyProvider
+    {
+        public SubRegion(string code, string name) : base(code) => Name = name;
+        public string Name { get; }
+        string ICacheKeyProvider.CacheKeyPart => Code + ""/"" + Name;
+    }
 
     public interface IUserService
     {
@@ -36,6 +60,18 @@ namespace KeyFormat
 
         [Cache(Duration = ""00:10:00"")]
         Task<int> CountAsync(Query query);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> SumAsync(Batch batch);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> RangeAsync(Range? range);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> PointAsync(Point point, Tenant tenant);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> RegionAsync(Region region);
     }
 
     public interface IOrderService
@@ -51,6 +87,10 @@ namespace KeyFormat
         public Task<string> FindAsync(string? first, string? second) { Calls++; return Task.FromResult(""find-"" + Calls); }
         public Task<string> AllAsync() { Calls++; return Task.FromResult(""all""); }
         public Task<int> CountAsync(Query query) { Calls++; return Task.FromResult(query.Page); }
+        public Task<int> SumAsync(Batch batch) { Calls++; return Task.FromResult(batch.Ids.Length); }
+        public Task<string> RangeAsync(Range? range) { Calls++; return Task.FromResult(""range-"" + Calls); }
+        public Task<string> RegionAsync(Region region) { Calls++; return Task.FromResult(""region-"" + Calls); }
+        public Task<string> PointAsync(Point point, Tenant tenant) { Calls++; return Task.FromResult(""point-"" + point.X + "","" + point.Y + ""-"" + tenant.Id); }
     }
 
     public class OrderService : IOrderService
@@ -129,22 +169,74 @@ namespace KeyFormat
     }
 
     [Fact]
-    public async Task HashedKeys_KeepTheServiceAndMethodPrefix()
+    public async Task RecordStructAndKeyProviderArguments_GetReadableInlineKeys()
     {
         var (provider, assembly) = await BuildAsync();
         var users = Resolve(provider, assembly, "KeyFormat.IUserService");
         var cache = provider.GetRequiredService<ICacheManager>();
-        var queryType = assembly.GetType("KeyFormat.Query")!;
-        var query = Activator.CreateInstance(queryType, "text", 4)!;
+        var userType = assembly.GetType("KeyFormat.IUserService")!;
+
+        var query = Activator.CreateInstance(assembly.GetType("KeyFormat.Query")!, "a:b", 4)!;
+        var point = Activator.CreateInstance(assembly.GetType("KeyFormat.Point")!, 1, 2)!;
+        var tenant = Activator.CreateInstance(assembly.GetType("KeyFormat.Tenant")!, "acme")!;
 
         Assert.Equal(4, await Call<int>(users, "CountAsync", query));
+        Assert.Equal("point-1,2-acme", await Call<string>(users, "PointAsync", point, tenant));
 
-        var prefix = MethodCacheKeys.Prefix(assembly.GetType("KeyFormat.IUserService")!, "CountAsync");
-        var policy = CacheRuntimePolicy.FromPolicy("CountAsync", CachePolicy.Empty, CachePolicyFields.None);
-        var key = provider.GetRequiredService<ICacheKeyGenerator>().GenerateKey(prefix, new[] { query }, policy);
+        Assert.Equal(4, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "CountAsync", "(a\\:b:4)")));
+        Assert.Equal("point-1,2-acme", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "PointAsync", "(1:2)", "acme")));
+    }
+
+    [Fact]
+    public async Task KeyProviders_UseTheInterfaceImplementation()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var userType = assembly.GetType("KeyFormat.IUserService")!;
+
+        var region = await Call<string>(users, "RegionAsync", Activator.CreateInstance(assembly.GetType("KeyFormat.Region")!, "se"));
+        var subRegion = await Call<string>(users, "RegionAsync", Activator.CreateInstance(assembly.GetType("KeyFormat.SubRegion")!, "se", "north"));
+
+        Assert.NotEqual(region, subRegion);
+        Assert.Equal(region, await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "RegionAsync", "se")));
+        Assert.Equal(subRegion, await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "RegionAsync", "se/north")));
+    }
+
+    [Fact]
+    public async Task EqualRecords_ShareAnEntry_AndNullOrSubclassesDoNot()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var rangeType = assembly.GetType("KeyFormat.Range")!;
+        var namedRangeType = assembly.GetType("KeyFormat.NamedRange")!;
+
+        var first = await Call<string>(users, "RangeAsync", Activator.CreateInstance(rangeType, null, 0));
+        var equal = await Call<string>(users, "RangeAsync", Activator.CreateInstance(rangeType, null, 0));
+        var nullRange = await Call<string>(users, "RangeAsync", new object?[] { null });
+        var subclass = await Call<string>(users, "RangeAsync", Activator.CreateInstance(namedRangeType, null, 0, "x"));
+        var otherSubclass = await Call<string>(users, "RangeAsync", Activator.CreateInstance(namedRangeType, null, 0, "y"));
+
+        Assert.Equal(first, equal);
+        Assert.Equal(4, new[] { first, nullRange, subclass, otherSubclass }.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task ArgumentsWithoutAnInlineFormat_UseHashedKeysWithTheServiceAndMethodPrefix()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var batch = Activator.CreateInstance(assembly.GetType("KeyFormat.Batch")!, new object[] { new[] { 1, 2, 3 } })!;
+
+        Assert.Equal(3, await Call<int>(users, "SumAsync", batch));
+
+        var prefix = MethodCacheKeys.Prefix(assembly.GetType("KeyFormat.IUserService")!, "SumAsync");
+        var policy = CacheRuntimePolicy.FromPolicy("SumAsync", CachePolicy.Empty, CachePolicyFields.None);
+        var key = provider.GetRequiredService<ICacheKeyGenerator>().GenerateKey(prefix, new[] { batch }, policy);
 
         Assert.StartsWith(prefix + ":", key);
-        Assert.Equal(4, await cache.TryGetFastAsync<int>(key));
+        Assert.Equal(3, await cache.TryGetFastAsync<int>(key));
     }
 
     private async Task<(IServiceProvider Provider, Assembly Assembly)> BuildAsync()

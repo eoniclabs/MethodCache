@@ -118,7 +118,7 @@ builder.Services.AddMethodCache(config =>
 
 Settings are applied in order: the default policy, then the group, then the method. `DefaultPolicy` and `ForGroup` only apply to methods you list with `ForService<T>().Method(...)`; a `[Cache]` method that is not listed keeps the settings from its attribute.
 
-The key generator applies to every cached method. `FastHashKeyGenerator` is the default; replace it through dependency injection:
+Generated decorators build readable keys themselves when every argument is a simple value (string, number, `bool`, `Guid`, date, enum), an `ICacheKeyProvider`, or a record, class or struct whose public properties and fields are simple values, for example `MyApp.IUserService.Search:(alice:2)`. Other arguments, such as collections, go through the key generator. `FastHashKeyGenerator` is the default; replace it through dependency injection:
 
 ```csharp
 builder.Services.AddMethodCache();

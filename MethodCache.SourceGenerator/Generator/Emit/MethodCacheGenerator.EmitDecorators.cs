@@ -341,10 +341,26 @@ namespace MethodCache.SourceGenerator
                 // One read gives the policy and key prefix for this call, even if the policy changes meanwhile
                 sb.AppendLine($"            var cacheSnapshot = _method_{safeFieldName}.Current;");
 
-                // Simple arguments are formatted inline; anything else goes through the key generator.
-                if (GetRawKeyParameter(keyParams) != null || CanGenerateInlineKey(keyParams))
+                // Simple arguments, and records or DTOs made of them, are formatted inline; anything else goes
+                // through the key generator.
+                var rawKeyParam = GetRawKeyParameter(keyParams);
+                if (rawKeyParam != null)
                 {
-                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
+                    EmitRawKey(sb, rawKeyParam, "            ");
+                }
+                else if (TryBuildInlineKey(keyParams, out var inlineKey, out var exactTypeChecks))
+                {
+                    if (exactTypeChecks.Count == 0)
+                    {
+                        sb.AppendLine($"            var cacheKeyValue = {inlineKey};");
+                    }
+                    else
+                    {
+                        // A subclass can carry state the declared type doesn't have, so it goes through the key generator
+                        sb.AppendLine($"            var cacheKeyValue = {string.Join(" && ", exactTypeChecks)}");
+                        sb.AppendLine($"                ? {inlineKey}");
+                        sb.AppendLine($"                : {GeneratedKeyExpression(safeFieldName, keyParams)};");
+                    }
                 }
                 else
                 {
@@ -440,20 +456,153 @@ namespace MethodCache.SourceGenerator
             }
 
             /// <summary>
-            /// Checks if we can generate an inline cache key for the given parameters.
-            /// Enables ultra-fast path for:
-            /// 1. Zero-parameter methods (pre-computed keys)
-            /// 2. Methods with only simple parameter types (inline key generation)
+            /// Builds the key expression for methods whose arguments can all be formatted without the key generator:
+            /// simple values, <c>ICacheKeyProvider</c> types, and records, DTOs or structs whose public members are
+            /// simple values. <paramref name="exactTypeChecks"/> lists the conditions under which the expression is
+            /// valid; when one fails at runtime, the caller uses the key generator instead.
             /// </summary>
-            private static bool CanGenerateInlineKey(List<IParameterSymbol> keyParams)
+            private static bool TryBuildInlineKey(List<IParameterSymbol> keyParams, out string expression, out List<string> exactTypeChecks)
             {
-                // Zero-parameter methods always use ultra-fast path (pre-computed key)
+                expression = "cacheSnapshot.KeyPrefix";
+                exactTypeChecks = new List<string>();
                 if (keyParams.Count == 0)
+                {
                     return true;
+                }
 
-                // Enable for methods with simple parameters (string, int, Guid, etc.)
-                // Inline key generation avoids heavyweight MessagePack serialization + SHA-256 hashing
-                return keyParams.All(p => IsSimpleType(p.Type));
+                var pieces = new List<string> { "cacheSnapshot.KeyPrefix" };
+                foreach (var param in keyParams)
+                {
+                    pieces.Add("MethodCacheKeys.Separator");
+                    if (IsSimpleType(param.Type))
+                    {
+                        pieces.Add(FormatSimpleValue(param.Name, param.Type));
+                    }
+                    else if (ImplementsCacheKeyProvider(param.Type))
+                    {
+                        // Through the interface, so explicit and re-implemented CacheKeyPart members are the ones called
+                        var keyPart = $"MethodCacheKeys.Part(((global::MethodCache.Core.Runtime.ICacheKeyProvider){param.Name}).CacheKeyPart)";
+                        pieces.Add(param.Type.IsValueType
+                            ? keyPart
+                            : $"({param.Name} is null ? MethodCacheKeys.Null : {keyPart})");
+                    }
+                    else if (TryGetKeyMembers(param.Type, out var members))
+                    {
+                        AddObjectPieces(pieces, param.Name, param.Type, members);
+                        if (param.Type.TypeKind == TypeKind.Class && !param.Type.IsSealed)
+                        {
+                            exactTypeChecks.Add($"({param.Name} is null || {param.Name}.GetType() == typeof({param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}))");
+                        }
+                    }
+                    else
+                    {
+                        exactTypeChecks.Clear();
+                        return false;
+                    }
+                }
+
+                expression = $"string.Concat({string.Join(", ", pieces)})";
+                return true;
+            }
+
+            /// <summary>
+            /// Writes an object as <c>(member1:member2:...)</c> and <c>null</c> as <c>\0</c>. The opening parenthesis
+            /// keeps a non-null object apart from <c>null</c> even when its first member is <c>null</c>, and the member
+            /// count is fixed by the type, so no two argument lists share a key.
+            /// </summary>
+            private static void AddObjectPieces(List<string> pieces, string name, ITypeSymbol type, List<(string Name, ITypeSymbol Type)> members)
+            {
+                var memberPieces = new List<string>();
+                foreach (var member in members)
+                {
+                    if (memberPieces.Count > 0)
+                    {
+                        memberPieces.Add("MethodCacheKeys.Separator");
+                    }
+
+                    memberPieces.Add(FormatSimpleValue($"{name}.@{member.Name}", member.Type));
+                }
+
+                if (type.IsValueType)
+                {
+                    pieces.Add("\"(\"");
+                    pieces.AddRange(memberPieces);
+                    pieces.Add("\")\"");
+                    return;
+                }
+
+                pieces.Add($"({name} is null ? MethodCacheKeys.Null : string.Concat(\"(\", {string.Join(", ", memberPieces)}, \")\"))");
+            }
+
+            private static string FormatSimpleValue(string expression, ITypeSymbol type)
+            {
+                if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T })
+                {
+                    return $"({expression}.HasValue ? MethodCacheKeys.Part({expression}.Value) : MethodCacheKeys.Null)";
+                }
+
+                return $"MethodCacheKeys.Part({expression})";
+            }
+
+            private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
+                => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
+                   type.AllInterfaces.Any(i => i.ToDisplayString() == "MethodCache.Core.Runtime.ICacheKeyProvider");
+
+            /// <summary>
+            /// Collects the public instance properties and fields of a concrete class or struct, the same members
+            /// MessagePack's contractless serializer would write, when every one of them is a simple value.
+            /// </summary>
+            private static bool TryGetKeyMembers(ITypeSymbol type, out List<(string Name, ITypeSymbol Type)> members)
+            {
+                members = new List<(string Name, ITypeSymbol Type)>();
+                if (type is not INamedTypeSymbol named ||
+                    named.TypeKind is not (TypeKind.Class or TypeKind.Struct) ||
+                    named.IsAbstract ||
+                    named.SpecialType != SpecialType.None ||
+                    named.AllInterfaces.Any(i => i.SpecialType == SpecialType.System_Collections_IEnumerable))
+                {
+                    return false;
+                }
+
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                for (var current = named; current is not null && current.SpecialType is not (SpecialType.System_Object or SpecialType.System_ValueType); current = current.BaseType)
+                {
+                    foreach (var member in current.GetMembers())
+                    {
+                        if (member.IsStatic || member.DeclaredAccessibility != Accessibility.Public || member.IsImplicitlyDeclared || !seen.Add(member.Name))
+                        {
+                            continue;
+                        }
+
+                        ITypeSymbol memberType;
+                        switch (member)
+                        {
+                            case IPropertySymbol { IsIndexer: false, GetMethod.DeclaredAccessibility: Accessibility.Public } property:
+                                memberType = property.Type;
+                                break;
+                            case IFieldSymbol field:
+                                memberType = field.Type;
+                                break;
+                            default:
+                                continue;
+                        }
+
+                        if (member.GetAttributes().Any(a => a.AttributeClass?.Name is "IgnoreDataMemberAttribute" or "IgnoreMemberAttribute"))
+                        {
+                            continue;
+                        }
+
+                        if (!IsSimpleType(memberType))
+                        {
+                            members.Clear();
+                            return false;
+                        }
+
+                        members.Add((member.Name, memberType));
+                    }
+                }
+
+                return members.Count > 0;
             }
 
             private static bool IsSimpleType(ITypeSymbol type)
@@ -463,48 +612,33 @@ namespace MethodCache.SourceGenerator
                     return true;
                 }
 
-                var typeName = type.ToDisplayString();
-
-                // Check for nullable value types (int?, long?, Guid?, etc.)
-                if (type is INamedTypeSymbol { IsGenericType: true } namedType)
+                if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable)
                 {
-                    if (namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
-                    {
-                        // For nullable types, check the underlying type
-                        return namedType.TypeArguments.Length > 0 && IsSimpleType(namedType.TypeArguments[0]);
-                    }
+                    return IsSimpleType(nullable.TypeArguments[0]);
                 }
 
-                return typeName == "string" ||
-                       typeName == "int" ||
-                       typeName == "long" ||
-                       typeName == "bool" ||
-                       typeName == "System.Guid" ||
-                       typeName == "Guid" ||
-                       typeName == "System.DateTime" ||
-                       typeName == "DateTime" ||
-                       typeName == "System.DateTimeOffset" ||
-                       typeName == "DateTimeOffset" ||
-                       typeName == "decimal" ||
-                       typeName == "double" ||
-                       typeName == "float" ||
-                       typeName == "short" ||
-                       typeName == "byte" ||
-                       typeName == "uint" ||
-                       typeName == "ulong" ||
-                       typeName == "ushort" ||
-                       typeName == "sbyte";
-            }
-
-            private static string GetParameterStringExpression(IParameterSymbol param)
-            {
-                var type = param.Type;
-                if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T })
+                switch (type.SpecialType)
                 {
-                    return $"({param.Name}.HasValue ? MethodCacheKeys.Part({param.Name}.Value) : MethodCacheKeys.Null)";
+                    case SpecialType.System_String:
+                    case SpecialType.System_Boolean:
+                    case SpecialType.System_Byte:
+                    case SpecialType.System_SByte:
+                    case SpecialType.System_Int16:
+                    case SpecialType.System_UInt16:
+                    case SpecialType.System_Int32:
+                    case SpecialType.System_UInt32:
+                    case SpecialType.System_Int64:
+                    case SpecialType.System_UInt64:
+                    case SpecialType.System_Single:
+                    case SpecialType.System_Double:
+                    case SpecialType.System_Decimal:
+                    case SpecialType.System_DateTime:
+                        return true;
                 }
 
-                return $"MethodCacheKeys.Part({param.Name})";
+                // Guid and DateTimeOffset have no SpecialType; MethodCacheKeys.Part formats both
+                return type.ContainingNamespace?.ToDisplayString() == "System" &&
+                       type.Name is "Guid" or "DateTimeOffset";
             }
 
             private static string GetRawKeyExpression(IParameterSymbol param)
@@ -554,43 +688,10 @@ namespace MethodCache.SourceGenerator
                 return false;
             }
 
-            private static void EmitCacheKeyAcquisition(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams, string indent)
+            private static void EmitRawKey(StringBuilder sb, IParameterSymbol rawKeyParam, string indent)
             {
-                // Check for [CacheKey(UseAsRawKey = true)] optimization
-                var rawKeyParam = GetRawKeyParameter(keyParams);
-
-                if (rawKeyParam != null)
-                {
-                    var expr = GetRawKeyExpression(rawKeyParam);
-                    sb.AppendLine($"{indent}// Raw key optimization: [CacheKey(UseAsRawKey = true)] detected");
-                    sb.AppendLine($"{indent}var cacheKeyValue = {expr};");
-                    return;
-                }
-
-                // Zero parameters: use pre-computed key (ultra-fast path)
-                if (keyParams.Count == 0)
-                {
-                    sb.AppendLine($"{indent}var cacheKeyValue = cacheSnapshot.KeyPrefix;");
-                    return;
-                }
-
-                // One parameter: direct string.Concat (faster than ConcurrentDictionary lookup)
-                if (keyParams.Count == 1)
-                {
-                    var expr = GetParameterStringExpression(keyParams[0]);
-                    sb.AppendLine($"{indent}var cacheKeyValue = string.Concat(cacheSnapshot.KeyPrefix, MethodCacheKeys.Separator, {expr});");
-                    return;
-                }
-
-                // Multiple parameters: direct string.Concat with all parts
-                var concatPieces = new List<string> { "cacheSnapshot.KeyPrefix" };
-                foreach (var param in keyParams)
-                {
-                    concatPieces.Add("MethodCacheKeys.Separator");
-                    concatPieces.Add(GetParameterStringExpression(param));
-                }
-                var concatExpression = string.Join(", ", concatPieces);
-                sb.AppendLine($"{indent}var cacheKeyValue = string.Concat({concatExpression});");
+                sb.AppendLine($"{indent}// Raw key optimization: [CacheKey(UseAsRawKey = true)] detected");
+                sb.AppendLine($"{indent}var cacheKeyValue = {GetRawKeyExpression(rawKeyParam)};");
             }
 
             private static void EmitGeneratedKey(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams)
@@ -603,11 +704,11 @@ namespace MethodCache.SourceGenerator
 
                 // Arguments that have no inline key format go through the registered key generator,
                 // which keeps the service and method prefix so keys stay recognizable.
-                sb.Append("            var cacheKeyValue = _keyGenerator.GenerateKey(");
-                sb.Append($"_method_{safeFieldName}.KeyMethod, new object[] {{ ");
-                sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
-                sb.AppendLine(" }, cacheSnapshot.Policy);");
+                sb.AppendLine($"            var cacheKeyValue = {GeneratedKeyExpression(safeFieldName, keyParams)};");
             }
+
+            private static string GeneratedKeyExpression(string safeFieldName, List<IParameterSymbol> keyParams)
+                => $"_keyGenerator.GenerateKey(_method_{safeFieldName}.KeyMethod, new object[] {{ {string.Join(", ", keyParams.Select(p => p.Name))} }}, cacheSnapshot.Policy)";
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
             {
