@@ -54,3 +54,25 @@ jobs:
           files: ./TestResults/**/coverage.cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+
+  aot-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Publish with Native AOT
+        run: dotnet publish Tests/MethodCache.AotSmokeTest --configuration Release --runtime linux-x64 --output ./aot-smoke
+
+      - name: Run the AOT executable
+        run: ./aot-smoke/MethodCache.AotSmokeTest

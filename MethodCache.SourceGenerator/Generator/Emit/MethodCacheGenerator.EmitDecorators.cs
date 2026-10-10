@@ -61,7 +61,7 @@ namespace MethodCache.SourceGenerator
             internal static string Emit(InterfaceInfo info)
             {
                 var sb = new StringBuilder();
-                var ns = info.Symbol.ContainingNamespace.ToDisplayString();
+                var ns = Utils.GetDecoratorNamespace(info.Symbol);
                 var interfaceFqn = Utils.GetFullyQualifiedName(info.Symbol);
                 var className = $"{info.Symbol.Name}Decorator";
 

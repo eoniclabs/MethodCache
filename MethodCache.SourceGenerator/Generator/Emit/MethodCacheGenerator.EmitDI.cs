@@ -50,7 +50,7 @@ namespace MethodCache.SourceGenerator
             private static void EmitInterfaceExtensions(StringBuilder sb, InterfaceInfo info, bool hasAnyCachedMethods)
             {
                 var interfaceFqn = Utils.GetFullyQualifiedName(info.Symbol);
-                var decoratorFqn = $"{info.Symbol.ContainingNamespace.ToDisplayString()}.{info.Symbol.Name}Decorator";
+                var decoratorFqn = Utils.GetDecoratorFullName(info.Symbol);
                 var baseName = $"{info.Symbol.Name}WithCaching";
 
                 // Only call AddPolicies if this specific interface has non-generic cached methods

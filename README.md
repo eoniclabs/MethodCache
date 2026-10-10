@@ -62,11 +62,15 @@ builder.Services.AddMethodCache();
 
 `AddMethodCache()` wraps `IUserService` in its generated cache decorator and keeps the lifetime you chose. Call it after your own registrations: a service registered later is not cached.
 
-You can also skip registering the service yourself. `AddMethodCache()` then finds `UserService` in the calling assembly and registers it as a singleton. If those interfaces or implementations live in other projects, pass every assembly that contains either of them:
+You can also skip registering the service yourself. `AddMethodCache()` then registers `UserService` as a singleton, provided it is in the same project as `IUserService` (the source generator picks the class named like the interface, or the first one that implements it). If the interface lives in another project, pass that project's assembly:
 
 ```csharp
-builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly, typeof(UserService).Assembly);
+builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly);
 ```
+
+An implementation in a different project from its interface is never registered for you; register it yourself and `AddMethodCache()` decorates it.
+
+Registration uses no reflection over your types, so it works with trimming and Native AOT.
 
 That is enough to enable source-generated cache decorators for attributed methods.
 

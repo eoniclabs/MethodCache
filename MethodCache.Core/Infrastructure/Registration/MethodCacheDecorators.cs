@@ -1,0 +1,113 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace MethodCache.Core.Infrastructure.Registration
+{
+    /// <summary>
+    /// The generated decorators of every loaded assembly. The source generator registers each assembly's
+    /// decorators from a module initializer, so <c>AddMethodCache()</c> finds them without scanning types,
+    /// which keeps registration working under trimming and Native AOT.
+    /// </summary>
+    public static class MethodCacheDecorators
+    {
+        private static readonly ConcurrentDictionary<Type, DecoratorRegistration> Registrations = new();
+
+        /// <summary>
+        /// Registers a generated decorator. Called by generated code; a later registration for the same
+        /// service type replaces the earlier one.
+        /// </summary>
+        public static void Register(DecoratorRegistration registration)
+        {
+            ArgumentNullException.ThrowIfNull(registration);
+            Registrations[registration.ServiceType] = registration;
+        }
+
+        /// <summary>
+        /// Returns the generated decorator for <paramref name="serviceType"/>, running the module initializer
+        /// of the assembly that declares it first, so its decorators are registered even if nothing in that
+        /// assembly has run yet.
+        /// </summary>
+        public static bool TryGet(Type serviceType, [NotNullWhen(true)] out DecoratorRegistration? registration)
+        {
+            ArgumentNullException.ThrowIfNull(serviceType);
+
+            if (Registrations.TryGetValue(serviceType, out registration))
+            {
+                return true;
+            }
+
+            RuntimeHelpers.RunModuleConstructor(serviceType.Module.ModuleHandle);
+            return Registrations.TryGetValue(serviceType, out registration);
+        }
+
+        /// <summary>
+        /// Returns the generated decorators declared in <paramref name="assembly"/>.
+        /// </summary>
+        public static IReadOnlyList<DecoratorRegistration> For(Assembly assembly)
+        {
+            ArgumentNullException.ThrowIfNull(assembly);
+
+            RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+            return Registrations.Values
+                .Where(r => r.ServiceType.Assembly == assembly)
+                .OrderBy(r => r.ServiceType.FullName, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns every registered decorator. Under Native AOT all module initializers run at startup, so this
+        /// covers the whole application.
+        /// </summary>
+        public static IReadOnlyList<DecoratorRegistration> All()
+            => Registrations.Values.OrderBy(r => r.ServiceType.FullName, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>
+    /// How to wrap one service interface in its generated caching decorator.
+    /// </summary>
+    public sealed class DecoratorRegistration
+    {
+        /// <param name="serviceType">The interface with cache attributes.</param>
+        /// <param name="decorate">Creates the decorator around the inner service.</param>
+        /// <param name="addPolicies">Registers the policies generated from the interface's attributes.</param>
+        /// <param name="implementationType">
+        /// The implementation found next to the interface at compile time, registered when the application has
+        /// not registered the interface itself; null when there is none.
+        /// </param>
+        public DecoratorRegistration(
+            Type serviceType,
+            Func<IServiceProvider, object, object> decorate,
+            Action<IServiceCollection>? addPolicies = null,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type? implementationType = null)
+        {
+            ServiceType = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+            Decorate = decorate ?? throw new ArgumentNullException(nameof(decorate));
+            AddPolicies = addPolicies;
+            ImplementationType = implementationType;
+        }
+
+        /// <summary>
+        /// The interface with cache attributes.
+        /// </summary>
+        public Type ServiceType { get; }
+
+        /// <summary>
+        /// Creates the decorator around the inner service.
+        /// </summary>
+        public Func<IServiceProvider, object, object> Decorate { get; }
+
+        /// <summary>
+        /// Registers the policies generated from the interface's attributes.
+        /// </summary>
+        public Action<IServiceCollection>? AddPolicies { get; }
+
+        /// <summary>
+        /// The implementation found next to the interface at compile time, if any.
+        /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        public Type? ImplementationType { get; }
+    }
+}

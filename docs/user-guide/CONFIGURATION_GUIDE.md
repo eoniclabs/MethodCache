@@ -61,8 +61,9 @@ public interface IUserService
     Task UpdateUserAsync(int userId, UserUpdateModel update);
 }
 
-// Register with attribute scanning
-builder.Services.AddMethodCache(assemblies: Assembly.GetExecutingAssembly());
+// Register the service, then wrap it in its generated cache decorator
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddMethodCache();
 ```
 
 ## Manual Caching
@@ -642,7 +643,8 @@ config.ForService<IService>()
 ### Simple Attribute-Only Setup
 ```csharp
 // Program.cs
-builder.Services.AddMethodCache(assemblies: Assembly.GetExecutingAssembly());
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddMethodCache();
 
 // Service
 public interface IProductService
