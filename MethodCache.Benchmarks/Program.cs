@@ -114,10 +114,6 @@ public class Program
                 BenchmarkRunner.Run<Microbenchmarks.SourceGenSyncPathProfiler>(config);
                 break;
 
-            case "memoryproviders":
-                BenchmarkRunner.Run<Microbenchmarks.MemoryProviderComparisonBenchmarks>(config);
-                break;
-
             case "all":
                 RunAllBenchmarks(config);
                 break;
@@ -144,7 +140,6 @@ public class Program
         Console.WriteLine("  generic      - Generic interface performance");
         Console.WriteLine("  serialization - Serialization performance comparison");
         Console.WriteLine("  quick        - Quick benchmarks for development (minimal parameters)");
-        Console.WriteLine("  memoryproviders - Compare Standard vs Advanced memory providers directly");
         Console.WriteLine("  all          - Run all benchmark categories");
         Console.WriteLine("");
         Console.WriteLine("Examples:");
