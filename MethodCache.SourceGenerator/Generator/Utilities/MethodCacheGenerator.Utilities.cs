@@ -25,6 +25,18 @@ namespace MethodCache.SourceGenerator
             internal static string GetFullyQualifiedName(ITypeSymbol type)
                 => type.ToDisplayString(FullyQualifiedFormat);
         
+            /// <summary>
+            /// The namespace of an interface's decorator: the interface's own, or MethodCache.Generated for an
+            /// interface in the global namespace, such as one declared next to top-level statements.
+            /// </summary>
+            internal static string GetDecoratorNamespace(INamedTypeSymbol interfaceSymbol)
+                => interfaceSymbol.ContainingNamespace is { IsGlobalNamespace: false } ns
+                    ? ns.ToDisplayString()
+                    : "MethodCache.Generated";
+
+            internal static string GetDecoratorFullName(INamedTypeSymbol interfaceSymbol)
+                => $"global::{GetDecoratorNamespace(interfaceSymbol)}.{interfaceSymbol.Name}Decorator";
+
             internal static string GetMethodId(IMethodSymbol method)
                 => method.ToDisplayString(MethodIdFormat);
         

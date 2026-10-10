@@ -42,10 +42,18 @@ namespace MethodCache.SourceGenerator
                     return combined;
                 });
 
-            context.RegisterSourceOutput(combinedProvider, Execute);
+            // Concrete classes, so AddMethodCache() can register an implementation the application did not register
+            var classProvider = context.SyntaxProvider
+                .CreateSyntaxProvider(
+                    predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList: not null } or RecordDeclarationSyntax { BaseList: not null },
+                    transform: static (ctx, ct) => ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, ct) as INamedTypeSymbol)
+                .Where(static symbol => symbol is { TypeKind: TypeKind.Class, IsAbstract: false, IsStatic: false, IsGenericType: false })
+                .Collect();
+
+            context.RegisterSourceOutput(combinedProvider.Combine(classProvider), static (ctx, pair) => Execute(ctx, pair.Left, pair.Right));
         }
 
-        private static void Execute(SourceProductionContext context, ImmutableArray<InterfaceInfo?> interfaces)
+        private static void Execute(SourceProductionContext context, ImmutableArray<InterfaceInfo?> interfaces, ImmutableArray<INamedTypeSymbol?> classes)
         {
             if (interfaces.IsDefaultOrEmpty) return;
 
@@ -81,6 +89,12 @@ namespace MethodCache.SourceGenerator
 
             var extensionsCode = DIExtensionsEmitter.Emit(validInterfaces);
             context.AddSource("MethodCacheServiceCollectionExtensions.g.cs", extensionsCode);
+
+            var registrationsCode = DecoratorRegistrationsEmitter.Emit(validInterfaces, classes);
+            if (!string.IsNullOrEmpty(registrationsCode))
+            {
+                context.AddSource("MethodCacheDecoratorRegistrations.g.cs", registrationsCode);
+            }
         }
     }
 }
