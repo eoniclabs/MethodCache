@@ -19,7 +19,7 @@ It is designed for teams that want caching behavior to be easy to add, easy to r
 - [Feature Overview](#feature-overview)
 - [How To Use MethodCache](#how-to-use-methodcache)
   - [Attribute-based Caching](#attribute-based-caching)
-  - [Fluent API Caching](#fluent-api-caching)
+  - [Manual Caching](#manual-caching)
   - [Configuration Sources](#configuration-sources)
   - [Invalidation](#invalidation)
   - [Runtime Overrides](#runtime-overrides)
@@ -75,7 +75,7 @@ That is enough to enable source-generated cache decorators for attributed method
 | Feature | Benefit | How to use |
 |---------|---------|------------|
 | Source-generated decorators | Removes runtime reflection and keeps business methods clean | Add `[Cache]` on interface methods and register MethodCache |
-| Fluent API | Cache methods without attributes or without changing external code | Use `ICacheManager.Cache(...).WithDuration(...).ExecuteAsync()` |
+| Manual caching | Cache calls without attributes or without changing external code | Use `ICacheManager.GetOrCreateAsync(key, factory, options)` |
 | Multiple configuration sources | Keep defaults in code and adjust behavior per environment | Combine attributes, startup configuration, file-based config, and runtime overrides |
 | Tag-based invalidation | Invalidate related entries without tracking keys manually | Tag entries in `[Cache]` and call invalidation APIs by tag |
 | Runtime overrides | Change cache behavior without redeploying | Use `IRuntimeCacheConfigurator` to apply and remove overrides |
@@ -108,17 +108,19 @@ public interface ILookupService
 
 Use raw keys only when your key naming is globally unique.
 
-### Fluent API Caching
+### Manual Caching
 
-Use the fluent API when attributes are not practical (for example, third-party clients).
+Use `GetOrCreateAsync` with an explicit key when attributes are not practical (for example, third-party clients).
 
 ```csharp
-var user = await cache.Cache(() => userService.GetUserAsync(userId))
-    .WithDuration(TimeSpan.FromMinutes(30))
-    .WithTags("users", $"user:{userId}")
-    .WithKeyGenerator<JsonKeyGenerator>()
-    .ExecuteAsync();
+var user = await cache.GetOrCreateAsync(
+    $"user:{userId}",
+    async (ctx, ct) => await userService.GetUserAsync(userId),
+    o => o.WithDuration(TimeSpan.FromMinutes(30))
+          .WithTags("users", $"user:{userId}"));
 ```
+
+You choose the key, so two calls share an entry only when their keys are equal.
 
 ### Configuration Sources
 
@@ -181,10 +183,10 @@ await configurator.ApplyAsync(fluent =>
 
 You can cache third-party libraries in two ways:
 
-1. Fluent API in your wrapper/service code (most direct for application developers).
+1. Manual caching (`GetOrCreateAsync` with an explicit key) in your wrapper/service code (most direct for application developers).
 2. Central JSON/YAML policy configuration (useful for centralized operations control).
 
-Fluent API example:
+Manual caching example:
 
 ```csharp
 public sealed class WeatherFacade
@@ -192,11 +194,12 @@ public sealed class WeatherFacade
     private readonly IWeatherApiClient _client;
     private readonly ICacheManager _cache;
 
-    public Task<WeatherResponse> GetCurrentAsync(string city) =>
-        _cache.Cache(() => _client.GetCurrentAsync(city))
-              .WithDuration(TimeSpan.FromMinutes(5))
-              .WithTags("weather", $"city:{city}")
-              .ExecuteAsync();
+    public ValueTask<WeatherResponse> GetCurrentAsync(string city) =>
+        _cache.GetOrCreateAsync(
+            $"weather:{city}",
+            async (ctx, ct) => await _client.GetCurrentAsync(city),
+            o => o.WithDuration(TimeSpan.FromMinutes(5))
+                  .WithTags("weather", $"city:{city}"));
 }
 ```
 
@@ -270,7 +273,6 @@ To enable coverage badges in your fork or org:
 - [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md)
 - [Migration: Adding Caching to Existing Service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
 - [Migration: From IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
-- [Method Chaining Examples](docs/examples/basic-usage/method_chaining_examples.cs)
 - [Sample App](MethodCache.SampleApp/)
 - [Demo Project](MethodCache.Demo/)
 

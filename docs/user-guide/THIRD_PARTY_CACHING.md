@@ -36,11 +36,12 @@ public sealed class WeatherClientFacade
         _cache = cache;
     }
 
-    public Task<CurrentWeather> GetCurrentAsync(string city) =>
-        _cache.Cache(() => _client.GetCurrentAsync(city))
-              .WithDuration(TimeSpan.FromMinutes(5))
-              .WithTags("weather", $"city:{city}")
-              .ExecuteAsync();
+    public ValueTask<CurrentWeather> GetCurrentAsync(string city) =>
+        _cache.GetOrCreateAsync(
+            $"weather:{city}",
+            async (ctx, ct) => await _client.GetCurrentAsync(city),
+            o => o.WithDuration(TimeSpan.FromMinutes(5))
+                  .WithTags("weather", $"city:{city}"));
 }
 ```
 
