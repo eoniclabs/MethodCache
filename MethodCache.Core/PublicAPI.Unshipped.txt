@@ -410,6 +410,7 @@ MethodCache.Core.Runtime.Execution.InMemoryCacheManager.SetAsync<T>(string! key,
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetAsync<T>(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<T?>
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetFast<T>(string! cacheKey, out T? value) -> bool
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetFastAsync<T>(string! cacheKey) -> System.Threading.Tasks.ValueTask<T?>
+MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetFastTask<T>(string! cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
 MethodCache.Core.Runtime.Execution.MockCacheManager
 MethodCache.Core.Runtime.Execution.MockCacheManager.Clear() -> void
 MethodCache.Core.Runtime.Execution.MockCacheManager.ForceCacheHit.get -> bool
@@ -447,6 +448,7 @@ MethodCache.Core.Runtime.ICacheManager.InvalidateByTagsAsync(params string![]! t
 MethodCache.Core.Runtime.ICacheManager.TryGetAsync<T>(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<T?>
 MethodCache.Core.Runtime.ICacheManager.TryGetFast<T>(string! cacheKey, out T? value) -> bool
 MethodCache.Core.Runtime.ICacheManager.TryGetFastAsync<T>(string! cacheKey) -> System.Threading.Tasks.ValueTask<T?>
+MethodCache.Core.Runtime.ICacheManager.TryGetFastTask<T>(string! cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
 MethodCache.Core.Runtime.KeyGeneration.DefaultCacheKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.DefaultCacheKeyGenerator.DefaultCacheKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator
