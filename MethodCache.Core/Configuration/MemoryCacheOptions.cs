@@ -92,9 +92,10 @@ namespace MethodCache.Core.Configuration
 
         /// <summary>
         /// When true, <c>null</c> results are cached like any other value, so a method returning null is not
-        /// re-executed on every call. Default false.
+        /// re-executed on every call (as Microsoft's HybridCache and FusionCache do). Default true; set it to false
+        /// when a null result means "not there yet" and the next call should try again.
         /// </summary>
-        public bool CacheNullValues { get; set; }
+        public bool CacheNullValues { get; set; } = true;
 
         /// <summary>
         /// When true, expired values are kept for <see cref="FailSafeMaxDuration"/> and returned if refreshing
