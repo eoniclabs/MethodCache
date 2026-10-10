@@ -5,8 +5,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using MessagePack;
-using MessagePack.Resolvers;
+using System.Text.Json;
 using MethodCache.Core.Runtime.Core;
 
 namespace MethodCache.Core.Runtime.KeyGeneration;
@@ -18,8 +17,8 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// <remarks>
 /// Keys have the form <c>{methodName}[:v{version}]:{hash}</c>, so all entries of one method share a readable
 /// prefix that pattern invalidation can match (see <see cref="MethodCacheKeys"/>). Arguments of other types than
-/// the built-in primitives are serialized with MessagePack's contractless resolver; implement
-/// <see cref="ICacheKeyProvider"/> on types that cannot be serialized.
+/// the built-in primitives are serialized with System.Text.Json, public fields included; implement
+/// <see cref="ICacheKeyProvider"/> on types that cannot be serialized, or under Native AOT.
 /// </remarks>
 /// <example>
 /// <code>
@@ -29,11 +28,8 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </example>
 public class FastHashKeyGenerator : ICacheKeyGenerator
 {
-    // Contractless and without the Typeless resolver, so keys contain no assembly names or versions.
-    // Bytes are only hashed, so compression would be wasted work.
-    private static readonly MessagePackSerializerOptions _messagePackOptions =
-        MessagePackSerializerOptions.Standard
-            .WithResolver(ContractlessStandardResolver.Instance);
+    // Fields count too, so two values that differ only in a public field don't share a key.
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerOptions.Default) { IncludeFields = true };
 
     [ThreadStatic]
     private static ArrayBufferWriter<byte>? t_writer;
@@ -287,7 +283,7 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         byte[] serializedArg;
         try
         {
-            serializedArg = MessagePackSerializer.Serialize(arg.GetType(), arg, _messagePackOptions);
+            serializedArg = JsonSerializer.SerializeToUtf8Bytes(arg, _jsonOptions.GetTypeInfo(arg.GetType()));
         }
         catch (Exception ex)
         {

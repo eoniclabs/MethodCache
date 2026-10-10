@@ -59,6 +59,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.AspNetCore", "M
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.AspNetCore.Tests", "MethodCache.AspNetCore.Tests\MethodCache.AspNetCore.Tests.csproj", "{7C35135F-CA2B-48C2-A75D-24FD14944E0C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Serialization.MessagePack", "MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj", "{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -393,6 +395,18 @@ Global
 		{7C35135F-CA2B-48C2-A75D-24FD14944E0C}.Release|x64.Build.0 = Release|Any CPU
 		{7C35135F-CA2B-48C2-A75D-24FD14944E0C}.Release|x86.ActiveCfg = Release|Any CPU
 		{7C35135F-CA2B-48C2-A75D-24FD14944E0C}.Release|x86.Build.0 = Release|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Debug|x64.Build.0 = Debug|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Debug|x86.Build.0 = Debug|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Release|x64.ActiveCfg = Release|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Release|x64.Build.0 = Release|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Release|x86.ActiveCfg = Release|Any CPU
+		{B9EEDC49-D60D-46FA-9D53-4C5F8F48E5C6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

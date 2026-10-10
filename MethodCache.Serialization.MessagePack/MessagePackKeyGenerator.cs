@@ -1,38 +1,28 @@
 using System.Security.Cryptography;
 using System.Text;
 using MessagePack;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
 
-namespace MethodCache.Core.Runtime.KeyGeneration;
+namespace MethodCache.Serialization.MessagePack;
 
 /// <summary>
-/// Efficient cache key generator using MessagePack binary serialization and SHA-256 hashing.
-/// Balanced performance for complex objects (~100ns) with deterministic serialization.
+/// Cache key generator that hashes arguments' MessagePack form with SHA-256.
 /// </summary>
 /// <remarks>
-/// Performance characteristics:
-/// - ~100ns per key generation (2x slower than FastHashKeyGenerator, 2x faster than JsonKeyGenerator)
-/// - Efficient binary serialization via MessagePack
-/// - Deterministic output for identical objects
-/// - Keys are Base64-encoded SHA-256 hashes
-///
-/// Use MessagePackKeyGenerator when:
-/// - Caching methods with complex object parameters (DTOs, entities, nested objects)
-/// - Need deterministic serialization of object graphs
-/// - Balance between performance and serialization capability is important
-/// - Working with objects that don't serialize well to JSON
-///
-/// For simple arguments (primitives, strings), FastHashKeyGenerator is faster.
-/// For debugging, JsonKeyGenerator provides better readability.
+/// Generated decorators format simple arguments and records of simple values themselves; the key generator only
+/// sees the other arguments, such as collections and nested objects. Use this one when those arguments serialize
+/// with MessagePack but not with System.Text.Json, which the default <see cref="FastHashKeyGenerator"/> uses.
+/// Keys embed the arguments' assembly-qualified type names, so they change when those assemblies' versions do.
 /// </remarks>
 /// <example>
 /// <code>
-/// // The key generator applies to every cached method
 /// services.AddMethodCache();
 /// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, MessagePackKeyGenerator&gt;());
 /// </code>
 /// </example>
-public class MessagePackKeyGenerator : ICacheKeyGenerator
+public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
 {
     private const byte KeyProviderFrame = 0x01;
     private const byte SerializedFrame = 0x02;

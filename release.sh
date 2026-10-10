@@ -27,6 +27,7 @@ PACKAGES=(
     "MethodCache.OpenTelemetry"
     "MethodCache.Providers.Redis"
     "MethodCache.Providers.SqlServer"
+    "MethodCache.Serialization.MessagePack"
     "MethodCache.SourceGenerator"
 )
 

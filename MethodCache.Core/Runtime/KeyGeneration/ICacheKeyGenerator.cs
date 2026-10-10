@@ -18,7 +18,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration
     /// Built-in implementations:
     /// - FastHashKeyGenerator (the default): 128-bit hash of a canonical binary form
     /// - JsonKeyGenerator: human-readable format, useful for debugging
-    /// - MessagePackKeyGenerator: SHA-256 of the MessagePack form
+    /// - MessagePackKeyGenerator (MethodCache.Serialization.MessagePack package): SHA-256 of the MessagePack form
     /// </remarks>
     /// <example>
     /// Implementing a custom key generator:

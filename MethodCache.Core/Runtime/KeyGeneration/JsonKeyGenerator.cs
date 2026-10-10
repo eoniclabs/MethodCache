@@ -22,7 +22,6 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// - Need to serialize complex objects with reference preservation
 ///
 /// For production high-throughput scenarios, prefer FastHashKeyGenerator.
-/// For complex object serialization in production, consider MessagePackKeyGenerator.
 /// </remarks>
 /// <example>
 /// <code>

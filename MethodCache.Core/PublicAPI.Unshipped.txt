@@ -193,15 +193,11 @@ MethodCache.Core.Infrastructure.Registration.DecoratorRegistration.DecoratorRegi
 MethodCache.Core.Infrastructure.Registration.DecoratorRegistration.ImplementationType.get -> System.Type?
 MethodCache.Core.Infrastructure.Registration.DecoratorRegistration.ServiceType.get -> System.Type!
 MethodCache.Core.Infrastructure.Registration.MethodCacheDecorators
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.ContentType.get -> string!
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Deserialize<T>(byte[]! data) -> T?
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Deserialize<T>(System.ReadOnlySpan<byte> data) -> T?
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.MessagePackSerializer() -> void
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.MessagePackSerializer(MessagePack.MessagePackSerializerOptions! options) -> void
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Serialize<T>(T obj) -> byte[]!
-MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
+MethodCache.Core.Infrastructure.Serialization.JsonCacheSerializer
+MethodCache.Core.Infrastructure.Serialization.JsonCacheSerializer.ContentType.get -> string!
+MethodCache.Core.Infrastructure.Serialization.JsonCacheSerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
+MethodCache.Core.Infrastructure.Serialization.JsonCacheSerializer.JsonCacheSerializer(System.Text.Json.JsonSerializerOptions? options = null) -> void
+MethodCache.Core.Infrastructure.Serialization.JsonCacheSerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
 MethodCache.Core.Infrastructure.Utilities.MemoryUsageCalculator
 MethodCache.Core.Infrastructure.Utilities.MemoryUsageCalculator.CalculateMemoryUsage<T>(System.Collections.Concurrent.ConcurrentDictionary<string!, T>! cache, System.Func<T, object!>! valueExtractor) -> long
 MethodCache.Core.Infrastructure.Utilities.MemoryUsageCalculator.MemoryUsageCalculator(MethodCache.Core.Configuration.MemoryCacheOptions! options) -> void
@@ -459,9 +455,6 @@ MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator.GenerateKey(string! me
 MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
 MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.JsonKeyGenerator() -> void
-MethodCache.Core.Runtime.KeyGeneration.MessagePackKeyGenerator
-MethodCache.Core.Runtime.KeyGeneration.MessagePackKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
-MethodCache.Core.Runtime.KeyGeneration.MessagePackKeyGenerator.MessagePackKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
