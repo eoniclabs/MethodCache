@@ -14,6 +14,7 @@ using MethodCache.Core.PolicyPipeline.Sources;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -103,7 +104,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
         private static void EnsureCoreServices(IServiceCollection services)
         {
-            services.TryAddSingleton<ICacheManager, InMemoryCacheManager>();
+            AddDefaultCacheManager(services);
             services.TryAddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
             services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();
 
@@ -123,6 +124,23 @@ namespace MethodCache.Core.Infrastructure.Extensions
             }
 
             services.TryAddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
+        }
+
+        /// <summary>
+        /// Registers the in-memory cache manager unless a cache manager is already registered. The same instance
+        /// also serves <see cref="IMemoryCache"/>, so statistics and direct entry access stay reachable when
+        /// <see cref="ICacheManager"/> is wrapped, for example by OpenTelemetry instrumentation.
+        /// </summary>
+        internal static void AddDefaultCacheManager(IServiceCollection services)
+        {
+            if (services.Any(sd => sd.ServiceType == typeof(ICacheManager)))
+            {
+                return;
+            }
+
+            services.TryAddSingleton<InMemoryCacheManager>();
+            services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
+            services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
         }
 
         private static void RegisterFluentPolicySource(IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)

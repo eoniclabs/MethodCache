@@ -22,10 +22,25 @@ namespace MethodCache.OpenTelemetry.Extensions;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Adds tracing and metrics to MethodCache. Call this after <c>AddMethodCache()</c>, which registers the cache
+    /// manager that this method instruments. Calling it more than once instruments the cache manager only once.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No cache manager is registered yet.</exception>
     public static IServiceCollection AddMethodCacheOpenTelemetry(
         this IServiceCollection services,
         Action<OpenTelemetryOptions>? configure = null)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
+        if (!services.Any(s => s.ServiceType == typeof(ICacheManager)))
+        {
+            throw new InvalidOperationException(
+                "No MethodCache cache manager is registered. Call services.AddMethodCache() before services.AddMethodCacheOpenTelemetry().");
+        }
+
+        var alreadyInstrumented = services.Any(s => s.ServiceType == typeof(OpenTelemetryInstrumentationMarker));
+
         var options = new OpenTelemetryOptions();
         configure?.Invoke(options);
         options.Validate();
@@ -63,11 +78,26 @@ public static class ServiceCollectionExtensions
             services.TryAddSingleton<IHttpCorrelationEnricher, HttpCorrelationEnricher>();
         }
 
+        if (alreadyInstrumented)
+        {
+            // The options above still apply; wrapping the cache manager again would duplicate every span.
+            return services;
+        }
+
+        services.AddSingleton<OpenTelemetryInstrumentationMarker>();
+
         services.Decorate<ICacheManager>((inner, provider) =>
         {
             var activitySource = provider.GetRequiredService<ICacheActivitySource>();
             var meterProvider = provider.GetRequiredService<ICacheMeterProvider>();
             var baggagePropagator = provider.GetRequiredService<IBaggagePropagator>();
+
+            // Entry count and memory gauges read the cache's own statistics.
+            if (inner is IMemoryCache cache && meterProvider is CacheMeterProvider cacheMeterProvider)
+            {
+                cacheMeterProvider.ObserveCache(cache);
+            }
+
             return new TelemetryCacheManager(inner, activitySource, meterProvider, baggagePropagator);
         });
 
@@ -123,6 +153,11 @@ public static class ServiceCollectionExtensions
     {
         app.UseMiddleware<HttpCorrelationMiddleware>();
         return app;
+    }
+
+    /// <summary>Marks that the cache manager is already wrapped for telemetry.</summary>
+    private sealed class OpenTelemetryInstrumentationMarker
+    {
     }
 
     private static void Decorate<TInterface>(

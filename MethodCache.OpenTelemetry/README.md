@@ -47,7 +47,7 @@ builder.Services.AddMethodCache(config =>
     config.DefaultDuration(TimeSpan.FromMinutes(10));
 });
 
-// Add OpenTelemetry instrumentation
+// Add OpenTelemetry instrumentation (after AddMethodCache, which registers the cache it instruments)
 builder.Services.AddMethodCacheOpenTelemetry(options =>
 {
     options.EnableTracing = true;
@@ -190,9 +190,9 @@ Each cache operation span includes these attributes:
 
 | Metric | Description | Unit | Tags |
 |--------|-------------|------|------|
-| `methodcache.hits_total` | Total cache hits | count | method, group |
-| `methodcache.misses_total` | Total cache misses | count | method, group |
-| `methodcache.errors_total` | Total errors | count | method, error.type |
+| `methodcache.hits_total` | Total cache hits | count | method |
+| `methodcache.misses_total` | Total cache misses | count | method |
+| `methodcache.errors_total` | Total errors (`load_failed` when the cached method throws) | count | method, error.type |
 | `methodcache.evictions_total` | Total evictions | count | method, eviction.reason |
 
 ### Histogram Metrics
@@ -200,16 +200,19 @@ Each cache operation span includes these attributes:
 | Metric | Description | Unit | Buckets |
 |--------|-------------|------|---------|
 | `methodcache.operation_duration` | Operation latency | ms | 0.1, 1, 10, 100, 1000 |
+| `methodcache.load_duration` | Time the cached method took to produce a value (misses and refreshes) | ms | SDK default |
 | `methodcache.key_generation_duration` | Key generation time | ms | 0.01, 0.1, 1, 10 |
 | `methodcache.serialization_duration` | Serialization time | ms | 0.1, 1, 10, 100 |
 | `methodcache.storage_operation_duration` | Storage latency | ms | 1, 10, 100, 1000 |
+
+Each call is counted once as a hit or a miss, including hits served by the generated decorator's fast path.
 
 ### Gauge Metrics
 
 | Metric | Description | Unit |
 |--------|-------------|------|
-| `methodcache.entries_count` | Current cache entries | count |
-| `methodcache.memory_bytes` | Memory usage | bytes |
+| `methodcache.entries_count` | Current entries in the in-memory cache | count |
+| `methodcache.memory_bytes` | Estimated memory usage of the in-memory cache | bytes |
 | `methodcache.hit_ratio` | Cache hit ratio | ratio |
 
 ## Exporters Configuration
