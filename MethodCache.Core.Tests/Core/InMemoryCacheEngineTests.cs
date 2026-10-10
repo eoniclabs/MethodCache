@@ -249,6 +249,28 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task CallersAfterAnInvalidation_StartAFreshLoad_InsteadOfJoiningTheOldOne()
+    {
+        var manager = CreateManager();
+        var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var oldLoad = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, Policy());
+        await manager.RemoveAsync("key");
+
+        var freshLoad = manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("fresh"), Policy());
+        freshLoad.IsCompleted.Should().BeTrue("the fresh load must not wait for the invalidated one");
+        (await freshLoad).Should().Be("fresh");
+
+        gate.SetResult("old");
+        (await oldLoad).Should().Be("old");
+        (await manager.GetAsync<string>("key")).Should().Be("fresh");
+
+        // The old load's cleanup must leave nothing behind that later callers would join.
+        await manager.RemoveAsync("key");
+        (await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("third"), Policy())).Should().Be("third");
+    }
+
+    [Fact]
     public async Task Jitter_NeverExtendsBeyondMaxExpiration()
     {
         var manager = CreateManager(o =>
@@ -717,6 +739,34 @@ public class TimerWheelTests
 
         wheel.Advance(start + delayMilliseconds * 1_000_000 + 2_000_000_000L * 64, n => { expired.Add(n); return true; });
         expired.Should().ContainSingle().Which.Should().BeSameAs(node);
+    }
+
+    [Theory]
+    [InlineData(0.1, 7)]
+    [InlineData(3.3, 7)]
+    [InlineData(6.4, 7)]
+    [InlineData(1, 14)]
+    [InlineData(5, 30)]
+    public void LongLifetimes_ExpireWithinAnHourOfTheirDeadline(double startDays, double lifetimeDays)
+    {
+        // Advanced minute by minute, as the cleanup timer would, from various offsets against the coarse bucket boundaries.
+        const long minute = 60_000_000_000L;
+        var start = (long)(startDays * 1440) * minute;
+        var deadline = start + (long)(lifetimeDays * 1440) * minute;
+        var wheel = new TimerWheel(start);
+        var node = new ValueNode<int>("k", 1) { PhysicalExpiresAt = deadline };
+        wheel.Schedule(node);
+
+        long? expiredAt = null;
+        for (var now = start + minute; expiredAt == null && now <= deadline + 1440 * minute; now += minute)
+        {
+            var current = now;
+            wheel.Advance(now, _ => { expiredAt = current; return true; });
+        }
+
+        expiredAt.Should().NotBeNull();
+        expiredAt!.Value.Should().BeGreaterThanOrEqualTo(deadline);
+        (expiredAt.Value - deadline).Should().BeLessThan(60 * minute);
     }
 
     [Fact]

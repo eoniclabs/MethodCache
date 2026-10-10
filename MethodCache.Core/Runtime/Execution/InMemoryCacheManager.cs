@@ -330,7 +330,23 @@ namespace MethodCache.Core.Runtime.Execution
         private async Task<T> LoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy)
         {
             var flight = new Flight(policy.Tags);
-            var existing = _flights.GetOrAdd(key, flight);
+            Flight existing;
+            while (true)
+            {
+                existing = _flights.GetOrAdd(key, flight);
+                if (ReferenceEquals(existing, flight) || !existing.Invalidated)
+                {
+                    break;
+                }
+
+                // The running load was invalidated, so its result predates the invalidation: start a fresh one.
+                // The old load only removes its own flight, so replacing it here is safe.
+                if (_flights.TryUpdate(key, flight, existing))
+                {
+                    existing = flight;
+                    break;
+                }
+            }
 
             if (!ReferenceEquals(existing, flight))
             {
