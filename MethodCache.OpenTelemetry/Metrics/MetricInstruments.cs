@@ -14,6 +14,7 @@ public static class MetricInstruments
         public const string ErrorsTotal = "methodcache.errors_total";
         public const string EvictionsTotal = "methodcache.evictions_total";
         public const string OperationDuration = "methodcache.operation_duration";
+        public const string LoadDuration = "methodcache.load_duration";
         public const string KeyGenerationDuration = "methodcache.key_generation_duration";
         public const string SerializationDuration = "methodcache.serialization_duration";
         public const string StorageOperationDuration = "methodcache.storage_operation_duration";
@@ -37,6 +38,7 @@ public static class MetricInstruments
         public const string ErrorsTotal = "Total number of cache errors";
         public const string EvictionsTotal = "Total number of cache evictions";
         public const string OperationDuration = "Duration of cache operations";
+        public const string LoadDuration = "Time the cached method took to produce a value after a miss or during a refresh";
         public const string KeyGenerationDuration = "Duration of cache key generation";
         public const string SerializationDuration = "Duration of serialization operations";
         public const string StorageOperationDuration = "Duration of storage provider operations";

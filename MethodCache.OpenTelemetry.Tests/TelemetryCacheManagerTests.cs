@@ -50,7 +50,7 @@ public class TelemetryCacheManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task GetOrCreateAsync_CacheHit_RecordsHitMetrics()
+    public async Task GetOrCreateAsync_CacheHit_MarksSpanAsHitWithoutCountingIt()
     {
         // Arrange
         var methodName = "TestMethod";
@@ -89,13 +89,13 @@ public class TelemetryCacheManagerTests : IDisposable
         result.Should().Be(expectedValue);
 
         _activitySourceMock.Verify(x => x.SetCacheHit(activity, true), Times.Once);
-        _meterProviderMock.Verify(x => x.RecordCacheHit(methodName, It.IsAny<Dictionary<string, object?>>()), Times.Once);
+        _meterProviderMock.Verify(x => x.RecordCacheHit(It.IsAny<string>(), It.IsAny<Dictionary<string, object?>>()), Times.Never);
         _meterProviderMock.Verify(x => x.RecordOperationDuration(methodName, It.IsAny<double>(), It.IsAny<Dictionary<string, object?>>()), Times.Once);
         _baggagePropagatorMock.Verify(x => x.InjectBaggage(activity), Times.Once);
     }
 
     [Fact]
-    public async Task GetOrCreateAsync_CacheMiss_RecordsMissMetrics()
+    public async Task GetOrCreateAsync_CacheMiss_MarksSpanAsMissWithoutCountingIt()
     {
         // Arrange
         var methodName = "TestMethod";
@@ -135,12 +135,12 @@ public class TelemetryCacheManagerTests : IDisposable
         result.Should().Be(expectedValue);
 
         _activitySourceMock.Verify(x => x.SetCacheHit(activity, false), Times.Once);
-        _meterProviderMock.Verify(x => x.RecordCacheMiss(methodName, It.IsAny<Dictionary<string, object?>>()), Times.Once);
+        _meterProviderMock.Verify(x => x.RecordCacheMiss(It.IsAny<string>(), It.IsAny<Dictionary<string, object?>>()), Times.Never);
         _meterProviderMock.Verify(x => x.RecordOperationDuration(methodName, It.IsAny<double>(), It.IsAny<Dictionary<string, object?>>()), Times.Once);
     }
 
     [Fact]
-    public async Task GetOrCreateAsync_Exception_RecordsError()
+    public async Task GetOrCreateAsync_Exception_MarksSpanWithoutCountingError()
     {
         // Arrange
         var methodName = "TestMethod";
@@ -174,7 +174,8 @@ public class TelemetryCacheManagerTests : IDisposable
                 keyGenerator.Object));
 
         _activitySourceMock.Verify(x => x.SetCacheError(activity, exception), Times.Once);
-        _meterProviderMock.Verify(x => x.RecordCacheError(methodName, "InvalidOperationException", It.IsAny<Dictionary<string, object?>>()), Times.Once);
+        // The cache manager reports load failures through ICacheMetricsProvider; counting here too would double it.
+        _meterProviderMock.Verify(x => x.RecordCacheError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object?>>()), Times.Never);
     }
 
     [Fact]
@@ -201,7 +202,7 @@ public class TelemetryCacheManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task TryGetAsync_RecordsHitAndMissCorrectly()
+    public async Task TryGetAsync_MarksSpanHitAndMissWithoutCountingThem()
     {
         // Arrange
         var methodName = "TestMethod";
@@ -224,7 +225,7 @@ public class TelemetryCacheManagerTests : IDisposable
 
         hitResult.Should().Be("cached_value");
         _activitySourceMock.Verify(x => x.SetCacheHit(activity, true), Times.Once);
-        _meterProviderMock.Verify(x => x.RecordCacheHit(methodName, It.IsAny<Dictionary<string, object?>>()), Times.Once);
+        _meterProviderMock.Verify(x => x.RecordCacheHit(It.IsAny<string>(), It.IsAny<Dictionary<string, object?>>()), Times.Never);
 
         // Reset for cache miss test
         _activitySourceMock.Reset();
@@ -240,7 +241,7 @@ public class TelemetryCacheManagerTests : IDisposable
 
         missResult.Should().BeNull();
         _activitySourceMock.Verify(x => x.SetCacheHit(activity, false), Times.Once);
-        _meterProviderMock.Verify(x => x.RecordCacheMiss(methodName, It.IsAny<Dictionary<string, object?>>()), Times.Once);
+        _meterProviderMock.Verify(x => x.RecordCacheMiss(It.IsAny<string>(), It.IsAny<Dictionary<string, object?>>()), Times.Never);
     }
 
     [Fact]

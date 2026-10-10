@@ -34,10 +34,5 @@ public class OpenTelemetryOptions
         {
             throw new ArgumentException("MetricExportInterval must be at least 1 second", nameof(MetricExportInterval));
         }
-
-        if (HashCacheKeys && !RecordCacheKeys)
-        {
-            throw new ArgumentException("HashCacheKeys can only be true when RecordCacheKeys is true", nameof(HashCacheKeys));
-        }
     }
 }

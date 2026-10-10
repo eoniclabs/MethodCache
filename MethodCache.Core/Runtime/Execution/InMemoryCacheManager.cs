@@ -379,9 +379,11 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 var start = StartTiming();
                 var result = await factory().ConfigureAwait(false);
+                var elapsed = ElapsedSince(start);
 
-                StoreLoaded(key, result, policy, flight, ElapsedSince(start));
+                StoreLoaded(key, result, policy, flight, elapsed);
                 flight.Complete(result);
+                RecordLoadLatency(methodName, elapsed);
                 return result;
             }
             catch (Exception ex)
@@ -424,11 +426,13 @@ namespace MethodCache.Core.Runtime.Execution
                 {
                     var start = StartTiming();
                     var result = await factory().ConfigureAwait(false);
+                    var elapsed = ElapsedSince(start);
 
                     // Replace only the node being refreshed, so a write or removal that slipped in before this
                     // refresh registered its flight is never overwritten or resurrected.
-                    StoreLoaded(key, result, policy, flight, ElapsedSince(start), replacing: node);
+                    StoreLoaded(key, result, policy, flight, elapsed, replacing: node);
                     flight.Complete(result);
+                    RecordLoadLatency(methodName, elapsed);
                 }
                 catch (Exception ex)
                 {
@@ -668,6 +672,12 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 _hits.Increment();
             }
+        }
+
+        /// <summary>Reports how long the cached method took to produce a value, in milliseconds.</summary>
+        private void RecordLoadLatency(string methodName, long elapsedNanos)
+        {
+            _metricsProvider.CacheLatency(methodName, elapsedNanos / 1_000_000);
         }
 
         private void RecordMiss(string methodName)
