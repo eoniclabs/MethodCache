@@ -234,7 +234,6 @@ Supported frameworks: .NET 8.0, .NET 9.0, .NET 10.0.
 | Package | Purpose |
 |---------|---------|
 | `MethodCache.Providers.Redis` | Redis provider |
-| `MethodCache.Providers.Memory` | Advanced in-memory provider |
 | `MethodCache.OpenTelemetry` | Tracing and metrics integration |
 
 ### Experimental

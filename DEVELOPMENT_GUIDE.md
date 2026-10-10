@@ -5,7 +5,6 @@
 - `MethodCache.SourceGenerator`: Roslyn source generator for decorators.
 - `MethodCache.Analyzers`: Compile-time checks and diagnostics.
 - `MethodCache.Providers.Redis`: Redis L2 provider (+ compression, tags, locks).
-- `MethodCache.Providers.Memory`: In-memory L1 provider.
 - `MethodCache.Providers.SqlServer`: SqlServer L2 provider.
 - `MethodCache.HttpCaching`: HTTP caching support.
 - `MethodCache.Infrastructure`: Common infrastructure for providers.

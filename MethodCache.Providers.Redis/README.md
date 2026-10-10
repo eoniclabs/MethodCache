@@ -220,5 +220,4 @@ MIT License - see [LICENSE](../LICENSE) file for details.
 
 - [MethodCache](https://www.nuget.org/packages/MethodCache) - Meta-package with everything included
 - [MethodCache.Core](https://www.nuget.org/packages/MethodCache.Core) - Core caching functionality
-- [MethodCache.Providers.Memory](https://www.nuget.org/packages/MethodCache.Providers.Memory) - Advanced in-memory caching
 - [MethodCache.Providers.SqlServer](https://www.nuget.org/packages/MethodCache.Providers.SqlServer) - SQL Server persistent caching
