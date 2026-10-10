@@ -33,18 +33,27 @@ namespace MethodCache.SourceGenerator
                 sb.Append($"{indent}allTags.Add(string.Format(\"{template}\"");
                 foreach (var paramName in paramNames)
                 {
-                    var parameter = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-                    var isNonNullableValueType = parameter != null &&
-                                                 parameter.Type.IsValueType &&
-                                                 parameter.Type.OriginalDefinition.SpecialType != SpecialType.System_Nullable_T;
-
-                    // '?.' does not compile on non-nullable value types such as int or Guid
-                    sb.Append(isNonNullableValueType
-                        ? $", {paramName}.ToString()"
-                        : $", {paramName}?.ToString() ?? \"null\"");
+                    sb.Append($", {FormatTagArgument(method, paramName)}");
                 }
                 sb.AppendLine("));");
             }
+        }
+
+        /// <summary>
+        /// The expression that turns an argument into its tag text. Cached entries and invalidation both use it,
+        /// so the tags they build always match.
+        /// </summary>
+        private static string FormatTagArgument(IMethodSymbol method, string paramName)
+        {
+            var parameter = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            var isNonNullableValueType = parameter != null &&
+                                         parameter.Type.IsValueType &&
+                                         parameter.Type.OriginalDefinition.SpecialType != SpecialType.System_Nullable_T;
+
+            // '?.' does not compile on non-nullable value types such as int or Guid
+            return isNonNullableValueType
+                ? $"{paramName}.ToString()"
+                : $"{paramName}?.ToString() ?? \"null\"";
         }
 
         private static class DecoratorEmitter
@@ -341,7 +350,10 @@ namespace MethodCache.SourceGenerator
                 }
 
                 sb.AppendLine();
-                EmitCachedBody(sb, method, kind, valueType, safeFieldName);
+                var tagParameters = model.CacheAttr is null
+                    ? new List<string>()
+                    : ParseDynamicTags(ExtractTags(model.CacheAttr), method).SelectMany(t => t.paramNames).Distinct().ToList();
+                EmitCachedBody(sb, method, kind, valueType, safeFieldName, tagParameters);
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
@@ -358,7 +370,7 @@ namespace MethodCache.SourceGenerator
             /// Emits the lookup shared by every cached method: one synchronous probe whose result says whether an
             /// entry exists (so null, 0 and false are hits too), then the cache manager's loading path on a miss.
             /// </summary>
-            private static void EmitCachedBody(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName)
+            private static void EmitCachedBody(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName, List<string> tagParameters)
             {
                 var type = Utils.GetReturnTypeForSignature(valueType);
                 var call = BuildMethodCall(method);
@@ -386,7 +398,17 @@ namespace MethodCache.SourceGenerator
                 var factory = kind == ResultKind.Sync
                     ? $"() => Task.FromResult({call})"
                     : $"async () => await {call}.ConfigureAwait(false)";
-                var load = $"_cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _cachedMethodName_{safeFieldName}, {factory}, _cachedPolicy_{safeFieldName})";
+                var policy = $"_cachedPolicy_{safeFieldName}";
+                if (tagParameters.Count > 0)
+                {
+                    // Tags such as "user:{userId}" get this call's arguments, matching what [CacheInvalidate] removes
+                    var names = string.Join(", ", tagParameters.Select(p => $"\"{p}\""));
+                    var values = string.Join(", ", tagParameters.Select(p => FormatTagArgument(method, p)));
+                    sb.AppendLine($"            var cachedPolicyWithTags = CacheTagTemplates.Expand({policy}, new[] {{ {names} }}, new[] {{ {values} }});");
+                    policy = "cachedPolicyWithTags";
+                }
+
+                var load = $"_cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _cachedMethodName_{safeFieldName}, {factory}, {policy})";
 
                 switch (kind)
                 {
