@@ -249,6 +249,46 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task TryReplace_StoresNothing_WhenTheExpectedEntryWasReplaced()
+    {
+        var manager = CreateManager();
+        var engine = manager.Engine;
+        engine.ForegroundMaintenance = true;
+
+        await manager.SetAsync("key", "refreshed", OneMinute);
+        engine.TryPeek("key", out var refreshed).Should().BeTrue();
+        await manager.SetAsync("key", "newer", OneMinute);
+
+        var expiresAt = engine.Now + OneMinute.Ticks * 100;
+        var late = new ValueNode<string>("key", "late")
+        {
+            LogicalExpiresAt = expiresAt,
+            PhysicalExpiresAt = expiresAt,
+            AbsoluteExpiresAt = expiresAt,
+            Tags = new[] { "late-tag" }
+        };
+
+        engine.TryReplace(refreshed, late).Should().BeFalse();
+        engine.Maintain();
+
+        (await manager.GetAsync<string>("key")).Should().Be("newer");
+        engine.Tags.Should().NotContain("late-tag");
+    }
+
+    [Fact]
+    public async Task BackgroundRefresh_ReturningNull_RemovesTheRefreshedEntry()
+    {
+        var manager = CreateManager();
+        var policy = Policy() with { RefreshAhead = TimeSpan.FromSeconds(10) };
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult<string?>("value"), policy);
+        _time.Advance(TimeSpan.FromSeconds(55));
+        (await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult<string?>(null), policy)).Should().Be("value");
+
+        await WaitUntilAsync(async () => !await manager.ExistsAsync("key"));
+    }
+
+    [Fact]
     public async Task CallersAfterAnInvalidation_StartAFreshLoad_InsteadOfJoiningTheOldOne()
     {
         var manager = CreateManager();

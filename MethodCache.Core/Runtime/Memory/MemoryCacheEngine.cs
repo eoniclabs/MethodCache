@@ -191,6 +191,28 @@ internal sealed class MemoryCacheEngine
         AfterWrite();
     }
 
+    /// <summary>
+    /// Replaces <paramref name="expected"/> with <paramref name="node"/> only if it is still the current entry for
+    /// its key. Returns false, and stores nothing, when the entry was removed or replaced in the meantime.
+    /// </summary>
+    public bool TryReplace(Node expected, Node node)
+    {
+        IndexTags(node);
+
+        if (!_map.TryUpdate(node.Key, node, expected))
+        {
+            // Never published: retiring it lets maintenance drop the tag entries indexed above.
+            Retire(node);
+            AfterWrite();
+            return false;
+        }
+
+        Retire(expected);
+        _writeBuffer.Enqueue(new WriteTask(node, WriteKind.Add));
+        AfterWrite();
+        return true;
+    }
+
     public bool Remove(string key)
     {
         if (_map.TryRemove(key, out var node))

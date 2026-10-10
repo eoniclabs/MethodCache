@@ -422,7 +422,9 @@ namespace MethodCache.Core.Runtime.Execution
                     var start = StartTiming();
                     var result = await factory().ConfigureAwait(false);
 
-                    StoreLoaded(key, result, policy, flight, ElapsedSince(start));
+                    // Replace only the node being refreshed, so a write or removal that slipped in before this
+                    // refresh registered its flight is never overwritten or resurrected.
+                    StoreLoaded(key, result, policy, flight, ElapsedSince(start), replacing: node);
                     flight.Complete(result);
                 }
                 catch (Exception ex)
@@ -452,14 +454,33 @@ namespace MethodCache.Core.Runtime.Execution
         /// Stores a factory result unless its key or tags were invalidated while it loaded. Invalidators flag the
         /// flight before removing entries, so either they remove this node or the re-check below sees the flag.
         /// </summary>
-        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, long computeDuration)
+        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, long computeDuration, Node? replacing = null)
         {
             if (flight.Invalidated)
             {
                 return;
             }
 
-            var node = Store(key, result, policy, computeDuration);
+            if (result == null && !_options.CacheNullValues)
+            {
+                // Nothing to store, so drop the entry this load replaces. A write that invalidated the flight
+                // before adding its node is seen by the re-check, so its newer entry is never removed.
+                var current = replacing;
+                if (current == null && !_engine.TryPeek(key, out current))
+                {
+                    return;
+                }
+
+                Interlocked.MemoryBarrier();
+                if (!flight.Invalidated)
+                {
+                    _engine.RemoveNode(current);
+                }
+
+                return;
+            }
+
+            var node = Store(key, result, policy, computeDuration, replacing: replacing);
             Interlocked.MemoryBarrier();
             if (node != null && flight.Invalidated)
             {
@@ -467,7 +488,7 @@ namespace MethodCache.Core.Runtime.Execution
             }
         }
 
-        private Node? Store<T>(string key, T value, EntryPolicy policy, long computeDuration, long? duration = null)
+        private Node? Store<T>(string key, T value, EntryPolicy policy, long computeDuration, long? duration = null, Node? replacing = null)
         {
             if (value == null && !_options.CacheNullValues)
             {
@@ -502,7 +523,15 @@ namespace MethodCache.Core.Runtime.Execution
                 Weight = _weigher == null ? 1 : Math.Max(0, _weigher(key, value))
             };
 
-            _engine.Add(node);
+            if (replacing == null)
+            {
+                _engine.Add(node);
+            }
+            else if (!_engine.TryReplace(replacing, node))
+            {
+                return null;
+            }
+
             return node;
         }
 
