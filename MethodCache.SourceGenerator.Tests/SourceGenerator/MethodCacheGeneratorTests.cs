@@ -364,7 +364,9 @@ namespace TestApp
             // Ultra-fast path generates non-async method signature that returns Task
             AssertContainsIgnoreWhitespace(decoratorSource, "System.Threading.Tasks.Task<string> GetValueAsync(int id)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
-            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFast<string>(cacheKeyValue, out var cachedValue)");
+            // Task methods return the entry's completed task, so hits do not allocate
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(cacheKeyValue, out var cachedTask)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "return cachedTask;");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
@@ -667,7 +669,9 @@ namespace TestApp
             // Ultra-fast path generates non-async method signature that returns Task
             AssertContainsIgnoreWhitespace(decoratorSource, "System.Threading.Tasks.Task<string> GetValueAsync(int id)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
-            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFast<string>(cacheKeyValue, out var cachedValue)");
+            // Task methods return the entry's completed task, so hits do not allocate
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(cacheKeyValue, out var cachedTask)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "return cachedTask;");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);

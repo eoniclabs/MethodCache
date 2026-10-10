@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
@@ -97,6 +98,26 @@ namespace MethodCache.Core.Runtime
             }
 
             return value != null && !EqualityComparer<T>.Default.Equals(value, default);
+        }
+
+        /// <summary>
+        /// Like <see cref="TryGetFast{T}"/>, but returns the hit as a completed task for <see cref="Task{TResult}"/>
+        /// methods. Implementations can hand out the same task for every hit on an entry, so a hit does not allocate.
+        /// </summary>
+        /// <typeparam name="T">Type of cached value</typeparam>
+        /// <param name="cacheKey">Pre-computed cache key</param>
+        /// <param name="task">A completed task holding the cached value, if found</param>
+        /// <returns>True if the value exists and is not expired</returns>
+        bool TryGetFastTask<T>(string cacheKey, [NotNullWhen(true)] out Task<T>? task)
+        {
+            if (TryGetFast<T>(cacheKey, out var value))
+            {
+                task = Task.FromResult(value!);
+                return true;
+            }
+
+            task = null;
+            return false;
         }
 
         /// <summary>
