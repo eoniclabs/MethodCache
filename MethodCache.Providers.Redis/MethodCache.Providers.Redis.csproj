@@ -7,24 +7,24 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>MethodCache.Providers.Redis</PackageId>
-    <Description>Redis distributed cache provider for MethodCache</Description>
+    <Description>Redis as MethodCache's distributed cache, with a pub/sub backplane that keeps every instance's in-memory cache in sync</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="StackExchange.Redis" Version="2.9.25" />
-    <PackageReference Include="MessagePack" Version="3.1.4" />
-    <PackageReference Include="Polly" Version="8.6.4" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.9" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.Providers.Redis.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Providers.Redis.IntegrationTests" />
   </ItemGroup>
 
 </Project>

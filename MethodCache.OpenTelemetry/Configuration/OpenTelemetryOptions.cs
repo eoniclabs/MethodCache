@@ -17,7 +17,6 @@ public class OpenTelemetryOptions
     public bool EnableHttpCorrelation { get; set; } = true;
     public bool EnableBaggagePropagation { get; set; } = true;
     public bool EnableDistributedTracing { get; set; } = true;
-    public bool EnableStorageProviderInstrumentation { get; set; } = true;
     public string? ServiceName { get; set; }
     public string? ServiceVersion { get; set; }
     public string? ServiceNamespace { get; set; }

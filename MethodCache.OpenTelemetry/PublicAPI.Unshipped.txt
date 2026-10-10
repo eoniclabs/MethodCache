@@ -74,8 +74,6 @@ MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableHttpCorrelati
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableHttpCorrelation.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableMetrics.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableMetrics.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableStorageProviderInstrumentation.get -> bool
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableStorageProviderInstrumentation.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableTracing.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableTracing.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.Environment.get -> string?

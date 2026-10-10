@@ -38,7 +38,7 @@ The core `CachePolicy` record is defined in `MethodCache.Abstractions.Policies`.
 - Tags for invalidation
 - Version/concurrency control
 - Idempotency requirements
-- Layer-specific settings (L1/L2/L3)
+- Distributed cache settings
 
 Each field can be independently set by different sources.
 

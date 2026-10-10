@@ -84,7 +84,7 @@ That is enough to enable source-generated cache decorators for attributed method
 | Multiple configuration sources | Keep defaults in code and adjust behavior per environment | Combine attributes, startup configuration, file-based config, and runtime overrides |
 | Tag-based invalidation | Invalidate related entries without tracking keys manually | Tag entries in `[Cache]` and call invalidation APIs by tag |
 | Runtime overrides | Change cache behavior without redeploying | Use `IRuntimeCacheConfigurator` to apply and remove overrides |
-| Distributed cache | Share results between instances and invalidate everywhere | Register any `IDistributedCache` and call `AddMethodCacheDistributedCache()` |
+| Distributed cache | Share results between instances and invalidate everywhere | `AddMethodCacheRedis()`, `AddMethodCacheSqlServer()` or any `IDistributedCache` |
 | Analyzer support | Catch invalid or risky caching patterns at compile time | Install analyzers (included in `MethodCache`) |
 
 ## How To Use MethodCache
@@ -171,7 +171,16 @@ Pattern invalidation works on the in-memory cache only. With a distributed cache
 
 ### Distributed Cache
 
-MethodCache keeps results in memory. To share them between instances, register any `IDistributedCache` (Redis, SQL Server, ...) and tell MethodCache to use it:
+MethodCache keeps results in memory. To share them between instances, add a distributed cache. Redis and SQL Server have a package each, and both also keep every instance's in-memory cache in sync:
+
+```csharp
+builder.Services.AddMethodCache();
+builder.Services.AddMethodCacheRedis("localhost:6379");          // MethodCache.Providers.Redis
+// or
+builder.Services.AddMethodCacheSqlServer(connectionString);      // MethodCache.Providers.SqlServer
+```
+
+Any other `IDistributedCache` works too:
 
 ```csharp
 builder.Services.AddStackExchangeRedisCache(options => options.Configuration = "localhost:6379");
@@ -179,7 +188,7 @@ builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheDistributedCache();
 ```
 
-On an in-memory miss MethodCache reads the distributed cache before running your method, and it stores new results in both. Invalidating a key or tag reaches every instance: tag invalidations are stored as timestamps, so any distributed cache works without tag tables. Register an `IBackplane` as well so other instances also drop their in-memory copies right away; without one they keep them until they expire.
+On an in-memory miss MethodCache reads the distributed cache before running your method, and it stores new results in both. Invalidating a key or tag reaches every instance: tag invalidations are stored as timestamps, so any distributed cache works without tag tables. The Redis and SQL Server packages also register an `IBackplane`, so other instances drop their in-memory copies right away; with a plain `IDistributedCache` and no backplane they keep them until they expire.
 
 ### Runtime Overrides
 
@@ -253,14 +262,14 @@ Supported frameworks: .NET 8.0, .NET 9.0, .NET 10.0.
 
 | Package | Purpose |
 |---------|---------|
-| `MethodCache.Providers.Redis` | Redis provider |
+| `MethodCache.Providers.Redis` | Redis as the distributed cache, with a pub/sub backplane |
 | `MethodCache.OpenTelemetry` | Tracing and metrics integration |
 
 ### Experimental
 
 | Package | Purpose |
 |---------|---------|
-| `MethodCache.Providers.SqlServer` | SQL Server-backed cache provider |
+| `MethodCache.Providers.SqlServer` | SQL Server as the distributed cache, with a polling backplane |
 | `MethodCache.HttpCaching` | HTTP response caching middleware |
 | `MethodCache.AspNetCore` | Admin endpoints and health check for inspecting and invalidating the cache at runtime |
 

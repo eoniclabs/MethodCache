@@ -56,7 +56,6 @@ public static class ServiceCollectionExtensions
             opt.EnableHttpCorrelation = options.EnableHttpCorrelation;
             opt.EnableBaggagePropagation = options.EnableBaggagePropagation;
             opt.EnableDistributedTracing = options.EnableDistributedTracing;
-            opt.EnableStorageProviderInstrumentation = options.EnableStorageProviderInstrumentation;
             opt.ServiceName = options.ServiceName;
             opt.ServiceVersion = options.ServiceVersion;
             opt.ServiceNamespace = options.ServiceNamespace;
@@ -99,17 +98,6 @@ public static class ServiceCollectionExtensions
 
             return new TelemetryCacheManager(inner, activitySource, meterProvider, baggagePropagator);
         });
-
-        if (options.EnableStorageProviderInstrumentation)
-        {
-            services.Decorate<IStorageProvider>((inner, provider) =>
-            {
-                var activitySource = provider.GetRequiredService<ICacheActivitySource>();
-                var meterProvider = provider.GetRequiredService<ICacheMeterProvider>();
-                var providerName = inner.GetType().Name.Replace("StorageProvider", "").Replace("Storage", "");
-                return new InstrumentedStorageProvider(inner, activitySource, meterProvider, providerName);
-            });
-        }
 
         return services;
     }

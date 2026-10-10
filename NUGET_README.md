@@ -67,7 +67,7 @@ var profile = await cache.GetOrCreateAsync(
 | Multiple config sources | Combine code defaults, file config, and runtime overrides |
 | Tag-based invalidation | Invalidate related entries without managing each key |
 | Runtime overrides | Adjust behavior during incidents or controlled rollouts |
-| Provider flexibility | Start with in-memory; add Redis or advanced providers later |
+| Provider flexibility | Start with in-memory; add Redis, SQL Server or any `IDistributedCache` later |
 | Analyzer support | Catch caching mistakes during build |
 
 ## Common Usage Patterns
@@ -113,14 +113,14 @@ await configurator.ApplyAsync(fluent =>
 
 | Package | Purpose |
 |---------|---------|
-| `MethodCache.Providers.Redis` | Redis provider |
+| `MethodCache.Providers.Redis` | Redis as the distributed cache, with a pub/sub backplane |
 | `MethodCache.OpenTelemetry` | Observability integration |
 
 ### Experimental
 
 | Package | Purpose |
 |---------|---------|
-| `MethodCache.Providers.SqlServer` | SQL Server provider |
+| `MethodCache.Providers.SqlServer` | SQL Server as the distributed cache, with a polling backplane |
 | `MethodCache.AspNetCore` | Admin endpoints and health check |
 
 ## Documentation
