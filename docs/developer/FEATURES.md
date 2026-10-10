@@ -17,7 +17,7 @@ This document outlines a set of proposed features and integrations that would en
 *   **How to implement it:**
     *   Create a new `MethodCache.AspNetCore` project.
     *   Implement `IMemoryCache` using the `InMemoryCacheManager`.
-    *   Implement `IDistributedCache` using the `RedisCacheManager`.
+    *   Implement `IDistributedCache` using the Redis provider.
     *   Provide extension methods to easily register `MethodCache` as the caching provider in `IServiceCollection`.
 
 ### 3. HTTP Caching for HttpClient (Client-Side)
@@ -91,11 +91,11 @@ This document outlines a set of proposed features and integrations that would en
 ### 11. Polly Integration for Advanced Resilience
 
 *   **What it is:** Polly is a .NET resilience and transient-fault-handling library that allows developers to express policies such as Retry, Circuit Breaker, Timeout, Bulkhead Isolation, and Fallback in a fluent and thread-safe manner.
-*   **Why it makes sense:** The `RedisCacheManager` already has a basic resilience pipeline, but it could be much more powerful and flexible. Integrating with Polly would allow developers to configure advanced resilience strategies for their cache operations.
+*   **Why it makes sense:** The Redis provider already has a basic resilience pipeline, but it could be much more powerful and flexible. Integrating with Polly would allow developers to configure advanced resilience strategies for their cache operations.
 *   **How to implement it:**
     *   Create a new `MethodCache.Resilience.Polly` project.
     *   Provide a way to configure Polly policies for the `CacheManager`.
-    *   Use the Polly policies to wrap the cache operations in the `RedisCacheManager`.
+    *   Use the Polly policies to wrap the cache operations in the Redis provider.
 
 ### 12. Support for Other Caching Providers
 

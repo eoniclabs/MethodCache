@@ -679,9 +679,6 @@ builder.Services.AddMethodCacheWithSources(cache => {
 
 // Add ETag support
 builder.Services.AddETagSupport();
-
-// Add hybrid caching
-builder.Services.AddHybridCache();
 ```
 
 ### Environment-Specific Configuration

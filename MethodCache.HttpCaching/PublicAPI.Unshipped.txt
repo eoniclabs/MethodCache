@@ -202,32 +202,7 @@ MethodCache.HttpCaching.Options.HttpCacheStorageOptions.MaxCacheSize.get -> long
 MethodCache.HttpCaching.Options.HttpCacheStorageOptions.MaxCacheSize.set -> void
 MethodCache.HttpCaching.Options.HttpCacheStorageOptions.MaxResponseSize.get -> long
 MethodCache.HttpCaching.Options.HttpCacheStorageOptions.MaxResponseSize.set -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats
-MethodCache.HttpCaching.Storage.HttpCacheStats.HitRatio.get -> double
-MethodCache.HttpCaching.Storage.HttpCacheStats.HitRatio.init -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats.Hits.get -> long
-MethodCache.HttpCaching.Storage.HttpCacheStats.Hits.init -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats.HttpCacheStats() -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats.Misses.get -> long
-MethodCache.HttpCaching.Storage.HttpCacheStats.Misses.init -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats.Removes.get -> long
-MethodCache.HttpCaching.Storage.HttpCacheStats.Removes.init -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats.Requests.get -> long
-MethodCache.HttpCaching.Storage.HttpCacheStats.Requests.init -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats.Sets.get -> long
-MethodCache.HttpCaching.Storage.HttpCacheStats.Sets.init -> void
-MethodCache.HttpCaching.Storage.HttpCacheStats.StorageProviderName.get -> string!
-MethodCache.HttpCaching.Storage.HttpCacheStats.StorageProviderName.init -> void
 MethodCache.HttpCaching.Storage.HttpCacheTags
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.HttpCaching.HttpCacheEntry?>
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.GetStats() -> MethodCache.HttpCaching.Storage.HttpCacheStats!
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.HybridHttpCacheStorage(MethodCache.Core.Storage.Abstractions.IStorageProvider! storageProvider, Microsoft.Extensions.Options.IOptions<MethodCache.HttpCaching.HttpCacheOptions!>! cacheOptions, Microsoft.Extensions.Options.IOptions<MethodCache.HttpCaching.Options.HttpCacheStorageOptions!>! storageOptions, Microsoft.Extensions.Options.IOptions<MethodCache.Core.Configuration.StorageOptions!>! hybridStorageOptions, Microsoft.Extensions.Logging.ILogger<MethodCache.HttpCaching.Storage.HybridHttpCacheStorage!>! logger) -> void
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.InvalidateByMethodAsync(string! method, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.InvalidateByUriAsync(string! uriPattern, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-MethodCache.HttpCaching.Storage.HybridHttpCacheStorage.SetAsync(string! key, MethodCache.HttpCaching.HttpCacheEntry! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.HttpCaching.Storage.IHttpCacheStorage
 MethodCache.HttpCaching.Storage.IHttpCacheStorage.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.HttpCaching.Storage.IHttpCacheStorage.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.HttpCaching.HttpCacheEntry?>

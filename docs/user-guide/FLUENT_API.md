@@ -95,9 +95,9 @@ public static class CacheManagerExtensions
 - `CacheLookupResult<T>` is an allocation-free struct containing `bool Found` and `T? Value`. When `Found` is false, `Value` is default.
 - `GetOrCreateManyAsync` batches cache lookups and invokes the factory with only missing keys, enabling single round trips to L2 providers.
 - `GetOrCreateStreamAsync` supports caching of streaming data. Implementations may buffer segments or apply windowing based on `StreamCacheOptions`.
-- Invalidation APIs accept `IEnumerable<string>` to support streaming scenarios; params overloads forward to the core method for convenience. `InvalidateByTagPatternAsync` enables wildcard invalidation in providers that support it (e.g., Redis key scanning).
+- Invalidation APIs accept `IEnumerable<string>` to support streaming scenarios; params overloads forward to the core method for convenience. `InvalidateByTagPatternAsync` enables wildcard invalidation in providers that support it .
 - `InvalidateByTagPatternAsync` wildcard syntax is `*` (zero or more chars) and `?` (exactly one char). Other characters are literal, and matching is against the full tag string.
-- Provider caveat: behavior is provider-dependent. `InMemoryCacheManager` supports wildcard matching; `HybridCacheManager` does not support it yet and throws `NotSupportedException`.
+- Distributed cache caveat: pattern invalidation works on the in-memory cache only. With a distributed cache configured it throws `NotSupportedException`, because the distributed cache cannot list its tags.
 
 ### ETag Caching Extensions
 Namespace: `MethodCache.ETags.Extensions`.

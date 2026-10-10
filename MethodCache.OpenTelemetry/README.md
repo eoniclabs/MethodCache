@@ -96,9 +96,6 @@ builder.Services.AddMethodCacheOpenTelemetry(options =>
     options.EnableHttpCorrelation = true;
     options.EnableBaggagePropagation = true;
 
-    // Storage Provider Instrumentation
-    options.EnableStorageProviderInstrumentation = true;
-
     // Service Information
     options.ServiceName = "MyApi";
     options.ServiceVersion = "1.0.0";
