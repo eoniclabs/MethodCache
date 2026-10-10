@@ -1,0 +1,11 @@
+#nullable enable
+MethodCache.Serialization.MessagePack.MessagePackCacheSerializer
+MethodCache.Serialization.MessagePack.MessagePackCacheSerializer.ContentType.get -> string!
+MethodCache.Serialization.MessagePack.MessagePackCacheSerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
+MethodCache.Serialization.MessagePack.MessagePackCacheSerializer.MessagePackCacheSerializer(MessagePack.MessagePackSerializerOptions? options = null) -> void
+MethodCache.Serialization.MessagePack.MessagePackCacheSerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
+MethodCache.Serialization.MessagePack.MessagePackKeyGenerator
+MethodCache.Serialization.MessagePack.MessagePackKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
+MethodCache.Serialization.MessagePack.MessagePackKeyGenerator.MessagePackKeyGenerator() -> void
+MethodCache.Serialization.MessagePack.MessagePackServiceCollectionExtensions
+static MethodCache.Serialization.MessagePack.MessagePackServiceCollectionExtensions.AddMethodCacheMessagePack(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, MessagePack.MessagePackSerializerOptions? options = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

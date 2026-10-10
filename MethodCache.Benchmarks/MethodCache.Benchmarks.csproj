@@ -28,7 +28,6 @@
     <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.0.0" />
     <PackageReference Include="EasyCaching.InMemory" Version="1.9.2" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.25" />
-    <PackageReference Include="MessagePack" Version="3.1.11" />
     <PackageReference Include="System.Text.Json" Version="9.0.9" />
     <PackageReference Include="NBomber" Version="6.1.1" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
@@ -39,6 +38,7 @@
     <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
     <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" />
     <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" />
+    <ProjectReference Include="..\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />
   </ItemGroup>
 
 </Project>

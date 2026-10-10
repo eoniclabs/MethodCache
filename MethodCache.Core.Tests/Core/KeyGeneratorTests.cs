@@ -2,6 +2,7 @@ using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Serialization.MessagePack;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Core

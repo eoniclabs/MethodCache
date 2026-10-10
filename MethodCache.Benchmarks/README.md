@@ -141,7 +141,7 @@ Tests performance of generic interface implementations:
 
 Compares different cache key generation strategies:
 
-- **MessagePack Serialization** - Binary serialization (default)
+- **MessagePack Serialization** - `MessagePackKeyGenerator` from MethodCache.Serialization.MessagePack
 - **JSON Serialization** - Text-based serialization
 - **ToString Serialization** - Simple string conversion
 

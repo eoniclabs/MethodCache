@@ -24,13 +24,16 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>Reserved tag that every entry implicitly carries; invalidating it clears the whole cache.</summary>
         internal const string ClearTag = "\u0000clear";
 
-        private const byte FormatVersion = 1;
+        private const byte FormatVersion = 2;
         private const int HeaderSize = 1 + 1 + 8 + 8 + 4;
         private const int MaxTrackedTags = 10_000;
 
         private readonly IDistributedCache _cache;
         private readonly IBufferDistributedCache? _bufferCache;
         private readonly ISerializer _serializer;
+
+        // Written into every entry, so values another serializer wrote read as misses instead of wrong values
+        private readonly byte[] _contentType;
         private readonly IBackplane? _backplane;
         private readonly TimeProvider _time;
         private readonly string _entryPrefix;
@@ -55,6 +58,11 @@ namespace MethodCache.Core.Runtime.Distributed
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _bufferCache = cache as IBufferDistributedCache;
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+            _contentType = Encoding.UTF8.GetBytes(serializer.ContentType);
+            if (_contentType.Length > byte.MaxValue)
+            {
+                throw new ArgumentException($"The serializer's content type must be at most {byte.MaxValue} bytes.", nameof(serializer));
+            }
             ArgumentNullException.ThrowIfNull(options);
 
             _backplane = backplane;
@@ -111,7 +119,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 data = new ReadOnlySequence<byte>(bytes);
             }
 
-            if (!TryReadHeader(data, out var header, out var payload))
+            if (!TryReadHeader(data, _contentType, out var header, out var payload))
             {
                 return default;
             }
@@ -146,7 +154,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             var buffer = new ArrayBufferWriter<byte>(256);
             var hasValue = value is not null;
-            WriteHeader(buffer, hasValue, createdAt, Now + lifetimeMilliseconds, tags);
+            WriteHeader(buffer, _contentType, hasValue, createdAt, Now + lifetimeMilliseconds, tags);
             if (hasValue)
             {
                 _serializer.Serialize(value, buffer);
@@ -306,7 +314,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // Layout: version, has-value flag, created (Unix ms), expires (Unix ms), tag count, then each tag as a
         // length-prefixed UTF-8 string, then the serialized value.
-        private static void WriteHeader(IBufferWriter<byte> writer, bool hasValue, long createdAt, long expiresAt, string[]? tags)
+        private static void WriteHeader(IBufferWriter<byte> writer, byte[] contentType, bool hasValue, long createdAt, long expiresAt, string[]? tags)
         {
             var span = writer.GetSpan(HeaderSize);
             span[0] = FormatVersion;
@@ -316,22 +324,25 @@ namespace MethodCache.Core.Runtime.Distributed
             BinaryPrimitives.WriteInt32LittleEndian(span.Slice(18), tags?.Length ?? 0);
             writer.Advance(HeaderSize);
 
-            if (tags == null)
+            if (tags != null)
             {
-                return;
+                foreach (var tag in tags)
+                {
+                    var length = Encoding.UTF8.GetByteCount(tag);
+                    span = writer.GetSpan(sizeof(int) + length);
+                    BinaryPrimitives.WriteInt32LittleEndian(span, length);
+                    Encoding.UTF8.GetBytes(tag, span.Slice(sizeof(int)));
+                    writer.Advance(sizeof(int) + length);
+                }
             }
 
-            foreach (var tag in tags)
-            {
-                var length = Encoding.UTF8.GetByteCount(tag);
-                span = writer.GetSpan(sizeof(int) + length);
-                BinaryPrimitives.WriteInt32LittleEndian(span, length);
-                Encoding.UTF8.GetBytes(tag, span.Slice(sizeof(int)));
-                writer.Advance(sizeof(int) + length);
-            }
+            span = writer.GetSpan(1 + contentType.Length);
+            span[0] = (byte)contentType.Length;
+            contentType.CopyTo(span.Slice(1));
+            writer.Advance(1 + contentType.Length);
         }
 
-        private static bool TryReadHeader(ReadOnlySequence<byte> data, out Header header, out ReadOnlySequence<byte> payload)
+        private static bool TryReadHeader(ReadOnlySequence<byte> data, byte[] contentType, out Header header, out ReadOnlySequence<byte> payload)
         {
             header = default;
             payload = default;
@@ -361,6 +372,13 @@ namespace MethodCache.Core.Runtime.Distributed
                     tags[i] = Encoding.UTF8.GetString(reader.UnreadSequence.Slice(0, length));
                     reader.Advance(length);
                 }
+            }
+
+            if (!reader.TryRead(out var contentTypeLength) ||
+                contentTypeLength != contentType.Length ||
+                !reader.IsNext(contentType, advancePast: true))
+            {
+                return false;
             }
 
             header = new Header(hasValue == 1, createdAt, expiresAt, tags);

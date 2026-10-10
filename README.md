@@ -210,6 +210,18 @@ builder.Services.AddMethodCacheDistributedCache();
 
 On an in-memory miss MethodCache reads the distributed cache before running your method, and it stores new results in both. Invalidating a key or tag reaches every instance: tag invalidations are stored as timestamps, so any distributed cache works without tag tables. The Redis and SQL Server packages also register an `IBackplane`, so other instances drop their in-memory copies right away; with a plain `IDistributedCache` and no backplane they keep them until they expire.
 
+Values are stored as JSON with System.Text.Json. For smaller values, store them as MessagePack instead:
+
+```csharp
+builder.Services.AddMethodCacheMessagePack();                    // MethodCache.Serialization.MessagePack
+```
+
+Under Native AOT, register the JSON serializer with your `JsonSerializerContext` so no reflection is needed:
+
+```csharp
+builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(AppJsonContext.Default.Options));
+```
+
 ### Runtime Overrides
 
 Use runtime overrides for temporary operational changes (shorter durations, feature rollout, incident mitigation).
@@ -277,6 +289,7 @@ Supported frameworks: .NET 8.0, .NET 9.0, .NET 10.0.
 | Package | Purpose |
 |---------|---------|
 | `MethodCache.Providers.SqlServer` | SQL Server as the distributed cache, with a polling backplane |
+| `MethodCache.Serialization.MessagePack` | MessagePack instead of JSON for values in the distributed cache |
 | `MethodCache.HttpCaching` | HTTP response caching middleware |
 | `MethodCache.AspNetCore` | Admin endpoints and health check for inspecting and invalidating the cache at runtime |
 

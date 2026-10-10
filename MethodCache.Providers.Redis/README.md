@@ -25,6 +25,7 @@ An `IConnectionMultiplexer` you have already registered is reused for both the c
 ## How it works
 
 - Entries are stored through `Microsoft.Extensions.Caching.StackExchangeRedis`, so values are written without extra copies.
+- Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack. Each entry records its format, so after a switch older entries count as misses.
 - MethodCache reads Redis on an in-memory miss and writes new results to both.
 - Invalidating a key removes it from Redis. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
 - Both also publish a message, so every instance drops its in-memory copies at once.

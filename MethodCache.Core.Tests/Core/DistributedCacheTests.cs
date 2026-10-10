@@ -8,6 +8,7 @@ using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Serialization.MessagePack;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,14 +31,14 @@ public class DistributedCacheTests
     private readonly IDistributedCache _shared = new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
     private readonly TestBackplaneHub _hub = new();
 
-    private InMemoryCacheManager CreateNode(bool backplane = true, IDistributedCache? cache = null, Action<DistributedCacheOptions>? configure = null)
+    private InMemoryCacheManager CreateNode(bool backplane = true, IDistributedCache? cache = null, Action<DistributedCacheOptions>? configure = null, ISerializer? serializer = null)
     {
         var options = new DistributedCacheOptions();
         configure?.Invoke(options);
 
         var layer = new DistributedCacheLayer(
             cache ?? _shared,
-            new MessagePackSerializer(),
+            serializer ?? new JsonCacheSerializer(),
             options,
             backplane ? _hub.Join() : null,
             _time);
@@ -54,6 +55,19 @@ public class DistributedCacheTests
 
     private static Task<string> Get(ICacheManager node, string key, Func<string> value, params string[] tags) =>
         node.GetOrCreateFastAsync(key, "M", () => Task.FromResult(value()), Policy(tags));
+
+    [Fact]
+    public async Task EntriesWrittenByAnotherSerializer_AreMisses()
+    {
+        var messagePack = CreateNode(backplane: false, serializer: new MessagePackCacheSerializer());
+        var json = CreateNode(backplane: false);
+
+        // JSON's "42" is also valid MessagePack, so without the stored content type this would read a wrong number
+        await json.GetOrCreateFastAsync("key", "M", () => Task.FromResult(42), Policy());
+        var result = await messagePack.GetOrCreateFastAsync("key", "M", () => Task.FromResult(7), Policy());
+
+        result.Should().Be(7);
+    }
 
     [Fact]
     public async Task SecondInstance_ReadsTheValueTheFirstStored()

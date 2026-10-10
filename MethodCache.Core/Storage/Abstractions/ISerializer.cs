@@ -18,7 +18,8 @@ public interface ISerializer
     T? Deserialize<T>(ReadOnlySequence<byte> source);
 
     /// <summary>
-    /// Gets the content type identifier for this serializer.
+    /// Identifies the format, for example <c>application/json</c>. It is stored with each entry, and entries written
+    /// with another content type are read as misses, so switching serializers needs no cache flush.
     /// </summary>
     string ContentType { get; }
 }

@@ -58,6 +58,7 @@ jobs:
             "MethodCache.Analyzers/MethodCache.Analyzers.csproj"
             "MethodCache.Providers.Redis/MethodCache.Providers.Redis.csproj"
             "MethodCache.Providers.SqlServer/MethodCache.Providers.SqlServer.csproj"
+            "MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj"
             "MethodCache.HttpCaching/MethodCache.HttpCaching.csproj"
             "MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj"
             "MethodCache.AspNetCore/MethodCache.AspNetCore.csproj"

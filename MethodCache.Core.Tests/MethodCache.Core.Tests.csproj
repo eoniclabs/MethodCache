@@ -33,5 +33,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />
   </ItemGroup>
 </Project>
