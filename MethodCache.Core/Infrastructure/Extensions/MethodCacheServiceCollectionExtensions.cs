@@ -19,6 +19,7 @@ using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -99,9 +100,18 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
             EnsureCoreServices(services);
 
+            // Parsed here so invalid values fail at startup; reloads are applied while the application runs
             var source = ConfigFilePolicySourceBuilder.FromConfiguration(configuration, sectionName);
-            services.AddSingleton<PolicySourceRegistration>(_ =>
-                new PolicySourceRegistration(source, PolicySourcePriority.ConfigurationFiles));
+            services.AddSingleton<PolicySourceRegistration>(sp =>
+            {
+                var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Configuration");
+                if (logger != null)
+                {
+                    source.ReloadFailed += ex => logger.LogError(ex, "Ignored reloaded MethodCache configuration; the previous cache policies stay in effect.");
+                }
+
+                return new PolicySourceRegistration(source, PolicySourcePriority.ConfigurationFiles);
+            });
 
             return services;
         }

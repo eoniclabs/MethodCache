@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Core;
 using MethodCache.Core.Infrastructure.Extensions;
@@ -62,5 +64,97 @@ public sealed class JsonPolicySourceTests
         var result = registry.GetPolicy("Sample.Type.Method");
 
         Assert.Equal("config", result.Policy.Metadata["group"]);
+    }
+
+    [Fact]
+    public async Task ReloadedConfiguration_UpdatesAddsAndRemovesPolicies_WithoutRestart()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:01:00",
+            ["MethodCache:Services:Sample.Type.Other:Duration"] = "00:02:00"
+        });
+        await using var provider = BuildProvider(configuration);
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Type.Method").Policy.Duration);
+
+        configuration["MethodCache:Services:Sample.Type.Method:Duration"] = "00:10:00";
+        configuration["MethodCache:Services:Sample.Type.Method:SlidingExpiration"] = "00:00:30";
+        configuration["MethodCache:Services:Sample.Type.Added:Duration"] = "00:03:00";
+        RemoveSection(configuration, "MethodCache:Services:Sample.Type.Other");
+        configuration.Reload();
+
+        await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Method").Policy.Duration == TimeSpan.FromMinutes(10));
+        Assert.Equal(TimeSpan.FromSeconds(30), registry.GetPolicy("Sample.Type.Method").Policy.SlidingExpiration);
+        await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Added").Policy.Duration == TimeSpan.FromMinutes(3));
+        await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Other").Policy.Duration == null);
+    }
+
+    [Fact]
+    public async Task ReloadedConfiguration_WithInvalidValue_KeepsPreviousPolicy()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:01:00"
+        });
+        await using var provider = BuildProvider(configuration);
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Type.Method").Policy.Duration);
+
+        configuration["MethodCache:Services:Sample.Type.Method:Duration"] = "five minutes";
+        configuration.Reload();
+        configuration["MethodCache:Services:Sample.Type.Method:Duration"] = "00:01:00";
+        configuration["MethodCache:Services:Sample.Type.Method:Version"] = "2";
+        configuration.Reload();
+
+        // The valid reload after the invalid one still applies
+        await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Method").Policy.Version == 2);
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Type.Method").Policy.Duration);
+    }
+
+    [Theory]
+    [InlineData("Duration", "five minutes")]
+    [InlineData("Duration", "-00:01:00")]
+    [InlineData("SlidingExpiration", "00:00:00")]
+    [InlineData("RefreshAhead", "soon")]
+    [InlineData("Version", "-1")]
+    public void AddMethodCacheFromConfiguration_Throws_ForInvalidValues(string key, string value)
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            [$"MethodCache:Services:Sample.Type.Method:{key}"] = value
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddMethodCacheFromConfiguration(configuration));
+
+        Assert.Contains($"MethodCache:Services:Sample.Type.Method:{key}", exception.Message);
+    }
+
+    private static IConfigurationRoot BuildConfiguration(Dictionary<string, string?> data)
+        => new ConfigurationBuilder().AddInMemoryCollection(data).Build();
+
+    private static ServiceProvider BuildProvider(IConfiguration configuration)
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCacheFromConfiguration(configuration);
+        return services.BuildServiceProvider();
+    }
+
+    private static void RemoveSection(IConfiguration configuration, string path)
+    {
+        foreach (var child in configuration.GetSection(path).AsEnumerable(makePathsRelative: false).ToList())
+        {
+            configuration[child.Key] = null;
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < deadline, "The reloaded configuration was not applied.");
+            await Task.Delay(10);
+        }
     }
 }
