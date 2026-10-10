@@ -410,7 +410,9 @@ namespace MethodCache.Core.Runtime.Execution
             var flight = new Flight(policy.Tags);
             if (!_flights.TryAdd(key, flight))
             {
-                return; // a load for this key is already running
+                // A load for this key is already running. Let a later hit try again if this node outlives it.
+                Volatile.Write(ref node.RefreshState, 0);
+                return;
             }
 
             _ = Task.Run(async () =>

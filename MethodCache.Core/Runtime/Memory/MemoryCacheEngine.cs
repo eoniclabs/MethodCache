@@ -252,6 +252,12 @@ internal sealed class MemoryCacheEngine
             _evictionCount = 0;
             _expirationCount = 0;
         }
+
+        // Writers that published while the lock was held left their tasks for the holder to pick up.
+        if (!_writeBuffer.IsEmpty)
+        {
+            AfterWrite();
+        }
     }
 
     /// <summary>Runs pending policy work. Safe to call from any thread; never blocks on another caller.</summary>
