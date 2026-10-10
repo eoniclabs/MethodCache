@@ -240,6 +240,7 @@ Supported frameworks: .NET 8.0, .NET 9.0, .NET 10.0.
 |---------|---------|
 | `MethodCache.Providers.SqlServer` | SQL Server-backed cache provider |
 | `MethodCache.HttpCaching` | HTTP response caching middleware |
+| `MethodCache.AspNetCore` | Admin endpoints and health check for inspecting and invalidating the cache at runtime |
 
 ## Benchmarks
 

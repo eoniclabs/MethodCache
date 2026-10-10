@@ -119,6 +119,7 @@ await configurator.ApplyAsync(fluent =>
 | Package | Purpose |
 |---------|---------|
 | `MethodCache.Providers.SqlServer` | SQL Server provider |
+| `MethodCache.AspNetCore` | Admin endpoints and health check |
 
 ## Documentation
 
