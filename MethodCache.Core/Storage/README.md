@@ -21,7 +21,6 @@ MethodCache storage is organized around **three cache layers** that work togethe
 **Fastest layer** - in-process memory caching
 
 - `MemoryStorage.cs` - Core memory storage implementation
-- `Memory.cs` - Factory for creating memory providers
 - `MemoryStorageLayer.cs` - Layer wrapper for coordination
 
 **Characteristics:**
@@ -66,7 +65,6 @@ MethodCache storage is organized around **three cache layers** that work togethe
 - `StorageCoordinatorFactory.cs` - Factory for creating coordinators
 - `HybridCacheManager.cs` - High-level cache manager
 - `HybridCacheOptions.cs` - Configuration options
-- `MethodCacheBuilder.cs` - Fluent builder
 
 #### Coordination/Layers/ - Layer Infrastructure:
 - `IStorageLayer.cs` - Core layer interface
@@ -103,8 +101,6 @@ Core Interfaces:
 - `ISerializer.cs` - Serialization contract
 - `ICacheWarmingService.cs` - Cache warming
 - `IHybridCacheManager.cs` - High-level manager
-- `IMethodCacheBuilder.cs` - Builder interface
-- `IProviderBuilder.cs` - Provider factory
 
 ---
 
