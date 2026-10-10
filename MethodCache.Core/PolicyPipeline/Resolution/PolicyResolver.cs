@@ -17,6 +17,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
     private readonly List<Task> _watcherTasks = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _initializationGate = new(1, 1);
+    private int _disposed;
 
     private volatile bool _initialized;
 
@@ -97,6 +98,13 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // The instance is registered under both its concrete type and its interface,
+        // so the container disposes it once per registration
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         if (_watcherTasks.Count == 0)
         {
             _cts.Dispose();
