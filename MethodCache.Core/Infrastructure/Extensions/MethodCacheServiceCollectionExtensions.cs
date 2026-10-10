@@ -3,11 +3,13 @@ using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using MethodCache.Abstractions.Registry;
 using MethodCache.Core.Configuration;
 using MethodCache.Core;
 using MethodCache.Core.Configuration.Surfaces.ConfigFile;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
+using MethodCache.Core.Management;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.PolicyPipeline.Sources;
@@ -129,7 +131,8 @@ namespace MethodCache.Core.Infrastructure.Extensions
         /// <summary>
         /// Registers the in-memory cache manager unless a cache manager is already registered. The same instance
         /// also serves <see cref="IMemoryCache"/>, so statistics and direct entry access stay reachable when
-        /// <see cref="ICacheManager"/> is wrapped, for example by OpenTelemetry instrumentation.
+        /// <see cref="ICacheManager"/> is wrapped, for example by OpenTelemetry instrumentation. It is also
+        /// administered through <see cref="ICacheAdministrator"/>.
         /// </summary>
         internal static void AddDefaultCacheManager(IServiceCollection services)
         {
@@ -141,6 +144,9 @@ namespace MethodCache.Core.Infrastructure.Extensions
             services.TryAddSingleton<InMemoryCacheManager>();
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
+            services.TryAddSingleton<ICacheAdministrator>(static sp => new InMemoryCacheAdministrator(
+                sp.GetRequiredService<InMemoryCacheManager>(),
+                sp.GetService<IPolicyRegistry>()));
         }
 
         private static void RegisterFluentPolicySource(IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)

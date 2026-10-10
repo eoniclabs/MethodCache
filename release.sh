@@ -22,6 +22,7 @@ PACKAGES=(
     "MethodCache"
     "MethodCache.Abstractions"
     "MethodCache.Analyzers"
+    "MethodCache.AspNetCore"
     "MethodCache.Core"
     "MethodCache.OpenTelemetry"
     "MethodCache.Providers.Memory"
