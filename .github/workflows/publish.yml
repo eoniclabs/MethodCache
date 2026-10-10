@@ -56,7 +56,6 @@ jobs:
             "MethodCache.Abstractions/MethodCache.Abstractions.csproj"
             "MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj"
             "MethodCache.Analyzers/MethodCache.Analyzers.csproj"
-            "MethodCache.Providers.Memory/MethodCache.Providers.Memory.csproj"
             "MethodCache.Providers.Redis/MethodCache.Providers.Redis.csproj"
             "MethodCache.Providers.SqlServer/MethodCache.Providers.SqlServer.csproj"
             "MethodCache.HttpCaching/MethodCache.HttpCaching.csproj"

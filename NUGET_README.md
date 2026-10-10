@@ -111,7 +111,6 @@ await configurator.ApplyAsync(fluent =>
 | Package | Purpose |
 |---------|---------|
 | `MethodCache.Providers.Redis` | Redis provider |
-| `MethodCache.Providers.Memory` | Advanced memory provider |
 | `MethodCache.OpenTelemetry` | Observability integration |
 
 ### Experimental

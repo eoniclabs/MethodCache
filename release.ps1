@@ -71,7 +71,6 @@ $Packages = @(
     "MethodCache.AspNetCore"
     "MethodCache.Core"
     "MethodCache.OpenTelemetry"
-    "MethodCache.Providers.Memory"
     "MethodCache.Providers.Redis"
     "MethodCache.Providers.SqlServer"
     "MethodCache.SourceGenerator"

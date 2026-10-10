@@ -6,7 +6,6 @@ using MethodCache.Benchmarks.Comparison;
 using MethodCache.Core.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Providers.Memory.Extensions;
 
 namespace MethodCache.Benchmarks.Microbenchmarks;
 
@@ -41,10 +40,6 @@ public class SourceGenSyncPathProfiler
             opts.EvictionPolicy = MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LRU;
         });
 
-        services.AddAdvancedMemoryStorage(opts =>
-        {
-            opts.EvictionPolicy = MethodCache.Providers.Memory.Configuration.EvictionPolicy.LRU;
-        });
 
         services.AddSingleton<MethodCacheBenchmarkService>();
         services.AddIMethodCacheBenchmarkServiceWithCaching(sp =>

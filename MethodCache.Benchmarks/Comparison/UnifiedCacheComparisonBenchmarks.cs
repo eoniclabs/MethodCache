@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Comparison.Adapters;
 using MethodCache.Benchmarks.Comparison.Services;
 using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Providers.Memory.Extensions;
 
 namespace MethodCache.Benchmarks.Comparison;
 
@@ -16,7 +15,7 @@ namespace MethodCache.Benchmarks.Comparison;
 /// IMPORTANT INTERPRETATION GUIDE:
 ///
 /// MethodCache_SourceGen_** benchmarks:
-/// - Uses AdvancedMemory storage provider (with tags, stats, eviction)
+/// - Uses the default in-memory engine (with tags, stats, eviction)
 /// - Direct storage-to-storage comparison
 /// - Shows MethodCache storage performance vs other frameworks
 /// - Expected performance: ~100-200ns (full-featured storage)
@@ -61,7 +60,7 @@ public class UnifiedCacheComparisonBenchmarks
         _legacyMethodCache = new MethodCacheAdapter(); // Runtime key generation (legacy path)
         _manualKeyMethodCache = new DirectApiMethodCacheAdapter(); // Direct API with manual keys (raw storage comparison)
 
-        // NEW: Source-generated MethodCache with AdvancedMemory storage
+        // Source-generated MethodCache with the default in-memory engine
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddMethodCache(config =>
@@ -76,10 +75,6 @@ public class UnifiedCacheComparisonBenchmarks
             opts.EvictionPolicy = MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LRU;  // Use lazy LRU
         });
 
-        services.AddAdvancedMemoryStorage(opts =>
-        {
-            opts.EvictionPolicy = MethodCache.Providers.Memory.Configuration.EvictionPolicy.LRU;  // Use lazy LRU for comparison
-        }); // Use AdvancedMemory provider
 
         // Register the base implementation
         services.AddSingleton<MethodCacheBenchmarkService>();
@@ -139,11 +134,11 @@ public class UnifiedCacheComparisonBenchmarks
 
     // ==================== CACHE HIT TESTS ====================
     // MethodCache has 3 usage modes:
-    // 1. MethodCache_SourceGen_*Hit - AdvancedMemory storage (full-featured: ~100-200ns)
+    // 1. MethodCache_SourceGen_*Hit - default in-memory engine (full-featured: ~100-200ns)
     // 2. MethodCache_ManualKey_*Hit - Direct API with manual keys (storage-only comparison)
     // 3. MethodCache_Legacy_*Hit - Runtime key generation research (~9,500ns)
     //
-    // COMPARE: MethodCache_SourceGen (AdvancedMemory) vs other frameworks for storage comparison
+    // COMPARE: MethodCache_SourceGen vs other frameworks for storage comparison
     //
     // NOTE: Synchronous benchmark methods (MethodCache_SourceGen_*Hit) suffer from sync-over-async
     // overhead (~50-100µs on Windows). Use MethodCache_SourceGen_*HitAsync for true performance.
@@ -163,7 +158,7 @@ public class UnifiedCacheComparisonBenchmarks
     [BenchmarkCategory("CacheHit"), Benchmark]
     public bool MethodCache_SourceGen_Hit()
     {
-        // Uses AdvancedMemory storage - full-featured cache with tags, stats, eviction
+        // Uses the default in-memory engine - full-featured cache with tags, stats, eviction
         return _sourceGenMethodCache.TryGet<SamplePayload>(TestKey, out _);
     }
 
