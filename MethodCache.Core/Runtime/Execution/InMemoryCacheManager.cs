@@ -420,7 +420,7 @@ namespace MethodCache.Core.Runtime.Execution
                 return;
             }
 
-            _ = Task.Run(async () =>
+            RunDetached(async () =>
             {
                 try
                 {
@@ -462,6 +462,24 @@ namespace MethodCache.Core.Runtime.Execution
                     _flights.TryRemove(new KeyValuePair<string, Flight>(key, flight));
                 }
             });
+        }
+
+        /// <summary>
+        /// Starts work that belongs to no caller, such as a background refresh, without the caller's execution
+        /// context, so it does not inherit the trace or ambient state of whichever request triggered it.
+        /// </summary>
+        private static void RunDetached(Func<Task> work)
+        {
+            if (ExecutionContext.IsFlowSuppressed())
+            {
+                _ = Task.Run(work);
+                return;
+            }
+
+            using (ExecutionContext.SuppressFlow())
+            {
+                _ = Task.Run(work);
+            }
         }
 
         /// <summary>

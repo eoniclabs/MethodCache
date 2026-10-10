@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using MethodCache.Core;
@@ -185,11 +186,18 @@ public class TelemetryCacheManagerTests : IDisposable
         var activity = new Activity("test");
         _activitySourceMock.Setup(x => x.StartCacheOperation("TestMethod", TracingConstants.Operations.Get)).Returns(activity);
 
-        // Like a refresh-ahead hit: the factory runs on the thread pool and the cached value returns at once.
+        // Like a refresh-ahead hit: the factory runs in the background, outside the caller's execution context,
+        // and the cached value returns at once.
         _innerManagerMock.Setup(x => x.GetOrCreateFastAsync("key", "TestMethod", It.IsAny<Func<Task<string>>>(), policy))
             .Returns((string _, string _, Func<Task<string>> factory, CacheRuntimePolicy _) =>
             {
-                Task.Run(factory).Wait();
+                Task refresh;
+                using (ExecutionContext.SuppressFlow())
+                {
+                    refresh = Task.Run(factory);
+                }
+
+                refresh.Wait();
                 return Task.FromResult("cached");
             });
 

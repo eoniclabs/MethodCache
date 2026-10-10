@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Core;
 using MethodCache.Core.Runtime;
@@ -264,42 +265,39 @@ public class TelemetryCacheManager : ICacheManager
     /// </remarks>
     private sealed class TrackedFactory<T>
     {
+        // Set while this call runs, so it flows into the inner manager's foreground work (including awaits)
+        // but not into background refreshes, which the manager starts without the caller's execution context.
+        private static readonly AsyncLocal<object?> CurrentCall = new();
+
         private readonly Func<Task<T>> _factory;
-        private int _callerThreadId;
-        private volatile bool _armed;
-        private volatile bool _invoked;
-        private volatile bool _invokedInline;
-        private bool _completedSynchronously;
+        private volatile bool _loadedForCaller;
 
         public TrackedFactory(Func<Task<T>> factory) => _factory = factory;
 
-        /// <summary>True when the factory produced the value this call returned.</summary>
-        public bool LoadedForCaller => _completedSynchronously ? _invokedInline : _invoked;
+        /// <summary>True when the factory ran as part of this call rather than in a background refresh.</summary>
+        public bool LoadedForCaller => _loadedForCaller;
 
         public Task<T> Run(Func<Func<Task<T>>, Task<T>> call)
         {
-            _callerThreadId = Environment.CurrentManagedThreadId;
-            _armed = true;
+            var previous = CurrentCall.Value;
+            CurrentCall.Value = this;
             try
             {
-                var task = call(InvokeAsync);
-                _completedSynchronously = task.IsCompleted;
-                return task;
+                return call(InvokeAsync);
             }
             finally
             {
-                _armed = false;
+                CurrentCall.Value = previous;
             }
         }
 
         private Task<T> InvokeAsync()
         {
-            if (_armed && Environment.CurrentManagedThreadId == _callerThreadId)
+            if (ReferenceEquals(CurrentCall.Value, this))
             {
-                _invokedInline = true;
+                _loadedForCaller = true;
             }
 
-            _invoked = true;
             return _factory();
         }
     }
