@@ -34,6 +34,18 @@ namespace KeyFormat
         public string Id { get; }
         public string CacheKeyPart => Id;
     }
+    public class Region : ICacheKeyProvider
+    {
+        public Region(string code) => Code = code;
+        public string Code { get; }
+        string ICacheKeyProvider.CacheKeyPart => Code;
+    }
+    public class SubRegion : Region, ICacheKeyProvider
+    {
+        public SubRegion(string code, string name) : base(code) => Name = name;
+        public string Name { get; }
+        string ICacheKeyProvider.CacheKeyPart => Code + ""/"" + Name;
+    }
 
     public interface IUserService
     {
@@ -57,6 +69,9 @@ namespace KeyFormat
 
         [Cache(Duration = ""00:10:00"")]
         Task<string> PointAsync(Point point, Tenant tenant);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> RegionAsync(Region region);
     }
 
     public interface IOrderService
@@ -74,6 +89,7 @@ namespace KeyFormat
         public Task<int> CountAsync(Query query) { Calls++; return Task.FromResult(query.Page); }
         public Task<int> SumAsync(Batch batch) { Calls++; return Task.FromResult(batch.Ids.Length); }
         public Task<string> RangeAsync(Range? range) { Calls++; return Task.FromResult(""range-"" + Calls); }
+        public Task<string> RegionAsync(Region region) { Calls++; return Task.FromResult(""region-"" + Calls); }
         public Task<string> PointAsync(Point point, Tenant tenant) { Calls++; return Task.FromResult(""point-"" + point.X + "","" + point.Y + ""-"" + tenant.Id); }
     }
 
@@ -169,6 +185,22 @@ namespace KeyFormat
 
         Assert.Equal(4, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "CountAsync", "(a\\:b:4)")));
         Assert.Equal("point-1,2-acme", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "PointAsync", "(1:2)", "acme")));
+    }
+
+    [Fact]
+    public async Task KeyProviders_UseTheInterfaceImplementation()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var userType = assembly.GetType("KeyFormat.IUserService")!;
+
+        var region = await Call<string>(users, "RegionAsync", Activator.CreateInstance(assembly.GetType("KeyFormat.Region")!, "se"));
+        var subRegion = await Call<string>(users, "RegionAsync", Activator.CreateInstance(assembly.GetType("KeyFormat.SubRegion")!, "se", "north"));
+
+        Assert.NotEqual(region, subRegion);
+        Assert.Equal(region, await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "RegionAsync", "se")));
+        Assert.Equal(subRegion, await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "RegionAsync", "se/north")));
     }
 
     [Fact]

@@ -480,9 +480,11 @@ namespace MethodCache.SourceGenerator
                     }
                     else if (ImplementsCacheKeyProvider(param.Type))
                     {
+                        // Through the interface, so explicit and re-implemented CacheKeyPart members are the ones called
+                        var keyPart = $"MethodCacheKeys.Part(((global::MethodCache.Core.Runtime.ICacheKeyProvider){param.Name}).CacheKeyPart)";
                         pieces.Add(param.Type.IsValueType
-                            ? $"MethodCacheKeys.Part({param.Name}.CacheKeyPart)"
-                            : $"({param.Name} is null ? MethodCacheKeys.Null : MethodCacheKeys.Part({param.Name}.CacheKeyPart))");
+                            ? keyPart
+                            : $"({param.Name} is null ? MethodCacheKeys.Null : {keyPart})");
                     }
                     else if (TryGetKeyMembers(param.Type, out var members))
                     {
