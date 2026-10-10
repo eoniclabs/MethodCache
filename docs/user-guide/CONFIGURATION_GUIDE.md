@@ -175,6 +175,10 @@ builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 ```
 
+Changes to the section take effect while the application runs, as soon as the configuration reloads (appsettings.json reloads on save by default). Methods added, changed or removed in the file are picked up without a restart.
+
+Invalid values, such as a `Duration` that is not a positive time span, make `AddMethodCacheFromConfiguration` throw at startup. If a reloaded file has an invalid value, the reload is logged as an error and the previous policies stay in effect.
+
 ## Management Interface & Runtime Overrides
 ### Inspect Runtime State
 
