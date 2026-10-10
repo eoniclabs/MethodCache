@@ -147,6 +147,35 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task SlidingExpiration_ExpiresAnUnreadEntryAfterOneWindow()
+    {
+        var manager = CreateManager();
+        var policy = Policy(duration: TimeSpan.FromMinutes(30)) with { SlidingExpiration = TimeSpan.FromMinutes(10) };
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult(1), policy);
+        _time.Advance(TimeSpan.FromMinutes(10) + TimeSpan.FromMilliseconds(1));
+
+        (await manager.ExistsAsync("key")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Stats_ReportNoEvictions_WhenStatisticsAreDisabled()
+    {
+        var manager = CreateManager(o =>
+        {
+            o.MaxItems = 10;
+            o.EnableStatistics = false;
+        });
+
+        for (var i = 0; i < 100; i++)
+        {
+            await manager.SetAsync($"k{i}", i, OneMinute);
+        }
+
+        (await manager.GetStatsAsync()).Evictions.Should().Be(0);
+    }
+
+    [Fact]
     public async Task RefreshAhead_ServesCurrentValue_AndRefreshesInBackground()
     {
         var manager = CreateManager();

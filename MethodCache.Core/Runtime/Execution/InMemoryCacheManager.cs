@@ -283,7 +283,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 Hits = _hits.Sum(),
                 Misses = _misses.Sum(),
-                Evictions = _engine.EvictionCount,
+                Evictions = _options.EnableStatistics ? _engine.EvictionCount : 0,
                 Entries = _engine.Count,
                 MemoryUsage = _weigher != null
                     ? _engine.TotalWeight
@@ -465,6 +465,11 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             lifetime = Math.Min(lifetime, _maxDuration); // after jitter, so MaxExpiration stays a hard upper bound
+            if (policy.Sliding > 0)
+            {
+                // An entry nobody reads expires after one sliding window; reads extend it (see TryGetFresh).
+                lifetime = Math.Min(lifetime, policy.Sliding);
+            }
 
             var logicalExpiresAt = now + lifetime;
             var node = new ValueNode<T>(key, value)
