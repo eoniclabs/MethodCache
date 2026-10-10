@@ -15,6 +15,7 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
     private readonly CancellationTokenSource _cts = new();
     private Task? _watchTask;
     private Task? _initializationTask;
+    private int _disposed;
 
     public PolicyRegistry(PolicyResolver resolver, IEnumerable<PolicySourceRegistration> registrations)
     {
@@ -76,6 +77,13 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // The instance is registered under both its concrete type and its interface,
+        // so the container disposes it once per registration
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         var initTask = Volatile.Read(ref _initializationTask);
         if (initTask != null)
         {

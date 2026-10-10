@@ -56,11 +56,13 @@ public interface IUserService
 ### 3. Register MethodCache
 
 ```csharp
-builder.Services.AddMethodCache(config =>
-{
-    config.DefaultDuration(TimeSpan.FromMinutes(10))
-          .DefaultKeyGenerator<FastHashKeyGenerator>();
-});
+builder.Services.AddMethodCache();
+```
+
+This scans the calling assembly, registers `UserService` and wraps `IUserService` in its generated cache decorator, so you do not register the service yourself. If your attributed interfaces or their implementations live in other projects, pass every assembly that contains either of them:
+
+```csharp
+builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly, typeof(UserService).Assembly);
 ```
 
 That is enough to enable source-generated cache decorators for attributed methods.
@@ -152,7 +154,7 @@ await cacheManager.InvalidateByTagPatternAsync("user:??");      // user:12, not 
 await cacheManager.InvalidateByTagPatternAsync("*:profile");    // any tag ending with :profile
 ```
 
-Provider note: pattern support is provider-dependent. `InMemoryCacheManager` supports the wildcard syntax above. `HybridCacheManager` currently logs a warning and treats `InvalidateByTagPatternAsync` as a no-op.
+Provider note: pattern support is provider-dependent. `InMemoryCacheManager` supports the wildcard syntax above. `HybridCacheManager` does not support it yet and throws `NotSupportedException`.
 
 ### Runtime Overrides
 

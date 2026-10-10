@@ -135,12 +135,11 @@ public class HybridCacheManager : IHybridCacheManager
         await Task.WhenAll(tasks);
     }
 
-    public async Task InvalidateByTagPatternAsync(string pattern)
+    public Task InvalidateByTagPatternAsync(string pattern)
     {
-        // This would need pattern matching implementation
-        // For now, just log that it's not implemented
-        _logger.LogWarning("InvalidateByTagPatternAsync not implemented for pattern: {Pattern}", pattern);
-        await Task.CompletedTask;
+        // Fail loudly: returning success here would leave stale entries in every layer.
+        throw new NotSupportedException(
+            $"{nameof(HybridCacheManager)} does not support pattern invalidation yet. Use {nameof(InvalidateByTagsAsync)} with exact tags instead.");
     }
 
     // IHybridCacheManager implementation - layer-specific operations

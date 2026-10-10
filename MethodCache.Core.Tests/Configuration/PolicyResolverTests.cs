@@ -52,16 +52,16 @@ public class PolicyResolverTests
 
         _ = await resolver.ResolveAsync(MethodId);
 
-        using var watchCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await using var changes = resolver.WatchAsync(MethodId, watchCts.Token).GetAsyncEnumerator();
+        using var watchCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var watcher = resolver.WatchAsync(MethodId, watchCts.Token).GetAsyncEnumerator(watchCts.Token);
 
-        // The resolver is already initialized, so the first MoveNextAsync subscribes before it returns.
-        // Emitting only after that point means no change can be missed, however slow the machine is.
-        var next = changes.MoveNextAsync();
+        // The first MoveNextAsync subscribes to changes before it waits, so nothing emitted below can be missed
+        var nextChange = watcher.MoveNextAsync();
 
         runtimeSource.EmitChange(CreateChange(PolicySourceIds.RuntimeOverrides, TimeSpan.FromMinutes(1), new[] { "override" }, PolicyChangeReason.Updated));
-        Assert.True(await next);
-        var update = changes.Current;
+
+        Assert.True(await nextChange);
+        var update = watcher.Current;
         Assert.Equal(TimeSpan.FromMinutes(1), update.Policy.Duration);
         Assert.Contains("override", update.Policy.Tags);
 
@@ -70,15 +70,16 @@ public class PolicyResolverTests
         Assert.Equal(TimeSpan.FromMinutes(1), interimResult.Policy.Duration);
         Assert.Contains("override", interimResult.Policy.Tags);
 
-        next = changes.MoveNextAsync();
+        nextChange = watcher.MoveNextAsync();
         runtimeSource.EmitChange(CreateRemovalChange(PolicySourceIds.RuntimeOverrides));
-        Assert.True(await next);
 
-        var removal = changes.Current;
+        Assert.True(await nextChange);
+        var removal = watcher.Current;
         Assert.Equal(MethodId, removal.MethodId);
         Assert.Equal(TimeSpan.FromMinutes(5), removal.Policy.Duration);
         Assert.Contains("attr", removal.Policy.Tags);
 
+        await watcher.DisposeAsync();
         await resolver.DisposeAsync();
     }
 
