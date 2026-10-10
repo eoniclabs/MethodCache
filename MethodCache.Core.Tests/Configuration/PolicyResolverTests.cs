@@ -52,57 +52,34 @@ public class PolicyResolverTests
 
         _ = await resolver.ResolveAsync(MethodId);
 
-        var changes = new List<PolicyResolutionResult>();
-        using var watchCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var watchTask = Task.Run(async () =>
-        {
-            try
-            {
-                await foreach (var change in resolver.WatchAsync(MethodId, watchCts.Token))
-                {
-                    lock (changes)
-                    {
-                        changes.Add(change);
-                        if (changes.Count >= 2)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when cancelling the watch
-            }
-        });
+        using var watchCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var watcher = resolver.WatchAsync(MethodId, watchCts.Token).GetAsyncEnumerator(watchCts.Token);
 
-        // Give the watch task time to start listening
-        await Task.Delay(200);
+        // The first MoveNextAsync subscribes to changes before it waits, so nothing emitted below can be missed
+        var nextChange = watcher.MoveNextAsync();
 
         runtimeSource.EmitChange(CreateChange(PolicySourceIds.RuntimeOverrides, TimeSpan.FromMinutes(1), new[] { "override" }, PolicyChangeReason.Updated));
-        // Give time for async channel to propagate the change
-        await Task.Delay(200);
+
+        Assert.True(await nextChange);
+        var update = watcher.Current;
+        Assert.Equal(TimeSpan.FromMinutes(1), update.Policy.Duration);
+        Assert.Contains("override", update.Policy.Tags);
+
         var interimResult = await resolver.ResolveAsync(MethodId);
         Assert.Equal(MethodId, interimResult.MethodId);
         Assert.Equal(TimeSpan.FromMinutes(1), interimResult.Policy.Duration);
         Assert.Contains("override", interimResult.Policy.Tags);
 
-        await WaitForCountAsync(changes, 1);
-
-        var update = changes[0];
-        Assert.Equal(TimeSpan.FromMinutes(1), update.Policy.Duration);
-        Assert.Contains("override", update.Policy.Tags);
-
+        nextChange = watcher.MoveNextAsync();
         runtimeSource.EmitChange(CreateRemovalChange(PolicySourceIds.RuntimeOverrides));
-        await WaitForCountAsync(changes, 2);
 
-        var removal = changes[1];
+        Assert.True(await nextChange);
+        var removal = watcher.Current;
         Assert.Equal(MethodId, removal.MethodId);
         Assert.Equal(TimeSpan.FromMinutes(5), removal.Policy.Duration);
         Assert.Contains("attr", removal.Policy.Tags);
 
-        watchCts.Cancel();
-        await watchTask;
+        await watcher.DisposeAsync();
         await resolver.DisposeAsync();
     }
 
@@ -151,35 +128,6 @@ public class PolicyResolverTests
     {
         var delta = new CachePolicyDelta(CachePolicyFields.None, CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.KeyGenerator | CachePolicyFields.Version | CachePolicyFields.Metadata | CachePolicyFields.RequireIdempotent, CachePolicy.Empty);
         return new PolicyChange(sourceId, MethodId, delta, PolicyChangeReason.Removed, DateTimeOffset.UtcNow);
-    }
-
-    private static async Task WaitForCountAsync(List<PolicyResolutionResult> list, int expected)
-    {
-        var start = DateTime.UtcNow;
-        // Use longer timeout for CI environments which can be slower
-        var timeout = TimeSpan.FromSeconds(15);
-        while (true)
-        {
-            lock (list)
-            {
-                if (list.Count >= expected)
-                {
-                    return;
-                }
-            }
-
-            if ((DateTime.UtcNow - start) > timeout)
-            {
-                int currentCount;
-                lock (list)
-                {
-                    currentCount = list.Count;
-                }
-                throw new TimeoutException($"Expected {expected} policy changes but observed {currentCount} within the timeout.");
-            }
-
-            await Task.Delay(100);
-        }
     }
 
     private interface ITestService
