@@ -354,6 +354,12 @@ namespace MethodCache.Core.Infrastructure.Extensions
             MethodCacheRegistrationOptions options,
             IReadOnlyList<Type> implementationCandidates)
         {
+            // Respect registrations the application made itself (lifetime, factory, test double)
+            if (services.Any(descriptor => descriptor.ServiceType == interfaceType))
+            {
+                return;
+            }
+
             // Find concrete implementation
             var implementationType = FindImplementationType(interfaceType, options, implementationCandidates);
 
