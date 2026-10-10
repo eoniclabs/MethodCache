@@ -32,6 +32,7 @@ If the application's login may not create tables, set `CreateTablesIfMissing = f
 ## How it works
 
 - Entries are stored through `Microsoft.Extensions.Caching.SqlServer`, which also removes expired rows.
+- Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.

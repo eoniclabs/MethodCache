@@ -10,6 +10,7 @@ using System.Text;
 using MessagePack;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Serialization.MessagePack;
 
 namespace MethodCache.Benchmarks.Scenarios;
 

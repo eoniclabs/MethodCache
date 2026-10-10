@@ -188,7 +188,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 options.Configure(configure);
             }
 
-            services.TryAddSingleton<ISerializer, MessagePackSerializer>();
+            services.TryAddSingleton<ISerializer, JsonCacheSerializer>();
             services.TryAddSingleton(static sp => new DistributedCacheLayer(
                 sp.GetRequiredService<IDistributedCache>(),
                 sp.GetRequiredService<ISerializer>(),
