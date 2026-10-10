@@ -22,6 +22,7 @@ It is designed for teams that want caching behavior to be easy to add, easy to r
   - [Manual Caching](#manual-caching)
   - [Configuration Sources](#configuration-sources)
   - [Invalidation](#invalidation)
+  - [Distributed Cache](#distributed-cache)
   - [Runtime Overrides](#runtime-overrides)
   - [Third-party Library Caching](#third-party-library-caching)
 - [Packages](#packages)
@@ -83,7 +84,7 @@ That is enough to enable source-generated cache decorators for attributed method
 | Multiple configuration sources | Keep defaults in code and adjust behavior per environment | Combine attributes, startup configuration, file-based config, and runtime overrides |
 | Tag-based invalidation | Invalidate related entries without tracking keys manually | Tag entries in `[Cache]` and call invalidation APIs by tag |
 | Runtime overrides | Change cache behavior without redeploying | Use `IRuntimeCacheConfigurator` to apply and remove overrides |
-| Provider flexibility | Use in-memory only, distributed, or hybrid strategies | Start with default provider, then add Redis/advanced providers as needed |
+| Distributed cache | Share results between instances and invalidate everywhere | Register any `IDistributedCache` and call `AddMethodCacheDistributedCache()` |
 | Analyzer support | Catch invalid or risky caching patterns at compile time | Install analyzers (included in `MethodCache`) |
 
 ## How To Use MethodCache
@@ -166,7 +167,19 @@ await cacheManager.InvalidateByTagPatternAsync("user:??");      // user:12, not 
 await cacheManager.InvalidateByTagPatternAsync("*:profile");    // any tag ending with :profile
 ```
 
-Provider note: pattern support is provider-dependent. `InMemoryCacheManager` supports the wildcard syntax above. `HybridCacheManager` does not support it yet and throws `NotSupportedException`.
+Pattern invalidation works on the in-memory cache only. With a distributed cache it throws `NotSupportedException`, because the distributed cache cannot list its tags; invalidate exact tags instead.
+
+### Distributed Cache
+
+MethodCache keeps results in memory. To share them between instances, register any `IDistributedCache` (Redis, SQL Server, ...) and tell MethodCache to use it:
+
+```csharp
+builder.Services.AddStackExchangeRedisCache(options => options.Configuration = "localhost:6379");
+builder.Services.AddMethodCache();
+builder.Services.AddMethodCacheDistributedCache();
+```
+
+On an in-memory miss MethodCache reads the distributed cache before running your method, and it stores new results in both. Invalidating a key or tag reaches every instance: tag invalidations are stored as timestamps, so any distributed cache works without tag tables. Register an `IBackplane` as well so other instances also drop their in-memory copies right away; without one they keep them until they expire.
 
 ### Runtime Overrides
 

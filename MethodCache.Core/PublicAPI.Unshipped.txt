@@ -42,6 +42,14 @@ MethodCache.Core.Configuration.LruUpdateStrategy
 MethodCache.Core.Configuration.LruUpdateStrategy.LockFree = 1 -> MethodCache.Core.Configuration.LruUpdateStrategy
 MethodCache.Core.Configuration.LruUpdateStrategy.Precise = 2 -> MethodCache.Core.Configuration.LruUpdateStrategy
 MethodCache.Core.Configuration.LruUpdateStrategy.Probabilistic = 0 -> MethodCache.Core.Configuration.LruUpdateStrategy
+MethodCache.Core.Configuration.DistributedCacheOptions
+MethodCache.Core.Configuration.DistributedCacheOptions.DistributedCacheOptions() -> void
+MethodCache.Core.Configuration.DistributedCacheOptions.KeyPrefix.get -> string!
+MethodCache.Core.Configuration.DistributedCacheOptions.KeyPrefix.set -> void
+MethodCache.Core.Configuration.DistributedCacheOptions.TagCheckInterval.get -> System.TimeSpan
+MethodCache.Core.Configuration.DistributedCacheOptions.TagCheckInterval.set -> void
+MethodCache.Core.Configuration.DistributedCacheOptions.TagRetention.get -> System.TimeSpan
+MethodCache.Core.Configuration.DistributedCacheOptions.TagRetention.set -> void
 MethodCache.Core.Configuration.MemoryCacheEvictionPolicy
 MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.FIFO = 3 -> MethodCache.Core.Configuration.MemoryCacheEvictionPolicy
 MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LFU = 1 -> MethodCache.Core.Configuration.MemoryCacheEvictionPolicy
@@ -283,9 +291,11 @@ MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer
 MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.ContentType.get -> string!
 MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Deserialize<T>(byte[]! data) -> T?
 MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Deserialize<T>(System.ReadOnlySpan<byte> data) -> T?
+MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
 MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.MessagePackSerializer() -> void
 MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.MessagePackSerializer(MessagePack.MessagePackSerializerOptions! options) -> void
 MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Serialize<T>(T obj) -> byte[]!
+MethodCache.Core.Infrastructure.Serialization.MessagePackSerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
 MethodCache.Core.Infrastructure.Services.CacheWarmingService
 MethodCache.Core.Infrastructure.Services.CacheWarmingService.CacheWarmingService(MethodCache.Core.Storage.Abstractions.IStorageProvider! storageProvider, Microsoft.Extensions.Options.IOptions<MethodCache.Core.Configuration.StorageOptions!>! options, Microsoft.Extensions.Logging.ILogger<MethodCache.Core.Infrastructure.Services.CacheWarmingService!>! logger) -> void
 MethodCache.Core.Infrastructure.Services.CacheWarmingService.RegisterWarmupKeyAsync(string! key, System.Func<System.Threading.Tasks.Task<object!>!>! factory, System.TimeSpan refreshInterval, string![]? tags = null) -> System.Threading.Tasks.Task!
@@ -735,9 +745,8 @@ MethodCache.Core.Storage.Abstractions.IPersistentStorageProvider.SetAsync<T>(str
 MethodCache.Core.Storage.Abstractions.IPersistentStorageProvider.SetAsync<T>(string! key, T value, System.TimeSpan expiration, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.Core.Storage.Abstractions.ISerializer
 MethodCache.Core.Storage.Abstractions.ISerializer.ContentType.get -> string!
-MethodCache.Core.Storage.Abstractions.ISerializer.Deserialize<T>(byte[]! data) -> T?
-MethodCache.Core.Storage.Abstractions.ISerializer.Deserialize<T>(System.ReadOnlySpan<byte> data) -> T?
-MethodCache.Core.Storage.Abstractions.ISerializer.Serialize<T>(T obj) -> byte[]!
+MethodCache.Core.Storage.Abstractions.ISerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
+MethodCache.Core.Storage.Abstractions.ISerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
 MethodCache.Core.Storage.Abstractions.IStorageProvider
 MethodCache.Core.Storage.Abstractions.IStorageProvider.ExistsAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 MethodCache.Core.Storage.Abstractions.IStorageProvider.GetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T?>
@@ -1132,6 +1141,7 @@ static MethodCache.Core.Infrastructure.Extensions.MethodCacheMetricsServiceColle
 static MethodCache.Core.Infrastructure.Extensions.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static MethodCache.Core.Infrastructure.Extensions.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration!>? configure = null, params System.Reflection.Assembly![]? assemblies) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static MethodCache.Core.Infrastructure.Extensions.MethodCacheServiceCollectionExtensions.AddMethodCacheFromConfiguration(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName = "MethodCache") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Core.Infrastructure.Extensions.MethodCacheServiceCollectionExtensions.AddMethodCacheDistributedCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Configuration.DistributedCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static MethodCache.Core.Infrastructure.Extensions.ServiceCollectionExtensions.AddCacheWarming(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static MethodCache.Core.Infrastructure.Registration.MethodCacheDecorators.All() -> System.Collections.Generic.IReadOnlyList<MethodCache.Core.Infrastructure.Registration.DecoratorRegistration!>!
 static MethodCache.Core.Infrastructure.Registration.MethodCacheDecorators.For(System.Reflection.Assembly! assembly) -> System.Collections.Generic.IReadOnlyList<MethodCache.Core.Infrastructure.Registration.DecoratorRegistration!>!
