@@ -1,21 +1,26 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using MethodCache.Abstractions.Registry;
+using MethodCache.Core.Configuration;
 using MethodCache.Core.Configuration.Surfaces.ConfigFile;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
 using MethodCache.Core.Infrastructure.Registration;
+using MethodCache.Core.Infrastructure.Serialization;
 using MethodCache.Core.Management;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.PolicyPipeline.Sources;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace MethodCache.Core.Infrastructure.Extensions
 {
@@ -138,12 +143,51 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 return;
             }
 
-            services.TryAddSingleton<InMemoryCacheManager>();
+            services.TryAddSingleton(static sp => new InMemoryCacheManager(
+                sp.GetRequiredService<ICacheMetricsProvider>(),
+                sp.GetService<IOptions<MemoryCacheOptions>>(),
+                sp.GetService<TimeProvider>(),
+                sp.GetService<DistributedCacheLayer>()));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<ICacheAdministrator>(static sp => new InMemoryCacheAdministrator(
                 sp.GetRequiredService<InMemoryCacheManager>(),
                 sp.GetService<IPolicyRegistry>()));
+        }
+
+        /// <summary>
+        /// Keeps cached results in the registered <see cref="IDistributedCache"/> (Redis, SQL Server, ...) as well as
+        /// in memory. An in-memory miss reads the distributed cache before running the method, so instances share
+        /// results, and invalidating a key or tag reaches every instance. Register the distributed cache itself
+        /// first, for example with <c>AddStackExchangeRedisCache</c>; register an <see cref="IBackplane"/> too so
+        /// other instances also drop their in-memory copies at once.
+        /// </summary>
+        /// <param name="services">The service collection</param>
+        /// <param name="configure">Optional distributed cache options</param>
+        /// <returns>The service collection for chaining</returns>
+        public static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Action<DistributedCacheOptions>? configure = null)
+        {
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            var options = services.AddOptions<DistributedCacheOptions>();
+            if (configure != null)
+            {
+                options.Configure(configure);
+            }
+
+            services.TryAddSingleton<ISerializer, MessagePackSerializer>();
+            services.TryAddSingleton(static sp => new DistributedCacheLayer(
+                sp.GetRequiredService<IDistributedCache>(),
+                sp.GetRequiredService<ISerializer>(),
+                sp.GetRequiredService<IOptions<DistributedCacheOptions>>().Value,
+                sp.GetService<IBackplane>(),
+                sp.GetService<TimeProvider>()));
+
+            EnsureCoreServices(services);
+            return services;
         }
 
         private static void RegisterFluentPolicySource(IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)

@@ -1,24 +1,21 @@
+using System.Buffers;
+
 namespace MethodCache.Core.Storage.Abstractions;
 
 /// <summary>
-/// Defines serialization operations for storage providers.
+/// Turns cached values into bytes for the distributed cache and back.
 /// </summary>
 public interface ISerializer
 {
     /// <summary>
-    /// Serializes an object to bytes.
+    /// Writes <paramref name="value"/> to <paramref name="destination"/>.
     /// </summary>
-    byte[] Serialize<T>(T obj);
+    void Serialize<T>(T value, IBufferWriter<byte> destination);
 
     /// <summary>
-    /// Deserializes bytes to an object.
+    /// Reads a value written by <see cref="Serialize{T}(T, IBufferWriter{byte})"/>.
     /// </summary>
-    T? Deserialize<T>(byte[] data);
-
-    /// <summary>
-    /// Deserializes bytes to an object.
-    /// </summary>
-    T? Deserialize<T>(ReadOnlySpan<byte> data);
+    T? Deserialize<T>(ReadOnlySequence<byte> source);
 
     /// <summary>
     /// Gets the content type identifier for this serializer.
