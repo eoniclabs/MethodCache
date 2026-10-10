@@ -13,12 +13,12 @@ using MethodCache.OpenTelemetry.Tracing;
 
 namespace MethodCache.OpenTelemetry.Instrumentation;
 
-public interface IInstrumentedStorageProvider : IStorageProvider
+internal interface IInstrumentedStorageProvider : IStorageProvider
 {
     string ProviderName { get; }
 }
 
-public class InstrumentedStorageProvider : IInstrumentedStorageProvider
+internal class InstrumentedStorageProvider : IInstrumentedStorageProvider
 {
     private readonly IStorageProvider _innerProvider;
     private readonly ICacheActivitySource _activitySource;

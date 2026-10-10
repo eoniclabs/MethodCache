@@ -11,7 +11,7 @@ namespace MethodCache.OpenTelemetry.HotReload;
 /// <summary>
 /// Event arguments for configuration change notifications
 /// </summary>
-public class ConfigurationChangedEventArgs : EventArgs
+internal class ConfigurationChangedEventArgs : EventArgs
 {
     public ConfigurationSection Section { get; set; }
     public string PropertyName { get; set; } = string.Empty;
@@ -23,7 +23,7 @@ public class ConfigurationChangedEventArgs : EventArgs
 /// <summary>
 /// Configuration sections that support hot reload
 /// </summary>
-public enum ConfigurationSection
+internal enum ConfigurationSection
 {
     OpenTelemetry,
     Security,
@@ -36,7 +36,7 @@ public enum ConfigurationSection
 /// <summary>
 /// Interface for managing hot reload of configuration
 /// </summary>
-public interface IConfigurationReloadManager
+internal interface IConfigurationReloadManager
 {
     /// <summary>
     /// Event fired when configuration changes
@@ -92,7 +92,7 @@ public interface IConfigurationReloadManager
 /// <summary>
 /// Configuration validation result
 /// </summary>
-public class ValidationResult
+internal class ValidationResult
 {
     public bool IsValid { get; set; }
     public List<string> Errors { get; set; } = new();
@@ -102,7 +102,7 @@ public class ValidationResult
 /// <summary>
 /// Historical configuration entry
 /// </summary>
-public class ConfigurationHistoryEntry
+internal class ConfigurationHistoryEntry
 {
     public DateTime Timestamp { get; set; }
     public object Configuration { get; set; } = new();
@@ -114,7 +114,7 @@ public class ConfigurationHistoryEntry
 /// <summary>
 /// Runtime configuration that can be hot reloaded
 /// </summary>
-public class RuntimeConfiguration
+internal class RuntimeConfiguration
 {
     public OpenTelemetryOptions OpenTelemetry { get; set; } = new();
     public SecurityOptions Security { get; set; } = new();
@@ -125,7 +125,7 @@ public class RuntimeConfiguration
 /// <summary>
 /// Non-generic base interface for configuration change handlers
 /// </summary>
-public interface IConfigurationChangeHandlerBase
+internal interface IConfigurationChangeHandlerBase
 {
     /// <summary>
     /// Gets the configuration section this handler manages
@@ -146,7 +146,7 @@ public interface IConfigurationChangeHandlerBase
 /// <summary>
 /// Interface for configuration change handlers
 /// </summary>
-public interface IConfigurationChangeHandler<T> : IConfigurationChangeHandlerBase where T : class
+internal interface IConfigurationChangeHandler<T> : IConfigurationChangeHandlerBase where T : class
 {
     /// <summary>
     /// Called when configuration changes
@@ -162,7 +162,7 @@ public interface IConfigurationChangeHandler<T> : IConfigurationChangeHandlerBas
 /// <summary>
 /// Base class for configuration change handlers
 /// </summary>
-public abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChangeHandler<T> where T : class
+internal abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChangeHandler<T> where T : class
 {
     public abstract ConfigurationSection Section { get; }
 
@@ -208,7 +208,7 @@ public abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChangeHa
 /// <summary>
 /// Configuration change handler for OpenTelemetry options
 /// </summary>
-public class OpenTelemetryOptionsChangeHandler : ConfigurationChangeHandlerBase<OpenTelemetryOptions>
+internal class OpenTelemetryOptionsChangeHandler : ConfigurationChangeHandlerBase<OpenTelemetryOptions>
 {
     public override ConfigurationSection Section => ConfigurationSection.OpenTelemetry;
 
@@ -275,7 +275,7 @@ public class OpenTelemetryOptionsChangeHandler : ConfigurationChangeHandlerBase<
 /// <summary>
 /// Configuration change handler for Security options
 /// </summary>
-public class SecurityOptionsChangeHandler : ConfigurationChangeHandlerBase<SecurityOptions>
+internal class SecurityOptionsChangeHandler : ConfigurationChangeHandlerBase<SecurityOptions>
 {
     public override ConfigurationSection Section => ConfigurationSection.Security;
 

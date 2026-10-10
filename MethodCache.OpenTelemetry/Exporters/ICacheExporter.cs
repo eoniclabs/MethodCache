@@ -9,7 +9,7 @@ namespace MethodCache.OpenTelemetry.Exporters;
 /// Defines a contract for exporting cache telemetry data to external systems
 /// </summary>
 /// <typeparam name="T">The type of telemetry data to export</typeparam>
-public interface ICacheExporter<in T> : IDisposable
+internal interface ICacheExporter<in T> : IDisposable
 {
     /// <summary>
     /// Gets the name of this exporter
@@ -35,7 +35,7 @@ public interface ICacheExporter<in T> : IDisposable
 /// <summary>
 /// Represents the result of an export operation
 /// </summary>
-public enum ExportResult
+internal enum ExportResult
 {
     /// <summary>
     /// The export was successful
@@ -57,7 +57,7 @@ public enum ExportResult
 /// Base class for cache exporters with common functionality
 /// </summary>
 /// <typeparam name="T">The type of telemetry data to export</typeparam>
-public abstract class CacheExporterBase<T> : ICacheExporter<T>
+internal abstract class CacheExporterBase<T> : ICacheExporter<T>
 {
     protected readonly CacheExporterOptions Options;
     protected volatile bool IsShutdown;
@@ -102,7 +102,7 @@ public abstract class CacheExporterBase<T> : ICacheExporter<T>
 /// <summary>
 /// Configuration options for cache exporters
 /// </summary>
-public class CacheExporterOptions
+internal class CacheExporterOptions
 {
     /// <summary>
     /// Maximum batch size for export operations

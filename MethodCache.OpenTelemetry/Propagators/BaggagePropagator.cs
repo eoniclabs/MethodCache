@@ -23,7 +23,7 @@ public interface IBaggagePropagator
     string? GetCacheTenantId();
 }
 
-public class BaggagePropagator : IBaggagePropagator
+internal class BaggagePropagator : IBaggagePropagator
 {
     private readonly OpenTelemetryOptions _options;
     private readonly AsyncLocal<Dictionary<string, string>?> _localBaggage = new();

@@ -20,7 +20,7 @@ namespace MethodCache.OpenTelemetry.Extensions;
 /// <summary>
 /// Advanced service collection extensions for enhanced OpenTelemetry features
 /// </summary>
-public static class AdvancedServiceCollectionExtensions
+internal static class AdvancedServiceCollectionExtensions
 {
     /// <summary>
     /// Adds advanced OpenTelemetry features with security, correlation, and hot reload support
@@ -220,7 +220,7 @@ public static class AdvancedServiceCollectionExtensions
 /// <summary>
 /// Configuration options for the metrics exporter factory
 /// </summary>
-public class CacheMetricsExporterFactoryOptions
+internal class CacheMetricsExporterFactoryOptions
 {
     private readonly Dictionary<string, Func<IServiceProvider, ICacheMetricsExporter>> _pendingFactories = new();
     private CacheMetricsExporterFactory? _factory;
@@ -247,7 +247,7 @@ public class CacheMetricsExporterFactoryOptions
 /// <summary>
 /// Hosted service for managing hot reload lifecycle
 /// </summary>
-public class HotReloadHostedService : IHostedService
+internal class HotReloadHostedService : IHostedService
 {
     private readonly IConfigurationReloadManager _reloadManager;
 
