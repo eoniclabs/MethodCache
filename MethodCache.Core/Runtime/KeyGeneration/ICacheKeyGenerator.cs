@@ -12,10 +12,13 @@ namespace MethodCache.Core.Runtime.KeyGeneration
     /// - Must produce unique keys for different inputs
     /// - Should balance performance vs. readability based on use case
     ///
+    /// Generated decorators build keys for simple arguments inline (see <see cref="MethodCacheKeys"/>) and only call
+    /// a key generator for other arguments, passing the method's key prefix as <c>methodName</c>.
+    ///
     /// Built-in implementations:
-    /// - FastHashKeyGenerator: ~50ns, binary hash, best for production high-throughput scenarios
-    /// - JsonKeyGenerator: ~200ns, human-readable format, best for development/debugging
-    /// - MessagePackKeyGenerator: ~100ns, efficient binary serialization, best for complex objects
+    /// - FastHashKeyGenerator (the default): 128-bit hash of a canonical binary form
+    /// - JsonKeyGenerator: human-readable format, useful for debugging
+    /// - MessagePackKeyGenerator: SHA-256 of the MessagePack form
     /// </remarks>
     /// <example>
     /// Implementing a custom key generator:

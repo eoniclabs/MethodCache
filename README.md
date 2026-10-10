@@ -136,10 +136,13 @@ This lets you keep safe defaults in code while still adapting behavior in operat
 Use exact keys, tags, or tag patterns depending on your domain model.
 
 ```csharp
-await cacheManager.InvalidateByKeysAsync("users:123");
+await cacheManager.InvalidateByKeysAsync(
+    MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(123)));
 await cacheManager.InvalidateByTagsAsync("users", "tenant:42");
 await cacheManager.InvalidateByTagPatternAsync("user:*");
 ```
+
+Generated keys have the form `{Service}.{Method}[:v{Version}]:{arguments}`, for example `MyApp.IUserService.GetUserAsync:123`. `MethodCacheKeys` builds the same keys, so you never have to guess the format. Arguments that are not simple values (records, classes, collections) are hashed, but the key still starts with `{Service}.{Method}`.
 
 `InvalidateByTagPatternAsync` supports simple wildcard matching:
 

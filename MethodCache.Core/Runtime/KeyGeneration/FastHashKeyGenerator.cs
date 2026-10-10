@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Buffers.Text;
+using System.IO.Hashing;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -11,45 +12,31 @@ using MethodCache.Core.Runtime.Core;
 namespace MethodCache.Core.Runtime.KeyGeneration;
 
 /// <summary>
-/// High-performance cache key generator using FNV-1a hashing algorithm.
-/// Optimized for production scenarios with minimal allocations and fastest execution (~50ns).
+/// Default cache key generator. Writes the method name, version and arguments into a canonical binary form and
+/// hashes it with 128-bit XxHash3.
 /// </summary>
 /// <remarks>
-/// Performance characteristics:
-/// - ~50ns per key generation
-/// - Minimal heap allocations (uses ArrayPool)
-/// - Zero-allocation fast path for simple types
-///
-/// Use FastHashKeyGenerator when:
-/// - Performance is critical
-/// - Cache keys don't need to be human-readable
-/// - You have high-throughput caching scenarios
-///
-/// For debugging or when you need readable keys, use JsonKeyGenerator instead.
+/// Keys have the form <c>{methodName}[:v{version}]:{hash}</c>, so all entries of one method share a readable
+/// prefix that pattern invalidation can match (see <see cref="MethodCacheKeys"/>). Arguments of other types than
+/// the built-in primitives are serialized with MessagePack's contractless resolver; implement
+/// <see cref="ICacheKeyProvider"/> on types that cannot be serialized.
 /// </remarks>
 /// <example>
 /// <code>
-/// services.AddMethodCache(config =>
-/// {
-///     config.DefaultKeyGenerator&lt;FastHashKeyGenerator&gt;();
-/// });
-///
-/// // Or use with attribute
 /// [Cache(KeyGeneratorType = typeof(FastHashKeyGenerator))]
-/// Task&lt;User&gt; GetUserAsync(int userId);
+/// Task&lt;User&gt; GetUserAsync(UserQuery query);
 /// </code>
 /// </example>
 public class FastHashKeyGenerator : ICacheKeyGenerator
 {
-    // Fast non-cryptographic hash constants (FNV-1a variant)
-    private const ulong FNV_OFFSET_BASIS = 14695981039346656037UL;
-    private const ulong FNV_PRIME = 1099511628211UL;
-
-    // Pre-configured MessagePack options for security and performance
+    // Contractless and without the Typeless resolver, so keys contain no assembly names or versions.
+    // Bytes are only hashed, so compression would be wasted work.
     private static readonly MessagePackSerializerOptions _messagePackOptions =
         MessagePackSerializerOptions.Standard
-            .WithResolver(ContractlessStandardResolver.Instance)
-            .WithCompression(MessagePackCompression.Lz4BlockArray);
+            .WithResolver(ContractlessStandardResolver.Instance);
+
+    [ThreadStatic]
+    private static ArrayBufferWriter<byte>? t_writer;
 
     // Hex lookup table for fast conversion
     private static ReadOnlySpan<byte> HexChars => "0123456789abcdef"u8;
@@ -59,7 +46,8 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
 
     private static string GenerateKey(string methodName, object[] args, int? version)
     {
-        var writer = new ArrayBufferWriter<byte>(256);
+        var writer = t_writer ??= new ArrayBufferWriter<byte>(256);
+        writer.ResetWrittenCount();
 
         WriteUtf8String(ref writer, methodName);
 
@@ -74,11 +62,17 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
             WriteArgument(ref writer, arg);
         }
 
-        var payload = writer.WrittenSpan;
-        var hash = ComputeFastHash(payload);
-        var result = ToHexString(hash);
+        var hash = XxHash128.HashToUInt128(writer.WrittenSpan);
+        if (writer.Capacity > 64 * 1024)
+        {
+            // Don't keep a buffer grown by one huge argument alive on this thread.
+            t_writer = null;
+        }
 
-        return version.HasValue ? $"{result}_v{version.Value}" : result;
+        var prefix = version.HasValue
+            ? string.Concat(methodName, ":v", version.Value.ToString(CultureInfo.InvariantCulture))
+            : methodName;
+        return string.Concat(prefix, ":", ToHexString(hash));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -252,8 +246,12 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
 
     private static void WriteDateTime(ref ArrayBufferWriter<byte> writer, DateTime value)
     {
+        // ToBinary() would embed the server's local offset; normalize so every server agrees.
         WriteUtf8Literal(ref writer, "_DT:"u8);
-        WriteInt64(ref writer, value.ToBinary());
+        var normalized = value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value;
+        WriteInt64(ref writer, normalized.Ticks);
+        WriteUtf8Literal(ref writer, ":"u8);
+        WriteInt32(ref writer, (int)normalized.Kind);
     }
 
     private static void WriteDateTimeOffset(ref ArrayBufferWriter<byte> writer, DateTimeOffset value)
@@ -286,19 +284,23 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
 
     private static void WriteComplexObject(ref ArrayBufferWriter<byte> writer, object arg)
     {
+        byte[] serializedArg;
         try
         {
-            var serializedArg = MessagePackSerializer.Serialize(arg.GetType(), arg, _messagePackOptions);
-            WriteUtf8Literal(ref writer, "_OBJ:"u8);
-            WriteHex(ref writer, serializedArg);
+            serializedArg = MessagePackSerializer.Serialize(arg.GetType(), arg, _messagePackOptions);
         }
-        catch
+        catch (Exception ex)
         {
-            var fallbackValue = $"{arg.GetType().FullName}:{arg}";
-            var escapedFallback = fallbackValue.Replace("_", "__");
-            WriteUtf8Literal(ref writer, "_FALLBACK:"u8);
-            WriteUtf8String(ref writer, escapedFallback);
+            // Falling back to ToString() would give different values the same key and return the wrong data.
+            throw new InvalidOperationException(
+                $"MethodCache cannot build a cache key from an argument of type '{arg.GetType().FullName}'. " +
+                $"Implement {nameof(ICacheKeyProvider)} on the type, or use a serializable type.", ex);
         }
+
+        WriteUtf8Literal(ref writer, "_OBJ:"u8);
+        WriteUtf8String(ref writer, arg.GetType().FullName ?? arg.GetType().Name);
+        WriteUtf8Literal(ref writer, ":"u8);
+        WriteHex(ref writer, serializedArg);
     }
 
     private static void WriteHex(ref ArrayBufferWriter<byte> writer, ReadOnlySpan<byte> data)
@@ -315,46 +317,15 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         writer.Advance(data.Length * 2);
     }
     
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong ComputeFastHash(ReadOnlySpan<byte> data)
+    private static string ToHexString(UInt128 hash)
     {
-        var hash = FNV_OFFSET_BASIS;
-        
-        // Process 8 bytes at a time for better performance
-        ref var dataRef = ref MemoryMarshal.GetReference(data);
-        var remaining = data.Length;
-        
-        while (remaining >= sizeof(ulong))
-        {
-            var chunk = Unsafe.ReadUnaligned<ulong>(ref dataRef);
-            hash ^= chunk;
-            hash *= FNV_PRIME;
-            dataRef = ref Unsafe.Add(ref dataRef, sizeof(ulong));
-            remaining -= sizeof(ulong);
-        }
-        
-        // Handle remaining bytes
-        for (int i = data.Length - remaining; i < data.Length; i++)
-        {
-            hash ^= data[i];
-            hash *= FNV_PRIME;
-        }
-        
-        return hash;
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static string ToHexString(ulong hash)
-    {
-        // Convert 64-bit hash to 16-character hex string
-        Span<char> chars = stackalloc char[16];
-        
-        for (int i = 15; i >= 0; i--)
+        Span<char> chars = stackalloc char[32];
+        for (var i = 31; i >= 0; i--)
         {
             chars[i] = "0123456789abcdef"[(int)(hash & 0xF)];
             hash >>= 4;
         }
-        
+
         return new string(chars);
     }
 }
