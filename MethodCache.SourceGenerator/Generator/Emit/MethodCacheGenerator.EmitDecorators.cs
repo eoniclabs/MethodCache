@@ -296,60 +296,110 @@ namespace MethodCache.SourceGenerator
             private static void EmitCachedMethod(StringBuilder sb, MethodModel model, INamedTypeSymbol interfaceSymbol)
             {
                 var method = model.Method;
-                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
-                var methodId = Utils.GetMethodId(method);
                 var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
-                var hasKeyParams = ImmutableArrayExtensions.Any(method.Parameters, p => !Utils.IsCancellationToken(p.Type));
 
                 // Build cache key parameters (exclude CancellationToken)
                 var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type))
                     .ToList();
 
-                // Check if we can use ultra-fast path (inline key generation)
-                // Also check if return type is a reference type - value types have issues with null checking
-                ITypeSymbol? innerReturnType;
-                if (Utils.IsTask(method.ReturnType, out var t))
-                {
-                    innerReturnType = t;
-                }
-                else if (Utils.IsValueTask(method.ReturnType, out var vt))
-                {
-                    innerReturnType = vt;
-                }
-                else
-                {
-                    innerReturnType = method.ReturnType;
-                }
-
-                var rawKeyParam = GetRawKeyParameter(keyParams);
-                var hasRawKeyOverride = rawKeyParam != null;
-                var isReferenceType = innerReturnType != null && innerReturnType.IsReferenceType;
-                var canUseUltraFastPath = (hasRawKeyOverride || CanGenerateInlineKey(keyParams)) && isReferenceType;
-
-                // Method signature - use standard signature (no async) for Task/ValueTask methods with ultra-fast path
-                // to avoid state machine allocation
-                EmitMethodSignature(sb, method);
-                sb.AppendLine("        {");
-
-                // Don't allocate args array yet - only allocate on cache miss (ultra-fast path optimization)
-                // Pass keyParams to emit methods so they can allocate only when needed
-
-                // Handle different return types
+                ResultKind kind;
+                ITypeSymbol valueType;
                 if (Utils.IsTask(method.ReturnType, out var taskType))
                 {
-                    EmitTaskCaching(sb, method, taskType!, interfaceSymbol, canUseUltraFastPath);
+                    kind = ResultKind.Task;
+                    valueType = taskType!;
                 }
                 else if (Utils.IsValueTask(method.ReturnType, out var valueTaskType))
                 {
-                    EmitValueTaskCaching(sb, method, valueTaskType!, interfaceSymbol, canUseUltraFastPath);
+                    kind = ResultKind.ValueTask;
+                    valueType = valueTaskType!;
                 }
                 else
                 {
-                    EmitSyncCaching(sb, method, method.ReturnType, interfaceSymbol, canUseUltraFastPath);
+                    kind = ResultKind.Sync;
+                    valueType = method.ReturnType;
                 }
+
+                EmitMethodSignature(sb, method);
+                sb.AppendLine("        {");
+
+                if (kind == ResultKind.Sync)
+                {
+                    sb.AppendLine("            // WARNING: This is a sync-over-async pattern that may cause deadlocks");
+                    sb.AppendLine("            // in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
+                    sb.AppendLine("            // Consider making the method async to avoid potential issues.");
+                }
+
+                // Simple arguments are formatted inline; anything else goes through the key generator.
+                if (GetRawKeyParameter(keyParams) != null || CanGenerateInlineKey(keyParams))
+                {
+                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
+                }
+                else
+                {
+                    EmitGeneratedKey(sb, safeFieldName, keyParams);
+                }
+
+                sb.AppendLine();
+                EmitCachedBody(sb, method, kind, valueType, safeFieldName);
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
+            }
+
+            private enum ResultKind
+            {
+                Task,
+                ValueTask,
+                Sync
+            }
+
+            /// <summary>
+            /// Emits the lookup shared by every cached method: one synchronous probe whose result says whether an
+            /// entry exists (so null, 0 and false are hits too), then the cache manager's loading path on a miss.
+            /// </summary>
+            private static void EmitCachedBody(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName)
+            {
+                var type = Utils.GetReturnTypeForSignature(valueType);
+                var call = BuildMethodCall(method);
+
+                sb.AppendLine($"            if (_cacheManager.TryGetFast<{type}>(cacheKeyValue, out var cachedValue))");
+                sb.AppendLine("            {");
+                sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
+                switch (kind)
+                {
+                    case ResultKind.Task:
+                        sb.AppendLine($"                return Task.FromResult<{type}>(cachedValue!);");
+                        break;
+                    case ResultKind.ValueTask:
+                        sb.AppendLine($"                return new ValueTask<{type}>(cachedValue!);");
+                        break;
+                    default:
+                        sb.AppendLine("                return cachedValue!;");
+                        break;
+                }
+
+                sb.AppendLine("            }");
+                sb.AppendLine();
+                sb.AppendLine("            // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)");
+
+                var factory = kind == ResultKind.Sync
+                    ? $"() => Task.FromResult({call})"
+                    : $"async () => await {call}.ConfigureAwait(false)";
+                var load = $"_cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _cachedMethodName_{safeFieldName}, {factory}, _cachedPolicy_{safeFieldName})";
+
+                switch (kind)
+                {
+                    case ResultKind.Task:
+                        sb.AppendLine($"            return {load};");
+                        break;
+                    case ResultKind.ValueTask:
+                        sb.AppendLine($"            return new ValueTask<{type}>({load});");
+                        break;
+                    default:
+                        sb.AppendLine($"            return {load}.ConfigureAwait(false).GetAwaiter().GetResult();");
+                        break;
+                }
             }
 
             /// <summary>
@@ -381,6 +431,11 @@ namespace MethodCache.SourceGenerator
 
             private static bool IsSimpleType(ITypeSymbol type)
             {
+                if (type.TypeKind == TypeKind.Enum)
+                {
+                    return true;
+                }
+
                 var typeName = type.ToDisplayString();
 
                 // Check for nullable value types (int?, long?, Guid?, etc.)
@@ -525,207 +580,6 @@ namespace MethodCache.SourceGenerator
                 sb.Append($"_keyMethod_{safeFieldName}, new object[] {{ ");
                 sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
                 sb.AppendLine($" }}, _cachedPolicy_{safeFieldName});");
-            }
-
-            private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, ITypeSymbol? innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
-            {
-                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
-                var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type)).ToList();
-
-                if (canUseUltraFastPath)
-                {
-                    // In ultra-fast path, we handle nulls in cache key generation, so suppress nullable warnings
-                    var call = BuildMethodCall(method, suppressNullableWarnings: true);
-
-                    sb.AppendLine($"            // Ultra-fast path only runs for reference types; null comparison is valid here.");
-                    // Generate inline cache key without allocating args array
-                    sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
-                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
-                    sb.AppendLine();
-
-                    var fastType = Utils.GetReturnTypeForSignature(innerType!);
-                    sb.AppendLine($"            if (_cacheManager.TryGetFast(cacheKeyValue, out {fastType}? cachedValueFast) && cachedValueFast != null)");
-                    sb.AppendLine("            {");
-                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine("                return Task.FromResult(cachedValueFast);");
-                    sb.AppendLine("            }");
-                    sb.AppendLine();
-
-                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{Utils.GetReturnTypeForSignature(innerType!)}>(cacheKeyValue);");
-                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = cacheTask.Result;");
-                    sb.AppendLine($"                if (cachedValue != null)");
-                    sb.AppendLine($"                {{");
-                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                    return Task.FromResult(cachedValue);");
-                    sb.AppendLine($"                }}");
-                    sb.AppendLine($"            }}");
-                    // No 'else' block for cacheTask because InMemoryCacheManager.TryGetFastAsync always completes synchronously.
-                    // Fall through to GetOrCreateFastAsync in case of miss or non-successful completion (e.g. type mismatch)
-
-                    sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: the cache manager records the hit or miss, so it is counted once");
-
-                    // GetOrCreateFastAsync records the hit or miss (another caller may have loaded the value meanwhile)
-                    sb.AppendLine($"            var createdTask = _cacheManager.GetOrCreateFastAsync<{innerType}>(");
-                    sb.AppendLine($"                cacheKeyValue,");
-                    sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName});");
-                    sb.AppendLine($"            return createdTask;");
-                }
-                else
-                {
-                    // Standard path: the key generator builds the key from the boxed arguments
-                    var call = BuildMethodCall(method);
-                    EmitGeneratedKey(sb, safeFieldName, keyParams);
-
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{innerType}>(");
-                    sb.AppendLine($"                cacheKeyValue,");
-                    sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName});");
-                }
-            }
-
-            private static void EmitValueTaskCaching(StringBuilder sb, IMethodSymbol method, ITypeSymbol? innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
-            {
-                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
-                var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type)).ToList();
-
-                if (canUseUltraFastPath)
-                {
-                    // In ultra-fast path, we handle nulls in cache key generation, so suppress nullable warnings
-                    var call = BuildMethodCall(method, suppressNullableWarnings: true);
-
-                    // Generate inline cache key without allocating args array
-                    sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
-                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
-                    sb.AppendLine();
-
-                    var fastType = Utils.GetReturnTypeForSignature(innerType!);
-                    sb.AppendLine($"            if (_cacheManager.TryGetFast(cacheKeyValue, out {fastType}? cachedValueFast) && cachedValueFast != null)");
-                    sb.AppendLine("            {");
-                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                return new ValueTask<{fastType}>(cachedValueFast);");
-                    sb.AppendLine("            }");
-                    sb.AppendLine();
-
-                    // OPTIMIZATION: Check if ValueTask is already completed to avoid async overhead
-                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{Utils.GetReturnTypeForSignature(innerType!)}>(cacheKeyValue);");
-                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = cacheTask.Result;");
-                    sb.AppendLine($"                if (cachedValue != null)");
-                    sb.AppendLine($"                {{");
-                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                    return new ValueTask<{Utils.GetReturnTypeForSignature(innerType!)}>(cachedValue);");
-                    sb.AppendLine($"                }}");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine($"            else");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                var cachedValue = cacheTask.AsTask().ConfigureAwait(false).GetAwaiter().GetResult();");
-                    sb.AppendLine($"                if (cachedValue != null)");
-                    sb.AppendLine($"                {{");
-                    sb.AppendLine($"                    _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                    return new ValueTask<{Utils.GetReturnTypeForSignature(innerType!)}>(cachedValue);");
-                    sb.AppendLine($"                }}");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: the cache manager records the hit or miss, so it is counted once");
-
-                    // GetOrCreateFastAsync records the hit or miss (another caller may have loaded the value meanwhile)
-                    sb.AppendLine($"            var createdTask = _cacheManager.GetOrCreateFastAsync<{innerType}>(");
-                    sb.AppendLine($"                cacheKeyValue,");
-                    sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName});");
-                    sb.AppendLine($"            return new ValueTask<{innerType}>(createdTask);");
-                }
-                else
-                {
-                    // Standard path: the key generator builds the key from the boxed arguments
-                    var call = BuildMethodCall(method);
-                    EmitGeneratedKey(sb, safeFieldName, keyParams);
-
-                    // Wrap Task in ValueTask (non-async path)
-                    sb.AppendLine($"            var task = _cacheManager.GetOrCreateFastAsync<{innerType}>(");
-                    sb.AppendLine($"                cacheKeyValue,");
-                    sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName});");
-                    sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
-                }
-            }
-
-            private static void EmitSyncCaching(StringBuilder sb, IMethodSymbol method, ITypeSymbol? returnType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
-            {
-                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
-                var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type)).ToList();
-
-                // Add warning comment about sync-over-async
-                sb.AppendLine("            // WARNING: This is a sync-over-async pattern that may cause deadlocks");
-                sb.AppendLine("            // in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
-                sb.AppendLine("            // Consider making the method async to avoid potential issues.");
-
-                if (canUseUltraFastPath)
-                {
-                    // In ultra-fast path, we handle nulls in cache key generation, so suppress nullable warnings
-                    var call = BuildMethodCall(method, suppressNullableWarnings: true);
-
-                    // Generate inline cache key without allocating args array
-                    sb.AppendLine($"            // Ultra-fast path: inline key generation, no MessagePack serialization");
-                    EmitCacheKeyAcquisition(sb, safeFieldName, keyParams, "            ");
-                    sb.AppendLine();
-
-                    sb.AppendLine($"            if (_cacheManager.TryGetFast(cacheKeyValue, out {returnType}? cachedFastValue) && cachedFastValue != null)");
-                    sb.AppendLine("            {");
-                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine("                return cachedFastValue;");
-                    sb.AppendLine("            }");
-                    sb.AppendLine();
-
-                    // OPTIMIZATION: Check if ValueTask is already completed to avoid GetAwaiter overhead
-                    sb.AppendLine($"            var cacheTask = _cacheManager.TryGetFastAsync<{returnType}>(cacheKeyValue);");
-                    sb.AppendLine($"            {returnType}? cachedValue;");
-                    sb.AppendLine($"            if (cacheTask.IsCompletedSuccessfully)");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                cachedValue = cacheTask.Result;");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine($"            else");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                cachedValue = cacheTask.ConfigureAwait(false).GetAwaiter().GetResult();");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine($"            if (cachedValue != null)");
-                    sb.AppendLine($"            {{");
-                    sb.AppendLine($"                _metricsProvider?.CacheHit(_cachedMethodName_{safeFieldName});");
-                    sb.AppendLine($"                return cachedValue;");
-                    sb.AppendLine($"            }}");
-                    sb.AppendLine();
-                    sb.AppendLine($"            // Cache miss: the cache manager records the hit or miss, so it is counted once");
-
-                    // GetOrCreateFastAsync records the hit or miss (another caller may have loaded the value meanwhile)
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{returnType}>(");
-                    sb.AppendLine($"                cacheKeyValue,");
-                    sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine($"                () => Task.FromResult({call}),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName})");
-                    sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
-                }
-                else
-                {
-                    // Standard path: the key generator builds the key from the boxed arguments
-                    var call = BuildMethodCall(method);
-                    EmitGeneratedKey(sb, safeFieldName, keyParams);
-
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{returnType}>(");
-                    sb.AppendLine($"                cacheKeyValue,");
-                    sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine($"                () => Task.FromResult({call}),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName})");
-                    sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
-                }
             }
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)

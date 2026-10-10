@@ -271,7 +271,7 @@ namespace TestApp
             // Ultra-fast path generates non-async method signature that returns Task
             AssertContainsIgnoreWhitespace(decoratorSource, "System.Threading.Tasks.Task<string> GetValueAsync(int id)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
-            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastAsync");
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFast<string>(cacheKeyValue, out var cachedValue)");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
@@ -574,7 +574,7 @@ namespace TestApp
             // Ultra-fast path generates non-async method signature that returns Task
             AssertContainsIgnoreWhitespace(decoratorSource, "System.Threading.Tasks.Task<string> GetValueAsync(int id)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
-            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastAsync<string>");
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFast<string>(cacheKeyValue, out var cachedValue)");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
@@ -673,7 +673,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "public void RegularMethod()");
 
             // Check caching logic for cached methods (should use fast path for simple int parameter with inline metrics)
-            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastAsync<string>");
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFast<string>(cacheKeyValue, out var cachedValue)");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
