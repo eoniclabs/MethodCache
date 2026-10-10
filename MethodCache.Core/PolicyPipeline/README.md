@@ -1,57 +1,41 @@
 # Policy Pipeline
 
-The Policy Pipeline is the core configuration architecture of MethodCache. It transforms configuration from multiple sources into unified `CachePolicy` objects that drive runtime behavior.
-
-## Architecture Overview
+The policy pipeline turns cache settings from several sources into one `CachePolicy` per cached method, which drives runtime behavior.
 
 ```
-Configuration Sources → Policy Resolution → Runtime Execution
-     (Priority)              (Merge)            (Apply)
+Policy sources → Resolution → Generated decorators
+  (priority)       (merge)       (PolicyHandle)
 ```
 
-### Flow
+## Flow
 
-1. **Sources** - Multiple configuration surfaces provide cache settings:
-   - Attributes (`[MethodCache]`)
-   - Fluent API (`services.ConfigureMethodCache()`)
-   - Config Files (JSON/YAML)
-   - Runtime Overrides (dynamic changes)
+1. **Sources** provide cache settings:
+   - Attributes (`[Cache]`), emitted by the source generator
+   - Startup code (`services.AddMethodCache(config => ...)`)
+   - Configuration such as appsettings.json (`services.AddMethodCacheFromConfiguration(configuration)`)
+   - Runtime overrides (`IRuntimeCacheConfigurator`)
 
-2. **Resolution** - Priority-based merging into unified policies:
-   - Each source has a priority (10, 40, 50, 100)
-   - Higher priority wins for conflicting settings
-   - Blame tracking records which source set each field
+2. **Resolution** merges them by priority:
+   - Each source has a priority (`PolicySourcePriority`)
+   - For each field, the highest-priority source that set it wins
+   - Every contribution is recorded, so diagnostics can show where a value came from
 
-3. **Runtime** - Resolved policies drive cache behavior:
-   - Duration, key generation, tags, etc.
-   - Diagnostics available via `PolicyDiagnosticsService`
+3. **Runtime**: decorators read the resolved policy through a `PolicyHandle` on every call, so changes apply while the application runs. `PolicyDiagnosticsService` shows the resolved policies.
 
 ## Folder Structure
 
-- **Sources/** - Configuration source implementations
-- **Model/** - Policy models, mappers, and metadata
-- **Resolution/** - Priority-based policy resolver
-- **Diagnostics/** - Runtime policy inspection tools
+- **Sources/** - Policy source implementations
+- **Model/** - Policy builder, mapping helpers, ids and priorities
+- **Resolution/** - Priority-based resolver and registry
+- **Diagnostics/** - Runtime policy inspection
 
-## Key Concepts
+## Priorities
 
-### Priority Hierarchy
+- **10** - Attributes (lowest)
+- **40** - Startup code (fluent API)
+- **50** - Configuration files
+- **100** - Runtime overrides (highest)
 
-- **10** - Attributes (lowest, defaults)
-- **40** - Config Files (application-wide settings)
-- **50** - Fluent API (programmatic overrides)
-- **100** - Runtime Overrides (highest, dynamic changes)
+## Policy Fields
 
-### Policy Fields
-
-Each `CachePolicy` field can be set independently by different sources. The resolver merges them based on priority, creating a composite policy.
-
-### Blame Tracking
-
-`PolicyProvenance` tracks which source set each field, enabling diagnostics and troubleshooting.
-
-## Usage
-
-Developers typically interact with **Sources**, not directly with resolution or models. The pipeline automatically merges configurations.
-
-See individual folder READMEs for detailed documentation.
+`CachePolicy` has `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version` and `Metadata`. `CachePolicyFields` flags say which fields a source set, so each field can come from a different source.

@@ -8,4 +8,4 @@ the higher priority wins field by field (see `PolicySourcePriority`).
 | Generated attribute policies | `Attributes` | `[Cache]` attributes, emitted by the source generator | No |
 | `FluentPolicySource` | `StartupFluent` | `AddMethodCache(config => ...)` | No |
 | `ConfigFilePolicySource` | `ConfigurationFiles` | An `IConfiguration` section, usually `MethodCache` in appsettings.json (`AddMethodCacheFromConfiguration`) | Yes, on configuration reload |
-| `RuntimePolicySource` | `RuntimeOverrides` | `IRuntimeCacheConfigurator` and the admin endpoints | Yes |
+| `RuntimePolicySource` | `RuntimeOverrides` | `IRuntimeCacheConfigurator` | Yes |

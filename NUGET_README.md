@@ -5,7 +5,7 @@ MethodCache provides declarative and fluent caching APIs for .NET applications.
 Use it to:
 
 - Add caching with attributes and source-generated decorators.
-- Apply caching to existing or third-party services with a fluent API.
+- Cache any call, including third-party clients, with an explicit key through `ICacheManager`.
 - Invalidate by tags, keys, or patterns.
 - Change cache policies at runtime without redeploying.
 
@@ -64,7 +64,7 @@ var profile = await cache.GetOrCreateAsync(
 | Feature | Why it is useful |
 |---------|------------------|
 | Source generation | Keeps runtime overhead low and removes reflection-based interception |
-| Multiple config sources | Combine code defaults, file config, and runtime overrides |
+| Multiple config sources | Combine attributes, startup code, appsettings.json (`AddMethodCacheFromConfiguration`) and runtime overrides |
 | Tag-based invalidation | Invalidate related entries without managing each key |
 | Runtime overrides | Adjust behavior during incidents or controlled rollouts |
 | Provider flexibility | Start with in-memory; add Redis, SQL Server or any `IDistributedCache` later |

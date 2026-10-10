@@ -1,61 +1,46 @@
 # MethodCache Configuration Guide
 
-This guide explains how to configure MethodCache, from simple attribute-based setup to layered configuration with runtime overrides.
-
-## Runtime Management Interface
-
-Runtime overrides have the highest precedence. They are useful when you need to adjust caching behavior without changing code or redeploying.
-
-Common runtime use cases:
-
-- Disable or reduce caching for a method during an incident.
-- Tune durations for a hot path while investigating latency.
-- Run temporary experiments with alternate policy settings.
-- Inspect the effective policy currently applied to each method.
-
-[Jump to Management Interface Examples](#management-interface--runtime-overrides)
+This guide explains how to configure MethodCache: attributes, startup code, `appsettings.json` and runtime overrides, and how they combine.
 
 ## Table of Contents
 
 1. [Configuration Overview](#configuration-overview)
 2. [Attribute-Based Configuration](#attribute-based-configuration)
-3. [Method Chaining API Configuration](#method-chaining-api-configuration)
+3. [Manual Caching](#manual-caching)
 4. [Programmatic Configuration](#programmatic-configuration)
 5. [JSON Configuration](#json-configuration)
-6. [Management Interface & Runtime Overrides](#management-interface--runtime-overrides)
-7. [Multi-Source Configuration](#multi-source-configuration)
+6. [Runtime Overrides](#runtime-overrides)
+7. [Inspecting Policies and the Cache](#inspecting-policies-and-the-cache)
 8. [Configuration Priorities](#configuration-priorities)
 9. [Configuration Validation](#configuration-validation)
-10. [Examples](#examples)
 
 ## Configuration Overview
 
-MethodCache supports multiple configuration sources that can be combined:
+Every cached method gets its policy (duration, sliding expiration, refresh-ahead, tags, version) from up to four sources:
 
-| Source | Priority | Runtime Updates | Use Case |
-|--------|----------|-----------------|----------|
-| Attributes | Lowest | No | Development defaults |
-| Fluent/Programmatic | Medium | No | Code-based overrides |
-| JSON/YAML Configuration | High | Yes | Environment and operations config |
-| Runtime Overrides | Highest | Yes | Management APIs and temporary overrides |
+| Source | How you use it | Priority | Changes while running |
+|--------|----------------|----------|-----------------------|
+| Attributes | `[Cache(...)]` on interface methods | 10 (lowest) | No |
+| Startup code | `AddMethodCache(config => ...)` | 40 | No |
+| Configuration | `AddMethodCacheFromConfiguration(configuration)` | 50 | Yes, on configuration reload |
+| Runtime overrides | `IRuntimeCacheConfigurator` | 100 (highest) | Yes |
 
-**How it works:** All configuration sources flow through a unified **policy pipeline**. Each source contributes policies with a specific priority. When multiple sources configure the same method, the highest priority wins. This architecture enables powerful runtime management while keeping your codebase clean.
+When several sources configure the same method, they are merged field by field and the higher priority wins for each field. Generated decorators read the merged policy on every call, so changes from configuration reloads and runtime overrides reach services that already exist, including singletons.
 
 ## Attribute-Based Configuration
 
-The simplest way to configure caching using attributes on interface methods:
+The simplest way to configure caching is with attributes on interface methods:
 
 ```csharp
 public interface IUserService
 {
     [Cache("user-profile", Duration = "01:00:00", Tags = new[] { "user", "profile" })]
     Task<UserProfile> GetUserProfileAsync(int userId);
-    
-    [Cache("user-settings", Duration = "00:30:00")]
-    [ETag(Strategy = ETagGenerationStrategy.ContentHash, UseWeakETag = false)]
+
+    [Cache("user-settings", Duration = "00:30:00", SlidingExpiration = "00:05:00", Tags = new[] { "user:{userId}" })]
     Task<UserSettings> GetUserSettingsAsync(int userId);
-    
-    [CacheInvalidate(Tags = new[] { "user" })]
+
+    [CacheInvalidate(Tags = new[] { "user", "user:{userId}" })]
     Task UpdateUserAsync(int userId, UserUpdateModel update);
 }
 
@@ -63,6 +48,8 @@ public interface IUserService
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddMethodCache();
 ```
+
+`[Cache]` takes an optional group name and the properties `Duration`, `SlidingExpiration`, `RefreshAhead` (strings in `TimeSpan` format), `Tags` and `Version`. Tags can contain templates such as `"user:{userId}"`, which are filled in from the method's arguments.
 
 ## Manual Caching
 
@@ -103,35 +90,35 @@ var orders = await _cache.GetOrCreateAsync(
 
 ## Programmatic Configuration
 
-Configure caching entirely in code:
+Configure `[Cache]` methods in code:
 
 ```csharp
 builder.Services.AddMethodCache(config =>
 {
-    // Global defaults
+    // Base settings for every method listed below
     config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(15)));
 
-    // Group configuration, for methods marked [Cache("user-data")]
+    // Settings for the listed methods assigned to this group with WithGroup("user-data")
     config.ForGroup("user-data")
           .Configure(options => options
-              .WithDuration(TimeSpan.FromMinutes(30))
+              .WithSlidingExpiration(TimeSpan.FromMinutes(10))
               .WithTags("user"));
 
     // Method-specific configuration
     config.ForService<IUserService>()
           .Method(x => x.GetUserProfileAsync(default))
+          .WithGroup("user-data")
           .WithVersion(5)
           .Configure(options => options
               .WithDuration(TimeSpan.FromHours(1))
-              .WithSlidingExpiration(TimeSpan.FromMinutes(10))
               .RefreshAhead(TimeSpan.FromMinutes(5))
               .WithTags("user", "profile"));
 });
 ```
 
-Settings are applied in order: the default policy, then the group, then the method.
+Settings are applied in order: the default policy, then the group, then the method. `DefaultPolicy` and `ForGroup` only apply to methods you list with `ForService<T>().Method(...)`; a `[Cache]` method that is not listed keeps the settings from its attribute.
 
-The key generator applies to every cached method. Replace the default one through dependency injection:
+The key generator applies to every cached method. `FastHashKeyGenerator` is the default; replace it through dependency injection:
 
 ```csharp
 builder.Services.AddMethodCache();
@@ -151,14 +138,15 @@ Configure cached methods from `appsettings.json` or any other `IConfiguration` s
       "Tags": ["default"]
     },
     "Services": {
-      "MyApp.Services.IUserService.GetUserProfile": {
+      "MyApp.Services.IUserService.GetUserProfileAsync": {
         "Duration": "01:00:00",
         "SlidingExpiration": "00:10:00",
         "RefreshAhead": "00:05:00",
         "Tags": ["user", "profile"],
-        "Version": 1
+        "Version": 1,
+        "Notes": "Profiles change rarely"
       },
-      "MyApp.Services.IProductService.GetProduct": {
+      "MyApp.Services.IProductService.GetProductAsync": {
         "Duration": "00:30:00",
         "Tags": ["product", "catalog"]
       }
@@ -167,542 +155,139 @@ Configure cached methods from `appsettings.json` or any other `IConfiguration` s
 }
 ```
 
-Each key under `Services` is the method id: the interface's full name, a dot, and the method name. Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group` and `Metadata`.
+Each key under `Services` is the method id: the interface's full name, a dot, and the method name. Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Defaults` is applied to every method listed under `Services`, and a method's own settings win. `Group`, `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
+
+Only methods with a `[Cache]` attribute have a generated decorator, so the file can change their policy but cannot make other methods cached.
 
 ### Usage
 ```csharp
 builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
+builder.Services.AddMethodCacheFromConfiguration(builder.Configuration); // reads the "MethodCache" section
 ```
+
+Pass a section name as the second argument to read a different section. Environment-specific files such as `appsettings.Production.json` work as usual, because they are part of `IConfiguration`.
 
 Changes to the section take effect while the application runs, as soon as the configuration reloads (appsettings.json reloads on save by default). Methods added, changed or removed in the file are picked up without a restart.
 
-Invalid values, such as a `Duration` that is not a positive time span, make `AddMethodCacheFromConfiguration` throw at startup. If a reloaded file has an invalid value, the reload is logged as an error and the previous policies stay in effect.
+Invalid values, such as a `Duration` that is not a positive time span or a negative `Version`, make `AddMethodCacheFromConfiguration` throw at startup. If a reloaded file has an invalid value, the reload is logged as an error and the previous policies stay in effect.
 
-## Management Interface & Runtime Overrides
-### Inspect Runtime State
+## Runtime Overrides
 
-You can inspect the merged runtime configuration through the `PolicyDiagnosticsService` which is automatically registered when you call `AddMethodCacheWithSources`.
+Runtime overrides have the highest priority. Use them to change a method's policy without a deploy, for example to shorten a duration during an incident. Resolve `IRuntimeCacheConfigurator`, which `AddMethodCache()` registers:
 
 ```csharp
-var diagnostics = provider.GetRequiredService<PolicyDiagnosticsService>();
+var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
 
-foreach (var policy in diagnostics.GetAllPolicies())
+// Strongly typed
+await configurator.UpsertAsync<IOrdersService, Order>(
+    s => s.GetAsync(default),
+    o => o.WithDuration(TimeSpan.FromMinutes(2)),
+    new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211"));
+
+// Several methods at once, with the fluent configuration API
+await configurator.ApplyAsync(fluent =>
 {
-    Console.WriteLine($"{policy.MethodId}: Duration={policy.Policy.Duration ?? TimeSpan.Zero}, Sources={string.Join(", ", policy.Contributions.Select(c => c.SourceId))}");
-}
+    fluent.ForService<IUserService>()
+          .Method(s => s.GetUserProfileAsync(default))
+          .Configure(o => o.WithDuration(TimeSpan.FromMinutes(5)));
+});
+
+// By method id, for example from an admin form
+await configurator.UpsertAsync("MyApp.Services.IUserService.GetUserProfileAsync",
+    (CacheEntryOptions.Builder o) => o.WithDuration(TimeSpan.FromMinutes(10)));
+
+// Remove one override, or all of them, to fall back to the lower-priority sources
+await configurator.RemoveAsync<IOrdersService, Order>(s => s.GetAsync(default));
+await configurator.ClearAsync();
 ```
-
-Each report exposes the full set of `PolicyContribution`s so you can see exactly which layer (attributes, JSON/YAML, programmatic, runtime) produced the effective configuration.
-
-
-The runtime layer has the highest priority and overrides every other configuration surface. The DI container exposes `IRuntimeCacheConfigurator`, which gives you one entry point for management UIs, incident tooling, or scripting.
-
-### Runtime management API surface
 
 | Method | What it does |
-|--------|---------------|
-| `ApplyAsync(Action<IFluentMethodCacheConfiguration>)` | Applies one or more runtime overrides using fluent service/method selectors. |
-| `UpsertAsync(string methodId, Action<CacheEntryOptions.Builder>)` | Applies or replaces one override for a specific method id. |
-| `UpsertAsync(string methodId, Action<CachePolicyBuilder>)` | Applies or replaces one override with direct policy builder control. |
-| `UpsertAsync(string methodId, CachePolicy, CachePolicyFields)` | Applies an explicit policy snapshot. |
-| `RemoveAsync(string methodId)` | Removes one runtime override by method id. |
-| `ClearAsync()` | Removes all runtime overrides. |
+|--------|--------------|
+| `UpsertAsync(methodId, Action<CacheEntryOptions.Builder>, metadata?)` | Applies or replaces the override for one method. Overloads take a method expression, a `CachePolicyBuilder` or a `CachePolicy`. |
+| `UpsertBatchAsync(IEnumerable<RuntimeOverrideEntry>)` | Applies several overrides in one call. |
+| `ApplyAsync(Action<IFluentMethodCacheConfiguration>)` | Applies overrides for the methods listed with `ForService<T>().Method(...)`, using the same rules as startup code. |
+| `RemoveAsync(methodId)` / `ClearAsync()` | Removes one override, or all of them. |
+| `GetOverridesAsync()` / `GetOverrideAsync(methodId)` | Returns the active overrides. |
+| `WatchAsync(cancellationToken)` | Streams override changes. |
 
-### Example: Cache management endpoints
+`RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is stored with the override for auditing. An override whose `ExpiresAt` has passed is removed the next time the runtime configurator is used. There is no timer, so until then the expired override stays in effect.
+
+Runtime overrides are held in memory. They are lost on restart and are not shared between instances, so persist and replay them yourself if you need that. Overrides cannot disable caching for a method: `WithDuration` requires a positive duration. To get rid of stale data, invalidate it instead (see below).
+
+## Inspecting Policies and the Cache
+
+`PolicyDiagnosticsService` shows the effective policy of each method and which sources contributed to it:
 
 ```csharp
-[ApiController]
-[Route("api/admin/cache")]
-public sealed class CacheManagementController : ControllerBase
+var diagnostics = app.Services.GetRequiredService<PolicyDiagnosticsService>();
+
+foreach (var report in diagnostics.GetAllPolicies())
 {
-    private readonly IRuntimeCacheConfigurator _configurator;
-    private readonly PolicyDiagnosticsService _diagnostics;
-
-    public CacheManagementController(
-        IRuntimeCacheConfigurator configurator,
-        PolicyDiagnosticsService diagnostics)
-    {
-        _configurator = configurator;
-        _diagnostics = diagnostics;
-    }
-
-    // Strongly-typed override (great for known hotspots)
-    [HttpPost("orders/boost")]
-    public async Task<IActionResult> BoostOrdersAsync([FromBody] TimeSpan duration)
-    {
-        await _configurator.ApplyAsync(fluent =>
-        {
-            fluent.ForService<IOrdersService>()
-                  .Method(s => s.GetAsync(default))
-                  .Configure(o => o
-                      .WithDuration(duration)
-                      .WithTags("runtime", "orders"));
-        });
-
-        return Ok();
-    }
-
-    // Dynamic override driven by UI form input
-    [HttpPost("overrides")]
-    public async Task<IActionResult> UpsertOverride([FromBody] CacheOverrideRequest request)
-    {
-        await _configurator.UpsertAsync(request.MethodId, builder =>
-        {
-            if (request.Duration.HasValue)
-            {
-                builder.WithDuration(request.Duration.Value);
-            }
-
-            if (request.Tags is { Length: > 0 })
-            {
-                builder.WithTags(request.Tags);
-            }
-        });
-
-        return Ok();
-    }
-
-    [HttpDelete("overrides")]
-    public async Task<IActionResult> RemoveOverride([FromQuery] string methodId)
-    {
-        await _configurator.RemoveAsync(methodId);
-        return NoContent();
-    }
-
-    [HttpDelete("overrides/all")]
-    public async Task<IActionResult> ClearOverrides()
-    {
-        await _configurator.ClearAsync();
-        return NoContent();
-    }
-
-    [HttpGet("effective")]
-    public IActionResult GetEffectiveConfiguration()
-    {
-        var reports = _diagnostics.GetAllPolicies();
-        return Ok(reports.Select(r => new { r.MethodId, r.Policy.Duration, r.Policy.Tags }));
-    }
-}
-
-public sealed record CacheOverrideRequest(
-    string MethodId,
-    TimeSpan? Duration,
-    string[]? Tags);
-```
-
-With these endpoints you can build dashboards that:
-
-- Disable or remove overrides during incidents (`ClearAsync` or `RemoveAsync`).
-- Tune durations on the fly (`UpsertAsync` or `ApplyAsync`).
-- Run experiments by applying different overrides and comparing metrics.
-- Show effective policies (`PolicyDiagnosticsService.GetAllPolicies()`).
-
-### Integration with External Configuration Stores
-
-Runtime configuration works seamlessly with external configuration providers:
-
-#### Azure App Configuration
-```csharp
-builder.Configuration.AddAzureAppConfiguration(options =>
-{
-    options.Connect(connectionString)
-           .Select(KeyFilter.Any, "MethodCache")
-           .ConfigureRefresh(refreshOptions =>
-           {
-               refreshOptions.Register("MethodCache:RefreshKey", refreshAll: true)
-                           .SetCacheExpiration(TimeSpan.FromSeconds(30));
-           });
-});
-
-// Runtime configuration automatically picks up Azure App Config changes
-builder.Services.AddMethodCacheWithSources(cache => {
-    cache.AddRuntimeConfiguration(); // Gets Azure App Config changes automatically
-});
-```
-
-#### Redis Configuration Store
-```csharp
-public class RedisConfigurationService
-{
-    private readonly IDatabase _redis;
-    private readonly IConfiguration _configuration;
-    
-    public async Task UpdateCacheSettingAsync(string methodKey, object settings)
-    {
-        var configKey = $"MethodCache:Services:{methodKey}";
-        var json = JsonSerializer.Serialize(settings);
-        
-        // Update Redis
-        await _redis.StringSetAsync(configKey, json);
-        
-        // Trigger configuration reload
-        _configuration.GetReloadToken().ActiveChangeCallback?.Invoke(null);
-    }
+    var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
+    Console.WriteLine($"{report.MethodId}: Duration={report.Policy.Duration}, Sources={sources}");
 }
 ```
 
-### Monitoring Configuration Changes
+`GetPolicy(methodId)` returns one method's report, and `FindBySource(sourceId)` returns the methods a source configured. Source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtime-overrides`.
+
+To inspect and empty the cache itself, use `ICacheAdministrator` (stats, cached methods, entries, invalidation by tag). The `MethodCache.AspNetCore` package exposes the same operations over HTTP:
 
 ```csharp
-public class ConfigurationChangeMonitor
-{
-    private readonly IOptionsMonitor<MethodCacheOptions> _optionsMonitor;
-    private readonly ILogger<ConfigurationChangeMonitor> _logger;
-    
-    public ConfigurationChangeMonitor(
-        IOptionsMonitor<MethodCacheOptions> optionsMonitor,
-        ILogger<ConfigurationChangeMonitor> logger)
-    {
-        _optionsMonitor = optionsMonitor;
-        _logger = logger;
-        
-        // Monitor for changes
-        _optionsMonitor.OnChange((options, name) =>
-        {
-            _logger.LogInformation("Cache configuration changed for {ConfigName} at {Timestamp}", 
-                name, DateTime.UtcNow);
-            
-            // Log specific changes
-            foreach (var service in options.Services)
-            {
-                foreach (var method in service.Value.Methods)
-                {
-                    _logger.LogInformation("Method {Service}.{Method} configured: Duration={Duration}, Enabled={Enabled}",
-                        service.Key, method.Key, method.Value.Duration, method.Value.Enabled);
-                }
-            }
-        });
-    }
-}
+builder.Services.AddHealthChecks().AddMethodCache();
+
+app.MapMethodCacheAdmin().RequireAuthorization("CacheAdmins"); // GET /methodcache/stats, /methods, /entries, ...
 ```
 
-### Configuration Override Examples
-
-To demonstrate override precedence:
-
-```csharp
-// 1. Code says cache for 1 hour
-[Cache("user-profile", Duration = "01:00:00")]
-public async Task<UserProfile> GetUserProfileAsync(int userId) { ... }
-
-// 2. JSON config says cache for 30 minutes  
-// appsettings.json: "Duration": "00:30:00"
-
-// 3. Programmatic config says cache for 2 hours
-config.ForService<IUserService>()
-      .Method(x => x.GetUserProfileAsync(default))
-      .Duration(TimeSpan.FromHours(2));
-
-// 4. Runtime override sets 5 minutes
-// POST /api/admin/cache/emergency-tune
-// { "Duration": "00:05:00" }
-
-// Result: 5 minutes (runtime override wins)
-```
-
-This architecture ensures operations teams can safely adjust caching behavior in production.
-
-## Multi-Source Configuration
-
-Combine multiple configuration sources with proper priority handling:
-
-```csharp
-builder.Services.AddMethodCacheWithSources(cache => {
-    // Lowest priority: Attributes (development defaults)
-    cache.AddAttributeSource(Assembly.GetExecutingAssembly());
-    
-    // Medium priority: JSON configuration (ops team)
-    cache.AddJsonConfiguration(builder.Configuration);
-    
-    // Medium priority: YAML configuration (complex scenarios)
-    cache.AddYamlConfiguration("cache-config.yaml");
-    
-    // High priority: Programmatic overrides (code-based)
-    cache.AddProgrammaticConfiguration(prog => {
-        prog.AddMethod("MyApp.Services.ICriticalService", "ProcessPayment", settings => {
-            settings.Duration = TimeSpan.FromMinutes(5); // Code-based setting
-            settings.Tags.Add("payment");
-        });
-    });
-    
-    // Highest priority: Runtime configuration (management interface - can override everything)
-    cache.AddRuntimeConfiguration();
-});
-```
+See the [MethodCache.AspNetCore README](../../MethodCache.AspNetCore/README.md) for the endpoints. They do not change policies; use `IRuntimeCacheConfigurator` for that.
 
 ## Configuration Priorities
 
-When multiple sources configure the same method, priority determines the winner:
+The priorities are defined in `PolicySourcePriority`:
 
-1. **Runtime Configuration** (Priority 40) - **Always wins** - Management interface control
-2. **Programmatic Configuration** (Priority 30) - Code-based overrides
-3. **JSON/YAML Configuration** (Priority 20) - Operations team control  
-4. **Attribute Configuration** (Priority 10) - Development defaults
+| Priority | Source | Overrides |
+|----------|--------|-----------|
+| 100 | Runtime overrides (`RuntimeOverrides`) | Everything below |
+| 50 | Configuration such as appsettings.json (`ConfigurationFiles`) | Startup code and attributes |
+| 40 | Startup code, `AddMethodCache(config => ...)` (`StartupFluent`) | Attributes |
+| 10 | `[Cache]` attributes (`Attributes`) | Nothing |
 
-### Example Priority Resolution
+Example for one method:
 
 ```csharp
-// Attribute
-[Cache(Duration = "00:05:00")] // ❌ Will be overridden
+// Attribute: 1 hour
+[Cache(Duration = "01:00:00", Tags = new[] { "users" })]
+Task<UserProfile> GetUserProfileAsync(int userId);
 
-// JSON (appsettings.json)
-"Duration": "00:15:00"         // ❌ Will be overridden
+// Startup code: 2 hours
+config.ForService<IUserService>()
+      .Method(x => x.GetUserProfileAsync(default))
+      .Configure(o => o.WithDuration(TimeSpan.FromHours(2)));
 
-// Programmatic
-.Duration(TimeSpan.FromHours(1)) // ❌ Will be overridden
+// appsettings.json: 30 minutes
+// "MyApp.Services.IUserService.GetUserProfileAsync": { "Duration": "00:30:00" }
 
-// Runtime (highest priority - management interface)
-"Duration": "00:30:00"         // ✅ This wins!
+// Runtime override: 5 minutes
+await configurator.UpsertAsync<IUserService, UserProfile>(
+    s => s.GetUserProfileAsync(default),
+    o => o.WithDuration(TimeSpan.FromMinutes(5)));
+
+// Result: Duration = 5 minutes (runtime override), Tags = ["users"] (only the attribute set them)
 ```
 
 ## Configuration Validation
 
-MethodCache performs comprehensive validation to ensure configuration integrity:
-
-### Built-in Validation Rules
-
-| Parameter | Validation Rule | Error Message |
-|-----------|----------------|---------------|
-| Duration | Must be positive (> 0) | "Duration must be positive" |
-| SlidingExpiration | Must be positive (> 0) | "Sliding expiration must be positive" |
-| RefreshAhead | Must be positive (> 0) | "Refresh window must be positive" |
-| Version | Must be non-negative (>= 0) | "Version must be non-negative" |
-| SegmentSize | Must be positive (> 0) | "Segment size must be positive" |
-| MaxMemorySize | Must be positive (> 0) | "Max memory size must be positive" |
-
-### Validation Examples
+| Setting | Rule | Where it is checked |
+|---------|------|---------------------|
+| `Duration`, `SlidingExpiration`, `RefreshAhead` | Positive time span | `[Cache]`: compile time (error MC0004). Builders: `ArgumentOutOfRangeException`. JSON: startup |
+| `Version` | Zero or more | Builders: `ArgumentOutOfRangeException`. JSON: startup |
 
 ```csharp
-// ✅ Valid configuration
+// Throws ArgumentOutOfRangeException
 config.ForService<IUserService>()
-    .Method(x => x.GetData(default))
-    .Configure(options =>
-    {
-        options.WithDuration(TimeSpan.FromMinutes(30));     // ✅ Positive
-        options.RefreshAhead(TimeSpan.FromSeconds(10));     // ✅ Positive
-        options.WithVersion(1);                             // ✅ Non-negative
-    });
-
-// ❌ Invalid configuration - throws ArgumentOutOfRangeException
-config.ForService<IUserService>()
-    .Method(x => x.GetData(default))
-    .Configure(options =>
-    {
-        options.WithDuration(TimeSpan.Zero);                // ❌ Not positive
-        options.RefreshAhead(TimeSpan.FromSeconds(-1));     // ❌ Negative
-        options.WithVersion(-1);                           // ❌ Negative
-    });
+    .Method(x => x.GetUserProfileAsync(default))
+    .Configure(options => options.WithDuration(TimeSpan.Zero));
 ```
 
 ### Settings That Only Apply to GetOrCreateAsync
 
 `OnHit`, `OnMiss`, `WithMetrics` and `When` run around a single `GetOrCreateAsync` call. Cached `[Cache]` methods cannot use them, so configuring them through `DefaultPolicy`, `ForGroup` or `ForService(...).Method(...)` throws `InvalidOperationException` at startup rather than being silently ignored.
-
-Values in `[Cache]` attributes are checked at compile time: a `Duration`, `SlidingExpiration` or `RefreshAhead` that is not a positive `TimeSpan` is reported as error MC0004.
-
-## Examples
-
-### Simple Attribute-Only Setup
-```csharp
-// Program.cs
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddMethodCache();
-
-// Service
-public interface IProductService
-{
-    [Cache("products", Duration = "01:00:00", Tags = new[] { "catalog" })]
-    Task<Product[]> GetProductsAsync();
-}
-```
-
-### Production Multi-Source Setup
-```csharp
-// Program.cs
-builder.Services.AddMethodCacheWithSources(cache => {
-    // Development defaults from attributes
-    cache.AddAttributeSource();
-    
-    // Operations configuration from JSON
-    cache.AddJsonConfiguration(builder.Configuration);
-    
-    // Runtime configuration for dynamic updates
-    cache.AddRuntimeConfiguration();
-    
-    // Critical overrides in code
-    cache.AddProgrammaticConfiguration(prog => {
-        // Ensure payment processing is never cached too long
-        prog.AddMethod("IPaymentService", "ProcessPayment", s => {
-            s.Duration = TimeSpan.FromMinutes(1);
-            s.Tags.Add("critical");
-        });
-    });
-});
-
-// Add ETag support
-builder.Services.AddETagSupport();
-```
-
-### Environment-Specific Configuration
-
-#### appsettings.Development.json
-```json
-{
-  "MethodCache": {
-    "DefaultDuration": "00:01:00",
-    "EnableDebugLogging": true,
-    "Services": {
-      "MyApp.Services.IUserService.GetUserProfile": {
-        "Duration": "00:05:00"
-      }
-    }
-  }
-}
-```
-
-#### appsettings.Production.json
-```json
-{
-  "MethodCache": {
-    "DefaultDuration": "01:00:00",
-    "EnableDebugLogging": false,
-    "EnableMetrics": true,
-    "Services": {
-      "MyApp.Services.IUserService.GetUserProfile": {
-        "Duration": "24:00:00"
-      }
-    }
-  }
-}
-```
-
-### Dynamic Runtime Updates Example
-
-```csharp
-// Service for updating configuration at runtime
-public class CacheConfigurationService
-{
-    private readonly IOptionsSnapshot<MethodCacheOptions> _options;
-    private readonly IConfiguration _configuration;
-    
-    public CacheConfigurationService(
-        IOptionsSnapshot<MethodCacheOptions> options,
-        IConfiguration configuration)
-    {
-        _options = options;
-        _configuration = configuration;
-    }
-    
-    public async Task UpdateCacheDurationAsync(string service, string method, TimeSpan duration)
-    {
-        // Update configuration source (Azure App Configuration, etc.)
-        var key = $"MethodCache:Services:{service}:Methods:{method}:Duration";
-        await _configuration[key] = duration.ToString();
-        
-        // Configuration will automatically reload via IOptionsMonitor
-    }
-}
-```
-
-## Configuration Validation
-
-Enable validation to catch configuration errors early:
-
-```csharp
-builder.Services.AddOptions<MethodCacheOptions>()
-    .Bind(builder.Configuration.GetSection("MethodCache"))
-    .ValidateDataAnnotations()
-    .Validate(options => {
-        // Custom validation logic
-        if (options.DefaultDuration > TimeSpan.FromDays(1))
-        {
-            return false; // Duration too long
-        }
-        return true;
-    });
-```
-
-## Management Interface Benefits
-
-With runtime configuration having the highest priority, you can build powerful management interfaces:
-
-### Emergency Cache Control
-```csharp
-// Management API endpoint
-[HttpPost("/admin/cache/emergency-disable")]
-public async Task EmergencyDisableCache(string methodId)
-{
-    await _configurator.UpsertAsync(methodId, builder =>
-    {
-        builder.WithDuration(TimeSpan.Zero);
-        builder.WithTags("emergency-disable");
-    });
-}
-```
-
-### Live Performance Tuning
-```csharp
-[HttpPost("/admin/cache/tune-performance")]
-public async Task TunePerformance(string methodId, TimeSpan duration)
-{
-    await _configurator.UpsertAsync(methodId, builder =>
-    {
-        builder.WithDuration(duration);
-        builder.WithTags("performance-tuned");
-    });
-}
-```
-
-### A/B Testing Framework
-```csharp
-[HttpPost("/admin/cache/ab-test")]
-public async Task SetupABTest(string methodId, string variant)
-{
-    var settings = variant switch
-    {
-        "aggressive" => (Duration: TimeSpan.FromHours(1), Tags: new[] { "ab-test", "aggressive" }),
-        "conservative" => (Duration: TimeSpan.FromMinutes(5), Tags: new[] { "ab-test", "conservative" }),
-        _ => throw new ArgumentException("Invalid variant")
-    };
-
-    await _configurator.UpsertAsync(methodId, builder =>
-    {
-        builder.WithDuration(settings.Duration);
-        builder.WithTags(settings.Tags);
-    });
-}
-```
-
-## Best Practices
-
-1. **Use Attributes for Defaults** - Good for development and basic scenarios
-2. **Use JSON/YAML for Operations** - Let ops teams adjust without code changes
-3. **Use Programmatic for Code-based Logic** - Implement consistent application logic
-4. **Use Runtime Configuration for Management** - Override everything from management interfaces
-5. **Layer Configuration Sources** - Start simple, add complexity as needed
-6. **Monitor Configuration Changes** - Log when configurations change at runtime
-7. **Validate Configuration** - Use built-in validation to catch errors early
-
-This layered approach gives you maximum flexibility while maintaining simplicity where possible!
-
-## Quick Reference: Configuration Priority
-
-| Priority | Source | Can Override | Runtime Updates | Best For |
-|----------|--------|--------------|-----------------|----------|
-| **40** | **Runtime (IOptionsMonitor)** | **Everything** | Yes | Management interfaces and temporary overrides |
-| **30** | **Programmatic (Code)** | JSON/YAML/Attributes | No | Application logic and business rules |
-| **20** | **JSON/YAML** | Attributes only | Yes | Environment configuration |
-| **10** | **Attributes** | Nothing | No | Development defaults |
-
-### Emergency Override Example
-
-```bash
-# Emergency: Disable all user profile caching via management API
-curl -X POST /api/admin/cache/emergency-disable \
-  -d '{"ServiceName": "IUserService", "MethodName": "GetUserProfile"}'
-
-# Overrides all lower-priority configuration sources.
-```
-
-Runtime configuration is the top-priority layer in MethodCache.
