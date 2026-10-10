@@ -1,3 +1,4 @@
+using System.Buffers;
 using MessagePack;
 using MethodCache.Core.Storage;
 using MethodCache.Core.Storage.Abstractions;
@@ -24,6 +25,35 @@ public class MessagePackSerializer : ISerializer
     }
 
     public string ContentType => "application/x-msgpack";
+
+    public void Serialize<T>(T value, IBufferWriter<byte> destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        try
+        {
+            MessagePack.MessagePackSerializer.Serialize(destination, value, _options);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to serialize object of type {typeof(T).Name}", ex);
+        }
+    }
+
+    public T? Deserialize<T>(ReadOnlySequence<byte> source)
+    {
+        if (source.IsEmpty)
+            return default;
+
+        try
+        {
+            return MessagePack.MessagePackSerializer.Deserialize<T>(source, _options);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to deserialize data to type {typeof(T).Name}", ex);
+        }
+    }
 
     public byte[] Serialize<T>(T obj)
     {

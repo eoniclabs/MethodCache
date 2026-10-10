@@ -6,6 +6,7 @@ using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Utilities;
 using MethodCache.Core.Options;
 using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Core.Storage.Abstractions;
@@ -23,6 +24,9 @@ namespace MethodCache.Core.Runtime.Execution
     /// many concurrent callers), eager background refresh before expiry, probabilistic early refresh (XFetch),
     /// sliding expiration, fail-safe fallback to stale values when a factory throws, TTL jitter, optional
     /// caching of null results, and tag / wildcard invalidation that also cancels in-flight loads from being stored.</para>
+    /// <para>With a distributed cache configured (<c>AddMethodCacheDistributedCache</c>), an in-memory miss reads the
+    /// distributed cache before running the factory, loaded values are written to both, and key, tag and clear
+    /// invalidations reach the distributed cache and, through a backplane, other instances' memory.</para>
     /// </remarks>
     public class InMemoryCacheManager : ICacheManager, IMemoryCache
     {
@@ -52,6 +56,7 @@ namespace MethodCache.Core.Runtime.Execution
         private readonly long _failSafeThrottle;
         private readonly long _jitter;
         private readonly bool _highResolutionTiming;
+        private readonly DistributedCacheLayer? _distributed;
 
         private int _disposed;
 
@@ -64,6 +69,15 @@ namespace MethodCache.Core.Runtime.Execution
         /// Creates a cache manager that reads time from <paramref name="timeProvider"/> (useful for tests).
         /// </summary>
         public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MemoryCacheOptions>? options, TimeProvider? timeProvider)
+            : this(metricsProvider, options, timeProvider, distributed: null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a cache manager that keeps entries in memory and in <paramref name="distributed"/>, read on an
+        /// in-memory miss before the factory runs.
+        /// </summary>
+        internal InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MemoryCacheOptions>? options, TimeProvider? timeProvider, DistributedCacheLayer? distributed)
         {
             _metricsProvider = metricsProvider ?? throw new ArgumentNullException(nameof(metricsProvider));
             _options = options?.Value ?? new MemoryCacheOptions();
@@ -84,6 +98,13 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 _maintenanceTimer = new Timer(static state => ((MemoryCacheEngine)state!).Maintain(), _engine, _options.CleanupInterval, _options.CleanupInterval);
             }
+
+            _distributed = distributed;
+            _distributed?.Attach(
+                onKeyInvalidated: key => RemoveLocal(key),
+                onTagInvalidated: RemoveLocalTag,
+                onCleared: ClearLocal,
+                onError: ex => _metricsProvider.CacheError("Backplane", ex.Message));
         }
 
         /// <summary>The underlying engine; exposed to tests that need deterministic policy behavior.</summary>
@@ -156,16 +177,15 @@ namespace MethodCache.Core.Runtime.Execution
 
             foreach (var key in keys)
             {
-                if (string.IsNullOrWhiteSpace(key))
+                if (!string.IsNullOrWhiteSpace(key))
                 {
-                    continue;
+                    RemoveLocal(key);
                 }
-
-                InvalidateFlight(key);
-                _engine.Remove(key);
             }
 
-            return Task.CompletedTask;
+            return _distributed == null
+                ? Task.CompletedTask
+                : _distributed.RemoveAsync(keys.Where(static key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).ToArray());
         }
 
         public Task InvalidateByTagsAsync(params string[] tags)
@@ -185,7 +205,9 @@ namespace MethodCache.Core.Runtime.Execution
                 }
             }
 
-            return Task.CompletedTask;
+            return _distributed == null
+                ? Task.CompletedTask
+                : _distributed.InvalidateTagsAsync(tags.Where(static tag => tag != null).Distinct(StringComparer.Ordinal).ToArray());
         }
 
         public Task InvalidateByTagPatternAsync(string pattern)
@@ -193,6 +215,13 @@ namespace MethodCache.Core.Runtime.Execution
             if (string.IsNullOrWhiteSpace(pattern))
             {
                 return Task.CompletedTask;
+            }
+
+            if (_distributed != null)
+            {
+                // The distributed cache cannot list the tags it holds, so a pattern would only clear this node's memory
+                throw new NotSupportedException(
+                    "Tag pattern invalidation is not supported with a distributed cache. Invalidate the exact tags instead.");
             }
 
             InvalidateFlights(flightTag => WildcardPattern.IsMatch(pattern, flightTag));
@@ -238,13 +267,18 @@ namespace MethodCache.Core.Runtime.Execution
             // A load that started before this write must not overwrite it with an older result.
             InvalidateFlight(key);
             Store(key, value, EntryPolicy.Plain, computeDuration: 0, duration: Math.Max(1, ToNanos(expiration)));
-            return Task.CompletedTask;
+
+            return _distributed == null
+                ? Task.CompletedTask
+                : _distributed.SetAsync(key, value, tags: null, _distributed.Now, expiration).AsTask();
         }
 
         public ValueTask<bool> RemoveAsync(string key)
         {
-            InvalidateFlight(key);
-            return new ValueTask<bool>(_engine.Remove(key));
+            var removed = RemoveLocal(key);
+            return _distributed == null
+                ? new ValueTask<bool>(removed)
+                : RemoveDistributedAsync(new[] { key }, removed);
         }
 
         public ValueTask<int> RemoveMultipleAsync(params string[] keys)
@@ -252,14 +286,21 @@ namespace MethodCache.Core.Runtime.Execution
             var removed = 0;
             foreach (var key in keys)
             {
-                InvalidateFlight(key);
-                if (_engine.Remove(key))
+                if (RemoveLocal(key))
                 {
                     removed++;
                 }
             }
 
-            return new ValueTask<int>(removed);
+            return _distributed == null
+                ? new ValueTask<int>(removed)
+                : RemoveDistributedAsync(keys, removed);
+        }
+
+        private async ValueTask<TResult> RemoveDistributedAsync<TResult>(string[] keys, TResult result)
+        {
+            await _distributed!.RemoveAsync(keys).ConfigureAwait(false);
+            return result;
         }
 
         public ValueTask<bool> ExistsAsync(string key)
@@ -270,11 +311,10 @@ namespace MethodCache.Core.Runtime.Execution
 
         public ValueTask ClearAsync()
         {
-            InvalidateFlights(static _ => true, includeUntagged: true);
-            _engine.Clear();
+            ClearLocal();
             _hits.Reset();
             _misses.Reset();
-            return ValueTask.CompletedTask;
+            return _distributed == null ? ValueTask.CompletedTask : new ValueTask(_distributed.ClearAsync());
         }
 
         public ValueTask<ICacheStats> GetStatsAsync()
@@ -373,15 +413,33 @@ namespace MethodCache.Core.Runtime.Execution
                 return await factory().ConfigureAwait(false);
             }
 
-            RecordMiss(methodName);
-
             try
             {
+                if (_distributed != null)
+                {
+                    var stored = await TryReadDistributedAsync<T>(key, methodName).ConfigureAwait(false);
+                    if (stored.Found)
+                    {
+                        StoreLoaded(key, stored.Value, policy, flight, computeDuration: 0, duration: Math.Max(1, ToNanos(stored.RemainingLifetime)));
+                        flight.Complete(stored.Value);
+                        RecordHit(methodName);
+                        return stored.Value!;
+                    }
+                }
+
+                RecordMiss(methodName);
+
+                var loadStartedAt = _distributed?.Now ?? 0;
                 var start = StartTiming();
                 var result = await factory().ConfigureAwait(false);
                 var elapsed = ElapsedSince(start);
 
                 StoreLoaded(key, result, policy, flight, elapsed);
+                if (_distributed != null)
+                {
+                    await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                }
+
                 flight.Complete(result);
                 RecordLoadLatency(methodName, elapsed);
                 return result;
@@ -424,6 +482,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 try
                 {
+                    var loadStartedAt = _distributed?.Now ?? 0;
                     var start = StartTiming();
                     var result = await factory().ConfigureAwait(false);
                     var elapsed = ElapsedSince(start);
@@ -431,6 +490,11 @@ namespace MethodCache.Core.Runtime.Execution
                     // Replace only the node being refreshed, so a write or removal that slipped in before this
                     // refresh registered its flight is never overwritten or resurrected.
                     StoreLoaded(key, result, policy, flight, elapsed, replacing: node);
+                    if (_distributed != null)
+                    {
+                        await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                    }
+
                     flight.Complete(result);
                     RecordLoadLatency(methodName, elapsed);
                 }
@@ -486,7 +550,7 @@ namespace MethodCache.Core.Runtime.Execution
         /// Stores a factory result unless its key or tags were invalidated while it loaded. Invalidators flag the
         /// flight before removing entries, so either they remove this node or the re-check below sees the flag.
         /// </summary>
-        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, long computeDuration, Node? replacing = null)
+        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, long computeDuration, Node? replacing = null, long? duration = null)
         {
             if (flight.Invalidated)
             {
@@ -512,7 +576,7 @@ namespace MethodCache.Core.Runtime.Execution
                 return;
             }
 
-            var node = Store(key, result, policy, computeDuration, replacing: replacing);
+            var node = Store(key, result, policy, computeDuration, duration, replacing);
             Interlocked.MemoryBarrier();
             if (node != null && flight.Invalidated)
             {
@@ -649,6 +713,70 @@ namespace MethodCache.Core.Runtime.Execution
 
             value = default;
             return false;
+        }
+
+        /// <summary>
+        /// Reads an entry from the distributed cache. A failure there counts as a miss, so the factory still runs.
+        /// </summary>
+        private async ValueTask<DistributedEntry<T>> TryReadDistributedAsync<T>(string key, string methodName)
+        {
+            try
+            {
+                return await _distributed!.TryGetAsync<T>(key).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _metricsProvider.CacheError(methodName, $"Distributed cache read failed: {ex.Message}");
+                return default;
+            }
+        }
+
+        /// <summary>
+        /// Writes a loaded value to the distributed cache, unless the load was invalidated. A failure there is
+        /// reported and otherwise ignored: the caller already has its value and the in-memory copy is stored.
+        /// </summary>
+        private async ValueTask WriteDistributedAsync<T>(string key, string methodName, T result, EntryPolicy policy, Flight flight, long loadStartedAt)
+        {
+            if (flight.Invalidated || (result == null && !_options.CacheNullValues))
+            {
+                return;
+            }
+
+            try
+            {
+                var lifetime = Math.Min(policy.Duration ?? _defaultDuration, _maxDuration);
+                await _distributed!.SetAsync(key, result, policy.Tags, loadStartedAt, TimeSpan.FromTicks(lifetime / NanosPerTick)).ConfigureAwait(false);
+
+                // The key was removed while this value was being written; tag invalidations need no help, since
+                // the entry was created before them.
+                if (flight.Invalidated)
+                {
+                    await _distributed.RemoveAsync(new[] { key }).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _metricsProvider.CacheError(methodName, $"Distributed cache write failed: {ex.Message}");
+            }
+        }
+
+        private bool RemoveLocal(string key)
+        {
+            InvalidateFlight(key);
+            return _engine.Remove(key);
+        }
+
+        private void RemoveLocalTag(string tag)
+        {
+            // Flights are flagged before entries are removed; see StoreLoaded.
+            InvalidateFlights(flightTag => string.Equals(flightTag, tag, StringComparison.Ordinal));
+            _engine.RemoveByTag(tag);
+        }
+
+        private void ClearLocal()
+        {
+            InvalidateFlights(static _ => true, includeUntagged: true);
+            _engine.Clear();
         }
 
         private void InvalidateFlights(Func<string, bool> tagMatches, bool includeUntagged = false)
