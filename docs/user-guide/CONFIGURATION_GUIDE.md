@@ -65,131 +65,43 @@ public interface IUserService
 builder.Services.AddMethodCache(assemblies: Assembly.GetExecutingAssembly());
 ```
 
-## Method Chaining API Configuration
+## Manual Caching
 
-The Method Chaining API provides a chainable interface for configuring cache operations. Use it when attributes are not practical, such as third-party integrations or legacy code paths.
-
-### Basic Usage
+Use `ICacheManager.GetOrCreateAsync` with an explicit key when attributes are not practical, such as third-party integrations or legacy code paths.
 
 ```csharp
-// Inject ICacheManager and use fluent chaining
 public class UserService
 {
     private readonly ICacheManager _cache;
     private readonly IUserRepository _repository;
 
-    public async Task<User> GetUserAsync(int userId)
-    {
-        return await _cache.Cache(() => _repository.GetUserAsync(userId))
-            .WithDuration(TimeSpan.FromHours(1))
-            .WithTags("user", $"user:{userId}")
-            .ExecuteAsync();
-    }
+    public ValueTask<User> GetUserAsync(int userId) =>
+        _cache.GetOrCreateAsync(
+            $"user:{userId}",
+            async (ctx, ct) => await _repository.GetUserAsync(userId),
+            o => o.WithDuration(TimeSpan.FromHours(1))
+                  .WithTags("user", $"user:{userId}"));
 }
 ```
 
-### Advanced Configuration
+The options builder supports the same settings as attribute-based caching:
 
 ```csharp
-public async Task<List<Order>> GetOrdersWithAdvancedConfig(int customerId, OrderStatus status)
-{
-    return await _cache.Cache(() => _orderService.GetOrdersAsync(customerId, status))
-        .WithDuration(TimeSpan.FromMinutes(30))
-        .WithSlidingExpiration(TimeSpan.FromMinutes(10))
-        .WithRefreshAhead(TimeSpan.FromMinutes(5))
-        .WithTags("orders", $"customer:{customerId}", $"status:{status}")
-        .WithStampedeProtection(StampedeProtectionMode.Probabilistic, beta: 1.5)
-        .WithDistributedLock(TimeSpan.FromSeconds(30), maxConcurrency: 2)
-        .WithKeyGenerator<JsonKeyGenerator>()
-        .WithVersion(2)
-        .OnHit(ctx => _logger.LogInformation($"Cache hit: {ctx.Key}"))
-        .OnMiss(ctx => _logger.LogInformation($"Cache miss: {ctx.Key}"))
-        .When(ctx => customerId > 0) // Conditional caching
-        .ExecuteAsync();
-}
+var orders = await _cache.GetOrCreateAsync(
+    $"orders:{customerId}:{status}",
+    async (ctx, ct) => await _orderService.GetOrdersAsync(customerId, status),
+    o => o.WithDuration(TimeSpan.FromMinutes(30))
+          .WithSlidingExpiration(TimeSpan.FromMinutes(10))
+          .RefreshAhead(TimeSpan.FromMinutes(5))
+          .WithTags("orders", $"customer:{customerId}")
+          .WithStampedeProtection(StampedeProtectionMode.Probabilistic, beta: 1.5)
+          .WithVersion(2)
+          .OnHit(ctx => _logger.LogInformation("Cache hit: {Key}", ctx.Key))
+          .OnMiss(ctx => _logger.LogInformation("Cache miss: {Key}", ctx.Key))
+          .When(ctx => customerId > 0)); // skip the cache when the predicate is false
 ```
 
-### Key Generator Selection
-
-```csharp
-// Choose optimal key generator based on scenario
-public async Task<DataResult> GetDataWithOptimalKeyGenerator(QueryRequest request)
-{
-    var builder = _cache.Cache(() => _dataService.ProcessQueryAsync(request))
-        .WithDuration(TimeSpan.FromMinutes(30));
-
-    // Dynamic key generator selection
-    if (request.Parameters.Count > 10)
-        builder = builder.WithKeyGenerator<MessagePackKeyGenerator>(); // Complex objects
-    else if (request.IsDebugMode)
-        builder = builder.WithKeyGenerator<JsonKeyGenerator>(); // Human-readable
-    else
-        builder = builder.WithKeyGenerator<FastHashKeyGenerator>(); // Performance
-
-    return await builder.ExecuteAsync();
-}
-```
-
-### Conditional Caching
-
-```csharp
-// Cache based on business logic
-public async Task<AnalyticsReport> GetReportConditionally(ReportCriteria criteria, bool isPremiumUser)
-{
-    return await _cache.Cache(() => _reportService.GenerateReportAsync(criteria))
-        .WithDuration(isPremiumUser ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(30))
-        .WithTags("analytics", isPremiumUser ? "premium" : "standard")
-        .When(ctx => criteria.IsExpensive) // Only cache expensive reports
-        .WithKeyGenerator<MessagePackKeyGenerator>()
-        .ExecuteAsync();
-}
-```
-
-### Third-Party Library Caching
-
-```csharp
-// Cache external API calls without modifying the library
-public class WeatherService
-{
-    private readonly IWeatherApiClient _weatherApi;
-    private readonly ICacheManager _cache;
-
-    public async Task<WeatherData> GetWeatherAsync(string location)
-    {
-        return await _cache.Cache(() => _weatherApi.GetCurrentWeatherAsync(location))
-            .WithDuration(TimeSpan.FromMinutes(15))
-            .WithTags("weather", $"location:{location}")
-            .WithKeyGenerator<JsonKeyGenerator>() // Debug-friendly keys
-            .OnHit(ctx => _metrics.RecordWeatherCacheHit())
-            .OnMiss(ctx => _metrics.RecordWeatherApiCall())
-            .ExecuteAsync();
-    }
-}
-```
-
-### Alternative API Syntax
-
-```csharp
-// Both APIs are equivalent - choose your preference
-// Option 1: Cache()
-var result1 = await cache.Cache(() => service.GetDataAsync(id))
-    .WithDuration(TimeSpan.FromHours(1))
-    .ExecuteAsync();
-
-// Option 2: Build()
-var result2 = await cache.Build(() => service.GetDataAsync(id))
-    .WithDuration(TimeSpan.FromHours(1))
-    .ExecuteAsync();
-```
-
-### Benefits of Method Chaining API
-
-- **Intuitive**: Natural reading flow with discoverable methods
-- **Type-safe**: Generic key generator selection with compile-time validation
-- **Flexible**: Conditional configuration based on runtime values
-- **Performance**: No overhead - compiles to efficient code
-- **Testable**: Easy to mock and unit test
-- **Backward Compatible**: Works alongside existing attribute and configuration-based approaches
+`WithVersion` changes the stored key, so bumping it invalidates older entries. See the [Fluent API Guide](FLUENT_API.md) for bulk and streaming helpers.
 
 ## Programmatic Configuration
 

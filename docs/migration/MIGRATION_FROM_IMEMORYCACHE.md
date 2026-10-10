@@ -176,10 +176,11 @@ public class OrderService
 
     public async Task<Order> GetOrderAsync(int orderId)
     {
-        return await _cache.Cache(() => _repository.GetOrderByIdAsync(orderId))
-            .WithDuration(TimeSpan.FromMinutes(30))
-            .WithTags("orders", $"order:{orderId}")
-            .ExecuteAsync();
+        return await _cache.GetOrCreateAsync(
+            $"order:{orderId}",
+            async (ctx, ct) => await _repository.GetOrderByIdAsync(orderId),
+            o => o.WithDuration(TimeSpan.FromMinutes(30))
+                  .WithTags("orders", $"order:{orderId}"));
     }
 
     public async Task UpdateOrderAsync(int orderId, OrderUpdateDto update)
@@ -205,10 +206,6 @@ var cacheKey = $"user:{userId}:profile:{profileType}";
 [Cache]
 Task<UserProfile> GetUserProfileAsync(int userId, ProfileType profileType);
 
-// Or use fluent API with automatic key generation
-await cache.Cache(() => service.GetUserProfileAsync(userId, profileType))
-    .WithDuration(TimeSpan.FromMinutes(10))
-    .ExecuteAsync();
 ```
 
 ### Step 5: Migrate Tag-Based Invalidation
@@ -264,13 +261,14 @@ _cache.Set(key, value, options);
 [Cache(Duration = "00:30:00")]
 Task<User> GetUserAsync(int userId);
 
-// Fluent API
-await cache.Cache(() => service.GetUserAsync(userId))
-    .WithDuration(TimeSpan.FromMinutes(30))
-    .WithSlidingExpiration(TimeSpan.FromMinutes(5))
-    .OnMiss(ctx => Console.WriteLine($"Cache miss: {ctx.Key}"))
-    .OnHit(ctx => Console.WriteLine($"Cache hit: {ctx.Key}"))
-    .ExecuteAsync();
+// Manual caching with an explicit key
+await cache.GetOrCreateAsync(
+    $"user:{userId}",
+    async (ctx, ct) => await service.GetUserAsync(userId),
+    o => o.WithDuration(TimeSpan.FromMinutes(30))
+          .WithSlidingExpiration(TimeSpan.FromMinutes(5))
+          .OnMiss(ctx => Console.WriteLine($"Cache miss: {ctx.Key}"))
+          .OnHit(ctx => Console.WriteLine($"Cache hit: {ctx.Key}")));
 ```
 
 ## Common Migration Patterns

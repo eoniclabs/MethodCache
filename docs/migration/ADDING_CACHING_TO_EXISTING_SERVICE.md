@@ -227,7 +227,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 
 ## Alternative: Fluent API (No Interface Changes)
 
-If you can't or don't want to modify interfaces, use the fluent API:
+If you can't or don't want to modify interfaces, cache the call with an explicit key:
 
 ```csharp
 public class OrderService
@@ -238,10 +238,11 @@ public class OrderService
 
     public async Task<Order> GetOrderAsync(int orderId)
     {
-        return await _cache.Cache(() => FetchOrderFromDbAsync(orderId))
-            .WithDuration(TimeSpan.FromMinutes(30))
-            .WithTags("orders", $"order:{orderId}")
-            .ExecuteAsync();
+        return await _cache.GetOrCreateAsync(
+            $"order:{orderId}",
+            async (ctx, ct) => await FetchOrderFromDbAsync(orderId),
+            o => o.WithDuration(TimeSpan.FromMinutes(30))
+                  .WithTags("orders", $"order:{orderId}"));
     }
 
     private async Task<Order> FetchOrderFromDbAsync(int orderId)
