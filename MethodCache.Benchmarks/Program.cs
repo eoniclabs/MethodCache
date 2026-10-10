@@ -48,6 +48,15 @@ public class Program
 
         switch (cleanedArgs[0].ToLowerInvariant())
         {
+            case "engine":
+                BenchmarkRunner.Run<MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks>(
+                    DefaultConfig.Instance.AddJob(Job.ShortRun.WithGcServer(true)), cleanedArgs.Skip(1).ToArray());
+                break;
+
+            case "hitratio":
+                MethodCache.Benchmarks.Microbenchmarks.HitRatioSimulation.Run();
+                break;
+
             case "basic":
                 BenchmarkRunner.Run<BasicCachingBenchmarks>(config);
                 break;
