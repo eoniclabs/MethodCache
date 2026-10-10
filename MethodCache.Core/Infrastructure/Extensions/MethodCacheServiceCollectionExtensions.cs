@@ -71,7 +71,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
         {
             EnsureCoreServices(services);
 
-            RegisterAttributePolicySource(services, targetAssemblies);
+            // Attribute policies come from the source the generator emits, registered with each decorator
             DecorateExistingRegistrations(services);
             services.AddMethodCacheServices(MethodCacheRegistrationOptions.ForAssemblies(targetAssemblies));
 
@@ -153,17 +153,6 @@ namespace MethodCache.Core.Infrastructure.Extensions
         {
             services.AddSingleton<PolicySourceRegistration>(_ =>
                 new PolicySourceRegistration(new FluentPolicySource(configure), PolicySourcePriority.StartupFluent));
-        }
-
-        private static void RegisterAttributePolicySource(IServiceCollection services, Assembly[] assemblies)
-        {
-            if (assemblies == null || assemblies.Length == 0)
-            {
-                throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
-            }
-
-            services.AddSingleton<PolicySourceRegistration>(_ =>
-                new PolicySourceRegistration(new AttributePolicySource(assemblies), PolicySourcePriority.Attributes));
         }
 
         /// <summary>

@@ -134,11 +134,7 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             public IReadOnlyDictionary<string, FluentMethodConfiguration> Methods => _methods;
 
             private static string BuildMethodKey(Type serviceType, MethodInfo methodInfo)
-            {
-                var typeName = serviceType.FullName ?? serviceType.Name;
-                typeName = typeName.Replace('+', '.');
-                return $"{typeName}.{methodInfo.Name}";
-            }
+                => MethodIds.For(serviceType, methodInfo.Name);
         }
 
         private sealed class FluentServiceConfiguration<TService> : IFluentServiceConfiguration<TService>

@@ -21,8 +21,7 @@ public static class PolicyRegistrationExtensions
         services.TryAddSingleton<PolicyRegistry>(provider =>
         {
             var resolver = provider.GetRequiredService<PolicyResolver>();
-            var registrations = provider.GetServices<PolicySourceRegistration>();
-            return new PolicyRegistry(resolver, registrations);
+            return new PolicyRegistry(resolver);
         });
 
         services.TryAddSingleton<IPolicyRegistry>(provider => provider.GetRequiredService<PolicyRegistry>());
