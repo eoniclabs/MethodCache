@@ -40,7 +40,7 @@ internal sealed class FrequencySketch
 
         _table = new ulong[BitOperations.RoundUpToPowerOf2((uint)maximum)];
         _tableMask = Math.Max(0, _table.Length - 1);
-        _sampleSize = 10 * maximum <= 0 ? int.MaxValue : 10 * maximum;
+        _sampleSize = (int)Math.Min(10L * maximum, int.MaxValue);
         _size = 0;
     }
 

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Infrastructure;
@@ -27,6 +28,9 @@ namespace MethodCache.Core.Runtime.Execution
     {
         private const long NanosPerTick = 100;
 
+        /// <summary>Upper bound for any duration (~73 years); leaves headroom so sums of durations cannot overflow.</summary>
+        private const long MaxNanos = long.MaxValue / 4;
+
         private static readonly ConditionalWeakTable<CacheRuntimePolicy, EntryPolicy> PolicyCache = new();
 
         [ThreadStatic]
@@ -47,6 +51,7 @@ namespace MethodCache.Core.Runtime.Execution
         private readonly long _failSafeDuration;
         private readonly long _failSafeThrottle;
         private readonly long _jitter;
+        private readonly bool _highResolutionTiming;
 
         private int _disposed;
 
@@ -70,6 +75,7 @@ namespace MethodCache.Core.Runtime.Execution
             _failSafeDuration = _options.EnableFailSafe ? ToNanos(_options.FailSafeMaxDuration) : 0;
             _failSafeThrottle = ToNanos(_options.FailSafeThrottleDuration);
             _jitter = ToNanos(_options.JitterMaxDuration);
+            _highResolutionTiming = timeProvider == null || ReferenceEquals(timeProvider, TimeProvider.System);
 
             var maximum = _weigher != null ? _options.MaxMemoryBytes : _options.MaxItems;
             _engine = new MemoryCacheEngine(maximum, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)Math.Min(_options.MaxItems, int.MaxValue));
@@ -155,11 +161,8 @@ namespace MethodCache.Core.Runtime.Execution
                     continue;
                 }
 
+                InvalidateFlight(key);
                 _engine.Remove(key);
-                if (_flights.TryGetValue(key, out var flight))
-                {
-                    flight.Invalidated = true;
-                }
             }
 
             return Task.CompletedTask;
@@ -172,6 +175,8 @@ namespace MethodCache.Core.Runtime.Execution
                 return Task.CompletedTask;
             }
 
+            // Flights are flagged before entries are removed; see StoreLoaded.
+            InvalidateFlights(flightTag => Array.IndexOf(tags, flightTag) >= 0);
             foreach (var tag in tags)
             {
                 if (tag != null)
@@ -180,7 +185,6 @@ namespace MethodCache.Core.Runtime.Execution
                 }
             }
 
-            InvalidateFlights(flightTag => Array.IndexOf(tags, flightTag) >= 0);
             return Task.CompletedTask;
         }
 
@@ -191,6 +195,7 @@ namespace MethodCache.Core.Runtime.Execution
                 return Task.CompletedTask;
             }
 
+            InvalidateFlights(flightTag => WildcardPattern.IsMatch(pattern, flightTag));
             foreach (var tag in _engine.Tags)
             {
                 if (WildcardPattern.IsMatch(pattern, tag))
@@ -199,7 +204,6 @@ namespace MethodCache.Core.Runtime.Execution
                 }
             }
 
-            InvalidateFlights(flightTag => WildcardPattern.IsMatch(pattern, flightTag));
             return Task.CompletedTask;
         }
 
@@ -237,13 +241,8 @@ namespace MethodCache.Core.Runtime.Execution
 
         public ValueTask<bool> RemoveAsync(string key)
         {
-            var removed = _engine.Remove(key);
-            if (_flights.TryGetValue(key, out var flight))
-            {
-                flight.Invalidated = true;
-            }
-
-            return new ValueTask<bool>(removed);
+            InvalidateFlight(key);
+            return new ValueTask<bool>(_engine.Remove(key));
         }
 
         public ValueTask<int> RemoveMultipleAsync(params string[] keys)
@@ -251,14 +250,10 @@ namespace MethodCache.Core.Runtime.Execution
             var removed = 0;
             foreach (var key in keys)
             {
+                InvalidateFlight(key);
                 if (_engine.Remove(key))
                 {
                     removed++;
-                }
-
-                if (_flights.TryGetValue(key, out var flight))
-                {
-                    flight.Invalidated = true;
                 }
             }
 
@@ -361,14 +356,10 @@ namespace MethodCache.Core.Runtime.Execution
 
             try
             {
-                var start = _engine.Now;
+                var start = StartTiming();
                 var result = await factory().ConfigureAwait(false);
 
-                if (!flight.Invalidated)
-                {
-                    Store(key, result, policy, _engine.Now - start);
-                }
-
+                StoreLoaded(key, result, policy, flight, ElapsedSince(start));
                 flight.Complete(result);
                 return result;
             }
@@ -408,14 +399,10 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 try
                 {
-                    var start = _engine.Now;
+                    var start = StartTiming();
                     var result = await factory().ConfigureAwait(false);
 
-                    if (!flight.Invalidated)
-                    {
-                        Store(key, result, policy, _engine.Now - start);
-                    }
-
+                    StoreLoaded(key, result, policy, flight, ElapsedSince(start));
                     flight.Complete(result);
                 }
                 catch (Exception ex)
@@ -431,12 +418,31 @@ namespace MethodCache.Core.Runtime.Execution
             });
         }
 
-        private void Store<T>(string key, T value, EntryPolicy policy, long computeDuration, long? duration = null)
+        /// <summary>
+        /// Stores a factory result unless its key or tags were invalidated while it loaded. Invalidators flag the
+        /// flight before removing entries, so either they remove this node or the re-check below sees the flag.
+        /// </summary>
+        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, long computeDuration)
+        {
+            if (flight.Invalidated)
+            {
+                return;
+            }
+
+            var node = Store(key, result, policy, computeDuration);
+            Interlocked.MemoryBarrier();
+            if (node != null && flight.Invalidated)
+            {
+                _engine.RemoveNode(node);
+            }
+        }
+
+        private Node? Store<T>(string key, T value, EntryPolicy policy, long computeDuration, long? duration = null)
         {
             if (value == null && !_options.CacheNullValues)
             {
                 _engine.Remove(key);
-                return;
+                return null;
             }
 
             var now = _engine.Now;
@@ -460,6 +466,7 @@ namespace MethodCache.Core.Runtime.Execution
             };
 
             _engine.Add(node);
+            return node;
         }
 
         private bool TryGetFresh<T>(string key, long now, out T? value, out Node? node, out bool refreshDue)
@@ -612,7 +619,26 @@ namespace MethodCache.Core.Runtime.Execution
             return t_lastEntryPolicy = PolicyCache.GetValue(policy, static p => EntryPolicy.From(p));
         }
 
-        private static long ToNanos(TimeSpan value) => value.Ticks * NanosPerTick;
+        /// <summary>Converts to nanoseconds, saturating so that e.g. <see cref="TimeSpan.MaxValue"/> means "practically forever".</summary>
+        private static long ToNanos(TimeSpan value) => value.Ticks >= MaxNanos / NanosPerTick ? MaxNanos : value.Ticks * NanosPerTick;
+
+        /// <summary>
+        /// Factory timings feed XFetch, which needs sub-millisecond resolution. The default engine clock ticks in
+        /// milliseconds, so with the system clock a high-resolution timestamp is used instead.
+        /// </summary>
+        private long StartTiming() => _highResolutionTiming ? Stopwatch.GetTimestamp() : _engine.Now;
+
+        private long ElapsedSince(long start) => _highResolutionTiming
+            ? Stopwatch.GetElapsedTime(start).Ticks * NanosPerTick
+            : _engine.Now - start;
+
+        private void InvalidateFlight(string key)
+        {
+            if (_flights.TryGetValue(key, out var flight))
+            {
+                flight.Invalidated = true;
+            }
+        }
 
         private static Func<long> CreateClock(TimeProvider? timeProvider)
         {

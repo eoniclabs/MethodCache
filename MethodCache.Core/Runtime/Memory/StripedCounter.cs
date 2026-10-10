@@ -22,8 +22,6 @@ internal sealed class StripedCounter
 
     public void Increment() => Interlocked.Increment(ref _cells[(Environment.CurrentManagedThreadId & _mask) * Padding]);
 
-    public void Add(long value) => Interlocked.Add(ref _cells[(Environment.CurrentManagedThreadId & _mask) * Padding], value);
-
     public long Sum()
     {
         long sum = 0;

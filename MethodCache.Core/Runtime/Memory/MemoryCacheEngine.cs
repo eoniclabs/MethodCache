@@ -35,6 +35,8 @@ internal sealed class MemoryCacheEngine
     /// <summary>How long a scheduled drain may wait for the thread pool before readers drain inline.</summary>
     private const long DrainStarvationThresholdNanos = 1_000_000; // 1 ms
 
+    private const long InitialSketchCapacity = 64;
+
     private enum WriteKind : byte
     {
         Add,
@@ -71,6 +73,8 @@ internal sealed class MemoryCacheEngine
     private long _evictionCount;
     private long _expirationCount;
     private int _maintenanceScheduled;
+    private long _entryCount;
+    private long _sketchCapacity = InitialSketchCapacity;
     private long _maintenanceScheduledAt;
 
     public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems)
@@ -91,12 +95,9 @@ internal sealed class MemoryCacheEngine
             var mainMaximum = maximum - _windowMaximum;
             _protectedMaximum = (long)(mainMaximum * 0.8);
         }
-        else
-        {
-            _windowMaximum = maximum;
-        }
 
-        _sketch = new FrequencySketch(mode == EngineEvictionMode.TinyLfu ? expectedItems : 8);
+        // Sized lazily from the live entry count (see OnAdd), so a huge or weight-based maximum costs nothing up front.
+        _sketch = new FrequencySketch(InitialSketchCapacity);
         _timerWheel = new TimerWheel(clock());
         _onAccess = OnAccess;
         _onTimerExpired = OnTimerExpired;
@@ -248,6 +249,8 @@ internal sealed class MemoryCacheEngine
             }
 
             RunMaintenance();
+            _evictionCount = 0;
+            _expirationCount = 0;
         }
     }
 
@@ -257,6 +260,12 @@ internal sealed class MemoryCacheEngine
         lock (_evictionLock)
         {
             RunMaintenance();
+        }
+
+        // A writer whose TryEnter failed while we held the lock relies on the holder to pick up its task.
+        if (!_writeBuffer.IsEmpty)
+        {
+            AfterWrite();
         }
     }
 
@@ -268,7 +277,7 @@ internal sealed class MemoryCacheEngine
 
     private void AfterWrite()
     {
-        // The lock holder re-checks the queue after releasing, so a failed TryEnter never strands a write.
+        // Every lock holder re-checks the queue after releasing, so a failed TryEnter never strands a write.
         do
         {
             if (!Monitor.TryEnter(_evictionLock))
@@ -326,6 +335,11 @@ internal sealed class MemoryCacheEngine
             Volatile.Write(ref _maintenanceScheduledAt, _clock());
             Monitor.Exit(_evictionLock);
         }
+
+        if (!_writeBuffer.IsEmpty)
+        {
+            AfterWrite();
+        }
     }
 
     private void ScheduleMaintenance()
@@ -378,8 +392,22 @@ internal sealed class MemoryCacheEngine
             return;
         }
 
+        if (node.Weight > _maximum)
+        {
+            // Could never fit: evict it now instead of flushing every other entry first.
+            EvictNode(node);
+            return;
+        }
+
+        _entryCount++;
         if (_mode == EngineEvictionMode.TinyLfu)
         {
+            if (_entryCount > _sketchCapacity)
+            {
+                _sketchCapacity = _entryCount * 2;
+                _sketch.EnsureCapacity(_sketchCapacity);
+            }
+
             _sketch.Increment(node.KeyHash);
         }
 
@@ -476,6 +504,7 @@ internal sealed class MemoryCacheEngine
         if (node.Queue != QueueType.None)
         {
             node.Queue = QueueType.None;
+            _entryCount--;
             Volatile.Write(ref _totalWeight, _totalWeight - node.Weight);
         }
 
@@ -593,8 +622,17 @@ internal sealed class MemoryCacheEngine
 
         foreach (var tag in tags)
         {
-            _tagIndex.GetOrAdd(tag, static _ => new ConcurrentDictionary<Node, byte>(ReferenceEqualityComparer.Instance))
-                .TryAdd(node, 0);
+            while (true)
+            {
+                var nodes = _tagIndex.GetOrAdd(tag, static _ => new ConcurrentDictionary<Node, byte>(ReferenceEqualityComparer.Instance));
+                nodes.TryAdd(node, 0);
+
+                // UnindexTags may have dropped this set as empty just before the add; retry on the live set.
+                if (_tagIndex.TryGetValue(tag, out var current) && ReferenceEquals(current, nodes))
+                {
+                    break;
+                }
+            }
         }
     }
 

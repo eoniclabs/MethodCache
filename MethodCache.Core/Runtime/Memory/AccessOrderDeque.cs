@@ -11,8 +11,6 @@ internal sealed class AccessOrderDeque
 
     public Node? First => _head;
 
-    public bool IsEmpty => _head == null;
-
     public void AddLast(Node node)
     {
         node.Previous = _tail;
@@ -66,20 +64,5 @@ internal sealed class AccessOrderDeque
 
         Remove(node);
         AddLast(node);
-    }
-
-    public void Clear()
-    {
-        var node = _head;
-        while (node != null)
-        {
-            var next = node.Next;
-            node.Previous = null;
-            node.Next = null;
-            node = next;
-        }
-
-        _head = null;
-        _tail = null;
     }
 }

@@ -97,27 +97,6 @@ internal sealed class TimerWheel
         node.TimerPrevious = null;
     }
 
-    public void Clear()
-    {
-        foreach (var level in _wheel)
-        {
-            foreach (var sentinel in level)
-            {
-                var node = sentinel.TimerNext!;
-                while (node != sentinel)
-                {
-                    var next = node.TimerNext!;
-                    node.TimerNext = null;
-                    node.TimerPrevious = null;
-                    node = next;
-                }
-
-                sentinel.TimerNext = sentinel;
-                sentinel.TimerPrevious = sentinel;
-            }
-        }
-    }
-
     private void Expire(int index, long previousTicks, long delta, Func<Node, bool> onExpired)
     {
         var timerWheel = _wheel[index];

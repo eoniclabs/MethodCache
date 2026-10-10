@@ -360,6 +360,102 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task Weigher_RejectsAnEntryLargerThanTheWholeCache_WithoutFlushingOthers()
+    {
+        var manager = CreateManager(o =>
+        {
+            o.Weigher = (_, value) => ((string)value!).Length;
+            o.MaxMemoryBytes = 1000;
+        });
+
+        for (var i = 0; i < 5; i++)
+        {
+            await manager.SetAsync($"small{i}", new string('x', 100), OneMinute);
+        }
+
+        await manager.SetAsync("huge", new string('x', 5000), OneMinute);
+
+        (await manager.ExistsAsync("huge")).Should().BeFalse();
+        for (var i = 0; i < 5; i++)
+        {
+            (await manager.ExistsAsync($"small{i}")).Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public async Task MaxValueDurations_AreCappedByMaxExpiration_InsteadOfOverflowing()
+    {
+        var manager = CreateManager(o => o.MaxExpiration = TimeSpan.FromDays(365));
+        var calls = 0;
+        var policy = Policy(duration: TimeSpan.MaxValue);
+
+        await manager.GetOrCreateFastAsync("a", "M", () => Task.FromResult(++calls), policy);
+        await manager.GetOrCreateFastAsync("a", "M", () => Task.FromResult(++calls), policy);
+        await manager.SetAsync("b", "value", TimeSpan.MaxValue);
+        _time.Advance(TimeSpan.FromDays(300));
+
+        calls.Should().Be(1);
+        (await manager.GetAsync<string>("b")).Should().Be("value");
+        (await manager.ExistsAsync("a")).Should().BeTrue();
+
+        _time.Advance(TimeSpan.FromDays(66));
+        (await manager.ExistsAsync("a")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HugeMaxItems_DoesNotAllocateUpFront()
+    {
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var manager = CreateManager(o => o.MaxItems = int.MaxValue);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        await manager.SetAsync("k", "v", OneMinute);
+        (await manager.GetAsync<string>("k")).Should().Be("v");
+        allocated.Should().BeLessThan(1_000_000);
+    }
+
+    [Fact]
+    public async Task ClearAsync_ResetsEvictionCount()
+    {
+        var manager = CreateManager(o => o.MaxItems = 10);
+        for (var i = 0; i < 100; i++)
+        {
+            await manager.SetAsync($"k{i}", i, OneMinute);
+        }
+
+        (await manager.GetStatsAsync()).Evictions.Should().BeGreaterThan(0);
+        await manager.ClearAsync();
+        (await manager.GetStatsAsync()).Evictions.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ConcurrentTagChurn_KeepsEveryLiveEntryInvalidatable()
+    {
+        var manager = CreateManager(o => o.MaxItems = 100_000);
+        var policy = Policy() with { Tags = new[] { "t" } };
+
+        // Entries come and go under one tag so its node set repeatedly empties while others are being added.
+        await Task.WhenAll(Enumerable.Range(0, Environment.ProcessorCount).Select(worker => Task.Run(async () =>
+        {
+            for (var i = 0; i < 2_000; i++)
+            {
+                var key = $"w{worker}:{i}";
+                await manager.GetOrCreateFastAsync(key, "M", () => Task.FromResult(i), policy);
+                await manager.RemoveAsync(key);
+            }
+
+            await manager.GetOrCreateFastAsync($"w{worker}:last", "M", () => Task.FromResult(-1), policy);
+        })));
+
+        await manager.InvalidateByTagsAsync("t");
+
+        for (var worker = 0; worker < Environment.ProcessorCount; worker++)
+        {
+            (await manager.ExistsAsync($"w{worker}:last")).Should().BeFalse();
+        }
+    }
+
+    [Fact]
     public async Task Jitter_SpreadsExpiration_WithinBounds()
     {
         var manager = CreateManager(o => o.JitterMaxDuration = TimeSpan.FromSeconds(30));
