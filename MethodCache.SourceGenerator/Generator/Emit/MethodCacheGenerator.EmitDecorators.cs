@@ -127,6 +127,8 @@ namespace MethodCache.SourceGenerator
                     var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
                     sb.AppendLine($"        private readonly CacheRuntimePolicy _cachedPolicy_{safeFieldName};");
                     sb.AppendLine($"        private readonly string _cachedMethodName_{safeFieldName};");
+                    sb.AppendLine($"        private readonly string _keyMethod_{safeFieldName};");
+                    sb.AppendLine($"        private readonly string _keyPrefix_{safeFieldName};");
 
                     var keyParamCount = cached.Method.Parameters.Count(p => !Utils.IsCancellationToken(p.Type));
                     if (keyParamCount == 0)
@@ -275,11 +277,16 @@ namespace MethodCache.SourceGenerator
                         sb.AppendLine($"            _cachedMethodName_{safeFieldName} = \"{methodName}\";");
                     }
 
-                    // For methods with no cache-key parameters, pre-compute the full cache key at construction time
+                    // Keys start with the service type and method name, plus the policy version for inline keys;
+                    // see MethodCacheKeys for the format.
+                    sb.AppendLine($"            _keyMethod_{safeFieldName} = MethodCacheKeys.Prefix(typeof({interfaceFqn}), \"{methodName}\");");
+                    sb.AppendLine($"            _keyPrefix_{safeFieldName} = MethodCacheKeys.Prefix(typeof({interfaceFqn}), \"{methodName}\", _cachedPolicy_{safeFieldName}.Version);");
+
+                    // For methods with no cache-key parameters, the prefix is the whole key
                     var hasKeyParams = ImmutableArrayExtensions.Any(cached.Method.Parameters, p => !Utils.IsCancellationToken(p.Type));
                     if (!hasKeyParams)
                     {
-                        sb.AppendLine($"            _cachedKey_{safeFieldName} = _keyGenerator.GenerateKey(_cachedMethodName_{safeFieldName}, System.Array.Empty<object>(), _cachedPolicy_{safeFieldName});");
+                        sb.AppendLine($"            _cachedKey_{safeFieldName} = _keyPrefix_{safeFieldName};");
                     }
                 }
                 sb.AppendLine("        }");
@@ -409,24 +416,26 @@ namespace MethodCache.SourceGenerator
 
             private static string GetParameterStringExpression(IParameterSymbol param)
             {
-                var typeName = param.Type.ToDisplayString();
+                var type = param.Type;
+                if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T })
+                {
+                    return $"({param.Name}.HasValue ? MethodCacheKeys.Part({param.Name}.Value) : MethodCacheKeys.Null)";
+                }
 
-                if (typeName == "string")
+                return $"MethodCacheKeys.Part({param.Name})";
+            }
+
+            private static string GetRawKeyExpression(IParameterSymbol param)
+            {
+                if (param.Type.SpecialType == SpecialType.System_String)
                 {
                     return $"{param.Name} ?? \"null\"";
                 }
 
-                if (param.Type.IsValueType)
-                {
-                    if (param.Type.NullableAnnotation == NullableAnnotation.Annotated)
-                    {
-                        return $"{param.Name}?.ToString() ?? \"null\"";
-                    }
-
-                    return $"{param.Name}.ToString() ?? \"null\"";
-                }
-
-                return $"{param.Name}?.ToString() ?? \"null\"";
+                var isNullableValueType = param.Type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T };
+                return param.Type.IsValueType && !isNullableValueType
+                    ? $"{param.Name}.ToString()"
+                    : $"{param.Name}?.ToString() ?? \"null\"";
             }
 
             private static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
@@ -470,7 +479,7 @@ namespace MethodCache.SourceGenerator
 
                 if (rawKeyParam != null)
                 {
-                    var expr = GetParameterStringExpression(rawKeyParam);
+                    var expr = GetRawKeyExpression(rawKeyParam);
                     sb.AppendLine($"{indent}// Raw key optimization: [CacheKey(UseAsRawKey = true)] detected");
                     sb.AppendLine($"{indent}var cacheKeyValue = {expr};");
                     return;
@@ -487,19 +496,35 @@ namespace MethodCache.SourceGenerator
                 if (keyParams.Count == 1)
                 {
                     var expr = GetParameterStringExpression(keyParams[0]);
-                    sb.AppendLine($"{indent}var cacheKeyValue = string.Concat(_cachedMethodName_{safeFieldName}, \":\", {expr});");
+                    sb.AppendLine($"{indent}var cacheKeyValue = string.Concat(_keyPrefix_{safeFieldName}, MethodCacheKeys.Separator, {expr});");
                     return;
                 }
 
                 // Multiple parameters: direct string.Concat with all parts
-                var concatPieces = new List<string> { $"_cachedMethodName_{safeFieldName}" };
+                var concatPieces = new List<string> { $"_keyPrefix_{safeFieldName}" };
                 foreach (var param in keyParams)
                 {
-                    concatPieces.Add("\":\"");
+                    concatPieces.Add("MethodCacheKeys.Separator");
                     concatPieces.Add(GetParameterStringExpression(param));
                 }
                 var concatExpression = string.Join(", ", concatPieces);
                 sb.AppendLine($"{indent}var cacheKeyValue = string.Concat({concatExpression});");
+            }
+
+            private static void EmitGeneratedKey(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams)
+            {
+                if (keyParams.Count == 0)
+                {
+                    sb.AppendLine($"            var cacheKeyValue = _cachedKey_{safeFieldName};");
+                    return;
+                }
+
+                // Arguments that have no inline key format go through the registered key generator,
+                // which keeps the service and method prefix so keys stay recognizable.
+                sb.Append("            var cacheKeyValue = _keyGenerator.GenerateKey(");
+                sb.Append($"_keyMethod_{safeFieldName}, new object[] {{ ");
+                sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
+                sb.AppendLine($" }}, _cachedPolicy_{safeFieldName});");
             }
 
             private static void EmitTaskCaching(StringBuilder sb, IMethodSymbol method, ITypeSymbol? innerType, INamedTypeSymbol interfaceSymbol, bool canUseUltraFastPath)
@@ -552,25 +577,15 @@ namespace MethodCache.SourceGenerator
                 }
                 else
                 {
-                    // Standard path: allocate args first
+                    // Standard path: the key generator builds the key from the boxed arguments
                     var call = BuildMethodCall(method);
-                    if (keyParams.Any())
-                    {
-                        sb.Append("            var args = new object[] { ");
-                        sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
-                        sb.AppendLine(" };");
-                    }
-                    else
-                    {
-                        sb.AppendLine("            var args = System.Array.Empty<object>();");
-                    }
+                    EmitGeneratedKey(sb, safeFieldName, keyParams);
 
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{innerType}>(");
+                    sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{innerType}>(");
+                    sb.AppendLine($"                cacheKeyValue,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine("                args,");
                     sb.AppendLine($"                async () => await {call}.ConfigureAwait(false),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName},");
-                    sb.AppendLine("                _keyGenerator);");
+                    sb.AppendLine($"                _cachedPolicy_{safeFieldName});");
                 }
             }
 
@@ -630,26 +645,16 @@ namespace MethodCache.SourceGenerator
                 }
                 else
                 {
-                    // Standard path: allocate args first
+                    // Standard path: the key generator builds the key from the boxed arguments
                     var call = BuildMethodCall(method);
-                    if (keyParams.Any())
-                    {
-                        sb.Append("            var args = new object[] { ");
-                        sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
-                        sb.AppendLine(" };");
-                    }
-                    else
-                    {
-                        sb.AppendLine("            var args = System.Array.Empty<object>();");
-                    }
+                    EmitGeneratedKey(sb, safeFieldName, keyParams);
 
                     // Wrap Task in ValueTask (non-async path)
-                    sb.AppendLine($"            var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
+                    sb.AppendLine($"            var task = _cacheManager.GetOrCreateFastAsync<{innerType}>(");
+                    sb.AppendLine($"                cacheKeyValue,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine("                args,");
                     sb.AppendLine($"                async () => await {call}.AsTask().ConfigureAwait(false),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName},");
-                    sb.AppendLine("                _keyGenerator);");
+                    sb.AppendLine($"                _cachedPolicy_{safeFieldName});");
                     sb.AppendLine($"            return new ValueTask<{innerType}>(task);");
                 }
             }
@@ -710,73 +715,17 @@ namespace MethodCache.SourceGenerator
                 }
                 else
                 {
-                    // Standard path: allocate args first
+                    // Standard path: the key generator builds the key from the boxed arguments
                     var call = BuildMethodCall(method);
-                    if (keyParams.Any())
-                    {
-                        sb.Append("            var args = new object[] { ");
-                        sb.Append(string.Join(", ", keyParams.Select(p => p.Name)));
-                        sb.AppendLine(" };");
-                    }
-                    else
-                    {
-                        sb.AppendLine("            var args = System.Array.Empty<object>();");
-                    }
+                    EmitGeneratedKey(sb, safeFieldName, keyParams);
 
-                    sb.AppendLine($"            return _cacheManager.GetOrCreateAsync<{returnType}>(");
+                    sb.AppendLine($"            return _cacheManager.GetOrCreateFastAsync<{returnType}>(");
+                    sb.AppendLine($"                cacheKeyValue,");
                     sb.AppendLine($"                _cachedMethodName_{safeFieldName},");
-                    sb.AppendLine("                args,");
                     sb.AppendLine($"                () => Task.FromResult({call}),");
-                    sb.AppendLine($"                _cachedPolicy_{safeFieldName},");
-                    sb.AppendLine("                _keyGenerator)");
+                    sb.AppendLine($"                _cachedPolicy_{safeFieldName})");
                     sb.AppendLine("                .ConfigureAwait(false).GetAwaiter().GetResult();");
                 }
-            }
-
-            // Indented versions for ArrayPool try-finally block (Phase 2.3)
-            private static void EmitTaskCachingWithIndent(StringBuilder sb, IMethodSymbol method, ITypeSymbol? innerType, INamedTypeSymbol interfaceSymbol, string indent)
-            {
-                var call = BuildMethodCall(method);
-                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
-
-                sb.AppendLine($"{indent}return _cacheManager.GetOrCreateAsync<{innerType}>(");
-                sb.AppendLine($"{indent}    _cachedMethodName_{safeFieldName},");
-                sb.AppendLine($"{indent}    args,");
-                sb.AppendLine($"{indent}    async () => await {call}.ConfigureAwait(false),");
-                sb.AppendLine($"{indent}    policy,");
-                sb.AppendLine($"{indent}    _keyGenerator);");
-            }
-
-            private static void EmitValueTaskCachingWithIndent(StringBuilder sb, IMethodSymbol method, ITypeSymbol? innerType, INamedTypeSymbol interfaceSymbol, string indent)
-            {
-                var call = BuildMethodCall(method);
-                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
-
-                sb.AppendLine($"{indent}var task = _cacheManager.GetOrCreateAsync<{innerType}>(");
-                sb.AppendLine($"{indent}    _cachedMethodName_{safeFieldName},");
-                sb.AppendLine($"{indent}    args,");
-                sb.AppendLine($"{indent}    async () => await {call}.AsTask().ConfigureAwait(false),");
-                sb.AppendLine($"{indent}    policy,");
-                sb.AppendLine($"{indent}    _keyGenerator);");
-                sb.AppendLine($"{indent}return new ValueTask<{innerType}>(task);");
-            }
-
-            private static void EmitSyncCachingWithIndent(StringBuilder sb, IMethodSymbol method, ITypeSymbol? returnType, INamedTypeSymbol interfaceSymbol, string indent)
-            {
-                var call = BuildMethodCall(method);
-                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
-
-                sb.AppendLine($"{indent}// WARNING: This is a sync-over-async pattern that may cause deadlocks");
-                sb.AppendLine($"{indent}// in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
-                sb.AppendLine($"{indent}// Consider making the method async to avoid potential issues.");
-
-                sb.AppendLine($"{indent}return _cacheManager.GetOrCreateAsync<{returnType}>(");
-                sb.AppendLine($"{indent}    _cachedMethodName_{safeFieldName},");
-                sb.AppendLine($"{indent}    args,");
-                sb.AppendLine($"{indent}    () => Task.FromResult({call}),");
-                sb.AppendLine($"{indent}    policy,");
-                sb.AppendLine($"{indent}    _keyGenerator)");
-                sb.AppendLine($"{indent}    .ConfigureAwait(false).GetAwaiter().GetResult();");
             }
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)

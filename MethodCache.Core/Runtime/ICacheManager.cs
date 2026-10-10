@@ -143,8 +143,8 @@ namespace MethodCache.Core.Runtime
         /// <example>
         /// <code>
         /// await cacheManager.InvalidateByKeysAsync(
-        ///     "GetUser_123",
-        ///     "GetUser_456"
+        ///     MethodCacheKeys.For(typeof(IUserService), "GetUser", MethodCacheKeys.Part(123)),
+        ///     MethodCacheKeys.For(typeof(IUserService), "GetUser", MethodCacheKeys.Part(456))
         /// );
         /// </code>
         /// </example>
