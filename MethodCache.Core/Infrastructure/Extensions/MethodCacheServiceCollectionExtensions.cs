@@ -23,8 +23,10 @@ namespace MethodCache.Core.Infrastructure.Extensions
     public static class MethodCacheServiceCollectionExtensions
     {
         /// <summary>
-        /// Adds MethodCache services and registers cached decorators for every interface with cache attributes
-        /// in the calling assembly. Use the overload that takes assemblies when the interfaces live elsewhere.
+        /// Adds MethodCache services and wraps every service with cache attributes in its generated decorator.
+        /// Services you registered before this call keep their lifetime and are decorated in place; interfaces
+        /// in the calling assembly that are not registered yet get their implementation registered for you.
+        /// Use the overload that takes assemblies when unregistered interfaces live elsewhere.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="configure">Optional configuration action</param>
@@ -67,6 +69,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
             EnsureCoreServices(services);
 
             RegisterAttributePolicySource(services, targetAssemblies);
+            DecorateExistingRegistrations(services);
             services.AddMethodCacheServices(MethodCacheRegistrationOptions.ForAssemblies(targetAssemblies));
 
             if (configure != null)
@@ -76,40 +79,6 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
             return services;
         }
-
-        /// <summary>
-        /// Adds MethodCache services and automatically registers all services with cache attributes using the specified options.
-        /// </summary>
-        /// <param name="services">The service collection</param>
-        /// <param name="configure">Optional configuration action</param>
-        /// <param name="options">Options for automatic service registration</param>
-        /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure, MethodCacheRegistrationOptions options)
-        {
-            if (services == null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
-
-            EnsureCoreServices(services);
-
-            var assemblies = GetAssembliesToScan(options);
-            RegisterAttributePolicySource(services, assemblies);
-            services.AddMethodCacheServices(options);
-
-            if (configure != null)
-            {
-                RegisterFluentPolicySource(services, configure);
-            }
-
-            return services;
-        }
-
 
         public static IServiceCollection AddMethodCacheFromConfiguration(this IServiceCollection services, IConfiguration configuration, string sectionName = "MethodCache")
         {
@@ -174,27 +143,12 @@ namespace MethodCache.Core.Infrastructure.Extensions
         }
 
         /// <summary>
-        /// Adds MethodCache services configured via the fluent API.
-        /// </summary>
-        /// <param name="services">The service collection.</param>
-        /// <param name="configure">Fluent configuration delegate.</param>
-        /// <returns>The service collection.</returns>
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static IServiceCollection AddMethodCacheFluent(this IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)
-        {
-            if (services == null) throw new ArgumentNullException(nameof(services));
-            if (configure == null) throw new ArgumentNullException(nameof(configure));
-
-            return AddMethodCacheCore(services, configure, new[] { Assembly.GetCallingAssembly() });
-        }
-
-        /// <summary>
         /// Automatically registers services with cache attributes from the specified assemblies.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="assemblies">Assemblies to scan. If null, scans the calling assembly.</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, Assembly[]? assemblies)
+        internal static IServiceCollection AddMethodCacheServices(this IServiceCollection services, Assembly[]? assemblies)
         {
             var options = new MethodCacheRegistrationOptions
             {
@@ -210,7 +164,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
         /// <param name="services">The service collection</param>
         /// <param name="options">Registration options</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheServices(this IServiceCollection services, MethodCacheRegistrationOptions options)
+        internal static IServiceCollection AddMethodCacheServices(this IServiceCollection services, MethodCacheRegistrationOptions options)
         {
             var assembliesToScan = GetAssembliesToScan(options);
             var typeLookup = BuildTypeLookup(assembliesToScan);
@@ -431,61 +385,154 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
         private static void RegisterCachedService(IServiceCollection services, Type interfaceType, Type implementationType, MethodCacheRegistrationOptions options)
         {
-            // This method will use reflection to call the generated AddXWithCaching method
-            // The source generator creates methods like AddISampleServiceWithCaching
+            // The decorator gets the same lifetime as the implementation it wraps, so a scoped
+            // implementation is never captured by a singleton decorator
+            var lifetime = options.ServiceLifetimeResolver?.Invoke(implementationType) ?? options.DefaultServiceLifetime;
+            var method = FindGeneratedRegistration(interfaceType, lifetime);
 
-            var interfaceName = interfaceType.Name;
-            var methodName = $"Add{interfaceName}WithCaching";
-
-            // The generator emits the extension class into the assembly that declares the interface,
-            // so look there first and only fall back to other loaded assemblies when it is missing
-            const string extensionTypeName = "Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions";
-            var parameterTypes = new[] { typeof(IServiceCollection), typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType) };
-
-            MethodInfo? FindGeneratedMethod(Assembly assembly) =>
-                assembly.GetType(extensionTypeName)?.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static, null, parameterTypes, null);
-
-            var method = FindGeneratedMethod(interfaceType.Assembly)
-                ?? AppDomain.CurrentDomain.GetAssemblies().Select(FindGeneratedMethod).FirstOrDefault(m => m != null);
-
-            if (method != null)
+            if (method == null)
             {
-                // Create a strongly-typed factory function that resolves the concrete implementation
-                // The factory must be Func<IServiceProvider, TInterface> not Func<IServiceProvider, object>
-                var lifetime = options.ServiceLifetimeResolver?.Invoke(implementationType) ?? options.DefaultServiceLifetime;
-
-                // Use Expression trees to create a strongly-typed delegate
-                // Expression: (IServiceProvider provider) => (TInterface)provider.GetRequiredService<TImplementation>()
-                var providerParam = Expression.Parameter(typeof(IServiceProvider), "provider");
-
-                // Get the GetRequiredService<T> method
-                var getRequiredServiceMethod = typeof(ServiceProviderServiceExtensions)
-                    .GetMethods()
-                    .First(m => m.Name == nameof(ServiceProviderServiceExtensions.GetRequiredService)
-                                && m.IsGenericMethodDefinition
-                                && m.GetParameters().Length == 1)
-                    .MakeGenericMethod(implementationType);
-
-                // Call GetRequiredService<TImplementation>(provider)
-                var getServiceCall = Expression.Call(null, getRequiredServiceMethod, providerParam);
-
-                // Cast to interface type if needed
-                var castToInterface = Expression.Convert(getServiceCall, interfaceType);
-
-                // Create Func<IServiceProvider, TInterface>
-                var factoryDelegateType = typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType);
-                var lambda = Expression.Lambda(factoryDelegateType, castToInterface, providerParam);
-                var factory = lambda.Compile();
-
-                // Call the generated extension method with the strongly-typed factory
-                method.Invoke(null, new object[] { services, factory });
+                Console.WriteLine($"Warning: Could not find a generated cache decorator for {interfaceType.FullName}. " +
+                                  "Make sure the source generator has run and the interface has cache attributes.");
                 return;
             }
 
-            // Fallback: Log that we couldn't find the generated method
-            Console.WriteLine($"Warning: Could not find generated extension method {methodName} for {interfaceType.FullName}. " +
-                            "Make sure the source generator has run and the interface has cache attributes.");
+            // Expression: (IServiceProvider provider) => (TInterface)provider.GetRequiredService<TImplementation>()
+            var providerParam = Expression.Parameter(typeof(IServiceProvider), "provider");
+            var getRequiredServiceMethod = typeof(ServiceProviderServiceExtensions)
+                .GetMethods()
+                .First(m => m.Name == nameof(ServiceProviderServiceExtensions.GetRequiredService)
+                            && m.IsGenericMethodDefinition
+                            && m.GetParameters().Length == 1)
+                .MakeGenericMethod(implementationType);
+            var getServiceCall = Expression.Call(null, getRequiredServiceMethod, providerParam);
+            var factory = CreateTypedFactory(interfaceType, Expression.Convert(getServiceCall, interfaceType), providerParam);
+
+            method.Invoke(null, new object[] { services, factory });
+            var decorator = services[^1];
+            GetDecoratedRegistrations(services).Add(decorator);
         }
 
+        /// <summary>
+        /// Wraps services the application registered itself in their generated decorators. The original
+        /// registration moves to a private key so the container still creates and disposes the implementation
+        /// with its own lifetime, factory or instance, and the decorator takes its place under the interface.
+        /// </summary>
+        private static void DecorateExistingRegistrations(IServiceCollection services)
+        {
+            var decorated = GetDecoratedRegistrations(services);
+
+            for (var index = 0; index < services.Count; index++)
+            {
+                var descriptor = services[index];
+                var serviceType = descriptor.ServiceType;
+
+                if (descriptor.IsKeyedService ||
+                    !serviceType.IsInterface ||
+                    serviceType.ContainsGenericParameters ||
+                    decorated.Contains(descriptor) ||
+                    !HasCacheAttributes(serviceType))
+                {
+                    continue;
+                }
+
+                var method = FindGeneratedRegistration(serviceType, descriptor.Lifetime);
+                if (method == null)
+                {
+                    continue;
+                }
+
+                var innerKey = new DecoratedServiceKey(serviceType);
+                services.Add(CreateKeyedCopy(descriptor, innerKey));
+
+                // Expression: (IServiceProvider provider) => (TInterface)provider.GetRequiredKeyedService(typeof(TInterface), innerKey)
+                var providerParam = Expression.Parameter(typeof(IServiceProvider), "provider");
+                var getKeyedServiceMethod = typeof(ServiceProviderKeyedServiceExtensions)
+                    .GetMethod(nameof(ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService), new[] { typeof(IServiceProvider), typeof(Type), typeof(object) })!;
+                var getServiceCall = Expression.Call(
+                    null,
+                    getKeyedServiceMethod,
+                    providerParam,
+                    Expression.Constant(serviceType, typeof(Type)),
+                    Expression.Constant(innerKey, typeof(object)));
+                var factory = CreateTypedFactory(serviceType, Expression.Convert(getServiceCall, serviceType), providerParam);
+
+                method.Invoke(null, new object[] { services, factory });
+
+                // The generated method appends the decorator; move it into the original slot so
+                // registration order (and therefore IEnumerable<T> order) is unchanged
+                var decorator = services[^1];
+                services.RemoveAt(services.Count - 1);
+                services[index] = decorator;
+                decorated.Add(decorator);
+            }
+        }
+
+        private static ServiceDescriptor CreateKeyedCopy(ServiceDescriptor descriptor, object key)
+        {
+            if (descriptor.ImplementationInstance != null)
+            {
+                return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.ImplementationInstance);
+            }
+
+            if (descriptor.ImplementationFactory != null)
+            {
+                var factory = descriptor.ImplementationFactory;
+                return new ServiceDescriptor(descriptor.ServiceType, key, (provider, _) => factory(provider), descriptor.Lifetime);
+            }
+
+            return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.ImplementationType!, descriptor.Lifetime);
+        }
+
+        private static Delegate CreateTypedFactory(Type interfaceType, Expression body, ParameterExpression providerParam)
+        {
+            // The generated methods take Func<IServiceProvider, TInterface>, not Func<IServiceProvider, object>
+            var factoryDelegateType = typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType);
+            return Expression.Lambda(factoryDelegateType, body, providerParam).Compile();
+        }
+
+        private static MethodInfo? FindGeneratedRegistration(Type interfaceType, ServiceLifetime lifetime)
+        {
+            // The generator emits Add{Interface}WithCaching{Lifetime} into the assembly that declares the interface,
+            // so look there first and only fall back to other loaded assemblies when it is missing
+            const string extensionTypeName = "Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions";
+            var methodName = $"Add{interfaceType.Name}WithCaching{lifetime}";
+            var parameterTypes = new[] { typeof(IServiceCollection), typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType) };
+
+            MethodInfo? FindIn(Assembly assembly) =>
+                assembly.GetType(extensionTypeName)?.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static, null, parameterTypes, null);
+
+            return FindIn(interfaceType.Assembly)
+                ?? AppDomain.CurrentDomain.GetAssemblies().Select(FindIn).FirstOrDefault(m => m != null);
+        }
+
+        private static HashSet<ServiceDescriptor> GetDecoratedRegistrations(IServiceCollection services)
+        {
+            // Remembers which registrations are already decorators, so calling AddMethodCache twice never wraps a decorator again
+            var existing = services.FirstOrDefault(d => d.ServiceType == typeof(DecoratedRegistrations))?.ImplementationInstance;
+            if (existing is DecoratedRegistrations registrations)
+            {
+                return registrations.Descriptors;
+            }
+
+            var created = new DecoratedRegistrations();
+            services.AddSingleton(created);
+            return created.Descriptors;
+        }
+
+        private sealed class DecoratedRegistrations
+        {
+            public HashSet<ServiceDescriptor> Descriptors { get; } = new();
+        }
+
+        // Compared by reference, so two registrations of the same interface each keep their own inner service
+        private sealed class DecoratedServiceKey
+        {
+            public DecoratedServiceKey(Type serviceType) => ServiceType = serviceType;
+
+            public Type ServiceType { get; }
+
+            public override string ToString() => $"MethodCache inner {ServiceType.Name}";
+        }
     }
 }

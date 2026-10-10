@@ -189,19 +189,129 @@ namespace QuickStart
     }
 
     [Fact]
-    public async Task AddMethodCache_WithExistingRegistration_KeepsApplicationRegistration()
+    public async Task AddMethodCache_WithExistingScopedRegistration_DecoratesItAndKeepsLifetime()
     {
-        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(QuickStartSource, "QuickStartApp_ExistingRegistration");
-        var assembly = testAssembly.Assembly;
-        var interfaceType = assembly.GetType("QuickStart.IUserService")!;
-        var implementationType = assembly.GetType("QuickStart.UserService")!;
+        var (assembly, interfaceType, implementationType) = await CompileQuickStartAsync("QuickStartApp_ExistingScoped");
 
         var services = new ServiceCollection();
         services.AddScoped(interfaceType, implementationType);
-        var existing = services[^1];
+        InvokeStartup(assembly, "WithoutConfiguration", services);
 
-        assembly.GetType("QuickStart.Startup")!.GetMethod("WithoutConfiguration")!.Invoke(null, new object[] { services });
+        var registration = Assert.Single(services, d => d.ServiceType == interfaceType && !d.IsKeyedService);
+        Assert.Equal(ServiceLifetime.Scoped, registration.Lifetime);
 
-        Assert.Same(existing, services.Single(d => d.ServiceType == interfaceType));
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using var firstScope = provider.CreateAsyncScope();
+        await using var secondScope = provider.CreateAsyncScope();
+
+        var first = firstScope.ServiceProvider.GetRequiredService(interfaceType);
+        Assert.EndsWith("Decorator", first.GetType().Name);
+        Assert.Same(first, firstScope.ServiceProvider.GetRequiredService(interfaceType));
+        Assert.NotSame(first, secondScope.ServiceProvider.GetRequiredService(interfaceType));
+
+        // The cache is shared across scopes, so the second scope's implementation is never called
+        Assert.Equal("user-7", await GetUserAsync(interfaceType, first, 7));
+        var second = secondScope.ServiceProvider.GetRequiredService(interfaceType);
+        Assert.Equal("user-7", await GetUserAsync(interfaceType, second, 7));
     }
+
+    [Fact]
+    public async Task AddMethodCache_WithFactoryRegistration_DecoratesTheFactoryResult()
+    {
+        var (assembly, interfaceType, implementationType) = await CompileQuickStartAsync("QuickStartApp_ExistingFactory");
+        var implementation = Activator.CreateInstance(implementationType)!;
+
+        var services = new ServiceCollection();
+        services.AddSingleton(interfaceType, _ => implementation);
+        InvokeStartup(assembly, "WithoutConfiguration", services);
+
+        await using var provider = services.BuildServiceProvider();
+        var service = provider.GetRequiredService(interfaceType);
+
+        Assert.EndsWith("Decorator", service.GetType().Name);
+        await GetUserAsync(interfaceType, service, 1);
+        await GetUserAsync(interfaceType, service, 1);
+        Assert.Equal(1, (int)implementationType.GetProperty("Calls")!.GetValue(implementation)!);
+    }
+
+    [Fact]
+    public async Task AddMethodCache_CalledTwice_DoesNotWrapTheDecoratorAgain()
+    {
+        var (assembly, interfaceType, implementationType) = await CompileQuickStartAsync("QuickStartApp_CalledTwice");
+
+        var services = new ServiceCollection();
+        services.AddSingleton(interfaceType, implementationType);
+        InvokeStartup(assembly, "WithoutConfiguration", services);
+        InvokeStartup(assembly, "WithoutConfiguration", services);
+
+        Assert.Single(services, d => d.ServiceType == interfaceType && !d.IsKeyedService);
+        Assert.Single(services, d => d.ServiceType == interfaceType && d.IsKeyedService);
+    }
+
+    [Fact]
+    public async Task AddMethodCache_WithDisposableImplementation_LetsTheContainerDisposeIt()
+    {
+        const string source = @"
+using System;
+using System.Threading.Tasks;
+using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace QuickStart
+{
+    public interface IRepository
+    {
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> GetAsync(int id);
+    }
+
+    public class Repository : IRepository, IDisposable
+    {
+        public static int Disposed;
+
+        public Task<string> GetAsync(int id) => Task.FromResult(""item"");
+
+        public void Dispose() => Disposed++;
+    }
+
+    public static class Startup
+    {
+        public static void Configure(IServiceCollection services)
+        {
+            services.AddScoped<IRepository, Repository>();
+            services.AddMethodCache();
+        }
+    }
+}";
+
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(source, "QuickStartApp_Disposable");
+        var assembly = testAssembly.Assembly;
+        var interfaceType = assembly.GetType("QuickStart.IRepository")!;
+        var disposed = assembly.GetType("QuickStart.Repository")!.GetField("Disposed")!;
+
+        var services = new ServiceCollection();
+        InvokeStartup(assembly, "Configure", services);
+
+        await using var provider = services.BuildServiceProvider();
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            scope.ServiceProvider.GetRequiredService(interfaceType);
+        }
+
+        Assert.Equal(1, (int)disposed.GetValue(null)!);
+    }
+
+    private async Task<(Assembly Assembly, Type InterfaceType, Type ImplementationType)> CompileQuickStartAsync(string assemblyName)
+    {
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(QuickStartSource, assemblyName);
+        var assembly = testAssembly.Assembly;
+        return (assembly, assembly.GetType("QuickStart.IUserService")!, assembly.GetType("QuickStart.UserService")!);
+    }
+
+    private static void InvokeStartup(Assembly assembly, string method, IServiceCollection services) =>
+        assembly.GetType("QuickStart.Startup")!.GetMethod(method)!.Invoke(null, new object[] { services });
+
+    private static Task<string> GetUserAsync(Type interfaceType, object service, int userId) =>
+        (Task<string>)interfaceType.GetMethod("GetUserAsync")!.Invoke(service, new object[] { userId })!;
 }

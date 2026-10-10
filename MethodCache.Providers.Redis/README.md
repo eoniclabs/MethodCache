@@ -45,7 +45,7 @@ services.AddRedisCache(options =>
     options.ConnectionString = "localhost:6379";
 });
 
-services.AddMethodCacheFluent(fluent =>
+services.AddMethodCache(fluent =>
 {
     fluent.ForService<IUserService>()
           .Method(s => s.GetUserAsync(default))
