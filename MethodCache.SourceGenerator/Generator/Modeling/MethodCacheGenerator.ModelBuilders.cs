@@ -70,7 +70,8 @@ namespace MethodCache.SourceGenerator
         {
             var tags = new List<string>();
             var tagsArg = attr.NamedArguments.FirstOrDefault(a => a.Key == "Tags");
-            if (!tagsArg.Value.Values.IsDefaultOrEmpty)
+            // An attribute without Tags yields a default (non-array) constant, whose Values property throws
+            if (tagsArg.Value.Kind == TypedConstantKind.Array && !tagsArg.Value.Values.IsDefaultOrEmpty)
             {
                 foreach (var value in tagsArg.Value.Values)
                 {
@@ -99,9 +100,10 @@ namespace MethodCache.SourceGenerator
                 foreach (System.Text.RegularExpressions.Match match in matches)
                 {
                     var paramName = match.Groups[1].Value;
-                    if (parameterNames.ContainsKey(paramName))
+                    if (parameterNames.TryGetValue(paramName, out var parameter))
                     {
-                        paramNames.Add(paramName);
+                        // Use the parameter's own spelling, since the template may differ in case
+                        paramNames.Add(parameter.Name);
                         // Replace {paramName} with {0}, {1}, etc. for string.Format
                         template = template.Replace(match.Value, $"{{{paramNames.Count - 1}}}");
                     }
