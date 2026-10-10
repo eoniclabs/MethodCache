@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using MethodCache.Core.Configuration;
 using MethodCache.Core;
 using MethodCache.Core.Configuration.Surfaces.ConfigFile;
@@ -21,11 +22,13 @@ namespace MethodCache.Core.Infrastructure.Extensions
     public static class MethodCacheServiceCollectionExtensions
     {
         /// <summary>
-        /// Adds MethodCache services to the dependency injection container.
+        /// Adds MethodCache services and registers cached decorators for every interface with cache attributes
+        /// in the calling assembly. Use the overload that takes assemblies when the interfaces live elsewhere.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="configure">Optional configuration action</param>
         /// <returns>The service collection for chaining</returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure = null)
         {
             if (services == null)
@@ -33,14 +36,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 throw new ArgumentNullException(nameof(services));
             }
 
-            EnsureCoreServices(services);
-
-            if (configure != null)
-            {
-                RegisterFluentPolicySource(services, configure);
-            }
-
-            return services;
+            return AddMethodCacheCore(services, configure, new[] { Assembly.GetCallingAssembly() });
         }
 
         /// <summary>
@@ -50,6 +46,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
         /// <param name="configure">Optional configuration action</param>
         /// <param name="assemblies">Assemblies to scan for services with cache attributes. If null, scans the calling assembly.</param>
         /// <returns>The service collection for chaining</returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure = null, params Assembly[]? assemblies)
         {
             if (services == null)
@@ -57,11 +54,16 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 throw new ArgumentNullException(nameof(services));
             }
 
-            EnsureCoreServices(services);
-
             var targetAssemblies = assemblies is { Length: > 0 }
                 ? assemblies
                 : new[] { Assembly.GetCallingAssembly() };
+
+            return AddMethodCacheCore(services, configure, targetAssemblies);
+        }
+
+        private static IServiceCollection AddMethodCacheCore(IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure, Assembly[] targetAssemblies)
+        {
+            EnsureCoreServices(services);
 
             RegisterAttributePolicySource(services, targetAssemblies);
             services.AddMethodCacheServices(MethodCacheRegistrationOptions.ForAssemblies(targetAssemblies));
@@ -176,12 +178,13 @@ namespace MethodCache.Core.Infrastructure.Extensions
         /// <param name="services">The service collection.</param>
         /// <param name="configure">Fluent configuration delegate.</param>
         /// <returns>The service collection.</returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static IServiceCollection AddMethodCacheFluent(this IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
-            return services.AddMethodCache(configure);
+            return AddMethodCacheCore(services, configure, new[] { Assembly.GetCallingAssembly() });
         }
 
         /// <summary>
@@ -419,64 +422,49 @@ namespace MethodCache.Core.Infrastructure.Extensions
             var interfaceName = interfaceType.Name;
             var methodName = $"Add{interfaceName}WithCaching";
 
-            // Look for the generated extension method in the Microsoft.Extensions.DependencyInjection namespace
-            var extensionType = Type.GetType("Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions, " + interfaceType.Assembly.FullName);
+            // The generator emits the extension class into the assembly that declares the interface,
+            // so look there first and only fall back to other loaded assemblies when it is missing
+            const string extensionTypeName = "Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions";
+            var parameterTypes = new[] { typeof(IServiceCollection), typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType) };
 
-            if (extensionType == null)
+            MethodInfo? FindGeneratedMethod(Assembly assembly) =>
+                assembly.GetType(extensionTypeName)?.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static, null, parameterTypes, null);
+
+            var method = FindGeneratedMethod(interfaceType.Assembly)
+                ?? AppDomain.CurrentDomain.GetAssemblies().Select(FindGeneratedMethod).FirstOrDefault(m => m != null);
+
+            if (method != null)
             {
-                // Try to find it in any loaded assembly
-                extensionType = AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a =>
-                    {
-                        try
-                        {
-                            return a.GetTypes();
-                        }
-                        catch (ReflectionTypeLoadException)
-                        {
-                            return Array.Empty<Type>();
-                        }
-                    })
-                    .FirstOrDefault(t => t.Name == "MethodCacheServiceCollectionExtensions" &&
-                                        t.Namespace == "Microsoft.Extensions.DependencyInjection");
-            }
+                // Create a strongly-typed factory function that resolves the concrete implementation
+                // The factory must be Func<IServiceProvider, TInterface> not Func<IServiceProvider, object>
+                var lifetime = options.ServiceLifetimeResolver?.Invoke(implementationType) ?? options.DefaultServiceLifetime;
 
-            if (extensionType != null)
-            {
-                var method = extensionType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
-                if (method != null)
-                {
-                    // Create a strongly-typed factory function that resolves the concrete implementation
-                    // The factory must be Func<IServiceProvider, TInterface> not Func<IServiceProvider, object>
-                    var lifetime = options.ServiceLifetimeResolver?.Invoke(implementationType) ?? options.DefaultServiceLifetime;
+                // Use Expression trees to create a strongly-typed delegate
+                // Expression: (IServiceProvider provider) => (TInterface)provider.GetRequiredService<TImplementation>()
+                var providerParam = Expression.Parameter(typeof(IServiceProvider), "provider");
 
-                    // Use Expression trees to create a strongly-typed delegate
-                    // Expression: (IServiceProvider provider) => (TInterface)provider.GetRequiredService<TImplementation>()
-                    var providerParam = Expression.Parameter(typeof(IServiceProvider), "provider");
+                // Get the GetRequiredService<T> method
+                var getRequiredServiceMethod = typeof(ServiceProviderServiceExtensions)
+                    .GetMethods()
+                    .First(m => m.Name == nameof(ServiceProviderServiceExtensions.GetRequiredService)
+                                && m.IsGenericMethodDefinition
+                                && m.GetParameters().Length == 1)
+                    .MakeGenericMethod(implementationType);
 
-                    // Get the GetRequiredService<T> method
-                    var getRequiredServiceMethod = typeof(ServiceProviderServiceExtensions)
-                        .GetMethods()
-                        .First(m => m.Name == nameof(ServiceProviderServiceExtensions.GetRequiredService)
-                                    && m.IsGenericMethodDefinition
-                                    && m.GetParameters().Length == 1)
-                        .MakeGenericMethod(implementationType);
+                // Call GetRequiredService<TImplementation>(provider)
+                var getServiceCall = Expression.Call(null, getRequiredServiceMethod, providerParam);
 
-                    // Call GetRequiredService<TImplementation>(provider)
-                    var getServiceCall = Expression.Call(null, getRequiredServiceMethod, providerParam);
+                // Cast to interface type if needed
+                var castToInterface = Expression.Convert(getServiceCall, interfaceType);
 
-                    // Cast to interface type if needed
-                    var castToInterface = Expression.Convert(getServiceCall, interfaceType);
+                // Create Func<IServiceProvider, TInterface>
+                var factoryDelegateType = typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType);
+                var lambda = Expression.Lambda(factoryDelegateType, castToInterface, providerParam);
+                var factory = lambda.Compile();
 
-                    // Create Func<IServiceProvider, TInterface>
-                    var factoryDelegateType = typeof(Func<,>).MakeGenericType(typeof(IServiceProvider), interfaceType);
-                    var lambda = Expression.Lambda(factoryDelegateType, castToInterface, providerParam);
-                    var factory = lambda.Compile();
-
-                    // Call the generated extension method with the strongly-typed factory
-                    method.Invoke(null, new object[] { services, factory });
-                    return;
-                }
+                // Call the generated extension method with the strongly-typed factory
+                method.Invoke(null, new object[] { services, factory });
+                return;
             }
 
             // Fallback: Log that we couldn't find the generated method
