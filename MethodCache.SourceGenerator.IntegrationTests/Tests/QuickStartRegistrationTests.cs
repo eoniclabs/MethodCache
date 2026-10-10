@@ -102,4 +102,37 @@ namespace QuickStart
         var calls = (int)implementationType.GetProperty("Calls")!.GetValue(implementation)!;
         Assert.Equal(1, calls);
     }
+
+    [Fact]
+    public async Task AddMethodCache_WithoutImplementation_DoesNotRegisterGeneratedDecoratorAsImplementation()
+    {
+        const string source = @"
+using System.Threading.Tasks;
+using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace QuickStart
+{
+    public interface IExternalService
+    {
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> GetAsync(int id);
+    }
+
+    public static class Startup
+    {
+        public static void Configure(IServiceCollection services) => services.AddMethodCache();
+    }
+}";
+
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(source, "QuickStartApp_NoImplementation");
+        var assembly = testAssembly.Assembly;
+
+        var services = new ServiceCollection();
+        assembly.GetType("QuickStart.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
+
+        Assert.DoesNotContain(services, d => d.ServiceType.Name == "IExternalServiceDecorator");
+        Assert.DoesNotContain(services, d => d.ServiceType == assembly.GetType("QuickStart.IExternalService"));
+    }
 }
