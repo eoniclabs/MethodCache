@@ -187,4 +187,21 @@ namespace QuickStart
             .Where(r => r.Source.GetType().Name == "GeneratedAttributePolicySource");
         Assert.Single(generatedSources);
     }
+
+    [Fact]
+    public async Task AddMethodCache_WithExistingRegistration_KeepsApplicationRegistration()
+    {
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(QuickStartSource, "QuickStartApp_ExistingRegistration");
+        var assembly = testAssembly.Assembly;
+        var interfaceType = assembly.GetType("QuickStart.IUserService")!;
+        var implementationType = assembly.GetType("QuickStart.UserService")!;
+
+        var services = new ServiceCollection();
+        services.AddScoped(interfaceType, implementationType);
+        var existing = services[^1];
+
+        assembly.GetType("QuickStart.Startup")!.GetMethod("WithoutConfiguration")!.Invoke(null, new object[] { services });
+
+        Assert.Same(existing, services.Single(d => d.ServiceType == interfaceType));
+    }
 }
