@@ -298,19 +298,12 @@ public sealed class CacheEntryOptions
         public Builder RefreshAhead(TimeSpan leadDuration);
         public Builder WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0);
         public Builder WithMetrics(ICacheMetrics metrics);
-        public Builder WithFallback<TException>(Func<TException, CacheContext, ValueTask<object?>> fallback) where TException : Exception;
-        public Builder WithCircuitBreaker(int handledEventsAllowedBeforeBreaking = 3, TimeSpan? durationOfBreak = null);
-        public Builder DependsOn(params string[] parentKeys);
-        public Builder InvalidatesWith(params string[] relatedKeys);
-        public Builder CascadeInvalidation(bool enabled = true);
         public CacheEntryOptions Build();
     }
 }
 ```
 
 - `CacheEntryOptions` instances are immutable. Builders are pooled via `ObjectPool<CacheEntryOptions.Builder>` and reset between uses.
-- `WithFallback` captures exception-specific fallback behavior. Internally, builder stores typed policies that are materialized per entry.
-- Dependency methods support cascading invalidation across related keys. `CascadeInvalidation(true)` turns on automatic invalidation of dependent cache entries when the root is invalidated.
 
 #### Supporting Option Types
 
@@ -485,20 +478,17 @@ await foreach (var dto in cacheManager.GetOrCreateStreamAsync(
 services.AddMethodCache(config =>
 {
     config.DefaultPolicy(policy => policy
-        .Duration(TimeSpan.FromMinutes(15))
-        .Strategy(CacheStrategy.Hybrid)
+        .WithDuration(TimeSpan.FromMinutes(15))
         .RefreshAhead(TimeSpan.FromMinutes(5))
         .WithStampedeProtection(StampedeProtectionMode.DistributedLock)
     );
 
     config.ForService<IUserService>()
           .Method(s => s.GetUserAsync(default))
-          .WithPolicy("long-term")
-          .WithDistributedLock(TimeSpan.FromSeconds(5), maxConcurrency: 2)
           .Configure(options => options
+              .WithDistributedLock(TimeSpan.FromSeconds(5), maxConcurrency: 2)
               .WithTags("users")
               .WithMetrics(metrics)
-              .DependsOn("tenant:" + tenantId)
           );
 });
 ```
