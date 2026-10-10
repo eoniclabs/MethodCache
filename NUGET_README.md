@@ -47,13 +47,14 @@ You can also skip registering the service yourself. `AddMethodCache()` then find
 builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly, typeof(UserService).Assembly);
 ```
 
-## Fluent API Example
+## Manual Caching Example
 
 ```csharp
-var profile = await cache.Cache(() => userService.GetUserAsync(userId))
-    .WithDuration(TimeSpan.FromMinutes(30))
-    .WithTags("users", $"user:{userId}")
-    .ExecuteAsync();
+var profile = await cache.GetOrCreateAsync(
+    $"user:{userId}",
+    async (ctx, ct) => await userService.GetUserAsync(userId),
+    o => o.WithDuration(TimeSpan.FromMinutes(30))
+          .WithTags("users", $"user:{userId}"));
 ```
 
 ## Feature Summary

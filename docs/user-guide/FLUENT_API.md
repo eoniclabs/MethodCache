@@ -8,20 +8,23 @@ Use the fluent API when:
 
 - You do not want attribute-based caching on service contracts.
 - You are caching third-party libraries or SDK clients.
-- You need per-call policy control (duration, tags, key generator, conditions).
+- You need per-call policy control (duration, tags, conditions).
 
 ## Quick Start
 
 ```csharp
-var result = await cache.Cache(() => repository.GetByIdAsync(id))
-    .WithDuration(TimeSpan.FromMinutes(30))
-    .WithTags("orders", $"order:{id}")
-    .ExecuteAsync();
+var order = await cache.GetOrCreateAsync(
+    $"order:{id}",
+    async (ctx, ct) => await repository.GetByIdAsync(id),
+    o => o.WithDuration(TimeSpan.FromMinutes(30))
+          .WithTags("orders", $"order:{id}"));
 ```
+
+You always pass the cache key yourself. MethodCache does not derive keys from lambdas, so captured variables never end up in a key by accident.
 
 ## What the Fluent API Provides
 
-- A chainable API surface on top of `ICacheManager`.
+- Explicit-key `GetOrCreateAsync`, `TryGetAsync`, bulk and streaming helpers on top of `ICacheManager`.
 - Type-safe configuration for key generation, expiration, tags, and versioning.
 - Access to advanced options such as stampede protection and distributed locking.
 - Compatibility with existing MethodCache providers and runtime configuration.
@@ -39,103 +42,6 @@ This keeps fluent usage aligned with the same policy pipeline used by attributes
 
 ## API Surface Details
 
-### Method Chaining API
-Namespace: `MethodCache.Core.Extensions` and `MethodCache.Core.Fluent`.
-
-**Overview**: The Method Chaining API provides an intuitive, chainable interface for configuring cache operations. This API transforms the callback-based configuration into a more readable and discoverable fluent interface.
-
-```csharp
-public static class CacheManagerExtensions
-{
-    // Method Chaining API - Primary entry points
-    public static CacheBuilder<T> Cache<T>(
-        this ICacheManager cacheManager,
-        Func<ValueTask<T>> factory,
-        IServiceProvider? services = null,
-        CancellationToken cancellationToken = default);
-
-    public static CacheBuilder<T> Build<T>(
-        this ICacheManager cacheManager,
-        Func<ValueTask<T>> factory,
-        IServiceProvider? services = null,
-        CancellationToken cancellationToken = default);
-}
-
-public class CacheBuilder<T>
-{
-    // Duration and expiration
-    public CacheBuilder<T> WithDuration(TimeSpan duration);
-    public CacheBuilder<T> WithRefreshAhead(TimeSpan window);
-    public CacheBuilder<T> WithSlidingExpiration(TimeSpan slidingExpiration);
-
-    // Tags and versioning
-    public CacheBuilder<T> WithTags(params string[] tags);
-    public CacheBuilder<T> WithVersion(int version);
-
-    // Key generation
-    public CacheBuilder<T> WithKeyGenerator(ICacheKeyGenerator keyGenerator);
-    public CacheBuilder<T> WithKeyGenerator<TKeyGenerator>() where TKeyGenerator : ICacheKeyGenerator, new();
-
-    // Advanced features
-    public CacheBuilder<T> WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0, TimeSpan? refreshAheadWindow = null);
-    public CacheBuilder<T> WithDistributedLock(TimeSpan timeout, int maxConcurrency = 1);
-    public CacheBuilder<T> WithMetrics(ICacheMetrics metrics);
-
-    // Callbacks and conditions
-    public CacheBuilder<T> OnHit(Action<CacheContext> onHit);
-    public CacheBuilder<T> OnMiss(Action<CacheContext> onMiss);
-    public CacheBuilder<T> When(Func<CacheContext, bool> predicate);
-
-    // Configuration
-    public CacheBuilder<T> WithServices(IServiceProvider services);
-    public CacheBuilder<T> WithCancellationToken(CancellationToken cancellationToken);
-
-    // Execution
-    public ValueTask<T> ExecuteAsync();
-}
-```
-
-**Usage Examples**:
-
-```csharp
-// Simple usage
-var user = await cache.Cache(() => userService.GetUserAsync(userId))
-    .WithDuration(TimeSpan.FromHours(1))
-    .WithTags("user", $"user:{userId}")
-    .ExecuteAsync();
-
-// Advanced configuration
-var orders = await cache.Cache(() => orderService.GetOrdersAsync(customerId, status))
-    .WithDuration(TimeSpan.FromMinutes(30))
-    .WithStampedeProtection()
-    .WithKeyGenerator<JsonKeyGenerator>()
-    .When(ctx => customerId > 0)
-    .OnHit(ctx => logger.LogInformation($"Cache hit: {ctx.Key}"))
-    .OnMiss(ctx => logger.LogInformation($"Cache miss: {ctx.Key}"))
-    .ExecuteAsync();
-
-// Multiple key generators based on conditions
-var builder = cache.Cache(() => service.ProcessDataAsync(request))
-    .WithDuration(TimeSpan.FromMinutes(30));
-
-if (request.IsComplex)
-    builder = builder.WithKeyGenerator<MessagePackKeyGenerator>();
-else if (request.IsDebugMode)
-    builder = builder.WithKeyGenerator<JsonKeyGenerator>();
-else
-    builder = builder.WithKeyGenerator<FastHashKeyGenerator>();
-
-var result = await builder.ExecuteAsync();
-```
-
-**Benefits**:
-- **Intuitive**: Natural reading flow with method chaining
-- **Type-safe**: Generic key generator selection with compile-time validation
-- **Discoverable**: IntelliSense guides through available options
-- **Flexible**: Conditional configuration based on runtime values
-- **Performance**: No overhead - compiles to same efficient code as callback-based API
-- **Backward Compatible**: Existing APIs continue to work unchanged
-
 ### ICacheManager Extensions
 Namespace: `MethodCache.Core.Extensions`.
 
@@ -147,6 +53,7 @@ public static class CacheManagerExtensions
         string key,
         Func<CacheContext, CancellationToken, ValueTask<T>> factory,
         Action<CacheEntryOptions.Builder>? configure = null,
+        IServiceProvider? services = null,
         CancellationToken cancellationToken = default);
 
     public static ValueTask<CacheLookupResult<T>> TryGetAsync<T>(
@@ -324,37 +231,20 @@ public sealed record CircuitBreakerOptions(int HandledEventsAllowedBeforeBreakin
 - `DistributedLockOptions` is interpreted by providers; when `Timeout` is null, providers fallback to default lock timeout.
 
 #### CacheContext
-Namespace: `MethodCache.Core.Runtime`.
+Namespace: `MethodCache.Core.Runtime.Core`.
 
 ```csharp
 public sealed class CacheContext
 {
-    public IServiceProvider Services { get; }
-    public IDictionary<object, object?> Items { get; }
     public string Key { get; }
-    public CacheLayer Layer { get; }
-    public CancellationToken CancellationToken { get; }
-    public IReadOnlyDictionary<string, object?> Scope { get; }
-
-    public DistributedLockHandle? DistributedLock { get; }
+    public IServiceProvider? Services { get; }
+    public IDictionary<object, object?> Items { get; }
 }
 ```
 
-- `Scope` exposes enriched metadata (tenant, user, locale) supplied by hosting integrations. Convenience extensions (e.g., `CacheContextExtensions.GetTenantId`) provide typed accessors without polluting the core type.
-- `Items` is scoped per call to enable user code to pass data between callbacks without leaking state.
-- `DistributedLock` exposes context about acquired locks for advanced scenarios and diagnostics.
-
-#### CacheContext Extensions
-
-```csharp
-public static class CacheContextExtensions
-{
-    public static string? GetTenantId(this CacheContext context) =>
-        context.Scope.TryGetValue("TenantId", out var value) ? value?.ToString() : null;
-}
-```
-
-- Additional helpers (e.g., `GetUserId`, `GetCulture`) follow the same pattern to preserve flexibility.
+- `Key` is the key you passed to `GetOrCreateAsync`.
+- `Services` is the service provider you passed in, if any.
+- `Items` is scoped per call, so callbacks such as `OnHit`, `OnMiss` and `When` can share data without leaking state.
 
 #### CacheKeyBuilder
 Namespace: `MethodCache.Core.Keys`.
@@ -440,7 +330,7 @@ var products = await cacheManager.GetOrCreateAsync(
     configure: options => options
         .WithDuration(TimeSpan.FromMinutes(30))
         .WithTags("products", "catalog")
-        .When(ctx => ctx.Scope.TryGetValue("IsPremium", out var flag) && flag is true)
+        .When(ctx => includePremium)
         .WithStampedeProtection(StampedeProtectionMode.Probabilistic, beta: 1.25)
 );
 ```
