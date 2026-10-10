@@ -124,4 +124,7 @@ public static class MethodCacheKeys
 
     /// <summary>Formats a <see cref="DateTimeOffset"/> argument with full precision and its offset.</summary>
     public static string Part(DateTimeOffset value) => value.ToString("O", CultureInfo.InvariantCulture);
+
+    /// <summary>Formats an enum argument by its numeric value, so renaming a member keeps existing keys.</summary>
+    public static string Part<TEnum>(TEnum value) where TEnum : struct, Enum => value.ToString("D");
 }

@@ -304,7 +304,7 @@ public class InMemoryCacheEngineTests
     [Fact]
     public async Task BackgroundRefresh_ReturningNull_RemovesTheRefreshedEntry()
     {
-        var manager = CreateManager();
+        var manager = CreateManager(o => o.CacheNullValues = false);
         var policy = Policy() with { RefreshAhead = TimeSpan.FromSeconds(10) };
 
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult<string?>("value"), policy);
