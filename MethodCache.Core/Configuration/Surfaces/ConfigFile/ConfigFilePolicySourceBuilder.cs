@@ -1,3 +1,4 @@
+using System.Globalization;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Sources;
 using Microsoft.Extensions.Configuration;
@@ -13,21 +14,24 @@ internal static class ConfigFilePolicySourceBuilder
             throw new ArgumentNullException(nameof(configuration));
         }
 
-        var root = configuration.GetSection(sectionName ?? string.Empty);
+        return new ConfigFilePolicySource(configuration, sectionName ?? string.Empty);
+    }
 
-        if (!root.Exists())
+    /// <summary>
+    /// Reads the cache policies in <paramref name="sectionName"/>. Throws <see cref="InvalidOperationException"/>
+    /// for values that are not valid, so a typo is reported instead of silently ignored.
+    /// </summary>
+    public static IReadOnlyList<PolicyDraft> Parse(IConfiguration configuration, string sectionName)
+    {
+        var root = configuration.GetSection(sectionName);
+        var servicesSection = root.GetSection("Services");
+
+        if (!root.Exists() || !servicesSection.Exists())
         {
-            return new ConfigFilePolicySource(Array.Empty<PolicyDraft>());
+            return Array.Empty<PolicyDraft>();
         }
 
         var defaults = ParseSection(root.GetSection("Defaults"));
-        var servicesSection = root.GetSection("Services");
-
-        if (!servicesSection.Exists())
-        {
-            return new ConfigFilePolicySource(Array.Empty<PolicyDraft>());
-        }
-
         var descriptors = new List<PolicyDraft>();
 
         foreach (var methodSection in servicesSection.GetChildren())
@@ -57,11 +61,10 @@ internal static class ConfigFilePolicySourceBuilder
                 baseBuilder.Apply(specific, overwriteExisting: true);
             }
 
-            var draft = baseBuilder.Build(methodId, notes);
-            descriptors.Add(draft);
+            descriptors.Add(baseBuilder.Build(methodId, notes));
         }
 
-        return new ConfigFilePolicySource(descriptors);
+        return descriptors;
     }
 
     private static CachePolicyBuilder ParseSection(IConfigurationSection section)
@@ -73,8 +76,7 @@ internal static class ConfigFilePolicySourceBuilder
             return builder;
         }
 
-        var durationValue = section["Duration"] ?? section["duration"];
-        if (!string.IsNullOrWhiteSpace(durationValue) && TimeSpan.TryParse(durationValue, out var duration))
+        if (ReadTimeSpan(section, "Duration") is { } duration)
         {
             builder.WithDuration(duration);
         }
@@ -85,20 +87,22 @@ internal static class ConfigFilePolicySourceBuilder
             builder.SetTags(tags);
         }
 
-        var versionValue = section["Version"] ?? section["version"];
-        if (!string.IsNullOrWhiteSpace(versionValue) && int.TryParse(versionValue, out var version))
+        if (ReadValue(section, "Version") is { } versionValue)
         {
+            if (!int.TryParse(versionValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version) || version < 0)
+            {
+                throw InvalidValue(section, "Version", versionValue, "a non-negative integer");
+            }
+
             builder.WithVersion(version);
         }
 
-        var slidingValue = section["SlidingExpiration"] ?? section["slidingExpiration"];
-        if (!string.IsNullOrWhiteSpace(slidingValue) && TimeSpan.TryParse(slidingValue, out var sliding))
+        if (ReadTimeSpan(section, "SlidingExpiration") is { } sliding)
         {
             builder.WithSlidingExpiration(sliding);
         }
 
-        var refreshValue = section["RefreshAhead"] ?? section["refreshAhead"];
-        if (!string.IsNullOrWhiteSpace(refreshValue) && TimeSpan.TryParse(refreshValue, out var refresh))
+        if (ReadTimeSpan(section, "RefreshAhead") is { } refresh)
         {
             builder.WithRefreshAhead(refresh);
         }
@@ -128,6 +132,31 @@ internal static class ConfigFilePolicySourceBuilder
 
         return builder;
     }
+
+    private static string? ReadValue(IConfigurationSection section, string name)
+    {
+        // Configuration keys are case-insensitive, so "duration" matches too
+        var value = section[name];
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static TimeSpan? ReadTimeSpan(IConfigurationSection section, string name)
+    {
+        if (ReadValue(section, name) is not { } text)
+        {
+            return null;
+        }
+
+        if (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero)
+        {
+            throw InvalidValue(section, name, text, "a positive time span such as \"00:05:00\"");
+        }
+
+        return value;
+    }
+
+    private static InvalidOperationException InvalidValue(IConfigurationSection section, string name, string value, string expected)
+        => new($"MethodCache configuration '{section.Path}:{name}' has value '{value}', which is not {expected}.");
 
     private static List<string>? ReadValues(IConfigurationSection section)
     {
