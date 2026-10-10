@@ -1,6 +1,7 @@
 using System.Reflection;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
+using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
@@ -134,5 +135,56 @@ namespace QuickStart
 
         Assert.DoesNotContain(services, d => d.ServiceType.Name == "IExternalServiceDecorator");
         Assert.DoesNotContain(services, d => d.ServiceType == assembly.GetType("QuickStart.IExternalService"));
+    }
+
+    [Fact]
+    public async Task AddMethodCache_WithSeveralCachedInterfaces_RegistersGeneratedPolicySourceOnce()
+    {
+        const string source = @"
+using System.Threading.Tasks;
+using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace QuickStart
+{
+    public interface IFirstService
+    {
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> GetAsync(int id);
+    }
+
+    public interface ISecondService
+    {
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> GetAsync(int id);
+    }
+
+    public class FirstService : IFirstService
+    {
+        public Task<string> GetAsync(int id) => Task.FromResult(""first"");
+    }
+
+    public class SecondService : ISecondService
+    {
+        public Task<string> GetAsync(int id) => Task.FromResult(""second"");
+    }
+
+    public static class Startup
+    {
+        public static void Configure(IServiceCollection services) => services.AddMethodCache();
+    }
+}";
+
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(source, "QuickStartApp_SeveralInterfaces");
+        var assembly = testAssembly.Assembly;
+
+        var services = new ServiceCollection();
+        assembly.GetType("QuickStart.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
+
+        await using var provider = services.BuildServiceProvider();
+        var generatedSources = provider.GetServices<PolicySourceRegistration>()
+            .Where(r => r.Source.GetType().Name == "GeneratedAttributePolicySource");
+        Assert.Single(generatedSources);
     }
 }

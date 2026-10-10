@@ -38,10 +38,10 @@ public interface IUserService
 builder.Services.AddMethodCache();
 ```
 
-This scans the calling assembly, registers `UserService` and wraps `IUserService` in its generated cache decorator, so you do not register the service yourself. If your attributed interfaces live in another project, pass that assembly instead:
+This scans the calling assembly, registers `UserService` and wraps `IUserService` in its generated cache decorator, so you do not register the service yourself. If your attributed interfaces or their implementations live in other projects, pass every assembly that contains either of them:
 
 ```csharp
-builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly);
+builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly, typeof(UserService).Assembly);
 ```
 
 ## Fluent API Example
