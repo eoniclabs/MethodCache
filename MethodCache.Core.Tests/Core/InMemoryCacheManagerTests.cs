@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using FluentAssertions;
 using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Options;
@@ -36,7 +34,7 @@ public class InMemoryCacheManagerTests
     }
 
     [Fact]
-    public async Task ClearAsync_RemovesDistributedLockState()
+    public async Task ClearAsync_RemovesEntriesAndAllowsReload()
     {
         var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
         var policy = CacheRuntimePolicy.Empty("MethodB") with
@@ -45,31 +43,15 @@ public class InMemoryCacheManagerTests
             DistributedLock = new DistributedLockOptions(TimeSpan.FromSeconds(5), 2)
         };
         var keyGenerator = new DefaultCacheKeyGenerator();
+        var calls = 0;
 
-        await manager.GetOrCreateAsync("MethodB", Array.Empty<object>(), () => Task.FromResult("value"), policy, keyGenerator);
+        Task<string> Factory() => Task.FromResult($"value{++calls}");
 
-        GetDistributedLockCount(manager).Should().Be(1);
+        (await manager.GetOrCreateAsync("MethodB", Array.Empty<object>(), Factory, policy, keyGenerator)).Should().Be("value1");
 
         await manager.ClearAsync();
 
-        GetDistributedLockCount(manager).Should().Be(0);
-    }
-
-    private static int GetDistributedLockCount(InMemoryCacheManager manager)
-    {
-        var field = typeof(InMemoryCacheManager).GetField("_distributedLocks", BindingFlags.Instance | BindingFlags.NonPublic);
-        field.Should().NotBeNull();
-        var value = field!.GetValue(manager);
-        value.Should().NotBeNull();
-        var dictionary = value as ConcurrentDictionary<string, object>;
-        if (dictionary != null)
-        {
-            return dictionary.Count;
-        }
-
-        // The value type is private; use reflection to read Count.
-        var countProperty = value!.GetType().GetProperty("Count");
-        countProperty.Should().NotBeNull();
-        return (int)(countProperty!.GetValue(value) ?? 0);
+        (await manager.GetStatsAsync()).Entries.Should().Be(0);
+        (await manager.GetOrCreateAsync("MethodB", Array.Empty<object>(), Factory, policy, keyGenerator)).Should().Be("value2");
     }
 }
