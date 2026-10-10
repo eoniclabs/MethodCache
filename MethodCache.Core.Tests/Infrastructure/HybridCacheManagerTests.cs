@@ -57,6 +57,16 @@ public class HybridCacheManagerTests
         await storageProvider.Received(1).SetAsync(Arg.Any<string>(), 42, Arg.Any<TimeSpan>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task InvalidateByTagPatternAsync_IsNotSupported_AndDoesNotReportSuccess()
+    {
+        var manager = CreateManager(Substitute.For<IStorageProvider>());
+
+        var act = () => manager.InvalidateByTagPatternAsync("user:*");
+
+        await act.Should().ThrowAsync<NotSupportedException>();
+    }
+
     private static HybridCacheManager CreateManager(IStorageProvider storageProvider)
     {
         var l1Storage = Substitute.For<IMemoryStorage>();

@@ -1,9 +1,5 @@
 # Runtime Configuration & Management Interface Overview
 
-> **Status:** _Transitional – reflects the current dual-stack implementation._  
-> Runtime overrides still flow through `CacheMethodSettings`/`MethodCacheConfigEntry`.  
-> Improvements planned in `docs/developer/POLICY_PIPELINE_CONSOLIDATION_PLAN.md` will replace those types with policy-native APIs.
-
 ## 🔥 **What Makes This Special**
 
 MethodCache now supports **runtime configuration with the highest priority**, enabling management interfaces that can **override ALL other configuration sources** including hardcoded values. This is a game-changer for operational control.

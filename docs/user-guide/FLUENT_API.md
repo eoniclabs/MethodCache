@@ -190,7 +190,7 @@ public static class CacheManagerExtensions
 - `GetOrCreateStreamAsync` supports caching of streaming data. Implementations may buffer segments or apply windowing based on `StreamCacheOptions`.
 - Invalidation APIs accept `IEnumerable<string>` to support streaming scenarios; params overloads forward to the core method for convenience. `InvalidateByTagPatternAsync` enables wildcard invalidation in providers that support it (e.g., Redis key scanning).
 - `InvalidateByTagPatternAsync` wildcard syntax is `*` (zero or more chars) and `?` (exactly one char). Other characters are literal, and matching is against the full tag string.
-- Provider caveat: behavior is provider-dependent. `InMemoryCacheManager` supports wildcard matching; `HybridCacheManager` currently logs a warning and performs no pattern invalidation.
+- Provider caveat: behavior is provider-dependent. `InMemoryCacheManager` supports wildcard matching; `HybridCacheManager` does not support it yet and throws `NotSupportedException`.
 
 ### ETag Caching Extensions
 Namespace: `MethodCache.ETags.Extensions`.
@@ -298,19 +298,12 @@ public sealed class CacheEntryOptions
         public Builder RefreshAhead(TimeSpan leadDuration);
         public Builder WithStampedeProtection(StampedeProtectionMode mode = StampedeProtectionMode.Probabilistic, double beta = 1.0);
         public Builder WithMetrics(ICacheMetrics metrics);
-        public Builder WithFallback<TException>(Func<TException, CacheContext, ValueTask<object?>> fallback) where TException : Exception;
-        public Builder WithCircuitBreaker(int handledEventsAllowedBeforeBreaking = 3, TimeSpan? durationOfBreak = null);
-        public Builder DependsOn(params string[] parentKeys);
-        public Builder InvalidatesWith(params string[] relatedKeys);
-        public Builder CascadeInvalidation(bool enabled = true);
         public CacheEntryOptions Build();
     }
 }
 ```
 
 - `CacheEntryOptions` instances are immutable. Builders are pooled via `ObjectPool<CacheEntryOptions.Builder>` and reset between uses.
-- `WithFallback` captures exception-specific fallback behavior. Internally, builder stores typed policies that are materialized per entry.
-- Dependency methods support cascading invalidation across related keys. `CascadeInvalidation(true)` turns on automatic invalidation of dependent cache entries when the root is invalidated.
 
 #### Supporting Option Types
 
@@ -485,20 +478,17 @@ await foreach (var dto in cacheManager.GetOrCreateStreamAsync(
 services.AddMethodCache(config =>
 {
     config.DefaultPolicy(policy => policy
-        .Duration(TimeSpan.FromMinutes(15))
-        .Strategy(CacheStrategy.Hybrid)
+        .WithDuration(TimeSpan.FromMinutes(15))
         .RefreshAhead(TimeSpan.FromMinutes(5))
         .WithStampedeProtection(StampedeProtectionMode.DistributedLock)
     );
 
     config.ForService<IUserService>()
           .Method(s => s.GetUserAsync(default))
-          .WithPolicy("long-term")
-          .WithDistributedLock(TimeSpan.FromSeconds(5), maxConcurrency: 2)
           .Configure(options => options
+              .WithDistributedLock(TimeSpan.FromSeconds(5), maxConcurrency: 2)
               .WithTags("users")
               .WithMetrics(metrics)
-              .DependsOn("tenant:" + tenantId)
           );
 });
 ```
@@ -513,89 +503,3 @@ cacheManager.GetOrCreateAsync(
     Arg.Any<CancellationToken>())
 .Returns(new ValueTask<User>(user));
 ```
-
-## Implementation Strategy
-1. **Dual Support**: Implement both attribute-based and fluent APIs. Internally, attributes build fluent configuration objects to reduce code duplication.
-2. **Source Generator Integration**: Update the generator to emit fluent configuration calls for decorated methods while maintaining clean public APIs.
-3. **Documentation**: Provide comprehensive guides showing both attribute and fluent approaches with best practices for distributed locking and stampede protection.
-
-## Validation & Testing
-- Add xUnit coverage for each fluent builder path, ensuring configuration maps to existing runtime behaviors.
-- Extend integration tests to cover new invalidation overloads, bulk retrieval semantics, streaming scenarios, and stampede protection.
-- Update analyzers to flag unsupported method signatures or invalid fluent configurations early (e.g., distributed lock without provider support).
-- Add performance benchmarks for `TryGetAsync`, `GetOrCreateManyAsync`, and probabilistic stampede prevention paths.
-
-## Implementation Roadmap
-1. **Phase 1 – Core Foundations**: Implement supporting types (`CacheEntryOptions`, `CacheLookupResult`, `CacheKeyBuilder`, `CacheContext` enrichment) and single-entry APIs.
-2. **Phase 2 – Resilience & Concurrency**: Introduce distributed locking primitives, stampede protection, and circuit breaker options.
-3. **Phase 3 – Bulk & Metrics**: Deliver `GetOrCreateManyAsync`, metrics hooks, and wildcard invalidation across providers.
-4. **Phase 4 – Dependencies & Cascading**: Implement dependency tracking, cascading invalidation, and analyzer support for dependency cycles.
-5. **Phase 5 – Streaming & Advanced Scenarios**: Add streaming cache support, controller helpers, and finalize documentation & samples.
-
-## Resolved Questions
-- **Scoped Metadata Access**: Provide extension methods (e.g., `CacheContextExtensions.GetTenantId`) rather than new properties to keep `CacheContext` lean.
-- **Sync Overloads**: Async-first API remains default. Optional sync wrappers may be delivered in a separate legacy compatibility package.
-- **Metrics Hooks**: Metrics integration is centralized via `ICacheMetrics` and `WithMetrics`, avoiding ad-hoc hooks in high-level APIs.
-- **Tag Wildcards**: `InvalidateByTagPatternAsync` provides pattern-based invalidation aligned with provider capabilities.
-
-## Additional Recommendations
-
-### OpenTelemetry Integration
-Extend `ICacheMetrics` with dimension/tag support for richer observability:
-
-```csharp
-public interface ICacheMetrics
-{
-    void RecordHit(string key, TimeSpan duration, CacheLayer layer, IReadOnlyDictionary<string, object?>? tags = null);
-    void RecordMiss(string key, TimeSpan duration, IReadOnlyDictionary<string, object?>? tags = null);
-    void RecordEviction(string key, EvictionReason reason, IReadOnlyDictionary<string, object?>? tags = null);
-}
-```
-
-This enables rich telemetry with tenant IDs, service names, and custom dimensions for monitoring dashboards.
-
-### Streaming Results for Large Bulk Operations
-Consider adding streaming overload for `GetOrCreateManyAsync` to handle very large result sets:
-
-```csharp
-public static IAsyncEnumerable<(string Key, T Value)> GetOrCreateManyStreamAsync<T>(
-    this ICacheManager cacheManager,
-    IAsyncEnumerable<string> keys,
-    Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
-    Action<CacheEntryOptions.Builder>? configure = null,
-    CancellationToken cancellationToken = default);
-```
-
-### Tenant-Aware Cascading Invalidation
-Add prefix-based dependency graphs for multi-tenant scenarios:
-
-```csharp
-public Builder DependsOnPrefix(string keyPrefix);
-public Builder InvalidatesPrefix(string keyPrefix);
-```
-
-### Compile-Time Configuration Validation
-Add analyzer rules to validate distributed lock configurations:
-- Warn when `WithDistributedLock` is used without a distributed provider
-- Validate timeout values are reasonable
-- Check for circular dependency graphs
-
-## Open Questions
-- How should stampede protection interact with streaming results (buffering vs. partial invalidation)?
-- Should dependency tracking support regex patterns for complex invalidation scenarios?
-
-## Implementation Plan Checklist
-- [ ] Implement supporting types and builder pooling.
-- [ ] Extend `ICacheManager`/`IETagCacheManager` with new extension methods and add unit tests.
-- [ ] Update configuration builders, including distributed lock and dependency metadata.
-- [ ] Wire metric recording and stampede protection into Hybrid cache orchestration.
-- [ ] Update analyzers and source generator logic to emit fluent API calls.
-- [ ] Refresh documentation, samples, and add benchmarking harnesses.
-- [ ] Gather beta feedback from sample apps and integration tests; iterate before general release.
-
-## Implementation Status & Next Steps
-- ✅ Fluent runtime entry points (`CacheManagerExtensions.GetOrCreateAsync` / `TryGetAsync` / `GetOrCreateManyAsync`) plus supporting `CacheEntryOptions`, `CacheLookupResult`, and `CacheContext` types now wrap the existing `ICacheManager` without altering its contract, including sliding expiration, refresh-ahead scheduling, and hit/miss callbacks.
-- ✅ Fluent configuration adapter (`configuration.ApplyFluent`, `AddMethodCacheFluent`) maps the new builders onto `CacheMethodSettings`, with tests covering default policies, per-method overrides, group inheritance, and DI integration.
-- ✅ Source generator now emits fluent configuration (`config.ApplyFluent`) and carries attribute metadata (duration, tags, group, idempotency) into the runtime pipeline; corresponding unit tests assert the new output.
-- 🔄 Upcoming work focuses on enriching analyzers/decorators with advanced options (distributed locks, stampede protection, metrics) and layering streaming helpers.
-- ⏳ Streaming APIs, distributed locking, stampede protection, per-entry metrics, and dependency/cascade invalidation remain queued for future phases.
