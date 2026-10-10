@@ -8,8 +8,8 @@ public enum CachePolicyFields
     None = 0,
     Duration = 1 << 0,
     Tags = 1 << 1,
-    KeyGenerator = 1 << 2,
+    SlidingExpiration = 1 << 2,
     Version = 1 << 3,
     Metadata = 1 << 4,
-    RequireIdempotent = 1 << 5
+    RefreshAhead = 1 << 5
 }

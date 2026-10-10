@@ -91,20 +91,16 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithVersion(version);
         }
 
-        var keyGeneratorValue = section["KeyGenerator"] ?? section["keyGenerator"];
-        if (!string.IsNullOrWhiteSpace(keyGeneratorValue))
+        var slidingValue = section["SlidingExpiration"] ?? section["slidingExpiration"];
+        if (!string.IsNullOrWhiteSpace(slidingValue) && TimeSpan.TryParse(slidingValue, out var sliding))
         {
-            var type = Type.GetType(keyGeneratorValue, throwOnError: false);
-            if (type != null)
-            {
-                builder.WithKeyGenerator(type);
-            }
+            builder.WithSlidingExpiration(sliding);
         }
 
-        var requireIdempotentValue = section["RequireIdempotent"] ?? section["requireIdempotent"];
-        if (!string.IsNullOrWhiteSpace(requireIdempotentValue) && bool.TryParse(requireIdempotentValue, out var requireIdempotent))
+        var refreshValue = section["RefreshAhead"] ?? section["refreshAhead"];
+        if (!string.IsNullOrWhiteSpace(refreshValue) && TimeSpan.TryParse(refreshValue, out var refresh))
         {
-            builder.RequireIdempotent(requireIdempotent);
+            builder.WithRefreshAhead(refresh);
         }
 
         var groupValue = section["Group"] ?? section["group"];

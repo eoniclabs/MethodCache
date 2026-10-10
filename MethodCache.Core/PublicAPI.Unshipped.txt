@@ -11,10 +11,10 @@ MethodCache.Core.CacheAttribute.CacheAttribute(string? groupName = null) -> void
 MethodCache.Core.CacheAttribute.Duration.get -> string?
 MethodCache.Core.CacheAttribute.Duration.set -> void
 MethodCache.Core.CacheAttribute.GroupName.get -> string?
-MethodCache.Core.CacheAttribute.KeyGeneratorType.get -> System.Type?
-MethodCache.Core.CacheAttribute.KeyGeneratorType.set -> void
-MethodCache.Core.CacheAttribute.RequireIdempotent.get -> bool
-MethodCache.Core.CacheAttribute.RequireIdempotent.set -> void
+MethodCache.Core.CacheAttribute.RefreshAhead.get -> string?
+MethodCache.Core.CacheAttribute.RefreshAhead.set -> void
+MethodCache.Core.CacheAttribute.SlidingExpiration.get -> string?
+MethodCache.Core.CacheAttribute.SlidingExpiration.set -> void
 MethodCache.Core.CacheAttribute.Tags.get -> string![]?
 MethodCache.Core.CacheAttribute.Tags.set -> void
 MethodCache.Core.CacheAttribute.Version.get -> int
@@ -27,12 +27,6 @@ MethodCache.Core.CacheKeyAttribute
 MethodCache.Core.CacheKeyAttribute.CacheKeyAttribute() -> void
 MethodCache.Core.CacheKeyAttribute.UseAsRawKey.get -> bool
 MethodCache.Core.CacheKeyAttribute.UseAsRawKey.set -> void
-MethodCache.Core.Configuration.GlobalCacheSettings
-MethodCache.Core.Configuration.GlobalCacheSettings.DefaultDuration.get -> System.TimeSpan?
-MethodCache.Core.Configuration.GlobalCacheSettings.DefaultDuration.set -> void
-MethodCache.Core.Configuration.GlobalCacheSettings.DefaultKeyGeneratorType.get -> System.Type?
-MethodCache.Core.Configuration.GlobalCacheSettings.DefaultKeyGeneratorType.set -> void
-MethodCache.Core.Configuration.GlobalCacheSettings.GlobalCacheSettings() -> void
 MethodCache.Core.Configuration.LruUpdateStrategy
 MethodCache.Core.Configuration.LruUpdateStrategy.LockFree = 1 -> MethodCache.Core.Configuration.LruUpdateStrategy
 MethodCache.Core.Configuration.LruUpdateStrategy.Precise = 2 -> MethodCache.Core.Configuration.LruUpdateStrategy
@@ -109,21 +103,13 @@ MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration.F
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration.ForService<TService>() -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration.Configure(System.Action<MethodCache.Core.Options.CacheEntryOptions.Builder!>! configure) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
-MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration.RequireIdempotent(bool enabled = true) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
-MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration.When(System.Func<MethodCache.Core.Runtime.Core.CacheContext!, bool>! predicate) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration.WithGroup(string! groupName) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
-MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration.WithKeyGenerator<TGenerator>() -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration.WithVersion(int version) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Action<TService>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
-MethodCache.Core.Configuration.Surfaces.ICacheConfigurationService
-MethodCache.Core.Configuration.Surfaces.ICacheConfigurationService.EnableCachingAsync(string! methodId, bool enabled) -> System.Threading.Tasks.Task!
-MethodCache.Core.Configuration.Surfaces.ICacheConfigurationService.InvalidateConfigurationCacheAsync() -> System.Threading.Tasks.Task!
-MethodCache.Core.Configuration.Surfaces.ICacheConfigurationService.UpdateGlobalSettingsAsync(MethodCache.Core.Configuration.GlobalCacheSettings! settings) -> System.Threading.Tasks.Task!
-MethodCache.Core.Configuration.Surfaces.ICacheConfigurationService.UpdateMethodConfigurationAsync(string! methodId, MethodCache.Abstractions.Policies.CachePolicy! policy) -> System.Threading.Tasks.Task!
 MethodCache.Core.Configuration.Surfaces.Runtime.IRuntimeCacheConfigurator
 MethodCache.Core.Configuration.Surfaces.Runtime.IRuntimeCacheConfigurator.ApplyAsync(System.Action<MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration!>! configure) -> System.Threading.Tasks.Task!
 MethodCache.Core.Configuration.Surfaces.Runtime.IRuntimeCacheConfigurator.ClearAsync() -> System.Threading.Tasks.Task!
@@ -271,50 +257,24 @@ MethodCache.Core.Options.CacheEntryOptions.Builder.OnHit(System.Action<MethodCac
 MethodCache.Core.Options.CacheEntryOptions.Builder.OnMiss(System.Action<MethodCache.Core.Runtime.Core.CacheContext!>! callback) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
 MethodCache.Core.Options.CacheEntryOptions.Builder.RefreshAhead(System.TimeSpan window) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
 MethodCache.Core.Options.CacheEntryOptions.Builder.When(System.Func<MethodCache.Core.Runtime.Core.CacheContext!, bool>! predicate) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
-MethodCache.Core.Options.CacheEntryOptions.Builder.WithDistributedLock(System.TimeSpan timeout, int maxConcurrency = 1) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
 MethodCache.Core.Options.CacheEntryOptions.Builder.WithDuration(System.TimeSpan duration) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
-MethodCache.Core.Options.CacheEntryOptions.Builder.WithKeyGenerator<TGenerator>() -> MethodCache.Core.Options.CacheEntryOptions.Builder!
 MethodCache.Core.Options.CacheEntryOptions.Builder.WithMetrics(MethodCache.Core.Infrastructure.Metrics.ICacheMetrics! metrics) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
 MethodCache.Core.Options.CacheEntryOptions.Builder.WithSlidingExpiration(System.TimeSpan slidingExpiration) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
-MethodCache.Core.Options.CacheEntryOptions.Builder.WithStampedeProtection(MethodCache.Core.Options.StampedeProtectionMode mode = MethodCache.Core.Options.StampedeProtectionMode.Probabilistic, double beta = 1, System.TimeSpan? refreshAheadWindow = null) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
-MethodCache.Core.Options.CacheEntryOptions.Builder.WithStampedeProtection(MethodCache.Core.Options.StampedeProtectionOptions! options) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
 MethodCache.Core.Options.CacheEntryOptions.Builder.WithTags(params string![]! tags) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
 MethodCache.Core.Options.CacheEntryOptions.Builder.WithVersion(int version) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
-MethodCache.Core.Options.CacheEntryOptions.DistributedLock.get -> MethodCache.Core.Options.DistributedLockOptions?
 MethodCache.Core.Options.CacheEntryOptions.Duration.get -> System.TimeSpan?
-MethodCache.Core.Options.CacheEntryOptions.KeyGeneratorType.get -> System.Type?
 MethodCache.Core.Options.CacheEntryOptions.Metrics.get -> MethodCache.Core.Infrastructure.Metrics.ICacheMetrics?
 MethodCache.Core.Options.CacheEntryOptions.OnHitCallbacks.get -> System.Collections.Generic.IReadOnlyList<System.Action<MethodCache.Core.Runtime.Core.CacheContext!>!>!
 MethodCache.Core.Options.CacheEntryOptions.OnMissCallbacks.get -> System.Collections.Generic.IReadOnlyList<System.Action<MethodCache.Core.Runtime.Core.CacheContext!>!>!
 MethodCache.Core.Options.CacheEntryOptions.Predicate.get -> System.Func<MethodCache.Core.Runtime.Core.CacheContext!, bool>?
 MethodCache.Core.Options.CacheEntryOptions.RefreshAhead.get -> System.TimeSpan?
 MethodCache.Core.Options.CacheEntryOptions.SlidingExpiration.get -> System.TimeSpan?
-MethodCache.Core.Options.CacheEntryOptions.StampedeProtection.get -> MethodCache.Core.Options.StampedeProtectionOptions?
 MethodCache.Core.Options.CacheEntryOptions.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.Core.Options.CacheEntryOptions.Version.get -> int?
 MethodCache.Core.Options.CacheLookupResult<T>
 MethodCache.Core.Options.CacheLookupResult<T>.CacheLookupResult() -> void
 MethodCache.Core.Options.CacheLookupResult<T>.Found.get -> bool
 MethodCache.Core.Options.CacheLookupResult<T>.Value.get -> T?
-MethodCache.Core.Options.DistributedLockOptions
-MethodCache.Core.Options.DistributedLockOptions.DistributedLockOptions(System.TimeSpan Timeout, int MaxConcurrency) -> void
-MethodCache.Core.Options.DistributedLockOptions.MaxConcurrency.get -> int
-MethodCache.Core.Options.DistributedLockOptions.MaxConcurrency.init -> void
-MethodCache.Core.Options.DistributedLockOptions.Timeout.get -> System.TimeSpan
-MethodCache.Core.Options.DistributedLockOptions.Timeout.init -> void
-MethodCache.Core.Options.StampedeProtectionMode
-MethodCache.Core.Options.StampedeProtectionMode.DistributedLock = 1 -> MethodCache.Core.Options.StampedeProtectionMode
-MethodCache.Core.Options.StampedeProtectionMode.None = 0 -> MethodCache.Core.Options.StampedeProtectionMode
-MethodCache.Core.Options.StampedeProtectionMode.Probabilistic = 2 -> MethodCache.Core.Options.StampedeProtectionMode
-MethodCache.Core.Options.StampedeProtectionMode.RefreshAhead = 3 -> MethodCache.Core.Options.StampedeProtectionMode
-MethodCache.Core.Options.StampedeProtectionOptions
-MethodCache.Core.Options.StampedeProtectionOptions.Beta.get -> double
-MethodCache.Core.Options.StampedeProtectionOptions.Beta.init -> void
-MethodCache.Core.Options.StampedeProtectionOptions.Mode.get -> MethodCache.Core.Options.StampedeProtectionMode
-MethodCache.Core.Options.StampedeProtectionOptions.Mode.init -> void
-MethodCache.Core.Options.StampedeProtectionOptions.RefreshAheadWindow.get -> System.TimeSpan?
-MethodCache.Core.Options.StampedeProtectionOptions.RefreshAheadWindow.init -> void
-MethodCache.Core.Options.StampedeProtectionOptions.StampedeProtectionOptions(MethodCache.Core.Options.StampedeProtectionMode Mode, double Beta, System.TimeSpan? RefreshAheadWindow) -> void
 MethodCache.Core.Options.StreamCacheOptions
 MethodCache.Core.Options.StreamCacheOptions.Builder
 MethodCache.Core.Options.StreamCacheOptions.Builder.Build() -> MethodCache.Core.Options.StreamCacheOptions!
@@ -353,15 +313,14 @@ MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.Apply(MethodCache.Core.
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.Build(string! methodId, string? notes = null) -> MethodCache.Core.PolicyPipeline.Model.PolicyDraft
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.BuildPolicy() -> (MethodCache.Abstractions.Policies.CachePolicy! Policy, MethodCache.Abstractions.Policies.CachePolicyFields Fields)
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.CachePolicyBuilder() -> void
-MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.ClearRequireIdempotent() -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.ClearTags() -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.Clone() -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.HasChanges.get -> bool
-MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.RequireIdempotent(bool require = true) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.SetMetadata(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string?>>! metadata) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.SetTags(System.Collections.Generic.IEnumerable<string!>! tags) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithDuration(System.TimeSpan? duration) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
-MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithKeyGenerator(System.Type? keyGeneratorType) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
+MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithRefreshAhead(System.TimeSpan? refreshAhead) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
+MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithSlidingExpiration(System.TimeSpan? slidingExpiration) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithVersion(int? version) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
 MethodCache.Core.PolicyPipeline.Model.CachePolicyMapper
 MethodCache.Core.PolicyPipeline.Model.PolicyDraft
@@ -408,8 +367,6 @@ MethodCache.Core.Runtime.Core.CacheExecutionContext.MethodName.get -> string!
 MethodCache.Core.Runtime.Core.CacheExecutionContext.Services.get -> System.IServiceProvider!
 MethodCache.Core.Runtime.Core.CacheExecutionContext.ServiceType.get -> System.Type!
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.DistributedLock.get -> MethodCache.Core.Options.DistributedLockOptions?
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.DistributedLock.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Duration.get -> System.TimeSpan?
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Duration.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Fields.get -> MethodCache.Abstractions.Policies.CachePolicyFields
@@ -418,20 +375,14 @@ MethodCache.Core.Runtime.Core.CacheRuntimePolicy.HasDuration.get -> bool
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.HasRuntimeOptions.get -> bool
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.HasTags.get -> bool
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.HasVersion.get -> bool
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.KeyGeneratorType.get -> System.Type?
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.KeyGeneratorType.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Metadata.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.MethodId.get -> string!
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.MethodId.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.RefreshAhead.get -> System.TimeSpan?
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.RefreshAhead.init -> void
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.RequireIdempotent.get -> bool?
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.RequireIdempotent.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.SlidingExpiration.get -> System.TimeSpan?
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.SlidingExpiration.init -> void
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.StampedeProtection.get -> MethodCache.Core.Options.StampedeProtectionOptions?
-MethodCache.Core.Runtime.Core.CacheRuntimePolicy.StampedeProtection.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Tags.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Tags.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Version.get -> int?
@@ -514,22 +465,6 @@ MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.SmartKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.SmartKeyGenerator(System.Delegate? factory) -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.CacheRuntimeOptions() -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.DistributedLock.get -> MethodCache.Core.Options.DistributedLockOptions?
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.DistributedLock.init -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.Metrics.get -> MethodCache.Core.Infrastructure.Metrics.ICacheMetrics?
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.Metrics.init -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.OnHitCallbacks.get -> System.Collections.Generic.IReadOnlyList<System.Action<MethodCache.Core.Runtime.Core.CacheContext!>!>!
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.OnHitCallbacks.init -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.OnMissCallbacks.get -> System.Collections.Generic.IReadOnlyList<System.Action<MethodCache.Core.Runtime.Core.CacheContext!>!>!
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.OnMissCallbacks.init -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.RefreshAhead.get -> System.TimeSpan?
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.RefreshAhead.init -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.SlidingExpiration.get -> System.TimeSpan?
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.SlidingExpiration.init -> void
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.StampedeProtection.get -> MethodCache.Core.Options.StampedeProtectionOptions?
-MethodCache.Core.Runtime.Options.CacheRuntimeOptions.StampedeProtection.init -> void
 MethodCache.Core.Storage.Abstractions.BackplaneMessage
 MethodCache.Core.Storage.Abstractions.BackplaneMessage.BackplaneMessage() -> void
 MethodCache.Core.Storage.Abstractions.BackplaneMessage.InstanceId.get -> string!
@@ -594,7 +529,7 @@ static MethodCache.Core.PolicyPipeline.Model.CachePolicyMapper.DetectFields(Meth
 static MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistrationExtensions.EnsurePolicyServices(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
 static MethodCache.Core.Runtime.Core.CachedMethod.GetSites<TSites>(MethodCache.Abstractions.Registry.IPolicyRegistry! registry, System.Func<MethodCache.Abstractions.Registry.IPolicyRegistry!, TSites!>! factory) -> TSites!
 static MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Empty(string! methodId) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
-static MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FromPolicy(string! methodId, MethodCache.Abstractions.Policies.CachePolicy! policy, MethodCache.Abstractions.Policies.CachePolicyFields fields, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null, MethodCache.Core.Runtime.Options.CacheRuntimeOptions? runtimeOptions = null) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
+static MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FromPolicy(string! methodId, MethodCache.Abstractions.Policies.CachePolicy! policy, MethodCache.Abstractions.Policies.CachePolicyFields fields, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
 static MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FromResolverResult(MethodCache.Abstractions.Resolution.PolicyResolutionResult! result) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
 static MethodCache.Core.Runtime.Core.CacheTagTemplates.Expand(MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, string![]! parameterNames, string![]! values) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
 static MethodCache.Core.Runtime.Core.PolicyHandle.Fixed(MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> MethodCache.Core.Runtime.Core.PolicyHandle!
@@ -621,5 +556,3 @@ static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Part(ushort value)
 static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Part<TEnum>(TEnum value) -> string!
 static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Pattern(System.Type! serviceType, string! methodName, int? version = null) -> string!
 static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Prefix(System.Type! serviceType, string! methodName, int? version = null) -> string!
-static MethodCache.Core.Runtime.Options.CacheRuntimeOptions.Empty.get -> MethodCache.Core.Runtime.Options.CacheRuntimeOptions!
-static MethodCache.Core.Runtime.Options.CacheRuntimeOptions.From(MethodCache.Core.Options.CacheEntryOptions! options) -> MethodCache.Core.Runtime.Options.CacheRuntimeOptions!

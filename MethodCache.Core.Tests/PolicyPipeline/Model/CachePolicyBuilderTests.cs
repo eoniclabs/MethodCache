@@ -1,7 +1,6 @@
 using System;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.PolicyPipeline.Model;
-using MethodCache.Core.Runtime.KeyGeneration;
 using Xunit;
 
 namespace MethodCache.Core.Tests.PolicyPipeline.Model;
@@ -15,9 +14,9 @@ public class CachePolicyBuilderTests
             .WithDuration(TimeSpan.FromMinutes(5))
             .AddTag("users")
             .AddTag("profiles")
-            .WithKeyGenerator(typeof(FastHashKeyGenerator))
+            .WithSlidingExpiration(TimeSpan.FromMinutes(1))
             .WithVersion(2)
-            .RequireIdempotent();
+            .WithRefreshAhead(TimeSpan.FromSeconds(30));
 
         var draft = builder.Build("MethodCache.Tests.UserService.GetAsync", "startup");
 
@@ -25,15 +24,15 @@ public class CachePolicyBuilderTests
         Assert.Equal("startup", draft.Notes);
         Assert.Equal(TimeSpan.FromMinutes(5), draft.Policy.Duration);
         Assert.Contains("users", draft.Policy.Tags);
-        Assert.Equal(typeof(FastHashKeyGenerator), draft.Policy.KeyGeneratorType);
+        Assert.Equal(TimeSpan.FromMinutes(1), draft.Policy.SlidingExpiration);
         Assert.Equal(2, draft.Policy.Version);
-        Assert.True(draft.Policy.RequireIdempotent);
+        Assert.Equal(TimeSpan.FromSeconds(30), draft.Policy.RefreshAhead);
 
         var expectedFields = CachePolicyFields.Duration |
                              CachePolicyFields.Tags |
-                             CachePolicyFields.KeyGenerator |
+                             CachePolicyFields.SlidingExpiration |
                              CachePolicyFields.Version |
-                             CachePolicyFields.RequireIdempotent;
+                             CachePolicyFields.RefreshAhead;
 
         Assert.Equal(expectedFields, draft.Fields);
     }
@@ -59,7 +58,7 @@ public class CachePolicyBuilderTests
         var defaults = new CachePolicyBuilder()
             .WithDuration(TimeSpan.FromMinutes(10))
             .AddTag("default")
-            .RequireIdempotent();
+            .WithSlidingExpiration(TimeSpan.FromMinutes(2));
 
         var specific = new CachePolicyBuilder()
             .WithVersion(3)
@@ -72,6 +71,6 @@ public class CachePolicyBuilderTests
         Assert.Contains("specific", draft.Policy.Tags);
         Assert.DoesNotContain("default", draft.Policy.Tags);
         Assert.Equal(3, draft.Policy.Version);
-        Assert.True(draft.Policy.RequireIdempotent);
+        Assert.Equal(TimeSpan.FromMinutes(2), draft.Policy.SlidingExpiration);
     }
 }

@@ -45,9 +45,6 @@ internal abstract class Node
 
     public long CreatedAt;
 
-    /// <summary>How long the factory took to produce this value (nanoseconds). Used by probabilistic early refresh.</summary>
-    public long ComputeDuration;
-
     public long Weight = 1;
 
     public string[]? Tags;

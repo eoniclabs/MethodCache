@@ -28,11 +28,11 @@ namespace MethodCache.Analyzers.Tests.Analyzers
 
             var cacheRule = supportedDiagnostics.FirstOrDefault(d => d.Id == MethodCacheAnalyzer.CacheDiagnosticId);
             var invalidateRule = supportedDiagnostics.FirstOrDefault(d => d.Id == MethodCacheAnalyzer.InvalidateDiagnosticId);
-            var keyGeneratorRule = supportedDiagnostics.FirstOrDefault(d => d.Id == MethodCacheAnalyzer.CacheKeyGeneratorDiagnosticId);
+            var timeSpanRule = supportedDiagnostics.FirstOrDefault(d => d.Id == MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId);
 
             Assert.NotNull(cacheRule);
             Assert.NotNull(invalidateRule);
-            Assert.NotNull(keyGeneratorRule);
+            Assert.NotNull(timeSpanRule);
         }
 
         [Fact]

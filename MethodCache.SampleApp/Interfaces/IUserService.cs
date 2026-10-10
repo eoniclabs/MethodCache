@@ -17,8 +17,8 @@ namespace MethodCache.SampleApp.Interfaces
         [Cache("Users")]
         Task<User> GetUserWithGroupAsync(int userId);
 
-        // Caching with RequireIdempotent flag
-        [Cache(RequireIdempotent = true)]
+        // Caching with sliding expiration: dropped after 10 idle minutes, never older than an hour
+        [Cache(Duration = "01:00:00", SlidingExpiration = "00:10:00")]
         Task<UserProfile> GetUserProfileAsync(int userId);
 
         // Synchronous caching

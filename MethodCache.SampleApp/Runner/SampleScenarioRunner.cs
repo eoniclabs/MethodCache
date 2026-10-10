@@ -82,7 +82,7 @@ namespace MethodCache.SampleApp.Runner
             var settings = _service.GetSettingsSnapshot();
             foreach (var (method, configuration) in settings)
             {
-                Console.WriteLine($"{method} -> Duration: {configuration.Duration?.TotalSeconds ?? 0}s, Tags: {string.Join(", ", configuration.Tags)}, Version: {configuration.Version?.ToString() ?? "-"}, Idempotent: {configuration.RequireIdempotent}");
+                Console.WriteLine($"{method} -> Duration: {configuration.Duration?.TotalSeconds ?? 0}s, Tags: {string.Join(", ", configuration.Tags)}, Version: {configuration.Version?.ToString() ?? "-"}");
             }
 
             return Task.CompletedTask;

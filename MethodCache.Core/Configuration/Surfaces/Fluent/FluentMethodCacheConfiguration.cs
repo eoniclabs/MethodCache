@@ -4,7 +4,6 @@ using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Options;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Core.Configuration.Surfaces.Fluent
 {
@@ -72,12 +71,7 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                     }
 
                     var options = methodConfiguration.BuildOptions(defaultOptions, groupOption);
-                    var policyBuilder = CachePolicyBuilderFactory.FromOptions(options);
-
-                    if (methodConfiguration.IsIdempotent.HasValue)
-                    {
-                        policyBuilder.RequireIdempotent(methodConfiguration.IsIdempotent.Value);
-                    }
+                    var policyBuilder = CachePolicyBuilderFactory.ForMethod(methodKey, options);
 
                     if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName))
                     {
@@ -189,7 +183,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             private readonly string _methodKey;
             private readonly List<Action<CacheEntryOptions.Builder>> _configurations = new();
             private string? _groupName;
-            private bool? _isIdempotent;
 
             public FluentMethodConfiguration(string methodKey)
             {
@@ -215,13 +208,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             }
 
             public string? GroupName => _groupName;
-            public bool? IsIdempotent => _isIdempotent;
-
-            public IFluentMethodConfiguration RequireIdempotent(bool enabled = true)
-            {
-                _isIdempotent = enabled;
-                return this;
-            }
 
             public IFluentMethodConfiguration WithVersion(int version)
             {
@@ -229,125 +215,11 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return this;
             }
 
-            public IFluentMethodConfiguration WithKeyGenerator<TGenerator>() where TGenerator : ICacheKeyGenerator, new()
-            {
-                _configurations.Add(builder => builder.WithKeyGenerator<TGenerator>());
-                return this;
-            }
-
-            public IFluentMethodConfiguration When(Func<CacheContext, bool> predicate)
-            {
-                if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-                _configurations.Add(builder => builder.When(predicate));
-                return this;
-            }
-
             public CacheEntryOptions BuildOptions(CacheEntryOptions? defaultOptions, CacheEntryOptions? groupOptions)
             {
                 var builder = new CacheEntryOptions.Builder();
-
-                if (defaultOptions?.Duration is TimeSpan duration)
-                {
-                    builder.WithDuration(duration);
-                }
-
-                if (defaultOptions?.Tags.Count > 0)
-                {
-                    builder.WithTags(defaultOptions.Tags.ToArray());
-                }
-
-                if (defaultOptions?.SlidingExpiration is TimeSpan sliding)
-                {
-                    builder.WithSlidingExpiration(sliding);
-                }
-
-                if (defaultOptions?.RefreshAhead is TimeSpan refresh)
-                {
-                    builder.RefreshAhead(refresh);
-                }
-
-                if (defaultOptions?.StampedeProtection is StampedeProtectionOptions stampede)
-                {
-                    builder.WithStampedeProtection(stampede);
-                }
-
-                if (defaultOptions?.DistributedLock is DistributedLockOptions distributedLock)
-                {
-                    builder.WithDistributedLock(distributedLock.Timeout, distributedLock.MaxConcurrency);
-                }
-
-                if (defaultOptions?.Metrics is ICacheMetrics metrics)
-                {
-                    builder.WithMetrics(metrics);
-                }
-
-                if (defaultOptions?.Version is int version)
-                {
-                    builder.WithVersion(version);
-                }
-
-                if (defaultOptions?.KeyGeneratorType is Type generatorType)
-                {
-                    builder.WithKeyGenerator(generatorType);
-                }
-
-                if (defaultOptions?.Predicate is Func<CacheContext, bool> predicate)
-                {
-                    builder.WithPredicate(predicate);
-                }
-
-                if (groupOptions != null)
-                {
-                    if (groupOptions.Duration.HasValue)
-                    {
-                        builder.WithDuration(groupOptions.Duration.Value);
-                    }
-
-                    if (groupOptions.Tags.Count > 0)
-                    {
-                        builder.WithTags(groupOptions.Tags.ToArray());
-                    }
-
-                    if (groupOptions.SlidingExpiration is TimeSpan groupSliding)
-                    {
-                        builder.WithSlidingExpiration(groupSliding);
-                    }
-
-                    if (groupOptions.RefreshAhead is TimeSpan groupRefresh)
-                    {
-                        builder.RefreshAhead(groupRefresh);
-                    }
-
-                    if (groupOptions.StampedeProtection is StampedeProtectionOptions groupStampede)
-                    {
-                        builder.WithStampedeProtection(groupStampede);
-                    }
-
-                    if (groupOptions.DistributedLock is DistributedLockOptions groupLock)
-                    {
-                        builder.WithDistributedLock(groupLock.Timeout, groupLock.MaxConcurrency);
-                    }
-
-                    if (groupOptions.Metrics is ICacheMetrics groupMetrics)
-                    {
-                        builder.WithMetrics(groupMetrics);
-                    }
-
-                    if (groupOptions.Version.HasValue)
-                    {
-                        builder.WithVersion(groupOptions.Version.Value);
-                    }
-
-                    if (groupOptions.KeyGeneratorType != null)
-                    {
-                        builder.WithKeyGenerator(groupOptions.KeyGeneratorType);
-                    }
-
-                    if (groupOptions.Predicate != null)
-                    {
-                        builder.WithPredicate(groupOptions.Predicate);
-                    }
-                }
+                ApplyTo(builder, defaultOptions);
+                ApplyTo(builder, groupOptions);
 
                 foreach (var configure in _configurations)
                 {
@@ -355,6 +227,59 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 }
 
                 return builder.Build();
+            }
+
+            private static void ApplyTo(CacheEntryOptions.Builder builder, CacheEntryOptions? options)
+            {
+                if (options == null)
+                {
+                    return;
+                }
+
+                if (options.Duration is TimeSpan duration)
+                {
+                    builder.WithDuration(duration);
+                }
+
+                if (options.Tags.Count > 0)
+                {
+                    builder.WithTags(options.Tags.ToArray());
+                }
+
+                if (options.SlidingExpiration is TimeSpan sliding)
+                {
+                    builder.WithSlidingExpiration(sliding);
+                }
+
+                if (options.RefreshAhead is TimeSpan refresh)
+                {
+                    builder.RefreshAhead(refresh);
+                }
+
+                if (options.Version is int version)
+                {
+                    builder.WithVersion(version);
+                }
+
+                if (options.Metrics is ICacheMetrics metrics)
+                {
+                    builder.WithMetrics(metrics);
+                }
+
+                if (options.Predicate is Func<CacheContext, bool> predicate)
+                {
+                    builder.WithPredicate(predicate);
+                }
+
+                foreach (var callback in options.OnHitCallbacks)
+                {
+                    builder.OnHit(callback);
+                }
+
+                foreach (var callback in options.OnMissCallbacks)
+                {
+                    builder.OnMiss(callback);
+                }
             }
         }
 

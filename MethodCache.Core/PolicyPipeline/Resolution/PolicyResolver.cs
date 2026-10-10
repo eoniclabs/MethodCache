@@ -362,9 +362,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
             TimeSpan? duration = null;
             IReadOnlyList<string>? tags = null;
-            Type? keyGeneratorType = null;
+            TimeSpan? slidingExpiration = null;
+            TimeSpan? refreshAhead = null;
             int? version = null;
-            bool? requireIdempotent = null;
             IReadOnlyDictionary<string, string?> metadata = CachePolicy.Empty.Metadata;
 
             foreach (var kvp in _layers.Reverse())
@@ -383,19 +383,19 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     tags = policy.Tags;
                 }
 
-                if (keyGeneratorType == null && fields.HasFlag(CachePolicyFields.KeyGenerator))
+                if (slidingExpiration == null && fields.HasFlag(CachePolicyFields.SlidingExpiration))
                 {
-                    keyGeneratorType = policy.KeyGeneratorType;
+                    slidingExpiration = policy.SlidingExpiration;
+                }
+
+                if (refreshAhead == null && fields.HasFlag(CachePolicyFields.RefreshAhead))
+                {
+                    refreshAhead = policy.RefreshAhead;
                 }
 
                 if (version == null && fields.HasFlag(CachePolicyFields.Version))
                 {
                     version = policy.Version;
-                }
-
-                if (requireIdempotent == null && fields.HasFlag(CachePolicyFields.RequireIdempotent))
-                {
-                    requireIdempotent = policy.RequireIdempotent;
                 }
 
                 if (fields.HasFlag(CachePolicyFields.Metadata) && (metadata == CachePolicy.Empty.Metadata || metadata.Count == 0))
@@ -437,9 +437,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             {
                 Duration = duration,
                 Tags = tags ?? Array.Empty<string>(),
-                KeyGeneratorType = keyGeneratorType,
+                SlidingExpiration = slidingExpiration,
+                RefreshAhead = refreshAhead,
                 Version = version,
-                RequireIdempotent = requireIdempotent,
                 Metadata = metadata,
                 Provenance = provenance
             };

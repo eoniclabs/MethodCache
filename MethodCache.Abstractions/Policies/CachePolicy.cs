@@ -11,9 +11,9 @@ public sealed record CachePolicy
 
     public TimeSpan? Duration { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = Array.Empty<string>();
-    public Type? KeyGeneratorType { get; init; }
+    public TimeSpan? SlidingExpiration { get; init; }
+    public TimeSpan? RefreshAhead { get; init; }
     public int? Version { get; init; }
-    public bool? RequireIdempotent { get; init; }
     public IReadOnlyDictionary<string, string?> Metadata { get; init; } = EmptyMetadata;
     public PolicyProvenance Provenance { get; init; } = PolicyProvenance.Empty;
 }

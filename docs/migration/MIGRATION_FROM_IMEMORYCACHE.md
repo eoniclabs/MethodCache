@@ -111,8 +111,7 @@ builder.Services.AddMemoryCache();
 // After - MethodCache includes its own memory cache
 builder.Services.AddMethodCache(config =>
 {
-    config.DefaultDuration(TimeSpan.FromMinutes(10))
-          .DefaultKeyGenerator<FastHashKeyGenerator>();
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
 });
 ```
 
@@ -433,7 +432,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 // Add MethodCache
 builder.Services.AddMethodCache(config =>
 {
-    config.DefaultDuration(TimeSpan.FromMinutes(10));
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
 });
 ```
 
@@ -451,13 +450,10 @@ Task UpdateUserAsync(int userId, UserUpdateDto update);
 
 **Issue:** Different methods generating same cache key
 
-**Solution:** Use more specific tags or key generators:
+**Solution:** Keys generated for `[Cache]` methods always start with the method name, so two methods never share a key. If you build keys yourself for `GetOrCreateAsync`, give each kind of data its own prefix:
 ```csharp
-[Cache(Tags = new[] { "user-profile" }, KeyGeneratorType = typeof(JsonKeyGenerator))]
-Task<UserProfile> GetUserProfileAsync(int userId);
-
-[Cache(Tags = new[] { "user-settings" }, KeyGeneratorType = typeof(JsonKeyGenerator))]
-Task<UserSettings> GetUserSettingsAsync(int userId);
+await cache.GetOrCreateAsync($"user-profile:{userId}", (ctx, ct) => LoadProfileAsync(userId, ct));
+await cache.GetOrCreateAsync($"user-settings:{userId}", (ctx, ct) => LoadSettingsAsync(userId, ct));
 ```
 
 ## Performance Notes
@@ -478,7 +474,7 @@ Use this guide to migrate behavior first, then validate performance with your ow
 1. **Enable Analyzers**: Add `MethodCache.Analyzers` for compile-time validation
 2. **Add Distributed Cache**: Install `MethodCache.Providers.Redis` for L2 caching
 3. **Monitor Performance**: Use `ICacheMetricsProvider` for observability
-4. **Optimize Key Generators**: Switch to `FastHashKeyGenerator` for production
+4. **Optimize Key Generators**: Keep the default `FastHashKeyGenerator` in production
 
 ## Resources
 

@@ -2,24 +2,24 @@
 MethodCache.Abstractions.Policies.CachePolicy
 MethodCache.Abstractions.Policies.CachePolicy.Duration.get -> System.TimeSpan?
 MethodCache.Abstractions.Policies.CachePolicy.Duration.init -> void
-MethodCache.Abstractions.Policies.CachePolicy.KeyGeneratorType.get -> System.Type?
-MethodCache.Abstractions.Policies.CachePolicy.KeyGeneratorType.init -> void
 MethodCache.Abstractions.Policies.CachePolicy.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
 MethodCache.Abstractions.Policies.CachePolicy.Metadata.init -> void
 MethodCache.Abstractions.Policies.CachePolicy.Provenance.get -> MethodCache.Abstractions.Policies.PolicyProvenance!
 MethodCache.Abstractions.Policies.CachePolicy.Provenance.init -> void
-MethodCache.Abstractions.Policies.CachePolicy.RequireIdempotent.get -> bool?
-MethodCache.Abstractions.Policies.CachePolicy.RequireIdempotent.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.RefreshAhead.get -> System.TimeSpan?
+MethodCache.Abstractions.Policies.CachePolicy.RefreshAhead.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.SlidingExpiration.get -> System.TimeSpan?
+MethodCache.Abstractions.Policies.CachePolicy.SlidingExpiration.init -> void
 MethodCache.Abstractions.Policies.CachePolicy.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.Abstractions.Policies.CachePolicy.Tags.init -> void
 MethodCache.Abstractions.Policies.CachePolicy.Version.get -> int?
 MethodCache.Abstractions.Policies.CachePolicy.Version.init -> void
 MethodCache.Abstractions.Policies.CachePolicyFields
 MethodCache.Abstractions.Policies.CachePolicyFields.Duration = 1 -> MethodCache.Abstractions.Policies.CachePolicyFields
-MethodCache.Abstractions.Policies.CachePolicyFields.KeyGenerator = 4 -> MethodCache.Abstractions.Policies.CachePolicyFields
 MethodCache.Abstractions.Policies.CachePolicyFields.Metadata = 16 -> MethodCache.Abstractions.Policies.CachePolicyFields
 MethodCache.Abstractions.Policies.CachePolicyFields.None = 0 -> MethodCache.Abstractions.Policies.CachePolicyFields
-MethodCache.Abstractions.Policies.CachePolicyFields.RequireIdempotent = 32 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.RefreshAhead = 32 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.SlidingExpiration = 4 -> MethodCache.Abstractions.Policies.CachePolicyFields
 MethodCache.Abstractions.Policies.CachePolicyFields.Tags = 2 -> MethodCache.Abstractions.Policies.CachePolicyFields
 MethodCache.Abstractions.Policies.CachePolicyFields.Version = 8 -> MethodCache.Abstractions.Policies.CachePolicyFields
 MethodCache.Abstractions.Policies.PolicyContribution

@@ -29,9 +29,8 @@ namespace MethodCache.Core
     /// [Cache("users",
     ///     Duration = "00:30:00",
     ///     Tags = new[] { "users", "profiles" },
-    ///     Version = 2,
-    ///     KeyGeneratorType = typeof(FastHashKeyGenerator),
-    ///     RequireIdempotent = true)]
+    ///     SlidingExpiration = "00:05:00",
+    ///     Version = 2)]
     /// Task&lt;UserProfile&gt; GetProfileAsync(int userId);
     /// </code>
     /// </example>
@@ -48,17 +47,6 @@ namespace MethodCache.Core
         public string? GroupName { get; }
 
         /// <summary>
-        /// Gets or sets whether the cached method must be idempotent.
-        /// When true, enforces that the method produces the same output for the same inputs.
-        /// </summary>
-        /// <remarks>
-        /// Set to true for read operations (GET, queries).
-        /// Set to false for operations with side effects (write operations).
-        /// Default: false
-        /// </remarks>
-        public bool RequireIdempotent { get; set; }
-
-        /// <summary>
         /// Gets or sets the cache duration as a TimeSpan string.
         /// Determines how long values remain in cache before expiration.
         /// </summary>
@@ -68,6 +56,28 @@ namespace MethodCache.Core
         /// If not specified, uses the default duration from global configuration.
         /// </remarks>
         public string? Duration { get; set; }
+
+        /// <summary>
+        /// Gets or sets a sliding expiration as a TimeSpan string. Each read extends the entry by this much, but
+        /// never beyond <see cref="Duration"/>.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// [Cache(Duration = "01:00:00", SlidingExpiration = "00:05:00")]  // Dropped after 5 idle minutes, at most 1 hour old
+        /// </code>
+        /// </example>
+        public string? SlidingExpiration { get; set; }
+
+        /// <summary>
+        /// Gets or sets a refresh-ahead window as a TimeSpan string. A read within this window before the entry
+        /// expires returns the cached value and refreshes it in the background, so callers do not wait for the method.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// [Cache(Duration = "00:10:00", RefreshAhead = "00:01:00")]  // Reloaded in the background during the last minute
+        /// </code>
+        /// </example>
+        public string? RefreshAhead { get; set; }
 
         /// <summary>
         /// Gets or sets tags for cache entry categorization and bulk invalidation.
@@ -112,34 +122,12 @@ namespace MethodCache.Core
         public int Version { get; set; } = -1;
 
         /// <summary>
-        /// Gets or sets the key generator type for creating cache keys from method arguments.
-        /// Key generators determine how cache keys are built from method name and parameters.
-        /// </summary>
-        /// <remarks>
-        /// Built-in key generators:
-        /// - FastHashKeyGenerator: Fastest performance, binary hash (default for production)
-        /// - JsonKeyGenerator: Human-readable keys for debugging
-        /// - MessagePackKeyGenerator: Efficient for complex objects
-        ///
-        /// Custom key generators must implement ICacheKeyGenerator.
-        /// </remarks>
-        /// <example>
-        /// <code>
-        /// [Cache(KeyGeneratorType = typeof(JsonKeyGenerator))]  // Debug-friendly
-        /// [Cache(KeyGeneratorType = typeof(FastHashKeyGenerator))]  // Production
-        /// [Cache(KeyGeneratorType = typeof(CustomKeyGenerator))]  // Custom logic
-        /// </code>
-        /// </example>
-        public Type? KeyGeneratorType { get; set; }
-
-        /// <summary>
         /// Initializes a new instance of the CacheAttribute.
         /// </summary>
         /// <param name="groupName">Optional group name for organizing related cache entries</param>
         public CacheAttribute(string? groupName = null)
         {
             GroupName = groupName;
-            RequireIdempotent = false; // Default to false
         }
     }
 }

@@ -113,10 +113,10 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
 
 public interface IBasicCacheService
 {
-    [Cache(Duration = "00:10:00", Tags = new[] { "data" }, RequireIdempotent = false)]
+    [Cache(Duration = "00:10:00", Tags = new[] { "data" })]
     Task<object> GetDataAsync(int size, string modelType);
 
-    [Cache(Duration = "00:10:00", Tags = new[] { "data" }, RequireIdempotent = false)]
+    [Cache(Duration = "00:10:00", Tags = new[] { "data" })]
     Task<object> GetSlowDataAsync(int size, string modelType);
 
     [CacheInvalidate(Tags = new[] { "data" })]

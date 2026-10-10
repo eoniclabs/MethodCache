@@ -18,47 +18,42 @@ namespace MethodCache.Analyzers.Tests.Analyzers
             _output = output;
         }
 
-        [Fact]
-        public async Task CacheAttribute_WithInvalidKeyGeneratorType_ShouldReportDiagnostic()
+        [Theory]
+        [InlineData("Duration", "5 minutes")]
+        [InlineData("SlidingExpiration", "00:00:00")]
+        [InlineData("RefreshAhead", "-00:01:00")]
+        public async Task CacheAttribute_WithInvalidTimeSpan_ShouldReportDiagnostic(string property, string value)
         {
-            var source = @"
+            var source = $@"
 using MethodCache.Core;
 
 namespace TestApp
-{
-    public class InvalidKeyGenerator {}
-
+{{
     public interface IService
-    {
-        [Cache(KeyGeneratorType = typeof(InvalidKeyGenerator))]
+    {{
+        [Cache({property} = ""{value}"")]
         string Get(int id);
-    }
-}";
+    }}
+}}";
 
             var result = await AnalyzeAsync(source);
             LogDiagnostics(result);
 
-            Assert.Contains(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheKeyGeneratorDiagnosticId);
+            var diagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId);
+            Assert.Contains(property, diagnostic.GetMessage());
         }
 
         [Fact]
-        public async Task CacheAttribute_WithValidKeyGeneratorType_ShouldNotReportDiagnostic()
+        public async Task CacheAttribute_WithValidTimeSpans_ShouldNotReportDiagnostic()
         {
             var source = @"
 using MethodCache.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
-using MethodCache.Core.Runtime.Core;
 
 namespace TestApp
 {
-    public class ValidKeyGenerator : ICacheKeyGenerator
-    {
-        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy) => methodName;
-    }
-
     public interface IService
     {
-        [Cache(KeyGeneratorType = typeof(ValidKeyGenerator))]
+        [Cache(Duration = ""1.00:00:00"", SlidingExpiration = ""00:05:00"", RefreshAhead = ""00:00:30"")]
         string Get(int id);
     }
 }";
@@ -66,7 +61,7 @@ namespace TestApp
             var result = await AnalyzeAsync(source);
             LogDiagnostics(result);
 
-            Assert.DoesNotContain(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.CacheKeyGeneratorDiagnosticId);
+            Assert.DoesNotContain(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId);
         }
 
         private static async Task<AnalysisResult> AnalyzeAsync(string source)

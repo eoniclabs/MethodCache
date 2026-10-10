@@ -677,21 +677,6 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
-    public async Task DistributedLockTimeout_IsAppliedToWaiters()
-    {
-        var manager = CreateManager();
-        var policy = Policy() with { DistributedLock = new DistributedLockOptions(TimeSpan.FromMilliseconds(50), 1) };
-        var gate = new TaskCompletionSource<int>();
-
-        var leader = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, policy);
-        var waiter = () => manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult(2), policy);
-
-        await waiter.Should().ThrowAsync<TimeoutException>();
-        gate.SetResult(1);
-        (await leader).Should().Be(1);
-    }
-
-    [Fact]
     public async Task ConcurrentMixedOperations_KeepInvariants()
     {
         var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MemoryCacheOptions { MaxItems = 500 }));

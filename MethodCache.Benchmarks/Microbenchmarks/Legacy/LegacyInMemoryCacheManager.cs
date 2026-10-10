@@ -44,6 +44,13 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
             }
         }
 
+        // Frozen copies of option types the library no longer has, so this baseline keeps compiling
+        private enum StampedeProtectionMode { None, DistributedLock, Probabilistic, RefreshAhead }
+
+        private sealed record StampedeProtectionOptions(StampedeProtectionMode Mode, double Beta, TimeSpan? RefreshAheadWindow);
+
+        private sealed record DistributedLockOptions(TimeSpan Timeout, int MaxConcurrency);
+
         private sealed record CacheEntryPolicy(
             TimeSpan? Duration,
             TimeSpan? SlidingExpiration,
@@ -546,25 +553,12 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
                 throw new ArgumentNullException(nameof(policy));
             }
 
-            var stampedeProtection = policy.StampedeProtection != null
-                ? new StampedeProtectionOptions(
-                    policy.StampedeProtection.Mode,
-                    policy.StampedeProtection.Beta,
-                    policy.StampedeProtection.RefreshAheadWindow)
-                : null;
-
-            var distributedLock = policy.DistributedLock != null
-                ? new DistributedLockOptions(
-                    policy.DistributedLock.Timeout,
-                    policy.DistributedLock.MaxConcurrency)
-                : null;
-
             return new CacheEntryPolicy(
                 policy.Duration,
                 policy.SlidingExpiration,
                 policy.RefreshAhead,
-                stampedeProtection,
-                distributedLock,
+                null,
+                null,
                 null); // Metrics are extracted from metadata if needed
         }
 

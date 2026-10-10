@@ -17,8 +17,7 @@ dotnet add package MethodCache.SourceGenerator
 // In Program.cs or Startup.cs
 builder.Services.AddMethodCache(config =>
 {
-    config.DefaultDuration(TimeSpan.FromMinutes(10))
-          .DefaultKeyGenerator<FastHashKeyGenerator>();
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
 });
 ```
 
@@ -139,14 +138,12 @@ public interface IOrderService
 {
     // Cache for 30 minutes - database data
     [Cache(Duration = "00:30:00",
-           Tags = new[] { "orders", "order:{orderId}" },
-           RequireIdempotent = true)]
+           Tags = new[] { "orders", "order:{orderId}" })]
     Task<Order> GetOrderAsync(int orderId);
 
     // Cache for 2 minutes - external API, changes frequently
     [Cache(Duration = "00:02:00",
-           Tags = new[] { "order-status", "order:{orderId}" },
-           RequireIdempotent = true)]
+           Tags = new[] { "order-status", "order:{orderId}" })]
     Task<OrderStatus> GetOrderStatusAsync(int orderId);
 
     // Invalidate related caches when updating
@@ -155,8 +152,7 @@ public interface IOrderService
 
     // Cache for 10 minutes - customer order list
     [Cache(Duration = "00:10:00",
-           Tags = new[] { "customer-orders", "customer:{customerId}" },
-           RequireIdempotent = true)]
+           Tags = new[] { "customer-orders", "customer:{customerId}" })]
     Task<List<Order>> GetCustomerOrdersAsync(int customerId);
 }
 
@@ -446,8 +442,7 @@ Add metrics to track cache effectiveness:
 ```csharp
 builder.Services.AddMethodCache(config =>
 {
-    config.DefaultDuration(TimeSpan.FromMinutes(10))
-          .DefaultKeyGenerator<FastHashKeyGenerator>();
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
 });
 
 // Custom metrics provider
@@ -471,7 +466,7 @@ builder.Services.AddSingleton<ICacheMetricsProvider, CustomMetricsProvider>();
 ```csharp
 // Ensure proper registration
 builder.Services.AddMethodCache(config =>
-    config.DefaultDuration(TimeSpan.FromMinutes(10)));
+    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10))));
 builder.Services.AddScoped<IProductService, ProductService>();
 ```
 
@@ -502,7 +497,7 @@ Task UpdateProductAsync(int productId, ProductUpdateDto dto);
 1. **Add Analyzers**: `dotnet add package MethodCache.Analyzers` for compile-time validation
 2. **Enable Distributed Cache**: Add `MethodCache.Providers.Redis` for multi-instance apps
 3. **Monitor Performance**: Implement `ICacheMetricsProvider` for observability
-4. **Optimize**: Switch to `FastHashKeyGenerator` for best performance
+4. **Optimize**: Keep the default `FastHashKeyGenerator`; it is the fastest key generator
 
 ## Resources
 

@@ -126,7 +126,7 @@ public class PolicyResolverTests
 
     private static PolicyChange CreateRemovalChange(string sourceId)
     {
-        var delta = new CachePolicyDelta(CachePolicyFields.None, CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.KeyGenerator | CachePolicyFields.Version | CachePolicyFields.Metadata | CachePolicyFields.RequireIdempotent, CachePolicy.Empty);
+        var delta = new CachePolicyDelta(CachePolicyFields.None, CachePolicyFields.Duration | CachePolicyFields.Tags | CachePolicyFields.SlidingExpiration | CachePolicyFields.Version | CachePolicyFields.Metadata | CachePolicyFields.RefreshAhead, CachePolicy.Empty);
         return new PolicyChange(sourceId, MethodId, delta, PolicyChangeReason.Removed, DateTimeOffset.UtcNow);
     }
 
