@@ -1,207 +1,57 @@
-# Runtime Configuration & Management Interface Overview
+# Runtime Configuration Overview
 
-## 🔥 **What Makes This Special**
+How cache policies reach a generated decorator, and how they change while the application runs. For usage, see the [Configuration Guide](../user-guide/CONFIGURATION_GUIDE.md).
 
-MethodCache now supports **runtime configuration with the highest priority**, enabling management interfaces that can **override ALL other configuration sources** including hardcoded values. This is a game-changer for operational control.
+## Policy Sources
 
-## **The Priority System**
+Each source implements `IPolicySource` and is registered with a priority from `PolicySourcePriority`:
 
-| Priority | Source | Overrides | Use Case |
-|----------|--------|-----------|----------|
-| **40** 🔥 | **Runtime (Management)** | **Everything** | Emergency overrides, A/B testing |
-| **30** | **Code (Programmatic)** | JSON/YAML/Attributes | Business logic |
-| **20** | **JSON/YAML** | Attributes | Environment configs |
-| **10** | **Attributes** | Nothing | Development defaults |
+| Priority | Constant | Source | Registered by | Live changes |
+|----------|----------|--------|---------------|--------------|
+| 100 | `RuntimeOverrides` | `RuntimePolicySource` (`runtime-overrides`) | Always, by `AddMethodCache()` | Yes, through `IRuntimeCacheConfigurator` |
+| 50 | `ConfigurationFiles` | `ConfigFilePolicySource` (`configuration-files`) | `AddMethodCacheFromConfiguration(configuration, "MethodCache")` | Yes, on `IConfiguration` reload |
+| 40 | `StartupFluent` | `FluentPolicySource` (`startup-fluent`) | `AddMethodCache(config => ...)` | No |
+| 10 | `Attributes` | Policies emitted by the source generator (`attributes`) | Each generated decorator | No |
 
-## **Real-World Scenarios**
+## Resolution
 
-### 🚨 **Emergency Response**
-```bash
-# Your payment processing cache is causing issues
-# Operations team can instantly disable it:
-curl -X POST /api/admin/cache/emergency-disable \
-  -d '{"ServiceName": "IPaymentService", "MethodName": "ProcessPayment"}'
+`PolicyResolver` merges the snapshots of all sources for a method field by field (`CachePolicyFields`): for each field, the source with the highest priority that set it wins. Every contribution is kept as a `PolicyContribution`, so diagnostics can show where each value came from.
 
-# ✅ Instantly overrides developer's [Cache] attribute and code configuration
-```
+`PolicyRegistry` (`IPolicyRegistry`) holds the resolved policy of every method and publishes changes to a `PolicyHandle` per method. Every decorator for the method shares that handle and reads `PolicyHandle.Current` on each call, with one volatile read and no lock. A change replaces the whole policy, so a call never sees half of an update, and it reaches services that already exist, including singletons.
 
-### ⚡ **Live Performance Tuning**
-```bash
-# CPU usage is high due to expensive user profile queries
-# Tune cache duration from 5 minutes to 1 hour:
-curl -X POST /api/admin/cache/tune-performance \
-  -d '{"ServiceName": "IUserService", "MethodName": "GetProfile", "Duration": "01:00:00"}'
+## Runtime Overrides
 
-# ✅ Immediately improves performance without code deployment
-```
-
-### 🔬 **A/B Testing**
-```bash
-# Test aggressive vs conservative caching strategies:
-curl -X POST /api/admin/cache/ab-test \
-  -d '{"ServiceName": "IProductService", "MethodName": "GetRecommendations", "Variant": "aggressive"}'
-
-# ✅ Overrides developer settings for experimentation
-```
-
-## 🔍 Inspect Effective Policies
-
-MethodCache exposes a `PolicyDiagnosticsService` that surfaces the resolver output so hosts can understand exactly which configuration layers contributed to a method.
+`IRuntimeCacheConfigurator` writes to an in-memory store behind `RuntimePolicySource`:
 
 ```csharp
-var diagnostics = host.Services.GetRequiredService<PolicyDiagnosticsService>();
+var configurator = services.GetRequiredService<IRuntimeCacheConfigurator>();
+
+await configurator.UpsertAsync<IUserService, UserProfile>(
+    s => s.GetUserProfileAsync(default),
+    o => o.WithDuration(TimeSpan.FromMinutes(5)),
+    new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211"));
+
+await configurator.RemoveAsync<IUserService, UserProfile>(s => s.GetUserProfileAsync(default));
+```
+
+Overrides are not persisted and not shared between instances. `RuntimeOverrideMetadata` is stored as `runtime.*` metadata on the policy; an override whose `ExpiresAt` has passed is removed lazily, the next time `RuntimePolicyStore` is used (no timer).
+
+## Configuration Files
+
+`AddMethodCacheFromConfiguration` parses the section at startup, so invalid values throw there. It then follows `IConfiguration` reload tokens: a reload that parses replaces the source's policies, and one that does not is logged and ignored, keeping the previous policies.
+
+## Diagnostics
+
+`PolicyDiagnosticsService` reads the registry:
+
+```csharp
+var diagnostics = services.GetRequiredService<PolicyDiagnosticsService>();
 
 foreach (var report in diagnostics.GetAllPolicies())
 {
-    var duration = report.Policy.Duration?.ToString() ?? "(default)";
     var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
-    Console.WriteLine($"{report.MethodId}: Duration={duration}, Sources={sources}");
+    Console.WriteLine($"{report.MethodId}: Duration={report.Policy.Duration}, Sources={sources}");
 }
 ```
 
-Each `PolicyDiagnosticsReport` includes the effective policy plus every `PolicyContribution`, grouped by source, making it easy to diff runtime overrides against baseline attribute/programmatic configuration.
-
-## **How It Works**
-
-### 1. **Developer Sets Defaults** (Priority 10-30)
-```csharp
-// Code defaults
-[Cache("user-profile", Duration = "00:05:00")]
-public async Task<UserProfile> GetUserProfileAsync(int userId) { ... }
-
-// Programmatic overrides
-config.ForService<IUserService>()
-      .Method(x => x.GetUserProfileAsync(default))
-      .Duration(TimeSpan.FromMinutes(30));
-```
-
-### 2. **Operations Team Controls** (Priority 40)
-```json
-// appsettings.json - Highest priority via IOptionsMonitor
-{
-  "MethodCache": {
-    "Services": {
-      "IUserService": {
-        "Methods": {
-          "GetUserProfileAsync": {
-            "Duration": "02:00:00",    // ✅ This wins!
-            "Enabled": true,
-            "Tags": ["management-override"]
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### 3. **Management Interface** (Ultimate Control)
-```csharp
-[ApiController]
-[Route("api/admin/cache")]
-public sealed class CacheManagementController : ControllerBase
-{
-    private readonly IRuntimeCacheConfigurator _configurator;
-
-    public CacheManagementController(IRuntimeCacheConfigurator configurator)
-        => _configurator = configurator;
-
-    [HttpPost("emergency-disable")]
-    public async Task<IActionResult> EmergencyDisableCache([FromBody] DisableRequest request)
-    {
-        await _configurator.UpsertAsync(request.MethodId, builder =>
-        {
-            builder.WithDuration(TimeSpan.Zero);
-            builder.WithTags("disabled");
-        });
-
-        return Ok("Cache disabled - effective immediately");
-    }
-}
-```
-
-## **Integration Examples**
-
-### **Azure App Configuration**
-```csharp
-builder.Configuration.AddAzureAppConfiguration(options =>
-{
-    options.Connect(connectionString)
-           .Select(KeyFilter.Any, "MethodCache")
-           .ConfigureRefresh(refresh => refresh.Register("MethodCache:RefreshKey"));
-});
-
-// Runtime config automatically gets Azure App Config changes
-builder.Services.AddMethodCacheWithSources(cache => {
-    cache.AddRuntimeConfiguration(); // Highest priority
-    cache.AddProgrammaticConfiguration(/* ... */);
-    cache.AddJsonConfiguration(builder.Configuration);
-});
-```
-
-### **Configuration Dashboard**
-```csharp
-[HttpGet("status")]
-public IActionResult GetCacheStatus()
-{
-    var registry = _serviceProvider.GetRequiredService<IPolicyRegistry>();
-    var policies = registry.GetAllPolicies();
-    
-    return Ok(policies.Select(result => new {
-        Method = result.MethodId,
-        Duration = result.Policy.Duration?.ToString(),
-        Tags = result.Policy.Tags,
-        Source = string.Join(", ", result.Contributions.Select(c => c.SourceId).Distinct())
-    }));
-}
-```
-
-## **Why This Matters**
-
-### **For SREs & Operations**
-- **Instant incident response** - disable problematic caches immediately
-- **Performance tuning** - adjust cache durations based on real metrics
-- **Capacity management** - reduce cache pressure during high load
-
-### **For Product Teams**
-- **A/B testing** - test different caching strategies without code changes
-- **Feature flags** - enable/disable caching for specific features
-- **Gradual rollouts** - progressively increase cache durations
-
-### **For Development Teams**
-- **Safe defaults** - set reasonable defaults in code
-- **Environment separation** - different settings for dev/staging/prod
-- **Override assurance** - operations can always override if needed
-
-## **Key Benefits**
-
-✅ **Operational Safety** - Operations can always override developer decisions  
-✅ **Zero Downtime** - Change cache behavior without deployments  
-✅ **Incident Response** - Instantly disable problematic caches  
-✅ **Performance Optimization** - Tune based on real usage patterns  
-✅ **A/B Testing** - Experiment with different caching strategies  
-✅ **Compliance** - Override caching for sensitive data on demand  
-
-## **Getting Started**
-
-```csharp
-// 1. Setup multi-source configuration
-builder.Services.AddMethodCacheWithSources(cache => {
-    cache.AddAttributeSource();                    // Development defaults
-    cache.AddJsonConfiguration(builder.Configuration); // Environment configs  
-    cache.AddRuntimeConfiguration();               // 🔥 Management overrides
-});
-
-// 2. Build management endpoints
-// See CONFIGURATION_GUIDE.md for complete examples
-
-// 3. Configure external config store (Azure App Config, etc.)
-// Changes automatically flow through IOptionsMonitor
-```
-
-**The result: Ultimate operational control over caching behavior!** 🎯
-
----
-
-📖 **[Full Documentation →](CONFIGURATION_GUIDE.md)**  
-🏗️ **[Implementation Details →](CONFIGURATION_DEMO.md)**
+`GetPolicy(methodId)`, `GetContributions(methodId, sourceId)` and `FindBySource(sourceId)` narrow the view. `ICacheAdministrator.GetMethods()` (and `GET /methodcache/methods` from `MethodCache.AspNetCore`) returns the effective policy of every cached method with its sources.

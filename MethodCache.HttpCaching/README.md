@@ -9,7 +9,7 @@ Standards-compliant HTTP caching for `HttpClient` that implements RFC 7234 cachi
 - **Cache-Control compliance** - Respects `max-age`, `no-cache`, `no-store`, `private`, etc.
 - **Vary header support** - Caches different responses based on varying headers
 - **Freshness calculation** - Implements standard HTTP freshness rules including heuristic freshness
-- **Storage abstraction** - Support for in-memory, Redis, or custom cache storage
+- **Storage abstraction** - In-memory storage by default, or your own `IHttpCacheStorage`
 - **Stale-while-revalidate** - Serve stale content while fetching fresh in background
 - **Stale-if-error** - Serve stale content when origin server returns errors
 - **Diagnostic headers** - Optional cache debugging information
@@ -26,37 +26,26 @@ services.AddHttpClient<IApiClient, ApiClient>()
     .AddHttpCaching();
 ```
 
-### API-Optimized Configuration
+### Configuration
 
 ```csharp
 services.AddHttpClient<IMetaApiClient, MetaApiClient>()
-    .AddApiCaching(options =>
-    {
-        options.DefaultMaxAge = TimeSpan.FromMinutes(5);
-        options.EnableStaleWhileRevalidate = true;
-        options.EnableStaleIfError = true;
-    });
-```
-
-### Development with Debug Headers
-
-```csharp
-services.AddHttpClient<IApiClient, ApiClient>()
-    .AddHttpCachingWithDebug(options =>
-    {
-        options.MaxResponseSize = 50 * 1024 * 1024; // 50MB
-    });
+    .AddHttpCaching(caching => caching
+        .Configure(options =>
+        {
+            options.Freshness.DefaultMaxAge = TimeSpan.FromMinutes(5);
+            options.Behavior.EnableStaleWhileRevalidate = true;
+            options.Behavior.EnableStaleIfError = true;
+            options.Diagnostics.AddDiagnosticHeaders = true; // X-Cache headers, useful in development
+        })
+        .UseInMemoryStorage(storage => storage.MaxResponseSize = 50 * 1024 * 1024)); // 50MB
 ```
 
 ### Custom Storage
 
 ```csharp
 services.AddHttpClient<IApiClient, ApiClient>()
-    .AddHttpCaching(options =>
-    {
-        options.Storage = new RedisHttpCacheStorage(connectionString);
-        options.IsSharedCache = true; // For distributed scenarios
-    });
+    .AddHttpCaching(caching => caching.UseCustomStorage<MyHttpCacheStorage>());
 ```
 
 ## How It Works
@@ -96,108 +85,67 @@ GET /api/users/123 + If-None-Match → 304 Not Modified (minimal quota impact)
 
 ## Diagnostic Headers
 
-When `AddDiagnosticHeaders = true`:
+When `options.Diagnostics.AddDiagnosticHeaders = true`:
 
 ```http
 X-Cache: HIT                 # Response served from cache
-X-Cache-Age: 120            # Age of cached entry in seconds
-X-Cache-TTL: 180            # Time to live remaining in seconds
+X-Cache-Age: 120             # Age of cached entry in seconds
+X-Cache-TTL: 180             # Time to live remaining in seconds
 ```
 
 Cache status values:
-- `FRESH` - Served from cache, still fresh
+- `HIT` - Served from cache, still fresh
 - `REVALIDATED` - 304 response, cache updated
-- `STALE-WHILE-REVALIDATE` - Stale content served while revalidating
+- `STALE` - Stale content served while revalidating in the background
 - `STALE-IF-ERROR` - Stale content served due to error
 - `MISS` - No cache entry, response from origin
 
 ## Testing
 
-The library includes comprehensive test coverage:
-
-### Unit Tests (`MethodCache.HttpCaching.UnitTests`)
-- `HttpCacheHandlerTests` - Core handler behavior testing
-- Individual component testing with mocked dependencies
-- Fast-running tests focused on business logic
-
-### Integration Tests (`MethodCache.HttpCaching.IntegrationTests`)
-- `HttpCacheIntegrationTests` - DI container integration
-- `HttpCacheEndToEndTests` - Full pipeline testing
-- `HttpCacheStorageTests` - Storage implementation testing
-
-Run tests:
 ```bash
-# Unit tests
-dotnet test MethodCache.HttpCaching.UnitTests/
-
-# Integration tests
+dotnet test MethodCache.HttpCaching.Tests/
 dotnet test MethodCache.HttpCaching.IntegrationTests/
-
-# All HTTP caching tests
-dotnet test --filter "FullyQualifiedName~HttpCaching"
 ```
 
 ## Configuration Options
 
+`HttpCacheOptions` groups its settings (defaults shown):
+
 ```csharp
-public class HttpCacheOptions
-{
-    // Standard HTTP compliance
-    public bool RespectCacheControl { get; set; } = true;
-    public bool RespectVary { get; set; } = true;
-    public bool IsSharedCache { get; set; } = false;
+options.Behavior.RespectCacheControl = true;
+options.Behavior.RespectVary = true;
+options.Behavior.IsSharedCache = false;            // true for a cache shared between users (honors s-maxage)
+options.Behavior.EnableStaleWhileRevalidate = false;
+options.Behavior.EnableStaleIfError = false;
+options.Behavior.MaxStaleIfError = TimeSpan.FromHours(24);
 
-    // Freshness calculation
-    public bool AllowHeuristicFreshness { get; set; } = true;
-    public TimeSpan MaxHeuristicFreshness { get; set; } = TimeSpan.FromHours(1);
-    public TimeSpan? DefaultMaxAge { get; set; } = TimeSpan.FromMinutes(5);
+options.Freshness.AllowHeuristicFreshness = true;
+options.Freshness.MaxHeuristicFreshness = TimeSpan.FromHours(1);
+options.Freshness.DefaultMaxAge = TimeSpan.FromMinutes(5);
 
-    // Cacheable methods
-    public HashSet<HttpMethod> CacheableMethods { get; set; } = { GET, HEAD, OPTIONS };
-
-    // Size limits
-    public long MaxCacheSize { get; set; } = 100 * 1024 * 1024; // 100MB
-    public long MaxResponseSize { get; set; } = 10 * 1024 * 1024; // 10MB
-
-    // Advanced features
-    public bool EnableStaleWhileRevalidate { get; set; } = false;
-    public bool EnableStaleIfError { get; set; } = false;
-    public TimeSpan MaxStaleIfError { get; set; } = TimeSpan.FromHours(24);
-
-    // Debugging
-    public bool AddDiagnosticHeaders { get; set; } = false;
-}
+options.CacheableMethods;                          // GET, HEAD and OPTIONS by default
+options.CacheKeyGenerator = request => ...;        // optional custom key
+options.Diagnostics.AddDiagnosticHeaders = false;
 ```
+
+Size limits are on the storage options: `MaxCacheSize` (100MB) and `MaxResponseSize` (10MB), set with `ConfigureStorage(...)` or `UseInMemoryStorage(...)`.
 
 ## Storage Implementations
 
 ### In-Memory (Default)
-- Uses `IMemoryCache`
-- Perfect for single-instance applications
-- Automatic memory management and eviction
-
-### Redis (Available)
-- Distributed caching across multiple instances
-- Persistent across application restarts
-- Ideal for scaled applications
+- `InMemoryHttpCacheStorage`, built on `IMemoryCache`
+- For single-instance applications
 
 ### Custom Storage
-Implement `IHttpCacheStorage` for custom backends:
+Implement `IHttpCacheStorage` (`GetAsync`, `SetAsync`, `RemoveAsync`, `ClearAsync`) and register it with `UseCustomStorage<T>()`:
 
 ```csharp
-public class CustomHttpCacheStorage : IHttpCacheStorage
+public class MyHttpCacheStorage : IHttpCacheStorage
 {
-    public Task<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
-    {
-        // Your implementation
-    }
-
-    public Task SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
-    {
-        // Your implementation
-    }
-
-    // ... other methods
+    public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) { ... }
+    public ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default) { ... }
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) { ... }
+    public ValueTask ClearAsync(CancellationToken cancellationToken = default) { ... }
 }
 ```
 

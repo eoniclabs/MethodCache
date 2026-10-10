@@ -109,10 +109,7 @@ Replace or supplement your existing `IMemoryCache` registration:
 builder.Services.AddMemoryCache();
 
 // After - MethodCache includes its own memory cache
-builder.Services.AddMethodCache(config =>
-{
-    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
-});
+builder.Services.AddMethodCache(); // durations come from the [Cache] attributes
 ```
 
 ### Step 3: Choose Your Migration Strategy
@@ -422,7 +419,7 @@ public Task<User> GetUserAsync(int userId)
 1. Verify `services.AddMethodCache()` is called
 2. Ensure interface is registered in DI
 3. Confirm `Duration` is set (attribute or config)
-4. Verify method is virtual or interface member
+4. Verify the method is declared on an interface, and `AddMethodCache()` is called after the service is registered
 
 **Solution:**
 ```csharp
@@ -430,10 +427,7 @@ public Task<User> GetUserAsync(int userId)
 builder.Services.AddScoped<IUserService, UserService>();
 
 // Add MethodCache
-builder.Services.AddMethodCache(config =>
-{
-    config.DefaultPolicy(options => options.WithDuration(TimeSpan.FromMinutes(10)));
-});
+builder.Services.AddMethodCache(); // durations come from the [Cache] attributes
 ```
 
 ### "Getting stale data"

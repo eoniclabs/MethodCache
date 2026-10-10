@@ -12,19 +12,16 @@ Priority-based merging of configuration sources into unified cache policies.
 
 ### PolicyRegistry
 - Central registry of all resolved policies
-- Keyed by method signature
+- Keyed by method id (`Namespace.IService.Method`)
 - Provides fast lookup during method invocations
 - Supports dynamic updates from runtime sources
 
 ### PolicyRegistrationExtensions
-- DI registration helpers for policy sources
-- Simplifies adding custom sources
-- Example: `services.AddPolicySource<MyCustomSource>()`
+- `EnsurePolicyServices()` registers the resolver, registry and `PolicyDiagnosticsService`
 
 ### PolicySourceRegistration
-- Metadata about registered sources
-- Priority, type, and lifecycle information
-- Used by resolver to determine merge order
+- Pairs a policy source with its priority
+- Used by the resolver to determine merge order
 
 ## Resolution Algorithm
 
@@ -38,17 +35,17 @@ Priority-based merging of configuration sources into unified cache policies.
 
 Given three sources for method `GetUserById`:
 
-- Attribute: `[MethodCache(Duration = 300)]` (Priority 10)
-- ConfigFile: `{ "Duration": 600, "Tags": ["user"] }` (Priority 40)
-- FluentApi: `cfg.WithTags("user", "cache")` (Priority 50)
+- Attribute: `[Cache(Duration = "00:05:00")]` (priority 10)
+- Startup code: `.Configure(o => o.WithTags("user", "cache"))` (priority 40)
+- Configuration file: `{ "Duration": "00:10:00", "Tags": ["user"] }` (priority 50)
 
 **Resolved Policy:**
-- Duration: `600` (from ConfigFile, priority 40)
-- Tags: `["user", "cache"]` (from FluentApi, priority 50)
+- Duration: `00:10:00` (from the configuration file, priority 50)
+- Tags: `["user"]` (from the configuration file, priority 50)
 
 **Provenance:**
-- Duration: Set by `ConfigFile` (40)
-- Tags: Set by `FluentApi` (50)
+- Duration: set by `attributes` and `configuration-files`; `configuration-files` wins
+- Tags: set by `startup-fluent` and `configuration-files`; `configuration-files` wins
 
 ## Thread Safety
 
