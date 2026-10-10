@@ -1,6 +1,7 @@
 using System.Reflection;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
+using MethodCache.Core.Infrastructure.Registration;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
@@ -300,6 +301,20 @@ namespace QuickStart
         }
 
         Assert.Equal(1, (int)disposed.GetValue(null)!);
+    }
+
+    [Fact]
+    public async Task GeneratedRegistry_FindsDecoratorBeforeAnyCodeInTheAssemblyRuns()
+    {
+        var (_, interfaceType, implementationType) = await CompileQuickStartAsync("QuickStartApp_Registry");
+
+        // Nothing in the compiled assembly has run yet; TryGet runs its module initializer
+        Assert.True(MethodCacheDecorators.TryGet(interfaceType, out var registration));
+        Assert.Equal(interfaceType, registration.ServiceType);
+        Assert.Equal(implementationType, registration.ImplementationType);
+        Assert.NotNull(registration.AddPolicies);
+
+        Assert.False(MethodCacheDecorators.TryGet(typeof(IDisposable), out _));
     }
 
     private async Task<(Assembly Assembly, Type InterfaceType, Type ImplementationType)> CompileQuickStartAsync(string assemblyName)

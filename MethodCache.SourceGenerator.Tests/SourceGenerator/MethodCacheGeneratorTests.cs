@@ -143,6 +143,95 @@ namespace TestApp
         }
 
         [Fact]
+        public async Task GeneratesModuleInitializerThatRegistersDecorators()
+        {
+            var source = @"using System.Threading.Tasks;
+using MethodCache.Core;
+
+namespace TestApp
+{
+    public interface IUserService
+    {
+        [Cache]
+        Task<string> GetUserAsync(int id);
+    }
+
+    public interface IExternalService
+    {
+        [Cache]
+        Task<string> GetAsync(int id);
+    }
+
+    public class AdminUserService : IUserService
+    {
+        public Task<string> GetUserAsync(int id) => Task.FromResult(""admin"");
+    }
+
+    public class UserService : IUserService
+    {
+        public Task<string> GetUserAsync(int id) => Task.FromResult(""user"");
+    }
+
+    internal class HiddenService : IUserService
+    {
+        private HiddenService() { }
+
+        public Task<string> GetUserAsync(int id) => Task.FromResult(""hidden"");
+    }
+}";
+
+            var result = await GetGeneratedSources(source);
+            LogGeneratedSources(result);
+
+            Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+
+            var registrations = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class MethodCacheDecoratorRegistrations"));
+            Assert.NotNull(registrations);
+            AssertContainsIgnoreWhitespace(registrations, "[System.Runtime.CompilerServices.ModuleInitializer]");
+            AssertContainsIgnoreWhitespace(registrations, "MethodCacheDecorators.Register(new DecoratorRegistration( typeof(global::TestApp.IUserService),");
+            AssertContainsIgnoreWhitespace(registrations, "new global::TestApp.IUserServiceDecorator( (global::TestApp.IUserService)inner,");
+
+            // The class named like the interface wins over other implementations
+            AssertContainsIgnoreWhitespace(registrations, "GeneratedPolicyRegistrations.AddPolicies, typeof(global::TestApp.UserService)));");
+            Assert.DoesNotContain("typeof(global::TestApp.AdminUserService)", registrations);
+            Assert.DoesNotContain("HiddenService", registrations);
+
+            // An interface without an implementation is still decorated when the application registers it
+            AssertContainsIgnoreWhitespace(registrations, "GeneratedPolicyRegistrations.AddPolicies, null));");
+        }
+
+        [Fact]
+        public async Task GeneratesDecoratorForInterfaceInGlobalNamespace()
+        {
+            // Interfaces declared next to top-level statements live in the global namespace
+            var source = @"using System.Threading.Tasks;
+using MethodCache.Core;
+
+public interface IGlobalService
+{
+    [Cache]
+    Task<string> GetAsync(int id);
+}
+
+public class GlobalService : IGlobalService
+{
+    public Task<string> GetAsync(int id) => Task.FromResult(""value"");
+}";
+
+            var result = await GetGeneratedSources(source);
+            LogGeneratedSources(result);
+
+            Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+
+            var decoratorSource = result.GeneratedSources.Values.Single(s => s.Contains("public class IGlobalServiceDecorator"));
+            Assert.Contains("namespace MethodCache.Generated", decoratorSource);
+            Assert.DoesNotContain("<global namespace>", string.Concat(result.GeneratedSources.Values));
+
+            var registrations = result.GeneratedSources.Values.Single(s => s.Contains("class MethodCacheDecoratorRegistrations"));
+            AssertContainsIgnoreWhitespace(registrations, "new global::MethodCache.Generated.IGlobalServiceDecorator(");
+        }
+
+        [Fact]
         public async Task GeneratorIncludesAdvancedFluentOptionsFromAttributes()
         {
             var source = @"using MethodCache.Core;
