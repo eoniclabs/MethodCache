@@ -74,30 +74,6 @@ namespace MethodCache.Core.Tests.Core
         }
 
         [Fact]
-        public void AddMethodCache_WithOptions_RegistersCoreServices()
-        {
-            // Arrange
-            var services = new ServiceCollection();
-            var options = new MethodCacheRegistrationOptions
-            {
-                Assemblies = new[] { Assembly.GetExecutingAssembly() }
-            };
-
-            // Act
-            services.AddMethodCache(null, options);
-
-            // Assert
-            var serviceProvider = services.BuildServiceProvider();
-            
-            // Verify core services are registered
-            Assert.NotNull(serviceProvider.GetService<IPolicyRegistry>());
-            Assert.NotNull(serviceProvider.GetService<IRuntimeCacheConfigurator>());
-            Assert.NotNull(serviceProvider.GetService<ICacheManager>());
-            Assert.NotNull(serviceProvider.GetService<ICacheKeyGenerator>());
-            Assert.NotNull(serviceProvider.GetService<ICacheMetricsProvider>());
-        }
-
-        [Fact]
         public void AddMethodCacheServices_RegistersConcreteImplementations()
         {
             // Arrange

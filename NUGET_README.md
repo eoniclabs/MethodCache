@@ -35,10 +35,13 @@ public interface IUserService
 ### 3. Register MethodCache
 
 ```csharp
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddMethodCache();
 ```
 
-This scans the calling assembly, registers `UserService` and wraps `IUserService` in its generated cache decorator, so you do not register the service yourself. If your attributed interfaces or their implementations live in other projects, pass every assembly that contains either of them:
+`AddMethodCache()` wraps `IUserService` in its generated cache decorator and keeps the lifetime you chose. Call it after your own registrations: a service registered later is not cached.
+
+You can also skip registering the service yourself. `AddMethodCache()` then finds `UserService` in the calling assembly and registers it as a singleton. If those interfaces or implementations live in other projects, pass every assembly that contains either of them:
 
 ```csharp
 builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly, typeof(UserService).Assembly);
