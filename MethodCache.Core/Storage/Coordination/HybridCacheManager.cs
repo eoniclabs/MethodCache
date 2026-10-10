@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
@@ -20,6 +22,7 @@ public class HybridCacheManager : IHybridCacheManager
     private readonly ICacheKeyGenerator _keyGenerator;
     private readonly ILogger<HybridCacheManager> _logger;
     private readonly StorageOptions _options;
+    private readonly ICacheMetricsProvider? _metricsProvider;
 
     public HybridCacheManager(
         IStorageProvider storageProvider,
@@ -28,7 +31,8 @@ public class HybridCacheManager : IHybridCacheManager
         ILogger<HybridCacheManager> logger,
         IOptions<StorageOptions> options,
         IStorageProvider? l2Storage = null,
-        IPersistentStorageProvider? l3Storage = null)
+        IPersistentStorageProvider? l3Storage = null,
+        ICacheMetricsProvider? metricsProvider = null)
     {
         _storageProvider = storageProvider;
         _l1Storage = l1Storage;
@@ -37,6 +41,7 @@ public class HybridCacheManager : IHybridCacheManager
         _keyGenerator = keyGenerator;
         _logger = logger;
         _options = options.Value;
+        _metricsProvider = metricsProvider;
     }
 
     // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
@@ -50,20 +55,7 @@ public class HybridCacheManager : IHybridCacheManager
 
         var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
 
-        var cached = await _storageProvider.GetAsync<T>(cacheKey);
-        if (await IsCacheHitAsync(cacheKey, cached).ConfigureAwait(false))
-        {
-            return cached!;
-        }
-
-        var result = await factory();
-        if (result != null)
-        {
-            var expiration = policy.Duration ?? _options.L1DefaultExpiration;
-            await _storageProvider.SetAsync(cacheKey, result, expiration, policy.Tags).ConfigureAwait(false);
-        }
-
-        return result;
+        return await GetOrLoadAsync(cacheKey, methodName, factory, policy).ConfigureAwait(false);
     }
 
     public async ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
@@ -105,15 +97,36 @@ public class HybridCacheManager : IHybridCacheManager
         return value is not null;
     }
 
-    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    {
+        return GetOrLoadAsync(cacheKey, methodName, factory, policy);
+    }
+
+    private async Task<T> GetOrLoadAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
     {
         var cached = await _storageProvider.GetAsync<T>(cacheKey);
         if (await IsCacheHitAsync(cacheKey, cached).ConfigureAwait(false))
         {
+            _metricsProvider?.CacheHit(methodName);
             return cached!;
         }
 
-        var result = await factory();
+        _metricsProvider?.CacheMiss(methodName);
+
+        T result;
+        var start = Stopwatch.GetTimestamp();
+        try
+        {
+            result = await factory();
+        }
+        catch (Exception ex)
+        {
+            _metricsProvider?.CacheError(methodName, ex.Message);
+            throw;
+        }
+
+        _metricsProvider?.CacheLatency(methodName, (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+
         if (result != null)
         {
             var expiration = policy.Duration ?? _options.L1DefaultExpiration;

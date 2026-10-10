@@ -71,12 +71,11 @@ public class TelemetryCacheManager : ICacheManager
             SetActivityTagsFromPolicy(activity, policy);
 
             var tracked = new TrackedFactory<T>(factory);
-            var result = await _innerManager.GetOrCreateAsync(methodName, args, tracked.InvokeAsync, policy, keyGenerator);
+            var result = await tracked.Run(f => _innerManager.GetOrCreateAsync(methodName, args, f, policy, keyGenerator));
 
             stopwatch.Stop();
 
-            // If the factory ran, the call was a miss.
-            _activitySource.SetCacheHit(activity, !tracked.Invoked);
+            _activitySource.SetCacheHit(activity, !tracked.LoadedForCaller);
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
 
             return result;
@@ -160,10 +159,10 @@ public class TelemetryCacheManager : ICacheManager
             SetActivityTagsFromPolicy(activity, policy);
 
             var tracked = new TrackedFactory<T>(factory);
-            var result = await _innerManager.GetOrCreateFastAsync(cacheKey, methodName, tracked.InvokeAsync, policy);
+            var result = await tracked.Run(f => _innerManager.GetOrCreateFastAsync(cacheKey, methodName, f, policy));
 
             stopwatch.Stop();
-            _activitySource.SetCacheHit(activity, !tracked.Invoked);
+            _activitySource.SetCacheHit(activity, !tracked.LoadedForCaller);
 
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
 
@@ -255,18 +254,51 @@ public class TelemetryCacheManager : ICacheManager
 
     // ============= Helper methods =============
 
-    /// <summary>Wraps a factory to tell whether the inner manager ran it, which marks the call as a miss.</summary>
+    /// <summary>
+    /// Wraps a factory to tell whether the inner manager ran it to answer this call, which marks the call as a miss.
+    /// </summary>
+    /// <remarks>
+    /// A refresh-ahead hit returns the cached value at once and runs the factory on the thread pool, so a factory
+    /// call alone does not mean a miss. When the inner call completes synchronously, only a factory call made inline
+    /// on the calling thread counts; when it completes later, the caller waited for the factory.
+    /// </remarks>
     private sealed class TrackedFactory<T>
     {
         private readonly Func<Task<T>> _factory;
+        private int _callerThreadId;
+        private volatile bool _armed;
         private volatile bool _invoked;
+        private volatile bool _invokedInline;
+        private bool _completedSynchronously;
 
         public TrackedFactory(Func<Task<T>> factory) => _factory = factory;
 
-        public bool Invoked => _invoked;
+        /// <summary>True when the factory produced the value this call returned.</summary>
+        public bool LoadedForCaller => _completedSynchronously ? _invokedInline : _invoked;
 
-        public Task<T> InvokeAsync()
+        public Task<T> Run(Func<Func<Task<T>>, Task<T>> call)
         {
+            _callerThreadId = Environment.CurrentManagedThreadId;
+            _armed = true;
+            try
+            {
+                var task = call(InvokeAsync);
+                _completedSynchronously = task.IsCompleted;
+                return task;
+            }
+            finally
+            {
+                _armed = false;
+            }
+        }
+
+        private Task<T> InvokeAsync()
+        {
+            if (_armed && Environment.CurrentManagedThreadId == _callerThreadId)
+            {
+                _invokedInline = true;
+            }
+
             _invoked = true;
             return _factory();
         }
