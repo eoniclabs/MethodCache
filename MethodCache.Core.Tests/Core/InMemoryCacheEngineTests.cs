@@ -188,6 +188,59 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task FailSafe_AppliesToCallersJoiningAFailedBackgroundRefresh()
+    {
+        var manager = CreateManager(o => o.EnableFailSafe = true);
+        var policy = Policy() with { RefreshAhead = TimeSpan.FromSeconds(10) };
+        var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), policy);
+        _time.Advance(TimeSpan.FromSeconds(55));
+        (await manager.GetOrCreateFastAsync("key", "M", () => gate.Task, policy)).Should().Be("stale"); // starts the refresh
+
+        _time.Advance(TimeSpan.FromSeconds(10)); // now logically expired, the refresh is still running
+        var joined = manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("unused"), policy);
+        gate.SetException(new TimeoutException());
+
+        (await joined).Should().Be("stale");
+    }
+
+    [Fact]
+    public async Task SetAsync_DuringALoad_IsNotOverwrittenByTheOlderResult()
+    {
+        var manager = CreateManager();
+        var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var load = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, Policy());
+        await manager.SetAsync("key", "newer", OneMinute);
+        gate.SetResult("older");
+
+        (await load).Should().Be("older");
+        (await manager.GetAsync<string>("key")).Should().Be("newer");
+    }
+
+    [Fact]
+    public async Task Jitter_NeverExtendsBeyondMaxExpiration()
+    {
+        var manager = CreateManager(o =>
+        {
+            o.MaxExpiration = OneMinute;
+            o.JitterMaxDuration = TimeSpan.FromSeconds(30);
+        });
+
+        for (var i = 0; i < 50; i++)
+        {
+            await manager.SetAsync($"k{i}", i, OneMinute);
+        }
+
+        _time.Advance(OneMinute + TimeSpan.FromMilliseconds(1));
+        for (var i = 0; i < 50; i++)
+        {
+            (await manager.ExistsAsync($"k{i}")).Should().BeFalse();
+        }
+    }
+
+    [Fact]
     public async Task WithoutFailSafe_FactoryFailureAfterExpiry_Throws()
     {
         var manager = CreateManager();

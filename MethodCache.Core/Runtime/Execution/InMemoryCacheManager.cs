@@ -235,6 +235,8 @@ namespace MethodCache.Core.Runtime.Execution
         {
             ArgumentNullException.ThrowIfNull(key);
 
+            // A load that started before this write must not overwrite it with an older result.
+            InvalidateFlight(key);
             Store(key, value, EntryPolicy.Plain, computeDuration: 0, duration: Math.Max(1, ToNanos(expiration)));
             return Task.CompletedTask;
         }
@@ -409,7 +411,17 @@ namespace MethodCache.Core.Runtime.Execution
                 {
                     // The current value stays until it expires; the next miss retries the factory.
                     _metricsProvider.CacheError(methodName, $"Background refresh failed: {ex.Message}");
-                    flight.Fail(ex);
+
+                    // Callers that joined this refresh after the entry went logically stale get the fail-safe
+                    // value, exactly as they would from a foreground load.
+                    if (_failSafeDuration > 0 && !node.IsPhysicallyExpired(_engine.Now) && TryRead(node, out T? stale))
+                    {
+                        flight.Complete(stale);
+                    }
+                    else
+                    {
+                        flight.Fail(ex);
+                    }
                 }
                 finally
                 {
@@ -446,11 +458,13 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             var now = _engine.Now;
-            var lifetime = Math.Min(duration ?? policy.Duration ?? _defaultDuration, _maxDuration);
+            var lifetime = duration ?? policy.Duration ?? _defaultDuration;
             if (_jitter > 0)
             {
                 lifetime += Random.Shared.NextInt64(_jitter);
             }
+
+            lifetime = Math.Min(lifetime, _maxDuration); // after jitter, so MaxExpiration stays a hard upper bound
 
             var logicalExpiresAt = now + lifetime;
             var node = new ValueNode<T>(key, value)
