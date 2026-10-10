@@ -104,7 +104,9 @@ internal sealed class ConfigFilePolicySource : IPolicySource
             changes.Add(new PolicyChange(
                 SourceId,
                 methodId,
-                new CachePolicyDelta(draft.Fields, CachePolicyFields.None, draft.Policy),
+                // Carry the same contribution as the startup snapshot, so diagnostics keep attributing it to this source
+                new CachePolicyDelta(draft.Fields, CachePolicyFields.None,
+                    CachePolicyMapper.AttachContribution(draft.Policy, SourceId, draft.Fields, timestamp, draft.Metadata, draft.Notes)),
                 existed ? PolicyChangeReason.Updated : PolicyChangeReason.Added,
                 timestamp,
                 draft.Metadata));
@@ -140,6 +142,7 @@ internal sealed class ConfigFilePolicySource : IPolicySource
 
     private static bool SamePolicy(PolicyDraft left, PolicyDraft right)
         => left.Fields == right.Fields &&
+           string.Equals(left.Notes, right.Notes, StringComparison.Ordinal) &&
            left.Policy.Duration == right.Policy.Duration &&
            left.Policy.SlidingExpiration == right.Policy.SlidingExpiration &&
            left.Policy.RefreshAhead == right.Policy.RefreshAhead &&

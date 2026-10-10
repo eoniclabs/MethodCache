@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Registry;
+using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core;
 using MethodCache.Core.Infrastructure.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -88,6 +89,26 @@ public sealed class JsonPolicySourceTests
         Assert.Equal(TimeSpan.FromSeconds(30), registry.GetPolicy("Sample.Type.Method").Policy.SlidingExpiration);
         await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Added").Policy.Duration == TimeSpan.FromMinutes(3));
         await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Other").Policy.Duration == null);
+    }
+
+    [Fact]
+    public async Task ReloadedConfiguration_KeepsDiagnosticsAttribution_AndPicksUpNotes()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:01:00",
+            ["MethodCache:Services:Sample.Type.Method:Notes"] = "first"
+        });
+        await using var provider = BuildProvider(configuration);
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+        Assert.Equal("first", Assert.Single(registry.GetPolicy("Sample.Type.Method").Contributions).Notes);
+
+        configuration["MethodCache:Services:Sample.Type.Method:Notes"] = "second";
+        configuration.Reload();
+
+        await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Method").Contributions.Any(c => c.Notes == "second"));
+        var contribution = Assert.Single(registry.GetPolicy("Sample.Type.Method").Contributions);
+        Assert.Equal(PolicySourceIds.ConfigurationFiles, contribution.SourceId);
     }
 
     [Fact]
