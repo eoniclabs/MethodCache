@@ -179,6 +179,48 @@ public class TelemetryCacheManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task GetOrCreateFastAsync_RefreshAheadHit_IsMarkedAsHit()
+    {
+        var policy = CacheRuntimePolicy.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty, Abstractions.Policies.CachePolicyFields.None);
+        var activity = new Activity("test");
+        _activitySourceMock.Setup(x => x.StartCacheOperation("TestMethod", TracingConstants.Operations.Get)).Returns(activity);
+
+        // Like a refresh-ahead hit: the factory runs on the thread pool and the cached value returns at once.
+        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync("key", "TestMethod", It.IsAny<Func<Task<string>>>(), policy))
+            .Returns((string _, string _, Func<Task<string>> factory, CacheRuntimePolicy _) =>
+            {
+                Task.Run(factory).Wait();
+                return Task.FromResult("cached");
+            });
+
+        var result = await _telemetryCacheManager.GetOrCreateFastAsync("key", "TestMethod", () => Task.FromResult("fresh"), policy);
+
+        result.Should().Be("cached");
+        _activitySourceMock.Verify(x => x.SetCacheHit(activity, true), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetOrCreateFastAsync_AsyncMiss_IsMarkedAsMiss()
+    {
+        var policy = CacheRuntimePolicy.FromPolicy("test", Abstractions.Policies.CachePolicy.Empty, Abstractions.Policies.CachePolicyFields.None);
+        var activity = new Activity("test");
+        _activitySourceMock.Setup(x => x.StartCacheOperation("TestMethod", TracingConstants.Operations.Get)).Returns(activity);
+
+        // Like a remote store: the lookup completes asynchronously before the factory runs.
+        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync("key", "TestMethod", It.IsAny<Func<Task<string>>>(), policy))
+            .Returns(async (string _, string _, Func<Task<string>> factory, CacheRuntimePolicy _) =>
+            {
+                await Task.Yield();
+                return await factory();
+            });
+
+        var result = await _telemetryCacheManager.GetOrCreateFastAsync("key", "TestMethod", () => Task.FromResult("fresh"), policy);
+
+        result.Should().Be("fresh");
+        _activitySourceMock.Verify(x => x.SetCacheHit(activity, false), Times.Once);
+    }
+
+    [Fact]
     public async Task InvalidateByTagsAsync_RecordsMetrics()
     {
         // Arrange

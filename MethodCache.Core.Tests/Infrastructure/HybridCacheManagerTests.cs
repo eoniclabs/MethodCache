@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MethodCache.Core.Configuration;
+using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
@@ -67,7 +68,41 @@ public class HybridCacheManagerTests
         await act.Should().ThrowAsync<NotSupportedException>();
     }
 
-    private static HybridCacheManager CreateManager(IStorageProvider storageProvider)
+    [Fact]
+    public async Task GetOrCreateFastAsync_ReportsMissThenHit_ToMetricsProvider()
+    {
+        var storageProvider = Substitute.For<IStorageProvider>();
+        storageProvider.GetAsync<string>("key", Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<string?>((string?)null), new ValueTask<string?>("cached"));
+        var metrics = Substitute.For<ICacheMetricsProvider>();
+        var manager = CreateManager(storageProvider, metrics);
+        var policy = CacheRuntimePolicy.Empty("HybridMethod") with { Duration = TimeSpan.FromMinutes(1) };
+
+        await manager.GetOrCreateFastAsync("key", "HybridMethod", () => Task.FromResult("loaded"), policy);
+        await manager.GetOrCreateFastAsync("key", "HybridMethod", () => Task.FromResult("loaded"), policy);
+
+        metrics.Received(1).CacheMiss("HybridMethod");
+        metrics.Received(1).CacheHit("HybridMethod");
+        metrics.Received(1).CacheLatency("HybridMethod", Arg.Any<long>());
+    }
+
+    [Fact]
+    public async Task GetOrCreateFastAsync_WhenFactoryThrows_ReportsError()
+    {
+        var storageProvider = Substitute.For<IStorageProvider>();
+        storageProvider.GetAsync<string>("key", Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<string?>((string?)null));
+        var metrics = Substitute.For<ICacheMetricsProvider>();
+        var manager = CreateManager(storageProvider, metrics);
+        var policy = CacheRuntimePolicy.Empty("HybridMethod");
+
+        var act = () => manager.GetOrCreateFastAsync<string>("key", "HybridMethod", () => throw new InvalidOperationException("boom"), policy);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        metrics.Received(1).CacheError("HybridMethod", "boom");
+    }
+
+    private static HybridCacheManager CreateManager(IStorageProvider storageProvider, ICacheMetricsProvider? metrics = null)
     {
         var l1Storage = Substitute.For<IMemoryStorage>();
         var options = Microsoft.Extensions.Options.Options.Create(new StorageOptions());
@@ -76,6 +111,7 @@ public class HybridCacheManagerTests
             l1Storage,
             new DefaultCacheKeyGenerator(),
             NullLogger<HybridCacheManager>.Instance,
-            options);
+            options,
+            metricsProvider: metrics);
     }
 }

@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
 
@@ -5,12 +7,24 @@ namespace MethodCache.Core.Runtime.Execution
 {
     public class NoOpCacheManager : ICacheManager
     {
+        private readonly ICacheMetricsProvider? _metricsProvider;
+
+        public NoOpCacheManager()
+        {
+        }
+
+        /// <summary>Creates a cache manager that never caches and reports every call as a miss.</summary>
+        public NoOpCacheManager(ICacheMetricsProvider? metricsProvider)
+        {
+            _metricsProvider = metricsProvider;
+        }
+
         // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
         public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             // Always execute the factory, effectively disabling caching
-            return factory();
+            return RunAsync(methodName, factory);
         }
 
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
@@ -34,7 +48,29 @@ namespace MethodCache.Core.Runtime.Execution
         public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
         {
             // Always execute the factory, effectively disabling caching
-            return factory();
+            return RunAsync(methodName, factory);
+        }
+
+        private async Task<T> RunAsync<T>(string methodName, Func<Task<T>> factory)
+        {
+            if (_metricsProvider == null)
+            {
+                return await factory().ConfigureAwait(false);
+            }
+
+            _metricsProvider.CacheMiss(methodName);
+            var start = Stopwatch.GetTimestamp();
+            try
+            {
+                var result = await factory().ConfigureAwait(false);
+                _metricsProvider.CacheLatency(methodName, (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _metricsProvider.CacheError(methodName, ex.Message);
+                throw;
+            }
         }
 
         // ============= Invalidation methods =============
