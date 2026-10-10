@@ -8,7 +8,7 @@ namespace MethodCache.OpenTelemetry.Correlation;
 /// <summary>
 /// Middleware to automatically manage correlation contexts for HTTP requests
 /// </summary>
-public class CorrelationMiddleware
+internal class CorrelationMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IAdvancedCorrelationManager _correlationManager;

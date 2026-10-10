@@ -11,7 +11,7 @@ using MethodCache.OpenTelemetry.Configuration;
 
 namespace MethodCache.OpenTelemetry.Metrics;
 
-public interface ICacheMeterProvider
+internal interface ICacheMeterProvider
 {
     void RecordCacheHit(string methodName, Dictionary<string, object?>? tags = null);
     void RecordCacheMiss(string methodName, Dictionary<string, object?>? tags = null);
@@ -26,7 +26,7 @@ public interface ICacheMeterProvider
     void UpdateHitRatio(double ratio);
 }
 
-public class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, IDisposable
+internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, IDisposable
 {
     private readonly Meter _meter;
     private readonly OpenTelemetryOptions _options;

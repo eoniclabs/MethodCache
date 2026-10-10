@@ -12,7 +12,7 @@ namespace MethodCache.OpenTelemetry.Correlation;
 /// <summary>
 /// Types of operations that can be correlated
 /// </summary>
-public enum CorrelationType
+internal enum CorrelationType
 {
     HttpRequest,
     DatabaseQuery,
@@ -27,7 +27,7 @@ public enum CorrelationType
 /// <summary>
 /// Correlation context information
 /// </summary>
-public class CorrelationContext
+internal class CorrelationContext
 {
     public string CorrelationId { get; set; } = string.Empty;
     public string? ParentCorrelationId { get; set; }
@@ -45,7 +45,7 @@ public class CorrelationContext
 /// <summary>
 /// Advanced correlation tracking options
 /// </summary>
-public class AdvancedCorrelationOptions
+internal class AdvancedCorrelationOptions
 {
     /// <summary>
     /// Enable automatic correlation for database queries
@@ -96,7 +96,7 @@ public class AdvancedCorrelationOptions
 /// <summary>
 /// Interface for advanced correlation management
 /// </summary>
-public interface IAdvancedCorrelationManager
+internal interface IAdvancedCorrelationManager
 {
     /// <summary>
     /// Starts a new correlation context
@@ -152,7 +152,7 @@ public interface IAdvancedCorrelationManager
 /// <summary>
 /// Advanced correlation manager implementation
 /// </summary>
-public class AdvancedCorrelationManager : IAdvancedCorrelationManager, IDisposable
+internal class AdvancedCorrelationManager : IAdvancedCorrelationManager, IDisposable
 {
     private readonly AdvancedCorrelationOptions _options;
     private readonly ILogger<AdvancedCorrelationManager> _logger;

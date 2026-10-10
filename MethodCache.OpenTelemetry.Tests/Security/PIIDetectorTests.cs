@@ -168,15 +168,18 @@ public class PIIRedactorTests
     }
 
     [Theory]
-    [InlineData("Contact me at john.doe@example.com", PIIRedactionStrategy.Mask, "********")]
-    [InlineData("Call 555-123-4567", PIIRedactionStrategy.PartialMask, "*")]
-    [InlineData("Email: test@domain.com", PIIRedactionStrategy.Placeholder, "<REDACTED>")]
-    [InlineData("Send to user@example.org", PIIRedactionStrategy.Remove, "")]
+    [InlineData("Contact me at john.doe@example.com", nameof(PIIRedactionStrategy.Mask), "********")]
+    [InlineData("Call 555-123-4567", nameof(PIIRedactionStrategy.PartialMask), "*")]
+    [InlineData("Email: test@domain.com", nameof(PIIRedactionStrategy.Placeholder), "<REDACTED>")]
+    [InlineData("Send to user@example.org", nameof(PIIRedactionStrategy.Remove), "")]
     public void RedactPII_WithDifferentStrategies_ReturnsExpectedResults(
         string input,
-        PIIRedactionStrategy strategy,
+        string strategyName,
         string expectedPattern)
     {
+        // PIIRedactionStrategy is internal, so a public theory cannot take it as a parameter
+        var strategy = System.Enum.Parse<PIIRedactionStrategy>(strategyName);
+
         // Act
         var result = _redactor.RedactDetectedPII(input, _detector.DetectPII(input), strategy);
 

@@ -10,7 +10,7 @@ namespace MethodCache.OpenTelemetry.Security;
 /// <summary>
 /// Enhanced security options for OpenTelemetry
 /// </summary>
-public class SecurityOptions
+internal class SecurityOptions
 {
     /// <summary>
     /// Enable automatic PII detection and redaction
@@ -74,7 +74,7 @@ public class SecurityOptions
 /// <summary>
 /// Security-enhanced activity source that automatically redacts PII
 /// </summary>
-public class SecurityEnhancedActivitySource : ICacheActivitySource
+internal class SecurityEnhancedActivitySource : ICacheActivitySource
 {
     private readonly ICacheActivitySource _innerActivitySource;
     private readonly IPIIDetector _piiDetector;
@@ -262,7 +262,7 @@ public class SecurityEnhancedActivitySource : ICacheActivitySource
 /// <summary>
 /// Interface for encrypting sensitive attributes
 /// </summary>
-public interface IAttributeEncryptor
+internal interface IAttributeEncryptor
 {
     /// <summary>
     /// Encrypts a value for storage in telemetry
@@ -278,7 +278,7 @@ public interface IAttributeEncryptor
 /// <summary>
 /// Simple AES-based attribute encryptor
 /// </summary>
-public class AESAttributeEncryptor : IAttributeEncryptor
+internal class AESAttributeEncryptor : IAttributeEncryptor
 {
     private readonly byte[] _key;
 

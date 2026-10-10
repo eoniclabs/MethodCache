@@ -8,7 +8,7 @@ using MethodCache.OpenTelemetry.Configuration;
 
 namespace MethodCache.OpenTelemetry.Tracing;
 
-public interface ICacheActivitySource
+internal interface ICacheActivitySource
 {
     Activity? StartActivity(string operationName, ActivityKind kind = ActivityKind.Internal);
     Activity? StartCacheOperation(string methodName, string operation = TracingConstants.Operations.Get);
@@ -20,7 +20,7 @@ public interface ICacheActivitySource
     void RecordException(Activity? activity, Exception exception);
 }
 
-public class CacheActivitySource : ICacheActivitySource
+internal class CacheActivitySource : ICacheActivitySource
 {
     private readonly OpenTelemetryOptions _options;
     private readonly ActivitySource _activitySource;

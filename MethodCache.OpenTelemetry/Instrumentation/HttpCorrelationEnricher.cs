@@ -8,7 +8,7 @@ using MethodCache.OpenTelemetry.Tracing;
 
 namespace MethodCache.OpenTelemetry.Instrumentation;
 
-public interface IHttpCorrelationEnricher
+internal interface IHttpCorrelationEnricher
 {
     void EnrichWithHttpContext(Activity? activity);
     void EnrichFromHttpContext(Activity? activity, HttpContext? httpContext);
@@ -17,7 +17,7 @@ public interface IHttpCorrelationEnricher
     string? GetSpanId();
 }
 
-public class HttpCorrelationEnricher : IHttpCorrelationEnricher
+internal class HttpCorrelationEnricher : IHttpCorrelationEnricher
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -124,7 +124,7 @@ public class HttpCorrelationEnricher : IHttpCorrelationEnricher
     }
 }
 
-public class HttpCorrelationMiddleware
+internal class HttpCorrelationMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IHttpCorrelationEnricher _enricher;

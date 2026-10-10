@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using MethodCache.Core;
 using MethodCache.Core.Infrastructure;
@@ -111,25 +110,6 @@ public static class ServiceCollectionExtensions
                 return new InstrumentedStorageProvider(inner, activitySource, meterProvider, providerName);
             });
         }
-
-        return services;
-    }
-
-    public static IServiceCollection AddOpenTelemetryWithMethodCache(
-        this IServiceCollection services,
-        Action<OpenTelemetryOptions>? configureMethodCache = null)
-    {
-        services.AddMethodCacheOpenTelemetry(configureMethodCache);
-
-        services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource
-                .AddService(
-                    serviceName: "MethodCache",
-                    serviceVersion: TracingConstants.ActivitySourceVersion))
-            .WithTracing(tracing => tracing
-                .AddMethodCacheInstrumentation())
-            .WithMetrics(metrics => metrics
-                .AddMethodCacheInstrumentation());
 
         return services;
     }
