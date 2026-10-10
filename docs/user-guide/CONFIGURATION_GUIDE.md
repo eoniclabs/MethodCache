@@ -210,7 +210,7 @@ await configurator.ClearAsync();
 | `GetOverridesAsync()` / `GetOverrideAsync(methodId)` | Returns the active overrides. |
 | `WatchAsync(cancellationToken)` | Streams override changes. |
 
-`RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is stored with the override for auditing; MethodCache does not remove an override when `ExpiresAt` passes.
+`RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is stored with the override for auditing. An override whose `ExpiresAt` has passed is removed the next time the runtime configurator is used. There is no timer, so until then the expired override stays in effect.
 
 Runtime overrides are held in memory. They are lost on restart and are not shared between instances, so persist and replay them yourself if you need that. Overrides cannot disable caching for a method: `WithDuration` requires a positive duration. To get rid of stale data, invalidate it instead (see below).
 
