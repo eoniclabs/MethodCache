@@ -248,8 +248,8 @@ namespace MethodCache.Core.Tests.Core
 
             Assert.Equal(key1, key2);
             Assert.NotEqual(key1, key3);
-            Assert.Contains("_v1", key1);
-            Assert.Contains("_v2", key3);
+            Assert.StartsWith("Method4:v1:", key1);
+            Assert.StartsWith("Method4:v2:", key3);
         }
 
         [Fact]
