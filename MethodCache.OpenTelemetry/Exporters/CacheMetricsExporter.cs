@@ -9,7 +9,7 @@ namespace MethodCache.OpenTelemetry.Exporters;
 /// <summary>
 /// Represents a cache metrics data point for export
 /// </summary>
-public class CacheMetricData
+internal class CacheMetricData
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -24,7 +24,7 @@ public class CacheMetricData
 /// <summary>
 /// Types of metrics
 /// </summary>
-public enum MetricType
+internal enum MetricType
 {
     Counter,
     Histogram,
@@ -34,7 +34,7 @@ public enum MetricType
 /// <summary>
 /// Interface for exporters that handle cache metrics
 /// </summary>
-public interface ICacheMetricsExporter : ICacheExporter<CacheMetricData>
+internal interface ICacheMetricsExporter : ICacheExporter<CacheMetricData>
 {
     /// <summary>
     /// Gets the supported metric types
@@ -45,7 +45,7 @@ public interface ICacheMetricsExporter : ICacheExporter<CacheMetricData>
 /// <summary>
 /// Abstract base class for cache metrics exporters
 /// </summary>
-public abstract class CacheMetricsExporterBase : CacheExporterBase<CacheMetricData>, ICacheMetricsExporter
+internal abstract class CacheMetricsExporterBase : CacheExporterBase<CacheMetricData>, ICacheMetricsExporter
 {
     protected CacheMetricsExporterBase(CacheExporterOptions options) : base(options)
     {
@@ -62,7 +62,7 @@ public abstract class CacheMetricsExporterBase : CacheExporterBase<CacheMetricDa
 /// <summary>
 /// Custom metrics exporter that allows users to implement their own export logic
 /// </summary>
-public class CustomMetricsExporter : CacheMetricsExporterBase
+internal class CustomMetricsExporter : CacheMetricsExporterBase
 {
     private readonly Func<IEnumerable<CacheMetricData>, CancellationToken, Task<ExportResult>> _exportFunc;
     private readonly IReadOnlySet<MetricType> _supportedTypes;
@@ -119,7 +119,7 @@ public class CustomMetricsExporter : CacheMetricsExporterBase
 /// <summary>
 /// Factory for creating cache metrics exporters
 /// </summary>
-public interface ICacheMetricsExporterFactory
+internal interface ICacheMetricsExporterFactory
 {
     /// <summary>
     /// Creates a metrics exporter by name
@@ -140,7 +140,7 @@ public interface ICacheMetricsExporterFactory
 /// <summary>
 /// Default implementation of metrics exporter factory
 /// </summary>
-public class CacheMetricsExporterFactory : ICacheMetricsExporterFactory
+internal class CacheMetricsExporterFactory : ICacheMetricsExporterFactory
 {
     private readonly Dictionary<string, Func<CacheExporterOptions, ICacheMetricsExporter>> _factories = new();
 

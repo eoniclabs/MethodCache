@@ -32,4 +32,10 @@
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.OpenTelemetry.Tests" />
+    <!-- Lets Moq proxy internal interfaces in the tests -->
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
 </Project>

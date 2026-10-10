@@ -10,7 +10,7 @@ namespace MethodCache.OpenTelemetry.Security;
 /// <summary>
 /// Strategies for handling detected PII
 /// </summary>
-public enum PIIRedactionStrategy
+internal enum PIIRedactionStrategy
 {
     /// <summary>
     /// Remove the entire field/value containing PII
@@ -42,7 +42,7 @@ public enum PIIRedactionStrategy
 /// Types of PII that can be detected
 /// </summary>
 [Flags]
-public enum PIIType
+internal enum PIIType
 {
     None = 0,
     EmailAddress = 1,
@@ -61,7 +61,7 @@ public enum PIIType
 /// <summary>
 /// Represents detected PII in a string
 /// </summary>
-public class PIIDetection
+internal class PIIDetection
 {
     public PIIType Type { get; set; }
     public string Value { get; set; } = string.Empty;
@@ -74,7 +74,7 @@ public class PIIDetection
 /// <summary>
 /// Interface for detecting PII in strings
 /// </summary>
-public interface IPIIDetector
+internal interface IPIIDetector
 {
     /// <summary>
     /// Detects PII in the given text
@@ -95,7 +95,7 @@ public interface IPIIDetector
 /// <summary>
 /// Regex-based PII detector implementation
 /// </summary>
-public class RegexPIIDetector : IPIIDetector
+internal class RegexPIIDetector : IPIIDetector
 {
     private readonly Dictionary<PIIType, List<PIIPattern>> _patterns;
     private readonly double _confidenceThreshold;
@@ -209,7 +209,7 @@ public class RegexPIIDetector : IPIIDetector
 /// <summary>
 /// Interface for redacting PII from strings
 /// </summary>
-public interface IPIIRedactor
+internal interface IPIIRedactor
 {
     /// <summary>
     /// Redacts PII from the given text
@@ -225,7 +225,7 @@ public interface IPIIRedactor
 /// <summary>
 /// Default PII redactor implementation
 /// </summary>
-public class PIIRedactor : IPIIRedactor
+internal class PIIRedactor : IPIIRedactor
 {
     private readonly IPIIDetector _detector;
     private readonly PIIRedactionStrategy _defaultStrategy;

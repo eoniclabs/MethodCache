@@ -18,7 +18,7 @@ namespace MethodCache.OpenTelemetry.HotReload;
 /// <summary>
 /// Implementation of configuration reload manager with hot reload support
 /// </summary>
-public class ConfigurationReloadManager : IConfigurationReloadManager, IDisposable
+internal class ConfigurationReloadManager : IConfigurationReloadManager, IDisposable
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<ConfigurationReloadManager> _logger;

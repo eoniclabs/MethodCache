@@ -146,25 +146,6 @@ public class OrderController : ControllerBase
 }
 ```
 
-### Custom Metrics Collection
-
-```csharp
-public class CustomCacheMetrics
-{
-    private readonly ICacheMeterProvider _meterProvider;
-
-    public void RecordCustomOperation(string methodName, double duration)
-    {
-        _meterProvider.RecordOperationDuration(methodName, duration,
-            new Dictionary<string, object?>
-            {
-                ["custom_tag"] = "value",
-                ["operation_type"] = "batch"
-            });
-    }
-}
-```
-
 ## Trace Attributes
 
 Each cache operation span includes these attributes:

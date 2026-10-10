@@ -22,7 +22,7 @@ namespace MethodCache.OpenTelemetry.Instrumentation;
 /// decorators report them through <see cref="MethodCache.Core.Infrastructure.ICacheMetricsProvider"/>, which
 /// <see cref="CacheMeterProvider"/> implements. Recording them here as well would count every call twice.
 /// </remarks>
-public class TelemetryCacheManager : ICacheManager
+internal class TelemetryCacheManager : ICacheManager
 {
     private readonly ICacheManager _innerManager;
     private readonly ICacheActivitySource _activitySource;
