@@ -329,6 +329,9 @@ namespace MethodCache.Core.Runtime.Execution
 
         private async Task<T> LoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy)
         {
+            // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
+            var previous = _failSafeDuration > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
+
             var flight = new Flight(policy.Tags);
             Flight existing;
             while (true)
@@ -385,7 +388,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 _metricsProvider.CacheError(methodName, ex.Message);
 
-                if (_failSafeDuration > 0 && TryGetStale<T>(key, out var stale))
+                if (previous != null && !flight.Invalidated && TryServeStale<T>(previous, out var stale))
                 {
                     flight.Complete(stale);
                     return stale!;
@@ -565,10 +568,10 @@ namespace MethodCache.Core.Runtime.Execution
             return true;
         }
 
-        private bool TryGetStale<T>(string key, out T? value)
+        private bool TryServeStale<T>(Node node, out T? value)
         {
             var now = _engine.Now;
-            if (_engine.TryPeek(key, out var node) && !node.IsPhysicallyExpired(now) && TryRead(node, out value))
+            if (!node.IsPhysicallyExpired(now) && TryRead(node, out value))
             {
                 // Serve the stale value for a short while before trying the factory again.
                 Volatile.Write(ref node.LogicalExpiresAt, now + _failSafeThrottle);

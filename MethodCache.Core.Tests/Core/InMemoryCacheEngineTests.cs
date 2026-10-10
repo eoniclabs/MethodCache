@@ -217,6 +217,26 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task FailSafe_LeavesAWriteMadeDuringTheFailedLoadUntouched()
+    {
+        var manager = CreateManager(o => o.EnableFailSafe = true);
+        var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), Policy());
+        _time.Advance(TimeSpan.FromMinutes(2));
+
+        var load = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, Policy());
+        await manager.SetAsync("key", "newer", TimeSpan.FromMinutes(10));
+        gate.SetException(new TimeoutException());
+
+        await FluentActions.Awaiting(() => load).Should().ThrowAsync<TimeoutException>();
+
+        // The fail-safe throttle must not have shortened the newer entry's lifetime.
+        _time.Advance(TimeSpan.FromMinutes(5));
+        (await manager.GetAsync<string>("key")).Should().Be("newer");
+    }
+
+    [Fact]
     public async Task FailSafe_AppliesToCallersJoiningAFailedBackgroundRefresh()
     {
         var manager = CreateManager(o => o.EnableFailSafe = true);
