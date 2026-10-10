@@ -12,6 +12,23 @@ namespace MethodCache.Core.Tests.Core;
 public class InMemoryCacheManagerTests
 {
     [Fact]
+    public async Task TryGetFastTask_ReturnsTheSameCompletedTask_ForEveryHit()
+    {
+        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var policy = CacheRuntimePolicy.Empty("MethodTask") with { Duration = TimeSpan.FromMinutes(1) };
+
+        manager.TryGetFastTask<string>("key", out _).Should().BeFalse();
+        await manager.GetOrCreateFastAsync("key", "MethodTask", () => Task.FromResult("value"), policy);
+
+        manager.TryGetFastTask<string>("key", out var first).Should().BeTrue();
+        manager.TryGetFastTask<string>("key", out var second).Should().BeTrue();
+
+        first!.IsCompletedSuccessfully.Should().BeTrue();
+        first.Result.Should().Be("value");
+        second.Should().BeSameAs(first);
+    }
+
+    [Fact]
     public async Task GetOrCreateAsync_WithDefaultValueTypeResult_ExecutesFactoryOnMiss()
     {
         var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());

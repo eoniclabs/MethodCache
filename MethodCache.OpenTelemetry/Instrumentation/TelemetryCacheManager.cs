@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -140,6 +141,11 @@ internal class TelemetryCacheManager : ICacheManager
     public bool TryGetFast<T>(string cacheKey, out T? value)
     {
         return _innerManager.TryGetFast(cacheKey, out value);
+    }
+
+    public bool TryGetFastTask<T>(string cacheKey, [NotNullWhen(true)] out Task<T>? task)
+    {
+        return _innerManager.TryGetFastTask(cacheKey, out task);
     }
 
     public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)

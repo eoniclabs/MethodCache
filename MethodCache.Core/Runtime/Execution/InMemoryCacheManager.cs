@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using MethodCache.Core.Configuration;
 using MethodCache.Core.Infrastructure;
@@ -152,8 +153,32 @@ namespace MethodCache.Core.Runtime.Execution
         /// </summary>
         public bool TryGetFast<T>(string cacheKey, out T? value)
         {
+            if (TryGetFastNode(cacheKey, out value, out _))
+            {
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        public bool TryGetFastTask<T>(string cacheKey, [NotNullWhen(true)] out Task<T>? task)
+        {
+            if (TryGetFastNode<T>(cacheKey, out var value, out var node))
+            {
+                // The entry keeps its completed task, so repeated hits return the same instance
+                task = node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
+                return true;
+            }
+
+            task = null;
+            return false;
+        }
+
+        private bool TryGetFastNode<T>(string cacheKey, out T? value, out Node? node)
+        {
             if (_options.EnableFastPath
-                && TryGetFresh(cacheKey, _engine.Now, out value, out var node, out var refreshDue)
+                && TryGetFresh(cacheKey, _engine.Now, out value, out node, out var refreshDue)
                 && !(refreshDue && Volatile.Read(ref node!.RefreshState) == 0))
             {
                 if (_options.FastPathTrackMetrics && _options.EnableStatistics)
@@ -165,6 +190,7 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             value = default;
+            node = null;
             return false;
         }
 

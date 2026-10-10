@@ -377,13 +377,16 @@ namespace MethodCache.SourceGenerator
                 var type = Utils.GetReturnTypeForSignature(valueType);
                 var call = BuildMethodCall(method);
 
-                sb.AppendLine($"            if (_cacheManager.TryGetFast<{type}>(cacheKeyValue, out var cachedValue))");
+                // Task methods get the entry's completed task back, so a hit does not allocate a new Task
+                sb.AppendLine(kind == ResultKind.Task
+                    ? $"            if (_cacheManager.TryGetFastTask<{type}>(cacheKeyValue, out var cachedTask))"
+                    : $"            if (_cacheManager.TryGetFast<{type}>(cacheKeyValue, out var cachedValue))");
                 sb.AppendLine("            {");
                 sb.AppendLine($"                _metricsProvider?.CacheHit(_method_{safeFieldName}.Name);");
                 switch (kind)
                 {
                     case ResultKind.Task:
-                        sb.AppendLine($"                return Task.FromResult<{type}>(cachedValue!);");
+                        sb.AppendLine("                return cachedTask;");
                         break;
                     case ResultKind.ValueTask:
                         sb.AppendLine($"                return new ValueTask<{type}>(cachedValue!);");
