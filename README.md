@@ -56,11 +56,13 @@ public interface IUserService
 ### 3. Register MethodCache
 
 ```csharp
-builder.Services.AddMethodCache(config =>
-{
-    config.DefaultDuration(TimeSpan.FromMinutes(10))
-          .DefaultKeyGenerator<FastHashKeyGenerator>();
-});
+builder.Services.AddMethodCache();
+```
+
+This scans the calling assembly, registers `UserService` and wraps `IUserService` in its generated cache decorator, so you do not register the service yourself. If your attributed interfaces live in another project, pass that assembly instead:
+
+```csharp
+builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly);
 ```
 
 That is enough to enable source-generated cache decorators for attributed methods.

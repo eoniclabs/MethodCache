@@ -11,7 +11,7 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Decorator Emitter ========================
-        private static void EmitTagInvalidation(StringBuilder sb, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags, string indent)
+        private static void EmitTagInvalidation(StringBuilder sb, IMethodSymbol method, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags, string indent)
         {
             sb.AppendLine($"{indent}var allTags = new List<string>();");
 
@@ -33,7 +33,15 @@ namespace MethodCache.SourceGenerator
                 sb.Append($"{indent}allTags.Add(string.Format(\"{template}\"");
                 foreach (var paramName in paramNames)
                 {
-                    sb.Append($", {paramName}?.ToString() ?? \"null\"");
+                    var parameter = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                    var isNonNullableValueType = parameter != null &&
+                                                 parameter.Type.IsValueType &&
+                                                 parameter.Type.OriginalDefinition.SpecialType != SpecialType.System_Nullable_T;
+
+                    // '?.' does not compile on non-nullable value types such as int or Guid
+                    sb.Append(isNonNullableValueType
+                        ? $", {paramName}.ToString()"
+                        : $", {paramName}?.ToString() ?? \"null\"");
                 }
                 sb.AppendLine("));");
             }
@@ -858,7 +866,7 @@ namespace MethodCache.SourceGenerator
                 // Invalidate cache AFTER successful execution
                 if (staticTags.Any() || dynamicTags.Any())
                 {
-                    EmitTagInvalidation(sb, staticTags, dynamicTags, "                ");
+                    EmitTagInvalidation(sb, method, staticTags, dynamicTags, "                ");
                     sb.AppendLine("                await _cacheManager.InvalidateByTagsAsync(allTags.ToArray()).ConfigureAwait(false);");
                 }
 
@@ -892,7 +900,7 @@ namespace MethodCache.SourceGenerator
                 // Invalidate cache AFTER successful execution
                 if (staticTags.Any() || dynamicTags.Any())
                 {
-                    EmitTagInvalidation(sb, staticTags, dynamicTags, "                ");
+                    EmitTagInvalidation(sb, method, staticTags, dynamicTags, "                ");
                     sb.AppendLine("                _cacheManager.InvalidateByTagsAsync(allTags.ToArray()).GetAwaiter().GetResult();");
                 }
 
