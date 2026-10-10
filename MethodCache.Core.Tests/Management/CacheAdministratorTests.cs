@@ -86,6 +86,34 @@ public class CacheAdministratorTests
     }
 
     [Fact]
+    public async Task RemoveEntry_ReturnsFalse_ForAnEntryThatHasExpired()
+    {
+        await using var provider = BuildProvider();
+        var memory = provider.GetRequiredService<IMemoryCache>();
+        var admin = provider.GetRequiredService<ICacheAdministrator>();
+
+        await memory.SetAsync("short", "value", TimeSpan.FromMilliseconds(50));
+        await Task.Delay(200);
+
+        Assert.Null(admin.GetEntry("short"));
+        Assert.False(await admin.RemoveEntryAsync("short"));
+    }
+
+    [Fact]
+    public async Task EntryTags_AreASnapshot()
+    {
+        await using var provider = BuildProvider();
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var admin = provider.GetRequiredService<ICacheAdministrator>();
+        await cache.GetOrCreateFastAsync("docs:1", "Docs", () => Task.FromResult("doc-1"), TaggedPolicy);
+
+        ((string[])admin.GetEntry("docs:1")!.Tags)[0] = "changed";
+
+        Assert.Equal(new[] { "docs" }, admin.GetEntry("docs:1")!.Tags);
+        Assert.Single(admin.ListEntries(tag: "docs"));
+    }
+
+    [Fact]
     public async Task GetMethods_ReportsTheEffectivePolicyAndItsSources()
     {
         await using var provider = BuildProvider();

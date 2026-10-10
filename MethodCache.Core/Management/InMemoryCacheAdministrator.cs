@@ -67,11 +67,16 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         return engine.TryPeek(key, out var node) && IsLive(node, now) ? Describe(node, now) : null;
     }
 
-    public ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(key);
         cancellationToken.ThrowIfCancellationRequested();
-        return _cache.RemoveAsync(key);
+
+        // An expired entry still in the map is removed too, but it was not cached, so it reports false like GetEntry.
+        var engine = _cache.Engine;
+        var wasLive = engine.TryPeek(key, out var node) && IsLive(node, engine.Now);
+        var removed = await _cache.RemoveAsync(key).ConfigureAwait(false);
+        return removed && wasLive;
     }
 
     public Task InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken cancellationToken = default)
@@ -122,7 +127,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             node.BoxedValue?.GetType().FullName,
             TimeSpan.FromTicks(Math.Max(0, now - node.CreatedAt) / NanosPerTick),
             remaining >= NoExpiryThreshold ? null : TimeSpan.FromTicks(remaining / NanosPerTick),
-            node.Tags ?? Array.Empty<string>(),
+            node.Tags?.ToArray() ?? Array.Empty<string>(),
             node.Weight);
     }
 }
