@@ -28,9 +28,9 @@ The same servers as Skribera, over Tailscale:
 
 | Server | Role |
 |---|---|
-| Megatron (macOS) | coordinator; runs `jobs.sh build unit` itself |
+| Megatron (macOS, `johan@100.118.149.97`) | coordinator; runs `jobs.sh build unit` itself with the SDKs in `/usr/local/share/dotnet` |
 | Nimbus (Linux, `agent-admin@100.103.39.117`) | `linux.sh` in Docker, under `~/methodcache-ci`. It holds Skribera's capacity lease `/srv/skribera-ci/ci-build-capacity.lock` shared, so Skribera's image builds wait for it |
-| baloo (Windows, `bldr@baloo`) | `windows.ps1`, under `C:\mc` |
+| baloo (Windows, `bldr@baloo`) | `windows.ps1`, under `C:\mc`. The .NET 8, 9 and 10 SDKs are installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
 
 Every minute the coordinator looks at the head of `main` and every open pull request from this repository. Each
 commit without a result runs on all three servers, one commit at a time. Each server keeps a mirror of the

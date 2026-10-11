@@ -9,6 +9,9 @@
 # Settings go in ~/.config/methodcache-ci/env (written with the defaults on first install).
 set -euo pipefail
 
+# Over SSH, macOS does not run a login shell: add Homebrew (gh) and the .NET SDKs to PATH
+export PATH="/opt/homebrew/bin:/usr/local/share/dotnet:/usr/local/bin:$PATH"
+
 label=com.eoniclabs.methodcache.ci
 plist="$HOME/Library/LaunchAgents/$label.plist"
 install_dir="$HOME/.local/share/methodcache-ci"
@@ -48,7 +51,6 @@ sdks_ok() { # the `dotnet --list-sdks` output on stdin has 8, 9 and 10
   for major in 8 9 10; do grep -q "^$major\." <<< "$sdks" || return 1; done
 }
 local_sdks() { dotnet --list-sdks | sdks_ok; }
-windows_sdks() { ssh -o BatchMode=yes "$windows" "dotnet --list-sdks" | sdks_ok; }
 
 echo "This Mac ($(hostname -s))"
 check "gh is signed in" gh auth status
@@ -62,7 +64,7 @@ echo "baloo ($windows)"
 check "SSH" ssh -o BatchMode=yes -o ConnectTimeout=15 "$windows" "powershell -NoProfile -Command exit 0"
 check "git" ssh -o BatchMode=yes "$windows" "git --version"
 check "tar" ssh -o BatchMode=yes "$windows" "tar --version"
-check ".NET SDKs 8, 9 and 10" windows_sdks
+echo "  (baloo's .NET SDKs: each Windows run installs any missing SDK under C:\\mc\\dotnet itself, without administrator rights)"
 
 if [ "${1:-}" = --check ]; then exit "$problems"; fi
 if [ "$problems" -ne 0 ]; then
@@ -74,7 +76,7 @@ mkdir -p "$install_dir" "$state" "$HOME/Library/LaunchAgents"
 install -m 755 "$here/coordinator.sh" "$install_dir/coordinator.sh"
 git -C "$here" rev-parse HEAD > "$install_dir/installed-from" 2> /dev/null || true
 
-# launchd starts with a minimal PATH; keep the one gh, git and dotnet were found on
+# launchd starts with a minimal PATH; the coordinator adds Homebrew and .NET itself, this keeps the rest
 cat > "$plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

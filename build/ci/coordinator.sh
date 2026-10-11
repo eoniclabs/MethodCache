@@ -17,6 +17,9 @@
 # request cannot change how it is tested. Settings come from ~/.config/methodcache-ci/env (see the installer).
 set -uo pipefail
 
+# launchd and non-login SSH sessions on macOS do not see Homebrew (gh) or the .NET SDKs
+export PATH="/opt/homebrew/bin:/usr/local/share/dotnet:/usr/local/bin:$PATH"
+
 config="${METHODCACHE_CI_CONFIG:-$HOME/.config/methodcache-ci/env}"
 # shellcheck source=/dev/null
 [ -f "$config" ] && . "$config"
@@ -97,34 +100,64 @@ SCRIPT
 }
 
 run_windows() { # sha run_id results_dir
-  local root=$windows_root
-  local script
-  script=$(cat <<SCRIPT
-\$ErrorActionPreference = 'Stop'
-New-Item -ItemType Directory -Force -Path '$root\\runs' | Out-Null
-Set-Location '$root'
-function Invoke-Git { git @args; if (\$LASTEXITCODE -ne 0) { exit \$LASTEXITCODE } }
-if (-not (Test-Path mirror.git)) { Invoke-Git clone --quiet --mirror '$clone_url' mirror.git }
-Invoke-Git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
-Get-ChildItem runs -Directory | Where-Object { \$_.LastWriteTime -lt (Get-Date).AddDays(-$keep_runs_days) } |
+  local body script
+  # A quoted heredoc, so no PowerShell $ needs escaping (read, not $(cat ...), which macOS's bash 3.2 misparses)
+  IFS= read -r -d '' body <<'SCRIPT' || true
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+New-Item -ItemType Directory -Force -Path (Join-Path $Root 'runs') | Out-Null
+Set-Location $Root
+function Invoke-Native { & $args[0] $args[1..($args.Count - 1)]; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+
+# The .NET 8, 9 and 10 SDKs in a folder of our own, so CI needs no administrator and leaves the machine's alone
+$dotnet = Join-Path $Root 'dotnet'
+$sdks = if (Test-Path "$dotnet\dotnet.exe") { & "$dotnet\dotnet.exe" --list-sdks } else { @() }
+foreach ($channel in '8.0', '9.0', '10.0') {
+    if (-not ($sdks -match "^$([regex]::Escape($channel))\.")) {
+        if (-not (Test-Path dotnet-install.ps1)) { Invoke-WebRequest -UseBasicParsing https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1 }
+        & powershell -NoProfile -ExecutionPolicy Bypass -File dotnet-install.ps1 -Channel $channel -InstallDir $dotnet -NoPath
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+}
+$env:DOTNET_ROOT = $dotnet
+$env:DOTNET_MULTILEVEL_LOOKUP = '0'
+$env:PATH = "$dotnet;$env:PATH"
+
+if (-not (Test-Path mirror.git)) { Invoke-Native git clone --quiet --mirror $CloneUrl mirror.git }
+Invoke-Native git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
+Get-ChildItem runs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$KeepDays) } |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-\$run = 'runs\\$2'
-if (Test-Path \$run) { Remove-Item -Recurse -Force \$run }
-Invoke-Git -c core.longpaths=true clone --quiet --no-checkout mirror.git \$run
-Invoke-Git -C \$run -c core.longpaths=true checkout --quiet --detach '$1'
-\$env:METHODCACHE_CI_RESULTS = Join-Path (Resolve-Path \$run) 'artifacts\\ci'
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path \$run 'build\\ci\\windows.ps1')
-exit \$LASTEXITCODE
+$run = Join-Path $Root "runs\$RunId"
+if (Test-Path $run) { Remove-Item -Recurse -Force $run }
+Invoke-Native git -c core.longpaths=true clone --quiet --no-checkout mirror.git $run
+Invoke-Native git -C $run -c core.longpaths=true checkout --quiet --detach $Sha
+
+$results = Join-Path $run 'artifacts\ci'
+$env:METHODCACHE_CI_RESULTS = $results
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $run 'build\ci\windows.ps1')
+$code = $LASTEXITCODE
+
+# The job logs come back as base64 text between two markers: text survives the PowerShell of the SSH session
+if (Test-Path $results) {
+    $zip = "$results.zip"
+    Compress-Archive -Path "$results\*" -DestinationPath $zip -Force
+    '@@methodcache-logs-begin@@'
+    [Convert]::ToBase64String([IO.File]::ReadAllBytes($zip), 'InsertLineBreaks')
+    '@@methodcache-logs-end@@'
+}
+exit $code
 SCRIPT
-)
+  script="\$Root = '$windows_root'; \$Sha = '$1'; \$RunId = '$2'; \$CloneUrl = '$clone_url'; \$KeepDays = $keep_runs_days
+$body"
   local encoded
   encoded=$(printf '%s' "$script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')
   with_timeout "$timeout_seconds" ssh -o BatchMode=yes "$windows" "powershell -NoProfile -EncodedCommand $encoded" \
-    < /dev/null > "$3/console.log" 2>&1
+    < /dev/null > "$3/output.log" 2>&1
   local code=$?
-  # Windows has tar.exe; the job logs come back whatever happened
-  ssh -o BatchMode=yes "$windows" "tar -cf - -C $root\\runs\\$2\\artifacts\\ci ." < /dev/null 2> /dev/null \
-    | tar -xf - -C "$3" 2> /dev/null
+  sed '/^@@methodcache-logs-begin@@/,/^@@methodcache-logs-end@@/d' "$3/output.log" > "$3/console.log"
+  sed -n '/^@@methodcache-logs-begin@@/,/^@@methodcache-logs-end@@/p' "$3/output.log" | sed '1d;$d' | tr -d '\r' \
+    | base64 --decode > "$3/logs.zip" 2> /dev/null && unzip -o -q "$3/logs.zip" -d "$3" 2> /dev/null
+  rm -f "$3/output.log" "$3/logs.zip"
   return "$code"
 }
 
