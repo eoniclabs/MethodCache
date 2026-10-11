@@ -26,7 +26,7 @@ public static class CachePolicyMapper
             throw new ArgumentNullException(nameof(policy));
         }
 
-        var contribution = new PolicyContribution(sourceId, fields, PolicyContributionKind.Set, timestamp, metadata, notes);
+        var contribution = new PolicyContribution(sourceId, fields, timestamp, metadata, notes);
         var provenance = policy.Provenance.Append(contribution);
         return policy with { Provenance = provenance };
     }
@@ -36,7 +36,7 @@ public static class CachePolicyMapper
     /// </summary>
     /// <param name="policy">The policy to inspect.</param>
     /// <returns>The set fields.</returns>
-    public static CachePolicyFields DetectFields(CachePolicy policy)
+    internal static CachePolicyFields DetectFields(CachePolicy policy)
     {
         if (policy == null)
         {

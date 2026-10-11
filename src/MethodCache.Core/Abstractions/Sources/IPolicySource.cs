@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.ComponentModel;
 
 namespace MethodCache.Policies;
 
 /// <summary>
 /// A place cache policies come from, such as attributes, startup code, configuration files or runtime overrides.
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public interface IPolicySource
 {
     /// <summary>

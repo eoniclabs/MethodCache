@@ -7,7 +7,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// The ordered, immutable list of <see cref="PolicyContribution"/> entries that built a policy.
 /// </summary>
-public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
+internal sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
 {
     private readonly PolicyContribution[] _buffer;
     private readonly int _count;

@@ -3,10 +3,6 @@ const MethodCache.Extensibility.JsonKeyGenerator.MaxReadableLength = 200 -> int
 const MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize = 256 -> int
 const MethodCache.MethodCacheKeys.Null = "\\0" -> string!
 const MethodCache.MethodCacheKeys.Separator = ":" -> string!
-const MethodCache.Policies.PolicySourcePriority.Attributes = 10 -> int
-const MethodCache.Policies.PolicySourcePriority.ConfigurationFiles = 50 -> int
-const MethodCache.Policies.PolicySourcePriority.RuntimeOverrides = 100 -> int
-const MethodCache.Policies.PolicySourcePriority.StartupFluent = 40 -> int
 MethodCache.Any<T>
 MethodCache.CacheAttribute
 MethodCache.CacheAttribute.CacheAttribute(string? groupName = null) -> void
@@ -426,8 +422,6 @@ MethodCache.Policies.CachePolicy.FailSafeTimeout.get -> System.TimeSpan?
 MethodCache.Policies.CachePolicy.FailSafeTimeout.init -> void
 MethodCache.Policies.CachePolicy.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
 MethodCache.Policies.CachePolicy.Metadata.init -> void
-MethodCache.Policies.CachePolicy.Provenance.get -> MethodCache.Policies.PolicyProvenance!
-MethodCache.Policies.CachePolicy.Provenance.init -> void
 MethodCache.Policies.CachePolicy.RefreshAhead.get -> System.TimeSpan?
 MethodCache.Policies.CachePolicy.RefreshAhead.init -> void
 MethodCache.Policies.CachePolicy.SlidingExpiration.get -> System.TimeSpan?
@@ -459,9 +453,6 @@ MethodCache.Policies.IPolicyRegistry.GetAllPolicies() -> System.Collections.Gene
 MethodCache.Policies.IPolicyRegistry.GetPolicy(string! methodId) -> MethodCache.Policies.PolicyResolutionResult!
 MethodCache.Policies.IPolicyRegistry.GetPolicyVersion(string! methodId) -> long
 MethodCache.Policies.IPolicyRegistry.WatchAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Policies.PolicyResolutionResult!>!
-MethodCache.Policies.IPolicyResolver
-MethodCache.Policies.IPolicyResolver.ResolveAsync(string! methodId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.Policies.PolicyResolutionResult!>
-MethodCache.Policies.IPolicyResolver.WatchAsync(string? methodId = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Policies.PolicyResolutionResult!>!
 MethodCache.Policies.IPolicySource
 MethodCache.Policies.IPolicySource.GetSnapshotAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.Policies.PolicySnapshot!>!>!
 MethodCache.Policies.IPolicySource.SourceId.get -> string!
@@ -485,17 +476,13 @@ MethodCache.Policies.PolicyContribution.AppliedAt.get -> System.DateTimeOffset
 MethodCache.Policies.PolicyContribution.AppliedAt.init -> void
 MethodCache.Policies.PolicyContribution.Fields.get -> MethodCache.Policies.CachePolicyFields
 MethodCache.Policies.PolicyContribution.Fields.init -> void
-MethodCache.Policies.PolicyContribution.Kind.get -> MethodCache.Policies.PolicyContributionKind
-MethodCache.Policies.PolicyContribution.Kind.init -> void
 MethodCache.Policies.PolicyContribution.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
 MethodCache.Policies.PolicyContribution.Metadata.init -> void
 MethodCache.Policies.PolicyContribution.Notes.get -> string?
 MethodCache.Policies.PolicyContribution.Notes.init -> void
-MethodCache.Policies.PolicyContribution.PolicyContribution(string! SourceId, MethodCache.Policies.CachePolicyFields Fields, MethodCache.Policies.PolicyContributionKind Kind, System.DateTimeOffset AppliedAt, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? Metadata = null, string? Notes = null) -> void
+MethodCache.Policies.PolicyContribution.PolicyContribution(string! SourceId, MethodCache.Policies.CachePolicyFields Fields, System.DateTimeOffset AppliedAt, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? Metadata = null, string? Notes = null) -> void
 MethodCache.Policies.PolicyContribution.SourceId.get -> string!
 MethodCache.Policies.PolicyContribution.SourceId.init -> void
-MethodCache.Policies.PolicyContributionKind
-MethodCache.Policies.PolicyContributionKind.Set = 0 -> MethodCache.Policies.PolicyContributionKind
 MethodCache.Policies.PolicyDiagnosticsReport
 MethodCache.Policies.PolicyDiagnosticsReport.Contributions.get -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!
 MethodCache.Policies.PolicyDiagnosticsReport.Contributions.init -> void
@@ -515,11 +502,6 @@ MethodCache.Policies.PolicyDiagnosticsService.GetAllPolicies() -> System.Collect
 MethodCache.Policies.PolicyDiagnosticsService.GetContributions(string! methodId, string! sourceId) -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!
 MethodCache.Policies.PolicyDiagnosticsService.GetPolicy(string! methodId) -> MethodCache.Policies.PolicyDiagnosticsReport!
 MethodCache.Policies.PolicyDiagnosticsService.PolicyDiagnosticsService(MethodCache.Policies.IPolicyRegistry! registry) -> void
-MethodCache.Policies.PolicyProvenance
-MethodCache.Policies.PolicyProvenance.Append(MethodCache.Policies.PolicyContribution! contribution) -> MethodCache.Policies.PolicyProvenance!
-MethodCache.Policies.PolicyProvenance.Count.get -> int
-MethodCache.Policies.PolicyProvenance.GetEnumerator() -> System.Collections.Generic.IEnumerator<MethodCache.Policies.PolicyContribution!>!
-MethodCache.Policies.PolicyProvenance.PolicyProvenance(System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>! contributions) -> void
 MethodCache.Policies.PolicyResolutionResult
 MethodCache.Policies.PolicyResolutionResult.Contributions.get -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!
 MethodCache.Policies.PolicyResolutionResult.MethodId.get -> string!
@@ -534,7 +516,6 @@ MethodCache.Policies.PolicySnapshot.Policy.get -> MethodCache.Policies.CachePoli
 MethodCache.Policies.PolicySnapshot.PolicySnapshot(string! sourceId, string! methodId, MethodCache.Policies.CachePolicy! policy, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> void
 MethodCache.Policies.PolicySnapshot.SourceId.get -> string!
 MethodCache.Policies.PolicySnapshot.Timestamp.get -> System.DateTimeOffset
-MethodCache.Policies.PolicySourcePriority
 MethodCache.Policies.PolicySourceRegistration
 MethodCache.Policies.PolicySourceRegistration.PolicySourceRegistration(MethodCache.Policies.IPolicySource! Source, int Priority) -> void
 MethodCache.Policies.PolicySourceRegistration.Priority.get -> int
@@ -573,7 +554,6 @@ static MethodCache.CacheManagerExtensions.GetOrCreateAsync<T>(this MethodCache.I
 static MethodCache.CacheManagerExtensions.GetOrCreateManyAsync<T>(this MethodCache.ICacheManager! cacheManager, System.Collections.Generic.IEnumerable<string!>! keys, System.Func<System.Collections.Generic.IReadOnlyList<string!>!, MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>>! factory, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.IServiceProvider? services = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>
 static MethodCache.CacheManagerExtensions.TryGetAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 static MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(MethodCache.Policies.CachePolicy! policy, string! sourceId, MethodCache.Policies.CachePolicyFields fields, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null, string? notes = null) -> MethodCache.Policies.CachePolicy!
-static MethodCache.Infrastructure.CachePolicyMapper.DetectFields(MethodCache.Policies.CachePolicy! policy) -> MethodCache.Policies.CachePolicyFields
 static MethodCache.Infrastructure.CacheRuntimePolicy.Empty(string! methodId) -> MethodCache.Infrastructure.CacheRuntimePolicy!
 static MethodCache.Infrastructure.CacheRuntimePolicy.FromPolicy(string! methodId, MethodCache.Policies.CachePolicy! policy, MethodCache.Policies.CachePolicyFields fields, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> MethodCache.Infrastructure.CacheRuntimePolicy!
 static MethodCache.Infrastructure.CacheRuntimePolicy.FromResolverResult(MethodCache.Policies.PolicyResolutionResult! result) -> MethodCache.Infrastructure.CacheRuntimePolicy!
@@ -609,7 +589,6 @@ static MethodCache.MethodCacheKeys.Part<TEnum>(TEnum value) -> string!
 static MethodCache.MethodCacheKeys.Pattern(System.Type! serviceType, string! methodName, int? version = null) -> string!
 static MethodCache.MethodCacheKeys.Prefix(System.Type! serviceType, string! methodName, int? version = null) -> string!
 static MethodCache.Policies.CachePolicy.Empty.get -> MethodCache.Policies.CachePolicy!
-static MethodCache.Policies.PolicyProvenance.Empty.get -> MethodCache.Policies.PolicyProvenance!
 static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression) -> System.Threading.Tasks.Task!
 static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression) -> System.Threading.Tasks.Task!
 static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Action<TService>!>! methodExpression) -> System.Threading.Tasks.Task!
