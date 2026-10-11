@@ -64,7 +64,7 @@ public class PolicyPrecedencePropertyTests
             {
                 await resolver.DisposeAsync();
             }
-        }, iter: PropertySettings.PureIterations / 4, print: Print);
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations / 4, print: Print);
     }
 
     /// <summary>The value each layer and scope writes: unique, so the test can tell which one won.</summary>

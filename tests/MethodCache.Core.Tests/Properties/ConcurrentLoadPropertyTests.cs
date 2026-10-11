@@ -65,7 +65,7 @@ public class ConcurrentLoadPropertyTests
                 genKey.Operation<Harness>(k => $"InvalidateByKeys({Keys[k]})", (h, k) => h.Cache.InvalidateByKeysAsync(Keys[k]).GetAwaiter().GetResult()),
             },
             equal: (a, b) => a.ToString() == b.ToString(),
-            iter: PropertySettings.ConcurrentIterations,
+            seed: PropertySettings.Seed, iter: PropertySettings.ConcurrentIterations,
             print: h => h.ToString());
     }
 
@@ -163,6 +163,6 @@ public class ConcurrentLoadPropertyTests
             {
                 source.Dispose();
             }
-        }, iter: PropertySettings.ConcurrentIterations, print: t => $"{t.Item1} callers, cancelled mask {Convert.ToString(t.Item2 & ((1 << t.Item1) - 1), 2)} (bit 0 started the load), factory {(t.Item3 ? "throws" : "succeeds")}");
+        }, seed: PropertySettings.Seed, iter: PropertySettings.ConcurrentIterations, print: t => $"{t.Item1} callers, cancelled mask {Convert.ToString(t.Item2 & ((1 << t.Item1) - 1), 2)} (bit 0 started the load), factory {(t.Item3 ? "throws" : "succeeds")}");
     }
 }

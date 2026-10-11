@@ -49,7 +49,7 @@ public class TagTemplatePropertyTests
             var invalidated = c.Tags.Select(tag => InvalidationTag(tag, c.Names, c.Values)).ToArray();
 
             Assert.Equal(invalidated, expanded);
-        }, iter: PropertySettings.PureIterations, print: Print);
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: Print);
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class TagTemplatePropertyTests
                 var again = PropertySettings.InCulture(culture, () => CacheTagTemplates.Expand(Policy(c.Tags), c.Names, c.Values).Tags.ToArray());
                 Assert.Equal(expected, again);
             }
-        }, iter: PropertySettings.PureIterations, print: Print);
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: Print);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class TagTemplatePropertyTests
                 var t2 = CacheTagTemplates.Expand(policy, new[] { name }, new[] { v2 }).Tags.Single();
 
                 Assert.Equal(v1 == v2, t1 == t2);
-            }, iter: PropertySettings.PureIterations);
+            }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
     }
 
     /// <summary>

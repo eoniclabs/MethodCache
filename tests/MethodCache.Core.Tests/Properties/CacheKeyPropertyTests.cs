@@ -121,7 +121,7 @@ public class CacheKeyPropertyTests
             var keys = PropertySettings.InCulture(PropertySettings.Cultures[cultureIndex], () =>
                 calls.Select(c => generator.GenerateKey(c.Method, c.Args, Policy(c.Version))).ToArray());
             AssertKeysMatchCanon(keys, calls.Select(c => CanonCall(c.Method, c.Version, c.Args, mergeSignedZero: true)).ToArray());
-        }, iter: PropertySettings.PureIterations / 4, print: t => Print(t.Item1) + ", culture " + PropertySettings.Cultures[t.Item2].Name);
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations / 4, print: t => Print(t.Item1) + ", culture " + PropertySettings.Cultures[t.Item2].Name);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class CacheKeyPropertyTests
             var k2 = generator.GenerateKey("M", new object?[] { s2 }, NoVersion);
 
             Assert.Equal(string.Equals(s1, s2, StringComparison.Ordinal), k1 == k2);
-        }, iter: PropertySettings.PureIterations, print: t => $"{Escape(t.Item1)} and {Escape(t.Item2)}");
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: t => $"{Escape(t.Item1)} and {Escape(t.Item2)}");
 
         static string Escape(string s) => string.Concat(s.Select(c => c is >= ' ' and < '\u007f' ? c.ToString() : $"\\u{(int)c:X4}"));
     }
@@ -155,7 +155,7 @@ public class CacheKeyPropertyTests
                 .ToArray();
 
             Assert.All(keys, key => Assert.Equal(keys[0], key));
-        }, iter: PropertySettings.PureIterations, print: c => Print(new[] { c }));
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: c => Print(new[] { c }));
     }
 
     /// <summary>One argument of an inline key: its kind fixes the C# parameter type, as a method signature does.</summary>
@@ -197,7 +197,7 @@ public class CacheKeyPropertyTests
 
             Assert.Equal(keys, built);
             AssertKeysMatchCanon(keys, c.Calls.Select(args => string.Join(",", args.Select(a => Canon(a, mergeSignedZero: false)))).ToArray());
-        }, iter: PropertySettings.PureIterations / 4, print: c => $"signature ({string.Join(", ", c.Signature)}), culture {PropertySettings.Cultures[c.Culture].Name}: " +
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations / 4, print: c => $"signature ({string.Join(", ", c.Signature)}), culture {PropertySettings.Cultures[c.Culture].Name}: " +
                                                                    string.Join(" | ", c.Calls.Select(a => string.Join(", ", a.Select(Describe)))));
     }
 
@@ -212,7 +212,7 @@ public class CacheKeyPropertyTests
                 .ToArray();
 
             Assert.All(keys, key => Assert.Equal(keys[0], key));
-        }, iter: PropertySettings.PureIterations, print: t => $"{t.Kind}: {Describe(t.Value)}");
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: t => $"{t.Kind}: {Describe(t.Value)}");
     }
 
     /// <summary>One value from each generator, in order.</summary>

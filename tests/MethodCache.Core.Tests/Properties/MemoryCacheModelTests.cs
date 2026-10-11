@@ -297,7 +297,7 @@ public class MemoryCacheModelTests
                     InvalidateKey, InvalidateTag, InvalidatePattern, Advance, Advance, Advance,
                 },
                 equal: Equal,
-                iter: PropertySettings.ModelIterations,
+                seed: PropertySettings.Seed, iter: PropertySettings.ModelIterations,
                 printActual: real => Describe(real.Log),
                 printModel: model => Describe(model.Log));
     }
