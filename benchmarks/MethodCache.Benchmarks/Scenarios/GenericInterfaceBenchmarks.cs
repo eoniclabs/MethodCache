@@ -197,7 +197,6 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
         _keyGenerator = keyGenerator;
     }
 
-    [Cache(Duration = "00:05:00", Tags = new[] { "entities" })]
     public virtual async Task<T> GetByIdAsync(int id)
     {
         var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetByIdAsync));
@@ -211,7 +210,6 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:02:00", Tags = new[] { "entities" })]
     public virtual async Task<List<T>> GetAllAsync()
     {
         var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetAllAsync));
@@ -225,7 +223,6 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:03:00", Tags = new[] { "entities" })]
     public virtual async Task<List<T>> GetByIdsAsync(int[] ids)
     {
         var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetByIdsAsync));
@@ -239,7 +236,6 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
             _keyGenerator);
     }
 
-    [CacheInvalidate(Tags = new[] { "entities" })]
     public virtual async Task InvalidateAsync(int id)
     {
         await _cacheManager.InvalidateByTagsAsync("entities");
@@ -298,7 +294,6 @@ public class GenericService : IGenericService
         _keyGenerator = keyGenerator;
     }
 
-    [Cache(Duration = "00:03:00", Tags = new[] { "processing" })]
     public virtual async Task<List<T>> ProcessEntitiesAsync<T>(List<T> entities) where T : class
     {
         var settings = _policyRegistry.GetSettingsFor<GenericService>(nameof(ProcessEntitiesAsync));
@@ -312,7 +307,6 @@ public class GenericService : IGenericService
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:05:00", Tags = new[] { "transformation" })]
     public virtual async Task<TResult> TransformAsync<TInput, TResult>(TInput input) 
         where TInput : class 
         where TResult : class, new()

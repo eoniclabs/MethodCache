@@ -1,71 +1,107 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
 
 namespace MethodCache.Analyzers
 {
+    /// <summary>
+    /// Reports MethodCache attributes that have no effect or invalid values while the code is being written.
+    /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class MethodCacheAnalyzer : DiagnosticAnalyzer
+    public sealed class MethodCacheAnalyzer : DiagnosticAnalyzer
     {
-        public const string CacheDiagnosticId = "MC0001";
-        public const string InvalidateDiagnosticId = "MC0002";
-        public const string ConfigurationOverrideDiagnosticId = "MC0003";
+        public const string AttributeOnClassDiagnosticId = "MC0001";
         public const string InvalidTimeSpanDiagnosticId = "MC0004";
 
-        private static readonly LocalizableString CacheTitle = "MethodCache Analyzer";
-        private static readonly LocalizableString CacheMessageFormat = "Method '{0}' is marked with [Cache] but is not virtual, abstract, or an interface implementation. Caching may not work as expected.";
-        private static readonly LocalizableString CacheDescription = "Methods marked with [Cache] should be virtual, abstract, or implement an interface method to allow for proper interception and caching.";
-
-        private static readonly LocalizableString InvalidateTitle = "MethodCache Invalidate Analyzer";
-        private static readonly LocalizableString InvalidateMessageFormat = "Method '{0}' is marked with [CacheInvalidate] but is not an async method. Invalidation might not be fully effective if the decorated method performs asynchronous operations.";
-        private static readonly LocalizableString InvalidateDescription = "Methods marked with [CacheInvalidate] should ideally be asynchronous (return Task or ValueTask) to ensure invalidation occurs after the decorated method completes its operations.";
-
-        private static readonly LocalizableString ConfigurationOverrideTitle = "Cache Attribute Override Warning";
-        private static readonly LocalizableString ConfigurationOverrideMessageFormat = "Method '{0}' has a [Cache] attribute, but programmatic configuration can override these settings. Consider using configuration-only approach for consistency.";
-        private static readonly LocalizableString ConfigurationOverrideDescription = "When using AddMethodCache with a configuration delegate, programmatic settings will override attribute-based cache settings. This may cause confusion when the attribute specifies different values than what is actually used at runtime.";
-
-        private static readonly LocalizableString InvalidTimeSpanTitle = "Invalid time span";
-        private static readonly LocalizableString InvalidTimeSpanMessageFormat = "{0} = \"{1}\" is not a positive time span; use a value such as \"00:05:00\"";
-        private static readonly LocalizableString InvalidTimeSpanDescription = "Duration, SlidingExpiration and RefreshAhead on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\".";
-
         private const string Category = "Usage";
+        private const string AttributeNamespace = "MethodCache.Core";
 
-        private static readonly DiagnosticDescriptor CacheRule = new DiagnosticDescriptor(CacheDiagnosticId, CacheTitle, CacheMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: CacheDescription);
-        private static readonly DiagnosticDescriptor InvalidateRule = new DiagnosticDescriptor(InvalidateDiagnosticId, InvalidateTitle, InvalidateMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: InvalidateDescription);
-        internal static readonly DiagnosticDescriptor ConfigurationOverrideRule = new DiagnosticDescriptor(ConfigurationOverrideDiagnosticId, ConfigurationOverrideTitle, ConfigurationOverrideMessageFormat, Category, DiagnosticSeverity.Info, isEnabledByDefault: true, description: ConfigurationOverrideDescription);
-        private static readonly DiagnosticDescriptor InvalidTimeSpanRule = new DiagnosticDescriptor(InvalidTimeSpanDiagnosticId, InvalidTimeSpanTitle, InvalidTimeSpanMessageFormat, Category, DiagnosticSeverity.Error, isEnabledByDefault: true, description: InvalidTimeSpanDescription);
+        internal static readonly DiagnosticDescriptor AttributeOnClassRule = new DiagnosticDescriptor(
+            AttributeOnClassDiagnosticId,
+            "MethodCache attribute on a class member has no effect",
+            "[{0}] on '{1}' has no effect: MethodCache caches interface methods. Put [{0}] on the interface method instead.",
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "The source generator decorates interfaces, so [Cache] and [CacheInvalidate] are read from interface methods only. On a class, struct or record member they are ignored and the method is not cached.");
+
+        internal static readonly DiagnosticDescriptor InvalidTimeSpanRule = new DiagnosticDescriptor(
+            InvalidTimeSpanDiagnosticId,
+            "Invalid time span",
+            "{0} = \"{1}\" is not a positive time span; use a value such as \"00:05:00\"",
+            Category,
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true,
+            description: "Duration, SlidingExpiration and RefreshAhead on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\".");
 
         private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead" };
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(CacheRule, InvalidateRule, ConfigurationOverrideRule, InvalidTimeSpanRule); } }
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule);
 
         public override void Initialize(AnalysisContext context)
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.EnableConcurrentExecution();
 
-            context.RegisterSymbolAction(AnalyzeSymbol, SymbolKind.Method);
-            context.RegisterCompilationStartAction(OnCompilationStarted);
-            context.RegisterCompilationAction(AnalyzeCacheInterfaceAttributes);
+            context.RegisterSymbolAction(AnalyzeMethod, SymbolKind.Method);
+            context.RegisterSyntaxNodeAction(AnalyzeAssemblyAttributes, SyntaxKind.AttributeList);
         }
 
-        private static void AnalyzeCacheInterfaceAttributes(CompilationAnalysisContext context)
+        private static void AnalyzeMethod(SymbolAnalysisContext context)
         {
-            // [assembly: CacheInterface] carries the same time spans as [Cache], on the assembly instead of a method
-            foreach (var attribute in context.Compilation.Assembly.GetAttributes())
+            var method = (IMethodSymbol)context.Symbol;
+            var onInterface = method.ContainingType?.TypeKind == TypeKind.Interface;
+
+            foreach (var attribute in method.GetAttributes())
             {
-                if (attribute.AttributeClass?.Name != "CacheInterfaceAttribute" ||
-                    attribute.AttributeClass.ContainingNamespace?.ToDisplayString() != "MethodCache.Core")
+                var isCache = IsMethodCacheAttribute(attribute.AttributeClass, "CacheAttribute");
+                if (!isCache && !IsMethodCacheAttribute(attribute.AttributeClass, "CacheInvalidateAttribute"))
                 {
                     continue;
                 }
 
-                var location = attribute.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation();
+                if (!onInterface)
+                {
+                    var name = isCache ? "Cache" : "CacheInvalidate";
+                    Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], AttributeOnClassRule, name, method.Name);
+                }
+
+                if (isCache)
+                {
+                    foreach (var (property, text) in InvalidTimeSpans(attribute))
+                    {
+                        Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidTimeSpanRule, property, text);
+                    }
+                }
+            }
+        }
+
+        private static void AnalyzeAssemblyAttributes(SyntaxNodeAnalysisContext context)
+        {
+            // [assembly: CacheInterface] carries the same time spans as [Cache], on the assembly instead of a method.
+            // Read per attribute list, so the error shows while typing and not only in a full build.
+            var list = (AttributeListSyntax)context.Node;
+            if (list.Target?.Identifier.IsKind(SyntaxKind.AssemblyKeyword) != true)
+            {
+                return;
+            }
+
+            foreach (var attribute in context.Compilation.Assembly.GetAttributes())
+            {
+                if (!IsMethodCacheAttribute(attribute.AttributeClass, "CacheInterfaceAttribute") ||
+                    attribute.ApplicationSyntaxReference is not { } reference ||
+                    reference.SyntaxTree != list.SyntaxTree ||
+                    !list.Span.Contains(reference.Span))
+                {
+                    continue;
+                }
+
+                var location = reference.GetSyntax(context.CancellationToken).GetLocation();
                 foreach (var (property, text) in InvalidTimeSpans(attribute))
                 {
                     context.ReportDiagnostic(Diagnostic.Create(InvalidTimeSpanRule, location, property, text));
@@ -73,169 +109,26 @@ namespace MethodCache.Analyzers
             }
         }
 
-        private static System.Collections.Generic.IEnumerable<(string Property, string Text)> InvalidTimeSpans(AttributeData attribute)
-        {
-            foreach (var property in TimeSpanProperties)
-            {
-                if (TryGetNamedArgument(attribute, property, out var argument) &&
-                    argument.Value is string text &&
-                    (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero))
-                {
-                    yield return (property, text);
-                }
-            }
-        }
-        
-        private static void OnCompilationStarted(CompilationStartAnalysisContext context)
-        {
-            var configurationOverrideTracker = new ConfigurationOverrideTracker();
-            
-            context.RegisterSyntaxNodeAction(configurationOverrideTracker.AnalyzeInvocation, SyntaxKind.InvocationExpression);
-            context.RegisterSymbolAction(configurationOverrideTracker.AnalyzeCacheMethod, SymbolKind.Method);
-        }
-
-        private static void AnalyzeSymbol(SymbolAnalysisContext context)
-        {
-            var methodSymbol = (IMethodSymbol)context.Symbol;
-
-            // Analyze CacheAttribute usage
-            var cacheAttribute = methodSymbol.GetAttributes().FirstOrDefault(ad => IsCacheAttribute(ad.AttributeClass));
-            if (cacheAttribute != null)
-            {
-                if (methodSymbol.ContainingType.TypeKind == TypeKind.Class && !methodSymbol.IsVirtual && !methodSymbol.IsOverride && !methodSymbol.IsAbstract)
-                {
-                    var implementsInterfaceMethod = methodSymbol.ContainingType.AllInterfaces.Any(iface =>
-                        iface.GetMembers().OfType<IMethodSymbol>().Any(ifaceMethod =>
-                            SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType.FindImplementationForInterfaceMember(ifaceMethod), methodSymbol)
-                        )
-                    );
-
-                    if (!implementsInterfaceMethod)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(CacheRule, methodSymbol.Locations[0], methodSymbol.Name));
-                    }
-                }
-
-                foreach (var (property, text) in InvalidTimeSpans(cacheAttribute))
-                {
-                    ReportDiagnostic(context, cacheAttribute, InvalidTimeSpanRule, property, text);
-                }
-            }
-
-            // Analyze CacheInvalidateAttribute usage
-            var invalidateAttribute = methodSymbol.GetAttributes().FirstOrDefault(ad => IsCacheInvalidateAttribute(ad.AttributeClass));
-            if (invalidateAttribute != null)
-            {
-                // Check if the method returns Task or ValueTask (i.e., is async)
-                if (methodSymbol.ReturnType is INamedTypeSymbol returnTypeSymbol &&
-                    (returnTypeSymbol.ToDisplayString() == "System.Threading.Tasks.Task" ||
-                     returnTypeSymbol.ToDisplayString().StartsWith("System.Threading.Tasks.Task<") ||
-                     returnTypeSymbol.ToDisplayString() == "System.Threading.Tasks.ValueTask" ||
-                     returnTypeSymbol.ToDisplayString().StartsWith("System.Threading.Tasks.ValueTask<")))
-                {
-                    // This is an async method, which is generally fine for invalidation.
-                }
-                else
-                {
-                    // If it's not async, and it's not void, it might be problematic if invalidation is intended to be async.
-                    // For now, we'll just warn if it's not async and not void.
-                    if (methodSymbol.ReturnsVoid == false)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(InvalidateRule, methodSymbol.Locations[0], methodSymbol.Name));
-                    }
-                }
-            }
-        }
-
-        private static bool IsCacheAttribute(INamedTypeSymbol? attributeClass)
-        {
-            return attributeClass?.Name == "CacheAttribute" &&
-                   (attributeClass.ContainingNamespace?.ToDisplayString() == "MethodCache.Core" ||
-                    attributeClass.ToDisplayString() == "MethodCache.Core.CacheAttribute");
-        }
-
-        private static bool IsCacheInvalidateAttribute(INamedTypeSymbol? attributeClass)
-        {
-            return attributeClass?.Name == "CacheInvalidateAttribute" &&
-                   (attributeClass.ContainingNamespace?.ToDisplayString() == "MethodCache.Core" ||
-                    attributeClass.ToDisplayString() == "MethodCache.Core.CacheInvalidateAttribute");
-        }
-
-        private static bool TryGetNamedArgument(AttributeData attribute, string name, out TypedConstant value)
+        private static IEnumerable<(string Property, string Text)> InvalidTimeSpans(AttributeData attribute)
         {
             foreach (var argument in attribute.NamedArguments)
             {
-                if (argument.Key == name)
+                if (Array.IndexOf(TimeSpanProperties, argument.Key) >= 0 &&
+                    argument.Value.Value is string text &&
+                    (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero))
                 {
-                    value = argument.Value;
-                    return true;
-                }
-            }
-
-            value = default;
-            return false;
-        }
-
-        private static void ReportDiagnostic(SymbolAnalysisContext context, AttributeData attribute, DiagnosticDescriptor descriptor, params object[] messageArgs)
-        {
-            var location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? context.Symbol.Locations.FirstOrDefault();
-            if (location != null)
-            {
-                context.ReportDiagnostic(Diagnostic.Create(descriptor, location, messageArgs));
-            }
-        }
-    }
-    
-    internal class ConfigurationOverrideTracker
-    {
-        private bool _hasConfigurationOverride = false;
-
-        public void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
-        {
-            var invocation = (InvocationExpressionSyntax)context.Node;
-            
-            // Check if this is an AddMethodCache call with a configuration delegate
-            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name.Identifier.ValueText == "AddMethodCache" &&
-                invocation.ArgumentList.Arguments.Count > 0)
-            {
-                // Check if first argument is a lambda or delegate (configuration parameter)
-                var firstArg = invocation.ArgumentList.Arguments[0];
-                if (firstArg.Expression is LambdaExpressionSyntax ||
-                    firstArg.Expression is IdentifierNameSyntax ||
-                    firstArg.Expression is AnonymousFunctionExpressionSyntax)
-                {
-                    _hasConfigurationOverride = true;
+                    yield return (argument.Key, text);
                 }
             }
         }
 
-        public void AnalyzeCacheMethod(SymbolAnalysisContext context)
-        {
-            if (!_hasConfigurationOverride) return;
-            
-            var methodSymbol = (IMethodSymbol)context.Symbol;
-            var cacheAttribute = methodSymbol.GetAttributes().FirstOrDefault(ad => IsCacheAttribute(ad.AttributeClass));
-            
-            if (cacheAttribute != null)
-            {
-                // Only warn if the method is part of an interface (likely to be auto-registered)
-                if (methodSymbol.ContainingType.TypeKind == TypeKind.Interface)
-                {
-                    var diagnostic = Diagnostic.Create(
-                        MethodCacheAnalyzer.ConfigurationOverrideRule,
-                        cacheAttribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? methodSymbol.Locations[0],
-                        methodSymbol.Name);
-                    context.ReportDiagnostic(diagnostic);
-                }
-            }
-        }
-        
-        private static bool IsCacheAttribute(INamedTypeSymbol? attributeClass)
-        {
-            return attributeClass?.Name == "CacheAttribute" &&
-                   (attributeClass.ContainingNamespace?.ToDisplayString() == "MethodCache.Core" ||
-                    attributeClass.ToDisplayString() == "MethodCache.Core.CacheAttribute");
-        }
+        private static bool IsMethodCacheAttribute(INamedTypeSymbol? attributeClass, string name)
+            => attributeClass?.Name == name && attributeClass.ContainingNamespace?.ToDisplayString() == AttributeNamespace;
+
+        private static Location? AttributeLocation(AttributeData attribute, System.Threading.CancellationToken cancellationToken)
+            => attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation();
+
+        private static void Report(SymbolAnalysisContext context, Location location, DiagnosticDescriptor descriptor, params object[] messageArgs)
+            => context.ReportDiagnostic(Diagnostic.Create(descriptor, location, messageArgs));
     }
 }

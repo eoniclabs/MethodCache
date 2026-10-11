@@ -193,7 +193,6 @@ public class SerializationTestService : ISerializationTestService
         _keyGenerator = keyGenerator;
     }
 
-    [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetSimpleDataAsync(int id, string type)
     {
         var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetSimpleDataAsync));
@@ -207,7 +206,6 @@ public class SerializationTestService : ISerializationTestService
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetComplexDataAsync(ComplexParameter param, int id, string type)
     {
         var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetComplexDataAsync));
@@ -221,7 +219,6 @@ public class SerializationTestService : ISerializationTestService
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetDataWithArrayAsync(int[] values)
     {
         var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetDataWithArrayAsync));
@@ -235,7 +232,6 @@ public class SerializationTestService : ISerializationTestService
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:05:00")]
     public virtual async Task<object> GetDataWithStringAsync(string text)
     {
         var settings = _policyRegistry.GetSettingsFor<SerializationTestService>(nameof(GetDataWithStringAsync));

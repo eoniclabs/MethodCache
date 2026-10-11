@@ -175,7 +175,6 @@ public class MemoryTestService : IMemoryTestService
         _keyGenerator = keyGenerator;
     }
 
-    [Cache(Duration = "00:10:00", Tags = new[] { "data" })]
     public virtual async Task<object> GetDataAsync(int id, string dataType)
     {
         var settings = _policyRegistry.GetSettingsFor<MemoryTestService>(nameof(GetDataAsync));
@@ -189,7 +188,6 @@ public class MemoryTestService : IMemoryTestService
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:05:00", Tags = new[] { "large" })]
     public virtual async Task<LargeModel> GetLargeObjectAsync(int id)
     {
         var settings = _policyRegistry.GetSettingsFor<MemoryTestService>(nameof(GetLargeObjectAsync));
@@ -203,7 +201,6 @@ public class MemoryTestService : IMemoryTestService
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:00:05", Tags = new[] { "short" })] // 5 seconds
     public virtual async Task<SmallModel> GetShortLivedDataAsync(int id)
     {
         var settings = _policyRegistry.GetSettingsFor<MemoryTestService>(nameof(GetShortLivedDataAsync));
@@ -217,7 +214,6 @@ public class MemoryTestService : IMemoryTestService
             _keyGenerator);
     }
 
-    [CacheInvalidate(Tags = new[] { "data", "large", "short" })]
     public virtual async Task InvalidateAllAsync()
     {
         await _cacheManager.InvalidateByTagsAsync("data", "large", "short");
