@@ -27,8 +27,8 @@
     <StackExchangeRedisVersion>2.8.12</StackExchangeRedisVersion>
   </PropertyGroup>
 
-  <!-- Normalized paths in the shipped DLLs and PDBs; only on CI, so local debugging keeps real paths -->
-  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+  <!-- Normalized paths in the shipped DLLs and PDBs; only on CI (build/ci/jobs.sh sets CI=true), so local debugging keeps real paths -->
+  <PropertyGroup Condition="'$(CI)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
