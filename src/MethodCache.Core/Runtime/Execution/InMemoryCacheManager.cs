@@ -478,11 +478,13 @@ namespace MethodCache.Extensibility
                 if (ReferenceEquals(existing, flight))
                 {
                     // A load that finished after this caller's miss (or after the load it joined was cancelled) stored
-                    // its value before it left: use that value instead of running the factory a second time.
+                    // its value before it left: use that value instead of running the factory a second time. The flight
+                    // leaves before it completes, so a caller arriving after a concurrent invalidation of that value
+                    // starts its own load instead of joining a finished flight.
                     if (TryGetFresh<T>(key, _engine.Now, out var loaded, out _, out _))
                     {
-                        flight.Complete(loaded);
                         _flights.TryRemove(new KeyValuePair<string, Flight>(key, flight));
+                        flight.Complete(loaded);
                         RecordHit(methodName);
                         return loaded!;
                     }
