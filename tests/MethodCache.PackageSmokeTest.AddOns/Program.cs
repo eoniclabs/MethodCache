@@ -89,6 +89,11 @@ public static class DistributedCheck
         await using var second = CreateInstance(backend, connection, isolation, messagePack);
         await first.StartAsync();
         await second.StartAsync();
+
+        // Opens each instance's connection first: a write that has to wait for the very first connect can exceed the
+        // L2 operation timeout and is then skipped, which is by design but would make the checks below flaky
+        await first.Users.GetAsync(0);
+        await second.Users.GetAsync(0);
         UserService.Reset();
 
         var expected = new User(1, "user-1");

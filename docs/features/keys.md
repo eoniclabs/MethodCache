@@ -56,6 +56,9 @@ builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, JsonKey
 ```
 <!-- endSnippet -->
 
+The JSON is followed by a short hash of the arguments' runtime types (`[42,"alice"]:3f2a…`), so arguments that
+write the same JSON, such as `1` and `1L` or two classes with the same properties, still get different keys.
+
 Both generators are in `MethodCache.Extensibility`. Keys built by the decorator itself (simple values, records,
 `ICacheKeyProvider`) don't change with the generator.
 
