@@ -27,10 +27,10 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
     private const byte KeyProviderFrame = 0x01;
     private const byte SerializedFrame = 0x02;
 
-    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+    public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         => GenerateKeyInternal(methodName, args, policy.Version);
 
-    private static string GenerateKeyInternal(string methodName, object[] args, int? version)
+    private static string GenerateKeyInternal(string methodName, object?[] args, int? version)
     {
         using (var sha256 = SHA256.Create())
         {

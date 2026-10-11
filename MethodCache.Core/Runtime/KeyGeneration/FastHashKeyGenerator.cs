@@ -37,10 +37,10 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
     // Hex lookup table for fast conversion
     private static ReadOnlySpan<byte> HexChars => "0123456789abcdef"u8;
 
-    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+    public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         => GenerateKey(methodName, args, policy.Version);
 
-    private static string GenerateKey(string methodName, object[] args, int? version)
+    private static string GenerateKey(string methodName, object?[] args, int? version)
     {
         var writer = t_writer ??= new ArrayBufferWriter<byte>(256);
         writer.ResetWrittenCount();

@@ -26,7 +26,7 @@ namespace MethodCache.SampleApp.Infrastructure
             };
         }
 
-        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+        public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         {
             var keyComponents = new StringBuilder();
 
@@ -168,7 +168,7 @@ namespace MethodCache.SampleApp.Infrastructure
     {
         private readonly ConcurrentCache<string, string> _keyCache = new();
 
-        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+        public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         {
             // For methods with no arguments, cache the key
             if (args.Length == 0)

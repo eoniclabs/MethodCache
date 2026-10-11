@@ -25,7 +25,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration
     /// <code>
     /// public class CustomKeyGenerator : ICacheKeyGenerator
     /// {
-    ///     public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+    ///     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     ///     {
     ///         var version = policy.Version?.ToString() ?? "v1";
     ///         var argsKey = string.Join("_", args.Select(a => a?.ToString() ?? "null"));
@@ -51,6 +51,6 @@ namespace MethodCache.Core.Runtime.KeyGeneration
         /// - Handle null arguments safely
         /// - Be aware of argument types that don't serialize well (e.g., delegates, streams)
         /// </remarks>
-        string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy);
+        string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy);
     }
 }

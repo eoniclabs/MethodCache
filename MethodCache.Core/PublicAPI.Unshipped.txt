@@ -449,15 +449,15 @@ MethodCache.Core.Runtime.KeyGeneration.DefaultCacheKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.DefaultCacheKeyGenerator.DefaultCacheKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator.FastHashKeyGenerator() -> void
-MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
+MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
 MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator
-MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
+MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
 MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator
-MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
+MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
 MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.JsonKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator
-MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.GenerateKey(string! methodName, object![]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
+MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.SmartKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.SmartKeyGenerator(System.Delegate? factory) -> void
 MethodCache.Core.Storage.Abstractions.BackplaneMessage

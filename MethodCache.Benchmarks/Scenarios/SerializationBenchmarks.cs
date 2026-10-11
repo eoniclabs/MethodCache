@@ -283,7 +283,7 @@ public class SerializationTestService : ISerializationTestService
 // Custom key generators for comparison
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+    public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);
@@ -316,7 +316,7 @@ public class JsonKeyGenerator : ICacheKeyGenerator
 
 public class ToStringKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+    public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);

@@ -22,7 +22,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration
             _factory = factory;
         }
 
-        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+        public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         {
             if (TryGenerateSimpleKey(methodName, args, policy, out var simpleKey))
             {
@@ -40,7 +40,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration
             }
         }
 
-        private string GenerateSmartKey(string methodName, object[] args)
+        private string GenerateSmartKey(string methodName, object?[] args)
         {
             var key = new StringBuilder();
 
@@ -132,7 +132,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration
             return key.ToString();
         }
 
-        private static bool TryGenerateSimpleKey(string methodName, object[]? args, CacheRuntimePolicy? policy, out string key)
+        private static bool TryGenerateSimpleKey(string methodName, object?[]? args, CacheRuntimePolicy? policy, out string key)
         {
             if (!string.IsNullOrEmpty(methodName)
                 && (args == null || args.Length == 0)
@@ -342,7 +342,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration
             return null;
         }
 
-        private string InferMethodFromServiceAndArgs(Type serviceType, object[] args)
+        private string InferMethodFromServiceAndArgs(Type serviceType, object?[] args)
         {
             var argTypes = args?.Select(a => a?.GetType()).ToArray() ?? Array.Empty<Type>();
 
@@ -493,7 +493,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration
             return methodOnly;
         }
 
-        private static void AppendArgument(StringBuilder key, object arg)
+        private static void AppendArgument(StringBuilder key, object? arg)
         {
             if (arg == null)
             {
