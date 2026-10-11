@@ -76,9 +76,14 @@ kill_tree() { # pid: the process and everything it started
 
 with_timeout() { # seconds command...; macOS has no timeout(1) by default
   local seconds=$1; shift
-  "$@" &
+  # A background command gets /dev/null as stdin in macOS's bash 3.2 unless it is redirected explicitly, which
+  # would hand `ssh ... bash -s` an empty script; fd 7 passes the caller's stdin through
+  exec 7<&0
+  "$@" <&7 7<&- &
   local pid=$!
-  ( sleep "$seconds" && log "timed out after $seconds s: $*" && kill_tree "$pid" ) &
+  exec 7<&-
+  # The watchdog writes to stderr, so a pipe on stdout (the log copy into tar) ends with the command
+  ( sleep "$seconds" && log "timed out after $seconds s: $*" && kill_tree "$pid" ) >&2 7<&- &
   local watchdog=$!
   wait "$pid"; local code=$?
   kill "$watchdog" 2> /dev/null; wait "$watchdog" 2> /dev/null
