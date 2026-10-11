@@ -18,6 +18,12 @@ public class OpenTelemetryOptions
     public bool HashCacheKeys { get; set; } = true;
 
     /// <summary>
+    /// Records the cache tags and invalidation patterns on spans. Default: false, since a tag built from a template
+    /// such as <c>user:{userId}</c> contains the argument value.
+    /// </summary>
+    public bool RecordCacheTags { get; set; } = false;
+
+    /// <summary>
     /// Puts the user and tenant ids set through <see cref="IBaggagePropagator"/> into span baggage,
     /// which travels to downstream services. Default: false.
     /// </summary>

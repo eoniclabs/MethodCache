@@ -79,6 +79,6 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-Hits have no span, so they stay allocation-free, but they are counted. Cache keys are left off spans unless you turn
-on `RecordCacheKeys`, because keys can contain argument values. See the
-[package README](../../src/MethodCache.OpenTelemetry/README.md).
+Hits have no span, so they stay allocation-free, but they are counted. Cache keys and tags are left off spans unless
+you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
+[package README](../../src/MethodCache.OpenTelemetry/README.md) and [Security](../security.md).

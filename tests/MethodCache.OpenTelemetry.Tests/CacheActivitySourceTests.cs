@@ -142,9 +142,10 @@ public class CacheActivitySourceTests : IDisposable
     }
 
     [Fact]
-    public void SetCacheTags_SetsTags()
+    public void SetCacheTags_SetsTags_WithRecordCacheTags()
     {
         // Arrange
+        _options.RecordCacheTags = true;
         using var activity = new Activity("test").Start();
         var tags = new[] { "user", "profile", "v2" };
 
@@ -153,6 +154,18 @@ public class CacheActivitySourceTests : IDisposable
 
         // Assert
         activity.GetTagItem(TracingConstants.AttributeNames.CacheTags).Should().Be("user,profile,v2");
+    }
+
+    [Fact]
+    public void SetCacheTags_RecordsNothing_ByDefault()
+    {
+        _options.RecordCacheTags = false;
+        using var activity = new Activity("test").Start();
+
+        _activitySource.SetCacheTags(activity, new[] { "user:42" });
+        _activitySource.SetCacheTagPattern(activity, "user:42*");
+
+        activity.TagObjects.Should().BeEmpty();
     }
 
     [Fact]

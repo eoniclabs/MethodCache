@@ -259,17 +259,19 @@ public sealed record HttpCacheEntry
 
     /// <summary>
     /// RFC 9111 section 3.1: hop-by-hop fields describe one connection, not the response, so they are not stored.
-    /// <c>Age</c> is recomputed when the entry is served.
+    /// <c>Age</c> is recomputed when the entry is served. <c>Set-Cookie</c> is not stored either: it belongs to the
+    /// caller the origin answered, and replayed from the cache it would hand that caller's session to others.
     /// </summary>
     private static Func<string, bool> StorableHeaders(HttpResponseHeaders headers)
     {
         var connectionOptions = headers.Connection.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return name => !HopByHopHeaders.Contains(name) && !connectionOptions.Contains(name);
+        return name => !UnstoredHeaders.Contains(name) && !connectionOptions.Contains(name);
     }
 
-    private static readonly HashSet<string> HopByHopHeaders = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> UnstoredHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Age", "Connection", "Keep-Alive", "Proxy-Connection", "TE", "Trailer", "Transfer-Encoding", "Upgrade"
+        "Age", "Connection", "Keep-Alive", "Proxy-Connection", "TE", "Trailer", "Transfer-Encoding", "Upgrade",
+        "Set-Cookie"
     };
 
     /// <summary>Reads one stream to its end, then the other.</summary>

@@ -60,6 +60,8 @@ builder.Services.AddMethodCache();                               // after your r
   is not part of the key. Every value that changes the result must be a parameter.
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
   literal and gives warning MCG015; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
+- Put ids (`int`, `Guid`) in tag templates, not free text from users: tags are plain text, so `"1:orders"` in
+  `"user:{id}"` equals `"user:{id}:orders"` for id 1. Never pass passwords or tokens as arguments of cached methods.
 - Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`,
   `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the first argument.
 - Cached objects are shared between callers: return immutable types such as records.
@@ -268,7 +270,8 @@ await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.Ge
 ## Things to know
 
 - **Keys contain the arguments.** Don't cache methods that take secrets such as passwords or tokens as arguments; pass
-  an identifier instead. Hashed keys are not encryption.
+  an identifier instead. Hashed keys are not encryption. No argument, whatever characters it contains, can produce
+  another call's key; see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 - **`Version` changes every key** of a method, so values cached by an earlier version are ignored. See
   [Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#versions).
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
@@ -922,6 +925,7 @@ That is all. Your typed client keeps calling `GetAsync` as before.
   `Location` / `Content-Location`) for every caller, language and key header value, so nobody reads stale data
   after a write.
 - Cached responses carry an `Age` header, as the standard requires.
+- `Set-Cookie` is never stored: the caller the server answered gets it, nobody served from the cache does.
 - Each HttpClient has its own settings and its own entries.
 - Request directives are honored: `no-cache` (revalidates and stores the answer), `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
 - `Range` requests go to the origin, and `206 Partial Content` is never stored.
@@ -944,7 +948,7 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 
 | Option | Default | |
 |---|---|---|
-| `IsSharedCache` | `false` | `false`: a private cache; `Authorization` and `Cookie` are part of the key so callers never see each other's responses. `true`: a shared cache; `private` and authorized responses are not stored, `s-maxage` applies |
+| `IsSharedCache` | `false` | `false`: a private cache; `Authorization` and `Cookie` are part of the key so callers never see each other's responses. `true`: a shared cache; `private` and authorized responses are not stored, `s-maxage` applies, and a response stored for an anonymous request is served to every caller (see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md#methodcachehttpcaching)) |
 | `DefaultMaxAge` | `null` | Freshness for a response with only an `ETag`/`Last-Modified`. `null` revalidates every time |
 | `AllowHeuristicFreshness` | `true` | 10% of the time since `Last-Modified`, at most `MaxHeuristicFreshness` (1 hour) |
 | `StaleRetention` | 24 hours | How long a stale entry is kept for revalidation and the stale options below |
@@ -1175,9 +1179,9 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 ```
 
-Hits have no span, so they stay allocation-free, but they are counted. Cache keys are left off spans unless you turn
-on `RecordCacheKeys`, because keys can contain argument values. See the
-[package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.OpenTelemetry/README.md).
+Hits have no span, so they stay allocation-free, but they are counted. Cache keys and tags are left off spans unless
+you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
+[package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.OpenTelemetry/README.md) and [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
 
 ---
@@ -1334,6 +1338,88 @@ The cache reads the time from the `TimeProvider` registered in the container, if
 `TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
 This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
 eviction and the background revalidation timeout.
+
+
+---
+
+<!-- source: docs/security.md -->
+
+# Security
+
+What each package protects against, what it leaves to you, and the tests that hold it to that.
+
+## MethodCache (keys, tags, invalidation)
+
+| Threat | What MethodCache does |
+|---|---|
+| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value. No argument list produces another method's key or another argument list's key. |
+| An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id. |
+| A tag built from user text invalidates someone else's entries | **Not prevented.** Tags are plain text: `"user:{userId}"` with the id `"1:orders"` is the same tag that `"user:{userId}:orders"` gives user 1, so invalidating one also removes the other. This only ever removes entries (they are loaded again); it never serves one caller's value to another. Use ids that can't contain your separator (`int`, `Guid`) in tag templates. |
+| A tag built from user text clears the whole distributed cache | A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
+| `*` or `?` in user text widens an invalidation | `InvalidateByTagsAsync`, `InvalidateByKeysAsync` and the admin endpoints match exactly. Only `InvalidateByTagPatternAsync` reads wildcards: never build its pattern from user text. Patterns are matched without regular expressions, so a pattern can't cause catastrophic backtracking. |
+| `[CacheKey(UseAsRawKey = true)]` | The argument *is* the key, unescaped, so a caller who controls it can read any other entry with that key. Use it only for keys your code builds. |
+
+## Distributed cache (Redis, SQL Server)
+
+| Threat | What MethodCache does |
+|---|---|
+| Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
+| Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
+| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. |
+| Backplane messages | Carry keys and tags as the last field, so a key with newlines can't forge another message type. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
+
+## MethodCache.AspNetCore (admin endpoints)
+
+| Threat | What MethodCache does |
+|---|---|
+| An endpoint reachable without authorization | `MapMethodCacheAdmin` requires an authorization policy name, and every endpoint it maps requires that policy: anonymous callers get 401, signed-in users without it 403. A test reads the app's route table and checks every mapped endpoint, so a new endpoint without the policy fails a test. |
+| A cross-site form or `fetch` without preflight calls `invalidate` with the admin's cookie | `POST invalidate` only accepts `application/json`, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415. The `DELETE` endpoints need a preflight too. Don't add a CORS policy that allows these routes from other origins. |
+| Cached values leak through the admin API | Entries are listed with key, value type, age, time to live, tags and size, never the value. Keys contain argument values (see above), so the policy should admit only operators. |
+| Bad input | A missing `key` or an out-of-range `limit` is 400, an empty or blank tag list is 400, and keys and tags are matched literally, never as patterns. |
+
+The health check reports counts only. If you map it with a detailed response writer, put that endpoint behind
+authorization too.
+
+## MethodCache.HttpCaching
+
+| Threat | What MethodCache does |
+|---|---|
+| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. An empty header and no header are different callers too. |
+| A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
+| A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
+| Responses that vary by a header (tenant, language) get mixed | `Vary` and `KeyHeaders` keep one response per value. `Vary: *` is never served from the cache. |
+| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A successful `POST`, `PUT`, `PATCH` or `DELETE` removes the URL's responses for every caller; responses cached before it are never served again. |
+| Two URLs share an entry | The key is the method and the full URL, with reserved characters kept escaped (`%2F`, `%3F` and `/`, `?` are different URLs). |
+| Crafted entries in the distributed HTTP cache | Read as a miss, with every length checked against the data. As above, whoever can write that cache can store any response. |
+
+Not guaranteed, by design:
+
+- In a **shared** cache, a response stored for an anonymous request is served to authorized requests for the same URL
+  too, and responses that depend on cookies are shared unless the origin sends `Vary: Cookie` or `private`. That is
+  what RFC 9111 specifies for a shared cache. Add `Cookie` or `Authorization` to `KeyHeaders` when your origin
+  personalises without saying so.
+- Anonymous callers of a private cache are one caller: they share responses.
+- Debug and warning logs include request URLs. Don't put secrets in query strings.
+
+## MethodCache.OpenTelemetry
+
+With the default options, nothing that identifies a person or an argument leaves the process:
+
+| Signal | Recorded by default | Opt-in |
+|---|---|---|
+| Span attributes | method name, hit or miss, TTL, group, version, number of keys invalidated; on failure the exception type, message and stack trace | `RecordCacheKeys` (a SHA-256 hash of the key, or the key itself with `HashCacheKeys = false`); `RecordCacheTags` (tags and invalidation patterns, which contain argument values when built from templates) |
+| Span baggage | the correlation and invalidation ids you set | `ExportSensitiveData` adds the user and tenant ids |
+| Metrics | dimensions `method`, `group`, `version`, `error.type`, and `client` and `outcome` for HTTP caching | none: tags, keys and URLs are never metric dimensions |
+
+Cache spans copy the `http.*` and `url.*` attributes of the request span they belong to; turn off
+`EnableHttpCorrelation` if those hold data your traces shouldn't. Exception messages come from your own code; keep
+personal data out of them.
+
+## The tests
+
+Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests` and
+`UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
+`DistributedCacheSecurityTests` (keys, tags and the distributed cache).
 
 
 ---
@@ -1859,7 +1945,7 @@ console apps, workers and ASP.NET Core. Your app brings the SDK and exporters. F
   - how long the cached method took on a miss;
   - entries, memory and hit ratio of the in-memory cache.
 - **Spans for misses and invalidations**:
-  - Each span has the method, hit or miss, TTL, group, version and the cache tags.
+  - Each span has the method, hit or miss, TTL, group and version. Keys and tags only when you turn them on, since they contain argument values.
   - Spans are children of the current request span and copy its `http.*` and `url.*` attributes.
 - **Hits stay allocation-free**: generated decorators answer hits from the cache's fast path, which has no span. Hits still count in `methodcache.hits_total`.
 
@@ -1896,6 +1982,7 @@ Sampling, export intervals and the service name are set on the OpenTelemetry SDK
 | `EnableMetrics` | `true` | Records metrics |
 | `RecordCacheKeys` | `false` | Puts the cache key on spans. Keys can contain argument values |
 | `HashCacheKeys` | `true` | With `RecordCacheKeys`, records a hash of the key instead of the key |
+| `RecordCacheTags` | `false` | Puts the cache tags and invalidation patterns on spans. Tags such as `user:{userId}` contain argument values |
 | `ExportSensitiveData` | `false` | Puts the user and tenant ids from `IBaggagePropagator` into span baggage |
 | `EnableHttpCorrelation` | `true` | Copies the request's `http.*` and `url.*` attributes onto cache spans |
 | `EnableBaggagePropagation` | `true` | Carries `cache.*` baggage between spans |
@@ -1920,7 +2007,7 @@ _baggagePropagator.SetCacheTenantId(tenantId); // exported only with ExportSensi
 | `cache.hit` | Whether the value came from the cache | `true` |
 | `cache.key` / `cache.key_hash` | The key, with `RecordCacheKeys` | `a1b2c3d4` |
 | `cache.ttl_seconds` | Time-to-live | `600` |
-| `cache.tags` | Cache tags | `user,profile` |
+| `cache.tags` | Cache tags, with `RecordCacheTags` | `user,profile` |
 | `cache.group` | Group | `users` |
 | `cache.version` | Version | `2` |
 | `cache.keys_count` | Number of keys invalidated | `3` |

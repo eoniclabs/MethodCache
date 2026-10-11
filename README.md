@@ -346,7 +346,8 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
   [conditional caching](docs/features/conditional-caching.md), [configuration](docs/features/configuration.md)
 - [Manual caching](docs/features/manual-caching.md) and [third-party code](docs/features/third-party.md)
 - Production: [distributed cache](docs/features/distributed-cache.md), [monitoring](docs/features/monitoring.md),
-  [memory cache](docs/features/memory-cache.md), [Native AOT](docs/features/native-aot.md), [testing](docs/features/testing.md)
+  [memory cache](docs/features/memory-cache.md), [Native AOT](docs/features/native-aot.md), [testing](docs/features/testing.md),
+  [security](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md), [build diagnostics](docs/user-guide/DIAGNOSTICS.md) and
   [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
 - Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md)

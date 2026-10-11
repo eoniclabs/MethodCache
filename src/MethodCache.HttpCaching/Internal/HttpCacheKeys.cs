@@ -84,14 +84,16 @@ internal static class HttpCacheKeys
     {
         Append(hash, header.ToLowerInvariant());
 
+        // A header sent with an empty value and a header not sent at all are different requests
         if (request.Headers.TryGetValues(header, out var values) ||
             request.Content?.Headers.TryGetValues(header, out values) == true)
         {
+            Append(hash, "1");
             Append(hash, string.Join(",", values));
         }
         else
         {
-            Append(hash, string.Empty);
+            Append(hash, "0");
         }
     }
 

@@ -15,7 +15,7 @@ console apps, workers and ASP.NET Core. Your app brings the SDK and exporters. F
   - how long the cached method took on a miss;
   - entries, memory and hit ratio of the in-memory cache.
 - **Spans for misses and invalidations**:
-  - Each span has the method, hit or miss, TTL, group, version and the cache tags.
+  - Each span has the method, hit or miss, TTL, group and version. Keys and tags only when you turn them on, since they contain argument values.
   - Spans are children of the current request span and copy its `http.*` and `url.*` attributes.
 - **Hits stay allocation-free**: generated decorators answer hits from the cache's fast path, which has no span. Hits still count in `methodcache.hits_total`.
 
@@ -54,6 +54,7 @@ Sampling, export intervals and the service name are set on the OpenTelemetry SDK
 | `EnableMetrics` | `true` | Records metrics |
 | `RecordCacheKeys` | `false` | Puts the cache key on spans. Keys can contain argument values |
 | `HashCacheKeys` | `true` | With `RecordCacheKeys`, records a hash of the key instead of the key |
+| `RecordCacheTags` | `false` | Puts the cache tags and invalidation patterns on spans. Tags such as `user:{userId}` contain argument values |
 | `ExportSensitiveData` | `false` | Puts the user and tenant ids from `IBaggagePropagator` into span baggage |
 | `EnableHttpCorrelation` | `true` | Copies the request's `http.*` and `url.*` attributes onto cache spans |
 | `EnableBaggagePropagation` | `true` | Carries `cache.*` baggage between spans |
@@ -80,7 +81,7 @@ _baggagePropagator.SetCacheTenantId(tenantId); // exported only with ExportSensi
 | `cache.hit` | Whether the value came from the cache | `true` |
 | `cache.key` / `cache.key_hash` | The key, with `RecordCacheKeys` | `a1b2c3d4` |
 | `cache.ttl_seconds` | Time-to-live | `600` |
-| `cache.tags` | Cache tags | `user,profile` |
+| `cache.tags` | Cache tags, with `RecordCacheTags` | `user,profile` |
 | `cache.group` | Group | `users` |
 | `cache.version` | Version | `2` |
 | `cache.keys_count` | Number of keys invalidated | `3` |
