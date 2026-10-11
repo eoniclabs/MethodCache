@@ -21,10 +21,13 @@ namespace MethodCache.CodeFixes
     {
         private const int MaxSuggestions = 3;
 
+        /// <inheritdoc />
         public override ImmutableArray<string> FixableDiagnosticIds { get; } = ImmutableArray.Create("MCG009");
 
+        /// <inheritdoc />
         public override FixAllProvider? GetFixAllProvider() => null;
 
+        /// <inheritdoc />
         public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);

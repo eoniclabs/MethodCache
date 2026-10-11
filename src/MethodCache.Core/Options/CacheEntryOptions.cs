@@ -239,12 +239,19 @@ namespace MethodCache
                 return this;
             }
 
+            /// <summary>
+            /// Attaches an observer that is told about this call's hit, miss or error. Applies to <c>GetOrCreateAsync</c> only;
+            /// configuring it for a cached method throws at startup.
+            /// </summary>
             public Builder WithMetrics(ICacheMetrics metrics)
             {
                 _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
                 return this;
             }
 
+            /// <summary>
+            /// Sets a version that becomes part of the key, so entries cached under an older version are ignored.
+            /// </summary>
             public Builder WithVersion(int version)
             {
                 if (version < 0)
@@ -256,6 +263,10 @@ namespace MethodCache
                 return this;
             }
 
+            /// <summary>
+            /// Skips the cache for this <c>GetOrCreateAsync</c> call when <paramref name="predicate"/> returns false: the factory
+            /// runs and its result is neither read from nor stored in the cache. Applies to <c>GetOrCreateAsync</c> only.
+            /// </summary>
             public Builder When(Func<CacheContext, bool> predicate)
             {
                 _predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));

@@ -4,6 +4,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
+/// <summary>
+/// Registers Redis as MethodCache's distributed cache.
+/// </summary>
 public static class MethodCacheRedisServiceCollectionExtensions
 {
     /// <summary>

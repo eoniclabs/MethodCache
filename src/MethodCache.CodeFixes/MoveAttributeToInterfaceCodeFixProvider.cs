@@ -19,10 +19,13 @@ namespace MethodCache.CodeFixes
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(MoveAttributeToInterfaceCodeFixProvider)), Shared]
     public sealed class MoveAttributeToInterfaceCodeFixProvider : CodeFixProvider
     {
+        /// <inheritdoc />
         public override ImmutableArray<string> FixableDiagnosticIds { get; } = ImmutableArray.Create("MC0001");
 
+        /// <inheritdoc />
         public override FixAllProvider? GetFixAllProvider() => null;
 
+        /// <inheritdoc />
         public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);

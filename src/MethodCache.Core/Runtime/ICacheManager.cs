@@ -15,7 +15,7 @@ namespace MethodCache
     /// - Multi-layer caching (L1/L2)
     /// - Tag-based invalidation for bulk cache clearing
     /// - Custom key generation strategies
-    /// - Pattern-based cache key matching
+    /// - Tag pattern invalidation
     /// </remarks>
     /// <example>
     /// Basic usage with GetOrCreateAsync:
@@ -25,7 +25,7 @@ namespace MethodCache
     ///     methodName: "GetUser",
     ///     args: new object[] { userId },
     ///     factory: () => database.GetUserAsync(userId),
-    ///     descriptor: descriptor,
+    ///     policy: policy,
     ///     keyGenerator: keyGen
     /// );
     /// </code>
@@ -198,15 +198,16 @@ namespace MethodCache
         Task InvalidateByKeysAsync(params string[] keys);
 
         /// <summary>
-        /// Invalidates cache entries matching a wildcard pattern.
-        /// Supported patterns depend on the cache provider (e.g., Redis supports glob patterns).
+        /// Invalidates cache entries whose tags match a wildcard pattern, where <c>*</c> matches any run of characters
+        /// and <c>?</c> matches one character.
         /// </summary>
-        /// <param name="pattern">Pattern to match cache keys (e.g., "GetUser*" or "user:*:profile")</param>
+        /// <param name="pattern">Pattern to match tags (e.g., "user:*" or "tenant:?:orders")</param>
         /// <returns>A task representing the asynchronous invalidation operation</returns>
+        /// <exception cref="NotSupportedException">A distributed cache is configured; invalidate the exact tags instead.</exception>
         /// <example>
         /// <code>
-        /// // Invalidate all user-related caches
-        /// await cacheManager.InvalidateByTagPatternAsync("GetUser*");
+        /// // Invalidate all entries tagged for any user
+        /// await cacheManager.InvalidateByTagPatternAsync("user:*");
         ///
         /// // Invalidate all caches for a specific tenant
         /// await cacheManager.InvalidateByTagPatternAsync($"tenant:{tenantId}:*");

@@ -3,15 +3,34 @@ using System.Collections.Generic;
 
 namespace MethodCache.Policies;
 
+/// <summary>
+/// The caching settings for one method: how long results live, their tags, expiration, refresh and fail-safe behavior.
+/// A field left unset falls through to a lower-priority source or the default.
+/// </summary>
 public sealed record CachePolicy
 {
     private static readonly IReadOnlyDictionary<string, string?> EmptyMetadata = new Dictionary<string, string?>(StringComparer.Ordinal);
 
+    /// <summary>
+    /// A policy with no fields set.
+    /// </summary>
     public static CachePolicy Empty { get; } = new CachePolicy();
 
+    /// <summary>
+    /// How long an entry lives after it is stored.
+    /// </summary>
     public TimeSpan? Duration { get; init; }
+    /// <summary>
+    /// Tags attached to stored entries, so related entries can be invalidated together.
+    /// </summary>
     public IReadOnlyList<string> Tags { get; init; } = Array.Empty<string>();
+    /// <summary>
+    /// How long an entry may go unread before it expires; each read resets the window.
+    /// </summary>
     public TimeSpan? SlidingExpiration { get; init; }
+    /// <summary>
+    /// How long before an entry expires it is reloaded in the background, so callers keep getting a cached value.
+    /// </summary>
     public TimeSpan? RefreshAhead { get; init; }
 
     /// <summary>
@@ -36,7 +55,16 @@ public sealed record CachePolicy
     /// After a fail-safe value was served, how long it is served before the method is called again. Default 30 seconds.
     /// </summary>
     public TimeSpan? FailSafeRetryAfter { get; init; }
+    /// <summary>
+    /// A version number that becomes part of the cache key; changing it makes previously stored entries unreachable.
+    /// </summary>
     public int? Version { get; init; }
+    /// <summary>
+    /// Free-form key/value pairs attached to the policy, for diagnostics and custom tooling.
+    /// </summary>
     public IReadOnlyDictionary<string, string?> Metadata { get; init; } = EmptyMetadata;
+    /// <summary>
+    /// Which sources contributed to this policy and which fields each one set.
+    /// </summary>
     public PolicyProvenance Provenance { get; init; } = PolicyProvenance.Empty;
 }

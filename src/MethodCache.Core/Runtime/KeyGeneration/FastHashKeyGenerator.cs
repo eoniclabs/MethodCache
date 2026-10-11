@@ -59,6 +59,7 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         Object,
     }
 
+    /// <inheritdoc />
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         => GenerateKey(methodName, args, policy.Version);
 

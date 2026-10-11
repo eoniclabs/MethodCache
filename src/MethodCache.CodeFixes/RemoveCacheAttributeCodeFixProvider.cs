@@ -16,11 +16,14 @@ namespace MethodCache.CodeFixes
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(RemoveCacheAttributeCodeFixProvider)), Shared]
     public sealed class RemoveCacheAttributeCodeFixProvider : CodeFixProvider
     {
+        /// <inheritdoc />
         public override ImmutableArray<string> FixableDiagnosticIds { get; } =
             ImmutableArray.Create("MCG001", "MCG002", "MCG003", "MCG006", "MCG007", "MCG014");
 
+        /// <inheritdoc />
         public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
+        /// <inheritdoc />
         public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);

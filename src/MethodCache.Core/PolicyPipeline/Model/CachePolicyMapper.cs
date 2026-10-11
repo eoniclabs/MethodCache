@@ -3,9 +3,22 @@ using MethodCache.Policies;
 
 namespace MethodCache.Infrastructure;
 
+/// <summary>
+/// Helpers for policy sources and generated code; not meant to be called directly.
+/// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class CachePolicyMapper
 {
+    /// <summary>
+    /// Returns a copy of the policy with a contribution from the given source added to its <see cref="CachePolicy.Provenance"/>.
+    /// </summary>
+    /// <param name="policy">The policy to copy.</param>
+    /// <param name="sourceId">The source making the contribution.</param>
+    /// <param name="fields">The fields the source set.</param>
+    /// <param name="timestamp">When the contribution was made.</param>
+    /// <param name="metadata">Optional key/value pairs for the contribution.</param>
+    /// <param name="notes">An optional free-text note.</param>
+    /// <returns>The policy with the contribution recorded.</returns>
     public static CachePolicy AttachContribution(CachePolicy policy, string sourceId, CachePolicyFields fields, DateTimeOffset timestamp, IReadOnlyDictionary<string, string?>? metadata = null, string? notes = null)
     {
         if (policy == null)
@@ -18,6 +31,11 @@ public static class CachePolicyMapper
         return policy with { Provenance = provenance };
     }
 
+    /// <summary>
+    /// Returns the fields that have a value in the policy.
+    /// </summary>
+    /// <param name="policy">The policy to inspect.</param>
+    /// <returns>The set fields.</returns>
     public static CachePolicyFields DetectFields(CachePolicy policy)
     {
         if (policy == null)

@@ -7,17 +7,74 @@ using Microsoft.Extensions.Options;
 
 namespace MethodCache.OpenTelemetry;
 
+/// <summary>
+/// Carries cache correlation data (a correlation id, an invalidation id, a user id and a tenant id) along the async
+/// flow and puts it into the baggage of MethodCache's spans. Resolve it from dependency injection after
+/// <c>AddMethodCacheOpenTelemetry()</c>. Setting a null or empty value is ignored.
+/// </summary>
 public interface IBaggagePropagator
 {
+    /// <summary>
+    /// Copies the cache baggage onto <paramref name="activity"/>. The user and tenant ids are left out unless
+    /// <see cref="OpenTelemetryOptions.ExportSensitiveData"/> is on.
+    /// </summary>
+    /// <param name="activity">The span to add the baggage to; nothing happens when it is null.</param>
     void InjectBaggage(Activity? activity);
+
+    /// <summary>
+    /// Reads the <c>cache.*</c> baggage of <paramref name="activity"/> into the current async flow.
+    /// </summary>
+    /// <param name="activity">The span to read from; nothing happens when it is null.</param>
     void ExtractBaggage(Activity? activity);
+
+    /// <summary>
+    /// Sets the correlation id for the current async flow.
+    /// </summary>
+    /// <param name="correlationId">The correlation id.</param>
     void SetCacheCorrelationId(string correlationId);
+
+    /// <summary>
+    /// Sets the id of the invalidation in progress for the current async flow.
+    /// </summary>
+    /// <param name="invalidationId">The invalidation id.</param>
     void SetCacheInvalidationId(string invalidationId);
+
+    /// <summary>
+    /// Sets the user id for the current async flow. It identifies a person, so it reaches spans only with
+    /// <see cref="OpenTelemetryOptions.ExportSensitiveData"/>.
+    /// </summary>
+    /// <param name="userId">The user id.</param>
     void SetCacheUserId(string? userId);
+
+    /// <summary>
+    /// Sets the tenant id for the current async flow. It reaches spans only with
+    /// <see cref="OpenTelemetryOptions.ExportSensitiveData"/>.
+    /// </summary>
+    /// <param name="tenantId">The tenant id.</param>
     void SetCacheTenantId(string? tenantId);
+
+    /// <summary>
+    /// Returns the correlation id of the current async flow, or null.
+    /// </summary>
+    /// <returns>The correlation id, or null when none is set.</returns>
     string? GetCacheCorrelationId();
+
+    /// <summary>
+    /// Returns the invalidation id of the current async flow, or null.
+    /// </summary>
+    /// <returns>The invalidation id, or null when none is set.</returns>
     string? GetCacheInvalidationId();
+
+    /// <summary>
+    /// Returns the user id of the current async flow, or null.
+    /// </summary>
+    /// <returns>The user id, or null when none is set.</returns>
     string? GetCacheUserId();
+
+    /// <summary>
+    /// Returns the tenant id of the current async flow, or null.
+    /// </summary>
+    /// <returns>The tenant id, or null when none is set.</returns>
     string? GetCacheTenantId();
 }
 

@@ -3,10 +3,15 @@ using MethodCache.Infrastructure;
 
 namespace MethodCache.Extensibility
 {
+    /// <summary>
+    /// A cache manager that never caches: every call runs the factory and every lookup misses. Useful in tests, and
+    /// for code that uses <c>GetOrCreateAsync</c> directly.
+    /// </summary>
     public class NoOpCacheManager : ICacheManager
     {
         private readonly ICacheMetricsProvider? _metricsProvider;
 
+        /// <summary>Creates a cache manager that never caches.</summary>
         public NoOpCacheManager()
         {
         }
@@ -19,30 +24,35 @@ namespace MethodCache.Extensibility
 
         // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
+        /// <inheritdoc />
         public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             // Always execute the factory, effectively disabling caching
             return RunAsync(methodName, factory);
         }
 
+        /// <inheritdoc />
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             // Always return cache miss for no-op cache
             return new ValueTask<T?>(default(T));
         }
 
+        /// <inheritdoc />
         public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
             // Always return cache miss for no-op cache
             return new ValueTask<T?>(default(T));
         }
 
+        /// <inheritdoc />
         public bool TryGetFast<T>(string cacheKey, out T? value)
         {
             value = default;
             return false;
         }
 
+        /// <inheritdoc />
         public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             // Always execute the factory, effectively disabling caching
@@ -73,17 +83,20 @@ namespace MethodCache.Extensibility
 
         // ============= Invalidation methods =============
 
+        /// <inheritdoc />
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             // No operation for invalidation
             return Task.CompletedTask;
         }
 
+        /// <inheritdoc />
         public Task InvalidateByKeysAsync(params string[] keys)
         {
             return Task.CompletedTask;
         }
 
+        /// <inheritdoc />
         public Task InvalidateByTagPatternAsync(string pattern)
         {
             return Task.CompletedTask;

@@ -144,11 +144,9 @@ namespace MethodCache
         public bool EnableStatistics { get; set; } = true;
 
         /// <summary>
-        /// Whether to enable the ultra-fast cache hit path.
-        /// When enabled, skips LRU updates and refresh-ahead checks on cache hits
-        /// for zero-parameter methods returning reference types, providing 2-3x performance improvement.
-        /// Cache misses always use the full-featured path with all protections.
-        /// Default: true
+        /// Whether generated decorators answer cache hits from a lock-free lookup that allocates nothing. Expiration,
+        /// sliding expiration and refresh-ahead still apply; misses always take the full path. Default true; turning
+        /// it off only makes hits slower.
         /// </summary>
         public bool EnableFastPath { get; set; } = true;
 

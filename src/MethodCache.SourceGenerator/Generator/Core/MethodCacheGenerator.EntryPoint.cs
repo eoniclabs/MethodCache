@@ -10,6 +10,7 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Core Generator ========================
+        /// <inheritdoc />
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             // Look for methods with Cache attribute and get their containing interfaces

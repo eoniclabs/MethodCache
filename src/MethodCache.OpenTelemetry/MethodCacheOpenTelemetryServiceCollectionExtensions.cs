@@ -7,6 +7,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
+/// <summary>
+/// Registers MethodCache's OpenTelemetry instrumentation.
+/// </summary>
 public static class MethodCacheOpenTelemetryServiceCollectionExtensions
 {
     /// <summary>
