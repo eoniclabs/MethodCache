@@ -7,7 +7,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// Merges the policies from all registered sources into one effective policy per method; higher-priority sources win per field.
 /// </summary>
-public interface IPolicyResolver
+internal interface IPolicyResolver
 {
     /// <summary>
     /// Returns the effective policy for a method, loading the sources first if needed; a method without any policy gets an empty one.

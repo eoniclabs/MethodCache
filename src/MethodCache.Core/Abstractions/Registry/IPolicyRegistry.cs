@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using System.Threading;
+using System.ComponentModel;
 
 namespace MethodCache.Policies;
 
 /// <summary>
 /// Synchronous access to the effective, merged cache policy of each method.
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public interface IPolicyRegistry
 {
     /// <summary>

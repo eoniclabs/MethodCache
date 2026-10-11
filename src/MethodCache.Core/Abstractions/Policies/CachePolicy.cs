@@ -66,5 +66,5 @@ public sealed record CachePolicy
     /// <summary>
     /// Which sources contributed to this policy and which fields each one set.
     /// </summary>
-    public PolicyProvenance Provenance { get; init; } = PolicyProvenance.Empty;
+    internal PolicyProvenance Provenance { get; init; } = PolicyProvenance.Empty;
 }
