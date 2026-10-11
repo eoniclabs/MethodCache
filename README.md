@@ -317,7 +317,7 @@ dotnet format
 dotnet test MethodCache.sln
 ```
 
-See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) for the repository layout.
+See [AGENTS.md](AGENTS.md) for the repository layout and contribution rules.
 
 ## License
 

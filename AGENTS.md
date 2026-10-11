@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+Read this before changing the repository. It is written for human contributors and coding agents alike.
+
 ## Project Structure & Modules
 - `src/`: the shipped libraries.
   - `MethodCache.Core`: Core APIs, attributes, in-memory cache. Packs as the `MethodCache` package, which also carries the generator and analyzers.
@@ -38,5 +40,13 @@
 ## Security & Configuration
 - Do not log sensitive data or include secrets in cache keys. Use environment variables or user-secrets for Redis connection strings.
 - Prefer dependency injection over statics; validate options (`IOptions<T>`) and fail fast on misconfiguration.
+
+## Rules that are easy to miss
+- Public API is locked by PublicApiAnalyzers. Any added, removed or changed public member must be recorded in that project's `PublicAPI.Unshipped.txt`, or the build fails.
+- Nothing is on nuget.org yet, so an API that is replaced is deleted outright. Do not add `[Obsolete]` shims.
+- Library code must use `ConfigureAwait(false)` on every await (`CA2007` is an error in `src/`).
+- New or changed diagnostics need a row in `docs/user-guide/DIAGNOSTICS.md` and an entry in `src/MethodCache.Analyzers/AnalyzerReleases.Unshipped.md` when they come from the analyzers.
+- Behavior changes need the user docs updated in the same pull request: `README.md`, `docs/user-guide/`, and the package's NuGet README. For `MethodCache` (`src/MethodCache.Core`) that is `NUGET_README.md` at the repository root; the add-on packages use their own `src/*/README.md`.
+- CI also runs the demo, a Native AOT publish of `tests/MethodCache.AotSmokeTest`, and the package smoke test (including with the .NET 8 SDK). Run the ones your change can affect before pushing.
 
 Tip: When adding a new module, follow the `MethodCache.*` naming, add it to `MethodCache.sln`, and provide minimal tests and a README or example usage.
