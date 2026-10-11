@@ -71,6 +71,30 @@ namespace MethodCache.SourceGenerator
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Warning,
                 isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor CacheInterfaceUnsupportedType = new(
+                id: "MCG010",
+                title: "CacheInterface cannot cache this type",
+                messageFormat: "[assembly: CacheInterface] cannot cache '{0}': {1}",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor CacheInterfaceMethodNotUsable = new(
+                id: "MCG011",
+                title: "CacheInterface lists a method it cannot cache",
+                messageFormat: "[assembly: CacheInterface] cannot cache '{0}.{1}': {2}",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor CacheInterfaceDuplicate = new(
+                id: "MCG012",
+                title: "Interface listed in more than one CacheInterface attribute",
+                messageFormat: "'{0}' is listed in more than one [assembly: CacheInterface]; list all its methods in one attribute",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
         }
     }
 }

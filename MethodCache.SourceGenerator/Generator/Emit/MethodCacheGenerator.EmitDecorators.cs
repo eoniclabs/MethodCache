@@ -112,7 +112,7 @@ namespace MethodCache.SourceGenerator
 
                 sb.AppendLine("    [System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
                 sb.AppendLine("    [System.Diagnostics.DebuggerNonUserCode]");
-                sb.AppendLine($"    public class {className}{genericParams} : {GetSimpleInterfaceName(info.Symbol)}");
+                sb.AppendLine($"    public class {className}{genericParams} : global::{GetSimpleInterfaceName(info.Symbol)}");
 
                 // Add generic constraints after class declaration
                 EmitGenericConstraints(sb, info.Symbol, "        ");

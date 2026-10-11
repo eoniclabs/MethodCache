@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 
@@ -30,9 +31,23 @@ namespace MethodCache.SourceGenerator
             /// interface in the global namespace, such as one declared next to top-level statements.
             /// </summary>
             internal static string GetDecoratorNamespace(INamedTypeSymbol interfaceSymbol)
-                => interfaceSymbol.ContainingNamespace is { IsGlobalNamespace: false } ns
-                    ? ns.ToDisplayString()
-                    : "MethodCache.Generated";
+            {
+                var ns = interfaceSymbol.ContainingNamespace is { IsGlobalNamespace: false } containing
+                    ? containing.ToDisplayString()
+                    : null;
+
+                // A decorator for another assembly's interface goes under MethodCache.Generated, so it can't clash
+                // with a type that assembly declares next to the interface
+                if (IsFromReferencedAssembly(interfaceSymbol))
+                {
+                    return ns is null ? "MethodCache.Generated" : "MethodCache.Generated." + ns;
+                }
+
+                return ns ?? "MethodCache.Generated";
+            }
+
+            internal static bool IsFromReferencedAssembly(INamedTypeSymbol interfaceSymbol)
+                => interfaceSymbol.Locations.All(l => l.IsInMetadata);
 
             internal static string GetDecoratorFullName(INamedTypeSymbol interfaceSymbol)
                 => $"global::{GetDecoratorNamespace(interfaceSymbol)}.{interfaceSymbol.Name}Decorator";

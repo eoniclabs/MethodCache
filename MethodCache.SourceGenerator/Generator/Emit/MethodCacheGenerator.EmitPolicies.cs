@@ -175,17 +175,20 @@ namespace MethodCache.SourceGenerator
 
             private static void PopulateFromCacheAttribute(PolicyDefinition definition, AttributeData cacheAttr)
             {
-                if (cacheAttr.ConstructorArguments.Length > 0)
+                // [Cache("group")] names it in the constructor, [assembly: CacheInterface(..., Group = "group")] by name
+                var groupName = cacheAttr.ConstructorArguments.Length > 0 ? cacheAttr.ConstructorArguments[0].Value as string : null;
+                if (groupName is null && TryGetNamedArgument(cacheAttr, "Group", out var groupArg))
                 {
-                    var ctorArg = cacheAttr.ConstructorArguments[0];
-                    if (ctorArg.Value is string groupName && !string.IsNullOrWhiteSpace(groupName))
-                    {
-                        definition.MetadataStatements.Add($"metadata[\"{GroupMetadataKey}\"] = {ToLiteral(groupName)};");
+                    groupName = groupArg.Value as string;
+                }
 
-                        // In the policy too, so the group's ForGroup(...) defaults reach this method
-                        definition.PolicyStatements.Add($"policy = policy with {{ Metadata = new Dictionary<string, string?>(StringComparer.Ordinal) {{ [\"{GroupMetadataKey}\"] = {ToLiteral(groupName)} }} }};");
-                        definition.PolicyStatements.Add("fields |= CachePolicyFields.Metadata;");
-                    }
+                if (!string.IsNullOrWhiteSpace(groupName))
+                {
+                    definition.MetadataStatements.Add($"metadata[\"{GroupMetadataKey}\"] = {ToLiteral(groupName)};");
+
+                    // In the policy too, so the group's ForGroup(...) defaults reach this method
+                    definition.PolicyStatements.Add($"policy = policy with {{ Metadata = new Dictionary<string, string?>(StringComparer.Ordinal) {{ [\"{GroupMetadataKey}\"] = {ToLiteral(groupName)} }} }};");
+                    definition.PolicyStatements.Add("fields |= CachePolicyFields.Metadata;");
                 }
 
                 AddTimeSpan(definition, cacheAttr, "Duration");

@@ -10,9 +10,9 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Modeling Helpers ========================
-        private static (Diagnostic? diagnostic, bool canProceed) ValidateCacheMethod(IMethodSymbol method)
+        private static (Diagnostic? diagnostic, bool canProceed) ValidateCacheMethod(IMethodSymbol method, Location? reportAt = null)
         {
-            var location = method.Locations.FirstOrDefault();
+            var location = reportAt ?? method.Locations.FirstOrDefault();
             var methodName = method.ToDisplayString();
 
             // Check for void return

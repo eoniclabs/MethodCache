@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\MethodCache.AotSmokeTest.Vendor\MethodCache.AotSmokeTest.Vendor.csproj" />
     <ProjectReference Include="..\..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

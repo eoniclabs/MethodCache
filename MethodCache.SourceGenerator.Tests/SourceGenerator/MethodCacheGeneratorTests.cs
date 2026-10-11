@@ -292,7 +292,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
             // Sync methods with simple parameters use the ultra-fast path with GetOrCreateFastAsync
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateFastAsync<string>");
@@ -327,7 +327,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearCache()");
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.InvalidateByTagsAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"user\", \"data\"");
@@ -360,7 +360,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             // Ultra-fast path generates non-async method signature that returns Task
             AssertContainsIgnoreWhitespace(decoratorSource, "System.Threading.Tasks.Task<string> GetValueAsync(int id)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
@@ -419,7 +419,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetValue(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> GetValueAsync(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearUserCache()");
@@ -520,7 +520,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "GetValue(int id, string name,");
             AssertContainsIgnoreWhitespace(decoratorSource, "List<int> items)");
             AssertContainsIgnoreWhitespace(decoratorSource, "public T GetGeneric");
@@ -556,7 +556,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public string GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearAll()");
             // Zero-parameter methods use the key prefix as the whole key
@@ -612,7 +612,7 @@ namespace TestApp.Services.Data
             
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "namespace TestApp.Services.Data");
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.Services.Data.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.Services.Data.ITestService");
         }
 
         [Fact]
@@ -639,7 +639,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void DoSomething(int id)");
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.DoSomething(id)");
         }
@@ -669,7 +669,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             // Ultra-fast path generates non-async method signature that returns Task
             AssertContainsIgnoreWhitespace(decoratorSource, "System.Threading.Tasks.Task<string> GetValueAsync(int id)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
@@ -711,7 +711,7 @@ namespace TestApp
             Assert.NotNull(decoratorSource);
             
             // Check for expected patterns with flexible whitespace matching
-            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : TestApp.ITestService");
+            AssertContainsIgnoreWhitespace(decoratorSource, "public class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "public void ClearMultipleTags()");
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.InvalidateByTagsAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"users\", \"data\", \"cache\"");
