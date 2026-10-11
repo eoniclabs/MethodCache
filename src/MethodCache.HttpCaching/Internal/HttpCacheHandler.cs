@@ -130,13 +130,13 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             upstreamResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         // An HttpClient timeout surfaces as TaskCanceledException; only the caller's own cancellation skips stale-if-error
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested && cachedEntry != null && freshness.CanUseStaleIfError(cachedEntry))
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested && !requestDirectives.NoCache && cachedEntry != null && freshness.CanUseStaleIfError(cachedEntry))
         {
             _logger.LogWarning(ex, "Request failed, serving stale content for {Uri}", request.RequestUri);
             return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness), startedAt);
         }
 
-        if (cachedEntry != null && (int)upstreamResponse.StatusCode >= 500 && freshness.CanUseStaleIfError(cachedEntry))
+        if (cachedEntry != null && !requestDirectives.NoCache && (int)upstreamResponse.StatusCode >= 500 && freshness.CanUseStaleIfError(cachedEntry))
         {
             _logger.LogWarning("Origin returned {StatusCode}, serving stale content for {Uri}", (int)upstreamResponse.StatusCode, request.RequestUri);
             upstreamResponse.Dispose();

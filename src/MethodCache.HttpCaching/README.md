@@ -63,8 +63,9 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 | `CacheableMethods` | GET, HEAD | POST, PUT, PATCH and DELETE are never cached, even if added. |
 | `AddDiagnosticHeaders` | `false` | Adds `X-Cache`, `X-Cache-Age` and `X-Cache-TTL` |
 
-`must-revalidate` (and `proxy-revalidate` / `s-maxage` in a shared cache) always wins: such responses are never
-served stale.
+`no-cache` requires successful validation, including when stale-while-revalidate or stale-if-error is enabled.
+A request with `no-cache` also requires validation and propagates origin errors. `must-revalidate` (and
+`proxy-revalidate` / `s-maxage` in a shared cache) forbids serving stale responses.
 
 ## Storage
 
