@@ -33,6 +33,29 @@ is capped at one second, a circuit breaker skips it until it is back, and invali
 instead of throwing. Until they are stored, the instance doesn't read entries from it, so an invalidated value can't
 come back. The [health check](monitoring.md#health-check) reports Degraded while this lasts.
 
+A value set directly while the distributed cache is down stays in that instance's memory, and the value it replaced is
+removed from the distributed cache and the other instances once it is back. An entry that comes back damaged (cut
+short, or unreadable by the serializer) is a miss: your method runs and its result replaces the entry.
+
+The timeout caps each call to the distributed cache, not a whole cache miss. A cache that stops answering costs a miss
+one timeout, after which the circuit breaker skips it. One that answers just within the timeout costs a miss up to
+three: reading the entry, writing your method's result and checking that no removal raced the write (and a fourth for
+the backplane message).
+
+## What other instances see
+
+- An invalidation reaches another instance when the backplane delivers it. Until then, and for good if the message is
+  lost or the instance is disconnected from the backplane, that instance serves its in-memory copy until it expires,
+  as without a backplane. Instances without a copy read the distributed cache, which is already right.
+- Messages carry no values, so a late, repeated or reordered message only makes an instance read the distributed cache
+  again.
+- An invalidation the distributed cache didn't accept is retried every `CircuitBreakerDuration`. Until the retry
+  succeeds, other instances can serve the old value; the instance that invalidated never does.
+- A write that timed out may still land later, because a distributed cache has no compare-and-set. Its key is removed
+  again by the same retry, but until then the late value can replace a newer one, and a write that lands after the
+  retry stays until it expires.
+- Entries carry no checksum: damage that still reads as a valid value is served.
+
 ## Serialization
 
 Values are written as JSON with System.Text.Json. The `MethodCache.Serialization.MessagePack` package makes them
