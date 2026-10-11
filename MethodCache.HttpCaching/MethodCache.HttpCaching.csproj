@@ -25,6 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.HttpCaching.Tests" />
+    <InternalsVisibleTo Include="MethodCache.HttpCaching.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
   </ItemGroup>
 

@@ -1,16 +1,13 @@
 #nullable enable
-const MethodCache.HttpCaching.Storage.HttpCacheTags.AllEntries = "http-cache:all" -> string!
 MethodCache.HttpCaching.Configuration.HttpCachingBuilder
 MethodCache.HttpCaching.Configuration.HttpCachingBuilder.Configure(System.Action<MethodCache.HttpCaching.HttpCacheOptions!>! configure) -> MethodCache.HttpCaching.Configuration.HttpCachingBuilder!
 MethodCache.HttpCaching.Configuration.HttpCachingBuilder.ConfigureStorage(System.Action<MethodCache.HttpCaching.Options.HttpCacheStorageOptions!>! configure) -> MethodCache.HttpCaching.Configuration.HttpCachingBuilder!
-MethodCache.HttpCaching.Configuration.HttpCachingBuilder.HttpCachingBuilder(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
 MethodCache.HttpCaching.Configuration.HttpCachingBuilder.UseCustomStorage<TStorage>(System.Action<Microsoft.Extensions.DependencyInjection.IServiceCollection!>? registration = null) -> MethodCache.HttpCaching.Configuration.HttpCachingBuilder!
 MethodCache.HttpCaching.Configuration.HttpCachingBuilder.UseInMemoryStorage(System.Action<MethodCache.HttpCaching.Options.HttpCacheStorageOptions!>? configure = null) -> MethodCache.HttpCaching.Configuration.HttpCachingBuilder!
 MethodCache.HttpCaching.Extensions.HttpClientBuilderExtensions
 MethodCache.HttpCaching.HttpCacheEntry
 MethodCache.HttpCaching.HttpCacheEntry.CacheControl.get -> System.Net.Http.Headers.CacheControlHeaderValue?
 MethodCache.HttpCaching.HttpCacheEntry.CacheControl.init -> void
-MethodCache.HttpCaching.HttpCacheEntry.CanValidate() -> bool
 MethodCache.HttpCaching.HttpCacheEntry.Content.get -> byte[]!
 MethodCache.HttpCaching.HttpCacheEntry.Content.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.ContentHeaders.get -> System.Collections.Generic.Dictionary<string!, string![]!>!
@@ -21,10 +18,10 @@ MethodCache.HttpCaching.HttpCacheEntry.ETag.get -> string?
 MethodCache.HttpCaching.HttpCacheEntry.ETag.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.Expires.get -> System.DateTimeOffset?
 MethodCache.HttpCaching.HttpCacheEntry.Expires.init -> void
-MethodCache.HttpCaching.HttpCacheEntry.GetAge() -> System.TimeSpan
 MethodCache.HttpCaching.HttpCacheEntry.Headers.get -> System.Collections.Generic.Dictionary<string!, string![]!>!
 MethodCache.HttpCaching.HttpCacheEntry.Headers.init -> void
-MethodCache.HttpCaching.HttpCacheEntry.HttpCacheEntry() -> void
+MethodCache.HttpCaching.HttpCacheEntry.InitialAge.get -> System.TimeSpan
+MethodCache.HttpCaching.HttpCacheEntry.InitialAge.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.LastModified.get -> System.DateTimeOffset?
 MethodCache.HttpCaching.HttpCacheEntry.LastModified.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.Method.get -> string!
@@ -35,17 +32,15 @@ MethodCache.HttpCaching.HttpCacheEntry.StatusCode.get -> System.Net.HttpStatusCo
 MethodCache.HttpCaching.HttpCacheEntry.StatusCode.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.StoredAt.get -> System.DateTimeOffset
 MethodCache.HttpCaching.HttpCacheEntry.StoredAt.init -> void
-MethodCache.HttpCaching.HttpCacheEntry.ToHttpResponse() -> System.Net.Http.HttpResponseMessage!
+MethodCache.HttpCaching.HttpCacheEntry.VariantKeys.get -> string![]?
+MethodCache.HttpCaching.HttpCacheEntry.VariantKeys.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.VaryHeaders.get -> string![]?
 MethodCache.HttpCaching.HttpCacheEntry.VaryHeaders.init -> void
-MethodCache.HttpCaching.HttpCacheEntry.WithUpdatedHeaders(System.Net.Http.HttpResponseMessage! notModifiedResponse) -> MethodCache.HttpCaching.HttpCacheEntry!
-MethodCache.HttpCaching.HttpCacheHandler
-MethodCache.HttpCaching.HttpCacheHandler.HttpCacheHandler(MethodCache.HttpCaching.Storage.IHttpCacheStorage! storage, Microsoft.Extensions.Options.IOptionsMonitor<MethodCache.HttpCaching.HttpCacheOptions!>! optionsMonitor, MethodCache.HttpCaching.Validation.VaryHeaderCacheKeyGenerator! varyKeyGenerator, Microsoft.Extensions.Logging.ILogger<MethodCache.HttpCaching.HttpCacheHandler!>! logger, MethodCache.HttpCaching.Metrics.IHttpCacheMetrics? metrics = null) -> void
 MethodCache.HttpCaching.HttpCacheOptions
 MethodCache.HttpCaching.HttpCacheOptions.Behavior.get -> MethodCache.HttpCaching.Options.CacheBehaviorOptions!
-MethodCache.HttpCaching.HttpCacheOptions.CacheableMethods.get -> System.Collections.Generic.HashSet<System.Net.Http.HttpMethod!>!
 MethodCache.HttpCaching.HttpCacheOptions.CacheKeyGenerator.get -> System.Func<System.Net.Http.HttpRequestMessage!, string!>?
 MethodCache.HttpCaching.HttpCacheOptions.CacheKeyGenerator.set -> void
+MethodCache.HttpCaching.HttpCacheOptions.CacheableMethods.get -> System.Collections.Generic.HashSet<System.Net.Http.HttpMethod!>!
 MethodCache.HttpCaching.HttpCacheOptions.Diagnostics.get -> MethodCache.HttpCaching.Options.CacheDiagnosticsOptions!
 MethodCache.HttpCaching.HttpCacheOptions.Freshness.get -> MethodCache.HttpCaching.Options.CacheFreshnessOptions!
 MethodCache.HttpCaching.HttpCacheOptions.HttpCacheOptions() -> void
@@ -174,8 +169,8 @@ MethodCache.HttpCaching.Options.CacheFreshnessOptions.DefaultMaxAge.get -> Syste
 MethodCache.HttpCaching.Options.CacheFreshnessOptions.DefaultMaxAge.set -> void
 MethodCache.HttpCaching.Options.CacheFreshnessOptions.MaxHeuristicFreshness.get -> System.TimeSpan
 MethodCache.HttpCaching.Options.CacheFreshnessOptions.MaxHeuristicFreshness.set -> void
-MethodCache.HttpCaching.Options.CacheFreshnessOptions.MinExpiration.get -> System.TimeSpan
-MethodCache.HttpCaching.Options.CacheFreshnessOptions.MinExpiration.set -> void
+MethodCache.HttpCaching.Options.CacheFreshnessOptions.StaleRetention.get -> System.TimeSpan
+MethodCache.HttpCaching.Options.CacheFreshnessOptions.StaleRetention.set -> void
 MethodCache.HttpCaching.Options.CacheMetricsOptions
 MethodCache.HttpCaching.Options.CacheMetricsOptions.CacheMetricsOptions() -> void
 MethodCache.HttpCaching.Options.CacheMetricsOptions.EnableMetrics.get -> bool
@@ -207,13 +202,14 @@ MethodCache.HttpCaching.Storage.IHttpCacheStorage
 MethodCache.HttpCaching.Storage.IHttpCacheStorage.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.HttpCaching.Storage.IHttpCacheStorage.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.HttpCaching.HttpCacheEntry?>
 MethodCache.HttpCaching.Storage.IHttpCacheStorage.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-MethodCache.HttpCaching.Storage.IHttpCacheStorage.SetAsync(string! key, MethodCache.HttpCaching.HttpCacheEntry! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.HttpCaching.Storage.IHttpCacheStorage.SetAsync(string! key, MethodCache.HttpCaching.HttpCacheEntry! entry, System.TimeSpan timeToLive, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage
 MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.Dispose() -> void
 MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.HttpCaching.HttpCacheEntry?>
-MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.InMemoryHttpCacheStorage(Microsoft.Extensions.Caching.Memory.IMemoryCache! cache, Microsoft.Extensions.Options.IOptions<MethodCache.HttpCaching.HttpCacheOptions!>! cacheOptions, Microsoft.Extensions.Options.IOptions<MethodCache.HttpCaching.Options.HttpCacheStorageOptions!>! storageOptions, Microsoft.Extensions.Logging.ILogger<MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage!>! logger) -> void
+MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.InMemoryHttpCacheStorage(Microsoft.Extensions.Options.IOptions<MethodCache.HttpCaching.Options.HttpCacheStorageOptions!>! storageOptions, Microsoft.Extensions.Logging.ILogger<MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage!>! logger) -> void
 MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.SetAsync(string! key, MethodCache.HttpCaching.HttpCacheEntry! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.HttpCaching.Storage.InMemoryHttpCacheStorage.SetAsync(string! key, MethodCache.HttpCaching.HttpCacheEntry! entry, System.TimeSpan timeToLive, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.HttpCaching.Validation.AdvancedCacheDirectives
 MethodCache.HttpCaching.Validation.AdvancedCacheDirectives.AdvancedCacheDirectives(MethodCache.HttpCaching.Options.CacheBehaviorOptions! behavior) -> void
 MethodCache.HttpCaching.Validation.AdvancedCacheDirectives.CanUseStaleResponse(MethodCache.HttpCaching.Validation.AdvancedCacheDirectives.ResponseDirectives! responseDirectives, MethodCache.HttpCaching.Validation.RequestCacheDirectives! requestDirectives, bool isSharedCache, bool isErrorCondition) -> bool
@@ -291,13 +287,6 @@ MethodCache.HttpCaching.Validation.ContentNegotiationHandler.MediaTypeWithQualit
 MethodCache.HttpCaching.Validation.ContentNegotiationHandler.MediaTypeWithQuality.Quality.get -> double
 MethodCache.HttpCaching.Validation.ContentNegotiationHandler.MediaTypeWithQuality.Quality.set -> void
 MethodCache.HttpCaching.Validation.ContentNegotiationHandler.ParseAcceptHeader(System.Net.Http.HttpRequestMessage! request) -> MethodCache.HttpCaching.Validation.ContentNegotiationHandler.AcceptedContent!
-MethodCache.HttpCaching.Validation.FreshnessCalculator
-MethodCache.HttpCaching.Validation.FreshnessCalculator.CanUseStaleIfError(MethodCache.HttpCaching.HttpCacheEntry! entry) -> bool
-MethodCache.HttpCaching.Validation.FreshnessCalculator.CanUseStaleWhileRevalidate(MethodCache.HttpCaching.HttpCacheEntry! entry) -> bool
-MethodCache.HttpCaching.Validation.FreshnessCalculator.FreshnessCalculator(MethodCache.HttpCaching.Options.CacheBehaviorOptions! behavior, MethodCache.HttpCaching.Options.CacheFreshnessOptions! freshness) -> void
-MethodCache.HttpCaching.Validation.FreshnessCalculator.GetCurrentAge(MethodCache.HttpCaching.HttpCacheEntry! entry) -> System.TimeSpan
-MethodCache.HttpCaching.Validation.FreshnessCalculator.GetFreshnessLifetime(MethodCache.HttpCaching.HttpCacheEntry! entry) -> System.TimeSpan?
-MethodCache.HttpCaching.Validation.FreshnessCalculator.IsFresh(MethodCache.HttpCaching.HttpCacheEntry! entry) -> bool
 MethodCache.HttpCaching.Validation.RequestCacheDirectives
 MethodCache.HttpCaching.Validation.RequestCacheDirectives.AllowsStale(MethodCache.HttpCaching.Options.CacheBehaviorOptions! behavior) -> bool
 MethodCache.HttpCaching.Validation.RequestCacheDirectives.GetMaxStaleness(MethodCache.HttpCaching.Options.CacheBehaviorOptions! behavior) -> System.TimeSpan?
@@ -332,9 +321,8 @@ MethodCache.HttpCaching.Validation.WarningHeaderBuilder.WarningCode.ResponseIsSt
 MethodCache.HttpCaching.Validation.WarningHeaderBuilder.WarningCode.RevalidationFailed = 111 -> MethodCache.HttpCaching.Validation.WarningHeaderBuilder.WarningCode
 MethodCache.HttpCaching.Validation.WarningHeaderBuilder.WarningCode.TransformationApplied = 214 -> MethodCache.HttpCaching.Validation.WarningHeaderBuilder.WarningCode
 MethodCache.HttpCaching.Validation.WarningHeaderBuilder.WarningHeaderBuilder(string? hostName = null) -> void
-override MethodCache.HttpCaching.HttpCacheHandler.SendAsync(System.Net.Http.HttpRequestMessage! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Net.Http.HttpResponseMessage!>!
+const MethodCache.HttpCaching.Storage.HttpCacheTags.AllEntries = "http-cache:all" -> string!
 static MethodCache.HttpCaching.Extensions.HttpClientBuilderExtensions.AddHttpCaching(this Microsoft.Extensions.DependencyInjection.IHttpClientBuilder! builder, System.Action<MethodCache.HttpCaching.Configuration.HttpCachingBuilder!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IHttpClientBuilder!
-static MethodCache.HttpCaching.HttpCacheEntry.FromResponseAsync(System.Net.Http.HttpRequestMessage! request, System.Net.Http.HttpResponseMessage! response) -> System.Threading.Tasks.Task<MethodCache.HttpCaching.HttpCacheEntry!>!
 static MethodCache.HttpCaching.Storage.HttpCacheTags.ForContentType(string! contentType) -> string!
 static MethodCache.HttpCaching.Storage.HttpCacheTags.ForHost(string! host) -> string!
 static MethodCache.HttpCaching.Storage.HttpCacheTags.ForMethod(string! method) -> string!

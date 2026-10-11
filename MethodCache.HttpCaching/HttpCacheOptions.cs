@@ -18,8 +18,7 @@ public class HttpCacheOptions
     public HashSet<HttpMethod> CacheableMethods { get; } = new()
     {
         HttpMethod.Get,
-        HttpMethod.Head,
-        HttpMethod.Options
+        HttpMethod.Head
     };
 
     public Func<HttpRequestMessage, string>? CacheKeyGenerator { get; set; }
