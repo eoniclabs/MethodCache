@@ -9,7 +9,8 @@
 **Cache any .NET method with one attribute.** MethodCache's source generator writes the caching code for you at
 compile time: no reflection, no hand-written keys, no `TryGetValue` boilerplate, and it works with Native AOT.
 
-```csharp
+<!-- snippet: readme-quickstart-interface -->
+```cs
 using MethodCache;
 
 public interface IUserService
@@ -20,10 +21,15 @@ public interface IUserService
     [CacheInvalidate(Tags = ["user:{id}"])]
     Task RenameAsync(int id, string name);
 }
+```
+<!-- endSnippet -->
 
+<!-- snippet: readme-quickstart-registration -->
+```cs
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddMethodCache();
 ```
+<!-- endSnippet -->
 
 That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory until it expires or
 `RenameAsync(42, ...)` invalidates user 42, and only user 42.
@@ -77,7 +83,8 @@ For ASP.NET Core with admin endpoints, OpenTelemetry and two instances sharing R
 <tr><th>IMemoryCache by hand</th><th>MethodCache</th></tr>
 <tr><td>
 
-```csharp
+<!-- snippet: readme-before -->
+```cs
 public async Task<User> GetUserAsync(int id)
 {
     var key = $"user:{id}";
@@ -97,16 +104,19 @@ public async Task RenameAsync(int id, string name)
     // ...and every other key that held this user
 }
 ```
+<!-- endSnippet -->
 
 </td><td>
 
-```csharp
+<!-- snippet: readme-after -->
+```cs
 [Cache(Duration = "00:10:00", Tags = ["user:{id}"])]
 Task<User> GetUserAsync(int id);
 
 [CacheInvalidate(Tags = ["user:{id}"])]
 Task RenameAsync(int id, string name);
 ```
+<!-- endSnippet -->
 
 The implementation only talks to the database.
 Concurrent misses run it once, and the tag reaches
@@ -137,11 +147,13 @@ A service registered after `AddMethodCache()` is not cached. If you don't regist
 
 Invalidate by tag with `[CacheInvalidate]`, or from code by tag, key or pattern:
 
-```csharp
+<!-- snippet: readme-invalidation -->
+```cs
 await cache.InvalidateByTagsAsync("user:42");
 await cache.InvalidateByKeysAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
 await cache.InvalidateByTagPatternAsync("tenant:7:*");   // in-memory only
 ```
+<!-- endSnippet -->
 
 Generated keys look like `MyApp.IUserService.GetUserAsync:42`, and `MethodCacheKeys` builds the same keys, so you
 never guess the format.
@@ -151,11 +163,13 @@ never guess the format.
 Each setting comes from the highest layer that sets it: runtime overrides, then `appsettings.json`, then startup code,
 then the attribute. Global and group defaults fill in what a method leaves unset.
 
-```csharp
+<!-- snippet: readme-configuration -->
+```cs
 builder.Services.AddMethodCache(config =>
     config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(5))));
 builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 ```
+<!-- endSnippet -->
 
 ```json
 {
@@ -168,14 +182,16 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 ```
 
 Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
-policy in code, and the change applies to the next call. See the [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md).
+policy in code, and the change applies to the next call. See [Configuration](docs/features/configuration.md).
 
 ### Distributed cache
 
-```csharp
+<!-- snippet: readme-distributed -->
+```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCacheSqlServer(connectionString)
 ```
+<!-- endSnippet -->
 
 Results live in memory and in Redis (or SQL Server, or any `IDistributedCache` via `AddMethodCacheDistributedCache()`).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
@@ -187,35 +203,45 @@ Redis until it is back, and invalidations are queued and retried instead of thro
 
 To cache a client from a NuGet package, name its interface and the methods to cache:
 
-```csharp
-[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync),
+<!-- snippet: readme-cache-interface -->
+```cs
+[assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
     Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+```
+<!-- endSnippet -->
 
-builder.Services.AddSingleton<IFxClient, FxClient>();   // the vendor's client, registered as usual
+<!-- snippet: readme-cache-interface-registration -->
+```cs
+builder.Services.AddSingleton<IFxRatesClient, FxRatesClient>();   // the vendor's client, registered as usual
 builder.Services.AddMethodCache();
 ```
+<!-- endSnippet -->
 
 `GetRateAsync` now behaves like a `[Cache]` method: keys from the arguments, tags, `appsettings.json` and runtime
 overrides. Methods you don't list, such as `PlaceOrderAsync`, always reach the client. For a client without an
 interface, wrap the calls in an interface of your own with `[Cache]`, or use the same engine with a key you choose:
 
-```csharp
+<!-- snippet: readme-explicit-key -->
+```cs
 var rate = await cache.GetOrCreateAsync(
     $"fx:{from}:{to}",
     async (ctx, ct) => await client.GetRateAsync(from, to),
     o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
 ```
+<!-- endSnippet -->
 
-See the [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md).
+See [Caching third-party code](docs/features/third-party.md).
 
 ### HTTP responses
 
 When the API sends caching headers, let `HttpClient` use them instead of choosing a duration yourself:
 
-```csharp
+<!-- snippet: http-basic -->
+```cs
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
-    .AddHttpCaching();   // MethodCache.HttpCaching
+    .AddHttpCaching();
 ```
+<!-- endSnippet -->
 
 Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
@@ -224,26 +250,34 @@ See the [package README](src/MethodCache.HttpCaching/README.md).
 
 ### Monitoring
 
-```csharp
-builder.Services.AddHealthChecks().AddMethodCache();
-app.MapMethodCacheAdmin("CacheAdmins");   // MethodCache.AspNetCore
-builder.Services.AddMethodCacheOpenTelemetry();                  // MethodCache.OpenTelemetry
+<!-- snippet: readme-monitoring -->
+```cs
+builder.Services.AddHealthChecks().AddMethodCache();         // MethodCache.AspNetCore
+builder.Services.AddMethodCacheOpenTelemetry();               // MethodCache.OpenTelemetry
 builder.Services.AddOpenTelemetry()
     .WithTracing(t => t.AddMethodCacheInstrumentation())
     .WithMetrics(m => m.AddMethodCacheInstrumentation());
-```
 
-The admin endpoints show hits, misses, live entries and every method's effective policy, and can invalidate by tag.
+var app = builder.Build();
+app.MapMethodCacheAdmin("CacheAdmins");                       // an authorization policy is required
+```
+<!-- endSnippet -->
+
+The tracing and metrics extensions live in the `OpenTelemetry.Trace` and `OpenTelemetry.Metrics` namespaces, like
+every OpenTelemetry instrumentation. The admin endpoints show hits, misses, live entries and every method's effective
+policy, and can invalidate by tag.
 The same operations are available in code through `ICacheAdministrator`.
 
 ### Native AOT
 
 Registration and keys use no reflection. Under Native AOT, register the JSON serializer with your
-`JsonSerializerContext`:
+`JsonSerializerContext` (`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`):
 
-```csharp
+<!-- snippet: readme-native-aot -->
+```cs
 builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(AppJsonContext.Default.Options));
 ```
+<!-- endSnippet -->
 
 ## Performance
 
@@ -301,26 +335,16 @@ Supported frameworks: .NET 8, 9 and 10.
 
 ## Documentation
 
-- [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md)
-- [Fluent API Guide](docs/user-guide/FLUENT_API.md)
-- [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md)
-- [Build Diagnostics](docs/user-guide/DIAGNOSTICS.md)
-- [Adding caching to an existing service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
-- [Migrating from IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
+The [documentation](docs/README.md) has a page per feature, and every C# example in it is compiled and tested in CI:
+
+- [Getting started](docs/getting-started.md)
+- Caching methods: [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
+  [invalidation](docs/features/invalidation.md), [fail-safe](docs/features/fail-safe.md),
+  [conditional caching](docs/features/conditional-caching.md), [configuration](docs/features/configuration.md)
+- [Manual caching](docs/features/manual-caching.md) and [third-party code](docs/features/third-party.md)
+- Production: [distributed cache](docs/features/distributed-cache.md), [monitoring](docs/features/monitoring.md),
+  [memory cache](docs/features/memory-cache.md), [Native AOT](docs/features/native-aot.md), [testing](docs/features/testing.md)
+- [Troubleshooting](docs/troubleshooting.md), [build diagnostics](docs/user-guide/DIAGNOSTICS.md) and
+  [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
 - Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md)
 - [Demo](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
-
-## Contributing
-
-Issues and pull requests are welcome. Before you open a pull request, run:
-
-```bash
-dotnet format
-dotnet test MethodCache.sln
-```
-
-See [AGENTS.md](AGENTS.md) for the repository layout and contribution rules.
-
-## License
-
-[MIT](LICENSE)

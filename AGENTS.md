@@ -10,6 +10,7 @@ Read this before changing the repository. It is written for human contributors a
   - `MethodCache.Redis`, `MethodCache.SqlServer`: distributed cache (L2) with a backplane.
   - `MethodCache.Serialization.MessagePack`, `MethodCache.AspNetCore`, `MethodCache.OpenTelemetry`, `MethodCache.HttpCaching`: optional add-ons.
 - `tests/`: xUnit unit tests (`*.Tests`), Docker-backed integration tests (`*.IntegrationTests`), and two CI-only programs: `MethodCache.AotSmokeTest` (Native AOT) and `MethodCache.PackageSmokeTest` (installs the packed `MethodCache` package from `artifacts/packages`; run `dotnet pack src/MethodCache.Core -c Release -o artifacts/packages` first).
+- `tests/MethodCache.Docs.Tests` holds every C# example shown in the docs (`README.md`, `NUGET_README.md`, the package READMEs and `docs/`), so they compile, and tests for the claims the docs make (`ReadmeTests`, `FeatureTests`).
 - `samples/`: `MethodCache.Demo` (a guided console tour, run in CI) and `MethodCache.WebDemo` (ASP.NET Core).
 - `benchmarks/MethodCache.Benchmarks`: Performance benchmarks.
 
@@ -46,8 +47,9 @@ Read this before changing the repository. It is written for human contributors a
 - Nothing is on nuget.org yet, so an API that is replaced is deleted outright. Do not add `[Obsolete]` shims.
 - Library code must use `ConfigureAwait(false)` on every await (`CA2007` is an error in `src/`).
 - New or changed diagnostics need a row in `docs/user-guide/DIAGNOSTICS.md` and an entry in `src/MethodCache.Analyzers/AnalyzerReleases.Unshipped.md` when they come from the analyzers.
-- Behavior changes need the user docs updated in the same pull request: `README.md`, `docs/user-guide/`, and the package's NuGet README. For `MethodCache` (`src/MethodCache.Core`) that is `NUGET_README.md` at the repository root; the add-on packages use their own `src/*/README.md`.
-- Test projects target net8.0, net9.0 and net10.0 (set in `tests/Directory.Build.props`), so `dotnet test` runs every test three times. Run one framework locally with `-f net10.0`. CI also runs the unit tests on Windows and under the tr-TR and sv-SE cultures, and requires the Docker-backed Redis and SQL Server tests (`METHODCACHE_REQUIRE_INFRA_TESTS=true`) instead of skipping them.
+- C# examples in Markdown are not written by hand. They live in `tests/MethodCache.Docs.Tests` between `// begin-snippet: name` and `// end-snippet`, a `.md` file references them with a line `snippet: name`, and `dotnet tool restore && dotnet mdsnippets` copies them in (CI fails when the docs are out of date). Edit the `.cs` file, never the code between `<!-- snippet: -->` and `<!-- endSnippet -->`.
+- Behavior changes need the user docs updated in the same pull request: `README.md`, the feature page under `docs/features/` (indexed in `docs/README.md`), and the package's NuGet README. For `MethodCache` (`src/MethodCache.Core`) that is `NUGET_README.md` at the repository root; the add-on packages use their own `src/*/README.md`.
+- Test projects target net8.0, net9.0 and net10.0 (set in `tests/Directory.Build.props`; the smoke tests and `MethodCache.Docs.Tests` keep one framework), so `dotnet test` runs every test three times. Run one framework locally with `-f net10.0`. CI also runs the unit tests on Windows and under the tr-TR and sv-SE cultures, and requires the Docker-backed Redis and SQL Server tests (`METHODCACHE_REQUIRE_INFRA_TESTS=true`) instead of skipping them.
 - CI also runs the demo, a Native AOT publish of `tests/MethodCache.AotSmokeTest`, and the package smoke test (including with the .NET 8 SDK). Run the ones your change can affect before pushing.
 
 Tip: When adding a new module, follow the `MethodCache.*` naming, add it to `MethodCache.sln`, and provide minimal tests and a README or example usage.

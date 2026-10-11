@@ -1,6 +1,6 @@
 # Runtime Configuration Overview
 
-How cache policies reach a generated decorator, and how they change while the application runs. For usage, see the [Configuration Guide](../user-guide/CONFIGURATION_GUIDE.md).
+How cache policies reach a generated decorator, and how they change while the application runs. For usage, see the [configuration page](../features/configuration.md).
 
 ## Policy Sources
 

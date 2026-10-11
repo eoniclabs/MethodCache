@@ -1,0 +1,174 @@
+using Docs.Conditional;
+using Docs.Expiration;
+using Docs.GettingStarted;
+using Docs.GettingStarted.After;
+using Docs.Invalidation;
+using MyApp;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace MethodCache.Docs.Tests;
+
+// The feature pages' claims, checked against the code they show
+public class FeatureTests(ITestOutputHelper output)
+{
+    private sealed class Users : MyApp.IUserService
+    {
+        public Task<MyApp.User> GetAsync(int id) => Task.FromResult(new MyApp.User(id, "a"));
+        public Task<List<MyApp.User>> SearchAsync(UserQuery query) => Task.FromResult(new List<MyApp.User>());
+        public Task<List<MyApp.User>> ByIdsAsync(int[] ids) => Task.FromResult(new List<MyApp.User>());
+    }
+
+    [Fact]
+    public async Task Keys_AreBuiltFromTheMethodAndItsArguments()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<MyApp.IUserService, Users>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var users = provider.GetRequiredService<MyApp.IUserService>();
+
+        await users.GetAsync(42);
+        await users.SearchAsync(new UserQuery("alice", 2));
+        await users.ByIdsAsync([1, 2, 3]);
+
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "MyApp.").Select(e => e.Key).ToList();
+        foreach (var key in keys)
+        {
+            output.WriteLine(key);
+        }
+
+        Assert.Contains("MyApp.IUserService.GetAsync:42", keys);
+        Assert.Contains("MyApp.IUserService.SearchAsync:(alice:2)", keys);
+        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.ByIdsAsync:", StringComparison.Ordinal) && !k.Contains(','));
+    }
+
+    private sealed class Orders : IOrderService
+    {
+        public int Loads;
+        public Task<Order> GetAsync(int orderId) { Loads++; return Task.FromResult(new Order(orderId, 7, 10m)); }
+        public Task<List<Order>> ListForCustomerAsync(int customerId) { Loads++; return Task.FromResult(new List<Order>()); }
+        public Task CancelAsync(int orderId, int customerId) => Task.CompletedTask;
+        public Task ImportAsync(Stream file) => Task.CompletedTask;
+    }
+
+    private static (ServiceProvider Provider, Orders Orders, IOrderService Service) BuildOrders()
+    {
+        var orders = new Orders();
+        var services = new ServiceCollection();
+        services.AddSingleton<IOrderService>(orders);
+        services.AddMethodCache();
+        var provider = services.BuildServiceProvider();
+        return (provider, orders, provider.GetRequiredService<IOrderService>());
+    }
+
+    private static async Task WarmAsync(IOrderService service)
+    {
+        await service.GetAsync(42);
+        await service.GetAsync(43);
+        await service.ListForCustomerAsync(7);
+    }
+
+    [Fact]
+    public async Task Invalidation_TagTemplatesRemoveOnlyTheMatchingEntries()
+    {
+        var (provider, orders, service) = BuildOrders();
+        await using var _ = provider;
+        await WarmAsync(service);
+
+        await service.CancelAsync(42, 7);
+        await WarmAsync(service);
+        Assert.Equal(5, orders.Loads);   // order 42 and customer 7's list reloaded, order 43 still cached
+
+        await service.ImportAsync(Stream.Null);
+        await WarmAsync(service);
+        Assert.Equal(8, orders.Loads);
+    }
+
+    [Fact]
+    public async Task Invalidation_FromCode_ByTagKeyAndPattern()
+    {
+        var (provider, orders, service) = BuildOrders();
+        await using var _ = provider;
+        var cache = provider.GetRequiredService<ICacheManager>();
+        await WarmAsync(service);
+
+        await global::Docs.Invalidation.FromCode.Tags(cache);
+        await WarmAsync(service);
+        Assert.Equal(5, orders.Loads);
+
+        await global::Docs.Invalidation.FromCode.Keys(cache);
+        await WarmAsync(service);
+        Assert.Equal(6, orders.Loads);
+
+        await global::Docs.Invalidation.FromCode.Pattern(cache);
+        await WarmAsync(service);
+        Assert.Equal(7, orders.Loads);
+    }
+
+    private sealed class Products : global::Docs.Conditional.IProductService
+    {
+        public int Searches;
+        public int Finds;
+        public Task<List<global::Docs.Conditional.Product>> SearchAsync(string text)
+        {
+            Searches++;
+            return Task.FromResult(text == "tea" ? new List<global::Docs.Conditional.Product> { new(1, "Tea") } : new List<global::Docs.Conditional.Product>());
+        }
+
+        public Task<global::Docs.Conditional.Product?> FindAsync(int id)
+        {
+            Finds++;
+            return Task.FromResult<global::Docs.Conditional.Product?>(id == 1 ? new(1, "Tea") : null);
+        }
+    }
+
+    [Fact]
+    public async Task CacheWhen_SkipsStoringRejectedResults()
+    {
+        var products = new Products();
+        var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder();
+        builder.Services.AddSingleton<global::Docs.Conditional.IProductService>(products);
+        global::Docs.Conditional.Setup.Register(builder);
+        await using var app = builder.Build();
+        var service = app.Services.GetRequiredService<global::Docs.Conditional.IProductService>();
+
+        await service.SearchAsync("tea");
+        await service.SearchAsync("tea");
+        await service.SearchAsync("coffee");
+        await service.SearchAsync("coffee");
+        Assert.Equal(3, products.Searches);
+
+        await service.FindAsync(1);
+        await service.FindAsync(1);
+        await service.FindAsync(2);
+        await service.FindAsync(2);
+        Assert.Equal(3, products.Finds);
+    }
+
+    [Fact]
+    public async Task Testing_NoOpCacheManagerTurnsCachingOff()
+    {
+        await using var cached = (ServiceProvider)global::Docs.Testing.Examples.WithCaching();
+        await using var uncached = (ServiceProvider)global::Docs.Testing.Examples.WithoutCaching();
+
+        Assert.Equal(1, await CountLoadsAsync(cached));
+        Assert.Equal(2, await CountLoadsAsync(uncached));
+    }
+
+    private static async Task<int> CountLoadsAsync(IServiceProvider provider)
+    {
+        var loads = 0;
+        var cache = provider.GetRequiredService<ICacheManager>();
+        for (var i = 0; i < 2; i++)
+        {
+            await cache.GetOrCreateAsync("k", (_, _) => { loads++; return ValueTask.FromResult(1); });
+        }
+
+        using var scope = provider.CreateScope();
+        var products = scope.ServiceProvider.GetRequiredService<global::Docs.GettingStarted.After.IProductService>();
+        Assert.Equal(await products.GetAsync(1), await products.GetAsync(1));
+        return loads;
+    }
+}

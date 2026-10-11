@@ -42,7 +42,7 @@ public class UserService : IUserService
 
 **Code fix:** moves the attribute to the interface method the member implements (adding the `using` if needed), or
 removes it when the member implements no interface. To cache an interface you don't own, see the
-[Third-party Caching Guide](THIRD_PARTY_CACHING.md).
+[third-party caching page](../features/third-party.md).
 
 ## MC0004
 
@@ -96,19 +96,22 @@ cache key; pass an array, `Memory<T>` or a string.
 A tag such as `"user:{userId}"` names a parameter the method does not have, so the braces stay literal text and every
 call shares that tag. The name between the braces must match a parameter name (case doesn't matter).
 
+A template takes a parameter name only. A property path such as `"{product.Id}"` is not a template, so it stays
+literal text without this warning; add the id as a parameter instead.
+
 **Code fix:** offers the closest parameter names, so `"user:{usrId}"` becomes `"user:{userId}"`.
 
 ## MCG010
 
 `[assembly: CacheInterface]` names a type MethodCache can't decorate: a class, a generic interface, an interface that
 is not accessible, one with static abstract members, or one declared in your own project (put `[Cache]` on its methods
-instead). It is also reported when the attribute lists no methods. See the [Third-party Caching Guide](THIRD_PARTY_CACHING.md).
+instead). It is also reported when the attribute lists no methods. See the [third-party caching page](../features/third-party.md).
 
 ## MCG011
 
 `[assembly: CacheInterface]` lists a method that is missing, overloaded, or returns nothing to cache. Use
 `nameof(IClient.Method)` so a rename is caught by the compiler. See the
-[Third-party Caching Guide](THIRD_PARTY_CACHING.md).
+[third-party caching page](../features/third-party.md).
 
 ## MCG012
 

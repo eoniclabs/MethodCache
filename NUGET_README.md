@@ -3,7 +3,8 @@
 **Cache any .NET method with one attribute.** MethodCache's source generator writes the caching code for you at
 compile time: no reflection, no hand-written keys, no `TryGetValue` boilerplate, and it works with Native AOT.
 
-```csharp
+<!-- snippet: readme-quickstart-interface -->
+```cs
 using MethodCache;
 
 public interface IUserService
@@ -14,10 +15,15 @@ public interface IUserService
     [CacheInvalidate(Tags = ["user:{id}"])]
     Task RenameAsync(int id, string name);
 }
+```
+<!-- endSnippet -->
 
+<!-- snippet: readme-quickstart-registration -->
+```cs
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddMethodCache();
 ```
+<!-- endSnippet -->
 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments.
 - **Fast.** A hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and takes 4 to 6 times less time than HybridCache or FusionCache.

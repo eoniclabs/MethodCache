@@ -6,7 +6,15 @@
       "version": "3.6.133",
       "commands": [
         "nbgv"
-      ]
+      ],
+      "rollForward": false
+    },
+    "markdownsnippets.tool": {
+      "version": "28.5.0",
+      "commands": [
+        "mdsnippets"
+      ],
+      "rollForward": false
     }
   }
 }

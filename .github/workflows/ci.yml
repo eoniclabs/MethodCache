@@ -177,3 +177,21 @@ jobs:
           echo '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }' > global.json
           dotnet --version
           dotnet run --configuration Release
+
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check the code in the docs matches tests/MethodCache.Docs.Tests
+        run: |
+          dotnet tool restore
+          dotnet mdsnippets
+          git diff --exit-code || { echo "::error::Docs are out of date. Run 'dotnet tool restore && dotnet mdsnippets' and commit the result."; exit 1; }
