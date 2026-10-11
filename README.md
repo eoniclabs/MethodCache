@@ -267,8 +267,8 @@ Supported frameworks: .NET 8, 9 and 10.
 | Package | What it adds | Status |
 |---|---|---|
 | `MethodCache` | Core, source generator and analyzers. Start here | Stable |
-| `MethodCache.Providers.Redis` | Redis as the distributed cache, with a pub/sub backplane | Beta |
-| `MethodCache.Providers.SqlServer` | SQL Server as the distributed cache, with a polling backplane | Experimental |
+| `MethodCache.Redis` | Redis as the distributed cache, with a pub/sub backplane | Beta |
+| `MethodCache.SqlServer` | SQL Server as the distributed cache, with a polling backplane | Experimental |
 | `MethodCache.AspNetCore` | Admin endpoints and a health check | Experimental |
 | `MethodCache.OpenTelemetry` | Tracing and metrics | Beta |
 | `MethodCache.Serialization.MessagePack` | MessagePack instead of JSON in the distributed cache | Experimental |

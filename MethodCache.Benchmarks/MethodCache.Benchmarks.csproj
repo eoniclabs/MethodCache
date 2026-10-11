@@ -35,7 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
-    <ProjectReference Include="..\MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj" />
+    <ProjectReference Include="..\MethodCache.Redis\MethodCache.Redis.csproj" />
     <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" />
     <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" />
     <ProjectReference Include="..\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />

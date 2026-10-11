@@ -23,8 +23,8 @@ PACKAGES=(
     "MethodCache.AspNetCore"
     "MethodCache.HttpCaching"
     "MethodCache.OpenTelemetry"
-    "MethodCache.Providers.Redis"
-    "MethodCache.Providers.SqlServer"
+    "MethodCache.Redis"
+    "MethodCache.SqlServer"
     "MethodCache.Serialization.MessagePack"
 )
 

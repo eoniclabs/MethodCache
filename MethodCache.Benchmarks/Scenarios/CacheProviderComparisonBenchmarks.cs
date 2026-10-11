@@ -8,7 +8,7 @@ using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Runtime.KeyGeneration;
-using MethodCache.Providers.Redis;
+using MethodCache.Redis;
 
 namespace MethodCache.Benchmarks.Scenarios;
 

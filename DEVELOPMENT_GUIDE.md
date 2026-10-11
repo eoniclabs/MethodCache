@@ -4,8 +4,8 @@
 - `MethodCache.Core`: Core APIs, attributes, in-memory cache. Packs as the `MethodCache` package, which also carries the generator and analyzers.
 - `MethodCache.SourceGenerator`: Roslyn source generator for decorators (shipped inside `MethodCache`).
 - `MethodCache.Analyzers`: Compile-time checks and diagnostics (shipped inside `MethodCache`).
-- `MethodCache.Providers.Redis`: Redis L2 provider (+ compression, tags, locks).
-- `MethodCache.Providers.SqlServer`: SqlServer L2 provider.
+- `MethodCache.Redis`: Redis L2 provider (+ compression, tags, locks).
+- `MethodCache.SqlServer`: SqlServer L2 provider.
 - `MethodCache.HttpCaching`: HTTP caching support.
 - `MethodCache.Benchmarks`: Performance benchmarks.
 - `MethodCache.Core.Tests`, `MethodCache.SourceGenerator.Tests`, `MethodCache.Analyzers.Tests`, other `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed integration tests.
@@ -17,7 +17,7 @@
 - Build: `dotnet build MethodCache.sln -c Release`
 - Unit tests: `dotnet test MethodCache.sln -c Release`
 - Coverage (to `test-results/`): `dotnet test --collect:"XPlat Code Coverage" --results-directory test-results`
-- Integration tests (Redis, requires Docker): `dotnet test MethodCache.Providers.Redis.IntegrationTests`
+- Integration tests (Redis, requires Docker): `dotnet test MethodCache.Redis.IntegrationTests`
 - Demo: `dotnet run --project samples/MethodCache.Demo -c Release`
 
 ## Coding Style & Naming
@@ -30,7 +30,7 @@
 - Framework: xUnit. Place tests in `*.Tests` projects; files end with `*Tests.cs`.
 - Style: Arrange/Act/Assert, deterministic tests; name methods like `Method_State_Expected`.
 - Coverage: Aim for meaningful coverage on new/changed code; include negative and boundary cases.
-- Integration: See `MethodCache.Providers.Redis.IntegrationTests/README.md`; ensure Docker is running.
+- Integration: See `MethodCache.Redis.IntegrationTests/README.md`; ensure Docker is running.
 
 ## Commits & Pull Requests
 - Commits: Imperative present tense (e.g., "Refactor X", "Add Y"); small, focused; include rationale in body when helpful.

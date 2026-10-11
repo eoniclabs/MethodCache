@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TrackPublicApi>true</TrackPublicApi>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>MethodCache.SqlServer</PackageId>
+    <Title>MethodCache SQL Server Provider</Title>
+    <Description>SQL Server as MethodCache's distributed cache, with a polling backplane that keeps every instance's in-memory cache in sync</Description>
+    <PackageTags>cache;sql-server;database;dotnet;performance;infrastructure</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.SqlServer.Tests" />
+    <InternalsVisibleTo Include="MethodCache.SqlServer.IntegrationTests" />
+  </ItemGroup>
+
+</Project>
