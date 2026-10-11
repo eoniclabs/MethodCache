@@ -189,6 +189,13 @@ namespace MethodCache.Core.Runtime.Distributed
             T? value = default;
             if (header.Kind == KindValue)
             {
+                // A value is never written without its bytes, so this entry was cut short; serializers may read
+                // nothing as a default value, which would be served as a wrong one
+                if (payload.IsEmpty)
+                {
+                    return default;
+                }
+
                 try
                 {
                     value = _serializer.Deserialize<T>(payload);
@@ -201,14 +208,18 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
             }
 
-            return new DistributedEntry<T>(value, header.Tags, TimeSpan.FromMilliseconds(header.ExpiresAt - now));
+            // No write asks for more than the tag retention; a damaged expiry far in the future must not overflow
+            var remaining = Math.Min(header.ExpiresAt - now, (long)_tagRetention.TotalMilliseconds);
+            return new DistributedEntry<T>(value, header.Tags, TimeSpan.FromMilliseconds(remaining));
         }
 
         /// <summary>
         /// Writes an entry created at <paramref name="createdAt"/> (when its value was read from the source), so tag
         /// invalidations that happened while the value was loading make it stale. A loaded value whose key was removed
         /// since is not left behind; an explicit set (<paramref name="replaces"/>) replaces whatever is stored, a
-        /// removal included. <paramref name="invalidated"/> is checked again after the write. Never throws.
+        /// removal included; when it can't be stored, the key is removed everywhere instead (now, or once the cache
+        /// answers), so no node keeps the value it replaced. <paramref name="invalidated"/> is checked again after the
+        /// write. Never throws.
         /// </summary>
         public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false)
         {
@@ -218,8 +229,20 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var lifetimeMilliseconds = (long)lifetime.TotalMilliseconds;
-            if (lifetimeMilliseconds <= 0 || _hasPending)
+            if (lifetimeMilliseconds <= 0)
             {
+                return;
+            }
+
+            if (_hasPending)
+            {
+                // An explicit set replaces what other nodes hold, so when it can't be shared the old value is
+                // removed everywhere once the cache answers, as after a write that failed
+                if (replaces)
+                {
+                    Queue(new[] { key }, Array.Empty<string>());
+                }
+
                 return;
             }
 
@@ -243,12 +266,24 @@ namespace MethodCache.Core.Runtime.Distributed
                     // Only this value can't be shared; the cache itself is fine
                     _logger.LogWarning(ex, "MethodCache could not serialize a value of type {Type} for the distributed cache; it is cached in memory only.", typeof(T));
                     _onError?.Invoke(ex);
+
+                    // Other nodes must not keep the value this set replaced
+                    if (replaces)
+                    {
+                        await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                    }
+
                     return;
                 }
             }
 
             if (!TryEnter(out var probe))
             {
+                if (replaces)
+                {
+                    Queue(new[] { key }, Array.Empty<string>());
+                }
+
                 return;
             }
 

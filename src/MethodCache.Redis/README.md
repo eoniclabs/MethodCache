@@ -53,6 +53,7 @@ MethodCache keeps answering from memory and your methods; Redis never fails or s
 - Every Redis call is capped at `OperationTimeout` (1 second).
 - After a failure or timeout, MethodCache skips Redis for `CircuitBreakerDuration` (10 seconds), then one call checks whether it is back. The first failure and the recovery are logged.
 - Invalidations that Redis doesn't accept are queued and retried until it does. They never throw. Until they are stored, this instance doesn't read entries from Redis, so an invalidated value can't come back.
+- A value set directly while Redis is down stays in this instance's memory; the value it replaced is removed from Redis and the other instances once Redis is back.
 - `ClockSkewTolerance` (2 seconds) covers servers whose clocks differ: a tag invalidation also applies to entries created up to that long after it.
 
 <!-- snippet: distributed-outage-options -->

@@ -2,7 +2,9 @@
 
 These tests run two MethodCache instances against one real Redis and check that values and invalidations reach both.
 
-They use the Redis in `METHODCACHE_REDIS_URL` if it is set, otherwise they start one in Docker with Testcontainers. Without either they are skipped, unless `METHODCACHE_REQUIRE_INFRA_TESTS=true`, which makes a missing Redis fail the run.
+`RedisToxiproxyTests` put [Toxiproxy](https://github.com/Shopify/toxiproxy) (`ghcr.io/shopify/toxiproxy`) between MethodCache and a Redis container and make the network slow, silent or broken, checking that a cache miss still takes no longer than the operation timeout. They always need Docker.
+
+The other tests use the Redis in `METHODCACHE_REDIS_URL` if it is set, otherwise they start one in Docker with Testcontainers. Without either they are skipped, unless `METHODCACHE_REQUIRE_INFRA_TESTS=true`, which makes a missing Redis fail the run.
 
 ```bash
 # Against a local Redis
