@@ -58,8 +58,6 @@ MethodCache.Core.Configuration.MemoryCacheOptions.DefaultExpiration.get -> Syste
 MethodCache.Core.Configuration.MemoryCacheOptions.DefaultExpiration.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.EnableBackgroundCleanup.get -> bool
 MethodCache.Core.Configuration.MemoryCacheOptions.EnableBackgroundCleanup.set -> void
-MethodCache.Core.Configuration.MemoryCacheOptions.EnableFailSafe.get -> bool
-MethodCache.Core.Configuration.MemoryCacheOptions.EnableFailSafe.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.EnableFastPath.get -> bool
 MethodCache.Core.Configuration.MemoryCacheOptions.EnableFastPath.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.EnableStatistics.get -> bool
@@ -68,10 +66,6 @@ MethodCache.Core.Configuration.MemoryCacheOptions.EvictionPolicy.get -> MethodCa
 MethodCache.Core.Configuration.MemoryCacheOptions.EvictionPolicy.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.EvictionSamplePercentage.get -> double
 MethodCache.Core.Configuration.MemoryCacheOptions.EvictionSamplePercentage.set -> void
-MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeMaxDuration.get -> System.TimeSpan
-MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeMaxDuration.set -> void
-MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeThrottleDuration.get -> System.TimeSpan
-MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeThrottleDuration.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.JitterMaxDuration.get -> System.TimeSpan
 MethodCache.Core.Configuration.MemoryCacheOptions.JitterMaxDuration.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.MaxExpiration.get -> System.TimeSpan
@@ -693,3 +687,34 @@ MethodCache.Core.Runtime.Core.CacheRuntimePolicy.CacheWhen.init -> void
 MethodCache.Abstractions.Policies.CachePolicy.CacheWhen.get -> System.Func<object?, bool>?
 MethodCache.Abstractions.Policies.CachePolicy.CacheWhen.init -> void
 MethodCache.Abstractions.Policies.CachePolicyFields.CacheWhen = 64 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Core.CacheAttribute.FailSafe.get -> string?
+MethodCache.Core.CacheAttribute.FailSafe.set -> void
+MethodCache.Core.CacheAttribute.FailSafeTimeout.get -> string?
+MethodCache.Core.CacheAttribute.FailSafeTimeout.set -> void
+MethodCache.Core.CacheInterfaceAttribute.FailSafe.get -> string?
+MethodCache.Core.CacheInterfaceAttribute.FailSafe.set -> void
+MethodCache.Core.CacheInterfaceAttribute.FailSafeTimeout.get -> string?
+MethodCache.Core.CacheInterfaceAttribute.FailSafeTimeout.set -> void
+MethodCache.Abstractions.Policies.CachePolicy.FailSafe.get -> System.TimeSpan?
+MethodCache.Abstractions.Policies.CachePolicy.FailSafe.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.FailSafeTimeout.get -> System.TimeSpan?
+MethodCache.Abstractions.Policies.CachePolicy.FailSafeTimeout.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.FailSafeRetryAfter.get -> System.TimeSpan?
+MethodCache.Abstractions.Policies.CachePolicy.FailSafeRetryAfter.init -> void
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FailSafe.get -> System.TimeSpan?
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FailSafe.init -> void
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FailSafeTimeout.get -> System.TimeSpan?
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FailSafeTimeout.init -> void
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FailSafeRetryAfter.get -> System.TimeSpan?
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FailSafeRetryAfter.init -> void
+MethodCache.Abstractions.Policies.CachePolicyFields.FailSafe = 128 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.FailSafeTimeout = 256 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Abstractions.Policies.CachePolicyFields.FailSafeRetryAfter = 512 -> MethodCache.Abstractions.Policies.CachePolicyFields
+MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithFailSafe(System.TimeSpan? failSafe) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
+MethodCache.Core.Options.CacheEntryOptions.FailSafe.get -> System.TimeSpan?
+MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithFailSafeTimeout(System.TimeSpan? failSafeTimeout) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
+MethodCache.Core.Options.CacheEntryOptions.FailSafeTimeout.get -> System.TimeSpan?
+MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithFailSafeRetryAfter(System.TimeSpan? failSafeRetryAfter) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
+MethodCache.Core.Options.CacheEntryOptions.FailSafeRetryAfter.get -> System.TimeSpan?
+MethodCache.Core.Options.CacheEntryOptions.Builder.FailSafe(System.TimeSpan duration, System.TimeSpan? timeout = null, System.TimeSpan? retryAfter = null) -> MethodCache.Core.Options.CacheEntryOptions.Builder!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration.FailSafe(System.TimeSpan duration, System.TimeSpan? timeout = null, System.TimeSpan? retryAfter = null) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration!

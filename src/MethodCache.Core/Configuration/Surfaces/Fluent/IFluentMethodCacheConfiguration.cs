@@ -12,6 +12,14 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
         IFluentMethodCacheConfiguration DefaultPolicy(Action<CacheEntryOptions.Builder> configure);
 
         /// <summary>
+        /// Turns on fail-safe for every cached method: expired values are kept for <paramref name="duration"/> and
+        /// returned when reloading throws or, with <paramref name="timeout"/>, takes longer than that. After a fallback
+        /// the old value is reused for <paramref name="retryAfter"/> (default 30 seconds) before trying again. A method
+        /// or group can change it, and <c>[Cache(FailSafe = "off")]</c> turns it off for one method.
+        /// </summary>
+        IFluentMethodCacheConfiguration FailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null);
+
+        /// <summary>
         /// Configures the methods of one service; these settings win over the method's <c>[Cache]</c> attribute.
         /// </summary>
         IFluentServiceConfiguration<TService> ForService<TService>();

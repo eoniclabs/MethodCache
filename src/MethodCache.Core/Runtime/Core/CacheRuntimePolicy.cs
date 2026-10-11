@@ -51,6 +51,15 @@ namespace MethodCache.Core.Runtime.Core
         /// </summary>
         public Func<object?, bool>? CacheWhen { get; init; }
 
+        /// <summary>How long an expired value is kept as a fail-safe fallback; zero or null turns fail-safe off.</summary>
+        public TimeSpan? FailSafe { get; init; }
+
+        /// <summary>How long a reload may take before the caller gets the fail-safe value instead.</summary>
+        public TimeSpan? FailSafeTimeout { get; init; }
+
+        /// <summary>How long a served fail-safe value is reused before the method is called again.</summary>
+        public TimeSpan? FailSafeRetryAfter { get; init; }
+
         // ============= Metadata & Indexing =============
 
         /// <summary>
@@ -122,6 +131,9 @@ namespace MethodCache.Core.Runtime.Core
                 SlidingExpiration = result.Policy.SlidingExpiration,
                 RefreshAhead = result.Policy.RefreshAhead,
                 CacheWhen = result.Policy.CacheWhen,
+                FailSafe = result.Policy.FailSafe,
+                FailSafeTimeout = result.Policy.FailSafeTimeout,
+                FailSafeRetryAfter = result.Policy.FailSafeRetryAfter,
                 Metadata = metadata,
                 Fields = fields
             };
@@ -163,6 +175,9 @@ namespace MethodCache.Core.Runtime.Core
                 SlidingExpiration = policy.SlidingExpiration,
                 RefreshAhead = policy.RefreshAhead,
                 CacheWhen = policy.CacheWhen,
+                FailSafe = policy.FailSafe,
+                FailSafeTimeout = policy.FailSafeTimeout,
+                FailSafeRetryAfter = policy.FailSafeRetryAfter,
                 Metadata = metadataDict,
                 Fields = fields
             };

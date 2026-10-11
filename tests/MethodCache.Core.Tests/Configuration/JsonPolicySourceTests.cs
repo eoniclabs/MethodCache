@@ -45,6 +45,47 @@ public sealed class JsonPolicySourceTests
     }
 
     [Fact]
+    public void FailSafeSection_FillsWhatAMethodLeavesOpen_AndAMethodCanTurnItOff()
+    {
+        var data = new Dictionary<string, string?>
+        {
+            ["MethodCache:FailSafe:Duration"] = "01:00:00",
+            ["MethodCache:FailSafe:Timeout"] = "00:00:00.200",
+            ["MethodCache:FailSafe:RetryAfter"] = "00:00:10",
+            ["MethodCache:Services:Sample.Type.Balance:FailSafe"] = "off",
+            ["MethodCache:Services:Sample.Type.Rates:FailSafe"] = "00:10:00",
+            ["MethodCache:Services:Sample.Type.Rates:FailSafeTimeout"] = "00:00:01"
+        };
+
+        var services = new ServiceCollection();
+        services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build());
+        var registry = services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>();
+
+        // Methods without settings of their own get the section through the defaults; the source generator
+        // integration tests cover that end to end.
+        Assert.Equal(TimeSpan.Zero, registry.GetPolicy("Sample.Type.Balance").Policy.FailSafe);
+
+        var rates = registry.GetPolicy("Sample.Type.Rates").Policy;
+        Assert.Equal(TimeSpan.FromMinutes(10), rates.FailSafe);
+        Assert.Equal(TimeSpan.FromSeconds(1), rates.FailSafeTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(10), rates.FailSafeRetryAfter);
+    }
+
+    [Fact]
+    public void FailSafeSection_WithoutDuration_Throws()
+    {
+        var data = new Dictionary<string, string?> { ["MethodCache:FailSafe:Timeout"] = "00:00:01" };
+        var services = new ServiceCollection();
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+        {
+            services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build());
+            services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Other");
+        });
+        Assert.Contains("MethodCache:FailSafe", error.Message);
+    }
+
+    [Fact]
     public void AddMethodCacheFromConfiguration_PropagatesMetadata()
     {
         var data = new Dictionary<string, string?>

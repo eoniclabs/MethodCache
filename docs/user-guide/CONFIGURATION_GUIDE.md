@@ -13,6 +13,7 @@ This guide explains how to configure MethodCache: attributes, startup code, `app
 7. [Inspecting Policies and the Cache](#inspecting-policies-and-the-cache)
 8. [Configuration Priorities](#configuration-priorities)
 9. [Configuration Validation](#configuration-validation)
+10. [Fail-Safe](#fail-safe)
 
 ## Configuration Overview
 
@@ -139,6 +140,11 @@ Configure cached methods from `appsettings.json` or any other `IConfiguration` s
       "Duration": "00:15:00",
       "Tags": ["default"]
     },
+    "FailSafe": {
+      "Duration": "01:00:00",
+      "Timeout": "00:00:00.200",
+      "RetryAfter": "00:00:30"
+    },
     "Services": {
       "MyApp.Services.IUserService.GetUserProfileAsync": {
         "Duration": "01:00:00",
@@ -151,13 +157,16 @@ Configure cached methods from `appsettings.json` or any other `IConfiguration` s
       "MyApp.Services.IProductService.GetProductAsync": {
         "Duration": "00:30:00",
         "Tags": ["product", "catalog"]
+      },
+      "MyApp.Services.IAccountService.GetBalanceAsync": {
+        "FailSafe": "off"
       }
     }
   }
 }
 ```
 
-Each key under `Services` is the method id: the full name of the interface that declares the method, a dot, and the method name. A generic interface is written with its type parameters (`MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its parameter types (`MyApp.IUserService.FindAsync(int)`, `MyApp.IUserService.FindAsync(string, CancellationToken)`). Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Defaults` applies to every cached method, also ones not listed under `Services`, and a method's own settings, including those in its `[Cache]` attribute, win. `Group` puts the method in a `ForGroup(...)` group; `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
+Each key under `Services` is the method id: the full name of the interface that declares the method, a dot, and the method name. A generic interface is written with its type parameters (`MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its parameter types (`MyApp.IUserService.FindAsync(int)`, `MyApp.IUserService.FindAsync(string, CancellationToken)`). Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. The top-level `FailSafe` section turns fail-safe on for every cached method (see [Fail-Safe](#fail-safe)). `Defaults` applies to every cached method, also ones not listed under `Services`, and a method's own settings, including those in its `[Cache]` attribute, win. `Group` puts the method in a `ForGroup(...)` group; `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
 
 Only methods with a `[Cache]` attribute have a generated decorator, so the file can change their policy but cannot make other methods cached.
 
@@ -293,3 +302,35 @@ config.ForService<IUserService>()
 ### Settings That Only Apply to GetOrCreateAsync
 
 `OnHit`, `OnMiss`, `WithMetrics` and `When` run around a single `GetOrCreateAsync` call. Cached `[Cache]` methods cannot use them, so configuring them through `DefaultPolicy`, `ForGroup` or `ForService(...).Method(...)` throws `InvalidOperationException` at startup rather than being silently ignored.
+
+## Fail-Safe
+
+Fail-safe keeps an expired value for a while and returns it when calling the method again fails, so a database or API outage shows slightly old data instead of errors. It is off by default. Turn it on for every cached method in one place:
+
+```csharp
+services.AddMethodCache(config => config.FailSafe(
+    duration: TimeSpan.FromHours(1),              // how long an expired value is kept as a fallback
+    timeout: TimeSpan.FromMilliseconds(200),      // optional: don't wait longer than this when a fallback exists
+    retryAfter: TimeSpan.FromSeconds(30)));       // optional: reuse the fallback this long before trying again (default 30 s)
+```
+
+or in `appsettings.json` with the `MethodCache:FailSafe` section shown above (`Duration`, `Timeout`, `RetryAfter`).
+
+- **When the method throws**, the caller gets the expired value if it is younger than `duration`. That value is then reused for `retryAfter` before the method is called again, so a failing dependency isn't hammered.
+- **When the method is slow** and `timeout` is set, the caller gets the expired value after `timeout` and the call finishes in the background; its result replaces the old value. Without an expired value the caller waits as usual.
+- A caller's own cancellation is never treated as a failure, so it doesn't trigger fail-safe.
+
+A method or group can change any of it, and its own setting wins over the central one:
+
+```csharp
+public interface IAccountService
+{
+    [Cache(Duration = "00:05:00", FailSafe = "01:00:00", FailSafeTimeout = "00:00:00.200")]
+    Task<Rates> GetRatesAsync();
+
+    [Cache(FailSafe = "off")] // a balance must never be old, so an error is better
+    Task<decimal> GetBalanceAsync(int accountId);
+}
+```
+
+Fluent configuration uses the same builder method: `Configure(o => o.FailSafe(TimeSpan.FromHours(1)))`, and `o.FailSafe(TimeSpan.Zero)` turns it off. The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded once.

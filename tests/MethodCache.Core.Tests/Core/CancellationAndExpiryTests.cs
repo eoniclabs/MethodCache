@@ -68,8 +68,8 @@ public class CancellationAndExpiryTests
     [Fact]
     public async Task FailSafe_WithSliding_RetriesTheFactoryAfterTheThrottle()
     {
-        var manager = CreateManager(o => o.EnableFailSafe = true); // throttle 30 s
-        var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(10), SlidingExpiration = TimeSpan.FromMinutes(10) };
+        var manager = CreateManager();
+        var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(10), SlidingExpiration = TimeSpan.FromMinutes(10), FailSafe = TimeSpan.FromHours(1) }; // throttle 30 s
 
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("v1"), policy);
         _time.Advance(TimeSpan.FromMinutes(11));
@@ -90,8 +90,8 @@ public class CancellationAndExpiryTests
     [Fact]
     public async Task FailSafe_CallerCancellation_IsNotADependencyFailure()
     {
-        var manager = CreateManager(o => o.EnableFailSafe = true);
-        var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1) };
+        var manager = CreateManager();
+        var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1), FailSafe = TimeSpan.FromHours(1) };
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("v1"), policy);
         _time.Advance(TimeSpan.FromMinutes(2));
 
@@ -108,8 +108,8 @@ public class CancellationAndExpiryTests
     public async Task FailSafe_TimeoutThatIsNotTheCallers_ServesTheStaleValue()
     {
         // HttpClient reports its own timeout as TaskCanceledException, while the caller's token is not cancelled
-        var manager = CreateManager(o => o.EnableFailSafe = true);
-        var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1) };
+        var manager = CreateManager();
+        var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1), FailSafe = TimeSpan.FromHours(1) };
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("v1"), policy);
         _time.Advance(TimeSpan.FromMinutes(2));
 

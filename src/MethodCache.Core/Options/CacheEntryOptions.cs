@@ -21,7 +21,10 @@ namespace MethodCache.Core.Options
             IReadOnlyList<Action<CacheContext>> onMissCallbacks,
             ICacheMetrics? metrics,
             int? version,
-            Func<CacheContext, bool>? predicate)
+            Func<CacheContext, bool>? predicate,
+            TimeSpan? failSafe,
+            TimeSpan? failSafeTimeout,
+            TimeSpan? failSafeRetryAfter)
         {
             Duration = duration;
             SlidingExpiration = slidingExpiration;
@@ -32,6 +35,9 @@ namespace MethodCache.Core.Options
             Metrics = metrics;
             Version = version;
             Predicate = predicate;
+            FailSafe = failSafe;
+            FailSafeTimeout = failSafeTimeout;
+            FailSafeRetryAfter = failSafeRetryAfter;
         }
 
         /// <summary>
@@ -79,6 +85,21 @@ namespace MethodCache.Core.Options
         public Func<CacheContext, bool>? Predicate { get; }
 
         /// <summary>
+        /// Gets how long an expired value is kept as a fail-safe fallback; <see cref="TimeSpan.Zero"/> turns it off.
+        /// </summary>
+        public TimeSpan? FailSafe { get; }
+
+        /// <summary>
+        /// Gets how long a reload may take before the caller gets the fail-safe value instead.
+        /// </summary>
+        public TimeSpan? FailSafeTimeout { get; }
+
+        /// <summary>
+        /// Gets how long a served fail-safe value is reused before the method is called again.
+        /// </summary>
+        public TimeSpan? FailSafeRetryAfter { get; }
+
+        /// <summary>
         /// Builder for <see cref="CacheEntryOptions"/> instances.
         /// </summary>
         public sealed class Builder
@@ -92,6 +113,9 @@ namespace MethodCache.Core.Options
             private ICacheMetrics? _metrics;
             private int? _version;
             private Func<CacheContext, bool>? _predicate;
+            private TimeSpan? _failSafe;
+            private TimeSpan? _failSafeTimeout;
+            private TimeSpan? _failSafeRetryAfter;
 
             /// <summary>
             /// Sets the cache duration.
@@ -167,6 +191,37 @@ namespace MethodCache.Core.Options
             }
 
             /// <summary>
+            /// Keeps expired values for <paramref name="duration"/> and returns them when reloading throws, so a failing
+            /// dependency degrades to slightly stale data instead of errors. With <paramref name="timeout"/>, a reload
+            /// that takes longer also returns the old value and finishes in the background. After a fallback the old
+            /// value is reused for <paramref name="retryAfter"/> (default 30 seconds) before the method is tried again.
+            /// <see cref="TimeSpan.Zero"/> as <paramref name="duration"/> turns fail-safe off, for example for one
+            /// method when it is on for all of them.
+            /// </summary>
+            public Builder FailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
+            {
+                if (duration < TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(duration), duration, "Fail-safe duration cannot be negative; use TimeSpan.Zero to turn fail-safe off.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(timeout), timeout, "Fail-safe timeout must be positive.");
+                }
+
+                if (retryAfter <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(retryAfter), retryAfter, "Fail-safe retry interval must be positive.");
+                }
+
+                _failSafe = duration;
+                _failSafeTimeout = timeout ?? _failSafeTimeout;
+                _failSafeRetryAfter = retryAfter ?? _failSafeRetryAfter;
+                return this;
+            }
+
+            /// <summary>
             /// Adds a callback executed when the entry is served from cache.
             /// </summary>
             public Builder OnHit(Action<CacheContext> callback)
@@ -229,7 +284,10 @@ namespace MethodCache.Core.Options
                     new ReadOnlyCollection<Action<CacheContext>>(_onMissCallbacks),
                     _metrics,
                     _version,
-                    _predicate);
+                    _predicate,
+                    _failSafe,
+                    _failSafeTimeout,
+                    _failSafeRetryAfter);
             }
         }
     }

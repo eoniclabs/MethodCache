@@ -22,6 +22,15 @@ public sealed class CachePolicyBuilder
     private Func<object?, bool>? _cacheWhen;
     private bool _cacheWhenSet;
 
+    private TimeSpan? _failSafe;
+    private bool _failSafeSet;
+
+    private TimeSpan? _failSafeTimeout;
+    private bool _failSafeTimeoutSet;
+
+    private TimeSpan? _failSafeRetryAfter;
+    private bool _failSafeRetryAfterSet;
+
     private readonly Dictionary<string, string?> _metadata = new(StringComparer.Ordinal);
     private bool _metadataSet;
 
@@ -32,6 +41,9 @@ public sealed class CachePolicyBuilder
         _versionSet ||
         _refreshAheadSet ||
         _cacheWhenSet ||
+        _failSafeSet ||
+        _failSafeTimeoutSet ||
+        _failSafeRetryAfterSet ||
         _metadataSet;
 
     public CachePolicyBuilder WithDuration(TimeSpan? duration)
@@ -110,6 +122,27 @@ public sealed class CachePolicyBuilder
         return this;
     }
 
+    public CachePolicyBuilder WithFailSafe(TimeSpan? failSafe)
+    {
+        _failSafe = failSafe;
+        _failSafeSet = true;
+        return this;
+    }
+
+    public CachePolicyBuilder WithFailSafeTimeout(TimeSpan? failSafeTimeout)
+    {
+        _failSafeTimeout = failSafeTimeout;
+        _failSafeTimeoutSet = true;
+        return this;
+    }
+
+    public CachePolicyBuilder WithFailSafeRetryAfter(TimeSpan? failSafeRetryAfter)
+    {
+        _failSafeRetryAfter = failSafeRetryAfter;
+        _failSafeRetryAfterSet = true;
+        return this;
+    }
+
     public CachePolicyBuilder AddMetadata(string key, string? value)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -180,6 +213,24 @@ public sealed class CachePolicyBuilder
             _cacheWhenSet = true;
         }
 
+        if (source._failSafeSet && (overwriteExisting || !_failSafeSet))
+        {
+            _failSafe = source._failSafe;
+            _failSafeSet = true;
+        }
+
+        if (source._failSafeTimeoutSet && (overwriteExisting || !_failSafeTimeoutSet))
+        {
+            _failSafeTimeout = source._failSafeTimeout;
+            _failSafeTimeoutSet = true;
+        }
+
+        if (source._failSafeRetryAfterSet && (overwriteExisting || !_failSafeRetryAfterSet))
+        {
+            _failSafeRetryAfter = source._failSafeRetryAfter;
+            _failSafeRetryAfterSet = true;
+        }
+
         if (source._metadataSet && (overwriteExisting || !_metadataSet))
         {
             _metadata.Clear();
@@ -208,6 +259,12 @@ public sealed class CachePolicyBuilder
             _refreshAheadSet = _refreshAheadSet,
             _cacheWhen = _cacheWhen,
             _cacheWhenSet = _cacheWhenSet,
+            _failSafe = _failSafe,
+            _failSafeSet = _failSafeSet,
+            _failSafeTimeout = _failSafeTimeout,
+            _failSafeTimeoutSet = _failSafeTimeoutSet,
+            _failSafeRetryAfter = _failSafeRetryAfter,
+            _failSafeRetryAfterSet = _failSafeRetryAfterSet,
             _metadataSet = _metadataSet,
             _tagsSet = _tagsSet
         };
@@ -280,6 +337,24 @@ public sealed class CachePolicyBuilder
         {
             policy = policy with { CacheWhen = _cacheWhen };
             fields |= CachePolicyFields.CacheWhen;
+        }
+
+        if (_failSafeSet)
+        {
+            policy = policy with { FailSafe = _failSafe };
+            fields |= CachePolicyFields.FailSafe;
+        }
+
+        if (_failSafeTimeoutSet)
+        {
+            policy = policy with { FailSafeTimeout = _failSafeTimeout };
+            fields |= CachePolicyFields.FailSafeTimeout;
+        }
+
+        if (_failSafeRetryAfterSet)
+        {
+            policy = policy with { FailSafeRetryAfter = _failSafeRetryAfter };
+            fields |= CachePolicyFields.FailSafeRetryAfter;
         }
 
         if (_metadataSet)

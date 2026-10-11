@@ -12,5 +12,8 @@ public enum CachePolicyFields
     Version = 1 << 3,
     Metadata = 1 << 4,
     RefreshAhead = 1 << 5,
-    CacheWhen = 1 << 6
+    CacheWhen = 1 << 6,
+    FailSafe = 1 << 7,
+    FailSafeTimeout = 1 << 8,
+    FailSafeRetryAfter = 1 << 9
 }
