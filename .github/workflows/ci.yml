@@ -1,5 +1,8 @@
 name: CI
 
+# Runs the scripts in build/ci, the same ones the build servers run. This workflow goes away once the build
+# servers post the merge-gate statuses.
+
 on:
   push:
     branches:
@@ -10,10 +13,9 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  build-test:
+  linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,47 +24,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-            10.0.x
+      - name: Run the Linux jobs in the build image
+        run: build/ci/linux.sh
 
-      - name: Restore dependencies
-        run: dotnet restore MethodCache.sln
-
-      - name: Build
-        run: dotnet build MethodCache.sln --configuration Release --no-restore
-
-      - name: Run the demo
-        # Each chapter checks its own claims and the run fails if one does not hold
-        run: dotnet run --project samples/MethodCache.Demo --configuration Release --no-build
-
-      - name: Test with coverage (net8.0, net9.0 and net10.0)
-        run: dotnet test MethodCache.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
-        env:
-          # Redis and SQL Server run in Testcontainers on this runner; a missing container fails the run instead of skipping
-          METHODCACHE_REQUIRE_INFRA_TESTS: "true"
-
-      - name: Upload test results artifact
+      - name: Upload the job logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: TestResults
+          name: linux-logs
+          path: artifacts/ci
           if-no-files-found: ignore
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./TestResults/**/coverage.cobertura.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-
-  unit-tests-windows:
-    # Paths, line endings and the Windows runtime; the Docker-backed Redis and SQL Server tests run on Linux only
+  windows:
     runs-on: windows-latest
 
     steps:
@@ -79,156 +52,13 @@ jobs:
             9.0.x
             10.0.x
 
-      - name: Build
-        run: dotnet build MethodCache.sln --configuration Release
+      - name: Run the Windows jobs
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File build/ci/windows.ps1
 
-      - name: Test
-        run: dotnet test MethodCache.sln --configuration Release --no-build --filter "FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
-
-  unit-tests-culture:
-    # Turkish (dotted/dotless i, comma decimals) and Swedish (U+2212 minus sign, comma decimals) catch
-    # formatting and parsing that depends on the current culture
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Upload the job logs
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            9.0.x
-            10.0.x
-
-      - name: Build
-        run: dotnet build MethodCache.sln --configuration Release
-
-      - name: Test with tr-TR
-        run: dotnet test MethodCache.sln --configuration Release --no-build --framework net10.0 --filter "FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
-        env:
-          LANG: tr_TR.UTF-8
-          LC_ALL: tr_TR.UTF-8
-
-      - name: Test with sv-SE
-        run: dotnet test MethodCache.sln --configuration Release --no-build --framework net10.0 --filter "FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
-        env:
-          LANG: sv_SE.UTF-8
-          LC_ALL: sv_SE.UTF-8
-
-  aot-smoke-test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            9.0.x
-            10.0.x
-
-      - name: Publish with Native AOT
-        run: dotnet publish tests/MethodCache.AotSmokeTest --configuration Release --runtime linux-x64 --output ./aot-smoke
-
-      - name: Run the AOT executable
-        run: ./aot-smoke/MethodCache.AotSmokeTest
-
-  package-smoke-test:
-    runs-on: ubuntu-latest
-
-    # Redis and SQL Server for the add-on packages, as an application would reach them
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          ACCEPT_EULA: "Y"
-          MSSQL_SA_PASSWORD: "Smoke_Passw0rd!"
-        ports:
-          - 1433:1433
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-            10.0.x
-
-      - name: Pack every package
-        run: dotnet pack MethodCache.sln --configuration Release --output ./artifacts/packages
-
-      - name: Check all 7 packages were packed
-        run: |
-          for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.Serialization.MessagePack MethodCache.AspNetCore MethodCache.OpenTelemetry MethodCache.HttpCaching; do
-            ls ./artifacts/packages/$package.[0-9]*.nupkg > /dev/null || { echo "Missing $package"; exit 1; }
-          done
-
-      - name: Check the generator, analyzers and code fixes are in the package
-        run: |
-          contents=$(unzip -l ./artifacts/packages/MethodCache.[0-9]*.nupkg)
-          for dll in analyzers/dotnet/cs/MethodCache.SourceGenerator.dll analyzers/dotnet/cs/MethodCache.Analyzers.dll analyzers/dotnet/cs/MethodCache.CodeFixes.dll; do
-            echo "$contents" | grep -q "$dll" || { echo "Missing $dll"; exit 1; }
-          done
-
-      - name: Install the package and run the Quick Start
-        run: dotnet run --project tests/MethodCache.PackageSmokeTest --configuration Release
-
-      - name: Run the Quick Start again with the .NET 8 SDK (the oldest compiler the generator supports)
-        working-directory: tests/MethodCache.PackageSmokeTest
-        run: |
-          rm -rf bin obj
-          echo '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }' > global.json
-          dotnet --version
-          dotnet run --configuration Release
-
-      - name: Install the add-on packages and use them in an app (net8.0)
-        run: dotnet run --project tests/MethodCache.PackageSmokeTest.AddOns --configuration Release --framework net8.0
-        env:
-          METHODCACHE_REDIS_URL: localhost:6379
-          METHODCACHE_SQLSERVER_CONNECTION: "Server=localhost,1433;User Id=sa;Password=Smoke_Passw0rd!;TrustServerCertificate=True;Encrypt=False"
-
-      - name: Install the add-on packages and use them in an app (net10.0)
-        run: dotnet run --project tests/MethodCache.PackageSmokeTest.AddOns --configuration Release --framework net10.0
-        env:
-          METHODCACHE_REDIS_URL: localhost:6379
-          METHODCACHE_SQLSERVER_CONNECTION: "Server=localhost,1433;User Id=sa;Password=Smoke_Passw0rd!;TrustServerCertificate=True;Encrypt=False"
-
-  docs:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Check the code in the docs matches tests/MethodCache.Docs.Tests
-        run: |
-          dotnet tool restore
-          dotnet mdsnippets
-          git diff --exit-code || { echo "::error::Docs are out of date. Run 'dotnet tool restore && dotnet mdsnippets' and commit the result."; exit 1; }
-
-      - name: Check llms.txt and llms-full.txt match the docs
-        run: |
-          python3 .github/scripts/generate-llms.py
-          git diff --exit-code -- llms.txt llms-full.txt || { echo "::error::llms.txt is out of date. Run 'python3 .github/scripts/generate-llms.py' and commit the result."; exit 1; }
+          name: windows-logs
+          path: artifacts/ci
+          if-no-files-found: ignore
