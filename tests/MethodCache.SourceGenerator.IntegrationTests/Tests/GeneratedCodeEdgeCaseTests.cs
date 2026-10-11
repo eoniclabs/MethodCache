@@ -379,6 +379,27 @@ public interface ISvc { [Cache(Tags = new[] { ""user:{userid}"", ""order:{orderI
     }
 
     [Fact]
+    public void TagPlaceholderThatIsNotAParameterName_IsReported()
+    {
+        var r = Run(Usings + @"namespace App {
+public record Product(int Id);
+public interface ISvc {
+  [Cache(Tags = new[] { ""product:{product.Id}"", ""user:{ userId }"", ""day:{day:yyyy-MM-dd}"", ""ok:{userId}"", ""json:{}"", ""range:{-1}"", ""unicode:{π.Id}"" })]
+  Task<string> Get(Product product, int userId, DateTime day);
+  [CacheInvalidate(Tags = new[] { ""product:{product?.Id}"" })] Task Update(Product product);
+}}", nameof(TagPlaceholderThatIsNotAParameterName_IsReported));
+        AssertCompiles(r);
+        var placeholders = r.GeneratorDiagnostics.Where(d => d.Id == "MCG015").Select(d => d.GetMessage()).ToList();
+        Assert.Equal(5, placeholders.Count);
+        Assert.Contains(placeholders, m => m.Contains("'{π.Id}'"));
+        Assert.Contains(placeholders, m => m.Contains("'{product.Id}'"));
+        Assert.Contains(placeholders, m => m.Contains("'{ userId }'"));
+        Assert.Contains(placeholders, m => m.Contains("'{day:yyyy-MM-dd}'"));
+        Assert.Contains(placeholders, m => m.Contains("'{product?.Id}'"));
+        Assert.DoesNotContain(r.GeneratorDiagnostics, d => d.Id == "MCG009");
+    }
+
+    [Fact]
     public async Task Overloads_AreCachedSeparatelyWithTheirOwnPolicies()
     {
         var r = Run(Usings + @"namespace App {

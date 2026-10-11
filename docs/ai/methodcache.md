@@ -53,8 +53,8 @@ builder.Services.AddMethodCache();                               // after your r
   the cache.
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter.
-- Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template and stays
-  literal; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
+- Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
+  literal and gives warning MCG015; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`,
   `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the first argument.
 - Cached objects are shared between callers: return immutable types such as records.

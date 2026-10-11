@@ -132,6 +132,9 @@ namespace MethodCache.SourceGenerator
                     diagnostics.Add(validation.diagnostic);
                 }
 
+                // The interface's methods live in metadata, so tag problems are reported on the attribute
+                diagnostics.AddRange(ValidateDynamicTags(ExtractTags(attribute), method, location));
+
                 // The assembly attribute carries the same named settings as [Cache], so the emitters read it as one
                 cachedMethods.Add(new MethodModel(method, attribute, null));
             }
