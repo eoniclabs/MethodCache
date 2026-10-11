@@ -143,6 +143,20 @@ jobs:
   package-smoke-test:
     runs-on: ubuntu-latest
 
+    # Redis and SQL Server for the add-on packages, as an application would reach them
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Smoke_Passw0rd!"
+        ports:
+          - 1433:1433
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -157,12 +171,18 @@ jobs:
             9.0.x
             10.0.x
 
-      - name: Pack the MethodCache package
-        run: dotnet pack src/MethodCache.Core --configuration Release --output ./artifacts/packages
+      - name: Pack every package
+        run: dotnet pack MethodCache.sln --configuration Release --output ./artifacts/packages
+
+      - name: Check all 7 packages were packed
+        run: |
+          for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.Serialization.MessagePack MethodCache.AspNetCore MethodCache.OpenTelemetry MethodCache.HttpCaching; do
+            ls ./artifacts/packages/$package.[0-9]*.nupkg > /dev/null || { echo "Missing $package"; exit 1; }
+          done
 
       - name: Check the generator, analyzers and code fixes are in the package
         run: |
-          contents=$(unzip -l ./artifacts/packages/MethodCache.*.nupkg)
+          contents=$(unzip -l ./artifacts/packages/MethodCache.[0-9]*.nupkg)
           for dll in analyzers/dotnet/cs/MethodCache.SourceGenerator.dll analyzers/dotnet/cs/MethodCache.Analyzers.dll analyzers/dotnet/cs/MethodCache.CodeFixes.dll; do
             echo "$contents" | grep -q "$dll" || { echo "Missing $dll"; exit 1; }
           done
@@ -177,6 +197,18 @@ jobs:
           echo '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }' > global.json
           dotnet --version
           dotnet run --configuration Release
+
+      - name: Install the add-on packages and use them in an app (net8.0)
+        run: dotnet run --project tests/MethodCache.PackageSmokeTest.AddOns --configuration Release --framework net8.0
+        env:
+          METHODCACHE_REDIS_URL: localhost:6379
+          METHODCACHE_SQLSERVER_CONNECTION: "Server=localhost,1433;User Id=sa;Password=Smoke_Passw0rd!;TrustServerCertificate=True;Encrypt=False"
+
+      - name: Install the add-on packages and use them in an app (net10.0)
+        run: dotnet run --project tests/MethodCache.PackageSmokeTest.AddOns --configuration Release --framework net10.0
+        env:
+          METHODCACHE_REDIS_URL: localhost:6379
+          METHODCACHE_SQLSERVER_CONNECTION: "Server=localhost,1433;User Id=sa;Password=Smoke_Passw0rd!;TrustServerCertificate=True;Encrypt=False"
 
   docs:
     runs-on: ubuntu-latest
