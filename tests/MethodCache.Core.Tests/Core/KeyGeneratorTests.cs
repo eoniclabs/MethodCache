@@ -685,5 +685,14 @@ namespace MethodCache.Core.Tests.Core
             firstKey.Should().NotBe(secondKey, because);
             generator.GenerateKey("M", new[] { first }, policy).Should().Be(firstKey, "the same arguments give the same key");
         }
+
+        [Fact]
+        public void FastHashKeyGenerator_TypeNamesLeaveOutAssemblyVersions()
+        {
+            // A runtime update changes the versions in Type.FullName of a generic type; keys must not change with it
+            FastHashKeyGenerator.TypeName(typeof(List<int>)).Should().Be("System.Collections.Generic.List`1[System.Int32]");
+            FastHashKeyGenerator.TypeName(typeof(Dictionary<string, int[]>[]))
+                .Should().Be("System.Collections.Generic.Dictionary`2[System.String,System.Int32[]][]");
+        }
     }
 }

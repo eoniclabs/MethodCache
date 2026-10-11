@@ -195,7 +195,9 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         }
     }
 
-    private static string TypeName(Type type) => type.FullName ?? type.Name;
+    // Without the assembly versions FullName puts in generic arguments, so keys stay the same across runtime updates
+    // (and instances on different patch versions share one distributed cache)
+    internal static string TypeName(Type type) => KeyArguments.TypeName(type);
 
     /// <summary>
     /// The enum's numeric value in the invariant culture. Not <c>ToString("D")</c>, which writes a negative value
