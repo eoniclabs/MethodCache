@@ -277,7 +277,8 @@ app.MapMethodCacheAdmin("CacheAdmins");                       // an authorizatio
 The tracing and metrics extensions live in the `OpenTelemetry.Trace` and `OpenTelemetry.Metrics` namespaces, like
 every OpenTelemetry instrumentation. The admin endpoints show hits, misses, live entries and every method's effective
 policy, and can invalidate by tag.
-The same operations are available in code through `ICacheAdministrator`.
+The same operations are available in code through `ICacheAdministrator`. Entry listing keeps at most the
+requested `limit` candidates in memory while scanning for the first keys in ordinal order.
 
 Memory statistics estimate cached payloads, including current string and array lengths. A configured weigher
 reports its total weight instead of that estimate. Sampling bounds serialization with `SamplingMaxEntries` and

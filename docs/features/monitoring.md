@@ -26,6 +26,10 @@ await admin.InvalidateTagsAsync(["user:42"]);
 - `ListEntries(keyPrefix, tag, limit)` and `GetEntry(key)`: live entries, without their values.
 - `InvalidateTagsAsync(tags)`, `RemoveEntryAsync(key)` and `ClearAsync()`.
 
+`ListEntries` scans the live cache to find the first keys in ordinal order, but keeps at most `limit`
+candidates in memory. A small page does not allocate a snapshot or sort every matching entry. Entries
+can change during this diagnostic scan; it is not a transaction.
+
 It works with the default in-memory cache manager; a custom `ICacheManager` has no administrator.
 
 ## Admin endpoints
