@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace MethodCache.HttpCaching.Metrics;
+namespace MethodCache.HttpCaching.Internal;
 
 /// <summary>
 /// Collects and provides metrics for HTTP cache operations.
 /// </summary>
-public class HttpCacheMetrics : IHttpCacheMetrics
+internal sealed class HttpCacheMetrics : IHttpCacheMetrics
 {
     private long _hitCount;
     private long _missCount;
@@ -213,7 +213,7 @@ public class HttpCacheMetrics : IHttpCacheMetrics
 /// <summary>
 /// Interface for HTTP cache metrics collection.
 /// </summary>
-public interface IHttpCacheMetrics
+internal interface IHttpCacheMetrics
 {
     long HitCount { get; }
     long MissCount { get; }
@@ -242,7 +242,7 @@ public interface IHttpCacheMetrics
 /// <summary>
 /// A snapshot of HTTP cache metrics at a point in time.
 /// </summary>
-public class HttpCacheMetricsSnapshot
+internal sealed class HttpCacheMetricsSnapshot
 {
     /// <summary>
     /// When this snapshot was taken.

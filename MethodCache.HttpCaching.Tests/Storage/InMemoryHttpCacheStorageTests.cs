@@ -1,7 +1,6 @@
+using MethodCache.HttpCaching.Internal;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging.Abstractions;
-using MethodCache.HttpCaching.Options;
-using MethodCache.HttpCaching.Storage;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests.Storage;
@@ -11,7 +10,7 @@ public class InMemoryHttpCacheStorageTests
     [Fact]
     public async Task SetAsync_WithSizeLimitedMemoryCache_StoresEntrySuccessfully()
     {
-        var storageOptions = new HttpCacheStorageOptions { MaxCacheSize = 1024, MaxResponseSize = 1024 };
+        var storageOptions = new HttpCacheStorageOptions { MaxCacheSize = 1024 };
 
         using var storage = new InMemoryHttpCacheStorage(
             Microsoft.Extensions.Options.Options.Create(storageOptions),

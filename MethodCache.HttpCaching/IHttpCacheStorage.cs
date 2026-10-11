@@ -1,4 +1,4 @@
-namespace MethodCache.HttpCaching.Storage;
+namespace MethodCache.HttpCaching;
 
 /// <summary>
 /// Defines the contract for HTTP cache storage implementations.

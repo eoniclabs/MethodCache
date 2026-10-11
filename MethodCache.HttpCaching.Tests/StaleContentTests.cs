@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using MethodCache.HttpCaching.Options;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -11,9 +10,9 @@ public class StaleContentTests
     public async Task StaleWhileRevalidate_ServesCachedContent_WhenEnabled()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.EnableStaleWhileRevalidate = true;
-        options.Diagnostics.AddDiagnosticHeaders = true;
-        options.Freshness.DefaultMaxAge = null;
+        options.EnableStaleWhileRevalidate = true;
+        options.AddDiagnosticHeaders = true;
+        options.DefaultMaxAge = null;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -61,9 +60,9 @@ public class StaleContentTests
     public async Task StaleIfError_ServesCachedContent_WhenRequestFails()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.EnableStaleIfError = true;
-        options.Behavior.MaxStaleIfError = TimeSpan.FromHours(1);
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.EnableStaleIfError = true;
+        options.MaxStaleIfError = TimeSpan.FromHours(1);
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -102,7 +101,7 @@ public class StaleContentTests
     public async Task StaleWhileRevalidate_Disabled_MakesOriginRequest()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.EnableStaleWhileRevalidate = false;
+        options.EnableStaleWhileRevalidate = false;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -134,7 +133,7 @@ public class StaleContentTests
     public async Task StaleIfError_Disabled_ThrowsException_WhenRequestFails()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.EnableStaleIfError = false;
+        options.EnableStaleIfError = false;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -158,9 +157,9 @@ public class StaleContentTests
     public async Task StaleIfError_WithinTimeLimit_ServesCachedContent()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.EnableStaleIfError = true;
-        options.Behavior.MaxStaleIfError = TimeSpan.FromSeconds(30);
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.EnableStaleIfError = true;
+        options.MaxStaleIfError = TimeSpan.FromSeconds(30);
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -192,8 +191,8 @@ public class StaleContentTests
     public async Task StaleWhileRevalidate_ConcurrentRequests_QueuesSingleBackgroundRevalidation()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.EnableStaleWhileRevalidate = true;
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.EnableStaleWhileRevalidate = true;
+        options.AddDiagnosticHeaders = true;
 
         using var handler = new SlowOriginHandler();
         using var httpClient = new HttpClient(HttpCacheTestFactory.CreateHandler(options, handler));

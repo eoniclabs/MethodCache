@@ -1,171 +1,72 @@
 # MethodCache.HttpCaching
 
-Standards-compliant HTTP caching for `HttpClient` that implements RFC 7234 caching semantics.
-
-## Features
-
-- **Automatic conditional requests** - Adds `If-None-Match` and `If-Modified-Since` headers
-- **304 Not Modified handling** - Returns cached content when server responds with 304
-- **Cache-Control compliance** - Respects `max-age`, `no-cache`, `no-store`, `private`, etc.
-- **Vary header support** - Caches different responses based on varying headers
-- **Freshness calculation** - Implements standard HTTP freshness rules including heuristic freshness
-- **Storage abstraction** - In-memory storage by default, or your own `IHttpCacheStorage`
-- **Stale-while-revalidate** - Serve stale content while fetching fresh in background
-- **Stale-if-error** - Serve stale content when origin server returns errors
-- **Diagnostic headers** - Optional cache debugging information
-
-## Quick Start
-
-### Basic Usage
+HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,
+revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
+response. It follows RFC 9111.
 
 ```csharp
-using MethodCache.HttpCaching.Extensions;
+using MethodCache.HttpCaching;
 
-// Add HTTP caching to any HttpClient
-services.AddHttpClient<IApiClient, ApiClient>()
+builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
     .AddHttpCaching();
 ```
 
-### Configuration
+That is all. Your typed client keeps calling `GetAsync` as before.
+
+## What it does
+
+| The server sends | What happens on the next request |
+|---|---|
+| `Cache-Control: max-age=60` | Served from cache for 60 seconds, no network call |
+| `ETag: "abc"` (or `Last-Modified`) | Sent with `If-None-Match: "abc"`; a 304 is answered from the cache |
+| both | Served from cache while fresh, then revalidated with the ETag |
+| `Vary: Accept-Language` | One cached response per language (up to `MaxVariantsPerUrl`) |
+| `no-store` | Never cached |
+
+- A successful `POST`, `PUT`, `PATCH` or `DELETE` removes the cached responses for that URL (and for same-origin
+  `Location` / `Content-Location`), so you never read your own stale data after a write.
+- Cached responses carry an `Age` header, as the standard requires.
+- Each HttpClient has its own settings and its own entries.
+- Request directives are honored: `no-cache`, `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
+
+## Settings
+
+Settings are per HttpClient:
 
 ```csharp
-services.AddHttpClient<IMetaApiClient, MetaApiClient>()
-    .AddHttpCaching(caching => caching
-        .Configure(options =>
-        {
-            options.Freshness.DefaultMaxAge = null;            // ETag/Last-Modified-only responses are revalidated every time
-options.Freshness.StaleRetention = TimeSpan.FromHours(24); // how long stale entries are kept for revalidation
-            options.Behavior.EnableStaleWhileRevalidate = true;
-            options.Behavior.EnableStaleIfError = true;
-            options.Diagnostics.AddDiagnosticHeaders = true; // X-Cache headers, useful in development
-        })
-        .UseInMemoryStorage(storage => storage.MaxResponseSize = 50 * 1024 * 1024)); // 50MB
+builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
+    .AddHttpCaching(options =>
+    {
+        options.EnableStaleIfError = true;           // serve the last response when the API is down
+        options.EnableStaleWhileRevalidate = true;   // when the server sends stale-while-revalidate
+        options.AddDiagnosticHeaders = true;         // X-Cache: HIT / MISS / REVALIDATED / STALE
+    });
 ```
 
-### Custom Storage
+| Option | Default | |
+|---|---|---|
+| `IsSharedCache` | `false` | `false`: a private cache; `Authorization` is part of the key so callers never see each other's responses. `true`: a shared cache; `private` and authorized responses are not stored, `s-maxage` applies |
+| `DefaultMaxAge` | `null` | Freshness for a response with only an `ETag`/`Last-Modified`. `null` revalidates every time |
+| `AllowHeuristicFreshness` | `true` | 10% of the time since `Last-Modified`, at most `MaxHeuristicFreshness` (1 hour) |
+| `StaleRetention` | 24 hours | How long a stale entry is kept for revalidation and the stale options below |
+| `EnableStaleWhileRevalidate` | `false` | Serve stale at once and refresh in the background, within the server's `stale-while-revalidate` |
+| `EnableStaleIfError` | `false` | Serve stale when the request fails or returns 5xx, within `stale-if-error` or `MaxStaleIfError` (24 hours) |
+| `MaxVariantsPerUrl` | 5 | `Vary` variants kept per URL |
+| `MaxResponseSize` | 10 MB | Larger responses are not cached |
+| `KeyHeaders` | empty | Request headers that are always part of the key, for APIs that vary on a header without sending `Vary` |
+| `CacheableMethods` | GET, HEAD | |
+| `AddDiagnosticHeaders` | `false` | Adds `X-Cache`, `X-Cache-Age` and `X-Cache-TTL` |
+
+`must-revalidate` (and `proxy-revalidate` / `s-maxage` in a shared cache) always wins: such responses are never
+served stale.
+
+## Storage
+
+Responses are kept in memory, in a cache of their own (your app's `IMemoryCache` is not touched). The total size
+is shared by all clients:
 
 ```csharp
-services.AddHttpClient<IApiClient, ApiClient>()
-    .AddHttpCaching(caching => caching.UseCustomStorage<MyHttpCacheStorage>());
+builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1024 * 1024); // default 100 MB
 ```
 
-## How It Works
-
-The HTTP cache handler sits in the HttpClient pipeline and:
-
-1. **Checks cache** for fresh responses first
-2. **Adds conditional headers** (`If-None-Match`, `If-Modified-Since`) for validation
-3. **Handles 304 responses** by returning cached content with updated headers
-4. **Stores cacheable responses** according to HTTP caching rules
-5. **Provides fallbacks** with stale-while-revalidate and stale-if-error
-6. **Invalidates** cached GET/HEAD responses after a successful POST, PUT, PATCH or DELETE to the same URL
-   (and to same-origin `Location` / `Content-Location`)
-
-Each HttpClient has its own options and its own cache entries. The in-memory storage uses its own memory cache,
-so your app's `IMemoryCache` is never touched.
-
-## Benefits for API Integration
-
-### Quota Management
-```csharp
-// Before: Every call hits the API
-GET /api/users/123 → 200 OK (counts against quota)
-GET /api/users/123 → 200 OK (counts against quota)
-GET /api/users/123 → 200 OK (counts against quota)
-
-// After: Smart HTTP caching
-GET /api/users/123 → 200 OK (counts against quota, cached with ETag)
-GET /api/users/123 + If-None-Match → 304 Not Modified (minimal quota impact)
-GET /api/users/123 + If-None-Match → 304 Not Modified (minimal quota impact)
-```
-
-### Bandwidth Savings
-- 304 responses have no body content
-- Significant bandwidth reduction for large responses
-- Automatic cache invalidation when content changes
-
-### Improved Performance
-- Sub-millisecond response times for cached content
-- Background revalidation keeps cache fresh
-- Graceful degradation during API failures
-
-## Diagnostic Headers
-
-When `options.Diagnostics.AddDiagnosticHeaders = true`:
-
-```http
-X-Cache: HIT                 # Response served from cache
-X-Cache-Age: 120             # Age of cached entry in seconds
-X-Cache-TTL: 180             # Time to live remaining in seconds
-```
-
-Cache status values:
-- `HIT` - Served from cache, still fresh
-- `REVALIDATED` - 304 response, cache updated
-- `STALE` - Stale content served while revalidating in the background
-- `STALE-IF-ERROR` - Stale content served due to error
-- `MISS` - No cache entry, response from origin
-
-## Testing
-
-```bash
-dotnet test MethodCache.HttpCaching.Tests/
-dotnet test MethodCache.HttpCaching.IntegrationTests/
-```
-
-## Configuration Options
-
-`HttpCacheOptions` groups its settings (defaults shown):
-
-```csharp
-options.Behavior.RespectCacheControl = true;
-options.Behavior.RespectVary = true;
-options.Behavior.IsSharedCache = false;            // true for a cache shared between users (honors s-maxage)
-options.Behavior.EnableStaleWhileRevalidate = false;
-options.Behavior.EnableStaleIfError = false;
-options.Behavior.MaxStaleIfError = TimeSpan.FromHours(24);
-
-options.Freshness.AllowHeuristicFreshness = true;
-options.Freshness.MaxHeuristicFreshness = TimeSpan.FromHours(1);
-options.Freshness.DefaultMaxAge = null;            // ETag/Last-Modified-only responses are revalidated every time
-options.Freshness.StaleRetention = TimeSpan.FromHours(24); // how long stale entries are kept for revalidation
-
-options.CacheableMethods;                          // GET and HEAD by default
-options.CacheKeyGenerator = request => ...;        // optional custom key
-options.Diagnostics.AddDiagnosticHeaders = false;
-```
-
-Size limits are on the storage options: `MaxCacheSize` (100MB) and `MaxResponseSize` (10MB), set with `ConfigureStorage(...)` or `UseInMemoryStorage(...)`.
-
-## Storage Implementations
-
-### In-Memory (Default)
-- `InMemoryHttpCacheStorage`, built on `IMemoryCache`
-- For single-instance applications
-
-### Custom Storage
-Implement `IHttpCacheStorage` (`GetAsync`, `SetAsync`, `RemoveAsync`, `ClearAsync`) and register it with `UseCustomStorage<T>()`:
-
-```csharp
-public class MyHttpCacheStorage : IHttpCacheStorage
-{
-    public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) { ... }
-    public ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default) { ... }
-    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) { ... }
-    public ValueTask ClearAsync(CancellationToken cancellationToken = default) { ... }
-}
-```
-
-## Integration with Resilience
-
-HTTP caching works **alongside** existing resilience patterns:
-
-```csharp
-services.AddHttpClient<IMetaApiClient, MetaApiClient>()
-    .AddPolicyHandler(GetRetryPolicy())           // Your retry logic
-    .AddPolicyHandler(GetRateLimitPolicy())       // Your rate limiting
-    .AddPolicyHandler(GetCircuitBreakerPolicy())  // Your circuit breaker
-    .AddHttpCaching();                            // HTTP caching (add last)
-```
-
-The cache handler only manages HTTP-level caching and doesn't interfere with your domain-specific resilience strategies.
+To store responses elsewhere, register your own `IHttpCacheStorage` before `AddHttpCaching()`.

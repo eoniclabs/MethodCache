@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace MethodCache.HttpCaching;
+namespace MethodCache.HttpCaching.Internal;
 
 /// <summary>
 /// State for one named HttpClient. A singleton per client, so it survives IHttpClientFactory rotating the handlers.

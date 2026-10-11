@@ -129,7 +129,7 @@ public sealed record HttpCacheEntry
     /// <summary>
     /// Converts this cache entry back to an HTTP response message.
     /// </summary>
-    internal HttpResponseMessage ToHttpResponse(HttpRequestMessage? request = null)
+    internal HttpResponseMessage ToHttpResponse(HttpRequestMessage request)
     {
         var response = new HttpResponseMessage(StatusCode)
         {

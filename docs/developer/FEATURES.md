@@ -22,25 +22,7 @@ This document outlines a set of proposed features and integrations that would en
 
 ### 3. HTTP Caching for HttpClient (Client-Side)
 
-*   **What it is:** A standards-compliant HTTP caching handler for `HttpClient` that implements RFC 7234 caching semantics, reducing API calls and improving performance.
-*   **Why it makes sense:** Most modern applications consume multiple HTTP APIs. A proper HTTP caching layer can dramatically reduce API calls, respect rate limits, save bandwidth, and improve response times.
-*   **Key features:**
-    *   **Automatic conditional requests:** Adds `If-None-Match` and `If-Modified-Since` headers
-    *   **304 Not Modified handling:** Returns cached content when server responds with 304
-    *   **Cache-Control compliance:** Respects `max-age`, `no-cache`, `no-store`, `private`, etc.
-    *   **Vary header support:** Caches different responses based on varying headers
-    *   **Freshness calculation:** Implements standard HTTP freshness rules including heuristic freshness
-    *   **Storage abstraction:** Support for in-memory, Redis, or custom cache storage
-*   **How to implement it:**
-    ```csharp
-    services.AddHttpClient<IApiClient, ApiClient>()
-        .AddHttpCaching(options =>
-        {
-            options.Storage = new RedisHttpCacheStorage(connectionString);
-            options.RespectCacheControl = true;
-            options.EnableDiagnosticHeaders = true;
-        });
-    ```
+*   **Status:** Shipped as `MethodCache.HttpCaching` (`AddHttpClient<...>().AddHttpCaching()`): ETag / Last-Modified revalidation, Cache-Control, Vary, invalidation after writes, stale-while-revalidate and stale-if-error. See [its README](../../MethodCache.HttpCaching/README.md).
 
 ### 3a. HTTP Caching Middleware (Server-Side)
 
