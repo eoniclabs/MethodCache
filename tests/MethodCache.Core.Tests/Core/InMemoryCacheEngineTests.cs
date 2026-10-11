@@ -793,6 +793,73 @@ public class InMemoryCacheEngineTests
         stats.Hits.Should().Be(2);
     }
 
+    [Theory]
+    [InlineData(MemoryCacheEvictionPolicy.TinyLfu)]
+    [InlineData(MemoryCacheEvictionPolicy.Lru)]
+    public void ConcurrentWriters_CannotOutrunEviction(MemoryCacheEvictionPolicy policy)
+    {
+        const int maxItems = 100;
+        var writers = Math.Max(4, Environment.ProcessorCount * 2);
+        var manager = CreateManager(o =>
+        {
+            o.MaxItems = maxItems;
+            o.EvictionPolicy = policy;
+        });
+        var engine = manager.Engine;
+
+        // Tracked weight: at most one entry over the bound at any moment. Stored entries: also the inserts waiting
+        // for maintenance, which back-pressure caps at the write buffer limit plus one per writer, and one entry
+        // per writer stored but not yet queued.
+        var maxCount = maxItems + 1 + MemoryCacheEngine.WriteBufferMaximum + (2 * writers);
+        long maxWeightSeen = 0;
+        long maxCountSeen = 0;
+        using var start = new Barrier(writers);
+
+        var threads = Enumerable.Range(0, writers).Select(writer => new Thread(() =>
+        {
+            start.SignalAndWait();
+            for (var i = 0; i < 20_000; i++)
+            {
+                manager.SetAsync($"w{writer}:{i}", i, OneMinute).GetAwaiter().GetResult();
+                InterlockedMax(ref maxWeightSeen, engine.TotalWeight);
+                if ((i & 255) == 0)
+                {
+                    InterlockedMax(ref maxCountSeen, engine.Count);
+                }
+            }
+        })).ToArray();
+
+        foreach (var thread in threads)
+        {
+            thread.Start();
+        }
+
+        foreach (var thread in threads)
+        {
+            thread.Join();
+        }
+
+        maxWeightSeen.Should().BeLessThanOrEqualTo(maxItems + 1);
+        maxCountSeen.Should().BeLessThanOrEqualTo(maxCount);
+        engine.Maintain();
+        engine.Count.Should().BeLessThanOrEqualTo(maxItems);
+
+        static void InterlockedMax(ref long target, long value)
+        {
+            var current = Volatile.Read(ref target);
+            while (value > current)
+            {
+                var seen = Interlocked.CompareExchange(ref target, value, current);
+                if (seen == current)
+                {
+                    return;
+                }
+
+                current = seen;
+            }
+        }
+    }
+
     [Fact]
     public async Task ConcurrentMixedOperations_KeepInvariants()
     {
@@ -837,8 +904,8 @@ public class InMemoryCacheEngineTests
 
         await Task.WhenAll(workers);
 
-        // The bound holds once pending writes are applied; with every core writing, the write buffer can hold
-        // entries eviction hasn't seen yet
+        // A maintenance pass on another thread (a read-buffer drain) can still be applying the last writes; the
+        // bound is exact once they are applied
         manager.Engine.Maintain();
         var stats = await manager.GetStatsAsync();
         stats.Entries.Should().BeLessThanOrEqualTo(500);
