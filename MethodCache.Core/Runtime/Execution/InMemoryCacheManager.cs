@@ -181,7 +181,7 @@ namespace MethodCache.Core.Runtime.Execution
                 && TryGetFresh(cacheKey, _engine.Now, out value, out node, out var refreshDue)
                 && !(refreshDue && Volatile.Read(ref node!.RefreshState) == 0))
             {
-                if (_options.FastPathTrackMetrics && _options.EnableStatistics)
+                if (_options.EnableStatistics)
                 {
                     _hits.Increment();
                 }
