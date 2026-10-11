@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 
 namespace MethodCache.Policies;
 
 /// <summary>
 /// The effective policy for one method after merging all sources, and how it was built.
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class PolicyResolutionResult
 {
     /// <summary>

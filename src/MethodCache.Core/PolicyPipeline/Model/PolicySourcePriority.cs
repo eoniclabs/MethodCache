@@ -5,7 +5,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// The priorities of the built-in policy sources; where two sources set the same field, the higher priority wins.
 /// </summary>
-public static class PolicySourcePriority
+internal static class PolicySourcePriority
 {
     /// <summary>
     /// <c>[Cache]</c> attributes in code (10), the lowest priority.
