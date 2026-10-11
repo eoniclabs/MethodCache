@@ -10,10 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\MethodCache.Demo.FxVendor\MethodCache.Demo.FxVendor.csproj" />
-    <ProjectReference Include="..\..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

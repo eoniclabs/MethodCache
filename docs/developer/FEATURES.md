@@ -22,7 +22,7 @@ This document outlines a set of proposed features and integrations that would en
 
 ### 3. HTTP Caching for HttpClient (Client-Side)
 
-*   **Status:** Shipped as `MethodCache.HttpCaching` (`AddHttpClient<...>().AddHttpCaching()`): ETag / Last-Modified revalidation, Cache-Control, Vary, invalidation after writes, stale-while-revalidate and stale-if-error. See [its README](../../MethodCache.HttpCaching/README.md).
+*   **Status:** Shipped as `MethodCache.HttpCaching` (`AddHttpClient<...>().AddHttpCaching()`): ETag / Last-Modified revalidation, Cache-Control, Vary, invalidation after writes, stale-while-revalidate and stale-if-error. See [its README](../../src/MethodCache.HttpCaching/README.md).
 
 ### 3a. HTTP Caching Middleware (Server-Side)
 

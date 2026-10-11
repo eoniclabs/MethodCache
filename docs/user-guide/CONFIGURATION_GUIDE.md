@@ -238,7 +238,7 @@ builder.Services.AddHealthChecks().AddMethodCache();
 app.MapMethodCacheAdmin().RequireAuthorization("CacheAdmins"); // GET /methodcache/stats, /methods, /entries, ...
 ```
 
-See the [MethodCache.AspNetCore README](../../MethodCache.AspNetCore/README.md) for the endpoints. They do not change policies; use `IRuntimeCacheConfigurator` for that.
+See the [MethodCache.AspNetCore README](../../src/MethodCache.AspNetCore/README.md) for the endpoints. They do not change policies; use `IRuntimeCacheConfigurator` for that.
 
 ## Configuration Priorities
 
