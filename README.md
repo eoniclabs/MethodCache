@@ -254,9 +254,9 @@ A cache hit on `Task<User> GetUserAsync(int id)`, each library on its default se
 
 The generated decorator writes the key into a stack buffer and returns the cached `Task` itself, so a hit allocates
 nothing and is at least as fast as hand-written code (on .NET 9 and later; .NET 8 builds the key as a string).
-Measured with BenchmarkDotNet on .NET 10 on a shared cloud VM (Intel Xeon 2.1 GHz, 4 cores). The nanoseconds depend
-on the hardware; the ratios and allocations carry over to other machines. [docs/benchmarks.md](docs/benchmarks.md) has
-the full results. To measure on your own machine:
+Measured with BenchmarkDotNet on .NET 10 on a shared cloud VM (Intel Xeon 2.1 GHz, 4 cores). Times and ratios
+are for that setup and will differ on other hardware and runtimes; the allocations don't.
+[docs/benchmarks.md](docs/benchmarks.md) has the full results. To measure on your own machine:
 
 ```bash
 dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
