@@ -22,7 +22,7 @@ The script will:
 3. Update `version.json` using nbgv
 4. Commit the version change
 5. Create and push the git tag
-6. Trigger GitHub Actions to publish
+6. Tell you to publish the tag on Megatron once the build servers passed it (see below)
 
 ### Options
 
@@ -59,18 +59,18 @@ If you prefer to do it manually:
    git push origin v1.0.0
    ```
 
-4. **Automated publishing**
-   - GitHub Actions will automatically detect the tag push
-   - The workflow will:
-     - Build the project
-     - Run all tests (including integration tests with Redis)
-     - Pack NuGet packages
-     - Publish to GitHub Packages
+4. **Wait for the build servers**
+   - The tagged commit is the head of `main`, so the build servers run every CI job on it within minutes
+   - Wait until its `MethodCache CI` commit status is green
 
-4. **Monitor the workflow**
-   - Visit: https://github.com/eoniclabs/MethodCache/actions
-   - Check the "Publish NuGet Package" workflow run
-   - Verify successful completion
+5. **Publish on Megatron**
+   ```bash
+   build/ci/publish.sh v1.0.0
+   ```
+   - It refuses a tag whose `MethodCache CI` status is not green
+   - It packs the 7 packages from a fresh clone of the tag and pushes them to GitHub Packages (never nuget.org)
+   - `gh` needs the `write:packages` scope once: `gh auth refresh -s write:packages`
+   - Running it again is safe: versions already published are skipped
 
 ## Version Tagging
 
@@ -165,7 +165,7 @@ Add this to your `nuget.config` for CI:
 - Verify username/password in nuget.config
 - Try clearing NuGet cache: `dotnet nuget locals all --clear`
 
-**Workflow failures**
-- Check Redis service is running (for integration tests)
-- Verify all tests pass locally: `dotnet test`
-- Review GitHub Actions logs for specific errors
+**Publishing fails**
+- `MethodCache CI` is not green: the build servers' comment and logs say which job failed (see `build/ci/README.md`)
+- "Missing <package>": `version.json` at the tag does not match the tag's version
+- Unauthorized: run `gh auth refresh -s write:packages`
