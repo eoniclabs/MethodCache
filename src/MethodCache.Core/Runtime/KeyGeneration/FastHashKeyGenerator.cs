@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO.Hashing;
 using System.Text;
 using System.Text.Json;
+using System.Text.Unicode;
 using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Infrastructure;
 
@@ -182,7 +183,7 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
                 // By number, like generated keys, so renaming a member keeps existing keys
                 WriteTag(writer, Tag.Enum);
                 WriteString(writer, TypeName(enumValue.GetType()));
-                WriteString(writer, enumValue.ToString("D"));
+                WriteString(writer, EnumNumber(enumValue));
                 break;
             default:
                 WriteTag(writer, Tag.Object);
@@ -193,6 +194,17 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
     }
 
     private static string TypeName(Type type) => type.FullName ?? type.Name;
+
+    /// <summary>
+    /// The enum's numeric value in the invariant culture. Not <c>ToString("D")</c>, which writes a negative value
+    /// with the current culture's minus sign (U+2212 in sv-SE), so the key would depend on the thread's culture.
+    /// </summary>
+    private static string EnumNumber(Enum value) => Type.GetTypeCode(value.GetType()) switch
+    {
+        TypeCode.SByte or TypeCode.Int16 or TypeCode.Int32 or TypeCode.Int64
+            => Convert.ToInt64(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture),
+        _ => value.ToString("D"), // unsigned: no sign to format
+    };
 
     private static void WriteTag(ArrayBufferWriter<byte> writer, Tag tag) => WriteByte(writer, (byte)tag);
 
@@ -224,9 +236,22 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
     private static void WriteString(ArrayBufferWriter<byte> writer, string value)
     {
         var byteCount = Encoding.UTF8.GetByteCount(value);
-        WriteInt32(writer, byteCount);
-        var written = Encoding.UTF8.GetBytes(value, writer.GetSpan(byteCount));
-        writer.Advance(written);
+        var span = writer.GetSpan(4 + byteCount);
+        if (Utf8.FromUtf16(value, span[4..], out _, out var written, replaceInvalidSequences: false) == OperationStatus.Done)
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(span, written);
+            writer.Advance(4 + written);
+            return;
+        }
+
+        // A lone surrogate: UTF-8 would write every one as U+FFFD, giving different strings one key. Write the UTF-16
+        // code units instead, after a negative length that no UTF-8 length can equal.
+        WriteInt32(writer, -1 - value.Length);
+        foreach (var c in value)
+        {
+            BinaryPrimitives.WriteUInt16LittleEndian(writer.GetSpan(2), c);
+            writer.Advance(2);
+        }
     }
 
     private static void WriteBytes(ArrayBufferWriter<byte> writer, ReadOnlySpan<byte> value)

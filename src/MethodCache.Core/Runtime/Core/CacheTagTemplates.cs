@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text;
 
 namespace MethodCache.Infrastructure
 {
@@ -37,16 +38,57 @@ namespace MethodCache.Infrastructure
             var tags = new List<string>(policy.Tags.Count);
             foreach (var tag in policy.Tags)
             {
-                var expanded = tag;
-                for (var i = 0; i < parameterNames.Length && expanded.Contains('{'); i++)
-                {
-                    expanded = expanded.Replace("{" + parameterNames[i] + "}", values[i], StringComparison.OrdinalIgnoreCase);
-                }
-
-                tags.Add(expanded);
+                tags.Add(tag.Contains('{') ? ExpandTag(tag, parameterNames, values) : tag);
             }
 
             return policy with { Tags = tags };
+        }
+
+        /// <summary>
+        /// Replaces the placeholders in one left-to-right pass, as the <c>string.Format</c> that
+        /// <see cref="CacheInvalidateAttribute"/> uses does, so an argument whose text looks like a placeholder
+        /// (such as <c>"{orgId}"</c>) is kept as it is and the entry gets the tag the invalidation removes.
+        /// </summary>
+        private static string ExpandTag(string tag, string[] parameterNames, string[] values)
+        {
+            var result = new StringBuilder(tag.Length + 16);
+            var position = 0;
+            while (position < tag.Length)
+            {
+                var open = tag.IndexOf('{', position);
+                var close = open < 0 ? -1 : tag.IndexOf('}', open + 1);
+                if (close < 0)
+                {
+                    break;
+                }
+
+                var index = IndexOf(parameterNames, tag.AsSpan(open + 1, close - open - 1));
+                if (index < 0)
+                {
+                    // Not a parameter: keep the brace and look for a placeholder after it
+                    result.Append(tag, position, open + 1 - position);
+                    position = open + 1;
+                    continue;
+                }
+
+                result.Append(tag, position, open - position).Append(values[index]);
+                position = close + 1;
+            }
+
+            return result.Append(tag, position, tag.Length - position).ToString();
+        }
+
+        private static int IndexOf(string[] parameterNames, ReadOnlySpan<char> name)
+        {
+            for (var i = 0; i < parameterNames.Length; i++)
+            {
+                if (name.Equals(parameterNames[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
     }
 }

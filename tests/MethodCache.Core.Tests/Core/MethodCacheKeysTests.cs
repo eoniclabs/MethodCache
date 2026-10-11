@@ -88,6 +88,11 @@ namespace MethodCache.Core.Tests.Core
                 Assert.Equal("1.5", MethodCacheKeys.Part(1.5));
                 Assert.Equal("1.5", MethodCacheKeys.Part(1.5m));
                 Assert.Equal("-3", MethodCacheKeys.Part(-3));
+
+                // Found by CacheKeyPropertyTests: Enum.ToString("D") used the culture's minus sign (U+2212)
+                Assert.Equal("-1", MethodCacheKeys.Part((DayOfWeek)(-1)));
+                Assert.Equal("-9223372036854775808", MethodCacheKeys.Part((LongEnum)long.MinValue));
+                Assert.Equal("18446744073709551615", MethodCacheKeys.Part((ULongEnum)ulong.MaxValue));
             }
             finally
             {
@@ -161,6 +166,10 @@ namespace MethodCache.Core.Tests.Core
         }
 
         public enum Status { Active = 1, Closed = 2 }
+
+        public enum LongEnum : long { Min = long.MinValue }
+
+        public enum ULongEnum : ulong { Max = ulong.MaxValue }
 
         private static readonly CacheRuntimePolicy NoVersion = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
 
