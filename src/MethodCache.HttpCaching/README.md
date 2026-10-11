@@ -20,11 +20,12 @@ That is all. Your typed client keeps calling `GetAsync` as before.
 | `Cache-Control: max-age=60` | Served from cache for 60 seconds, no network call |
 | `ETag: "abc"` (or `Last-Modified`) | Sent with `If-None-Match: "abc"`; a 304 is answered from the cache |
 | both | Served from cache while fresh, then revalidated with the ETag |
-| `Vary: Accept-Language` | One cached response per language (up to `MaxVariantsPerUrl`) |
+| `Vary: Accept-Language` | One cached response per language |
 | `no-store` | Never cached |
 
 - A successful `POST`, `PUT`, `PATCH` or `DELETE` removes the cached responses for that URL (and for same-origin
-  `Location` / `Content-Location`), so you never read your own stale data after a write.
+  `Location` / `Content-Location`) for every caller, language and key header value, so nobody reads stale data
+  after a write.
 - Cached responses carry an `Age` header, as the standard requires.
 - Each HttpClient has its own settings and its own entries.
 - Request directives are honored: `no-cache`, `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
@@ -51,7 +52,6 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 | `StaleRetention` | 24 hours | How long a stale entry is kept for revalidation and the stale options below |
 | `EnableStaleWhileRevalidate` | `false` | Serve stale at once and refresh in the background, within the server's `stale-while-revalidate` |
 | `EnableStaleIfError` | `false` | Serve stale when the request fails or returns 5xx, within `stale-if-error` or `MaxStaleIfError` (24 hours) |
-| `MaxVariantsPerUrl` | 5 | `Vary` variants kept per URL |
 | `MaxResponseSize` | 10 MB | Larger responses are not cached |
 | `KeyHeaders` | empty | Request headers that are always part of the key, for APIs that vary on a header without sending `Vary` |
 | `CacheableMethods` | GET, HEAD | POST, PUT, PATCH and DELETE are never cached, even if added. |

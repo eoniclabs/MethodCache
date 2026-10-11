@@ -75,14 +75,17 @@ public sealed record HttpCacheEntry
     public TimeSpan InitialAge { get; init; }
 
     /// <summary>
-    /// The Vary headers that affect caching for this response.
+    /// The Vary headers that affect caching for this response. On the entry for a URL whose responses are stored
+    /// per variant, the request headers that select the variant.
     /// </summary>
     public string[]? VaryHeaders { get; init; }
 
     /// <summary>
-    /// For a response with <c>Vary</c>: the storage keys of the variants cached for this URL, oldest first.
+    /// Set on the entry for a URL whose responses are stored per variant (per <c>Vary</c>, key header or caller).
+    /// Variants are found through it, so replacing or removing this entry makes every older variant unreachable.
+    /// Storage implementations only need to keep it.
     /// </summary>
-    public string[]? VariantKeys { get; init; }
+    public string? VariantGeneration { get; init; }
 
     /// <summary>
     /// Creates a cache entry from an HTTP response message.

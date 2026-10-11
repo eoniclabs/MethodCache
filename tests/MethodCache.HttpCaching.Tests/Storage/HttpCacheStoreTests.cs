@@ -85,7 +85,7 @@ public class HttpCacheStoreTests
             Date = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero),
             InitialAge = TimeSpan.FromSeconds(42),
             VaryHeaders = ["Accept-Language"],
-            VariantKeys = ["a", "b"]
+            VariantGeneration = "g1"
         };
         var expiresAt = new DateTimeOffset(2026, 1, 3, 0, 0, 0, TimeSpan.Zero);
 
@@ -106,7 +106,7 @@ public class HttpCacheStoreTests
         Assert.Equal(entry.StoredAt, loaded.StoredAt);
         Assert.Equal(entry.InitialAge, loaded.InitialAge);
         Assert.Equal(entry.VaryHeaders, loaded.VaryHeaders);
-        Assert.Equal(entry.VariantKeys, loaded.VariantKeys);
+        Assert.Equal(entry.VariantGeneration, loaded.VariantGeneration);
     }
 
     [Fact]
