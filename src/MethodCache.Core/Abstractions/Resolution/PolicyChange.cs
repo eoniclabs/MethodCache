@@ -8,6 +8,9 @@ namespace MethodCache.Policies;
 /// </summary>
 public sealed class PolicyChange
 {
+    // Internal immediate sources attach a revision allocated atomically with their mutation.
+    internal long SourceRevision { get; set; }
+
     /// <summary>
     /// Creates a change.
     /// </summary>

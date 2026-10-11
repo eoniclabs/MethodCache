@@ -683,7 +683,11 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
 
 ## Runtime overrides
 
-Runtime overrides win over everything else. Use them to change a policy without a deploy, for example to shorten a
+Runtime overrides win over everything else. Concurrent mutations carry an ordered revision, so a delayed
+notification cannot replace a newer override or remove one that has been renewed. The effective policy agrees
+with the latest stored mutation after the operations complete. This also applies to removal, clearing and expiry.
+
+Use runtime overrides to change a policy without a deploy, for example to shorten a
 duration during an incident:
 
 ```cs

@@ -184,6 +184,9 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
 policy in code, and the change applies to the next call. See [Configuration](docs/features/configuration.md).
 
+Concurrent runtime overrides preserve mutation order: delayed notifications cannot replace a newer policy or
+remove a renewed override. See [configuration](docs/features/configuration.md).
+
 ### Distributed cache
 
 <!-- snippet: readme-distributed -->
@@ -251,6 +254,7 @@ cache, falling back to the app's `IDistributedCache` when no owned cache is regi
 `no-cache` requires successful validation even when the stale options are enabled. A 304 that forbids storage
 removes the previous response.
 See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
+
 
 ### Monitoring
 

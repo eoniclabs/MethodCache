@@ -35,4 +35,7 @@ builder.Services.AddMethodCache();
 
 [Supported signatures and forwarded members](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/source-generator.md) include properties, events and indexers whose names are C# keywords.
 
+Concurrent runtime overrides preserve mutation order: delayed notifications cannot replace a newer policy or
+remove a renewed override. See [configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md).
+
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache
