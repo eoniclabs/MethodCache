@@ -962,6 +962,9 @@ A 304 response updates the stored representation's headers and storage policy. I
 `Vary: *`, or `private` in a shared cache, the old response and variant index are removed. This applies to
 background validation as well. An omitted `Vary` header preserves the original variant selection.
 
+With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
+cache is registered, it uses the application's `IDistributedCache`. It leaves application registrations unchanged.
+
 See the [HTTP package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md) for the threat model.
 
@@ -2100,7 +2103,9 @@ builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1
 ### Sharing responses between instances
 
 With several instances of your app, each one would otherwise fetch and revalidate on its own. Turn on
-`UseDistributedCache` and responses are kept in the registered `IDistributedCache` instead of memory, the same
+`UseDistributedCache` and responses use MethodCache's own distributed cache from `AddMethodCacheRedis` or
+`AddMethodCacheSqlServer`. If neither is registered, they use the application's `IDistributedCache`. The
+application cache registration stays unchanged. Responses are kept outside memory, with the same
 Redis or SQL Server that MethodCache uses:
 
 ```cs

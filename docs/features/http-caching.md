@@ -13,5 +13,8 @@ A 304 response updates the stored representation's headers and storage policy. I
 `Vary: *`, or `private` in a shared cache, the old response and variant index are removed. This applies to
 background validation as well. An omitted `Vary` header preserves the original variant selection.
 
+With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
+cache is registered, it uses the application's `IDistributedCache`. It leaves application registrations unchanged.
+
 See the [HTTP package guide](../../src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](../security.md) for the threat model.

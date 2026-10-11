@@ -174,7 +174,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<IPolicyRegistry>()));
         }
 
-        // Service key of a distributed cache that only MethodCache uses, so the app's own IDistributedCache is untouched
+        // Shared service key contract: MethodCache.HttpCaching resolves this owned cache before the app's cache.
+        // Keep this key stable so the HTTP add-on can remain independent of a Core package reference.
         private const string OwnDistributedCacheKey = "MethodCache";
 
         /// <summary>

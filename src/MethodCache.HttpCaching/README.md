@@ -84,7 +84,9 @@ builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1
 ### Sharing responses between instances
 
 With several instances of your app, each one would otherwise fetch and revalidate on its own. Turn on
-`UseDistributedCache` and responses are kept in the registered `IDistributedCache` instead of memory, the same
+`UseDistributedCache` and responses use MethodCache's own distributed cache from `AddMethodCacheRedis` or
+`AddMethodCacheSqlServer`. If neither is registered, they use the application's `IDistributedCache`. The
+application cache registration stays unchanged. Responses are kept outside memory, with the same
 Redis or SQL Server that MethodCache uses:
 
 <!-- snippet: http-distributed -->
