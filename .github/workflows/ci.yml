@@ -195,3 +195,8 @@ jobs:
           dotnet tool restore
           dotnet mdsnippets
           git diff --exit-code || { echo "::error::Docs are out of date. Run 'dotnet tool restore && dotnet mdsnippets' and commit the result."; exit 1; }
+
+      - name: Check llms.txt and llms-full.txt match the docs
+        run: |
+          python3 .github/scripts/generate-llms.py
+          git diff --exit-code -- llms.txt llms-full.txt || { echo "::error::llms.txt is out of date. Run 'python3 .github/scripts/generate-llms.py' and commit the result."; exit 1; }
