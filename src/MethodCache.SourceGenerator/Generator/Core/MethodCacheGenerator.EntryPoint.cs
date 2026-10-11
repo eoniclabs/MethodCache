@@ -30,11 +30,22 @@ namespace MethodCache.SourceGenerator
                 .Where(static info => info != null)
                 .Collect();
 
-            // Combine both providers
-            var combinedProvider = interfaceProvider.Combine(invalidateProvider)
-                .Select(static (pair, _) =>
+            // Interfaces that only inherit cached methods, such as IUserRepository : IRepository<User>
+            var derivedProvider = context.SyntaxProvider
+                .CreateSyntaxProvider(
+                    predicate: static (node, _) => node is InterfaceDeclarationSyntax { BaseList: not null },
+                    transform: static (ctx, ct) => ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, ct) is INamedTypeSymbol symbol
+                        ? GetInterfaceInfo(symbol)
+                        : null)
+                .Where(static info => info != null)
+                .Collect();
+
+            // Combine the providers
+            var combinedProvider = interfaceProvider.Combine(invalidateProvider).Combine(derivedProvider)
+                .Select(static (input, _) =>
                 {
-                    var combined = pair.Left.Concat(pair.Right)
+                    var pair = input.Left;
+                    var combined = pair.Left.Concat(pair.Right).Concat(input.Right)
                         .Where(i => i != null)
                         .GroupBy(i => i!.Symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
                         .Select(g => g.First())

@@ -55,7 +55,7 @@ namespace MethodCache.SourceGenerator
                 {
                     var interfaceFqn = Utils.GetFullyQualifiedName(info.Symbol);
                     var decoratorFqn = Utils.GetDecoratorFullName(info.Symbol);
-                    var hasPolicies = info.CachedMethods.Any(m => !m.Method.IsGenericMethod);
+                    var hasPolicies = info.CachedMethods.Length > 0;
                     var implementation = FindImplementation(info.Symbol, candidates);
 
                     sb.AppendLine("            MethodCacheDecorators.Register(new DecoratorRegistration(");

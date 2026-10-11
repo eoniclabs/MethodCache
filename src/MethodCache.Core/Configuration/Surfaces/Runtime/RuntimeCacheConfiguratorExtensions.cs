@@ -61,6 +61,6 @@ public static class RuntimeCacheConfiguratorExtensions
             throw new ArgumentException("Expression must target a method call.", nameof(expression));
         }
 
-        return MethodIds.For(typeof(TService), call.Method.Name);
+        return MethodIds.For(call.Method);
     }
 }
