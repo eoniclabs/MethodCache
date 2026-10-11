@@ -33,6 +33,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
+- **Third-party clients too.** Cache an SDK or API client through a small interface of your own, or with `GetOrCreateAsync` and a key you choose ([how](#caching-code-you-dont-own)).
 - **One line to go distributed.** `AddMethodCacheRedis(...)` shares results between instances and keeps every instance's memory cache in sync.
 - **Built for production.** Stampede protection, a W-TinyLFU memory cache, admin endpoints, a health check and OpenTelemetry tracing and metrics.
 
@@ -179,7 +180,23 @@ Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
 
 ### Caching code you don't own
 
-For third-party clients, use the same engine with a key you choose:
+`[Cache]` goes on an interface in your code, so for an SDK or API client you declare the calls you need and forward
+them. Those calls then get everything above: keys from the arguments, tags, `appsettings.json` and runtime overrides.
+
+```csharp
+public interface IExchangeRates
+{
+    [Cache(Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    Task<decimal> GetRateAsync(string from, string to);
+}
+
+public sealed class ExchangeRates(FxApiClient client) : IExchangeRates   // FxApiClient comes from a NuGet package
+{
+    public Task<decimal> GetRateAsync(string from, string to) => client.GetRateAsync(from, to);
+}
+```
+
+For one or two calls, skip the interface and use the same engine with a key you choose:
 
 ```csharp
 var rate = await cache.GetOrCreateAsync(
@@ -188,7 +205,6 @@ var rate = await cache.GetOrCreateAsync(
     o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
 ```
 
-Or wrap the client in your own interface with `[Cache]` and get attributes, configuration and runtime overrides too.
 See the [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md).
 
 ### Monitoring
