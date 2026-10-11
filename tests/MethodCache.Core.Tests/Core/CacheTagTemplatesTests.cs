@@ -42,6 +42,16 @@ public class CacheTagTemplatesTests
     }
 
     [Fact]
+    public void Expand_KeepsArgumentTextThatLooksLikeAPlaceholder()
+    {
+        // Found by TagTemplatePropertyTests: the values used to be substituted one parameter at a time, so "{org}"
+        // passed for id became "7", while [CacheInvalidate] (string.Format, one pass) removes "user:{org}".
+        var expanded = CacheTagTemplates.Expand(Policy("user:{id}", "org:{org}"), new[] { "id", "org" }, new[] { "{org}", "7" });
+
+        Assert.Equal(new[] { "user:{org}", "org:7" }, expanded.Tags);
+    }
+
+    [Fact]
     public void Expand_WithMismatchedNamesAndValues_Throws()
     {
         Assert.Throws<ArgumentException>(() => CacheTagTemplates.Expand(Policy("user:{id}"), new[] { "id" }, Array.Empty<string>()));

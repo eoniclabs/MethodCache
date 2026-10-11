@@ -8,6 +8,10 @@ namespace MethodCache.Core.Tests.Core
     {
         private enum Color { Red = 1, Blue = 7 }
 
+        private enum SByteColor : sbyte { Min = sbyte.MinValue }
+
+        private enum UShortColor : ushort { Max = ushort.MaxValue }
+
         public static TheoryData<string, string> SameTextAsMethodCacheKeys()
         {
             var local = new DateTime(2026, 10, 11, 9, 30, 0, DateTimeKind.Local);
@@ -59,6 +63,11 @@ namespace MethodCache.Core.Tests.Core
             {
                 Assert.Equal("Prefix:1.5", Build((ref MethodCacheKeyBuilder b) => b.AppendPart(1.5)));
                 Assert.Equal("Prefix:-3", Build((ref MethodCacheKeyBuilder b) => b.AppendPart(-3)));
+
+                // Found by CacheKeyPropertyTests: Enum.TryFormat used the culture's minus sign (U+2212)
+                Assert.Equal("Prefix:-1", Build((ref MethodCacheKeyBuilder b) => b.AppendPart((Color)(-1))));
+                Assert.Equal("Prefix:-128", Build((ref MethodCacheKeyBuilder b) => b.AppendPart((SByteColor)sbyte.MinValue)));
+                Assert.Equal("Prefix:65535", Build((ref MethodCacheKeyBuilder b) => b.AppendPart((UShortColor)ushort.MaxValue)));
             }
             finally
             {
