@@ -495,7 +495,10 @@ namespace MethodCache.SourceGenerator
                     }
                 }
 
-                sb.AppendLine($"            => _cacheManager.GetOrCreateFastAsync<{type}>(__cacheKey, _method_{safeFieldName}.Name, {factory}, __policy);");
+                // The method's own token lets the cache tell a caller giving up from a failing dependency
+                var token = method.Parameters.FirstOrDefault(p => Utils.IsCancellationToken(p.Type));
+                var tokenArgument = token != null ? ", " + Utils.Identifier(token.Name) : string.Empty;
+                sb.AppendLine($"            => _cacheManager.GetOrCreateFastAsync<{type}>(__cacheKey, _method_{safeFieldName}.Name, {factory}, __policy{tokenArgument});");
                 sb.AppendLine();
             }
 

@@ -68,7 +68,7 @@ namespace MethodCache.Core.Runtime.Execution
             return true;
         }
 
-        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             if (ForceCacheMiss || !_cache.TryGetValue(cacheKey, out var value))
             {

@@ -241,6 +241,34 @@ public static class Probe { public static async Task<int> Go(ISvc s, Svc impl) {
     }
 
     [Fact]
+    public async Task CallerCancellingASharedLoad_DoesNotFailTheOtherCaller()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface ISvc { [Cache] Task<string> Get(int id, CancellationToken ct); }
+public class Svc : ISvc {
+  public int Calls; public readonly TaskCompletionSource Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+  public async Task<string> Get(int id, CancellationToken ct) { Interlocked.Increment(ref Calls); Started.TrySetResult(); await Task.Delay(100, ct); return ""v"" + id; }
+}
+public static class Startup { public static void Configure(IServiceCollection s) { s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>()); s.AddMethodCache(); } }
+public static class Probe { public static async Task<string> Go(ISvc s, Svc impl) {
+  using var cts = new CancellationTokenSource();
+  var a = s.Get(1, cts.Token); await impl.Started.Task;
+  var b = s.Get(1, CancellationToken.None);
+  cts.Cancel();
+  var aResult = ""value""; try { await a; } catch (OperationCanceledException) { aResult = ""cancelled""; }
+  return aResult + ""|"" + await b + ""|"" + impl.Calls;
+} }
+}", nameof(CallerCancellingASharedLoad_DoesNotFailTheOtherCaller), load: true);
+        AssertCompiles(r);
+        Assert.Contains(r.Sources.Values, source => source.Contains("__policy, ct);"));
+        var svc = Resolve(r.Assembly!, "App.ISvc", out var sp);
+        var impl = sp.GetRequiredService(r.Assembly!.GetType("App.Svc")!);
+        var text = await (Task<string>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
+        // A gave up; B never did, so it loads again instead of failing with A's cancellation
+        Assert.Equal("cancelled|v1|2", text);
+    }
+
+    [Fact]
     public async Task EdgeCaseShapes_CacheAndInvalidateAtRuntime()
     {
         var r = Run(Usings + @"namespace App {
