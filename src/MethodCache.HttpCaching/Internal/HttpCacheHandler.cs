@@ -147,7 +147,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         {
             _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", request.RequestUri);
             var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow());
-            await StoreAsync(request, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
+            await StoreRevalidatedEntryAsync(request, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
 
             var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
 
@@ -263,6 +263,27 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
+    private async ValueTask StoreRevalidatedEntryAsync(
+        HttpRequestMessage request,
+        string cacheKey,
+        HttpCacheEntry entry,
+        HttpCacheOptions options,
+        FreshnessCalculator freshness,
+        CancellationToken cancellationToken)
+    {
+        // Check the complete representation: a 304 can replace its storage and privacy policy.
+        using var mergedResponse = entry.ToHttpResponse(request);
+        if (IsStorable(request, mergedResponse, options))
+        {
+            await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            // Remove the URL index too, so previously stored variants cannot be reused.
+            await _storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private async ValueTask StoreAsync(
         HttpRequestMessage request,
         string baseKey,
@@ -367,7 +388,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return false;
         }
 
-        if (cacheControl?.NoStore == true || request.Headers.CacheControl?.NoStore == true)
+        if (cacheControl?.NoStore == true || request.Headers.CacheControl?.NoStore == true || response.Headers.Vary.Contains("*"))
         {
             return false;
         }
@@ -462,7 +483,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
                     var updatedEntry = cachedEntry.WithUpdatedHeaders(response, _timeProvider.GetUtcNow());
-                    await StoreAsync(request, cacheKey, updatedEntry, options, freshness, timeout.Token).ConfigureAwait(false);
+                    await StoreRevalidatedEntryAsync(request, cacheKey, updatedEntry, options, freshness, timeout.Token).ConfigureAwait(false);
                 }
                 else
                 {

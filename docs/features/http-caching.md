@@ -9,5 +9,9 @@ reusing the response, even when either option is enabled. Request `no-cache` has
 response or network error reaches the caller rather than falling back to cached content. `must-revalidate` also
 forbids stale reuse, as do `proxy-revalidate` and `s-maxage` in shared caches.
 
+A 304 response updates the stored representation's headers and storage policy. If it changes to `no-store`,
+`Vary: *`, or `private` in a shared cache, the old response and variant index are removed. This applies to
+background validation as well. An omitted `Vary` header preserves the original variant selection.
+
 See the [HTTP package guide](../../src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](../security.md) for the threat model.

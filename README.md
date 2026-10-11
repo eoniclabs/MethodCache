@@ -247,7 +247,8 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
 that URL. With `UseDistributedCache`, all instances share the responses through the same Redis or SQL Server.
-`no-cache` requires successful validation even when the stale options are enabled.
+`no-cache` requires successful validation even when the stale options are enabled. A 304 that forbids storage
+removes the previous response.
 See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
 
 ### Monitoring

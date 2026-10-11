@@ -217,7 +217,7 @@ public sealed record HttpCacheEntry
             Date = notModifiedResponse.Headers.Date ?? Date,
             StoredAt = now,
             InitialAge = CalculateInitialAge(notModifiedResponse, now),
-            VaryHeaders = notModifiedResponse.Headers.Vary?.ToArray() ?? VaryHeaders
+            VaryHeaders = notModifiedResponse.Headers.Contains("Vary") ? notModifiedResponse.Headers.Vary.ToArray() : VaryHeaders
         };
     }
 

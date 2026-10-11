@@ -958,6 +958,10 @@ reusing the response, even when either option is enabled. Request `no-cache` has
 response or network error reaches the caller rather than falling back to cached content. `must-revalidate` also
 forbids stale reuse, as do `proxy-revalidate` and `s-maxage` in shared caches.
 
+A 304 response updates the stored representation's headers and storage policy. If it changes to `no-store`,
+`Vary: *`, or `private` in a shared cache, the old response and variant index are removed. This applies to
+background validation as well. An omitted `Vary` header preserves the original variant selection.
+
 See the [HTTP package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md) for the threat model.
 
@@ -1352,6 +1356,7 @@ authorization too.
 | Threat | What MethodCache does |
 |---|---|
 | Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. An empty header and no header are different callers too. |
+| A 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` keeps its previous value. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
 | A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
@@ -2079,6 +2084,9 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 `no-cache` requires successful validation, including when stale-while-revalidate or stale-if-error is enabled.
 A request with `no-cache` also requires validation and propagates origin errors. `must-revalidate` (and
 `proxy-revalidate` / `s-maxage` in a shared cache) forbids serving stale responses.
+
+A 304 also updates storage policy: `no-store`, `Vary: *` or shared-cache `private` removes the old response,
+including during background revalidation. Omitted `Vary` keeps the original variant selection.
 
 ## Storage
 

@@ -67,6 +67,9 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 A request with `no-cache` also requires validation and propagates origin errors. `must-revalidate` (and
 `proxy-revalidate` / `s-maxage` in a shared cache) forbids serving stale responses.
 
+A 304 also updates storage policy: `no-store`, `Vary: *` or shared-cache `private` removes the old response,
+including during background revalidation. Omitted `Vary` keeps the original variant selection.
+
 ## Storage
 
 Responses are kept in memory, in a cache of their own (your app's `IMemoryCache` is not touched). The total size
