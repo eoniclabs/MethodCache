@@ -49,12 +49,12 @@ public class ReadmeComparisonBenchmarks
         var services = new ServiceCollection();
         services.AddSingleton<IReadmeUserService, ReadmeUserService>();
         services.AddMethodCache(configure: null, typeof(ReadmeComparisonBenchmarks).Assembly);
-        services.AddMemoryCache();
         services.AddHybridCache();
         _provider = services.BuildServiceProvider();
 
         _methodCache = _provider.GetRequiredService<IReadmeUserService>();
-        _memoryCache = _provider.GetRequiredService<IMemoryCache>();
+        // Its own instance: HybridCache stores its wrappers in the registered IMemoryCache under the same keys
+        _memoryCache = new MemoryCache(new MemoryCacheOptions());
         _hybridCache = _provider.GetRequiredService<HybridCache>();
         _fusionCache = new FusionCache(new FusionCacheOptions());
 
@@ -68,6 +68,7 @@ public class ReadmeComparisonBenchmarks
     public async Task Cleanup()
     {
         _fusionCache.Dispose();
+        _memoryCache.Dispose();
         await _provider.DisposeAsync();
     }
 
