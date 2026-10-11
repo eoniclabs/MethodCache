@@ -218,7 +218,6 @@ public class ConcurrentCacheService : IConcurrentCacheService
         _keyGenerator = keyGenerator;
     }
 
-    [Cache(Duration = "00:02:00", Tags = new[] { "data" })]
     public virtual async Task<SmallModel> GetDataAsync(int id)
     {
         var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetDataAsync));
@@ -232,7 +231,6 @@ public class ConcurrentCacheService : IConcurrentCacheService
             _keyGenerator);
     }
 
-    [Cache(Duration = "00:02:00", Tags = new[] { "slow_data" })]
     public virtual async Task<SmallModel> GetSlowDataAsync(int id)
     {
         var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetSlowDataAsync));
@@ -246,13 +244,11 @@ public class ConcurrentCacheService : IConcurrentCacheService
             _keyGenerator);
     }
 
-    [CacheInvalidate(Tags = new[] { "data" })]
     public virtual async Task InvalidateDataAsync(int id)
     {
         await _cacheManager.InvalidateByTagsAsync("data");
     }
 
-    [CacheInvalidate(Tags = new[] { "data", "slow_data" })]
     public virtual async Task BulkInvalidateAsync()
     {
         await _cacheManager.InvalidateByTagsAsync("data", "slow_data");

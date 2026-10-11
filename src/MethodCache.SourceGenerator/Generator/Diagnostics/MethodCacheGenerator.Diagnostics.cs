@@ -13,7 +13,7 @@ namespace MethodCache.SourceGenerator
                 title: "Caching not supported on void returns",
                 messageFormat: "[Cache] attribute on method '{0}' with void return type is not supported",
                 category: "MethodCacheGenerator",
-                defaultSeverity: DiagnosticSeverity.Warning,
+                defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);
 
             internal static readonly DiagnosticDescriptor UnsupportedTaskCache = new(
@@ -21,7 +21,7 @@ namespace MethodCache.SourceGenerator
                 title: "Caching not supported on non-generic Task/ValueTask",
                 messageFormat: "[Cache] attribute on method '{0}' with non-generic Task/ValueTask return type is not supported",
                 category: "MethodCacheGenerator",
-                defaultSeverity: DiagnosticSeverity.Warning,
+                defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);
 
             internal static readonly DiagnosticDescriptor UnsupportedRefParams = new(
@@ -29,7 +29,7 @@ namespace MethodCache.SourceGenerator
                 title: "Caching not supported with ref/out/in parameters",
                 messageFormat: "[Cache] attribute on method '{0}' with ref/out/in parameters is not supported",
                 category: "MethodCacheGenerator",
-                defaultSeverity: DiagnosticSeverity.Warning,
+                defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);
 
             internal static readonly DiagnosticDescriptor AttributeConflict = new(

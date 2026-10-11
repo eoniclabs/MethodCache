@@ -632,11 +632,9 @@ namespace TestApp
             var result = await GetGeneratedSources(source);
             LogGeneratedSources(result);
 
-            // Should have no compilation errors
-            Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-
-            // A void method can't be cached: MCG001 says so, and an interface with nothing to cache gets no decorator
-            Assert.Contains(result.Diagnostics, d => d.Id == "MCG001");
+            // A void method can't be cached: error MCG001 stops the build, and the interface gets no decorator
+            var error = Assert.Single(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            Assert.Equal("MCG001", error.Id);
             Assert.DoesNotContain(result.GeneratedSources.Values, s => s.Contains("class ITestServiceDecorator"));
         }
 
