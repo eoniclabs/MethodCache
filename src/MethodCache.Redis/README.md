@@ -4,29 +4,35 @@ Redis as MethodCache's distributed cache. Results are shared between application
 
 ## Usage
 
-```csharp
+<!-- snippet: redis-basic -->
+```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
 ```
+<!-- endSnippet -->
 
 With options:
 
-```csharp
+<!-- snippet: redis-options -->
+```cs
 builder.Services.AddMethodCacheRedis(options =>
 {
     options.Configuration = "redis1:6379,redis2:6379,password=...";
     options.KeyPrefix = "orders-api:";   // the backplane channel follows: orders-api:invalidations
 });
 ```
+<!-- endSnippet -->
 
 MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
 
 To share a connection your app already has instead:
 
-```csharp
+<!-- snippet: redis-shared-connection -->
+```cs
 builder.Services.AddMethodCacheRedis(options =>
     options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>());
 ```
+<!-- endSnippet -->
 
 MethodCache doesn't dispose a shared connection.
 
@@ -49,13 +55,15 @@ MethodCache keeps answering from memory and your methods; Redis never fails or s
 - Invalidations that Redis doesn't accept are queued and retried until it does. They never throw. Until they are stored, this instance doesn't read entries from Redis, so an invalidated value can't come back.
 - `ClockSkewTolerance` (2 seconds) covers servers whose clocks differ: a tag invalidation also applies to entries created up to that long after it.
 
-```csharp
+<!-- snippet: distributed-outage-options -->
+```cs
 builder.Services.Configure<DistributedCacheOptions>(options =>
 {
     options.OperationTimeout = TimeSpan.FromMilliseconds(500);
     options.CircuitBreakerDuration = TimeSpan.FromSeconds(30);
 });
 ```
+<!-- endSnippet -->
 
 ## Options
 
