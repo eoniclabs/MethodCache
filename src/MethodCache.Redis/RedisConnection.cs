@@ -11,28 +11,43 @@ internal sealed class RedisConnection : IDisposable
     private readonly bool _owned;
 
     public RedisConnection(RedisOptions options, IServiceProvider services)
+        : this(Connect(options, services), owned: options.ConnectionMultiplexerFactory == null)
     {
+    }
+
+    internal RedisConnection(Func<Task<IConnectionMultiplexer>> connect, bool owned)
+    {
+        _connection = new Lazy<Task<IConnectionMultiplexer>>(connect);
+        _owned = owned;
+    }
+
+    private static Func<Task<IConnectionMultiplexer>> Connect(RedisOptions options, IServiceProvider services)
+    {
+        // The app's own connection is used as is, and left to the app to dispose
         if (options.ConnectionMultiplexerFactory is { } factory)
         {
-            // The app's own connection: used as is, and left to the app to dispose
-            _connection = new Lazy<Task<IConnectionMultiplexer>>(() => Task.FromResult(factory(services)));
+            return () => Task.FromResult(factory(services));
         }
-        else
-        {
-            _owned = true;
-            var configuration = options.Configuration;
-            _connection = new Lazy<Task<IConnectionMultiplexer>>(() => ConnectAsync(configuration));
-        }
+
+        var configuration = options.Configuration;
+        return () => ConnectAsync(configuration);
     }
 
     public Task<IConnectionMultiplexer> GetAsync() => _connection.Value;
 
     public void Dispose()
     {
-        if (_owned && _connection.IsValueCreated && _connection.Value.IsCompletedSuccessfully)
+        if (!_owned || !_connection.IsValueCreated)
         {
-            _connection.Value.Result.Dispose();
+            return;
         }
+
+        // A connection still opening is closed once it is open, so it doesn't outlive its owner
+        _ = _connection.Value.ContinueWith(
+            static connecting => connecting.Result.Dispose(),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnRanToCompletion | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private static async Task<IConnectionMultiplexer> ConnectAsync(string configuration)

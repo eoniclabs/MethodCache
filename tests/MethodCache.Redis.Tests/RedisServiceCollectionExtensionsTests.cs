@@ -66,6 +66,21 @@ public class RedisServiceCollectionExtensionsTests
         connection.DidNotReceive().Dispose();
     }
 
+    [Fact]
+    public async Task OwnConnection_StillOpeningAtDispose_IsClosedOnceOpen()
+    {
+        var opening = new TaskCompletionSource<IConnectionMultiplexer>();
+        var connection = new RedisConnection(() => opening.Task, owned: true);
+        var multiplexer = Substitute.For<IConnectionMultiplexer>();
+
+        var pending = connection.GetAsync();
+        connection.Dispose();
+        opening.SetResult(multiplexer);
+        await pending;
+
+        multiplexer.Received(1).Dispose();
+    }
+
     [Theory]
     [InlineData("app:", null, "app:invalidations")]
     [InlineData("methodcache:", null, "methodcache:invalidations")]
