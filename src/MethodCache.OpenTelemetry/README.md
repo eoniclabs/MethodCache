@@ -28,7 +28,8 @@ dotnet add package OpenTelemetry.Extensions.Hosting   # the SDK and AddOpenTelem
 
 ## Setup
 
-```csharp
+<!-- snippet: otel-setup -->
+```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheOpenTelemetry(); // after AddMethodCache, which registers the cache it instruments
 
@@ -41,6 +42,7 @@ builder.Services.AddOpenTelemetry()
         .AddMethodCacheInstrumentation()
         .AddOtlpExporter());
 ```
+<!-- endSnippet -->
 
 Sampling, export intervals and the service name are set on the OpenTelemetry SDK as for any other library.
 
@@ -63,10 +65,12 @@ and puts them into the baggage of cache spans, which travels to downstream servi
 identify people, so they are left out unless `ExportSensitiveData` is on. A value set in a child task stays in that
 task.
 
-```csharp
+<!-- snippet: otel-baggage -->
+```cs
 _baggagePropagator.SetCacheCorrelationId(Guid.NewGuid().ToString());
 _baggagePropagator.SetCacheTenantId(tenantId); // exported only with ExportSensitiveData = true
 ```
+<!-- endSnippet -->
 
 ## Span attributes
 

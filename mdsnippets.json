@@ -1,0 +1,7 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SimonCropp/MarkdownSnippets/main/schema.json",
+  "Convention": "InPlaceOverwrite",
+  "OmitSnippetLinks": true,
+  "WriteHeader": false,
+  "ExcludeDirectories": [ "benchmarks", "artifacts", "TestResults" ]
+}

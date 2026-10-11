@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Every C# example in the README files and docs/ comes from this project, so it compiles in CI and can't drift from
+    the API. Mark a region with "// begin-snippet: name" and "// end-snippet", reference it from a .md file with a line
+    "snippet: name", and run "dotnet mdsnippets" from the repository root to copy it in. See AGENTS.md.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- Examples show the shortest code, not library code -->
+    <NoWarn>$(NoWarn);CA2007;CA1822;CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.Redis\MethodCache.Redis.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.SqlServer\MethodCache.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.AspNetCore\MethodCache.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.OpenTelemetry\MethodCache.OpenTelemetry.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.HttpCaching\MethodCache.HttpCaching.csproj" />
+    <!-- A client "from another package" for the [assembly: CacheInterface] examples -->
+    <ProjectReference Include="..\..\samples\MethodCache.Demo.FxVendor\MethodCache.Demo.FxVendor.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

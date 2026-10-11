@@ -4,10 +4,12 @@ HTTP caching for `HttpClient`, the way a browser does it: responses are cached a
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
 response. It follows RFC 9111.
 
-```csharp
+<!-- snippet: http-basic -->
+```cs
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
     .AddHttpCaching();
 ```
+<!-- endSnippet -->
 
 That is all. Your typed client keeps calling `GetAsync` as before.
 
@@ -33,7 +35,8 @@ That is all. Your typed client keeps calling `GetAsync` as before.
 
 Settings are per HttpClient:
 
-```csharp
+<!-- snippet: http-settings -->
+```cs
 builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
     .AddHttpCaching(options =>
     {
@@ -42,6 +45,7 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
         options.AddDiagnosticHeaders = true;         // X-Cache: HIT / MISS / REVALIDATED / STALE
     });
 ```
+<!-- endSnippet -->
 
 | Option | Default | |
 |---|---|---|
@@ -64,9 +68,11 @@ served stale.
 Responses are kept in memory, in a cache of their own (your app's `IMemoryCache` is not touched). The total size
 is shared by all clients:
 
-```csharp
+<!-- snippet: http-storage-size -->
+```cs
 builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1024 * 1024); // default 100 MB
 ```
+<!-- endSnippet -->
 
 ### Sharing responses between instances
 
@@ -74,10 +80,12 @@ With several instances of your app, each one would otherwise fetch and revalidat
 `UseDistributedCache` and responses are kept in the registered `IDistributedCache` instead of memory, the same
 Redis or SQL Server that MethodCache uses:
 
-```csharp
+<!-- snippet: http-distributed -->
+```cs
 builder.Services.AddMethodCacheRedis("localhost:6379");
 builder.Services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
 ```
+<!-- endSnippet -->
 
 Now an ETag fetched by one instance is revalidated (and usually answered with a 304) by all of them, and a POST
 through one instance invalidates the cached GET for all of them. If the distributed cache is down, requests go
