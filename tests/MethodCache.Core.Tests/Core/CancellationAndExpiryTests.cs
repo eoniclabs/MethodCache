@@ -215,10 +215,10 @@ public class CancellationAndExpiryTests
 
         async ValueTask<string> Factory(CacheContext _, CancellationToken ct)
         {
-            // The first load outlasts A's cancellation by far, so a slow machine cannot let it finish first
+            // The first load only ends through A's cancellation, so a slow machine cannot let it finish first
             var first = Interlocked.Increment(ref calls) == 1;
             started.TrySetResult();
-            await Task.Delay(first ? TimeSpan.FromSeconds(30) : TimeSpan.FromMilliseconds(100), ct);
+            await Task.Delay(first ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(100), ct);
             return "value";
         }
 
