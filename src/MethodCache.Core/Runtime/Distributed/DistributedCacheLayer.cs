@@ -123,17 +123,21 @@ namespace MethodCache.Core.Runtime.Distributed
         internal bool IsAvailable => Volatile.Read(ref _openUntil) == 0 && !_hasPending;
 
         /// <summary>
-        /// Whether the distributed cache answers now. A cache that looks fine is asked once, bounded by the operation
-        /// timeout, so an outage shows before any cached call has run into it; a failure opens the breaker.
+        /// Whether the distributed cache answers now. It is asked once, bounded by the operation timeout, so an outage
+        /// shows before any cached call has run into it; a failure opens the breaker, and once the breaker's time is up
+        /// this check is the probe that can close it again, so an idle app doesn't stay degraded.
         /// </summary>
-        internal async Task<bool> CheckAvailableAsync()
+        internal async Task<bool> CheckAvailableAsync(CancellationToken cancellationToken)
         {
-            if (!IsAvailable || !TryEnter(out var probe))
+            if (_hasPending || !TryEnter(out var probe))
             {
                 return false;
             }
 
-            return (await TryRunAsync(ReadRemovalAsync, HealthCheckKey, "answer a health check", probe).ConfigureAwait(false)).Succeeded;
+            // A cancelled check stops waiting; the probe itself still finishes within the timeout and frees the breaker
+            var answered = await TryRunAsync(ReadRemovalAsync, HealthCheckKey, "answer a health check", probe)
+                .WaitAsync(cancellationToken).ConfigureAwait(false);
+            return answered.Succeeded;
         }
 
         /// <summary>

@@ -329,6 +329,20 @@ public class DistributedCacheTests
     }
 
     [Fact]
+    public async Task HealthCheck_ReportsAnOutage_AndTheRecoveryWithoutAnyCachedCall()
+    {
+        var cache = new ToggleDistributedCache(_shared) { Down = true };
+        var node = CreateNode(backplane: false, cache: cache);
+
+        (await node.CheckDistributedCacheAsync(CancellationToken.None)).Should().BeFalse();
+
+        cache.Down = false;
+        _time.Advance(TimeSpan.FromSeconds(10));
+
+        (await node.CheckDistributedCacheAsync(CancellationToken.None)).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task InvalidationDuringAnOutage_NeverThrows_AndIsStoredOnceTheCacheIsBack()
     {
         var cache = new ToggleDistributedCache(_shared);
