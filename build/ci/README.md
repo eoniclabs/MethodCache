@@ -66,6 +66,14 @@ except `mutation`, which builds for itself.
 
 Results and logs go to `artifacts/ci/<job>.log` and `.exit` as for every job when run through `linux.sh`.
 
+## Dependency audit
+
+Restore audits direct and transitive dependencies in every project, including test tooling. `NU1903` and
+`NU1904` (high and critical advisories) are errors in `Directory.Build.props`, so CI cannot continue with a
+known affected version. Testcontainers Redis and SQL Server use 4.16.0, which resolves SSH.NET 2026.0.0 for
+the fixes in [GHSA-mggc-4xg6-vcxf](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-mggc-4xg6-vcxf)
+and [GHSA-q939-rpr3-3284](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-q939-rpr3-3284).
+
 ## The build servers
 
 The same servers as Skribera, over Tailscale:

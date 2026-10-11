@@ -158,14 +158,12 @@ public sealed class ToxiproxyFixture : IAsyncLifetime
             _network = new NetworkBuilder().WithName($"methodcache-toxi-{Guid.NewGuid():N}").Build();
             await _network.CreateAsync();
 
-            _redis = new RedisBuilder()
-                .WithImage("redis:7-alpine")
+            _redis = new RedisBuilder("redis:7-alpine")
                 .WithNetwork(_network)
                 .WithNetworkAliases("redis")
                 .Build();
 
-            _toxiproxy = new ContainerBuilder()
-                .WithImage("ghcr.io/shopify/toxiproxy:2.12.0")
+            _toxiproxy = new ContainerBuilder("ghcr.io/shopify/toxiproxy:2.12.0")
                 .WithNetwork(_network)
                 .WithPortBinding(ApiPort, true)
                 .WithPortBinding(ProxyPort, true)
