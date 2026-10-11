@@ -198,6 +198,13 @@ namespace MethodCache.Core.Runtime.Distributed
                 return;
             }
 
+            // A load that took longer than removal stamps live could miss a removal made while it ran, so its value
+            // stays in this node's memory only
+            if (!replaces && Now - createdAt >= (long)RemovalLifetime.TotalMilliseconds - _clockSkewMilliseconds)
+            {
+                return;
+            }
+
             var buffer = new ArrayBufferWriter<byte>(256);
             WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, Now + lifetimeMilliseconds, tags);
             if (value is not null)
@@ -228,20 +235,20 @@ namespace MethodCache.Core.Runtime.Distributed
 
             // A removal stores its stamp before it removes the entry, so checking the stamp after this write sees
             // every removal that could have come before the write, without a lock: removed after it, the entry is
-            // gone anyway.
-            if (!replaces)
+            // gone anyway. A loaded value yields to removals made since it was read, allowing for clock skew; an
+            // explicit set only to removals made after it started.
+            var removedAt = await TryRunAsync(ReadRemovalAsync, key, "read a removal").ConfigureAwait(false);
+            var removedSince = removedAt.Succeeded &&
+                (replaces ? removedAt.Value > createdAt : removedAt.Value >= createdAt - _clockSkewMilliseconds);
+            if (!removedAt.Succeeded || removedSince)
             {
-                var removedAt = await TryRunAsync(ReadRemovalAsync, key, "read a removal").ConfigureAwait(false);
-                if (!removedAt.Succeeded || removedAt.Value >= createdAt - _clockSkewMilliseconds)
+                // Removed since, or unknown: then the value comes out once the cache answers again
+                if (!removedAt.Succeeded || !(await TryRunAsync(DeleteAsync, key, "remove a key").ConfigureAwait(false)).Succeeded)
                 {
-                    // Removed since the value was loaded, or unknown: then the value comes out once the cache answers
-                    if (!removedAt.Succeeded || !(await TryRunAsync(DeleteAsync, key, "remove a key").ConfigureAwait(false)).Succeeded)
-                    {
-                        Queue(new[] { key }, Array.Empty<string>());
-                    }
-
-                    return;
+                    Queue(new[] { key }, Array.Empty<string>());
                 }
+
+                return;
             }
 
             // Other nodes may hold an older value in memory
@@ -310,15 +317,11 @@ namespace MethodCache.Core.Runtime.Distributed
                 return false;
             }
 
-            foreach (var tag in tags)
-            {
-                await PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), tag).ConfigureAwait(false);
-            }
-
-            foreach (var key in keys)
-            {
-                await PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), key).ConfigureAwait(false);
-            }
+            // Published together, so a hung backplane holds the caller for one timeout, not one per key or tag
+            await Task.WhenAll(
+                tags.Select(tag => PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), tag))
+                    .Concat(keys.Select(key => PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), key))))
+                .ConfigureAwait(false);
 
             return true;
         }

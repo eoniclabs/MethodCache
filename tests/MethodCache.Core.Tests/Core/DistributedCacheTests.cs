@@ -409,6 +409,56 @@ public class DistributedCacheTests
     }
 
     [Fact]
+    public async Task ExplicitSet_RacingARemoval_DoesNotBringTheKeyBack()
+    {
+        var cache = new ToggleDistributedCache(_shared);
+        var setter = CreateNode(backplane: false, cache: cache);
+        var remover = CreateNode(backplane: false);
+        var reader = CreateNode(backplane: false);
+
+        cache.BeforeSet = async _ =>
+        {
+            cache.BeforeSet = null;
+            _time.Advance(TimeSpan.FromMilliseconds(1));
+            await remover.InvalidateByKeysAsync("key");
+        };
+        await setter.SetAsync("key", "set before the removal", OneMinute);
+
+        (await Get(reader, "key", () => "fresh")).Should().Be("fresh");
+    }
+
+    [Fact]
+    public async Task LoadThatOutlivesRemovalStamps_IsNotShared()
+    {
+        var first = CreateNode(backplane: false);
+        var second = CreateNode(backplane: false);
+        var release = new TaskCompletionSource<string>();
+
+        var load = first.GetOrCreateFastAsync("key", "M", () => release.Task, Policy());
+        _time.Advance(DistributedCacheLayer.RemovalLifetime);
+        release.SetResult("slow");
+        (await load).Should().Be("slow");
+
+        (await Get(second, "key", () => "fresh")).Should().Be("fresh");
+    }
+
+    [Fact]
+    public async Task HangingBackplane_HoldsAnInvalidationForOneTimeout_HoweverManyKeys()
+    {
+        var layer = new DistributedCacheLayer(_shared, new JsonCacheSerializer(), new DistributedCacheOptions(), new HangingBackplane(), _time);
+        var node = new InMemoryCacheManager(
+            new NullCacheMetricsProvider(),
+            MsOptions.Create(new MemoryCacheOptions { EnableBackgroundCleanup = false }),
+            _time,
+            layer);
+
+        var invalidation = node.InvalidateByKeysAsync(Enumerable.Range(0, 50).Select(i => $"key{i}").ToArray());
+        _time.Advance(TimeSpan.FromSeconds(1));
+
+        await invalidation.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task CircuitBreaker_IsNotClosedByAnOperationThatStartedBeforeItOpened()
     {
         var cache = new ToggleDistributedCache(_shared);
@@ -582,6 +632,16 @@ public class DistributedCacheTests
         public Task RemoveAsync(string key, CancellationToken token = default) => throw new InvalidOperationException("down");
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => throw new InvalidOperationException("down");
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => throw new InvalidOperationException("down");
+    }
+
+    /// <summary>A backplane whose publishes never complete and ignore cancellation.</summary>
+    private sealed class HangingBackplane : IBackplane
+    {
+        public string InstanceId { get; } = Guid.NewGuid().ToString("N");
+        public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default) => new TaskCompletionSource().Task;
+        public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) => new TaskCompletionSource().Task;
+        public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task UnsubscribeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     /// <summary>Never answers and ignores cancellation, like a server that stopped responding.</summary>
