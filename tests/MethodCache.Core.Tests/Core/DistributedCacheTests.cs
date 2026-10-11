@@ -371,6 +371,90 @@ public class DistributedCacheTests
         (await Get(third, "key", () => "fresh")).Should().Be("fresh");
     }
 
+    [Fact]
+    public async Task RemovalThatLandsWhileALoadedValueIsWritten_StillRemovesIt()
+    {
+        var cache = new ToggleDistributedCache(_shared);
+        var writer = CreateNode(backplane: false, cache: cache);
+        var remover = CreateNode(backplane: false);
+        var reader = CreateNode(backplane: false);
+        var release = new TaskCompletionSource<string>();
+
+        var load = writer.GetOrCreateFastAsync("key", "M", () => release.Task, Policy());
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+
+        // The removal completes after the writer's tombstone-free check but before its value lands
+        cache.BeforeSet = async key =>
+        {
+            cache.BeforeSet = null;
+            await remover.InvalidateByKeysAsync("key");
+        };
+        release.SetResult("loaded before the removal");
+        await load;
+
+        (await Get(reader, "key", () => "fresh")).Should().Be("fresh");
+    }
+
+    [Fact]
+    public async Task ExplicitSet_RightAfterARemoval_IsShared()
+    {
+        var first = CreateNode(backplane: false, configure: o => o.ClockSkewTolerance = TimeSpan.FromSeconds(2));
+        var second = CreateNode(backplane: false, configure: o => o.ClockSkewTolerance = TimeSpan.FromSeconds(2));
+        await Get(first, "key", () => "v1");
+
+        await first.InvalidateByKeysAsync("key");
+        await first.SetAsync("key", "set explicitly", OneMinute);
+
+        (await Get(second, "key", () => "unused")).Should().Be("set explicitly");
+    }
+
+    [Fact]
+    public async Task CircuitBreaker_IsNotClosedByAnOperationThatStartedBeforeItOpened()
+    {
+        var cache = new ToggleDistributedCache(_shared);
+        var node = CreateNode(backplane: false, cache: cache);
+        var gate = new TaskCompletionSource();
+        cache.BeforeGet = key => key.EndsWith(":slow", StringComparison.Ordinal) ? gate.Task : Task.CompletedTask;
+
+        var slow = Get(node, "slow", () => "slow");
+        cache.Down = true;
+        (await Get(node, "fails", () => "fails")).Should().Be("fails");
+        cache.Down = false;
+        gate.SetResult();
+        await slow;
+
+        var calls = cache.Calls;
+        (await Get(node, "skipped", () => "skipped")).Should().Be("skipped");
+        cache.Calls.Should().Be(calls, "the breaker is still open");
+    }
+
+    [Fact]
+    public async Task InvalidationQueuedDuringARetry_StaysQueued()
+    {
+        var cache = new ToggleDistributedCache(_shared);
+        var node = CreateNode(backplane: false, cache: cache);
+        await Get(node, "key", () => "v1");
+        cache.Down = true;
+        await node.InvalidateByKeysAsync("key");
+        cache.Down = false;
+
+        // While the retry stores the queued removal, the same key is invalidated again
+        cache.BeforeSet = async _ =>
+        {
+            cache.BeforeSet = null;
+            await node.InvalidateByKeysAsync("key");
+        };
+        _time.Advance(TimeSpan.FromSeconds(10));
+
+        var calls = cache.Calls;
+        await Get(node, "other", () => "other");
+        cache.Calls.Should().Be(calls, "the second invalidation is still waiting, so nothing is read");
+
+        _time.Advance(TimeSpan.FromSeconds(10));
+        await Get(node, "after", () => "after");
+        cache.Calls.Should().BeGreaterThan(calls);
+    }
+
     [Theory]
     [InlineData(2, "fresh")]
     [InlineData(0, "stale")]
@@ -513,22 +597,45 @@ public class DistributedCacheTests
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => new TaskCompletionSource().Task;
     }
 
-    /// <summary>Fails every call while <see cref="Down"/> is set, and counts the calls that reach it.</summary>
+    /// <summary>
+    /// Fails every call while <see cref="Down"/> is set, counts the calls that reach it, and runs hooks before
+    /// reads and writes.
+    /// </summary>
     private sealed class ToggleDistributedCache(IDistributedCache inner) : IDistributedCache
     {
         public bool Down { get; set; }
 
         public int Calls { get; private set; }
 
+        public Func<string, Task>? BeforeGet { get; set; }
+
+        public Func<string, Task>? BeforeSet { get; set; }
+
         public byte[]? Get(string key) => throw new NotSupportedException();
         public void Refresh(string key) => throw new NotSupportedException();
         public void Remove(string key) => throw new NotSupportedException();
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => throw new NotSupportedException();
 
-        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Run(() => inner.GetAsync(key, token));
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Run(async () =>
+        {
+            if (BeforeGet != null)
+            {
+                await BeforeGet(key);
+            }
+
+            return await inner.GetAsync(key, token);
+        });
         public Task RefreshAsync(string key, CancellationToken token = default) => Run(() => inner.RefreshAsync(key, token));
         public Task RemoveAsync(string key, CancellationToken token = default) => Run(() => inner.RemoveAsync(key, token));
-        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => Run(() => inner.SetAsync(key, value, options, token));
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => Run(async () =>
+        {
+            if (BeforeSet != null)
+            {
+                await BeforeSet(key);
+            }
+
+            await inner.SetAsync(key, value, options, token);
+        });
 
         private Task<TResult> Run<TResult>(Func<Task<TResult>> call)
         {

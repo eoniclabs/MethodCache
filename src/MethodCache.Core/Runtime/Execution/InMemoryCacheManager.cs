@@ -332,7 +332,7 @@ namespace MethodCache.Core.Runtime.Execution
 
             return _distributed == null
                 ? Task.CompletedTask
-                : _distributed.WriteAsync(key, value, tags: null, _distributed.Now, expiration);
+                : _distributed.WriteAsync(key, value, tags: null, _distributed.Now, expiration, replaces: true);
         }
 
         public ValueTask<bool> RemoveAsync(string key)

@@ -18,8 +18,8 @@ namespace MethodCache.Core.Runtime.Distributed
     /// <para>Tags are invalidated by timestamp, as in HybridCache and FusionCache: invalidating a tag stores the
     /// time it happened, and an entry read later counts as missing when one of its tags was invalidated after the
     /// entry was created. No reverse index from tags to keys is needed, so any distributed cache works. A removed
-    /// key leaves a short-lived tombstone, so a load that started before the removal doesn't write its older value
-    /// back afterwards.</para>
+    /// key leaves a short-lived removal stamp, so a load that started before the removal doesn't leave its older
+    /// value behind.</para>
     /// <para>An optional <see cref="IBackplane"/> tells other nodes to drop their in-memory copies when an entry is
     /// written or removed, or a tag is invalidated.</para>
     /// <para>The distributed cache never fails or stalls a call. Each operation is bounded by
@@ -33,13 +33,12 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>Reserved tag that every entry implicitly carries; invalidating it clears the whole cache.</summary>
         internal const string ClearTag = "\u0000clear";
 
-        /// <summary>How long a removed key blocks writes of values loaded before the removal.</summary>
-        internal static readonly TimeSpan TombstoneLifetime = TimeSpan.FromMinutes(5);
+        /// <summary>How long a key's removal stamp keeps values loaded before the removal out of the cache.</summary>
+        internal static readonly TimeSpan RemovalLifetime = TimeSpan.FromMinutes(5);
 
         private const byte FormatVersion = 3;
         private const byte KindNull = 0;
         private const byte KindValue = 1;
-        private const byte KindTombstone = 2;
         private const int HeaderSize = 1 + 1 + 8 + 8 + 4;
         private const int MaxTrackedTags = 10_000;
 
@@ -54,6 +53,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly ILogger _logger;
         private readonly string _entryPrefix;
         private readonly string _tagPrefix;
+        private readonly string _removalPrefix;
         private readonly long _tagCheckMilliseconds;
         private readonly long _clockSkewMilliseconds;
         private readonly TimeSpan _tagRetention;
@@ -103,6 +103,7 @@ namespace MethodCache.Core.Runtime.Distributed
             _logger = logger ?? NullLogger.Instance;
             _entryPrefix = options.KeyPrefix + "e:";
             _tagPrefix = options.KeyPrefix + "t:";
+            _removalPrefix = options.KeyPrefix + "r:";
             _tagCheckMilliseconds = (long)options.TagCheckInterval.TotalMilliseconds;
             _clockSkewMilliseconds = (long)options.ClockSkewTolerance.TotalMilliseconds;
             _tagRetention = options.TagRetention;
@@ -143,8 +144,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             var read = await TryRunAsync(ReadAsync, key, "read").ConfigureAwait(false);
             if (!read.Succeeded || read.Value is not { } data ||
-                !TryReadHeader(new ReadOnlySequence<byte>(data), _contentType, out var header, out var payload) ||
-                header.Kind == KindTombstone)
+                !TryReadHeader(new ReadOnlySequence<byte>(data), _contentType, out var header, out var payload))
             {
                 return default;
             }
@@ -181,10 +181,11 @@ namespace MethodCache.Core.Runtime.Distributed
 
         /// <summary>
         /// Writes an entry created at <paramref name="createdAt"/> (when its value was read from the source), so tag
-        /// invalidations that happened while the value was loading make it stale, and a key removed since then is
-        /// not written back. <paramref name="invalidated"/> is checked again after the write. Never throws.
+        /// invalidations that happened while the value was loading make it stale. A loaded value whose key was removed
+        /// since is not left behind; an explicit set (<paramref name="replaces"/>) replaces whatever is stored, a
+        /// removal included. <paramref name="invalidated"/> is checked again after the write. Never throws.
         /// </summary>
-        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null)
+        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false)
         {
             if (lifetime > _tagRetention)
             {
@@ -192,28 +193,13 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var lifetimeMilliseconds = (long)lifetime.TotalMilliseconds;
-            if (lifetimeMilliseconds <= 0 || _hasPending || !TryEnter())
-            {
-                return;
-            }
-
-            // A key removed after this value was read must stay removed
-            var current = await TryRunAsync(ReadAsync, key, "read").ConfigureAwait(false);
-            if (!current.Succeeded)
-            {
-                return;
-            }
-
-            if (current.Value is { } existing &&
-                TryReadHeader(new ReadOnlySequence<byte>(existing), _contentType, out var header, out _) &&
-                header.Kind == KindTombstone && header.CreatedAt >= createdAt - _clockSkewMilliseconds)
+            if (lifetimeMilliseconds <= 0 || _hasPending)
             {
                 return;
             }
 
             var buffer = new ArrayBufferWriter<byte>(256);
-            var kind = value is null ? KindNull : KindValue;
-            WriteHeader(buffer, _contentType, kind, createdAt, Now + lifetimeMilliseconds, tags);
+            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, Now + lifetimeMilliseconds, tags);
             if (value is not null)
             {
                 try
@@ -222,17 +208,40 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
                 catch (Exception ex)
                 {
-                    // Only this value can't be shared; the cache itself is fine, so the breaker stays closed
+                    // Only this value can't be shared; the cache itself is fine
                     _logger.LogWarning(ex, "MethodCache could not serialize a value of type {Type} for the distributed cache; it is cached in memory only.", typeof(T));
                     _onError?.Invoke(ex);
                     return;
                 }
             }
 
+            if (!TryEnter())
+            {
+                return;
+            }
+
             var entry = new Entry(key, buffer.WrittenMemory, TimeSpan.FromMilliseconds(lifetimeMilliseconds));
             if (!(await TryRunAsync(StoreAsync, entry, "write").ConfigureAwait(false)).Succeeded)
             {
                 return;
+            }
+
+            // A removal stores its stamp before it removes the entry, so checking the stamp after this write sees
+            // every removal that could have come before the write, without a lock: removed after it, the entry is
+            // gone anyway.
+            if (!replaces)
+            {
+                var removedAt = await TryRunAsync(ReadRemovalAsync, key, "read a removal").ConfigureAwait(false);
+                if (!removedAt.Succeeded || removedAt.Value >= createdAt - _clockSkewMilliseconds)
+                {
+                    // Removed since the value was loaded, or unknown: then the value comes out once the cache answers
+                    if (!removedAt.Succeeded || !(await TryRunAsync(DeleteAsync, key, "remove a key").ConfigureAwait(false)).Succeeded)
+                    {
+                        Queue(new[] { key }, Array.Empty<string>());
+                    }
+
+                    return;
+                }
             }
 
             // Other nodes may hold an older value in memory
@@ -245,7 +254,7 @@ namespace MethodCache.Core.Runtime.Distributed
         }
 
         /// <summary>
-        /// Removes keys everywhere, leaving tombstones so loads that started earlier don't write them back. Never
+        /// Removes keys everywhere, leaving removal stamps so loads that started earlier don't leave their values. Never
         /// throws: keys the distributed cache didn't accept are retried in the background.
         /// </summary>
         public Task RemoveAsync(IReadOnlyCollection<string> keys) => InvalidateAsync(keys, Array.Empty<string>());
@@ -276,20 +285,27 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
-        /// <summary>Stores tombstones and tag stamps, then tells other nodes. False when the cache refused any.</summary>
+        /// <summary>
+        /// Stores removal and tag stamps, then removes the entries and tells other nodes. False when the cache
+        /// refused any of it.
+        /// </summary>
         private async Task<bool> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now)
         {
             var stamp = new byte[sizeof(long)];
             BinaryPrimitives.WriteInt64LittleEndian(stamp, now);
-            var tombstone = new ArrayBufferWriter<byte>(64);
-            WriteHeader(tombstone, _contentType, KindTombstone, now, now + (long)TombstoneLifetime.TotalMilliseconds, tags: null);
-            var data = tombstone.WrittenMemory;
 
-            var results = await Task.WhenAll(
-                tags.Select(tag => TryRunAsync(StoreStampAsync, (tag, stamp), "invalidate a tag"))
-                    .Concat(keys.Select(key => TryRunAsync(StoreAsync, new Entry(key, data, TombstoneLifetime), "remove a key"))))
+            // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
+            var stamped = await Task.WhenAll(
+                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, stamp, _tagRetention), "invalidate a tag"))
+                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, stamp, RemovalLifetime), "remove a key"))))
                 .ConfigureAwait(false);
-            if (results.Any(static result => !result.Succeeded))
+            if (stamped.Any(static result => !result.Succeeded))
+            {
+                return false;
+            }
+
+            var removed = await Task.WhenAll(keys.Select(key => TryRunAsync(DeleteAsync, key, "remove a key"))).ConfigureAwait(false);
+            if (removed.Any(static result => !result.Succeeded))
             {
                 return false;
             }
@@ -351,11 +367,24 @@ namespace MethodCache.Core.Runtime.Distributed
             return true;
         }
 
-        private static async Task<bool> StoreStampAsync(DistributedCacheLayer layer, (string Tag, byte[] Stamp) state, CancellationToken cancellationToken)
+        private static async Task<bool> StoreStampAsync(DistributedCacheLayer layer, (string Key, byte[] Stamp, TimeSpan Lifetime) state, CancellationToken cancellationToken)
         {
-            var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = layer._tagRetention };
-            await layer._cache.SetAsync(layer._tagPrefix + state.Tag, state.Stamp, options, cancellationToken).ConfigureAwait(false);
+            var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = state.Lifetime };
+            await layer._cache.SetAsync(state.Key, state.Stamp, options, cancellationToken).ConfigureAwait(false);
             return true;
+        }
+
+        private static async Task<bool> DeleteAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
+        {
+            await layer._cache.RemoveAsync(layer._entryPrefix + key, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        /// <summary>When the key was last removed, in Unix milliseconds; <see cref="long.MinValue"/> if not lately.</summary>
+        private static async Task<long> ReadRemovalAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
+        {
+            var bytes = await layer._cache.GetAsync(layer._removalPrefix + key, cancellationToken).ConfigureAwait(false);
+            return bytes is { Length: >= sizeof(long) } ? BinaryPrimitives.ReadInt64LittleEndian(bytes) : long.MinValue;
         }
 
         private async Task<bool> IsInvalidatedAsync(long createdAt, string[]? tags, CancellationToken cancellationToken)
@@ -459,12 +488,19 @@ namespace MethodCache.Core.Runtime.Distributed
             TState state,
             string description)
         {
+            // Only the probe, which runs while the breaker is open, may close it: an operation that started before a
+            // failure tripped the breaker says nothing about whether the cache is back
+            var probing = Volatile.Read(ref _openUntil) != 0;
             try
             {
                 using var timeout = new CancellationTokenSource(_timeout, _time);
                 // WaitAsync stops waiting even when the cache client ignores the token
                 var result = await operation(this, state, timeout.Token).WaitAsync(_timeout, _time).ConfigureAwait(false);
-                Recovered();
+                if (probing)
+                {
+                    Recovered();
+                }
+
                 return (true, result);
             }
             catch (Exception ex)
@@ -535,21 +571,25 @@ namespace MethodCache.Core.Runtime.Distributed
                         return;
                     }
 
+                    // Taken out of the queue, so an invalidation queued meanwhile stays queued; nothing is read
+                    // from the distributed cache until the queue is empty
                     keys = _pendingKeys.ToArray();
                     tags = _pendingTags.ToArray();
+                    _pendingKeys.Clear();
+                    _pendingTags.Clear();
                 }
 
                 // Stamped now: entries written before this moment, while the cache was unreachable, count as stale
-                if (!TryEnter() || !await StoreInvalidationsAsync(keys, tags, Now).ConfigureAwait(false))
-                {
-                    return;
-                }
+                var stored = TryEnter() && await StoreInvalidationsAsync(keys, tags, Now).ConfigureAwait(false);
 
                 lock (_pendingLock)
                 {
-                    _pendingKeys.ExceptWith(keys);
-                    _pendingTags.ExceptWith(tags);
-                    if (_pendingKeys.Count == 0 && _pendingTags.Count == 0)
+                    if (!stored)
+                    {
+                        _pendingKeys.UnionWith(keys);
+                        _pendingTags.UnionWith(tags);
+                    }
+                    else if (_pendingKeys.Count == 0 && _pendingTags.Count == 0)
                     {
                         _hasPending = false;
                         _retryTimer?.Dispose();
@@ -635,7 +675,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- entry format ----------
 
-        // Layout: version, kind (null value, value or tombstone), created (Unix ms), expires (Unix ms), tag count,
+        // Layout: version, kind (null value or value), created (Unix ms), expires (Unix ms), tag count,
         // then each tag as a length-prefixed UTF-8 string, then the content type and the serialized value.
         private static void WriteHeader(IBufferWriter<byte> writer, byte[] contentType, byte kind, long createdAt, long expiresAt, string[]? tags)
         {
@@ -672,7 +712,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             var reader = new SequenceReader<byte>(data);
             if (!reader.TryRead(out var version) || version != FormatVersion ||
-                !reader.TryRead(out var kind) || kind > KindTombstone ||
+                !reader.TryRead(out var kind) || kind > KindValue ||
                 !reader.TryReadLittleEndian(out long createdAt) ||
                 !reader.TryReadLittleEndian(out long expiresAt) ||
                 !reader.TryReadLittleEndian(out int tagCount) ||
