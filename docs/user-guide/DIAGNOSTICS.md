@@ -21,6 +21,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG012](#mcg012) | Error | The same interface in more than one `[assembly: CacheInterface]` | |
 | [MCG013](#mcg013) | Error | An interface with static abstract members | |
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
+| [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
 
 ## MC0001
 
@@ -96,8 +97,7 @@ cache key; pass an array, `Memory<T>` or a string.
 A tag such as `"user:{userId}"` names a parameter the method does not have, so the braces stay literal text and every
 call shares that tag. The name between the braces must match a parameter name (case doesn't matter).
 
-A template takes a parameter name only. A property path such as `"{product.Id}"` is not a template, so it stays
-literal text without this warning; add the id as a parameter instead.
+A template takes a parameter name only; a property path such as `"{product.Id}"` is reported as [MCG015](#mcg015).
 
 **Code fix:** offers the closest parameter names, so `"user:{usrId}"` becomes `"user:{userId}"`.
 
@@ -128,3 +128,12 @@ interface without them.
 `[Cache]` on a method returning `IEnumerable<T>`, `IAsyncEnumerable<T>` or `IQueryable<T>`. The cached value would be
 the lazy sequence itself, which runs the query again on every enumeration. Return a materialized collection, such as
 `Task<List<T>>`, `Task<IReadOnlyList<T>>` or `T[]`, and call `ToListAsync()` (or similar) in the implementation.
+
+## MCG015
+
+A tag has braces that look like a template but don't hold a plain parameter name: a property path such as
+`"product:{product.Id}"`, spaces such as `"{ id }"`, or a format such as `"{day:yyyy-MM-dd}"`. Templates take a
+parameter name only, so the braces stay literal text and every call shares the same tag. Write `"product:{id}"` and
+add the value as its own parameter, as `UpdateAsync(int id, Product product)` does in
+[Getting started](../getting-started.md). For `[assembly: CacheInterface]` both MCG009 and MCG015 are reported on the
+attribute.

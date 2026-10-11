@@ -83,6 +83,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MCG009"));
 
+            internal static readonly DiagnosticDescriptor MalformedTagPlaceholder = new(
+                id: "MCG015",
+                title: "Tag placeholder is not a parameter name",
+                messageFormat: "Tag '{0}' on '{1}' contains '{{{2}}}', which is not a parameter name, so it stays literal text. Put only a parameter name between the braces; to tag by a property such as product.Id, add the value as its own parameter.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG015"));
+
             internal static readonly DiagnosticDescriptor CacheInterfaceUnsupportedType = new(
                 id: "MCG010",
                 title: "CacheInterface cannot cache this type",

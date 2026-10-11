@@ -229,6 +229,22 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
         Assert.Contains("MCG012", errors);
     }
 
+    [Fact]
+    public async Task TagProblems_AreReportedOnTheAttribute()
+    {
+        const string source = @"
+using MethodCache;
+using MethodCache.SourceGenerator.IntegrationTests.Vendor;
+
+[assembly: CacheInterface(typeof(IFxVendorClient), nameof(IFxVendorClient.GetRateAsync), Tags = new[] { ""fx:{form}"", ""fx:{from.Length}"" })]
+";
+
+        var result = await _engine.CompileWithSourceGeneratorAsync(source, "VendorApp_Tags");
+        var warnings = result.Diagnostics.Where(d => d.Id is "MCG009" or "MCG015").ToList();
+        Assert.Equal(new[] { "MCG009", "MCG015" }, warnings.Select(d => d.Id).OrderBy(id => id));
+        Assert.All(warnings, d => Assert.True(d.Location.IsInSource));
+    }
+
     private async Task<string> GeneratorErrorsAsync(string source, string assemblyName)
     {
         var result = await _engine.CompileWithSourceGeneratorAsync(source, assemblyName);

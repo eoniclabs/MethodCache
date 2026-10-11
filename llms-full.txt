@@ -58,8 +58,8 @@ builder.Services.AddMethodCache();                               // after your r
   the cache.
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter.
-- Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template and stays
-  literal; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
+- Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
+  literal and gives warning MCG015; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`,
   `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the first argument.
 - Cached objects are shared between callers: return immutable types such as records.
@@ -389,7 +389,7 @@ matter); an unknown name is reported as [MCG009](https://github.com/eoniclabs/Me
 closest parameter.
 
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
-share one tag. Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
+share one tag; it is reported as [MCG015](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md).
 
 ## From code
@@ -1336,7 +1336,7 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   tags.
 - **A tag template isn't filled in.** The name in braces must be a parameter of that method:
   [MCG009](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg009) warns about unknown names. A property path such as `"{product.Id}"` is
-  not a template and stays literal, without a warning; pass the id as a parameter.
+  not a template and stays literal ([MCG015](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg015)); pass the id as a parameter.
 - **The update method threw.** Invalidation runs only after the method completes successfully.
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateByTagsAsync` ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code)).
@@ -1400,6 +1400,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG012](#mcg012) | Error | The same interface in more than one `[assembly: CacheInterface]` | |
 | [MCG013](#mcg013) | Error | An interface with static abstract members | |
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
+| [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
 
 ## MC0001
 
@@ -1475,8 +1476,7 @@ cache key; pass an array, `Memory<T>` or a string.
 A tag such as `"user:{userId}"` names a parameter the method does not have, so the braces stay literal text and every
 call shares that tag. The name between the braces must match a parameter name (case doesn't matter).
 
-A template takes a parameter name only. A property path such as `"{product.Id}"` is not a template, so it stays
-literal text without this warning; add the id as a parameter instead.
+A template takes a parameter name only; a property path such as `"{product.Id}"` is reported as [MCG015](#mcg015).
 
 **Code fix:** offers the closest parameter names, so `"user:{usrId}"` becomes `"user:{userId}"`.
 
@@ -1507,6 +1507,15 @@ interface without them.
 `[Cache]` on a method returning `IEnumerable<T>`, `IAsyncEnumerable<T>` or `IQueryable<T>`. The cached value would be
 the lazy sequence itself, which runs the query again on every enumeration. Return a materialized collection, such as
 `Task<List<T>>`, `Task<IReadOnlyList<T>>` or `T[]`, and call `ToListAsync()` (or similar) in the implementation.
+
+## MCG015
+
+A tag has braces that look like a template but don't hold a plain parameter name: a property path such as
+`"product:{product.Id}"`, spaces such as `"{ id }"`, or a format such as `"{day:yyyy-MM-dd}"`. Templates take a
+parameter name only, so the braces stay literal text and every call shares the same tag. Write `"product:{id}"` and
+add the value as its own parameter, as `UpdateAsync(int id, Product product)` does in
+[Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md). For `[assembly: CacheInterface]` both MCG009 and MCG015 are reported on the
+attribute.
 
 
 ---

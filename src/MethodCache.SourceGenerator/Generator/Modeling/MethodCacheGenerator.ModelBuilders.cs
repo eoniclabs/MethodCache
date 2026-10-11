@@ -170,10 +170,11 @@ namespace MethodCache.SourceGenerator
             return dynamicTags;
         }
 
-        private static List<Diagnostic> ValidateDynamicTags(List<string> tags, IMethodSymbol method)
+        private static List<Diagnostic> ValidateDynamicTags(List<string> tags, IMethodSymbol method, Location? location = null)
         {
             var diagnostics = new List<Diagnostic>();
             var parameterNames = new HashSet<string>(method.Parameters.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
+            location ??= method.Locations.FirstOrDefault();
 
             foreach (var tag in tags)
             {
@@ -185,10 +186,23 @@ namespace MethodCache.SourceGenerator
                     {
                         diagnostics.Add(Diagnostic.Create(
                             Diagnostics.DynamicTagParameterNotFound,
-                            method.Locations.FirstOrDefault(),
+                            location,
                             // The code fix reads the unknown name from here to offer the closest parameter
                             System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("Parameter", paramName),
                             tag, paramName, method.ToDisplayString()));
+                    }
+                }
+
+                // A property path or format string looks like a template but never matches one, so every call would
+                // silently share the literal tag
+                foreach (System.Text.RegularExpressions.Match match in MalformedTagPlaceholderRegex.Matches(tag))
+                {
+                    if (!DynamicTagParameterRegex.IsMatch(match.Value))
+                    {
+                        diagnostics.Add(Diagnostic.Create(
+                            Diagnostics.MalformedTagPlaceholder,
+                            location,
+                            tag, method.ToDisplayString(), match.Groups[1].Value));
                     }
                 }
             }

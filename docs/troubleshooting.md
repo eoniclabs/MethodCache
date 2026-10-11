@@ -22,7 +22,7 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   tags.
 - **A tag template isn't filled in.** The name in braces must be a parameter of that method:
   [MCG009](user-guide/DIAGNOSTICS.md#mcg009) warns about unknown names. A property path such as `"{product.Id}"` is
-  not a template and stays literal, without a warning; pass the id as a parameter.
+  not a template and stays literal ([MCG015](user-guide/DIAGNOSTICS.md#mcg015)); pass the id as a parameter.
 - **The update method threw.** Invalidation runs only after the method completes successfully.
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateByTagsAsync` ([Invalidation](features/invalidation.md#from-code)).
