@@ -245,17 +245,22 @@ builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(AppJsonContex
 
 A cache hit on `Task<User> GetUserAsync(int id)`, each library on its default settings:
 
-| Approach | Mean | Allocated |
-|---|---:|---:|
-| `IMemoryCache` by hand | 92 ns | 112 B |
-| **MethodCache `[Cache]`** | **84 ns** | **0 B** |
-| HybridCache | 497 ns | 272 B |
-| FusionCache | 348 ns | 344 B |
+| Approach | Mean | vs. `IMemoryCache` by hand | Allocated per hit |
+|---|---:|---:|---:|
+| `IMemoryCache` by hand | 92 ns | 1.00x | 112 B |
+| **MethodCache `[Cache]`** | **84 ns** | **0.92x** | **0 B** |
+| HybridCache | 497 ns | 5.4x | 272 B |
+| FusionCache | 348 ns | 3.8x | 344 B |
 
 The generated decorator writes the key into a stack buffer and returns the cached `Task` itself, so a hit allocates
 nothing and is at least as fast as hand-written code (on .NET 9 and later; .NET 8 builds the key as a string).
-Measured with BenchmarkDotNet on .NET 10; see [docs/benchmarks.md](docs/benchmarks.md) for the setup and how to run
-it yourself.
+Measured with BenchmarkDotNet on .NET 10 on a shared cloud VM (Intel Xeon 2.1 GHz, 4 cores). Times and ratios
+are for that setup and will differ on other hardware and runtimes; the allocations don't.
+[docs/benchmarks.md](docs/benchmarks.md) has the full results. To measure on your own machine:
+
+```bash
+dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
+```
 
 ## How it compares
 
