@@ -17,6 +17,8 @@ internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServe
     private readonly CancellationTokenSource _stopping = new();
     private Task? _creating;
 
+    internal Task? Creating => _creating;
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         // Normally the tables are ready before the first request; a database that is down only delays startup a bit
@@ -39,7 +41,12 @@ internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServe
         }
     }
 
-    public void Dispose() => _stopping.Dispose();
+    public void Dispose()
+    {
+        // Disposed without StopAsync, e.g. when startup was cancelled: the retries stop rather than outlive the app
+        _stopping.Cancel();
+        _stopping.Dispose();
+    }
 
     private async Task CreateWithRetriesAsync(CancellationToken cancellationToken)
     {

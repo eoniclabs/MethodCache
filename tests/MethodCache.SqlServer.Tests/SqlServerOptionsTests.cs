@@ -67,6 +67,18 @@ public class SqlServerOptionsTests
     }
 
     [Fact]
+    public async Task DisposeWithoutStop_StopsTheRetries()
+    {
+        var options = new SqlServerOptions { ConnectionString = "Server=127.0.0.1,1;Connect Timeout=1;TrustServerCertificate=true" };
+        var tables = new SqlServerTables(options);
+        await tables.StartAsync(CancellationToken.None);
+
+        tables.Dispose();
+
+        await tables.Creating!.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void QualifiedNames_QuoteIdentifiers()
     {
         var options = new SqlServerOptions { SchemaName = "cache", TableName = "odd]name", InvalidationsTableName = "Invalidations" };
