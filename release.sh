@@ -20,15 +20,12 @@ GITHUB_REPO="MethodCache"
 # Package names to check/manage
 PACKAGES=(
     "MethodCache"
-    "MethodCache.Abstractions"
-    "MethodCache.Analyzers"
     "MethodCache.AspNetCore"
-    "MethodCache.Core"
+    "MethodCache.HttpCaching"
     "MethodCache.OpenTelemetry"
     "MethodCache.Providers.Redis"
     "MethodCache.Providers.SqlServer"
     "MethodCache.Serialization.MessagePack"
-    "MethodCache.SourceGenerator"
 )
 
 # Function to get current version from version.json

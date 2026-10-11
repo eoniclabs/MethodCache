@@ -1,8 +1,9 @@
 using System;
+using Xunit;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 
-namespace MethodCache.Abstractions.Tests;
+namespace MethodCache.Core.Tests.Abstractions;
 
 public class CachePolicyDeltaTests
 {

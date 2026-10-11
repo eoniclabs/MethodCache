@@ -122,13 +122,13 @@ dotnet nuget add source "https://nuget.pkg.github.com/eoniclabs/index.json" \
 ### 3. Install the package
 
 ```bash
-dotnet add package MethodCache.Core --version 1.0.0
+dotnet add package MethodCache --version 1.0.0
 ```
 
 Or in your `.csproj` file:
 
 ```xml
-<PackageReference Include="MethodCache.Core" Version="1.0.0" />
+<PackageReference Include="MethodCache" Version="1.0.0" />
 ```
 
 ## CI/CD Integration
