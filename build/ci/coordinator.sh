@@ -51,16 +51,25 @@ fi
 echo $$ > "$lock/pid"
 trap 'rm -rf "$lock"' EXIT
 
+status_failed=0
 post_status() { # sha context state description
   gh api --silent "repos/$repo/statuses/$1" -f state="$3" -f context="$2" -f description="${4:0:140}" \
-    || log "could not post status $2=$3 for $1"
+    && return 0
+  log "could not post status $2=$3 for $1"
+  status_failed=1
+}
+
+kill_tree() { # pid: the process and everything it started
+  local child
+  for child in $(pgrep -P "$1"); do kill_tree "$child"; done
+  kill -TERM "$1" 2> /dev/null
 }
 
 with_timeout() { # seconds command...; macOS has no timeout(1) by default
   local seconds=$1; shift
   "$@" &
   local pid=$!
-  ( sleep "$seconds" && kill -TERM "$pid" 2> /dev/null ) &
+  ( sleep "$seconds" && log "timed out after $seconds s: $*" && kill_tree "$pid" ) &
   local watchdog=$!
   wait "$pid"; local code=$?
   kill "$watchdog" 2> /dev/null; wait "$watchdog" 2> /dev/null
@@ -162,6 +171,10 @@ $body"
 }
 
 run_macos() { # sha run_id results_dir
+  with_timeout "$timeout_seconds" run_macos_jobs "$@"
+}
+
+run_macos_jobs() { # sha run_id results_dir
   (
     eval "$(checkout_script "$state/macos" "$1" "$2")"
     METHODCACHE_CI_RESULTS="$3" FRAMEWORK= bash -c '
@@ -213,6 +226,7 @@ run_commit() { # sha pr(optional)
   mkdir -p "$run_dir/linux" "$run_dir/windows" "$run_dir/macos"
   log "run $run_id for ${pr:+PR #$pr }$sha"
 
+  status_failed=0
   local context
   for context in "$aggregate" "${contexts[@]}"; do post_status "$sha" "$context" pending "Running on the build servers"; done
   local started=$SECONDS
@@ -240,8 +254,11 @@ run_commit() { # sha pr(optional)
   else
     post_status "$sha" "$aggregate" failure "A platform failed, see the PR comment ($minutes min)"
   fi
-  # A platform that produced no job result (a server was unreachable) is retried after 30 minutes
-  if [ "$all_ok" -eq 0 ] && { ! ls "$run_dir/linux"/*.exit || ! ls "$run_dir/windows"/*.exit || ! ls "$run_dir/macos"/*.exit; } > /dev/null 2>&1; then
+  # A platform that produced no job result (a server was unreachable), or a result GitHub did not accept, is
+  # retried after 30 minutes
+  if [ "$status_failed" -eq 1 ]; then
+    echo retry > "$state/done/$sha"
+  elif [ "$all_ok" -eq 0 ] && { ! ls "$run_dir/linux"/*.exit || ! ls "$run_dir/windows"/*.exit || ! ls "$run_dir/macos"/*.exit; } > /dev/null 2>&1; then
     echo retry > "$state/done/$sha"
   else
     echo done > "$state/done/$sha"
@@ -286,12 +303,12 @@ $(excerpt_of "$3/$platform/$job.log")
 </details>"
     done
   done
-  gh pr comment "$1" --repo "$repo" --body "$body" > /dev/null || log "could not comment on PR #$1"
+  gh api --silent "repos/$repo/issues/$1/comments" -f body="$body" || log "could not comment on PR #$1"
 }
 
 if [ "${1:-}" = --pr ]; then
   pr=${2:?--pr needs a pull request number}
-  sha=$(gh pr view "$pr" --repo "$repo" --json headRefOid --jq .headRefOid) || exit 1
+  sha=$(gh api "repos/$repo/pulls/$pr" --jq .head.sha) || exit 1
   run_commit "$sha" "$pr"
   exit 0
 fi
@@ -308,9 +325,9 @@ already_ran() { # sha
 main_sha=$(gh api "repos/$repo/commits/main" --jq .sha) || exit 1
 already_ran "$main_sha" || run_commit "$main_sha"
 
-pull_requests=$(gh pr list --repo "$repo" --state open --limit 50 \
-  --json number,headRefOid,isCrossRepository \
-  --jq '.[] | select(.isCrossRepository | not) | "\(.number) \(.headRefOid)"') || exit 1
+# Every open PR whose branch is in this repository (a fork's head.repo is another one, or null once deleted)
+pull_requests=$(gh api --paginate "repos/$repo/pulls?state=open&per_page=100" \
+  --jq ".[] | select(.head.repo.full_name == \"$repo\") | \"\(.number) \(.head.sha)\"") || exit 1
 while read -r pr sha; do
   [ -n "$sha" ] || continue
   already_ran "$sha" && continue
