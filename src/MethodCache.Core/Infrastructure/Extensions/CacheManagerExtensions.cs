@@ -212,7 +212,7 @@ namespace MethodCache
                     "Provide a unique string identifier for this cache entry. " +
                     "Keys should be descriptive and unique (e.g., 'user:123', 'product:456:details'). " +
                     "Consider using a key generator or manual key construction. " +
-                    "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#cache-keys",
+                    "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md#keys",
                     nameof(key));
             }
         }
