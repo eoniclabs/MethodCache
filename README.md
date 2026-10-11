@@ -299,6 +299,7 @@ Supported frameworks: .NET 8, 9 and 10.
 - [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md)
 - [Fluent API Guide](docs/user-guide/FLUENT_API.md)
 - [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md)
+- [Build Diagnostics](docs/user-guide/DIAGNOSTICS.md)
 - [Adding caching to an existing service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
 - [Migrating from IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
 - Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md)
