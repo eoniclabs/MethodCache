@@ -6,28 +6,25 @@ using MethodCache.HttpCaching.Options;
 namespace MethodCache.HttpCaching.Storage;
 
 /// <summary>
-/// In-memory implementation of HTTP cache storage using IMemoryCache.
+/// In-memory HTTP cache storage. It owns its own <see cref="MemoryCache"/>, so it never touches the application's
+/// <see cref="IMemoryCache"/>.
 /// </summary>
-public class InMemoryHttpCacheStorage : IHttpCacheStorage
+public sealed class InMemoryHttpCacheStorage : IHttpCacheStorage, IDisposable
 {
-    private readonly IMemoryCache _cache;
+    private readonly MemoryCache _cache;
     private readonly ILogger<InMemoryHttpCacheStorage> _logger;
-    private readonly CacheBehaviorOptions _behavior;
-    private readonly CacheFreshnessOptions _freshness;
     private readonly HttpCacheStorageOptions _storage;
 
     public InMemoryHttpCacheStorage(
-        IMemoryCache cache,
-        IOptions<HttpCacheOptions> cacheOptions,
         IOptions<HttpCacheStorageOptions> storageOptions,
         ILogger<InMemoryHttpCacheStorage> logger)
     {
-        _cache = cache;
         _logger = logger;
-        var options = cacheOptions.Value;
-        _behavior = options.Behavior;
-        _freshness = options.Freshness;
         _storage = storageOptions.Value;
+        _cache = new MemoryCache(new MemoryCacheOptions
+        {
+            SizeLimit = _storage.MaxCacheSize > 0 ? _storage.MaxCacheSize : null
+        });
     }
 
     public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
@@ -41,8 +38,13 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
         return ValueTask.FromResult(entry);
     }
 
-    public ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default)
     {
+        if (timeToLive <= TimeSpan.Zero)
+        {
+            return ValueTask.CompletedTask;
+        }
+
         if (_storage.MaxResponseSize > 0 && entry.Content.Length > _storage.MaxResponseSize)
         {
             _logger.LogDebug("Entry {Key} exceeds in-memory response size limit ({Size} > {Limit}), skipping", key, entry.Content.Length, _storage.MaxResponseSize);
@@ -51,20 +53,13 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
 
         var cacheEntryOptions = new MemoryCacheEntryOptions
         {
-            Priority = DetermineEntryPriority(entry)
+            Priority = DetermineEntryPriority(entry),
+            AbsoluteExpirationRelativeToNow = timeToLive
         };
         if (_storage.MaxCacheSize > 0)
         {
             cacheEntryOptions.Size = Math.Max(1, entry.Content.Length);
         }
-
-        var lifetime = CalculateEntryLifetime(entry) ?? _freshness.DefaultMaxAge ?? TimeSpan.FromMinutes(5);
-        if (lifetime < _freshness.MinExpiration)
-        {
-            lifetime = _freshness.MinExpiration;
-        }
-
-        cacheEntryOptions.AbsoluteExpirationRelativeToNow = lifetime;
 
         _cache.Set(key, entry, cacheEntryOptions);
         _logger.LogDebug("Cache entry stored for key: {Key}, size: {Size} bytes", key, entry.Content.Length);
@@ -80,53 +75,12 @@ public class InMemoryHttpCacheStorage : IHttpCacheStorage
 
     public ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
-        if (_cache is MemoryCache memoryCache)
-        {
-            memoryCache.Compact(1.0);
-        }
-
-        _logger.LogInformation("Memory cache cleared");
+        _cache.Clear();
+        _logger.LogInformation("HTTP cache cleared");
         return ValueTask.CompletedTask;
     }
 
-    private TimeSpan? CalculateEntryLifetime(HttpCacheEntry entry)
-    {
-        if (_behavior.RespectCacheControl)
-        {
-            if (_behavior.IsSharedCache && entry.CacheControl?.SharedMaxAge.HasValue == true)
-            {
-                return entry.CacheControl.SharedMaxAge.Value;
-            }
-
-            if (entry.CacheControl?.MaxAge.HasValue == true)
-            {
-                return entry.CacheControl.MaxAge.Value;
-            }
-        }
-
-        if (entry.Expires.HasValue && entry.Date.HasValue)
-        {
-            var lifetime = entry.Expires.Value - entry.Date.Value;
-            if (lifetime > TimeSpan.Zero)
-            {
-                return lifetime;
-            }
-        }
-
-        if (_freshness.AllowHeuristicFreshness && entry.LastModified.HasValue && entry.Date.HasValue)
-        {
-            var age = entry.Date.Value - entry.LastModified.Value;
-            var heuristic = TimeSpan.FromSeconds(Math.Max(0, age.TotalSeconds * 0.1));
-            if (heuristic > _freshness.MaxHeuristicFreshness)
-            {
-                heuristic = _freshness.MaxHeuristicFreshness;
-            }
-
-            return heuristic;
-        }
-
-        return _freshness.DefaultMaxAge;
-    }
+    public void Dispose() => _cache.Dispose();
 
     private static CacheItemPriority DetermineEntryPriority(HttpCacheEntry entry)
     {

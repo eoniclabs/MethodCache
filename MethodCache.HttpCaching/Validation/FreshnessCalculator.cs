@@ -3,17 +3,19 @@ using MethodCache.HttpCaching.Options;
 namespace MethodCache.HttpCaching.Validation;
 
 /// <summary>
-/// Calculates the freshness of cached responses according to RFC 7234.
+/// Calculates the freshness of cached responses according to RFC 9111.
 /// </summary>
-public class FreshnessCalculator
+internal sealed class FreshnessCalculator
 {
     private readonly CacheBehaviorOptions _behavior;
     private readonly CacheFreshnessOptions _freshness;
+    private readonly TimeProvider _timeProvider;
 
-    public FreshnessCalculator(CacheBehaviorOptions behavior, CacheFreshnessOptions freshness)
+    public FreshnessCalculator(CacheBehaviorOptions behavior, CacheFreshnessOptions freshness, TimeProvider timeProvider)
     {
         _behavior = behavior;
         _freshness = freshness;
+        _timeProvider = timeProvider;
     }
 
     public bool IsFresh(HttpCacheEntry entry)
@@ -74,22 +76,24 @@ public class FreshnessCalculator
         return _freshness.DefaultMaxAge;
     }
 
-    private static TimeSpan CalculateCurrentAge(HttpCacheEntry entry)
+    private TimeSpan CalculateCurrentAge(HttpCacheEntry entry)
     {
-        var now = DateTimeOffset.UtcNow;
-        var residentTime = now - entry.StoredAt;
-
-        var responseAge = TimeSpan.Zero;
-        if (entry.Date.HasValue)
+        var residentTime = _timeProvider.GetUtcNow() - entry.StoredAt;
+        if (residentTime < TimeSpan.Zero)
         {
-            responseAge = entry.StoredAt - entry.Date.Value;
-            if (responseAge < TimeSpan.Zero)
-            {
-                responseAge = TimeSpan.Zero;
-            }
+            residentTime = TimeSpan.Zero;
         }
 
-        return residentTime + responseAge;
+        return entry.InitialAge + residentTime;
+    }
+
+    /// <summary>
+    /// How long the entry has been stale; zero while it is still fresh.
+    /// </summary>
+    public TimeSpan GetStaleness(HttpCacheEntry entry)
+    {
+        var staleness = CalculateCurrentAge(entry) - (CalculateFreshnessLifetime(entry) ?? TimeSpan.Zero);
+        return staleness > TimeSpan.Zero ? staleness : TimeSpan.Zero;
     }
 
     public bool CanUseStaleWhileRevalidate(HttpCacheEntry entry)
@@ -99,8 +103,8 @@ public class FreshnessCalculator
             return false;
         }
 
-        return entry.CacheControl?.Extensions?.Any(e =>
-            string.Equals(e.Name, "stale-while-revalidate", StringComparison.OrdinalIgnoreCase)) == true;
+        var window = GetExtensionSeconds(entry, "stale-while-revalidate");
+        return window.HasValue && GetStaleness(entry) < window.Value;
     }
 
     public bool CanUseStaleIfError(HttpCacheEntry entry)
@@ -110,21 +114,22 @@ public class FreshnessCalculator
             return false;
         }
 
-        var staleness = DateTimeOffset.UtcNow - entry.StoredAt;
+        var window = GetExtensionSeconds(entry, "stale-if-error") ?? _behavior.MaxStaleIfError;
+        return GetStaleness(entry) < window;
+    }
 
+    private static TimeSpan? GetExtensionSeconds(HttpCacheEntry entry, string name)
+    {
         var extension = entry.CacheControl?.Extensions?.FirstOrDefault(e =>
-            string.Equals(e.Name, "stale-if-error", StringComparison.OrdinalIgnoreCase));
+            string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
 
-        if (extension != null)
+        if (extension == null)
         {
-            if (!string.IsNullOrEmpty(extension.Value) && int.TryParse(extension.Value.Trim('"'), out var timeoutSeconds))
-            {
-                return staleness < TimeSpan.FromSeconds(timeoutSeconds);
-            }
-
-            return true;
+            return null;
         }
 
-        return staleness < _behavior.MaxStaleIfError;
+        return int.TryParse(extension.Value?.Trim('"'), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var seconds)
+            ? TimeSpan.FromSeconds(seconds)
+            : null;
     }
 }

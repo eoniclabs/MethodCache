@@ -33,7 +33,8 @@ services.AddHttpClient<IMetaApiClient, MetaApiClient>()
     .AddHttpCaching(caching => caching
         .Configure(options =>
         {
-            options.Freshness.DefaultMaxAge = TimeSpan.FromMinutes(5);
+            options.Freshness.DefaultMaxAge = null;            // ETag/Last-Modified-only responses are revalidated every time
+options.Freshness.StaleRetention = TimeSpan.FromHours(24); // how long stale entries are kept for revalidation
             options.Behavior.EnableStaleWhileRevalidate = true;
             options.Behavior.EnableStaleIfError = true;
             options.Diagnostics.AddDiagnosticHeaders = true; // X-Cache headers, useful in development
@@ -57,6 +58,11 @@ The HTTP cache handler sits in the HttpClient pipeline and:
 3. **Handles 304 responses** by returning cached content with updated headers
 4. **Stores cacheable responses** according to HTTP caching rules
 5. **Provides fallbacks** with stale-while-revalidate and stale-if-error
+6. **Invalidates** cached GET/HEAD responses after a successful POST, PUT, PATCH or DELETE to the same URL
+   (and to same-origin `Location` / `Content-Location`)
+
+Each HttpClient has its own options and its own cache entries. The in-memory storage uses its own memory cache,
+so your app's `IMemoryCache` is never touched.
 
 ## Benefits for API Integration
 
@@ -121,9 +127,10 @@ options.Behavior.MaxStaleIfError = TimeSpan.FromHours(24);
 
 options.Freshness.AllowHeuristicFreshness = true;
 options.Freshness.MaxHeuristicFreshness = TimeSpan.FromHours(1);
-options.Freshness.DefaultMaxAge = TimeSpan.FromMinutes(5);
+options.Freshness.DefaultMaxAge = null;            // ETag/Last-Modified-only responses are revalidated every time
+options.Freshness.StaleRetention = TimeSpan.FromHours(24); // how long stale entries are kept for revalidation
 
-options.CacheableMethods;                          // GET, HEAD and OPTIONS by default
+options.CacheableMethods;                          // GET and HEAD by default
 options.CacheKeyGenerator = request => ...;        // optional custom key
 options.Diagnostics.AddDiagnosticHeaders = false;
 ```

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using MethodCache.HttpCaching.Options;
 using MethodCache.HttpCaching.Storage;
@@ -12,13 +11,9 @@ public class InMemoryHttpCacheStorageTests
     [Fact]
     public async Task SetAsync_WithSizeLimitedMemoryCache_StoresEntrySuccessfully()
     {
-        var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 1024 });
-        var options = new HttpCacheOptions();
         var storageOptions = new HttpCacheStorageOptions { MaxCacheSize = 1024, MaxResponseSize = 1024 };
 
-        var storage = new InMemoryHttpCacheStorage(
-            cache,
-            Microsoft.Extensions.Options.Options.Create(options),
+        using var storage = new InMemoryHttpCacheStorage(
             Microsoft.Extensions.Options.Options.Create(storageOptions),
             NullLogger<InMemoryHttpCacheStorage>.Instance);
 
@@ -33,7 +28,7 @@ public class InMemoryHttpCacheStorageTests
             StoredAt = DateTimeOffset.UtcNow
         };
 
-        await storage.SetAsync("k", entry);
+        await storage.SetAsync("k", entry, TimeSpan.FromMinutes(1));
         var loaded = await storage.GetAsync("k");
 
         Assert.NotNull(loaded);

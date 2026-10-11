@@ -17,7 +17,8 @@ public class StaleContentTests
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
-        var pastDate = DateTimeOffset.UtcNow.AddMinutes(-10);
+        // Stale for two minutes, inside the 300 second stale-while-revalidate window
+        var pastDate = DateTimeOffset.UtcNow.AddMinutes(-7);
         var initialResponse = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("original content"),
@@ -163,7 +164,8 @@ public class StaleContentTests
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
-        var pastDate = DateTimeOffset.UtcNow.AddMinutes(-10);
+        // Stale for ten seconds, inside the 30 second MaxStaleIfError
+        var pastDate = DateTimeOffset.UtcNow.AddMinutes(-5).AddSeconds(-10);
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("stale content"),

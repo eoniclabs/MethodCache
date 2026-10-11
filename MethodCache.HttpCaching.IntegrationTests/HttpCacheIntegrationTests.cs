@@ -49,7 +49,7 @@ public class HttpCacheIntegrationTests
 
         var provider = services.BuildServiceProvider();
 
-        var cacheOptions = provider.GetRequiredService<IOptions<HttpCacheOptions>>().Value;
+        var cacheOptions = provider.GetRequiredService<IOptionsMonitor<HttpCacheOptions>>().Get(nameof(TestApiClient));
         Assert.True(cacheOptions.Behavior.EnableStaleWhileRevalidate);
         Assert.True(cacheOptions.Behavior.EnableStaleIfError);
         Assert.Equal(TimeSpan.FromMinutes(10), cacheOptions.Freshness.DefaultMaxAge);
@@ -78,7 +78,7 @@ public class HttpCacheIntegrationTests
         public ValueTask ClearAsync(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
         public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) => ValueTask.FromResult<HttpCacheEntry?>(null);
         public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
-        public ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
     }
 
     public class TestApiClient
