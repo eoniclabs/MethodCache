@@ -31,5 +31,11 @@ so a concurrent older reader cannot repopulate the active namespace.
 With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
 cache is registered, it uses the application's `IDistributedCache`. It leaves application registrations unchanged.
 
+A cacheable body with an accurate `Content-Length` is read directly into its final owned array. Bodies with
+unknown or inaccurate lengths use pooled temporary storage and copy into one owned array; temporary and final
+storage can coexist during that copy. Returned rentals are cleared. Only the size limit plus one byte is read
+before an oversized unknown-length response is handed back as a stream, and disposing that response returns
+its temporary storage even if the caller never reads it.
+
 See the [HTTP package guide](../../src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](../security.md) for the threat model.

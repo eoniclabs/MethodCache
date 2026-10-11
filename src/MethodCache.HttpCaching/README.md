@@ -78,6 +78,10 @@ subject to backend eviction. Read failures fall back to the origin; invalidation
 the origin write, which may already have succeeded. Custom storage implementations implement
 `GetGenerationAsync` and `InvalidateAsync` with shared, unique generations. See [HTTP caching](../../docs/features/http-caching.md).
 
+Cacheable bodies with an accurate `Content-Length` use one owned array. Unknown or inaccurate lengths use
+pooled temporary storage plus the final array. An oversized body remains readable as a stream; dispose the
+response to release its storage.
+
 ## Storage
 
 Responses are kept in memory, in a cache of their own (your app's `IMemoryCache` is not touched). The total size

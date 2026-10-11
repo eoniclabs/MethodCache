@@ -987,6 +987,12 @@ so a concurrent older reader cannot repopulate the active namespace.
 With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
 cache is registered, it uses the application's `IDistributedCache`. It leaves application registrations unchanged.
 
+A cacheable body with an accurate `Content-Length` is read directly into its final owned array. Bodies with
+unknown or inaccurate lengths use pooled temporary storage and copy into one owned array; temporary and final
+storage can coexist during that copy. Returned rentals are cleared. Only the size limit plus one byte is read
+before an oversized unknown-length response is handed back as a stream, and disposing that response returns
+its temporary storage even if the caller never reads it.
+
 See the [HTTP package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md) for the threat model.
 
@@ -2150,6 +2156,10 @@ additional cache miss for another URL. Generation records use maximum absolute e
 subject to backend eviction. Read failures fall back to the origin; invalidation write failures propagate after
 the origin write, which may already have succeeded. Custom storage implementations implement
 `GetGenerationAsync` and `InvalidateAsync` with shared, unique generations. See [HTTP caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/http-caching.md).
+
+Cacheable bodies with an accurate `Content-Length` use one owned array. Unknown or inaccurate lengths use
+pooled temporary storage plus the final array. An oversized body remains readable as a stream; dispose the
+response to release its storage.
 
 ## Storage
 
