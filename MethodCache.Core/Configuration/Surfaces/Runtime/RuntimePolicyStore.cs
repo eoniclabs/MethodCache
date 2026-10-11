@@ -11,11 +11,12 @@ namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 internal sealed class RuntimePolicyStore
 {
     private readonly ConcurrentDictionary<string, StoredPolicy> _policies = new(StringComparer.Ordinal);
-    private readonly Channel<PolicyChange> _channel = Channel.CreateUnbounded<PolicyChange>(new UnboundedChannelOptions
-    {
-        SingleReader = false,
-        SingleWriter = false
-    });
+
+    /// <summary>
+    /// Raised synchronously, on the thread that made the change, before the call that made it returns. The policy
+    /// resolver listens here, so an awaited override is in effect for the next cached call.
+    /// </summary>
+    internal event Action<PolicyChange>? Changed;
 
     private sealed record StoredPolicy(
         CachePolicy Policy,
@@ -150,22 +151,34 @@ internal sealed class RuntimePolicyStore
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Streams the changes made after the call. Each watcher gets every change.
+    /// </summary>
     public async IAsyncEnumerable<PolicyChange> WatchAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var reader = _channel.Reader;
+        var channel = Channel.CreateUnbounded<PolicyChange>(new UnboundedChannelOptions { SingleReader = true });
+        void Handler(PolicyChange change) => channel.Writer.TryWrite(change);
 
-        while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+        Changed += Handler;
+        try
         {
-            while (reader.TryRead(out var change))
+            while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
             {
-                yield return change;
+                while (channel.Reader.TryRead(out var change))
+                {
+                    yield return change;
+                }
             }
+        }
+        finally
+        {
+            Changed -= Handler;
         }
     }
 
     private void EnqueueChange(PolicyChange change)
     {
-        _channel.Writer.TryWrite(change);
+        Changed?.Invoke(change);
     }
 
     private void RemoveExpiredPolicies()

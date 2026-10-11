@@ -205,21 +205,21 @@ public class RuntimeCacheConfiguratorTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var changes = new List<PolicyChange>();
 
-        var watcher = Task.Run(async () =>
-        {
-            await foreach (var change in configurator.WatchAsync(cts.Token))
-            {
-                changes.Add(change);
-                if (changes.Count >= 2)
-                {
-                    break;
-                }
-            }
-        }, cts.Token);
+        // A watcher sees the changes made after it starts, so start it before changing anything
+        await using var watcher = configurator.WatchAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+        var next = watcher.MoveNextAsync();
 
         await configurator.UpsertAsync("Watch.Method", (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromMinutes(1)));
         await configurator.RemoveAsync("Watch.Method");
-        await watcher;
+
+        while (changes.Count < 2 && await next)
+        {
+            changes.Add(watcher.Current);
+            if (changes.Count < 2)
+            {
+                next = watcher.MoveNextAsync();
+            }
+        }
 
         Assert.Equal(2, changes.Count);
         Assert.Equal(PolicyChangeReason.Added, changes[0].Reason);

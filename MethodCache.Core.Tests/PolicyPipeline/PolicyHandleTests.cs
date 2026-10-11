@@ -23,7 +23,7 @@ public class PolicyHandleTests
     private static readonly string MethodId = $"{typeof(IOrders).FullName!.Replace('+', '.')}.Get";
 
     [Fact]
-    public async Task Handle_FollowsRuntimeOverrides_WithoutResolvingAgain()
+    public async Task Handle_FollowsRuntimeOverrides_AsSoonAsTheCallReturns()
     {
         await using var provider = BuildProvider();
         var registry = provider.GetRequiredService<IPolicyRegistry>();
@@ -32,10 +32,10 @@ public class PolicyHandleTests
 
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
         await configurator.UpsertAsync<IOrders, string>(o => o.Get(0), b => b.WithDuration(TimeSpan.FromSeconds(30)));
-        await WaitUntilAsync(() => handle.Current.Duration == TimeSpan.FromSeconds(30));
+        Assert.Equal(TimeSpan.FromSeconds(30), handle.Current.Duration);
 
         await configurator.RemoveAsync<IOrders, string>(o => o.Get(0));
-        await WaitUntilAsync(() => handle.Current.Duration == TimeSpan.FromMinutes(5));
+        Assert.Equal(TimeSpan.FromMinutes(5), handle.Current.Duration);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class PolicyHandleTests
 
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
         await configurator.UpsertAsync<IOrders, Task<string>>(o => o.Get(0), (CachePolicyBuilder b) => b.WithVersion(2));
-        await WaitUntilAsync(() => method.Current.Policy.Version == 2);
+        Assert.Equal(2, method.Current.Policy.Version);
 
         Assert.Equal(MethodCacheKeys.Prefix(typeof(IOrders), "Get", 2), method.Current.KeyPrefix);
         Assert.Equal(MethodCacheKeys.Prefix(typeof(IOrders), "Get"), method.KeyMethod);
@@ -112,20 +112,6 @@ public class PolicyHandleTests
             config => config.ForService<IOrders>().Method(o => o.Get(default)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(5))),
             Assembly.GetExecutingAssembly());
         return services.BuildServiceProvider();
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> condition)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (!condition())
-        {
-            if (DateTime.UtcNow > deadline)
-            {
-                throw new TimeoutException("The policy change did not reach the handle.");
-            }
-
-            await Task.Delay(10);
-        }
     }
 
     public interface IOrders

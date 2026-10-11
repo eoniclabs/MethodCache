@@ -10,7 +10,7 @@
 - `MethodCache.Infrastructure`: Common infrastructure for providers.
 - `MethodCache.Benchmarks`: Performance benchmarks.
 - `MethodCache.Core.Tests`, `MethodCache.SourceGenerator.Tests`, `MethodCache.Analyzers.Tests`, other `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed integration tests.
-- `MethodCache.SampleApp` and `MethodCache.Demo`: runnable examples.
+- `samples/MethodCache.Demo` (a guided console tour) and `samples/MethodCache.WebDemo` (ASP.NET Core): runnable examples. CI runs the console tour.
 
 ## Build, Test, Run
 - Restore: `dotnet restore`
@@ -18,7 +18,7 @@
 - Unit tests: `dotnet test MethodCache.sln -c Release`
 - Coverage (to `test-results/`): `dotnet test --collect:"XPlat Code Coverage" --results-directory test-results`
 - Integration tests (Redis, requires Docker): `dotnet test MethodCache.Providers.Redis.IntegrationTests`
-- Sample app: `dotnet run --project MethodCache.SampleApp`
+- Demo: `dotnet run --project samples/MethodCache.Demo -c Release`
 
 ## Coding Style & Naming
 - Language: C# (SDK pinned via `global.json`), 4-space indent.

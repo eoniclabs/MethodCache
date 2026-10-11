@@ -72,8 +72,6 @@ MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeMaxDuration.get -> Sys
 MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeMaxDuration.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeThrottleDuration.get -> System.TimeSpan
 MethodCache.Core.Configuration.MemoryCacheOptions.FailSafeThrottleDuration.set -> void
-MethodCache.Core.Configuration.MemoryCacheOptions.FastPathTrackMetrics.get -> bool
-MethodCache.Core.Configuration.MemoryCacheOptions.FastPathTrackMetrics.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.JitterMaxDuration.get -> System.TimeSpan
 MethodCache.Core.Configuration.MemoryCacheOptions.JitterMaxDuration.set -> void
 MethodCache.Core.Configuration.MemoryCacheOptions.MaxExpiration.get -> System.TimeSpan
