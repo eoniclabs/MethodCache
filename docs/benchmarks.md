@@ -33,3 +33,31 @@ later when every argument is a simple value (numbers, strings, enums, `Guid`, da
 
 The class also has miss benchmarks (a new key on every call). They grow every cache without bound during the run, so
 they measure the GC more than the libraries and are not quoted here.
+
+## Other benchmarks
+
+`MethodCache.Benchmarks` takes a category as its first argument:
+
+```bash
+dotnet run -c Release --project MethodCache.Benchmarks -- <category> [--quick]
+```
+
+| Category | What it measures |
+|---|---|
+| `readme` | The comparison above |
+| `engine` | The in-memory engine on its own |
+| `hitratio` | Hit ratio of the eviction policy on skewed workloads |
+| `basic` | Hits and misses with different payload sizes |
+| `baseline` | MethodCache against `IMemoryCache` and LazyCache |
+| `comparison` | Several libraries behind one adapter interface |
+| `providers` | In-memory, Redis and hybrid storage |
+| `concurrent` | Concurrent access and scalability |
+| `memory` | Memory use and GC pressure |
+| `realworld` | Application-shaped scenarios |
+| `generic` | Generic interfaces |
+| `serialization` | Serializers for the distributed layer |
+| `quick` | A small set for development |
+| `all` | Everything |
+
+`--quick` (or `BENCHMARK_QUICK=true`) uses fewer iterations: good while developing, not for numbers you publish.
+Results land in `BenchmarkDotNet.Artifacts/results/`. `MethodCache.Benchmarks/README.md` has more detail.

@@ -112,10 +112,6 @@ public class Program
                 }
                 break;
 
-            case "quickcompare":
-                BenchmarkRunner.Run<Comparison.QuickMethodCacheTest>(config);
-                break;
-
             case "profile":
                 BenchmarkRunner.Run<Microbenchmarks.SourceGenSyncPathProfiler>(config);
                 break;
