@@ -202,14 +202,29 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         services.AddHealthChecks().AddMethodCache();
         await using var provider = services.BuildServiceProvider();
 
-        var cache = provider.GetRequiredService<ICacheManager>();
-        Assert.Equal("Ada", await cache.GetOrCreateFastAsync("users:1", "Users", () => Task.FromResult("Ada"), UsersPolicy));
-
+        // Before any cached call has run into the outage
         var report = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
 
         var entry = Assert.Single(report.Entries);
         Assert.Equal(HealthStatus.Degraded, entry.Value.Status);
         Assert.Equal(false, entry.Value.Data["distributedCacheAvailable"]);
+    }
+
+    [Fact]
+    public async Task HealthCheck_IsHealthyWhenTheDistributedCacheAnswers()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMethodCacheDistributedCache(_ => new Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache(
+            Microsoft.Extensions.Options.Options.Create(new Microsoft.Extensions.Caching.Memory.MemoryDistributedCacheOptions())));
+        services.AddHealthChecks().AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        var report = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+
+        var entry = Assert.Single(report.Entries);
+        Assert.Equal(HealthStatus.Healthy, entry.Value.Status);
+        Assert.Equal(true, entry.Value.Data["distributedCacheAvailable"]);
     }
 
     private sealed class UnreachableDistributedCache : Microsoft.Extensions.Caching.Distributed.IDistributedCache

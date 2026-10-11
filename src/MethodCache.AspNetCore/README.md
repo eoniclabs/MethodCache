@@ -42,6 +42,7 @@ The same operations are available in code through `ICacheAdministrator` from `Me
 `AddMethodCache()` on the health checks builder reports Healthy when the cache answers, with `entries`,
 `hitRatio`, `evictions` and `memoryUsageBytes` in the report data. With Redis or SQL Server it reports Degraded
 while that cache is unreachable and MethodCache serves from memory only (`distributedCacheAvailable` in the data).
+Each check asks the distributed cache once, waiting at most its operation timeout.
 
 ## Limits
 

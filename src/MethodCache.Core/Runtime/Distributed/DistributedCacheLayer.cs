@@ -64,6 +64,7 @@ namespace MethodCache.Core.Runtime.Distributed
         // Circuit breaker: Unix ms until which the cache is skipped (0 = closed); one caller probes after that.
         // _trips counts openings, so a probe can only close the opening it was let in for.
         private const long NotProbing = -1;
+        private const string HealthCheckKey = "\u0000health";
         private readonly object _breakerLock = new();
         private long _openUntil;
         private int _probing;
@@ -120,6 +121,20 @@ namespace MethodCache.Core.Runtime.Distributed
 
         /// <summary>False while the breaker is open or invalidations wait to be stored, so only memory is used.</summary>
         internal bool IsAvailable => Volatile.Read(ref _openUntil) == 0 && !_hasPending;
+
+        /// <summary>
+        /// Whether the distributed cache answers now. A cache that looks fine is asked once, bounded by the operation
+        /// timeout, so an outage shows before any cached call has run into it; a failure opens the breaker.
+        /// </summary>
+        internal async Task<bool> CheckAvailableAsync()
+        {
+            if (!IsAvailable || !TryEnter(out var probe))
+            {
+                return false;
+            }
+
+            return (await TryRunAsync(ReadRemovalAsync, HealthCheckKey, "answer a health check", probe).ConfigureAwait(false)).Succeeded;
+        }
 
         /// <summary>
         /// Starts listening to the backplane, if there is one. Messages this node sent are ignored.

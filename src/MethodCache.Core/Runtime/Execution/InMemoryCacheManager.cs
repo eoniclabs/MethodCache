@@ -59,7 +59,8 @@ namespace MethodCache.Core.Runtime.Execution
         private readonly DistributedCacheLayer? _distributed;
 
         /// <summary>Whether the distributed cache is in use now; null without one.</summary>
-        internal bool? IsDistributedCacheAvailable => _distributed?.IsAvailable;
+        internal async ValueTask<bool?> CheckDistributedCacheAsync() =>
+            _distributed == null ? null : await _distributed.CheckAvailableAsync().ConfigureAwait(false);
 
         private int _disposed;
 

@@ -29,7 +29,7 @@ public sealed class MethodCacheHealthCheck : IHealthCheck
                 ["memoryUsageBytes"] = stats.MemoryUsage
             };
 
-            var distributed = _admin.IsDistributedCacheAvailable;
+            var distributed = await _admin.CheckDistributedCacheAsync(cancellationToken).ConfigureAwait(false);
             if (distributed.HasValue)
             {
                 data["distributedCacheAvailable"] = distributed.Value;
