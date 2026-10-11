@@ -60,6 +60,11 @@ namespace MethodCache.Extensibility
 
         private int _disposed;
 
+        /// <summary>
+        /// Creates an in-memory cache manager.
+        /// </summary>
+        /// <param name="metricsProvider">Receives hit, miss, error and latency reports.</param>
+        /// <param name="options">Size limits, expiration defaults and eviction settings; defaults when null.</param>
         public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options = null)
             : this(metricsProvider, options, timeProvider: null)
         {
@@ -111,6 +116,7 @@ namespace MethodCache.Extensibility
 
         #region ICacheManager
 
+        /// <inheritdoc />
         public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             ArgumentNullException.ThrowIfNull(policy);
@@ -120,6 +126,7 @@ namespace MethodCache.Extensibility
             return GetOrCreateCoreAsync(key, methodName, factory, GetEntryPolicy(policy), CancellationToken.None);
         }
 
+        /// <inheritdoc />
         public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(cacheKey))
@@ -131,6 +138,7 @@ namespace MethodCache.Extensibility
             return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken);
         }
 
+        /// <inheritdoc />
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             ArgumentNullException.ThrowIfNull(policy);
@@ -140,6 +148,7 @@ namespace MethodCache.Extensibility
             return new ValueTask<T?>(TryGetFresh<T>(key, _engine.Now, out var value, out _, out _) ? value : default);
         }
 
+        /// <inheritdoc />
         public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
             return new ValueTask<T?>(TryGetFast<T>(cacheKey, out var value) ? value : default);
@@ -160,6 +169,7 @@ namespace MethodCache.Extensibility
             return false;
         }
 
+        /// <inheritdoc />
         public bool TryGetFastTask<T>(string cacheKey, [NotNullWhen(true)] out Task<T>? task)
         {
             if (TryGetFastNode<T>(cacheKey, out var value, out var node))
@@ -228,6 +238,7 @@ namespace MethodCache.Extensibility
             return false;
         }
 
+        /// <inheritdoc />
         public Task InvalidateByKeysAsync(params string[] keys)
         {
             if (keys == null)
@@ -248,6 +259,7 @@ namespace MethodCache.Extensibility
                 : _distributed.RemoveAsync(keys.Where(static key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).ToArray());
         }
 
+        /// <inheritdoc />
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             if (tags == null || tags.Length == 0)
@@ -270,6 +282,7 @@ namespace MethodCache.Extensibility
                 : _distributed.InvalidateTagsAsync(tags.Where(static tag => tag != null).Distinct(StringComparer.Ordinal).ToArray());
         }
 
+        /// <inheritdoc />
         public Task InvalidateByTagPatternAsync(string pattern)
         {
             if (string.IsNullOrWhiteSpace(pattern))
@@ -300,6 +313,7 @@ namespace MethodCache.Extensibility
 
         #region IMemoryCache
 
+        /// <inheritdoc />
         public ValueTask<T?> GetAsync<T>(string key)
         {
             if (TryGetFresh<T>(key, _engine.Now, out var value, out _, out _))
@@ -320,6 +334,7 @@ namespace MethodCache.Extensibility
             return new ValueTask<T?>(default(T));
         }
 
+        /// <inheritdoc />
         public Task SetAsync<T>(string key, T value, TimeSpan expiration)
         {
             ArgumentNullException.ThrowIfNull(key);
@@ -333,6 +348,7 @@ namespace MethodCache.Extensibility
                 : _distributed.WriteAsync(key, value, tags: null, _distributed.Now, expiration, replaces: true);
         }
 
+        /// <inheritdoc />
         public ValueTask<bool> RemoveAsync(string key)
         {
             var removed = RemoveLocal(key);
@@ -341,6 +357,7 @@ namespace MethodCache.Extensibility
                 : RemoveDistributedAsync(new[] { key }, removed);
         }
 
+        /// <inheritdoc />
         public ValueTask<int> RemoveMultipleAsync(params string[] keys)
         {
             var removed = 0;
@@ -363,12 +380,14 @@ namespace MethodCache.Extensibility
             return result;
         }
 
+        /// <inheritdoc />
         public ValueTask<bool> ExistsAsync(string key)
         {
             var exists = _engine.TryPeek(key, out var node) && !node.IsLogicallyExpired(_engine.Now);
             return new ValueTask<bool>(exists);
         }
 
+        /// <inheritdoc />
         public ValueTask ClearAsync()
         {
             ClearLocal();
@@ -377,6 +396,7 @@ namespace MethodCache.Extensibility
             return _distributed == null ? ValueTask.CompletedTask : new ValueTask(_distributed.ClearAsync());
         }
 
+        /// <inheritdoc />
         public ValueTask<ICacheStats> GetStatsAsync()
         {
             var stats = new CacheStats
@@ -393,6 +413,7 @@ namespace MethodCache.Extensibility
             return new ValueTask<ICacheStats>(stats);
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             if (Interlocked.Exchange(ref _disposed, 1) != 0)

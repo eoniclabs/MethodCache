@@ -44,6 +44,7 @@ Read this before changing the repository. It is written for human contributors a
 
 ## Rules that are easy to miss
 - Public API is locked by PublicApiAnalyzers. Any added, removed or changed public member must be recorded in that project's `PublicAPI.Unshipped.txt`, or the build fails.
+- Every public type and member in `src/` needs an XML doc comment (`CS1591` is an error). Write what it does for a user, and use `<inheritdoc />` on interface implementations and overrides.
 - Nothing is on nuget.org yet, so an API that is replaced is deleted outright. Do not add `[Obsolete]` shims.
 - Library code must use `ConfigureAwait(false)` on every await (`CA2007` is an error in `src/`).
 - New or changed diagnostics need a row in `docs/user-guide/DIAGNOSTICS.md` and an entry in `src/MethodCache.Analyzers/AnalyzerReleases.Unshipped.md` when they come from the analyzers.

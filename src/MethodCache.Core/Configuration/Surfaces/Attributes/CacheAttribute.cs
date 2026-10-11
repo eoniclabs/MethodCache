@@ -2,17 +2,16 @@
 namespace MethodCache
 {
     /// <summary>
-    /// Marks a method for automatic caching using MethodCache source generation.
-    /// Apply this attribute to interface methods or virtual methods to enable caching without manual implementation.
+    /// Caches the results of an interface method. The source generator writes a decorator for the interface, and
+    /// <c>AddMethodCache()</c> wraps the registered implementation in it. On a class member the attribute is ignored
+    /// (analyzer MC0001).
     /// </summary>
     /// <remarks>
-    /// The CacheAttribute enables declarative caching with compile-time source generation.
-    /// Configuration can be overridden at runtime using fluent API, JSON/YAML config, or runtime overrides.
-    ///
-    /// Configuration precedence (highest to lowest):
-    /// 1. Runtime overrides (IRuntimeCacheConfigurator)
-    /// 2. Startup configuration (fluent API or config files)
-    /// 3. Attribute values
+    /// Keys are built from the method and its arguments. Each setting can be changed without touching the attribute,
+    /// and the highest layer that sets it wins: runtime overrides (<c>IRuntimeCacheConfigurator</c>), then
+    /// <c>appsettings.json</c> (<c>AddMethodCacheFromConfiguration</c>), then startup code
+    /// (<c>AddMethodCache(config => ...)</c>), then this attribute. Defaults and groups fill in what the method leaves
+    /// unset. See docs/features/configuration.md.
     /// </remarks>
     /// <example>
     /// Basic usage with default settings:
@@ -28,7 +27,7 @@ namespace MethodCache
     /// <code>
     /// [Cache("users",
     ///     Duration = "00:30:00",
-    ///     Tags = new[] { "users", "profiles" },
+    ///     Tags = ["users", "user:{userId}"],
     ///     SlidingExpiration = "00:05:00",
     ///     Version = 2)]
     /// Task&lt;UserProfile&gt; GetProfileAsync(int userId);
@@ -38,12 +37,9 @@ namespace MethodCache
     public class CacheAttribute : Attribute
     {
         /// <summary>
-        /// Gets the cache group name for organizing related cache entries.
-        /// Group names allow bulk configuration and invalidation of related cache entries.
+        /// The group the method belongs to, or null. A group's settings, from <c>config.ForGroup(name)</c> or
+        /// <c>appsettings.json</c>, fill in what the method leaves unset.
         /// </summary>
-        /// <remarks>
-        /// Examples: "users", "products", "reports"
-        /// </remarks>
         public string? GroupName { get; }
 
         /// <summary>
@@ -104,34 +100,22 @@ namespace MethodCache
         public string? FailSafeTimeout { get; set; }
 
         /// <summary>
-        /// Gets or sets tags for cache entry categorization and bulk invalidation.
-        /// Tags enable invalidating multiple related cache entries in a single operation.
+        /// Tags for the entries this method stores, so <c>[CacheInvalidate]</c> or <c>InvalidateByTagsAsync</c> can
+        /// remove them. A template such as <c>"product:{id}"</c> is filled in from the parameter with that name; it
+        /// takes a parameter name only, not a property path.
         /// </summary>
-        /// <remarks>
-        /// Use tags to group related data for invalidation:
-        /// - Entity type tags: "users", "products", "orders"
-        /// - Specific entity tags: "user:123", "product:456"
-        /// - Feature tags: "catalog", "reports", "analytics"
-        /// </remarks>
         /// <example>
         /// <code>
-        /// [Cache(Tags = new[] { "products", "product:123", "catalog" })]
+        /// [Cache(Tags = ["products", "product:{id}"])]
+        /// Task&lt;Product&gt; GetAsync(int id);
         /// </code>
         /// </example>
         public string[]? Tags { get; set; }
 
         /// <summary>
-        /// Gets or sets the cache version for versioned cache keys.
-        /// Incrementing the version invalidates all previous cache entries for this method.
+        /// A version that is part of every key the method produces. Raise it when the cached result's shape changes,
+        /// so values cached by the previous version are ignored. Default -1 (not set).
         /// </summary>
-        /// <remarks>
-        /// Use versioning when:
-        /// - Data structure changes require cache invalidation
-        /// - Business logic changes affect cached results
-        /// - You need to invalidate all cache entries without pattern matching
-        ///
-        /// Default: -1 (no versioning)
-        /// </remarks>
         /// <example>
         /// <code>
         /// // Version 1
@@ -146,9 +130,9 @@ namespace MethodCache
         public int Version { get; set; } = -1;
 
         /// <summary>
-        /// Initializes a new instance of the CacheAttribute.
+        /// Caches the method, optionally in a group.
         /// </summary>
-        /// <param name="groupName">Optional group name for organizing related cache entries</param>
+        /// <param name="groupName">The group whose settings apply to this method, or null.</param>
         public CacheAttribute(string? groupName = null)
         {
             GroupName = groupName;

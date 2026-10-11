@@ -15,7 +15,14 @@ namespace MethodCache.Analyzers
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class MethodCacheAnalyzer : DiagnosticAnalyzer
     {
+        /// <summary>
+        /// The id of the diagnostic for [Cache] or [CacheInvalidate] on a class member (MC0001).
+        /// </summary>
         public const string AttributeOnClassDiagnosticId = "MC0001";
+
+        /// <summary>
+        /// The id of the diagnostic for a time span that is not a positive TimeSpan (MC0004).
+        /// </summary>
         public const string InvalidTimeSpanDiagnosticId = "MC0004";
 
         private const string Category = "Usage";
@@ -46,8 +53,10 @@ namespace MethodCache.Analyzers
 
         private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout" };
 
+        /// <inheritdoc />
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule);
 
+        /// <inheritdoc />
         public override void Initialize(AnalysisContext context)
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

@@ -29,6 +29,7 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
     private const byte KeyProviderFrame = 0x01;
     private const byte SerializedFrame = 0x02;
 
+    /// <inheritdoc />
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     {
         ArgumentNullException.ThrowIfNull(methodName);

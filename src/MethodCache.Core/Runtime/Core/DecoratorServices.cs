@@ -15,6 +15,13 @@ namespace MethodCache.Infrastructure
     {
         private readonly ConcurrentDictionary<Type, object> _sites = new();
 
+        /// <summary>
+        /// Creates the services a generated decorator takes in its constructor. Public only for generated code.
+        /// </summary>
+        /// <param name="cacheManager">The cache that stores method results.</param>
+        /// <param name="policyRegistry">Resolves each method's cache policy.</param>
+        /// <param name="keyGenerator">Builds cache keys from method arguments.</param>
+        /// <param name="metricsProvider">Receives hit, miss, error and latency reports; optional.</param>
         public DecoratorServices(
             ICacheManager cacheManager,
             IPolicyRegistry policyRegistry,
@@ -42,12 +49,16 @@ namespace MethodCache.Infrastructure
                 provider.GetService<ICacheMetricsProvider>());
         }
 
+        /// <summary>The cache that stores method results.</summary>
         public ICacheManager CacheManager { get; }
 
+        /// <summary>Resolves each method's cache policy.</summary>
         public IPolicyRegistry PolicyRegistry { get; }
 
+        /// <summary>Builds cache keys from method arguments.</summary>
         public ICacheKeyGenerator KeyGenerator { get; }
 
+        /// <summary>Receives hit, miss, error and latency reports; null when none is registered.</summary>
         public ICacheMetricsProvider? MetricsProvider { get; }
 
         /// <summary>

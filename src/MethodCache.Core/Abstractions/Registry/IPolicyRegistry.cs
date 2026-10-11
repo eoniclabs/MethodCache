@@ -3,12 +3,29 @@ using System.Threading;
 
 namespace MethodCache.Policies;
 
+/// <summary>
+/// Synchronous access to the effective, merged cache policy of each method.
+/// </summary>
 public interface IPolicyRegistry
 {
+    /// <summary>
+    /// Returns the effective policy for a method; a method without any policy gets an empty one.
+    /// </summary>
+    /// <param name="methodId">The method identifier.</param>
+    /// <returns>The resolved policy and the contributions that built it.</returns>
     PolicyResolutionResult GetPolicy(string methodId);
 
+    /// <summary>
+    /// Returns the effective policy of every method that has one.
+    /// </summary>
+    /// <returns>One result per method.</returns>
     IReadOnlyCollection<PolicyResolutionResult> GetAllPolicies();
 
+    /// <summary>
+    /// Streams a new result each time a method's effective policy changes.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the stream.</param>
+    /// <returns>The updated policies, as they change.</returns>
     IAsyncEnumerable<PolicyResolutionResult> WatchAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

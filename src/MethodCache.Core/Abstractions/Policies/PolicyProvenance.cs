@@ -4,13 +4,23 @@ using System.Collections.Generic;
 
 namespace MethodCache.Policies;
 
+/// <summary>
+/// The ordered, immutable list of <see cref="PolicyContribution"/> entries that built a policy.
+/// </summary>
 public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
 {
     private readonly PolicyContribution[] _buffer;
     private readonly int _count;
 
+    /// <summary>
+    /// A provenance with no contributions.
+    /// </summary>
     public static PolicyProvenance Empty { get; } = new PolicyProvenance(Array.Empty<PolicyContribution>(), 0);
 
+    /// <summary>
+    /// Creates a provenance holding a copy of the given contributions.
+    /// </summary>
+    /// <param name="contributions">The contributions, in the order they were applied; none may be null.</param>
     public PolicyProvenance(IReadOnlyList<PolicyContribution> contributions)
     {
         if (contributions is null)
@@ -41,8 +51,10 @@ public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
         _count = count;
     }
 
+    /// <inheritdoc />
     public int Count => _count;
 
+    /// <inheritdoc />
     public IEnumerator<PolicyContribution> GetEnumerator()
     {
         for (var i = 0; i < _count; i++)
@@ -53,6 +65,11 @@ public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    /// <summary>
+    /// Returns a new provenance with the contribution added at the end; this instance is left unchanged.
+    /// </summary>
+    /// <param name="contribution">The contribution to add.</param>
+    /// <returns>A new provenance including <paramref name="contribution"/>.</returns>
     public PolicyProvenance Append(PolicyContribution contribution)
     {
         if (contribution is null)

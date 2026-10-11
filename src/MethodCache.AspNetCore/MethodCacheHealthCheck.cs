@@ -10,11 +10,16 @@ public sealed class MethodCacheHealthCheck : IHealthCheck
 {
     private readonly ICacheAdministrator _admin;
 
+    /// <summary>
+    /// Creates the health check for the cache that <paramref name="admin"/> inspects.
+    /// </summary>
+    /// <param name="admin">The cache administrator registered by <c>AddMethodCache()</c>.</param>
     public MethodCacheHealthCheck(ICacheAdministrator admin)
     {
         _admin = admin ?? throw new ArgumentNullException(nameof(admin));
     }
 
+    /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try

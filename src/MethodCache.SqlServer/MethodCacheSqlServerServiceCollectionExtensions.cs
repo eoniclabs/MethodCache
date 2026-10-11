@@ -8,6 +8,9 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
+/// <summary>
+/// Registers SQL Server as MethodCache's distributed cache.
+/// </summary>
 public static class MethodCacheSqlServerServiceCollectionExtensions
 {
     /// <summary>
