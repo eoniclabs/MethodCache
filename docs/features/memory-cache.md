@@ -47,7 +47,11 @@ The weigher must be fast, thread-safe and return a non-negative value. Without o
 Without a weigher, `GetStatsAsync().MemoryUsage` is a rough estimate. Fast mode samples cached payloads, including
 current string, array and collection lengths; replacing a small byte array with a large one changes the estimate.
 It does not measure complete object graphs, shared references or the GC heap. Accurate mode uses serialized size
-as a proxy, and its intermediate fast estimates also sample payloads. Sampling uses a subset of entries.
+as a proxy, and its intermediate fast estimates also sample payloads. Sampling uses a reservoir sample in one pass, with no full-cache sort. `SamplingPercentage` sets the target
+fraction, capped by `SamplingMaxEntries` (default 1024). `SamplingRecalculationInterval` (default 100 statistics
+reads; 1 means every read) controls how often the sample is replaced. Between samples the previous average is
+scaled by the current entry count. Concurrent or reentrant reads during a calculation use the previous average
+or a fast estimate, so payload serialization does not block another statistics read.
 
 With a configured weigher, `MemoryUsage` reports the engine's total weight. This is the value used for the
 `MaxMemoryBytes` bound; the statistical estimate is not used to enforce that bound.

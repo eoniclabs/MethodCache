@@ -280,7 +280,8 @@ policy, and can invalidate by tag.
 The same operations are available in code through `ICacheAdministrator`.
 
 Memory statistics estimate cached payloads, including current string and array lengths. A configured weigher
-reports its total weight instead of that estimate.
+reports its total weight instead of that estimate. Sampling bounds serialization with `SamplingMaxEntries` and
+reuses estimates according to `SamplingRecalculationInterval`.
 
 ### Native AOT
 

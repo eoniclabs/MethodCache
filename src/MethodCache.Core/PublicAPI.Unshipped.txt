@@ -603,3 +603,7 @@ static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExte
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheDistributedCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.DistributedCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheDistributedCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Microsoft.Extensions.Caching.Distributed.IDistributedCache!>! cacheFactory, System.Action<MethodCache.DistributedCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheFromConfiguration(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName = "MethodCache") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+MethodCache.MethodCacheMemoryOptions.SamplingMaxEntries.get -> int
+MethodCache.MethodCacheMemoryOptions.SamplingMaxEntries.set -> void
+MethodCache.MethodCacheMemoryOptions.SamplingRecalculationInterval.get -> int
+MethodCache.MethodCacheMemoryOptions.SamplingRecalculationInterval.set -> void
