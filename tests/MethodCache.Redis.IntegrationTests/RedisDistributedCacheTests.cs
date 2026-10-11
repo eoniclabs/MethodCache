@@ -33,7 +33,7 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         }
     }
 
-    private ICacheManager CreateNode()
+    private async Task<ICacheManager> CreateNode()
     {
         var configuration = _redis.RequireConfiguration();
         var services = new ServiceCollection();
@@ -47,6 +47,12 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
 
         var provider = services.BuildServiceProvider();
         _nodes.Add(provider);
+
+        // Redis connects in the background and fails commands until it has, which would send the node's first
+        // calls to memory only; these tests are about two nodes that both reach Redis
+        var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
+        await WaitUntil(() => Task.FromResult(connection.IsConnected));
+
         return provider.GetRequiredService<ICacheManager>();
     }
 
@@ -68,8 +74,8 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     [SkippableFact]
     public async Task SecondInstance_ReadsTheValueTheFirstStored()
     {
-        var first = CreateNode();
-        var second = CreateNode();
+        var first = await CreateNode();
+        var second = await CreateNode();
 
         await Get(first, "key", "from first");
 
@@ -79,8 +85,8 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     [SkippableFact]
     public async Task TagInvalidation_ReachesTheOtherInstancesMemory()
     {
-        var first = CreateNode();
-        var second = CreateNode();
+        var first = await CreateNode();
+        var second = await CreateNode();
         await Get(first, "key", "v1", "users");
         (await Get(second, "key", "unused", "users")).Should().Be("v1");
 
@@ -92,8 +98,8 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     [SkippableFact]
     public async Task KeyInvalidation_ReachesTheOtherInstancesMemory()
     {
-        var first = CreateNode();
-        var second = CreateNode();
+        var first = await CreateNode();
+        var second = await CreateNode();
         await Get(first, "key", "v1");
         (await Get(second, "key", "unused")).Should().Be("v1");
 

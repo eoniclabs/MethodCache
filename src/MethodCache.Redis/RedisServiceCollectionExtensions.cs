@@ -1,9 +1,7 @@
 using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.Core.Storage.Abstractions;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using StackExchange.Redis;
 
 namespace MethodCache.Redis;
 
@@ -30,7 +28,9 @@ public static class RedisServiceCollectionExtensions
     /// <param name="configure">Configures the Redis connection and backplane</param>
     /// <returns>The service collection for chaining</returns>
     /// <remarks>
-    /// An <see cref="IConnectionMultiplexer"/> already registered is reused for both the cache and the backplane.
+    /// MethodCache keeps its own cache and, unless <see cref="RedisOptions.ConnectionMultiplexerFactory"/> is set,
+    /// its own connection, so the app's <c>IDistributedCache</c> and Redis settings are left alone. The connection
+    /// opens on first use, so startup never waits for Redis.
     /// </remarks>
     public static IServiceCollection AddMethodCacheRedis(this IServiceCollection services, Action<RedisOptions> configure)
     {
@@ -39,28 +39,21 @@ public static class RedisServiceCollectionExtensions
 
         var options = new RedisOptions();
         configure(options);
-
-        services.TryAddSingleton<IConnectionMultiplexer>(_ =>
+        ArgumentException.ThrowIfNullOrEmpty(options.KeyPrefix, nameof(RedisOptions.KeyPrefix));
+        if (options.ConnectionMultiplexerFactory == null)
         {
-            var configuration = ConfigurationOptions.Parse(options.Configuration);
-            // Keep retrying in the background instead of failing startup while Redis is unreachable, and fail
-            // commands at once while it is: a cache miss then runs the method instead of waiting for Redis
-            configuration.AbortOnConnectFail = false;
-            configuration.BacklogPolicy = BacklogPolicy.FailFast;
-            return ConnectionMultiplexer.Connect(configuration);
-        });
-
-        services.AddStackExchangeRedisCache(_ => { });
-        services.AddOptions<RedisCacheOptions>()
-            .Configure<IServiceProvider>((cacheOptions, provider) =>
-                cacheOptions.ConnectionMultiplexerFactory = () => Task.FromResult(provider.GetRequiredService<IConnectionMultiplexer>()));
-
-        if (options.EnableBackplane)
-        {
-            services.TryAddSingleton<IBackplane>(provider =>
-                new RedisBackplane(provider.GetRequiredService<IConnectionMultiplexer>(), options.BackplaneChannel));
+            ArgumentException.ThrowIfNullOrEmpty(options.Configuration, nameof(RedisOptions.Configuration));
         }
 
-        return services.AddMethodCacheDistributedCache(cacheOptions => cacheOptions.KeyPrefix = options.KeyPrefix);
+        services.TryAddSingleton(sp => new RedisConnection(options, sp));
+        if (options.EnableBackplane)
+        {
+            services.TryAddSingleton<IBackplane>(sp =>
+                new RedisBackplane(sp.GetRequiredService<RedisConnection>().GetAsync, options.EffectiveBackplaneChannel));
+        }
+
+        return services.AddMethodCacheDistributedCache(
+            static sp => new RedisDistributedCache(sp.GetRequiredService<RedisConnection>()),
+            cacheOptions => cacheOptions.KeyPrefix = options.KeyPrefix);
     }
 }
