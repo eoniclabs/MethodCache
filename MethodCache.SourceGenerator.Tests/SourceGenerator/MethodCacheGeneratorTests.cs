@@ -366,6 +366,9 @@ namespace TestApp
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
             // Task methods return the entry's completed task, so hits do not allocate
             AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(cacheKeyValue, out var cachedTask)");
+            // On .NET 9 and later the key is written to the stack, so a hit allocates no key string either
+            AssertContainsIgnoreWhitespace(decoratorSource, "cacheKeyBuilder.AppendPart(id);");
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(cacheKeyBuilder.AsSpan(), out var cachedTask)");
             AssertContainsIgnoreWhitespace(decoratorSource, "return cachedTask;");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
@@ -672,6 +675,9 @@ namespace TestApp
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
             // Task methods return the entry's completed task, so hits do not allocate
             AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(cacheKeyValue, out var cachedTask)");
+            // On .NET 9 and later the key is written to the stack, so a hit allocates no key string either
+            AssertContainsIgnoreWhitespace(decoratorSource, "cacheKeyBuilder.AppendPart(id);");
+            AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(cacheKeyBuilder.AsSpan(), out var cachedTask)");
             AssertContainsIgnoreWhitespace(decoratorSource, "return cachedTask;");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.

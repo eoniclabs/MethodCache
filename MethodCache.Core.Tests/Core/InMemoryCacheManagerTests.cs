@@ -29,6 +29,56 @@ public class InMemoryCacheManagerTests
     }
 
     [Fact]
+    public async Task SpanLookups_FindTheEntryStoredUnderTheSameKey()
+    {
+        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var policy = CacheRuntimePolicy.Empty("MethodSpan") with { Duration = TimeSpan.FromMinutes(1) };
+        await manager.GetOrCreateFastAsync("Svc.Get:42", "MethodSpan", () => Task.FromResult("value"), policy);
+        manager.TryGetFastTask<string>("Svc.Get:42", out var stringHit).Should().BeTrue();
+
+        var key = "xSvc.Get:42x".AsSpan(1, 10);
+        manager.TryGetFastTask<string>(key, out var task).Should().BeTrue();
+        task.Should().BeSameAs(stringHit);
+        manager.TryGetFast<string>(key, out var value).Should().BeTrue();
+        value.Should().Be("value");
+
+        manager.TryGetFast<string>("Svc.Get:43".AsSpan(), out _).Should().BeFalse();
+        manager.TryGetFastTask<string>("Svc.Get:4".AsSpan(), out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SpanLookup_DoesNotAllocateOnAHit()
+    {
+        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var policy = CacheRuntimePolicy.Empty("MethodSpan") with { Duration = TimeSpan.FromMinutes(1) };
+        await manager.GetOrCreateFastAsync("Svc.Get:42", "MethodSpan", () => Task.FromResult("value"), policy);
+
+        MeasureHits(manager).Should().Be(0);
+    }
+
+    private static long MeasureHits(InMemoryCacheManager manager)
+    {
+        Span<char> buffer = stackalloc char[MethodCacheKeyBuilder.StackBufferSize];
+        Lookup(manager, buffer).Should().BeTrue(); // warm up
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 100; i++)
+        {
+            Lookup(manager, buffer);
+        }
+
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+
+        static bool Lookup(InMemoryCacheManager manager, Span<char> buffer)
+        {
+            var key = new MethodCacheKeyBuilder(buffer);
+            key.Append("Svc.Get");
+            key.AppendPart(42);
+            return manager.TryGetFastTask<string>(key.AsSpan(), out _);
+        }
+    }
+
+    [Fact]
     public async Task GetOrCreateAsync_WithDefaultValueTypeResult_ExecutesFactoryOnMiss()
     {
         var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());

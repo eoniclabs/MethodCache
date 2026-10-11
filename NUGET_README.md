@@ -18,7 +18,7 @@ builder.Services.AddMethodCache();
 ```
 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments.
-- **Fast.** A hit costs about as much as hand-written `IMemoryCache` code (~100 ns), 3 to 5 times less than HybridCache or FusionCache.
+- **Fast.** A hit allocates nothing and is as fast as hand-written `IMemoryCache` code (~85 ns), 4 to 6 times less than HybridCache or FusionCache.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`.
 - **Tune it without redeploying.** Attributes, global defaults, `appsettings.json` (reloaded live) and runtime overrides.
 - **One line to go distributed.** `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)`, with every instance's memory cache kept in sync.

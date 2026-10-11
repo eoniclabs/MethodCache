@@ -556,3 +556,33 @@ static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Part(ushort value)
 static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Part<TEnum>(TEnum value) -> string!
 static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Pattern(System.Type! serviceType, string! methodName, int? version = null) -> string!
 static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.Prefix(System.Type! serviceType, string! methodName, int? version = null) -> string!
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.MethodCacheKeyBuilder() -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.MethodCacheKeyBuilder(System.Span<char> initialBuffer) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.Append(string! value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendNullPart() -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(bool value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(byte value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(char value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(decimal value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(double value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(float value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(int value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(long value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(sbyte value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(short value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(string? value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(System.DateTime value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(System.DateTimeOffset value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(System.Guid value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(uint value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(ulong value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart(ushort value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AppendPart<TEnum>(TEnum value) -> void
+MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.AsSpan() -> System.ReadOnlySpan<char>
+override MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.ToString() -> string!
+const MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeyBuilder.StackBufferSize = 256 -> int
+MethodCache.Core.Runtime.ICacheManager.TryGetFast<T>(System.ReadOnlySpan<char> cacheKey, out T? value) -> bool
+MethodCache.Core.Runtime.ICacheManager.TryGetFastTask<T>(System.ReadOnlySpan<char> cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
+MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetFast<T>(System.ReadOnlySpan<char> cacheKey, out T? value) -> bool
+MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetFastTask<T>(System.ReadOnlySpan<char> cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
