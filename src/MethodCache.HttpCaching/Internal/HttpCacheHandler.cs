@@ -80,7 +80,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
 
         var freshness = new FreshnessCalculator(options, _timeProvider);
-        var cacheKey = HttpCacheKeys.ForRequest(_state.Name, request, options);
+        var cacheKey = HttpCacheKeys.ForRequest(_state.Name, request);
         var cachedEntry = await GetCacheEntryAsync(request, cacheKey, cancellationToken).ConfigureAwait(false);
 
         if (cachedEntry != null && freshness.GetFreshnessLifetime(cachedEntry) is { } freshnessLifetime)
@@ -178,17 +178,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         AddSameOrigin(uris, target, response.Headers.Location);
         AddSameOrigin(uris, target, response.Content?.Headers.ContentLocation);
 
+        // Removing the URL entry orphans all of its variants (every caller, key header and Vary value) at once
         foreach (var uri in uris)
         {
             foreach (var method in options.CacheableMethods)
             {
-                using var probe = new HttpRequestMessage(method, uri);
-                foreach (var header in request.Headers)
-                {
-                    probe.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                }
-
-                await RemoveWithVariantsAsync(HttpCacheKeys.ForRequest(_state.Name, probe, options), cancellationToken).ConfigureAwait(false);
+                await _storage.RemoveAsync(HttpCacheKeys.ForUri(_state.Name, method, uri), cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -210,43 +205,18 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
-    private async ValueTask RemoveWithVariantsAsync(string baseKey, CancellationToken cancellationToken)
-    {
-        var existing = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
-        if (existing == null)
-        {
-            return;
-        }
-
-        await RemoveKeysAsync(existing.VariantKeys, cancellationToken).ConfigureAwait(false);
-        await _storage.RemoveAsync(baseKey, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async ValueTask RemoveKeysAsync(IEnumerable<string>? keys, CancellationToken cancellationToken)
-    {
-        if (keys == null)
-        {
-            return;
-        }
-
-        foreach (var key in keys)
-        {
-            await _storage.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
     /// <summary>
     /// RFC 9111 section 4.1: a stored response with <c>Vary</c> is only used for a request whose varying headers match.
     /// </summary>
     private async ValueTask<HttpCacheEntry?> GetCacheEntryAsync(HttpRequestMessage request, string baseKey, CancellationToken cancellationToken)
     {
         var entry = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
-        if (entry?.VaryHeaders is not { Length: > 0 } varyHeaders)
+        if (entry?.VariantGeneration is not { } generation)
         {
             return entry;
         }
 
-        var variantKey = HttpCacheKeys.ForVariant(baseKey, request, varyHeaders);
+        var variantKey = HttpCacheKeys.ForVariant(baseKey, generation, request, entry.VaryHeaders ?? []);
         return variantKey == null ? null : await _storage.GetAsync(variantKey, cancellationToken).ConfigureAwait(false);
     }
 
@@ -294,35 +264,39 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return;
         }
 
-        var previous = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
-
-        if (entry.VaryHeaders is not { Length: > 0 } varyHeaders)
+        var selectingHeaders = HttpCacheKeys.SelectingHeaders(options, entry.VaryHeaders);
+        if (selectingHeaders.Length == 0)
         {
-            await RemoveKeysAsync(previous?.VariantKeys, cancellationToken).ConfigureAwait(false);
-            await _storage.SetAsync(baseKey, entry with { VariantKeys = null }, timeToLive, cancellationToken).ConfigureAwait(false);
+            await _storage.SetAsync(baseKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        var variantKey = HttpCacheKeys.ForVariant(baseKey, request, varyHeaders);
+        // The URL entry holds no response, only the headers that select a variant and a generation that is part of
+        // every variant key. Reusing the current generation keeps the other variants reachable; a new URL entry (after
+        // an invalidation) starts a new generation, so variants cached before it are never served again.
+        var current = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
+        var generation = current?.VariantGeneration is { } existing && current.VaryHeaders is { } currentHeaders &&
+                         currentHeaders.SequenceEqual(selectingHeaders, StringComparer.OrdinalIgnoreCase)
+            ? existing
+            : Guid.NewGuid().ToString("N");
+
+        var variantKey = HttpCacheKeys.ForVariant(baseKey, generation, request, selectingHeaders);
         if (variantKey == null)
         {
             return;
         }
 
-        // The base entry keeps the variant list, oldest first, so it lives and dies with the cached URL
-        var maxVariants = Math.Max(1, options.MaxVariantsPerUrl);
-        var variants = previous?.VariantKeys?.Where(k => !string.Equals(k, variantKey, StringComparison.Ordinal)).ToList() ?? new List<string>();
-        variants.Add(variantKey);
-
-        if (variants.Count > maxVariants)
+        var urlEntry = new HttpCacheEntry
         {
-            var evicted = variants.GetRange(0, variants.Count - maxVariants);
-            variants.RemoveRange(0, evicted.Count);
-            await RemoveKeysAsync(evicted, cancellationToken).ConfigureAwait(false);
-        }
+            RequestUri = entry.RequestUri,
+            Method = entry.Method,
+            StoredAt = entry.StoredAt,
+            VaryHeaders = selectingHeaders,
+            VariantGeneration = generation
+        };
 
-        await _storage.SetAsync(variantKey, entry with { VariantKeys = null }, timeToLive, cancellationToken).ConfigureAwait(false);
-        await _storage.SetAsync(baseKey, entry with { VariantKeys = variants.ToArray() }, timeToLive, cancellationToken).ConfigureAwait(false);
+        await _storage.SetAsync(variantKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
+        await _storage.SetAsync(baseKey, urlEntry, timeToLive, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
