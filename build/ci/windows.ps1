@@ -24,8 +24,9 @@ $steps = @{
         @('restore', 'MethodCache.sln'),
         @('build', 'MethodCache.sln', '--configuration', 'Release', '--no-restore')
     )
+    # The leading comma keeps a one-command job a list of commands; PowerShell would flatten it otherwise
     unit = @(
-        @('test', 'MethodCache.sln', '--configuration', 'Release', '--no-build', '--filter', $withoutDocker)
+        , @('test', 'MethodCache.sln', '--configuration', 'Release', '--no-build', '--filter', $withoutDocker)
     )
 }
 
