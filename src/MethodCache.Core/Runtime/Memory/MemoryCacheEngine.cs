@@ -26,7 +26,9 @@ internal enum EngineEvictionMode
 /// <item>Reads are lock-free: a dictionary lookup plus a lossy offer into a striped read buffer.</item>
 /// <item>Writes update the dictionary immediately and enqueue a policy task.</item>
 /// <item>Policy work (reordering, admission, eviction, expiration) is batched in a maintenance step
-/// under a single lock that callers only ever try to take, so no caller waits on another.</item>
+/// under a single lock that callers normally only try to take, so no caller waits on another.</item>
+/// <item>Back-pressure: once more than <see cref="WriteBufferMaximum"/> inserts are waiting for maintenance, a writer
+/// waits for the lock and does the maintenance itself, so writers cannot outrun eviction. Readers never wait.</item>
 /// <item>Expiration uses a hierarchical timer wheel, so expired entries are found in O(1) without scanning.</item>
 /// </list>
 /// </remarks>
@@ -36,6 +38,12 @@ internal sealed class MemoryCacheEngine
     private const long DrainStarvationThresholdNanos = 1_000_000; // 1 ms
 
     private const long InitialSketchCapacity = 64;
+
+    /// <summary>
+    /// How many inserts may wait for maintenance before writers help with it, waiting for the lock if need be.
+    /// Bounds the entries stored but not yet seen by eviction to this plus two per concurrent writer.
+    /// </summary>
+    internal static readonly int WriteBufferMaximum = Math.Max(64, 16 * Environment.ProcessorCount);
 
     private enum WriteKind : byte
     {
@@ -79,6 +87,9 @@ internal sealed class MemoryCacheEngine
     private long _entryCount;
     private long _sketchCapacity = InitialSketchCapacity;
     private long _maintenanceScheduledAt;
+
+    // Inserts enqueued but not yet applied by maintenance; may dip below zero for a moment.
+    private long _pendingAdds;
 
     public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems)
     {
@@ -209,8 +220,7 @@ internal sealed class MemoryCacheEngine
             Retire(replaced);
         }
 
-        _writeBuffer.Enqueue(new WriteTask(node, WriteKind.Add));
-        AfterWrite();
+        EnqueueAdd(node);
     }
 
     /// <summary>
@@ -230,8 +240,7 @@ internal sealed class MemoryCacheEngine
         }
 
         Retire(expected);
-        _writeBuffer.Enqueue(new WriteTask(node, WriteKind.Add));
-        AfterWrite();
+        EnqueueAdd(node);
         return true;
     }
 
@@ -325,23 +334,47 @@ internal sealed class MemoryCacheEngine
         _writeBuffer.Enqueue(new WriteTask(node, WriteKind.Remove));
     }
 
-    private void AfterWrite()
+    private void EnqueueAdd(Node node)
+    {
+        _writeBuffer.Enqueue(new WriteTask(node, WriteKind.Add));
+
+        // Writers are outrunning maintenance: wait for the lock and help, so the inserts eviction has not seen yet
+        // (and the weight they add) stay bounded. Safe from deadlock: the lock holder only touches this engine's
+        // own concurrent collections and never waits on a caller.
+        AfterWrite(wait: Interlocked.Increment(ref _pendingAdds) > WriteBufferMaximum);
+    }
+
+    private void AfterWrite(bool wait = false)
     {
         // Every lock holder re-checks the queue after releasing, so a failed TryEnter never strands a write.
         do
         {
-            if (!Monitor.TryEnter(_evictionLock))
-            {
-                return;
-            }
-
+            var taken = false;
             try
             {
+                if (wait)
+                {
+                    Monitor.Enter(_evictionLock, ref taken);
+                    wait = false;
+                }
+                else
+                {
+                    Monitor.TryEnter(_evictionLock, ref taken);
+                }
+
+                if (!taken)
+                {
+                    return;
+                }
+
                 RunMaintenance();
             }
             finally
             {
-                Monitor.Exit(_evictionLock);
+                if (taken)
+                {
+                    Monitor.Exit(_evictionLock);
+                }
             }
         }
         while (!_writeBuffer.IsEmpty);
@@ -419,16 +452,30 @@ internal sealed class MemoryCacheEngine
     {
         _readBuffer.Drain(_onAccess);
 
+        long added = 0;
         while (_writeBuffer.TryDequeue(out var task))
         {
             if (task.Kind == WriteKind.Add)
             {
+                added++;
                 OnAdd(task.Node);
+
+                // Evict as the batch is applied, so the tracked weight never exceeds the maximum by more than one entry.
+                if (_totalWeight > _maximum)
+                {
+                    Evict();
+                }
             }
             else
             {
                 Unlink(task.Node);
             }
+        }
+
+        // Released only once the batch is applied, so writers arriving meanwhile wait instead of growing it.
+        if (added != 0)
+        {
+            Interlocked.Add(ref _pendingAdds, -added);
         }
 
         _timerWheel.Advance(_clock(), _onTimerExpired);
