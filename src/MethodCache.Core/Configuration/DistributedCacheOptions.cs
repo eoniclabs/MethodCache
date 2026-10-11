@@ -10,6 +10,9 @@ namespace MethodCache.Core.Configuration
         private string _keyPrefix = "methodcache:";
         private TimeSpan _tagCheckInterval = TimeSpan.FromSeconds(1);
         private TimeSpan _tagRetention = TimeSpan.FromDays(1);
+        private TimeSpan _operationTimeout = TimeSpan.FromSeconds(1);
+        private TimeSpan _circuitBreakerDuration = TimeSpan.FromSeconds(10);
+        private TimeSpan _clockSkewTolerance = TimeSpan.FromSeconds(2);
 
         /// <summary>
         /// Prefix for every key MethodCache writes to the distributed cache, so several applications can share it.
@@ -48,6 +51,53 @@ namespace MethodCache.Core.Configuration
                 if (value <= TimeSpan.Zero)
                     throw new ArgumentOutOfRangeException(nameof(TagRetention), value, "TagRetention must be greater than zero.");
                 _tagRetention = value;
+            }
+        }
+
+        /// <summary>
+        /// The longest a single distributed cache operation may take. A slower one is abandoned and counts as a
+        /// failure, so a hanging Redis or SQL Server never holds up a call for longer than this. Default 1 second.
+        /// </summary>
+        public TimeSpan OperationTimeout
+        {
+            get => _operationTimeout;
+            set
+            {
+                if (value <= TimeSpan.Zero)
+                    throw new ArgumentOutOfRangeException(nameof(OperationTimeout), value, "OperationTimeout must be greater than zero.");
+                _operationTimeout = value;
+            }
+        }
+
+        /// <summary>
+        /// How long MethodCache uses only its in-memory cache after a distributed cache operation fails or times
+        /// out. After that, one call tries the distributed cache again. Invalidations made meanwhile are retried at
+        /// this interval. Default 10 seconds.
+        /// </summary>
+        public TimeSpan CircuitBreakerDuration
+        {
+            get => _circuitBreakerDuration;
+            set
+            {
+                if (value <= TimeSpan.Zero)
+                    throw new ArgumentOutOfRangeException(nameof(CircuitBreakerDuration), value, "CircuitBreakerDuration must be greater than zero.");
+                _circuitBreakerDuration = value;
+            }
+        }
+
+        /// <summary>
+        /// How far apart the clocks of your servers may be. A tag invalidation also applies to entries another
+        /// server created up to this long after it, so a server whose clock runs ahead can't keep a stale entry
+        /// alive. Default 2 seconds.
+        /// </summary>
+        public TimeSpan ClockSkewTolerance
+        {
+            get => _clockSkewTolerance;
+            set
+            {
+                if (value < TimeSpan.Zero)
+                    throw new ArgumentOutOfRangeException(nameof(ClockSkewTolerance), value, "ClockSkewTolerance cannot be negative.");
+                _clockSkewTolerance = value;
             }
         }
     }
