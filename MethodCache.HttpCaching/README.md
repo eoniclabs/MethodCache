@@ -54,7 +54,7 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 | `MaxVariantsPerUrl` | 5 | `Vary` variants kept per URL |
 | `MaxResponseSize` | 10 MB | Larger responses are not cached |
 | `KeyHeaders` | empty | Request headers that are always part of the key, for APIs that vary on a header without sending `Vary` |
-| `CacheableMethods` | GET, HEAD | |
+| `CacheableMethods` | GET, HEAD | POST, PUT, PATCH and DELETE are never cached, even if added. |
 | `AddDiagnosticHeaders` | `false` | Adds `X-Cache`, `X-Cache-Age` and `X-Cache-TTL` |
 
 `must-revalidate` (and `proxy-revalidate` / `s-maxage` in a shared cache) always wins: such responses are never
@@ -69,4 +69,30 @@ is shared by all clients:
 builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1024 * 1024); // default 100 MB
 ```
 
-To store responses elsewhere, register your own `IHttpCacheStorage` before `AddHttpCaching()`.
+### Sharing responses between instances
+
+With several instances of your app, each one would otherwise fetch and revalidate on its own. Turn on
+`UseDistributedCache` and responses are kept in the registered `IDistributedCache` instead of memory, the same
+Redis or SQL Server that MethodCache uses:
+
+```csharp
+builder.Services.AddMethodCacheRedis("localhost:6379");
+builder.Services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
+```
+
+Now an ETag fetched by one instance is revalidated (and usually answered with a 304) by all of them, and a POST
+through one instance invalidates the cached GET for all of them. If the distributed cache is down, requests go
+straight to the origin. Apps that share one Redis or SQL Server should each set their own `KeyPrefix`
+(default `methodcache-http:`). `ClearAsync()` cannot clear a distributed cache; entries there expire on their own.
+
+To store responses somewhere else entirely, register your own `IHttpCacheStorage` before `AddHttpCaching()`.
+
+## Metrics
+
+Every request is counted on the `MethodCache` meter, so `AddMethodCacheInstrumentation()` from
+MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
+
+| Instrument | Tags |
+|---|---|
+| `methodcache.http.requests_total` | `client`, `outcome` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error` when the request threw) |
+| `methodcache.http.request_duration` (ms) | `client`, `outcome` |

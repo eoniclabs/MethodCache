@@ -36,9 +36,9 @@ public static class HttpCacheTestFactory
     }
 
     public static IHttpCacheStorage CreateInMemoryStorage(HttpCacheStorageOptions? storageOptions = null)
-        => new InMemoryHttpCacheStorage(
+        => new HttpCacheStore(
             Microsoft.Extensions.Options.Options.Create(storageOptions ?? new HttpCacheStorageOptions()),
-            NullLogger<InMemoryHttpCacheStorage>.Instance);
+            NullLogger<HttpCacheStore>.Instance);
 }
 
 /// <summary>A clock the test moves by hand.</summary>

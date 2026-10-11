@@ -77,6 +77,108 @@ public class HttpCachingRegistrationTests
         Assert.Equal("3", await client.GetStringAsync("items/1"));
     }
 
+    [Fact]
+    public async Task UseDistributedCache_SharesETagsBetweenInstances()
+    {
+        var distributed = new Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache(
+            Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
+        var origin = new ETagOrigin();
+
+        IHttpClientFactory CreateInstance()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(distributed);
+            services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
+            services.AddHttpClient("api").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => origin);
+            return services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
+        }
+
+        await CreateInstance().CreateClient("api").GetStringAsync("https://api.example.com/x");
+        var body = await CreateInstance().CreateClient("api").GetStringAsync("https://api.example.com/x");
+
+        Assert.Equal("payload", body);
+        Assert.Equal(2, origin.Requests);
+        Assert.Equal(1, origin.NotModified);
+    }
+
+    [Fact]
+    public void UseDistributedCache_WithoutADistributedCache_ExplainsWhatIsMissing()
+    {
+        var services = new ServiceCollection();
+        services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
+        services.AddHttpClient("api").AddHttpCaching();
+
+        var error = Assert.Throws<InvalidOperationException>(() => services.BuildServiceProvider().GetRequiredService<IHttpCacheStorage>());
+        Assert.Contains("IDistributedCache", error.Message);
+    }
+
+    [Fact]
+    public async Task Requests_AreCountedOnTheMethodCacheMeter()
+    {
+        var outcomes = new List<string>();
+        using var listener = new System.Diagnostics.Metrics.MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "MethodCache" && instrument.Name == "methodcache.http.requests_total")
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == "outcome")
+                {
+                    lock (outcomes)
+                    {
+                        outcomes.Add((string)tag.Value!);
+                    }
+                }
+            }
+        });
+        listener.Start();
+
+        var services = new ServiceCollection();
+        services.AddHttpClient("metered").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => new CountingOrigin());
+        services.AddHttpClient("down").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => new FailingOrigin());
+        var factory = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
+        var client = factory.CreateClient("metered");
+        await client.GetStringAsync("https://api.example.com/metered");
+        await client.GetStringAsync("https://api.example.com/metered");
+        await Assert.ThrowsAsync<HttpRequestException>(() => factory.CreateClient("down").GetStringAsync("https://api.example.com/down"));
+
+        Assert.Contains("miss", outcomes);
+        Assert.Contains("hit", outcomes);
+        Assert.Contains("error", outcomes);
+    }
+
+    private sealed class FailingOrigin : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => throw new HttpRequestException("origin down");
+    }
+
+    private sealed class ETagOrigin : HttpMessageHandler
+    {
+        public int Requests;
+        public int NotModified;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Requests);
+            if (request.Headers.IfNoneMatch.Any(t => t.Tag == "\"v1\""))
+            {
+                Interlocked.Increment(ref NotModified);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified));
+            }
+
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("payload") };
+            response.Headers.ETag = new EntityTagHeaderValue("\"v1\"");
+            return Task.FromResult(response);
+        }
+    }
+
     private sealed class CountingOrigin : HttpMessageHandler
     {
         private int _requests;

@@ -184,6 +184,7 @@ public class TestHttpMessageHandler : HttpMessageHandler
     public int RequestCount => _requests.Count;
     public IReadOnlyList<HttpRequestMessage> Requests => _requests;
     public bool ShouldThrowException { get; set; }
+    public Exception? ExceptionToThrow { get; set; }
 
     public void SetResponse(HttpResponseMessage response) => _responses.Enqueue(response);
 
@@ -202,6 +203,11 @@ public class TestHttpMessageHandler : HttpMessageHandler
         if (ShouldThrowException)
         {
             throw new HttpRequestException("Simulated network error");
+        }
+
+        if (ExceptionToThrow != null)
+        {
+            throw ExceptionToThrow;
         }
 
         if (_responses.Count == 0)
