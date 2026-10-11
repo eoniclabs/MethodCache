@@ -24,14 +24,19 @@ pages is compiled and tested in CI.
 - [Distributed cache](features/distributed-cache.md): Redis, SQL Server or any `IDistributedCache`.
 - [Monitoring](features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
-- [Native AOT](features/native-aot.md)
-- [Testing](features/testing.md)
+- [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
+- [Testing](features/testing.md): test with caching on, or turn it off.
+
+## For coding agents
+
+- [Agent instructions](ai/methodcache.md): rules to copy into Copilot, Cursor or Claude Code instructions.
+- [llms.txt](../llms.txt) and [llms-full.txt](../llms-full.txt): these docs for language models, as an index and in one file.
 
 ## When something is wrong
 
 - [Troubleshooting](troubleshooting.md): a method that isn't cached, stale data, keys you didn't expect.
 - [Build diagnostics](user-guide/DIAGNOSTICS.md): every `MC` and `MCG` warning and error.
-- [Migrating from IMemoryCache](migration-from-imemorycache.md)
+- [Migrating from IMemoryCache](migration-from-imemorycache.md): replace hand-written cache-aside code.
 
 ## Packages
 
