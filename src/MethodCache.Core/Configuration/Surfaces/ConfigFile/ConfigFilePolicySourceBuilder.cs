@@ -33,6 +33,9 @@ internal static class ConfigFilePolicySourceBuilder
 
         // Defaults reach every cached method, including ones configured only with [Cache], whose own values win
         var defaults = ParseSection(root.GetSection("Defaults"));
+
+        // "FailSafe": { "Duration", "Timeout", "RetryAfter" } turns fail-safe on for every cached method
+        defaults.Apply(ParseFailSafeBlock(root.GetSection("FailSafe")), overwriteExisting: false);
         if (defaults.HasChanges)
         {
             descriptors.Add(defaults.Build(MethodIds.AllMethods));
@@ -98,6 +101,23 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithRefreshAhead(refresh);
         }
 
+        if (ReadValue(section, "FailSafe") is { } failSafe)
+        {
+            builder.WithFailSafe(string.Equals(failSafe, "off", StringComparison.OrdinalIgnoreCase)
+                ? TimeSpan.Zero
+                : ReadTimeSpan(section, "FailSafe"));
+        }
+
+        if (ReadTimeSpan(section, "FailSafeTimeout") is { } failSafeTimeout)
+        {
+            builder.WithFailSafeTimeout(failSafeTimeout);
+        }
+
+        if (ReadTimeSpan(section, "FailSafeRetryAfter") is { } failSafeRetryAfter)
+        {
+            builder.WithFailSafeRetryAfter(failSafeRetryAfter);
+        }
+
         var groupValue = section["Group"] ?? section["group"];
         if (!string.IsNullOrWhiteSpace(groupValue))
         {
@@ -119,6 +139,34 @@ internal static class ConfigFilePolicySourceBuilder
                     builder.AddMetadata(child.Key, child.Value);
                 }
             }
+        }
+
+        return builder;
+    }
+
+    private static CachePolicyBuilder ParseFailSafeBlock(IConfigurationSection section)
+    {
+        var builder = new CachePolicyBuilder();
+        if (!section.Exists())
+        {
+            return builder;
+        }
+
+        if (ReadTimeSpan(section, "Duration") is not { } duration)
+        {
+            throw new InvalidOperationException($"MethodCache configuration '{section.Path}' needs a 'Duration', for example \"01:00:00\".");
+        }
+
+        builder.WithFailSafe(duration);
+
+        if (ReadTimeSpan(section, "Timeout") is { } timeout)
+        {
+            builder.WithFailSafeTimeout(timeout);
+        }
+
+        if (ReadTimeSpan(section, "RetryAfter") is { } retryAfter)
+        {
+            builder.WithFailSafeRetryAfter(retryAfter);
         }
 
         return builder;

@@ -148,6 +148,8 @@ public class Generated
         [InlineData("Duration", "5 minutes")]
         [InlineData("SlidingExpiration", "00:00:00")]
         [InlineData("RefreshAhead", "-00:01:00")]
+        [InlineData("FailSafe", "1 hour")]
+        [InlineData("FailSafeTimeout", "00:00:00")]
         public async Task CacheWithInvalidTimeSpan_ReportsMC0004(string property, string value)
         {
             var source = $@"
@@ -163,6 +165,24 @@ public interface IService
             Assert.Equal(MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId, diagnostic.Id);
             Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
             Assert.Equal($"{property} = \"{value}\" is not a positive time span; use a value such as \"00:05:00\"", diagnostic.GetMessage());
+        }
+
+        [Theory]
+        [InlineData("off")]
+        [InlineData("OFF")]
+        [InlineData("01:00:00")]
+        public async Task CacheWithValidFailSafe_ReportsNothing(string value)
+        {
+            var source = $@"
+using MethodCache.Core;
+
+public interface IService
+{{
+    [Cache(FailSafe = ""{value}"", FailSafeTimeout = ""00:00:00.200"")]
+    string Get(int id);
+}}";
+
+            Assert.Empty(await AnalyzeAsync(source));
         }
 
         [Theory]

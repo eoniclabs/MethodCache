@@ -476,6 +476,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 TimeSpan? refreshAhead = null;
                 Func<object?, bool>? cacheWhen = null;
                 var cacheWhenSet = false;
+                TimeSpan? failSafe = null;
+                TimeSpan? failSafeTimeout = null;
+                TimeSpan? failSafeRetryAfter = null;
                 int? version = null;
                 List<PolicyContribution>? contributions = null;
 
@@ -510,6 +513,21 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                         cacheWhenSet = true;
                     }
 
+                    if (failSafe == null && fields.HasFlag(CachePolicyFields.FailSafe))
+                    {
+                        failSafe = policy.FailSafe;
+                    }
+
+                    if (failSafeTimeout == null && fields.HasFlag(CachePolicyFields.FailSafeTimeout))
+                    {
+                        failSafeTimeout = policy.FailSafeTimeout;
+                    }
+
+                    if (failSafeRetryAfter == null && fields.HasFlag(CachePolicyFields.FailSafeRetryAfter))
+                    {
+                        failSafeRetryAfter = policy.FailSafeRetryAfter;
+                    }
+
                     if (version == null && fields.HasFlag(CachePolicyFields.Version))
                     {
                         version = policy.Version;
@@ -529,6 +547,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     SlidingExpiration = slidingExpiration,
                     RefreshAhead = refreshAhead,
                     CacheWhen = cacheWhen,
+                    FailSafe = failSafe,
+                    FailSafeTimeout = failSafeTimeout,
+                    FailSafeRetryAfter = failSafeRetryAfter,
                     Version = version,
                     Metadata = metadata,
                     Provenance = contributions is { Count: > 0 } ? new PolicyProvenance(contributions) : PolicyProvenance.Empty

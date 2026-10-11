@@ -189,6 +189,20 @@ namespace MethodCache.SourceGenerator
                 AddTimeSpan(definition, cacheAttr, "Duration");
                 AddTimeSpan(definition, cacheAttr, "SlidingExpiration");
                 AddTimeSpan(definition, cacheAttr, "RefreshAhead");
+                AddTimeSpan(definition, cacheAttr, "FailSafeTimeout");
+
+                if (TryGetNamedArgument(cacheAttr, "FailSafe", out var failSafeArg) && failSafeArg.Value is string failSafeText)
+                {
+                    if (string.Equals(failSafeText, "off", StringComparison.OrdinalIgnoreCase))
+                    {
+                        definition.PolicyStatements.Add("policy = policy with { FailSafe = System.TimeSpan.Zero };");
+                        definition.PolicyStatements.Add("fields |= CachePolicyFields.FailSafe;");
+                    }
+                    else
+                    {
+                        AddTimeSpan(definition, cacheAttr, "FailSafe");
+                    }
+                }
 
                 if (TryGetNamedArgument(cacheAttr, "Tags", out var tagsArg) && tagsArg.Kind == TypedConstantKind.Array)
                 {

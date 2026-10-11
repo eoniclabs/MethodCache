@@ -80,6 +80,30 @@ namespace MethodCache.Core
         public string? RefreshAhead { get; set; }
 
         /// <summary>
+        /// Gets or sets how long an expired value is kept and returned when calling the method again throws, as a
+        /// TimeSpan string, or <c>"off"</c> for a method that must never return old data when fail-safe is on for all
+        /// methods. Unset uses the group or the central setting (<c>config.FailSafe(...)</c>).
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// [Cache(Duration = "00:05:00", FailSafe = "01:00:00")]  // Up to an hour-old value if the database is down
+        /// [Cache(FailSafe = "off")]                              // An account balance: an error beats an old value
+        /// </code>
+        /// </example>
+        public string? FailSafe { get; set; }
+
+        /// <summary>
+        /// Gets or sets, as a TimeSpan string, how long the caller waits for the method when a fail-safe value exists.
+        /// A slower call returns the fail-safe value and finishes in the background, updating the cache.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// [Cache(Duration = "00:05:00", FailSafe = "01:00:00", FailSafeTimeout = "00:00:00.200")]
+        /// </code>
+        /// </example>
+        public string? FailSafeTimeout { get; set; }
+
+        /// <summary>
         /// Gets or sets tags for cache entry categorization and bulk invalidation.
         /// Tags enable invalidating multiple related cache entries in a single operation.
         /// </summary>

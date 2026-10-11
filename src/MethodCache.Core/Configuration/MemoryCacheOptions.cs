@@ -97,44 +97,6 @@ namespace MethodCache.Core.Configuration
         /// </summary>
         public bool CacheNullValues { get; set; } = true;
 
-        /// <summary>
-        /// When true, expired values are kept for <see cref="FailSafeMaxDuration"/> and returned if refreshing
-        /// them throws, so a failing dependency degrades to slightly stale data instead of errors. Default false.
-        /// </summary>
-        public bool EnableFailSafe { get; set; }
-
-        private TimeSpan _failSafeMaxDuration = TimeSpan.FromHours(1);
-
-        /// <summary>
-        /// How long an expired value is kept as a fail-safe fallback. Default 1 hour.
-        /// </summary>
-        public TimeSpan FailSafeMaxDuration
-        {
-            get => _failSafeMaxDuration;
-            set
-            {
-                if (value <= TimeSpan.Zero)
-                    throw new ArgumentOutOfRangeException(nameof(FailSafeMaxDuration), value, "FailSafeMaxDuration must be greater than zero.");
-                _failSafeMaxDuration = value;
-            }
-        }
-
-        private TimeSpan _failSafeThrottleDuration = TimeSpan.FromSeconds(30);
-
-        /// <summary>
-        /// After a fail-safe fallback, how long the stale value is served before the factory is tried again. Default 30 seconds.
-        /// </summary>
-        public TimeSpan FailSafeThrottleDuration
-        {
-            get => _failSafeThrottleDuration;
-            set
-            {
-                if (value <= TimeSpan.Zero)
-                    throw new ArgumentOutOfRangeException(nameof(FailSafeThrottleDuration), value, "FailSafeThrottleDuration must be greater than zero.");
-                _failSafeThrottleDuration = value;
-            }
-        }
-
         private TimeSpan _jitterMaxDuration = TimeSpan.Zero;
 
         /// <summary>

@@ -34,6 +34,8 @@ public class InMemoryCacheEngineTests
     private static CacheRuntimePolicy Policy(string method = "M", TimeSpan? duration = null) =>
         CacheRuntimePolicy.Empty(method) with { Duration = duration ?? OneMinute };
 
+    private static CacheRuntimePolicy FailSafePolicy() => Policy() with { FailSafe = TimeSpan.FromHours(1) };
+
     private static async Task WaitUntilAsync(Func<Task<bool>> condition)
     {
         var deadline = DateTime.UtcNow.AddSeconds(5);
@@ -221,8 +223,8 @@ public class InMemoryCacheEngineTests
     [Fact]
     public async Task CacheWhen_RejectedLoad_KeepsTheFailSafeValue()
     {
-        var manager = CreateManager(o => o.EnableFailSafe = true);
-        var policy = Policy() with { CacheWhen = v => v is not "" };
+        var manager = CreateManager();
+        var policy = FailSafePolicy() with { CacheWhen = v => v is not "" };
 
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), policy);
         _time.Advance(TimeSpan.FromMinutes(2));
@@ -233,19 +235,88 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
-    public async Task FailSafe_ReturnsStaleValue_WhenFactoryThrows()
+    public async Task FailSafeTimeout_ServesTheStaleValue_AndFinishesTheLoadInTheBackground()
     {
-        var manager = CreateManager(o => o.EnableFailSafe = true);
+        var manager = CreateManager();
+        var policy = FailSafePolicy() with { FailSafeTimeout = TimeSpan.FromMilliseconds(200) };
+        var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), Policy());
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), policy);
         _time.Advance(TimeSpan.FromMinutes(2));
 
-        var result = await manager.GetOrCreateFastAsync<string>("key", "M", () => throw new TimeoutException(), Policy());
+        var call = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, policy);
+        var joined = manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("unused"), policy);
+        call.IsCompleted.Should().BeFalse("the timeout has not passed yet");
+        joined.IsCompleted.Should().BeFalse();
+        _time.Advance(TimeSpan.FromMilliseconds(200));
+        (await call).Should().Be("stale");
+        (await joined).Should().Be("stale", "a caller that joined the slow load gets the same timeout");
+
+        // Callers meanwhile get the stale value without starting another load.
+        var started = false;
+        (await manager.GetOrCreateFastAsync("key", "M", () => { started = true; return Task.FromResult("other"); }, policy)).Should().Be("stale");
+        started.Should().BeFalse();
+
+        gate.SetResult("fresh");
+        await WaitUntilAsync(async () => await manager.GetAsync<string>("key") == "fresh");
+    }
+
+    [Fact]
+    public async Task FailSafeTimeout_WaitsForTheLoad_WhenThereIsNoStaleValue()
+    {
+        var manager = CreateManager();
+        var policy = FailSafePolicy() with { FailSafeTimeout = TimeSpan.FromMilliseconds(200) };
+        var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var call = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, policy);
+        _time.Advance(TimeSpan.FromSeconds(5));
+        call.IsCompleted.Should().BeFalse();
+
+        gate.SetResult("first");
+        (await call).Should().Be("first");
+    }
+
+    [Fact]
+    public async Task FailSafe_Zero_TurnsItOff()
+    {
+        var manager = CreateManager();
+        var policy = Policy() with { FailSafe = TimeSpan.Zero };
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), policy);
+        _time.Advance(TimeSpan.FromMinutes(2));
+
+        await FluentActions.Awaiting(() => manager.GetOrCreateFastAsync<string>("key", "M", () => throw new TimeoutException(), policy))
+            .Should().ThrowAsync<TimeoutException>();
+    }
+
+    [Fact]
+    public async Task FailSafeRetryAfter_SetsHowLongTheStaleValueIsReused()
+    {
+        var manager = CreateManager();
+        var policy = FailSafePolicy() with { FailSafeRetryAfter = TimeSpan.FromSeconds(5) };
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), policy);
+        _time.Advance(TimeSpan.FromMinutes(2));
+        (await manager.GetOrCreateFastAsync<string>("key", "M", () => throw new TimeoutException(), policy)).Should().Be("stale");
+
+        _time.Advance(TimeSpan.FromSeconds(6));
+        (await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("fresh"), policy)).Should().Be("fresh");
+    }
+
+    [Fact]
+    public async Task FailSafe_ReturnsStaleValue_WhenFactoryThrows()
+    {
+        var manager = CreateManager();
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), FailSafePolicy());
+        _time.Advance(TimeSpan.FromMinutes(2));
+
+        var result = await manager.GetOrCreateFastAsync<string>("key", "M", () => throw new TimeoutException(), FailSafePolicy());
         result.Should().Be("stale");
 
         // Throttled: the stale value is served without retrying the factory for a while.
         var retried = false;
-        (await manager.GetOrCreateFastAsync("key", "M", () => { retried = true; return Task.FromResult("fresh"); }, Policy()))
+        (await manager.GetOrCreateFastAsync("key", "M", () => { retried = true; return Task.FromResult("fresh"); }, FailSafePolicy()))
             .Should().Be("stale");
         retried.Should().BeFalse();
     }
@@ -253,13 +324,13 @@ public class InMemoryCacheEngineTests
     [Fact]
     public async Task FailSafe_LeavesAWriteMadeDuringTheFailedLoadUntouched()
     {
-        var manager = CreateManager(o => o.EnableFailSafe = true);
+        var manager = CreateManager();
         var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), Policy());
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), FailSafePolicy());
         _time.Advance(TimeSpan.FromMinutes(2));
 
-        var load = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, Policy());
+        var load = manager.GetOrCreateFastAsync("key", "M", () => gate.Task, FailSafePolicy());
         await manager.SetAsync("key", "newer", TimeSpan.FromMinutes(10));
         gate.SetException(new TimeoutException());
 
@@ -273,8 +344,8 @@ public class InMemoryCacheEngineTests
     [Fact]
     public async Task FailSafe_AppliesToCallersJoiningAFailedBackgroundRefresh()
     {
-        var manager = CreateManager(o => o.EnableFailSafe = true);
-        var policy = Policy() with { RefreshAhead = TimeSpan.FromSeconds(10) };
+        var manager = CreateManager();
+        var policy = FailSafePolicy() with { RefreshAhead = TimeSpan.FromSeconds(10) };
         var gate = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), policy);

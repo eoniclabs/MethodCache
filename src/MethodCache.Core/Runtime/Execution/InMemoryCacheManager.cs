@@ -53,8 +53,7 @@ namespace MethodCache.Core.Runtime.Execution
 
         private readonly long _defaultDuration;
         private readonly long _maxDuration;
-        private readonly long _failSafeDuration;
-        private readonly long _failSafeThrottle;
+        private readonly TimeProvider _timeProvider;
         private readonly long _jitter;
         private readonly bool _highResolutionTiming;
         private readonly DistributedCacheLayer? _distributed;
@@ -87,8 +86,7 @@ namespace MethodCache.Core.Runtime.Execution
 
             _defaultDuration = ToNanos(_options.DefaultExpiration);
             _maxDuration = ToNanos(_options.MaxExpiration);
-            _failSafeDuration = _options.EnableFailSafe ? ToNanos(_options.FailSafeMaxDuration) : 0;
-            _failSafeThrottle = ToNanos(_options.FailSafeThrottleDuration);
+            _timeProvider = timeProvider ?? TimeProvider.System;
             _jitter = ToNanos(_options.JitterMaxDuration);
             _highResolutionTiming = timeProvider == null || ReferenceEquals(timeProvider, TimeProvider.System);
 
@@ -449,7 +447,7 @@ namespace MethodCache.Core.Runtime.Execution
             while (true)
             {
                 // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
-                previous = _failSafeDuration > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
+                previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
 
                 flight = new Flight(policy.Tags);
                 var existing = JoinOrStartFlight(key, flight);
@@ -462,7 +460,28 @@ namespace MethodCache.Core.Runtime.Execution
                 object? shared;
                 try
                 {
-                    shared = await existing.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    if (policy.FailSafeTimeout > 0 && previous != null)
+                    {
+                        // Like the caller that started the load, don't wait past the timeout when a fail-safe value exists
+                        try
+                        {
+                            shared = await existing.Task.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (TimeoutException)
+                        {
+                            if (TryServeStale<T>(previous, policy, out var stale))
+                            {
+                                RecordHit(methodName);
+                                return stale!;
+                            }
+
+                            shared = await existing.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                    else
+                    {
+                        shared = await existing.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 catch (OperationCanceledException) when (existing.CancelledByCaller && !cancellationToken.IsCancellationRequested)
                 {
@@ -485,6 +504,35 @@ namespace MethodCache.Core.Runtime.Execution
                 return await factory().ConfigureAwait(false);
             }
 
+            var load = RunLoadAsync(key, methodName, factory, policy, flight, previous, cancellationToken);
+            if (policy.FailSafeTimeout > 0 && previous != null && !load.IsCompleted)
+            {
+                try
+                {
+                    return await load.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider).ConfigureAwait(false);
+                }
+                catch (TimeoutException)
+                {
+                    // Too slow: this caller gets the fail-safe value now and the load finishes in the background,
+                    // storing its result (or serving the fail-safe value to callers that joined it) as usual.
+                    if (!flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
+                    {
+                        _ = load.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+                            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                        return stale!;
+                    }
+                }
+            }
+
+            return await load.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Runs the load this caller started for <paramref name="flight"/>: reads the distributed cache, else calls
+        /// the factory, stores the result, and completes the flight for callers that joined it.
+        /// </summary>
+        private async Task<T> RunLoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, Flight flight, Node? previous, CancellationToken cancellationToken)
+        {
             try
             {
                 if (_distributed != null)
@@ -529,7 +577,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 _metricsProvider.CacheError(methodName, ex.Message);
 
-                if (previous != null && !flight.Invalidated && TryServeStale<T>(previous, out var stale))
+                if (previous != null && !flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
                 {
                     flight.Complete(stale);
                     return stale!;
@@ -619,9 +667,9 @@ namespace MethodCache.Core.Runtime.Execution
                     // value, exactly as they would from a foreground load.
                     var now = _engine.Now;
                     T? stale = default;
-                    var served = _failSafeDuration > 0 && (node.IsLogicallyExpired(now)
+                    var served = policy.FailSafe > 0 && (node.IsLogicallyExpired(now)
                         // Joined callers get a stale value, so hold it for the throttle period like a foreground load.
-                        ? TryServeStale(node, out stale)
+                        ? TryServeStale(node, policy, out stale)
                         : !node.IsPhysicallyExpired(now) && TryRead(node, out stale));
 
                     if (served)
@@ -750,7 +798,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 CreatedAt = now,
                 LogicalExpiresAt = logicalExpiresAt,
-                PhysicalExpiresAt = logicalExpiresAt + _failSafeDuration,
+                PhysicalExpiresAt = logicalExpiresAt + policy.FailSafe,
                 AbsoluteExpiresAt = absoluteExpiresAt,
                 Tags = policy.Tags,
                 Policy = policy,
@@ -792,7 +840,7 @@ namespace MethodCache.Core.Runtime.Execution
                     if (extended > Volatile.Read(ref found.LogicalExpiresAt))
                     {
                         Volatile.Write(ref found.LogicalExpiresAt, extended);
-                        Volatile.Write(ref found.PhysicalExpiresAt, extended + _failSafeDuration);
+                        Volatile.Write(ref found.PhysicalExpiresAt, extended + policy.FailSafe);
                     }
                 }
 
@@ -802,15 +850,15 @@ namespace MethodCache.Core.Runtime.Execution
             return true;
         }
 
-        private bool TryServeStale<T>(Node node, out T? value)
+        private bool TryServeStale<T>(Node node, EntryPolicy policy, out T? value)
         {
             var now = _engine.Now;
             if (!node.IsPhysicallyExpired(now) && TryRead(node, out value))
             {
                 // Serve the stale value for a short while before trying the factory again. Reads must not extend it
                 // with sliding expiration, or the factory would never be tried again.
-                Volatile.Write(ref node.AbsoluteExpiresAt, now + _failSafeThrottle);
-                Volatile.Write(ref node.LogicalExpiresAt, now + _failSafeThrottle);
+                Volatile.Write(ref node.AbsoluteExpiresAt, now + policy.FailSafeRetryAfter);
+                Volatile.Write(ref node.LogicalExpiresAt, now + policy.FailSafeRetryAfter);
                 Interlocked.Exchange(ref node.RefreshState, 0);
                 return true;
             }
@@ -988,6 +1036,8 @@ namespace MethodCache.Core.Runtime.Execution
         /// <summary>Converts to nanoseconds, saturating so that e.g. <see cref="TimeSpan.MaxValue"/> means "practically forever".</summary>
         private static long ToNanos(TimeSpan value) => value.Ticks >= MaxNanos / NanosPerTick ? MaxNanos : value.Ticks * NanosPerTick;
 
+        private static TimeSpan FromNanos(long nanos) => TimeSpan.FromTicks(nanos / NanosPerTick);
+
         /// <summary>
         /// Factory timings feed the load-latency metric, which needs sub-millisecond resolution. The default engine
         /// clock ticks in milliseconds, so with the system clock a high-resolution timestamp is used instead.
@@ -1045,10 +1095,22 @@ namespace MethodCache.Core.Runtime.Execution
 
             public Func<object?, bool>? CacheWhen { get; init; }
 
+            /// <summary>How long an expired value is kept as a fail-safe fallback; zero when fail-safe is off.</summary>
+            public long FailSafe { get; init; }
+
+            /// <summary>How long a caller waits for a reload when a fail-safe value exists; zero waits for it.</summary>
+            public long FailSafeTimeout { get; init; }
+
+            public long FailSafeRetryAfter { get; init; } = DefaultFailSafeRetryAfter;
+
             /// <summary>The policy this was built from. The weak table does not let this back-reference keep the key alive.</summary>
             public CacheRuntimePolicy? Source { get; init; }
 
             public bool NeedsReadCheck => Sliding > 0 || RefreshWindow > 0;
+
+            private const long DefaultFailSafeRetryAfter = 30_000_000_000; // 30 seconds in nanoseconds
+
+            private static long Positive(TimeSpan? value) => value is { } span && span > TimeSpan.Zero ? ToNanos(span) : 0;
 
             public static EntryPolicy From(CacheRuntimePolicy policy)
             {
@@ -1063,6 +1125,9 @@ namespace MethodCache.Core.Runtime.Execution
                     Sliding = policy.SlidingExpiration is { } sliding && sliding > TimeSpan.Zero ? ToNanos(sliding) : 0,
                     RefreshWindow = refreshWindow,
                     CacheWhen = policy.CacheWhen,
+                    FailSafe = Positive(policy.FailSafe),
+                    FailSafeTimeout = Positive(policy.FailSafeTimeout),
+                    FailSafeRetryAfter = Positive(policy.FailSafeRetryAfter) is > 0 and var retryAfter ? retryAfter : DefaultFailSafeRetryAfter,
                     Tags = policy.Tags.Count > 0 ? policy.Tags.Distinct(StringComparer.Ordinal).ToArray() : null
                 };
             }

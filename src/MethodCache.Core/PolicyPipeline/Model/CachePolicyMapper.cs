@@ -55,6 +55,21 @@ public static class CachePolicyMapper
             fields |= CachePolicyFields.CacheWhen;
         }
 
+        if (policy.FailSafe.HasValue)
+        {
+            fields |= CachePolicyFields.FailSafe;
+        }
+
+        if (policy.FailSafeTimeout.HasValue)
+        {
+            fields |= CachePolicyFields.FailSafeTimeout;
+        }
+
+        if (policy.FailSafeRetryAfter.HasValue)
+        {
+            fields |= CachePolicyFields.FailSafeRetryAfter;
+        }
+
         if (policy.Metadata.Count > 0)
         {
             fields |= CachePolicyFields.Metadata;

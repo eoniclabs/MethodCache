@@ -57,6 +57,21 @@ internal static class CachePolicyBuilderFactory
             builder.WithVersion(options.Version.Value);
         }
 
+        if (options.FailSafe.HasValue)
+        {
+            builder.WithFailSafe(options.FailSafe.Value);
+        }
+
+        if (options.FailSafeTimeout.HasValue)
+        {
+            builder.WithFailSafeTimeout(options.FailSafeTimeout.Value);
+        }
+
+        if (options.FailSafeRetryAfter.HasValue)
+        {
+            builder.WithFailSafeRetryAfter(options.FailSafeRetryAfter.Value);
+        }
+
         return builder;
     }
 
@@ -79,7 +94,7 @@ internal static class CachePolicyBuilderFactory
         {
             throw new InvalidOperationException(
                 $"{unsupported}() only applies to GetOrCreateAsync and cannot be configured for {target}. " +
-                "Configure duration, tags, sliding expiration, refresh-ahead and version here instead.");
+                "Configure duration, tags, sliding expiration, refresh-ahead, fail-safe and version here instead.");
         }
     }
 }

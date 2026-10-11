@@ -19,6 +19,13 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             return this;
         }
 
+        public IFluentMethodCacheConfiguration FailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
+        {
+            // Validate now, so a bad value fails at the call that set it
+            new CacheEntryOptions.Builder().FailSafe(duration, timeout, retryAfter);
+            return DefaultPolicy(options => options.FailSafe(duration, timeout, retryAfter));
+        }
+
         public IFluentServiceConfiguration<TService> ForService<TService>()
         {
             var serviceType = typeof(TService);

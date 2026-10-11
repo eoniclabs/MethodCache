@@ -139,7 +139,7 @@ The admin endpoints in `MethodCache.AspNetCore` (`POST /methodcache/invalidate` 
 
 ## Things to Keep in Mind
 
-- **Exceptions are not cached.** If the client throws, the exception propagates and the next call tries again. With `MemoryCacheOptions.EnableFailSafe`, the previous value is served instead while it is within `FailSafeMaxDuration`.
+- **Exceptions are not cached.** If the client throws, the exception propagates and the next call tries again. With fail-safe on (`config.FailSafe(...)` or `FailSafe = "01:00:00"` on the attribute), the previous value is served instead while it is within the fail-safe duration.
 - **Keys contain arguments.** Generated keys include the method's arguments (hashed when they are not simple values). Avoid caching methods whose arguments are secrets, or pass a non-secret identifier instead.
 - **Start with short durations** for a new integration, and lengthen them once you know how fresh the data must be.
 - **Share results between instances** with a distributed cache (`AddMethodCacheRedis`, `AddMethodCacheSqlServer` or `AddMethodCacheDistributedCache`) when every instance calls the same paid API.
