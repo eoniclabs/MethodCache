@@ -35,6 +35,9 @@ state="${METHODCACHE_CI_STATE:-$HOME/.cache/methodcache-ci}"
 timeout_seconds="${METHODCACHE_CI_TIMEOUT_SECONDS:-3600}"
 keep_runs_days="${METHODCACHE_CI_KEEP_RUNS_DAYS:-3}"
 
+# A server that stops answering ends the SSH session within two minutes instead of never
+ssh_options=(-o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+
 contexts=("MethodCache CI (Linux)" "MethodCache CI (Windows)" "MethodCache CI (macOS)")
 aggregate="MethodCache CI"
 
@@ -100,11 +103,11 @@ export METHODCACHE_CI_RUN_ID='$2' METHODCACHE_CI_CACHE=~/'$nimbus_root/cache'
 [ -e '$nimbus_lock' ] && export METHODCACHE_CI_SHARED_LOCK='$nimbus_lock'
 nice -n 10 build/ci/linux.sh
 SCRIPT
-  } | with_timeout "$timeout_seconds" ssh -o BatchMode=yes "$nimbus" bash -s > "$3/console.log" 2>&1
+  } | with_timeout "$timeout_seconds" ssh "${ssh_options[@]}" "$nimbus" bash -s > "$3/console.log" 2>&1
   local code=$?
   # The job logs come back whatever happened
-  ssh -o BatchMode=yes "$nimbus" "cd ~/'$nimbus_root/runs/$2/artifacts/ci' && tar -cf - *.log *.exit" < /dev/null 2> /dev/null \
-    | tar -xf - -C "$3" 2> /dev/null
+  with_timeout 300 ssh "${ssh_options[@]}" "$nimbus" "cd ~/'$nimbus_root/runs/$2/artifacts/ci' && tar -cf - *.log *.exit" \
+    < /dev/null 2> /dev/null | tar -xf - -C "$3" 2> /dev/null
   return "$code"
 }
 
@@ -160,7 +163,7 @@ SCRIPT
 $body"
   local encoded
   encoded=$(printf '%s' "$script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')
-  with_timeout "$timeout_seconds" ssh -o BatchMode=yes "$windows" "powershell -NoProfile -EncodedCommand $encoded" \
+  with_timeout "$timeout_seconds" ssh "${ssh_options[@]}" "$windows" "powershell -NoProfile -EncodedCommand $encoded" \
     < /dev/null > "$3/output.log" 2>&1
   local code=$?
   sed '/^@@methodcache-logs-begin@@/,/^@@methodcache-logs-end@@/d' "$3/output.log" > "$3/console.log"
@@ -303,7 +306,12 @@ $(excerpt_of "$3/$platform/$job.log")
 </details>"
     done
   done
-  gh api --silent "repos/$repo/issues/$1/comments" -f body="$body" || log "could not comment on PR #$1"
+  local attempt
+  for attempt in 1 2 3; do
+    gh api --silent "repos/$repo/issues/$1/comments" -f body="$body" && return 0
+    log "could not comment on PR #$1 (attempt $attempt)"
+    sleep $((attempt * 20))
+  done
 }
 
 if [ "${1:-}" = --pr ]; then
