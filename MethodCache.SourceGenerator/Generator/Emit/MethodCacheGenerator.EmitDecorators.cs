@@ -454,7 +454,8 @@ namespace MethodCache.SourceGenerator
 
             /// <summary>
             /// Emits the miss path as its own method. The factory lambda captures the arguments; in the cached method
-            /// itself the compiler would allocate that closure on entry, so every hit would pay for it.
+            /// itself the compiler would allocate that closure on entry, so every hit would pay for it. Its own
+            /// parameters are prefixed so they can't clash with the method's parameter names.
             /// </summary>
             private static void EmitLoader(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName)
             {
@@ -470,7 +471,7 @@ namespace MethodCache.SourceGenerator
                     _ => $"() => Task.FromResult({call})!"
                 };
 
-                sb.AppendLine($"        private Task<{type}> {LoaderName(method, safeFieldName)}(string cacheKeyValue, CacheRuntimePolicy policy{parameters})");
+                sb.AppendLine($"        private Task<{type}> {LoaderName(method, safeFieldName)}(string __cacheKey, CacheRuntimePolicy __policy{parameters})");
                 foreach (var tp in method.TypeParameters)
                 {
                     var constraints = BuildConstraints(tp);
@@ -480,7 +481,7 @@ namespace MethodCache.SourceGenerator
                     }
                 }
 
-                sb.AppendLine($"            => _cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _method_{safeFieldName}.Name, {factory}, policy);");
+                sb.AppendLine($"            => _cacheManager.GetOrCreateFastAsync<{type}>(__cacheKey, _method_{safeFieldName}.Name, {factory}, __policy);");
                 sb.AppendLine();
             }
 

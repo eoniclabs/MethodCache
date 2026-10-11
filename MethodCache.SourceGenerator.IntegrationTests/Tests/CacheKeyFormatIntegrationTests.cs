@@ -72,6 +72,9 @@ namespace KeyFormat
 
         [Cache(Duration = ""00:10:00"")]
         Task<string> RegionAsync(Region region);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<string> PolicyAsync(int policy);
     }
 
     public interface IOrderService
@@ -90,6 +93,7 @@ namespace KeyFormat
         public Task<int> SumAsync(Batch batch) { Calls++; return Task.FromResult(batch.Ids.Length); }
         public Task<string> RangeAsync(Range? range) { Calls++; return Task.FromResult(""range-"" + Calls); }
         public Task<string> RegionAsync(Region region) { Calls++; return Task.FromResult(""region-"" + Calls); }
+        public Task<string> PolicyAsync(int policy) { Calls++; return Task.FromResult(""policy-"" + policy); }
         public Task<string> PointAsync(Point point, Tenant tenant) { Calls++; return Task.FromResult(""point-"" + point.X + "","" + point.Y + ""-"" + tenant.Id); }
     }
 
@@ -152,6 +156,17 @@ namespace KeyFormat
         await Call<string>(users, "GetAsync", 3);
 
         Assert.Equal(2, (int)calls.GetValue(null)!);
+    }
+
+    [Fact]
+    public async Task ParametersNamedLikeGeneratedLocals_Compile()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var cache = provider.GetRequiredService<ICacheManager>();
+
+        Assert.Equal("policy-5", await Call<string>(users, "PolicyAsync", 5));
+        Assert.Equal("policy-5", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(assembly.GetType("KeyFormat.IUserService")!, "PolicyAsync", MethodCacheKeys.Part(5))));
     }
 
     [Theory]
