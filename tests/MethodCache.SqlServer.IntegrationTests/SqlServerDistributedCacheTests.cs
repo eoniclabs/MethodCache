@@ -132,6 +132,49 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     }
 
     [SkippableFact]
+    public async Task AnInvalidationThatCommitsAfterManyLaterOnes_StillArrives()
+    {
+        var first = await CreateNodeAsync();
+        var second = await CreateNodeAsync();
+        await Get(first, "key", "v1");
+
+        // Once the first write's own notice has passed, the second instance holds v1 in memory only
+        await Task.Delay(500);
+        (await Get(second, "key", "unused")).Should().Be("v1");
+        await ExecuteAsync($"DELETE FROM [{_schema}].[MethodCache];");
+
+        // A transaction takes 201 identity values, its invalidation first, and commits only after 500 later rows
+        // were read
+        await using var connection = new SqlConnection(_sqlServer.ConnectionString);
+        await connection.OpenAsync();
+        await using var transaction = connection.BeginTransaction();
+        await using (var insert = new SqlCommand(
+            $"""
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target]) VALUES ('other', 0, 'key');
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
+            SELECT TOP (200) 'other', 0, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            FROM sys.all_objects a CROSS JOIN sys.all_objects b;
+            """,
+            connection,
+            transaction))
+        {
+            await insert.ExecuteNonQueryAsync();
+        }
+
+        await ExecuteAsync($"""
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
+            SELECT TOP (500) 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            FROM sys.all_objects a CROSS JOIN sys.all_objects b;
+            """);
+        await Task.Delay(500);
+        (await Get(second, "key", "unused")).Should().Be("v1");
+
+        await transaction.CommitAsync();
+
+        await WaitUntil(async () => await Get(second, "key", "v2") == "v2");
+    }
+
+    [SkippableFact]
     public async Task Cleanup_RemovesEveryExpiredInvalidation()
     {
         await CreateNodeAsync();

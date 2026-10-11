@@ -24,16 +24,16 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     private const int CleanupBatchSize = 5000;
     private const int MaxCleanupBatches = 20;
 
-    // A larger jump is SQL Server's identity cache skipping values after a restart, not rows still committing
-    private const int MaxGapRange = 100;
-    private const int MaxGaps = 1000;
+    // Identity values skipped by rows that may still commit, watched for a few seconds. Ranges, so a large jump
+    // (many concurrent inserts, or the identity cache after a restart) costs one range query, not one id each.
+    private const int MaxGapRanges = 100;
     private static readonly TimeSpan GapLifetime = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan FirstPollMargin = TimeSpan.FromSeconds(1);
 
     private readonly SqlServerOptions _options;
     private readonly ILogger _logger;
-    private readonly Dictionary<long, DateTime> _gaps = new();
+    private readonly List<GapRange> _gaps = new();
     private CancellationTokenSource? _polling;
     private Task? _loop;
     private long? _lastId;
@@ -211,25 +211,22 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     /// <summary>Reads rows after the last id, and rows that filled earlier gaps. Returns how many new rows came.</summary>
     private async Task<(List<BackplaneMessage> Messages, int NewRows)> ReadAsync(DateTime now, CancellationToken cancellationToken)
     {
-        foreach (var expired in _gaps.Where(gap => now - gap.Value > GapLifetime).Select(gap => gap.Key).ToList())
-        {
-            _gaps.Remove(expired);
-        }
+        _gaps.RemoveAll(gap => now - gap.SeenAt > GapLifetime);
 
-        var gapIds = _gaps.Keys.ToList();
+        var gaps = _gaps.ToList();
         var sql = new StringBuilder($"""
             SELECT TOP (@batch) [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
             FROM {_options.QualifiedInvalidationsTableName}
             WHERE [Id] > @lastId
             ORDER BY [Id];
             """);
-        if (gapIds.Count > 0)
+        if (gaps.Count > 0)
         {
             sql.Append($"""
 
                 SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
                 FROM {_options.QualifiedInvalidationsTableName}
-                WHERE [Id] IN ({string.Join(", ", gapIds.Select((_, i) => "@gap" + i.ToString(CultureInfo.InvariantCulture)))});
+                WHERE {string.Join(" OR ", gaps.Select((_, i) => $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"))};
                 """);
         }
 
@@ -244,9 +241,11 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             await using var commandScope = command.ConfigureAwait(false);
             command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
             command.Parameters.Add(new SqlParameter("@lastId", SqlDbType.BigInt) { Value = lastId });
-            for (var i = 0; i < gapIds.Count; i++)
+            for (var i = 0; i < gaps.Count; i++)
             {
-                command.Parameters.Add(new SqlParameter("@gap" + i.ToString(CultureInfo.InvariantCulture), SqlDbType.BigInt) { Value = gapIds[i] });
+                var index = i.ToString(CultureInfo.InvariantCulture);
+                command.Parameters.Add(new SqlParameter("@gapFrom" + index, SqlDbType.BigInt) { Value = gaps[i].From });
+                command.Parameters.Add(new SqlParameter("@gapTo" + index, SqlDbType.BigInt) { Value = gaps[i].To });
             }
 
             var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -257,12 +256,9 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             {
                 var id = reader.GetInt64(0);
                 newRows++;
-                if (id > expected && id - expected <= MaxGapRange)
+                if (id > expected)
                 {
-                    for (var missing = expected; missing < id && _gaps.Count < MaxGaps; missing++)
-                    {
-                        _gaps[missing] = now;
-                    }
+                    AddGap(expected, id - 1, now);
                 }
 
                 expected = id + 1;
@@ -274,14 +270,37 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             {
                 while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    _gaps.Remove(reader.GetInt64(0));
-                    AddMessage(reader, messages);
+                    var id = reader.GetInt64(0);
+                    if (gaps.Find(gap => gap.From <= id && id <= gap.To) is { } gap && gap.Delivered.Add(id))
+                    {
+                        AddMessage(reader, messages);
+                    }
                 }
             }
         }
 
         _lastId = lastId;
         return (messages, newRows);
+    }
+
+    private void AddGap(long from, long to, DateTime now)
+    {
+        if (_gaps.Count < MaxGapRanges)
+        {
+            _gaps.Add(new GapRange(from, to, now));
+            return;
+        }
+
+        // Too many: widen the newest range to cover this one too. Rows read normally in between may then be
+        // delivered twice, which an invalidation tolerates.
+        var newest = _gaps[^1];
+        _gaps[^1] = new GapRange(newest.From, to, now) { Delivered = newest.Delivered };
+    }
+
+    /// <summary>Identity values <see cref="From"/> to <see cref="To"/> skipped by rows that may still commit.</summary>
+    private sealed record GapRange(long From, long To, DateTime SeenAt)
+    {
+        public HashSet<long> Delivered { get; init; } = new();
     }
 
     private void AddMessage(SqlDataReader reader, List<BackplaneMessage> messages)
