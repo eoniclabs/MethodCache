@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RestoreEnablePackagePruning>false</RestoreEnablePackagePruning>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.9.0" />
+    <PackageReference Include="BitFaster.Caching" Version="2.6.1" />
+    <PackageReference Include="LazyCache" Version="2.4.0" />
+    <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.0.0" />
+    <PackageReference Include="EasyCaching.InMemory" Version="1.9.2" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.25" />
+    <PackageReference Include="System.Text.Json" Version="9.0.9" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Compile the actual benchmark sources for every library framework without changing the net10 CLI. -->
+    <Compile Include="../../benchmarks/MethodCache.Benchmarks/**/*.cs"
+             Exclude="../../benchmarks/MethodCache.Benchmarks/bin/**/*.cs;../../benchmarks/MethodCache.Benchmarks/obj/**/*.cs;../../benchmarks/MethodCache.Benchmarks/Program.cs"
+             Link="Benchmarks/%(RecursiveDir)%(Filename)%(Extension)" />
+    <ProjectReference Include="../../src/MethodCache.Core/MethodCache.Core.csproj" />
+    <ProjectReference Include="../../src/MethodCache.Redis/MethodCache.Redis.csproj" />
+    <ProjectReference Include="../../src/MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj" />
+    <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/MethodCache.Analyzers/MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

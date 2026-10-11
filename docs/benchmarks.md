@@ -61,3 +61,13 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> 
 
 `--quick` (or `BENCHMARK_QUICK=true`) uses fewer iterations: good while developing, not for numbers you publish.
 Results land in `BenchmarkDotNet.Artifacts/results/`. `benchmarks/MethodCache.Benchmarks/README.md` has more detail.
+
+## Setup checks
+
+The benchmark setup is also compiled and exercised by `MethodCache.Benchmarks.Tests` on .NET 8, 9 and 10.
+It uses the actual benchmark sources, including the dependency-injection registrations, and checks that both
+base classes can populate and read the cache before a measurement runs. Run these checks with:
+
+```bash
+dotnet test tests/MethodCache.Benchmarks.Tests -c Release
+```
