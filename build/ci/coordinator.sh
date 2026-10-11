@@ -28,7 +28,7 @@ repo="${METHODCACHE_CI_REPO:-eoniclabs/MethodCache}"
 clone_url="${METHODCACHE_CI_CLONE_URL:-https://github.com/$repo.git}"
 nimbus="${METHODCACHE_CI_NIMBUS:-agent-admin@100.103.39.117}"
 nimbus_root="${METHODCACHE_CI_NIMBUS_ROOT:-methodcache-ci}"            # relative to the SSH user's home
-nimbus_lock="${METHODCACHE_CI_NIMBUS_SHARED_LOCK:-/srv/skribera-ci/ci-build-capacity.lock}"
+nimbus_lock="${METHODCACHE_CI_NIMBUS_SHARED_LOCK-/srv/skribera-ci/ci-build-capacity.lock}"
 windows="${METHODCACHE_CI_WINDOWS:-bldr@baloo}"
 windows_root="${METHODCACHE_CI_WINDOWS_ROOT:-C:\\mc}"
 state="${METHODCACHE_CI_STATE:-$HOME/.cache/methodcache-ci}"
@@ -181,8 +181,11 @@ $body"
   local code=$?
   sed '/^@@methodcache-logs-begin@@/,/^@@methodcache-logs-end@@/d' "$3/output.log" > "$3/console.log"
   sed -n '/^@@methodcache-logs-begin@@/,/^@@methodcache-logs-end@@/p' "$3/output.log" | sed '1d;$d' | tr -d '\r' \
-    | base64 --decode > "$3/logs.zip" 2> /dev/null && unzip -o -q "$3/logs.zip" -d "$3" 2> /dev/null
-  rm -f "$3/output.log" "$3/logs.zip"
+    > "$3/logs.b64"
+  # -d is GNU and macOS 13+; older macOS only knows -D
+  { base64 -d < "$3/logs.b64" || base64 -D < "$3/logs.b64"; } > "$3/logs.zip" 2> /dev/null \
+    && unzip -o -q "$3/logs.zip" -d "$3" 2> /dev/null
+  rm -f "$3/output.log" "$3/logs.b64" "$3/logs.zip"
   return "$code"
 }
 
