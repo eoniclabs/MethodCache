@@ -23,14 +23,6 @@ public interface IRuntimeCacheConfigurator
     Task UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure, RuntimeOverrideMetadata? metadata = null);
 
     /// <summary>
-    /// Applies or replaces the runtime policy for the specified method using a policy builder.
-    /// </summary>
-    /// <param name="methodId">Fully qualified method id (e.g. <c>MyApp.Services.IUserService.GetUserAsync</c>).</param>
-    /// <param name="configure">Policy builder used to configure cache policy fields directly.</param>
-    /// <param name="metadata">Optional runtime override metadata (owner/reason/expiry).</param>
-    Task UpsertAsync(string methodId, Action<CachePolicyBuilder> configure, RuntimeOverrideMetadata? metadata = null);
-
-    /// <summary>
     /// Applies or replaces the runtime policy for the specified method using an already constructed <see cref="CachePolicy"/>.
     /// </summary>
     /// <param name="methodId">Fully qualified method id.</param>

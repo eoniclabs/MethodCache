@@ -26,8 +26,8 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync("Sample.Method", builder =>
         {
             builder.WithDuration(System.TimeSpan.FromMinutes(2));
-            builder.AddTag("runtime");
-            builder.WithRefreshAhead(System.TimeSpan.FromSeconds(20));
+            builder.WithTags("runtime");
+            builder.RefreshAhead(System.TimeSpan.FromSeconds(20));
         });
 
         var snapshots = store.GetSnapshots();

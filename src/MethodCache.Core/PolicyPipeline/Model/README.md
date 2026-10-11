@@ -7,7 +7,7 @@ Data models and helpers for the policy pipeline. The `CachePolicy` record itself
 ### CachePolicyBuilder
 - Builds a `CachePolicy` field by field (`WithDuration`, `WithSlidingExpiration`, `WithRefreshAhead`, `WithVersion`, `SetTags`, `AddMetadata`)
 - Tracks which fields were set as `CachePolicyFields` flags
-- Used by the configuration file source and by `IRuntimeCacheConfigurator.UpsertAsync(methodId, Action<CachePolicyBuilder>)`
+- Used by the configuration file source
 
 ### CachePolicyMapper
 - `DetectFields` infers which fields a `CachePolicy` sets

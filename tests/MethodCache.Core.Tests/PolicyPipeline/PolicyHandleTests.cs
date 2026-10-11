@@ -56,7 +56,7 @@ public class PolicyHandleTests
         Assert.Equal(MethodCacheKeys.Prefix(typeof(IOrders), "Get"), method.Current.KeyPrefix);
 
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
-        await configurator.UpsertAsync<IOrders, Task<string>>(o => o.Get(0), (CachePolicyBuilder b) => b.WithVersion(2));
+        await configurator.UpsertAsync<IOrders, Task<string>>(o => o.Get(0), b => b.WithVersion(2));
         Assert.Equal(2, method.Current.Policy.Version);
 
         Assert.Equal(MethodCacheKeys.Prefix(typeof(IOrders), "Get", 2), method.Current.KeyPrefix);

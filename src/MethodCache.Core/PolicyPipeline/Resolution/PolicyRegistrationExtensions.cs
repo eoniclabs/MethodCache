@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using MethodCache.Abstractions.Registry;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.PolicyPipeline.Diagnostics;
@@ -13,7 +14,7 @@ public static class PolicyRegistrationExtensions
         services.TryAddSingleton<PolicyResolver>(provider =>
         {
             var registrations = provider.GetServices<PolicySourceRegistration>();
-            return new PolicyResolver(registrations);
+            return new PolicyResolver(registrations, provider.GetService<ILogger<PolicyResolver>>());
         });
 
         services.TryAddSingleton<IPolicyResolver>(provider => provider.GetRequiredService<PolicyResolver>());

@@ -5,6 +5,8 @@ using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Sources;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MethodCache.Core.PolicyPipeline.Resolution;
 
@@ -13,8 +15,12 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private const long EmptyPolicyVersion = 0;
 
     private readonly IReadOnlyList<PolicySourceRegistration> _registrations;
+    private readonly Dictionary<PolicySourceRegistration, int> _order = new(ReferenceEqualityComparer.Instance);
+    private readonly ILogger _logger;
     private readonly ConcurrentDictionary<string, PolicyAggregator> _aggregators = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, PolicyResolutionResult> _resolutions = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, bool> _warnedUnknown = new(StringComparer.Ordinal);
+    private readonly bool _knowsCachedMethods;
     private readonly List<Task> _watcherTasks = new();
     private readonly List<(IImmediatePolicySource Source, Action<PolicyChange> Handler)> _immediateSubscriptions = new();
     private readonly object _immediateSync = new(); // Orders an immediate source's snapshot against its changes
@@ -33,8 +39,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     /// </summary>
     internal event Action<PolicyResolutionResult>? Changed;
 
-    public PolicyResolver(IEnumerable<PolicySourceRegistration> registrations)
+    public PolicyResolver(IEnumerable<PolicySourceRegistration> registrations, ILogger<PolicyResolver>? logger = null)
     {
+        _logger = (ILogger?)logger ?? NullLogger.Instance;
         if (registrations == null)
         {
             throw new ArgumentNullException(nameof(registrations));
@@ -47,6 +54,16 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         }
 
         _registrations = ordered;
+
+        // The generated attribute source lists every cached method, so a policy for any other method can't apply
+        _knowsCachedMethods = ordered.Any(IsAttributeSource);
+
+        // Sources with the same priority, such as two AddMethodCache(configure) calls, each keep their own layer;
+        // the one registered later wins where both set a value
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            _order[ordered[i]] = i;
+        }
     }
 
     public async ValueTask<PolicyResolutionResult> ResolveAsync(string methodId, CancellationToken cancellationToken = default)
@@ -203,6 +220,11 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
             _initialized = true;
 
+            foreach (var methodId in _aggregators.Keys)
+            {
+                WarnIfUnknown(methodId);
+            }
+
             foreach (var registration in _registrations.Where(static r => r.Source is not IImmediatePolicySource))
             {
                 _watcherTasks.Add(Task.Run(() => WatchSourceAsync(registration, _cts.Token), CancellationToken.None));
@@ -275,7 +297,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[MethodCache] Policy source '{registration.SourceId}' watcher failed: {ex}");
+            _logger.LogError(ex, "MethodCache stopped watching the policy source '{SourceId}'; its policies stay as they were last read.", registration.SourceId);
         }
     }
 
@@ -298,28 +320,60 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     fields = CachePolicyMapper.DetectFields(snapshotPolicy);
                 }
 
-                var layer = new PolicyLayer(registration.SourceId, registration.Priority, snapshotPolicy, fields, change.Timestamp);
-                UpdateResolution(change.MethodId, layer);
+                UpdateResolution(change.MethodId, new PolicyLayer(KeyOf(registration), snapshotPolicy, fields, change.Timestamp));
                 break;
 
             case PolicyChangeReason.Removed:
-                RemoveLayer(change.MethodId, new LayerKey(registration.Priority, registration.SourceId), change.Timestamp);
+                RemoveLayer(change.MethodId, KeyOf(registration), change.Timestamp);
                 break;
         }
     }
 
     private void ApplySnapshot(PolicySourceRegistration registration, PolicySnapshot snapshot, bool raiseNotification)
     {
-        var fields = CachePolicyMapper.DetectFields(snapshot.Policy);
-        var layer = new PolicyLayer(registration.SourceId, registration.Priority, snapshot.Policy, fields, snapshot.Timestamp);
-        UpdateResolution(snapshot.MethodId, layer);
+        // The fields the source declared, as a change carries them, so a snapshot and a change resolve alike:
+        // cleared tags stay cleared, and an unset value doesn't hide a default
+        var declared = snapshot.Policy.Provenance.LastOrDefault(c => c.SourceId == snapshot.SourceId)?.Fields ?? CachePolicyFields.None;
+        var fields = declared != CachePolicyFields.None ? declared : CachePolicyMapper.DetectFields(snapshot.Policy);
+        UpdateResolution(snapshot.MethodId, new PolicyLayer(KeyOf(registration), snapshot.Policy, fields, snapshot.Timestamp));
     }
+
+    private LayerKey KeyOf(PolicySourceRegistration registration) => new(registration.Priority, _order[registration]);
+
+    private static bool IsAttributeSource(PolicySourceRegistration registration)
+        => registration.Priority == PolicySourcePriority.Attributes &&
+           string.Equals(registration.SourceId, PolicySourceIds.Attributes, StringComparison.Ordinal);
 
     private void UpdateResolution(string methodId, PolicyLayer layer)
     {
         var aggregator = _aggregators.GetOrAdd(methodId, static id => new PolicyAggregator(id));
         aggregator.SetLayer(layer);
         Refresh(methodId);
+        if (_initialized)
+        {
+            WarnIfUnknown(methodId);
+        }
+    }
+
+    /// <summary>
+    /// Warns once about a policy for a method that no <c>[Cache]</c> attribute marks, usually a typo in a method
+    /// name in appsettings or code, since such a policy never applies.
+    /// </summary>
+    private void WarnIfUnknown(string methodId)
+    {
+        if (!_knowsCachedMethods ||
+            MethodIds.IsDefaults(methodId) ||
+            !_aggregators.TryGetValue(methodId, out var aggregator) ||
+            aggregator.Layers.Any(static layer => layer.Key.Priority == PolicySourcePriority.Attributes) ||
+            !_warnedUnknown.TryAdd(methodId, true))
+        {
+            return;
+        }
+
+        _logger.LogWarning(
+            "MethodCache has a policy for '{MethodId}', but no cached method has that id, so the policy does nothing. " +
+            "Method ids have the form Namespace.IService.Method; check the spelling and that the method has [Cache].",
+            methodId);
     }
 
     private void RemoveLayer(string methodId, LayerKey key, DateTimeOffset timestamp)
@@ -373,21 +427,18 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         PolicyChanged?.Invoke(this, result);
     }
 
-    private sealed record PolicyLayer(string SourceId, int Priority, CachePolicy Policy, CachePolicyFields Fields, DateTimeOffset Timestamp)
-    {
-        public LayerKey Key => new(Priority, SourceId);
-    }
+    private sealed record PolicyLayer(LayerKey Key, CachePolicy Policy, CachePolicyFields Fields, DateTimeOffset Timestamp);
 
     /// <summary>
-    /// Identifies a layer by priority and source, so two sources with the same priority each keep their own layer
-    /// instead of replacing each other depending on registration order.
+    /// Identifies a layer by priority and registration order, so every registered source keeps its own layer and,
+    /// at equal priority, the one registered later takes precedence.
     /// </summary>
-    private readonly record struct LayerKey(int Priority, string SourceId) : IComparable<LayerKey>
+    private readonly record struct LayerKey(int Priority, int Order) : IComparable<LayerKey>
     {
         public int CompareTo(LayerKey other)
         {
             var byPriority = Priority.CompareTo(other.Priority);
-            return byPriority != 0 ? byPriority : string.CompareOrdinal(SourceId, other.SourceId);
+            return byPriority != 0 ? byPriority : Order.CompareTo(other.Order);
         }
     }
 
@@ -452,13 +503,25 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     return new PolicyResolutionResult(MethodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), resolvedAt, currentVersion);
                 }
 
+                // Metadata merges key by key, higher layers winning, so a runtime override's audit notes don't drop
+                // the method's group
                 IReadOnlyDictionary<string, string?> metadata = CachePolicy.Empty.Metadata;
-                foreach (var layer in _layers.Values.Reverse())
+                Dictionary<string, string?>? merged = null;
+                foreach (var layer in _layers.Values)
                 {
-                    if (layer.Fields.HasFlag(CachePolicyFields.Metadata) && metadata.Count == 0)
+                    if (layer.Fields.HasFlag(CachePolicyFields.Metadata) && layer.Policy.Metadata.Count > 0)
                     {
-                        metadata = layer.Policy.Metadata;
+                        merged ??= new Dictionary<string, string?>(StringComparer.Ordinal);
+                        foreach (var (key, value) in layer.Policy.Metadata)
+                        {
+                            merged[key] = value;
+                        }
                     }
+                }
+
+                if (merged != null)
+                {
+                    metadata = merged;
                 }
 
                 // Highest precedence first: the method's own layers, then its group's defaults, then the global ones
