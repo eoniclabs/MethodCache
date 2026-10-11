@@ -70,6 +70,33 @@ public class FeatureTests(ITestOutputHelper output)
         await service.ListForCustomerAsync(7);
     }
 
+    private sealed class Shapes : IShapeService
+    {
+        public int Loads;
+        public Task<int> CountAsync(object[] items) { Loads++; return Task.FromResult(items.Length); }
+        public Task<int> AreaAsync(ShapeQuery query) { Loads++; return Task.FromResult(0); }
+    }
+
+    [Fact]
+    public async Task Keys_NestedValuesKeepTheirRuntimeType()
+    {
+        var shapes = new Shapes();
+        var services = new ServiceCollection();
+        services.AddSingleton<IShapeService>(shapes);
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var service = provider.GetRequiredService<IShapeService>();
+
+        await service.CountAsync([1]);
+        await service.CountAsync([1L]);
+        await service.CountAsync([1]);
+        await service.AreaAsync(new ShapeQuery(new Circle("c", 1)));
+        await service.AreaAsync(new ShapeQuery(new Circle("c", 2)));
+        await service.AreaAsync(new ShapeQuery(new Circle("c", 1)));
+
+        Assert.Equal(4, shapes.Loads);   // 1 and 1L, and radius 1 and 2, are different keys; the repeats are hits
+    }
+
     [Fact]
     public async Task Invalidation_TagTemplatesRemoveOnlyTheMatchingEntries()
     {
@@ -171,4 +198,17 @@ public class FeatureTests(ITestOutputHelper output)
         Assert.Equal(await products.GetAsync(1), await products.GetAsync(1));
         return loads;
     }
+}
+
+public abstract record Shape(string Name);
+
+public sealed record Circle(string Name, int Radius) : Shape(Name);
+
+// A base-typed property: the key holds the Circle's own members too
+public sealed record ShapeQuery(Shape Shape);
+
+public interface IShapeService
+{
+    [Cache] Task<int> CountAsync(object[] items);
+    [Cache] Task<int> AreaAsync(ShapeQuery query);
 }

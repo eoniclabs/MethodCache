@@ -28,7 +28,8 @@ namespace MethodCache.Core.Tests.Properties;
 /// <c>1.0m</c> and <c>1.00m</c> are two keys, as <see cref="decimal.ToString()"/> shows them.</item>
 /// </list>
 /// <para>Everything else is kept apart: the argument's type (<c>1</c>, <c>1L</c>, <c>"1"</c> and an enum with value 1
-/// are four keys), the enum type, position and count of arguments, the method name and the version, a
+/// are four keys, also as elements of an <c>object[]</c> or <c>List&lt;object&gt;</c> or in an <c>object</c>
+/// property), the enum type, position and count of arguments, the method name and the version, a
 /// <see cref="DateTimeOffset"/>'s offset, and string content compared ordinally.</para>
 /// <para>Seeds and replay: see <see cref="PropertySettings"/>.</para>
 /// </remarks>
@@ -44,6 +45,9 @@ public class CacheKeyPropertyTests
     public sealed record Point(int X, string? Name);
 
     public sealed record Order(string? Id, Point? At, List<string?> Lines, Color Color);
+
+    /// <summary>A record with an <c>object</c> property, so its value's runtime type is not its declared type.</summary>
+    public sealed record Holder(object? Value);
 
     public sealed class Dto
     {
@@ -83,6 +87,30 @@ public class CacheKeyPropertyTests
         Gen.Select(GenNullableText, GenPoint, GenNullableText.List[0, 2], Gen.Enum<Color>(),
             (id, at, lines, color) => (object)new Order(id, at, lines, color));
 
+    /// <summary>
+    /// A value held in an <c>object</c> slot (an element of <c>object[]</c> or <c>List&lt;object&gt;</c>, or
+    /// <see cref="Holder.Value"/>), where values of different types can write the same JSON. Inside JSON, 0.0 and -0.0,
+    /// NaN and local times aren't merged the way top-level arguments are, so those are left out.
+    /// </summary>
+    private static readonly Gen<object?> GenNestedScalar = Gen.OneOf<object?>(
+        Gen.Bool.Select(_ => (object?)null),
+        GenText.Select(s => (object?)s),
+        GenSmallInt.Select(i => (object?)i),
+        GenSmallInt.Select(i => (object?)(long)i),
+        GenSmallInt.Select(i => (object?)(short)i),
+        Gen.OneOfConst(1.0, -1.0, 0.1).Select(d => (object?)d),
+        Gen.OneOfConst(1m, 1.0m, -1m).Select(d => (object?)d),
+        Gen.Bool.Select(b => (object?)b),
+        Gen.Char["a1"].Select(c => (object?)c),
+        Gen.Enum<Color>().Select(e => (object?)e),
+        GenPoint.Select(p => (object?)p));
+
+    private static readonly Gen<object?> GenNested = Gen.OneOf<object?>(
+        GenNestedScalar,
+        GenNestedScalar.Array[0, 2].Select(a => (object?)a),
+        GenNestedScalar.List[0, 2].Select(l => (object?)l),
+        GenNestedScalar.Select(v => (object?)new Holder(v)));
+
     /// <summary>Any argument a hashed key may get, boxed.</summary>
     private static readonly Gen<object?> GenArgument = Gen.OneOf<object?>(
         Gen.Bool.Select(_ => (object?)null),
@@ -107,7 +135,10 @@ public class CacheKeyPropertyTests
         GenOrder.Select(o => (object?)o),
         Gen.Select(GenNullableText, GenSmallInt, (t, n) => (object?)new Dto { Text = t, Number = n }),
         GenSmallInt.Array[0, 2].Select(a => (object?)a),
-        GenNullableText.List[0, 2].Select(l => (object?)l));
+        GenNullableText.List[0, 2].Select(l => (object?)l),
+        GenNested.Array[0, 2].Select(a => (object?)a),
+        GenNested.List[0, 2].Select(l => (object?)l),
+        GenNested.Select(v => (object?)new Holder(v)));
 
     private static readonly Gen<(string Method, int? Version, object?[] Args)> GenCall =
         Gen.Select(Gen.OneOfConst("M", "M:v1", "N"), Gen.OneOfConst<int?>(null, 1, 2), GenArgument.Array[0, 3]);
@@ -143,6 +174,28 @@ public class CacheKeyPropertyTests
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: t => $"{Escape(t.Item1)} and {Escape(t.Item2)}");
 
         static string Escape(string s) => string.Concat(s.Select(c => c is >= ' ' and < '\u007f' ? c.ToString() : $"\\u{(int)c:X4}"));
+    }
+
+    [Theory]
+    [InlineData(typeof(FastHashKeyGenerator))]
+    [InlineData(typeof(JsonKeyGenerator))]
+    public void HashedKeys_GiveNestedValuesOfDifferentTypesDistinctKeys(Type generatorType)
+    {
+        // Values in object slots alone, so that 1, 1L, 1.0 and "1" in the same place come up often: JSON writes
+        // several of them alike, and only their runtime types tell them apart
+        var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+        var genNested = Gen.OneOf<object?>(
+            GenNested.Array[1, 2].Select(a => (object?)a),
+            GenNested.Select(v => (object?)new List<object?> { v }),
+            GenNested.Select(v => (object?)new Holder(v)));
+
+        Gen.Select(genNested, genNested).Sample((a1, a2) =>
+        {
+            var k1 = generator.GenerateKey("M", new[] { a1 }, NoVersion);
+            var k2 = generator.GenerateKey("M", new[] { a2 }, NoVersion);
+
+            Assert.Equal(Canon(a1, mergeSignedZero: false) == Canon(a2, mergeSignedZero: false), k1 == k2);
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: t => Describe(t.Item1) + " and " + Describe(t.Item2));
     }
 
     [Fact]
@@ -312,7 +365,8 @@ public class CacheKeyPropertyTests
             Point p => $"Point({Canon(p.X, mergeSignedZero)},{Canon(p.Name, mergeSignedZero)})",
             Order o => $"Order({Canon(o.Id, mergeSignedZero)},{Canon(o.At, mergeSignedZero)},{Canon(o.Lines, mergeSignedZero)},{Canon(o.Color, mergeSignedZero)})",
             Dto dto => $"Dto({Canon(dto.Text, mergeSignedZero)},{Canon(dto.Number, mergeSignedZero)})",
-            System.Collections.IEnumerable items => value.GetType().Name + "[" + string.Join(",", items.Cast<object?>().Select(i => Canon(i, mergeSignedZero))) + "]",
+            Holder h => $"Holder({Canon(h.Value, mergeSignedZero)})",
+            System.Collections.IEnumerable items => value.GetType().ToString() + "[" + string.Join(",", items.Cast<object?>().Select(i => Canon(i, mergeSignedZero))) + "]",
             IFormattable f => value.GetType().Name + " " + f.ToString(null, invariant),
             _ => value.GetType().Name + " " + value,
         };

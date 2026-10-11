@@ -20,7 +20,9 @@ namespace MethodCache.Extensibility;
 /// type tag followed by its value, and variable-length values by their length first, so two different argument
 /// lists never produce the same input to the hash. Built-in value types are written in binary, enums by their
 /// numeric value, dates with full precision. Other types are serialized with System.Text.Json, public fields
-/// included; a type whose state is all non-public is refused, since every value of it would share one key.
+/// included, and a value inside them whose runtime type differs from its declared type (an element of
+/// <c>object[]</c>, a base-typed property) with that type's name and members; a type whose state is all
+/// non-public is refused, since every value of it would share one key.
 /// Implement <see cref="ICacheKeyProvider"/> on such types, on types that cannot be serialized, or under Native AOT.
 /// </remarks>
 /// <example>
