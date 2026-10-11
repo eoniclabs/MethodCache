@@ -53,7 +53,7 @@ def changed_lines(base):
 
 
 def coverage(reports, root, wanted):
-    """{repo path: {line: hits}} from the reports, for the files in `wanted`."""
+    """{repo path: {line: hits}} from the reports for the files in `wanted`, and the src/ projects the reports measure."""
     def to_repo_path(name, sources):
         name = name.replace("\\", "/")
         candidates = [name] if name.startswith("/") or re.match(r"^[A-Za-z]:/", name) else \
@@ -73,10 +73,18 @@ def coverage(reports, root, wanted):
         return None
 
     hits = {}
+    projects = set()
     for report in reports:
         tree = ElementTree.parse(report)
         sources = [source.text or "" for source in tree.iter("source")]
         for cls in tree.iter("class"):
+            filename = cls.get("filename", "").replace("\\", "/")
+            for source in sources or [""]:
+                # The project is the folder after the last "src" (the checkout itself may sit under a src/ folder)
+                parts = (source.replace("\\", "/").rstrip("/") + "/" + filename).split("/")
+                indexes = [i for i, part in enumerate(parts[:-2]) if part == "src"]
+                if indexes:
+                    projects.add(parts[indexes[-1] + 1])
             path = to_repo_path(cls.get("filename", ""), sources)
             if path is None:
                 continue
@@ -84,7 +92,7 @@ def coverage(reports, root, wanted):
             for line in cls.iter("line"):
                 number = int(line.get("number"))
                 file_hits[number] = max(file_hits.get(number, 0), int(line.get("hits", "0")))
-    return hits
+    return hits, projects
 
 
 def main():
@@ -103,12 +111,15 @@ def main():
         print("Nothing to measure.")
         return 0
 
-    hits = coverage(args.reports, root, set(changes))
+    hits, projects = coverage(args.reports, root, set(changes))
     total = covered = 0
     unmeasured = []
     for path in sorted(changes):
         if path not in hits:
-            unmeasured.append(path)
+            # A file of a measured project that no report lists has no executable lines (declarations only); a file
+            # of a project no report measures has no tests at all
+            if path.split("/")[1] not in projects:
+                unmeasured.append(path)
             continue
         executable = sorted(line for line in changes[path] if line in hits[path])
         missed = [line for line in executable if hits[path][line] == 0]
@@ -124,7 +135,10 @@ def main():
                 print(f"      {line:>5} | {text[line - 1].strip() if line <= len(text) else ''}")
 
     for path in unmeasured:
-        print(f"  {path}: not measured (no report covers this file)")
+        print(f"  {path}: not measured: no test project covers src/{path.split('/')[1]}")
+    if unmeasured:
+        print("Changed code that no tests run: add a test project (with coverlet.collector) that covers it.")
+        return 1
 
     if total == 0:
         print("No executable changed lines.")

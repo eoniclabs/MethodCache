@@ -148,7 +148,7 @@ job_diffcoverage() {
 job_properties() {
   # The CsCheck properties (tests/MethodCache.Core.Tests/Properties) from a fresh random seed, each for
   # PROPERTY_SECONDS (CsCheck_Time) instead of its fixed iteration count, on PROPERTY_FRAMEWORKS. CsCheck prints
-  # the seed of a failure (CsCheck_Seed=...); it is repeated at the end with the command that replays it.
+  # the seed of a failure (CsCheck_Seed = "..."); it is repeated at the end with the command that replays it.
   local seconds="${PROPERTY_SECONDS:-5}" framework log status failed=0
   mkdir -p artifacts/properties
   for framework in ${PROPERTY_FRAMEWORKS:-net10.0 net8.0}; do
@@ -164,7 +164,9 @@ job_properties() {
     if [ "$status" -ne 0 ]; then
       failed=1
       echo "== A property failed on $framework. Replay it with the seed CsCheck printed:"
-      grep -oE 'CsCheck_Seed=[^ "]+' "$log" | sort -u | while read -r seed; do
+      # CsCheck prints it as CsCheck_Seed = "0N0XIzNsQ0O2"
+      { grep -oE 'CsCheck_Seed *= *"?[A-Za-z0-9_-]+' "$log" || true; } | sed -E 's/ *= *"?/=/' | sort -u \
+        | while read -r seed; do
         echo "   $seed dotnet test tests/MethodCache.Core.Tests -c Release -f $framework --filter \"FullyQualifiedName~MethodCache.Core.Tests.Properties\""
       done
     fi
