@@ -826,7 +826,10 @@ if (lookup.Found)
 
 ## Many keys at once
 
-`GetOrCreateManyAsync` looks up every key and calls the factory once, with only the keys that were missing:
+`GetOrCreateManyAsync` checks the local cache for every key and calls the factory once with the local misses.
+A distributed hit or a concurrent writer may supply the final value for one of those keys; the returned dictionary
+uses that value, so it agrees with a subsequent individual read. The factory can therefore receive keys already
+present in the distributed cache:
 
 ```cs
 var users = await cache.GetOrCreateManyAsync<User>(

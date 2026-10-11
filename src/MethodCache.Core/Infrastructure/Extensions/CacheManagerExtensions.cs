@@ -181,18 +181,19 @@ namespace MethodCache
                         throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
                     }
 
-                    results[key] = value!;
-
                     if (skipCacheKeys != null && skipCacheKeys.Contains(key))
                     {
+                        results[key] = value!;
                         continue;
                     }
 
-                    await cacheManager.GetOrCreateFastAsync(
+                    // A distributed hit or a concurrent publisher can win over this batch's candidate value.
+                    results[key] = await cacheManager.GetOrCreateFastAsync(
                         VersionedKey(key, options.Version),
                         FluentMethodName,
                         () => Task.FromResult(value!),
-                        policy).ConfigureAwait(false);
+                        policy,
+                        cancellationToken).ConfigureAwait(false);
                 }
             }
 

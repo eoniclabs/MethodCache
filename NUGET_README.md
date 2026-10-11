@@ -38,4 +38,7 @@ builder.Services.AddMethodCache();
 Concurrent runtime overrides preserve mutation order: delayed notifications cannot replace a newer policy or
 remove a renewed override. See [configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md).
 
+Bulk reads return the value selected by the cache, including a distributed hit or a concurrent writer, so they
+agree with individual reads.
+
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache

@@ -203,6 +203,9 @@ If Redis goes down, calls keep working from memory: each Redis call is capped at
 Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly
 during the outage stays in that instance's memory, and the value it replaced is removed everywhere once Redis is back.
 
+Bulk reads return the value selected by the cache, including a distributed hit or a concurrent writer, so they
+agree with individual reads.
+
 ### Caching code you don't own
 
 To cache a client from a NuGet package, name its interface and the methods to cache:
