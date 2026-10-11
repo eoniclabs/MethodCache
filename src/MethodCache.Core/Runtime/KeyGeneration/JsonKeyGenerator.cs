@@ -1,27 +1,23 @@
+using System.Buffers;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using MethodCache.Core.Runtime.Core;
 
 namespace MethodCache.Core.Runtime.KeyGeneration;
 
 /// <summary>
-/// Human-readable cache key generator using JSON serialization and SHA-256 hashing.
-/// Best for development, debugging, and scenarios where cache key inspection is valuable.
+/// Human-readable cache key generator: the method's key prefix followed by its arguments as a JSON array.
+/// Best for development and debugging, when reading keys in the cache is worth more than speed.
 /// </summary>
 /// <remarks>
-/// Performance characteristics:
-/// - ~200ns per key generation (4x slower than FastHashKeyGenerator)
-/// - Higher allocations due to JSON serialization
-/// - Keys are Base64-encoded SHA-256 hashes of JSON-serialized arguments
-///
-/// Use JsonKeyGenerator when:
-/// - Debugging cache issues and need to inspect keys
-/// - Development environments where readability is more important than performance
-/// - Need to serialize complex objects with reference preservation
-///
-/// For production high-throughput scenarios, prefer FastHashKeyGenerator.
+/// Keys have the form <c>{methodName}[:v{version}]:[42,"alice",{"Page":2}]</c>, so all entries of one method share
+/// the prefix that pattern invalidation matches (see <see cref="MethodCacheKeys"/>). An argument list longer than
+/// <see cref="MaxReadableLength"/> characters is replaced by its SHA-256, so keys stay within the limits of stores
+/// such as SQL Server. Arguments are serialized with System.Text.Json, public fields included, and an
+/// <see cref="ICacheKeyProvider"/> as its <see cref="ICacheKeyProvider.CacheKeyPart"/>.
+/// For production, prefer the default <see cref="FastHashKeyGenerator"/>.
 /// </remarks>
 /// <example>
 /// <code>
@@ -32,43 +28,40 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </example>
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
+    /// <summary>The longest argument list, in characters, that is written into the key as is.</summary>
+    public const int MaxReadableLength = 200;
+
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
-        => GenerateKeyInternal(methodName, args, policy.Version);
-
-    private static string GenerateKeyInternal(string methodName, object?[] args, int? version)
     {
-        var keyBuilder = new StringBuilder();
-        keyBuilder.Append(methodName);
-
-        if (version.HasValue)
+        var buffer = new ArrayBufferWriter<byte>(128);
+        using (var writer = new Utf8JsonWriter(buffer))
         {
-            keyBuilder.Append($"_v{version.Value}");
+            writer.WriteStartArray();
+            foreach (var arg in args)
+            {
+                switch (arg)
+                {
+                    case null:
+                        writer.WriteNullValue();
+                        break;
+                    case ICacheKeyProvider keyProvider:
+                        writer.WriteStringValue(keyProvider.CacheKeyPart);
+                        break;
+                    default:
+                        writer.WriteRawValue(KeyArguments.Serialize(arg), skipInputValidation: true);
+                        break;
+                }
+            }
+
+            writer.WriteEndArray();
         }
 
-        foreach (var arg in args)
-        {
-            if (arg is ICacheKeyProvider keyProvider)
-            {
-                keyBuilder.Append($"_{keyProvider.CacheKeyPart}");
-            }
-            else
-            {
-                // Use System.Text.Json for human-readable serialization
-                var serializedArg = JsonSerializer.Serialize(arg,
-                    new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.Preserve });
-                keyBuilder.Append($"_{serializedArg}");
-            }
-        }
+        var arguments = buffer.WrittenCount <= MaxReadableLength
+            ? Encoding.UTF8.GetString(buffer.WrittenSpan)
+            : Convert.ToHexString(SHA256.HashData(buffer.WrittenSpan)).ToLowerInvariant();
 
-        using (var sha256 = SHA256.Create())
-        {
-            var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyBuilder.ToString()));
-            var base64Hash = Convert.ToBase64String(hash);
-            if (version.HasValue)
-            {
-                return $"{base64Hash}_v{version.Value}";
-            }
-            return base64Hash;
-        }
+        return policy.Version is { } version
+            ? string.Concat(methodName, ":v", version.ToString(CultureInfo.InvariantCulture), ":", arguments)
+            : string.Concat(methodName, ":", arguments);
     }
 }

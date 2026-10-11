@@ -1,5 +1,6 @@
 using System.Globalization;
 using MethodCache.Abstractions.Policies;
+using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.KeyGeneration;
 using Xunit;
@@ -145,6 +146,93 @@ namespace MethodCache.Core.Tests.Core
             }
 
             Assert.Equal(count, keys.Count);
+        }
+
+        private sealed record Id(string CacheKeyPart) : ICacheKeyProvider;
+
+        private sealed class Money
+        {
+            private readonly decimal _amount;
+            public Money(decimal amount) => _amount = amount;
+            public override string ToString() => _amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private sealed class Marker
+        {
+        }
+
+        public enum Status { Active = 1, Closed = 2 }
+
+        private static readonly CacheRuntimePolicy NoVersion = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+
+        public static IEnumerable<object[]> DistinctArgumentLists() => new[]
+        {
+            // Values that ran into each other when parts were joined with '_'
+            new object[] { new object[] { new Id("a_b"), new Id("c") }, new object[] { new Id("a"), new Id("b_c") } },
+            new object[] { new object[] { "a", "b" }, new object[] { "a_", "b" } },
+            new object[] { new object[] { new Id("x") }, new object[] { "x" } },
+            new object[] { new object[] { null!, "x" }, new object[] { "x", null! } },
+            new object[] { new object[] { 1 }, new object[] { 1L } },
+            new object[] { new object[] { 1 }, new object[] { "1" } },
+            // DateTimeOffset was truncated to milliseconds
+            new object[] { new object[] { new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero) }, new object[] { new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddTicks(5000) } },
+            new object[] { new object[] { TimeSpan.FromTicks(1) }, new object[] { TimeSpan.FromTicks(2) } },
+            new object[] { new object[] { (short)1 }, new object[] { (ushort)1 } },
+        };
+
+        [Theory]
+        [MemberData(nameof(DistinctArgumentLists))]
+        public void FastHashKeyGenerator_GivesDifferentArgumentListsDifferentKeys(object[] first, object[] second)
+        {
+            var generator = new FastHashKeyGenerator();
+
+            Assert.NotEqual(generator.GenerateKey("M", first, NoVersion), generator.GenerateKey("M", second, NoVersion));
+        }
+
+        [Fact]
+        public void FastHashKeyGenerator_WritesEnumsByNumber()
+        {
+            // Like generated keys, so renaming a member keeps existing keys; the type still tells enums apart
+            var generator = new FastHashKeyGenerator();
+
+            Assert.Equal(generator.GenerateKey("M", new object[] { Status.Closed }, NoVersion), generator.GenerateKey("M", new object[] { (Status)2 }, NoVersion));
+            Assert.NotEqual(generator.GenerateKey("M", new object[] { Status.Closed }, NoVersion), generator.GenerateKey("M", new object[] { 2 }, NoVersion));
+        }
+
+        [Fact]
+        public void KeyGenerators_RefuseObjectsWhoseStateIsNotPublic()
+        {
+            // Every Money serializes to {}, so Money(1) and Money(1_000_000) would share a cached result
+            var fastHash = Assert.Throws<InvalidOperationException>(() => new FastHashKeyGenerator().GenerateKey("M", new object[] { new Money(1) }, NoVersion));
+            Assert.Contains(nameof(ICacheKeyProvider), fastHash.Message);
+            Assert.Throws<InvalidOperationException>(() => new JsonKeyGenerator().GenerateKey("M", new object[] { new Money(1) }, NoVersion));
+
+            // A type with no state at all is fine
+            new FastHashKeyGenerator().GenerateKey("M", new object[] { new Marker() }, NoVersion);
+        }
+
+        [Fact]
+        public void JsonKeyGenerator_WritesReadableKeysUnderTheMethodPrefix()
+        {
+            var generator = new JsonKeyGenerator();
+            var prefix = MethodCacheKeys.Prefix(typeof(IUserService), "Search");
+
+            var key = generator.GenerateKey(prefix, new object?[] { 42, "alice", null, Status.Closed, new Id("tenant-1"), new[] { 1, 2 } }, NoVersion);
+
+            Assert.Equal(prefix + ":[42,\"alice\",null,2,\"tenant-1\",[1,2]]", key);
+        }
+
+        [Fact]
+        public void JsonKeyGenerator_HashesLongArgumentLists()
+        {
+            var generator = new JsonKeyGenerator();
+            var longText = new string('x', JsonKeyGenerator.MaxReadableLength);
+
+            var key = generator.GenerateKey("M", new object[] { longText }, NoVersion);
+            var other = generator.GenerateKey("M", new object[] { longText + "y" }, NoVersion);
+
+            Assert.Equal("M:".Length + 64, key.Length);
+            Assert.NotEqual(key, other);
         }
 
         [Fact]
