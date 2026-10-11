@@ -26,6 +26,20 @@ namespace MethodCache.SourceGenerator
 
         private static InterfaceInfo? GetInterfaceInfo(INamedTypeSymbol interfaceSymbol)
         {
+            if (Utils.HasStaticAbstractMembers(interfaceSymbol))
+            {
+                // Reported once; Execute emits nothing for an interface without cached or invalidating methods
+                return new InterfaceInfo(
+                    interfaceSymbol,
+                    ImmutableArray<MethodModel>.Empty,
+                    ImmutableArray<MethodModel>.Empty,
+                    ImmutableArray.Create(Diagnostic.Create(
+                        Diagnostics.UnsupportedInterface,
+                        interfaceSymbol.Locations.FirstOrDefault(),
+                        interfaceSymbol.ToDisplayString(),
+                        "it has static abstract members, so it can't be used as a service type")));
+            }
+
             var allMethods = GetAllInterfaceMethods(interfaceSymbol).ToList();
             if (allMethods.Count == 0)
                 return null;

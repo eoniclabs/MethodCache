@@ -74,7 +74,7 @@ namespace MethodCache.SourceGenerator
             {
                 problem = "it is not accessible from this project";
             }
-            else if (new[] { type }.Concat(type.AllInterfaces).SelectMany(i => i.GetMembers()).Any(m => m.IsStatic && m.IsAbstract))
+            else if (Utils.HasStaticAbstractMembers(type))
             {
                 problem = "it has static abstract members, so it can't be used as a service type";
             }

@@ -266,7 +266,7 @@ namespace KeyFormat
 
     private static async Task<T> Call<T>(object service, string methodName, params object?[] args)
     {
-        var task = (Task)service.GetType().GetMethod(methodName)!.Invoke(service, args)!;
+        var task = (Task)InterfaceMethods.Find(service, methodName).Invoke(service, args)!;
         await task.ConfigureAwait(false);
         return (T)task.GetType().GetProperty("Result")!.GetValue(task)!;
     }
