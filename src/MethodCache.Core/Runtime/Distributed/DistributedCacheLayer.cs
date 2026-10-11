@@ -61,9 +61,13 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly TimeSpan _breakDuration;
         private readonly ConcurrentDictionary<string, TagStamp> _tagStamps = new(StringComparer.Ordinal);
 
-        // Circuit breaker: Unix ms until which the cache is skipped (0 = closed); one caller probes after that
+        // Circuit breaker: Unix ms until which the cache is skipped (0 = closed); one caller probes after that.
+        // _trips counts openings, so a probe can only close the opening it was let in for.
+        private const long NotProbing = -1;
+        private readonly object _breakerLock = new();
         private long _openUntil;
         private int _probing;
+        private long _trips;
 
         // Invalidations the distributed cache didn't accept yet, retried by _retryTimer
         private readonly object _pendingLock = new();
@@ -137,12 +141,12 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         public async ValueTask<DistributedEntry<T>> TryGetAsync<T>(string key)
         {
-            if (_hasPending || !TryEnter())
+            if (_hasPending || !TryEnter(out var probe))
             {
                 return default;
             }
 
-            var read = await TryRunAsync(ReadAsync, key, "read").ConfigureAwait(false);
+            var read = await TryRunAsync(ReadAsync, key, "read", probe).ConfigureAwait(false);
             if (!read.Succeeded || read.Value is not { } data ||
                 !TryReadHeader(new ReadOnlySequence<byte>(data), _contentType, out var header, out var payload))
             {
@@ -155,7 +159,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return default;
             }
 
-            var invalidated = await TryRunAsync(static (layer, header, ct) => layer.IsInvalidatedAsync(header.CreatedAt, header.Tags, ct), header, "read tags").ConfigureAwait(false);
+            var invalidated = await TryRunAsync(static (layer, header, ct) => layer.IsInvalidatedAsync(header.CreatedAt, header.Tags, ct), header, "read tags", probe).ConfigureAwait(false);
             if (!invalidated.Succeeded || invalidated.Value)
             {
                 return default;
@@ -222,28 +226,32 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
             }
 
-            if (!TryEnter())
+            if (!TryEnter(out var probe))
             {
                 return;
             }
 
             var entry = new Entry(key, buffer.WrittenMemory, TimeSpan.FromMilliseconds(lifetimeMilliseconds));
-            if (!(await TryRunAsync(StoreAsync, entry, "write").ConfigureAwait(false)).Succeeded)
+            if (!(await TryRunAsync(StoreAsync, entry, "write", probe).ConfigureAwait(false)).Succeeded)
             {
+                // A write that timed out may still land later, after a removal it never saw, so the key is
+                // removed again once the cache answers
+                Queue(new[] { key }, Array.Empty<string>());
                 return;
             }
 
             // A removal stores its stamp before it removes the entry, so checking the stamp after this write sees
             // every removal that could have come before the write, without a lock: removed after it, the entry is
             // gone anyway. A loaded value yields to removals made since it was read, allowing for clock skew; an
-            // explicit set only to removals made after it started.
-            var removedAt = await TryRunAsync(ReadRemovalAsync, key, "read a removal").ConfigureAwait(false);
+            // explicit set only to removals made since it started. A removal stamped in the same millisecond can't
+            // be ordered, so it wins.
+            var removedAt = await TryRunAsync(ReadRemovalAsync, key, "read a removal", probe).ConfigureAwait(false);
             var removedSince = removedAt.Succeeded &&
-                (replaces ? removedAt.Value > createdAt : removedAt.Value >= createdAt - _clockSkewMilliseconds);
+                removedAt.Value >= (replaces ? createdAt : createdAt - _clockSkewMilliseconds);
             if (!removedAt.Succeeded || removedSince)
             {
                 // Removed since, or unknown: then the value comes out once the cache answers again
-                if (!removedAt.Succeeded || !(await TryRunAsync(DeleteAsync, key, "remove a key").ConfigureAwait(false)).Succeeded)
+                if (!removedAt.Succeeded || !(await TryRunAsync(DeleteAsync, key, "remove a key", probe).ConfigureAwait(false)).Succeeded)
                 {
                     Queue(new[] { key }, Array.Empty<string>());
                 }
@@ -286,7 +294,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 RememberStamp(tag, new TagStamp(now, now));
             }
 
-            if (_hasPending || !TryEnter() || !await StoreInvalidationsAsync(keys, tags, now).ConfigureAwait(false))
+            if (_hasPending || !TryEnter(out var probe) || !await StoreInvalidationsAsync(keys, tags, now, probe).ConfigureAwait(false))
             {
                 Queue(keys, tags);
             }
@@ -296,22 +304,22 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Stores removal and tag stamps, then removes the entries and tells other nodes. False when the cache
         /// refused any of it.
         /// </summary>
-        private async Task<bool> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now)
+        private async Task<bool> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe)
         {
             var stamp = new byte[sizeof(long)];
             BinaryPrimitives.WriteInt64LittleEndian(stamp, now);
 
             // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
             var stamped = await Task.WhenAll(
-                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, stamp, _tagRetention), "invalidate a tag"))
-                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, stamp, RemovalLifetime), "remove a key"))))
+                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, stamp, _tagRetention), "invalidate a tag", probe))
+                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, stamp, RemovalLifetime), "remove a key", probe))))
                 .ConfigureAwait(false);
             if (stamped.Any(static result => !result.Succeeded))
             {
                 return false;
             }
 
-            var removed = await Task.WhenAll(keys.Select(key => TryRunAsync(DeleteAsync, key, "remove a key"))).ConfigureAwait(false);
+            var removed = await Task.WhenAll(keys.Select(key => TryRunAsync(DeleteAsync, key, "remove a key", probe))).ConfigureAwait(false);
             if (removed.Any(static result => !result.Succeeded))
             {
                 return false;
@@ -473,35 +481,52 @@ namespace MethodCache.Core.Runtime.Distributed
 
         /// <summary>
         /// Whether to use the distributed cache now: yes while the breaker is closed; once its open period is over,
-        /// only for the one caller that probes whether the cache is back.
+        /// only for the one caller that probes whether the cache is back. <paramref name="probe"/> identifies that
+        /// caller's probe, or is <see cref="NotProbing"/>.
         /// </summary>
-        private bool TryEnter()
+        private bool TryEnter(out long probe)
         {
-            var openUntil = Volatile.Read(ref _openUntil);
-            if (openUntil == 0)
+            probe = NotProbing;
+            if (Volatile.Read(ref _openUntil) == 0)
             {
                 return true;
             }
 
-            return Now >= openUntil && Interlocked.CompareExchange(ref _probing, 1, 0) == 0;
+            lock (_breakerLock)
+            {
+                if (_openUntil == 0)
+                {
+                    return true;
+                }
+
+                if (Now < _openUntil || _probing != 0)
+                {
+                    return false;
+                }
+
+                _probing = 1;
+                probe = _trips;
+                return true;
+            }
         }
 
         private async Task<(bool Succeeded, TResult Value)> TryRunAsync<TState, TResult>(
             Func<DistributedCacheLayer, TState, CancellationToken, Task<TResult>> operation,
             TState state,
-            string description)
+            string description,
+            long probe)
         {
-            // Only the probe, which runs while the breaker is open, may close it: an operation that started before a
-            // failure tripped the breaker says nothing about whether the cache is back
-            var probing = Volatile.Read(ref _openUntil) != 0;
             try
             {
                 using var timeout = new CancellationTokenSource(_timeout, _time);
                 // WaitAsync stops waiting even when the cache client ignores the token
                 var result = await operation(this, state, timeout.Token).WaitAsync(_timeout, _time).ConfigureAwait(false);
-                if (probing)
+
+                // Only the probe may close the breaker: an operation let in before a failure tripped it says nothing
+                // about whether the cache is back
+                if (probe != NotProbing)
                 {
-                    Recovered();
+                    Recovered(probe);
                 }
 
                 return (true, result);
@@ -515,8 +540,15 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private void Trip(Exception exception, string operation)
         {
-            var wasClosed = Interlocked.Exchange(ref _openUntil, Now + (long)_breakDuration.TotalMilliseconds) == 0;
-            Volatile.Write(ref _probing, 0);
+            bool wasClosed;
+            lock (_breakerLock)
+            {
+                wasClosed = _openUntil == 0;
+                _trips++;
+                Volatile.Write(ref _openUntil, Now + (long)_breakDuration.TotalMilliseconds);
+                _probing = 0;
+            }
+
             if (wasClosed)
             {
                 _logger.LogWarning(exception, "The distributed cache failed to {Operation}; MethodCache uses only its in-memory cache for the next {Duration}.", operation, _breakDuration);
@@ -525,14 +557,21 @@ namespace MethodCache.Core.Runtime.Distributed
             _onError?.Invoke(exception);
         }
 
-        private void Recovered()
+        private void Recovered(long probe)
         {
-            if (Volatile.Read(ref _openUntil) != 0 && Interlocked.Exchange(ref _openUntil, 0) != 0)
+            lock (_breakerLock)
             {
-                _logger.LogInformation("The distributed cache is available again.");
+                // Tripped again since this probe was let in: that opening has its own probe
+                if (_trips != probe || _openUntil == 0)
+                {
+                    return;
+                }
+
+                Volatile.Write(ref _openUntil, 0);
+                _probing = 0;
             }
 
-            Volatile.Write(ref _probing, 0);
+            _logger.LogInformation("The distributed cache is available again.");
         }
 
         // ---------- invalidations the distributed cache didn't accept ----------
@@ -583,7 +622,9 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
 
                 // Stamped now: entries written before this moment, while the cache was unreachable, count as stale
-                var stored = TryEnter() && await StoreInvalidationsAsync(keys, tags, Now).ConfigureAwait(false);
+                // Nothing to store would let a probe in that never reports back, so skip the cache then
+                var stored = (keys.Length == 0 && tags.Length == 0) ||
+                    (TryEnter(out var probe) && await StoreInvalidationsAsync(keys, tags, Now, probe).ConfigureAwait(false));
 
                 lock (_pendingLock)
                 {
