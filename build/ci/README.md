@@ -46,7 +46,8 @@ Megatron in `~/.cache/methodcache-ci/runs/<run>`, and the coordinator's own log 
 
 Pull requests from forks never run automatically, because their code would run on our servers. Read the diff, then
 on Megatron run `~/.local/share/methodcache-ci/coordinator.sh --pr <number>`. The same command runs any pull request
-again. A run that could not reach a server is retried by itself after 30 minutes.
+again, after waiting for a pass that is already running. A run that could not reach a server is retried by itself
+after 30 minutes.
 
 ### Installing or updating
 
@@ -58,4 +59,5 @@ build/ci/install-coordinator.sh           # install (or update) and start
 ```
 
 The coordinator is copied out of the checkout, so a pull request cannot change how it is itself tested. Settings
-(server addresses, the shared lock) are in `~/.config/methodcache-ci/env`. Stop it with `--remove`.
+(server addresses, the shared lock) are in `~/.config/methodcache-ci/env`; a Linux run fails when the shared lock
+cannot be opened, and an empty `METHODCACHE_CI_NIMBUS_SHARED_LOCK=` runs without it. Stop it with `--remove`.

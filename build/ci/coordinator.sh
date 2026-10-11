@@ -44,13 +44,19 @@ aggregate="MethodCache CI"
 mkdir -p "$state/done" "$state/runs"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*"; }
 
-# One coordinator at a time; a pass that finds another one running just ends
-# (macOS has no flock(1); mkdir is atomic, and a lock whose process is gone is taken over)
+# One coordinator at a time; a scheduled pass that finds another one running just ends, a manual --pr run waits
+# for it (macOS has no flock(1); mkdir is atomic, and a lock whose process is gone is taken over)
 lock="$state/coordinator.lock"
-if ! mkdir "$lock" 2> /dev/null; then
-  if kill -0 "$(cat "$lock/pid" 2> /dev/null)" 2> /dev/null; then exit 0; fi
-  rm -rf "$lock" && mkdir "$lock" || exit 0
-fi
+until mkdir "$lock" 2> /dev/null; do
+  if ! kill -0 "$(cat "$lock/pid" 2> /dev/null)" 2> /dev/null; then
+    rm -rf "$lock"
+  elif [ "${1:-}" = --pr ]; then
+    [ -n "${waiting:-}" ] || { waiting=1; log "waiting for the running pass to finish"; }
+    sleep 30
+  else
+    exit 0
+  fi
+done
 echo $$ > "$lock/pid"
 trap 'rm -rf "$lock"' EXIT
 
@@ -100,7 +106,8 @@ run_linux() { # sha run_id results_dir
     checkout_script "$nimbus_root" "$1" "$2"
     cat <<SCRIPT
 export METHODCACHE_CI_RUN_ID='$2' METHODCACHE_CI_CACHE=~/'$nimbus_root/cache'
-[ -e '$nimbus_lock' ] && export METHODCACHE_CI_SHARED_LOCK='$nimbus_lock'
+# Always held when configured: a missing lease directory fails the run instead of building without the lease
+${nimbus_lock:+export METHODCACHE_CI_SHARED_LOCK='$nimbus_lock'}
 code=0
 nice -n 10 build/ci/linux.sh || code=\$?
 # Written only when every job got its turn, so a dropped connection or timeout is retried
