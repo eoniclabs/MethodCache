@@ -13,6 +13,7 @@ using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.PolicyPipeline.Sources;
 using MethodCache.Core.Runtime;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;
@@ -143,6 +144,66 @@ public class PolicyResolverTests
 
         await watcher.DisposeAsync();
         await resolver.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task PolicyForAMethodWithoutCache_IsReportedOnce()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["MethodCache:Defaults:Duration"] = "00:01:00",
+                [$"MethodCache:Services:{MethodId}:Duration"] = "00:02:00",
+                ["MethodCache:Services:My.IOrderService.GetOrdr:Duration"] = "00:03:00"
+            })
+            .Build();
+        var logger = new ListLogger();
+
+        var resolver = new PolicyResolver(new[]
+        {
+            new PolicySourceRegistration(CreateAttributeSource(TimeSpan.FromMinutes(5)), PolicySourcePriority.Attributes),
+            new PolicySourceRegistration(ConfigFilePolicySourceBuilder.FromConfiguration(configuration), PolicySourcePriority.ConfigurationFiles)
+        }, logger);
+
+        await resolver.ResolveAsync(MethodId);
+        await resolver.ResolveAsync("My.IOrderService.GetOrdr");
+
+        var warning = Assert.Single(logger.Messages);
+        Assert.Contains("My.IOrderService.GetOrdr", warning);
+
+        await resolver.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task WithoutAttributeSources_NoMethodIsReportedAsUnknown()
+    {
+        var logger = new ListLogger();
+        var resolver = new PolicyResolver(new[]
+        {
+            new PolicySourceRegistration(CreateSource("runtime", TimeSpan.FromMinutes(1)), PolicySourcePriority.RuntimeOverrides)
+        }, logger);
+
+        await resolver.ResolveAsync(MethodId);
+
+        Assert.Empty(logger.Messages);
+        await resolver.DisposeAsync();
+    }
+
+    private sealed class ListLogger : ILogger<PolicyResolver>
+    {
+        public List<string> Messages { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel >= LogLevel.Warning)
+            {
+                Messages.Add(formatter(state, exception));
+            }
+        }
     }
 
     private static TestPolicySource CreateAttributeSource(TimeSpan duration, string? group = null)

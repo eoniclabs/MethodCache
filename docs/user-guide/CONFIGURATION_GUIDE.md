@@ -168,7 +168,7 @@ Configure cached methods from `appsettings.json` or any other `IConfiguration` s
 
 Each key under `Services` is the method id: the full name of the interface that declares the method, a dot, and the method name. A generic interface is written with its type parameters (`MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its parameter types (`MyApp.IUserService.FindAsync(int)`, `MyApp.IUserService.FindAsync(string, CancellationToken)`). Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. The top-level `FailSafe` section turns fail-safe on for every cached method (see [Fail-Safe](#fail-safe)). `Defaults` applies to every cached method, also ones not listed under `Services`, and a method's own settings, including those in its `[Cache]` attribute, win. `Group` puts the method in a `ForGroup(...)` group; `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
 
-Only methods with a `[Cache]` attribute have a generated decorator, so the file can change their policy but cannot make other methods cached.
+Only methods with a `[Cache]` attribute have a generated decorator, so the file can change their policy but cannot make other methods cached. A policy for a method id that no `[Cache]` method has, such as a misspelled name, is logged as a warning at startup.
 
 ### Usage
 ```csharp
@@ -205,7 +205,7 @@ await configurator.ApplyAsync(fluent =>
 
 // By method id, for example from an admin form
 await configurator.UpsertAsync("MyApp.Services.IUserService.GetUserProfileAsync",
-    (CacheEntryOptions.Builder o) => o.WithDuration(TimeSpan.FromMinutes(10)));
+    o => o.WithDuration(TimeSpan.FromMinutes(10)));
 
 // Remove one override, or all of them, to fall back to the lower-priority sources
 await configurator.RemoveAsync<IOrdersService, Order>(s => s.GetAsync(default));
@@ -214,14 +214,14 @@ await configurator.ClearAsync();
 
 | Method | What it does |
 |--------|--------------|
-| `UpsertAsync(methodId, Action<CacheEntryOptions.Builder>, metadata?)` | Applies or replaces the override for one method. Overloads take a method expression, a `CachePolicyBuilder` or a `CachePolicy`. |
+| `UpsertAsync(methodId, Action<CacheEntryOptions.Builder>, metadata?)` | Applies or replaces the override for one method. Overloads take a method expression (sync, async or void methods) or a `CachePolicy`. |
 | `UpsertBatchAsync(IEnumerable<RuntimeOverrideEntry>)` | Applies several overrides in one call. |
 | `ApplyAsync(Action<IFluentMethodCacheConfiguration>)` | Applies overrides for the methods listed with `ForService<T>().Method(...)`, using the same rules as startup code. |
 | `RemoveAsync(methodId)` / `ClearAsync()` | Removes one override, or all of them. |
 | `GetOverridesAsync()` / `GetOverrideAsync(methodId)` | Returns the active overrides. |
 | `WatchAsync(cancellationToken)` | Streams override changes. |
 
-`RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is stored with the override for auditing. An override whose `ExpiresAt` has passed is removed the next time the runtime configurator is used. There is no timer, so until then the expired override stays in effect.
+`RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is stored with the override for auditing. An override stops applying when its `ExpiresAt` passes.
 
 Runtime overrides are held in memory. They are lost on restart and are not shared between instances, so persist and replay them yourself if you need that. Overrides cannot disable caching for a method: `WithDuration` requires a positive duration. To get rid of stale data, invalidate it instead (see below).
 

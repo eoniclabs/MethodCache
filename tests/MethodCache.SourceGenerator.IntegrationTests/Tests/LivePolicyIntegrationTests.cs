@@ -62,7 +62,7 @@ namespace LivePolicy
 
         // A new version means new keys, so the next call on the same decorator loads again
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
-        await configurator.UpsertAsync(MethodId, (CachePolicyBuilder b) => b.WithVersion(2));
+        await configurator.UpsertAsync(MethodId, b => b.WithVersion(2));
 
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
         while ((int)calls.GetValue(null)! == 1)
