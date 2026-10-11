@@ -143,20 +143,82 @@ public class HttpCacheCorrectnessTests
     }
 
     [Fact]
-    public async Task MaxVariantsPerUrl_EvictsTheOldestVariant()
+    public async Task VaryVariants_AreCachedSideBySide()
     {
-        var options = new HttpCacheOptions();
-        options.MaxVariantsPerUrl = 2;
-        var (client, inner) = HttpCacheTestFactory.CreateClient(options);
-        inner.SetResponses(Variant("sv", "sv"), Variant("en", "en"), Variant("de", "de"), Variant("sv-again", "sv"));
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        inner.SetResponses(Variant("sv", "sv"), Variant("en", "en"), Variant("de", "de"));
 
         await GetInLanguage(client, "sv");
         await GetInLanguage(client, "en");
         await GetInLanguage(client, "de");
 
+        Assert.Equal("sv", await GetInLanguage(client, "sv"));
         Assert.Equal("en", await GetInLanguage(client, "en"));
-        Assert.Equal("sv-again", await GetInLanguage(client, "sv"));
-        Assert.Equal(4, inner.RequestCount);
+        Assert.Equal(3, inner.RequestCount);
+    }
+
+    [Fact]
+    public async Task UnsafeRequest_InvalidatesEveryVariant_AndOldVariantsAreNeverServedAgain()
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        inner.SetResponses(Variant("sv-1", "sv"), Variant("en-1", "en"), new HttpResponseMessage(HttpStatusCode.NoContent),
+            Variant("en-2", "en"), Variant("sv-2", "sv"));
+
+        await GetInLanguage(client, "sv");
+        await GetInLanguage(client, "en");
+        await client.PostAsync(Url, new StringContent("x"));
+
+        Assert.Equal("en-2", await GetInLanguage(client, "en"));
+        Assert.Equal("sv-2", await GetInLanguage(client, "sv"));
+        Assert.Equal(5, inner.RequestCount);
+    }
+
+    [Fact]
+    public async Task UnsafeRequest_InvalidatesEveryKeyHeaderValue()
+    {
+        var options = new HttpCacheOptions();
+        options.KeyHeaders.Add("X-Tenant");
+        var (client, inner) = HttpCacheTestFactory.CreateClient(options);
+        inner.SetResponses(Cacheable("a-1"), Cacheable("b-1"), new HttpResponseMessage(HttpStatusCode.NoContent), Cacheable("b-2"));
+
+        await GetForTenant(client, "a");
+        await GetForTenant(client, "b");
+        using (var post = new HttpRequestMessage(HttpMethod.Post, Url) { Content = new StringContent("x") })
+        {
+            post.Headers.Add("X-Tenant", "a");
+            await client.SendAsync(post);
+        }
+
+        Assert.Equal("b-2", await GetForTenant(client, "b"));
+    }
+
+    [Fact]
+    public async Task PrivateCache_UnsafeRequestByOneCaller_InvalidatesOtherCallers()
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        inner.SetResponses(Cacheable("alice-1"), Cacheable("bob-1"), new HttpResponseMessage(HttpStatusCode.NoContent), Cacheable("bob-2"));
+
+        Assert.Equal("alice-1", await GetAs(client, "alice"));
+        Assert.Equal("bob-1", await GetAs(client, "bob"));
+        using (var post = new HttpRequestMessage(HttpMethod.Post, Url) { Content = new StringContent("x") })
+        {
+            post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "alice");
+            await client.SendAsync(post);
+        }
+
+        Assert.Equal("bob-2", await GetAs(client, "bob"));
+    }
+
+    [Fact]
+    public async Task PrivateCache_CallersNeverSeeEachOthersResponses()
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        inner.SetResponses(Cacheable("alice"), Cacheable("bob"));
+
+        Assert.Equal("alice", await GetAs(client, "alice"));
+        Assert.Equal("bob", await GetAs(client, "bob"));
+        Assert.Equal("alice", await GetAs(client, "alice"));
+        Assert.Equal(2, inner.RequestCount);
     }
 
     [Fact]
@@ -299,6 +361,22 @@ public class HttpCacheCorrectnessTests
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "token");
+        using var response = await client.SendAsync(request);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    private static async Task<string> GetForTenant(HttpClient client, string tenant)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, Url);
+        request.Headers.Add("X-Tenant", tenant);
+        using var response = await client.SendAsync(request);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    private static async Task<string> GetAs(HttpClient client, string token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, Url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var response = await client.SendAsync(request);
         return await response.Content.ReadAsStringAsync();
     }

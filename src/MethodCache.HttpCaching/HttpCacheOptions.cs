@@ -51,12 +51,6 @@ public sealed class HttpCacheOptions
     /// <summary>Timeout for a background revalidation. Default 10 seconds.</summary>
     public TimeSpan BackgroundRevalidationTimeout { get; set; } = TimeSpan.FromSeconds(10);
 
-    /// <summary>
-    /// How many <c>Vary</c> variants (for example one per <c>Accept-Language</c>) are kept per URL; the oldest
-    /// is dropped first. Default 5.
-    /// </summary>
-    public int MaxVariantsPerUrl { get; set; } = 5;
-
     /// <summary>Responses larger than this are not cached. Default 10 MB; 0 means no limit.</summary>
     public long MaxResponseSize { get; set; } = 10 * 1024 * 1024;
 

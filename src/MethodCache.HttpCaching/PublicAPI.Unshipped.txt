@@ -26,8 +26,8 @@ MethodCache.HttpCaching.HttpCacheEntry.StatusCode.get -> System.Net.HttpStatusCo
 MethodCache.HttpCaching.HttpCacheEntry.StatusCode.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.StoredAt.get -> System.DateTimeOffset
 MethodCache.HttpCaching.HttpCacheEntry.StoredAt.init -> void
-MethodCache.HttpCaching.HttpCacheEntry.VariantKeys.get -> string![]?
-MethodCache.HttpCaching.HttpCacheEntry.VariantKeys.init -> void
+MethodCache.HttpCaching.HttpCacheEntry.VariantGeneration.get -> string?
+MethodCache.HttpCaching.HttpCacheEntry.VariantGeneration.init -> void
 MethodCache.HttpCaching.HttpCacheEntry.VaryHeaders.get -> string![]?
 MethodCache.HttpCaching.HttpCacheEntry.VaryHeaders.init -> void
 MethodCache.HttpCaching.HttpCacheOptions
@@ -54,8 +54,6 @@ MethodCache.HttpCaching.HttpCacheOptions.MaxResponseSize.get -> long
 MethodCache.HttpCaching.HttpCacheOptions.MaxResponseSize.set -> void
 MethodCache.HttpCaching.HttpCacheOptions.MaxStaleIfError.get -> System.TimeSpan
 MethodCache.HttpCaching.HttpCacheOptions.MaxStaleIfError.set -> void
-MethodCache.HttpCaching.HttpCacheOptions.MaxVariantsPerUrl.get -> int
-MethodCache.HttpCaching.HttpCacheOptions.MaxVariantsPerUrl.set -> void
 MethodCache.HttpCaching.HttpCacheOptions.StaleRetention.get -> System.TimeSpan
 MethodCache.HttpCaching.HttpCacheOptions.StaleRetention.set -> void
 MethodCache.HttpCaching.HttpCacheStorageOptions

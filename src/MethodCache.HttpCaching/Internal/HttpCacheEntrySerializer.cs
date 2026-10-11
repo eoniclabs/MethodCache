@@ -10,7 +10,7 @@ namespace MethodCache.HttpCaching.Internal;
 /// </summary>
 internal static class HttpCacheEntrySerializer
 {
-    private const byte FormatVersion = 1;
+    private const byte FormatVersion = 2;
 
     public static byte[] Serialize(HttpCacheEntry entry, DateTimeOffset expiresAt)
     {
@@ -34,7 +34,7 @@ internal static class HttpCacheEntrySerializer
             writer.Write(entry.StoredAt.UtcTicks);
             writer.Write(entry.InitialAge.Ticks);
             WriteNullable(writer, entry.VaryHeaders);
-            WriteNullable(writer, entry.VariantKeys);
+            WriteNullable(writer, entry.VariantGeneration);
         }
 
         return stream.ToArray();
@@ -66,7 +66,7 @@ internal static class HttpCacheEntrySerializer
             StoredAt = new DateTimeOffset(reader.ReadInt64(), TimeSpan.Zero),
             InitialAge = TimeSpan.FromTicks(reader.ReadInt64()),
             VaryHeaders = ReadNullableArray(reader),
-            VariantKeys = ReadNullableArray(reader)
+            VariantGeneration = ReadNullableString(reader)
         };
 
         return (entry, expiresAt);
