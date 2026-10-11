@@ -9,7 +9,7 @@ Read this before changing the repository. It is written for human contributors a
   - `MethodCache.Analyzers`: Compile-time checks and diagnostics (shipped inside `MethodCache`).
   - `MethodCache.Redis`, `MethodCache.SqlServer`: distributed cache (L2) with a backplane.
   - `MethodCache.Serialization.MessagePack`, `MethodCache.AspNetCore`, `MethodCache.OpenTelemetry`, `MethodCache.HttpCaching`: optional add-ons.
-- `tests/`: xUnit unit tests (`*.Tests`), Docker-backed integration tests (`*.IntegrationTests`), and two CI-only programs: `MethodCache.AotSmokeTest` (Native AOT) and `MethodCache.PackageSmokeTest` (installs the packed `MethodCache` package from `artifacts/packages`; run `dotnet pack src/MethodCache.Core -c Release -o artifacts/packages` first).
+- `tests/`: xUnit unit tests (`*.Tests`), Docker-backed integration tests (`*.IntegrationTests`), and three CI-only programs: `MethodCache.AotSmokeTest` (Native AOT), `MethodCache.PackageSmokeTest` (installs the packed `MethodCache` package) and `MethodCache.PackageSmokeTest.AddOns` (installs the six add-on packages and uses each one in an app, with Redis and SQL Server from `METHODCACHE_REDIS_URL` and `METHODCACHE_SQLSERVER_CONNECTION`). Both package tests read `artifacts/packages`; run `dotnet pack MethodCache.sln -c Release -o artifacts/packages` first.
 - `tests/MethodCache.Docs.Tests` holds every C# example shown in the docs (`README.md`, `NUGET_README.md`, the package READMEs and `docs/`), so they compile, and tests for the claims the docs make (`ReadmeTests`, `FeatureTests`).
 - `samples/`: `MethodCache.Demo` (a guided console tour, run in CI) and `MethodCache.WebDemo` (ASP.NET Core).
 - `benchmarks/MethodCache.Benchmarks`: Performance benchmarks.

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Installs every MethodCache add-on package from ../../artifacts/packages, the way users get them, and checks that
+    each one works in a real app: Redis and SQL Server shared between two instances (JSON and MessagePack), the
+    ASP.NET Core admin endpoints and health check, OpenTelemetry metrics and spans, and HttpClient caching.
+    Pack the solution into that folder first. Redis and SQL Server come from METHODCACHE_REDIS_URL and
+    METHODCACHE_SQLSERVER_CONNECTION. Not part of the solution.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- The oldest and the newest framework the packages ship for; run one with -f -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <MethodCachePackageVersion Condition="'$(MethodCachePackageVersion)' == ''">*-*</MethodCachePackageVersion>
+    <RestorePackagesPath>$(MSBuildProjectDirectory)/obj/packages</RestorePackagesPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MethodCache" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.Redis" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.SqlServer" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.Serialization.MessagePack" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.AspNetCore" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.OpenTelemetry" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.HttpCaching" Version="$(MethodCachePackageVersion)" />
+  </ItemGroup>
+
+</Project>
