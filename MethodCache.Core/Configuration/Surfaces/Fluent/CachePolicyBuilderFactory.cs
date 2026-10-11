@@ -10,7 +10,16 @@ internal static class CachePolicyBuilderFactory
     /// </summary>
     public static CachePolicyBuilder ForMethod(string methodId, CacheEntryOptions options)
     {
-        EnsureAppliesToMethods(methodId, options);
+        EnsureAppliesToMethods($"cached method '{methodId}'", options);
+        return FromOptions(options);
+    }
+
+    /// <summary>
+    /// Builds defaults that apply to many cached methods, described by <paramref name="target"/> in errors.
+    /// </summary>
+    public static CachePolicyBuilder ForDefaults(string target, CacheEntryOptions options)
+    {
+        EnsureAppliesToMethods(target, options);
         return FromOptions(options);
     }
 
@@ -55,7 +64,7 @@ internal static class CachePolicyBuilderFactory
     /// Callbacks, metrics and predicates only apply to a single <c>GetOrCreateAsync</c> call. Rejecting them here
     /// keeps a cached method from silently ignoring them.
     /// </summary>
-    private static void EnsureAppliesToMethods(string methodId, CacheEntryOptions options)
+    private static void EnsureAppliesToMethods(string target, CacheEntryOptions options)
     {
         string? unsupported = options switch
         {
@@ -69,7 +78,7 @@ internal static class CachePolicyBuilderFactory
         if (unsupported != null)
         {
             throw new InvalidOperationException(
-                $"{unsupported}() only applies to GetOrCreateAsync and cannot be configured for cached method '{methodId}'. " +
+                $"{unsupported}() only applies to GetOrCreateAsync and cannot be configured for {target}. " +
                 "Configure duration, tags, sliding expiration, refresh-ahead and version here instead.");
         }
     }

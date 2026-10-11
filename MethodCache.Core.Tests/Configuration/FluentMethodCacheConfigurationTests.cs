@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Options;
+using MethodCache.Core.PolicyPipeline.Model;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;
@@ -16,7 +18,7 @@ public class FluentMethodCacheConfigurationTests
     }
 
     [Fact]
-    public void BuildMethodPolicies_MapsExpirationSettings_InDefaultGroupMethodOrder()
+    public void BuildMethodPolicies_KeepsDefaultsAndGroupsApartFromMethods()
     {
         var configuration = new FluentMethodCacheConfiguration();
         configuration.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1)).RefreshAhead(TimeSpan.FromSeconds(10)));
@@ -26,13 +28,16 @@ public class FluentMethodCacheConfigurationTests
             .WithGroup("orders")
             .Configure(o => o.WithDuration(TimeSpan.FromMinutes(5)));
 
-        var draft = Assert.Single(configuration.BuildMethodPolicies());
+        var drafts = configuration.BuildMethodPolicies().ToDictionary(d => d.MethodId);
 
-        Assert.Equal(TimeSpan.FromMinutes(5), draft.Policy.Duration);
-        Assert.Equal(TimeSpan.FromMinutes(2), draft.Policy.SlidingExpiration);
-        Assert.Equal(TimeSpan.FromSeconds(10), draft.Policy.RefreshAhead);
-        Assert.True(draft.Fields.HasFlag(CachePolicyFields.SlidingExpiration));
-        Assert.True(draft.Fields.HasFlag(CachePolicyFields.RefreshAhead));
+        Assert.Equal(TimeSpan.FromMinutes(1), drafts[MethodIds.AllMethods].Policy.Duration);
+        Assert.Equal(TimeSpan.FromSeconds(10), drafts[MethodIds.AllMethods].Policy.RefreshAhead);
+        Assert.Equal(TimeSpan.FromMinutes(2), drafts[MethodIds.Group("orders")].Policy.SlidingExpiration);
+
+        var method = drafts[MethodIds.For(typeof(IOrderService), nameof(IOrderService.GetOrderAsync))];
+        Assert.Equal(TimeSpan.FromMinutes(5), method.Policy.Duration);
+        Assert.False(method.Fields.HasFlag(CachePolicyFields.RefreshAhead));
+        Assert.Equal("orders", method.Policy.Metadata["group"]);
     }
 
     public static TheoryData<string, Action<CacheEntryOptions.Builder>> GetOrCreateOnlySettings => new()
@@ -63,9 +68,10 @@ public class FluentMethodCacheConfigurationTests
     {
         var configuration = new FluentMethodCacheConfiguration();
         configuration.DefaultPolicy(o => o.OnHit(_ => { }));
-        configuration.ForService<IOrderService>().Method(s => s.GetOrderAsync(default));
 
-        Assert.Throws<InvalidOperationException>(() => configuration.BuildMethodPolicies());
+        var exception = Assert.Throws<InvalidOperationException>(() => configuration.BuildMethodPolicies());
+
+        Assert.Contains("DefaultPolicy()", exception.Message);
     }
 
     private sealed class NoopMetrics : ICacheMetrics
