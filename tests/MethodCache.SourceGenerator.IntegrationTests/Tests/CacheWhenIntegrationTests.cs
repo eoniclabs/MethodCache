@@ -145,7 +145,7 @@ namespace CacheWhen
     }
 
     private static T Invoke<T>(object service, string method, object arg)
-        => (T)service.GetType().GetMethod(method)!.Invoke(service, new[] { arg })!;
+        => (T)InterfaceMethods.Find(service, method).Invoke(service, new[] { arg })!;
 
     private static void Set(Type type, string field, object? value)
         => type.GetField(field, BindingFlags.Public | BindingFlags.Static)!.SetValue(null, value);

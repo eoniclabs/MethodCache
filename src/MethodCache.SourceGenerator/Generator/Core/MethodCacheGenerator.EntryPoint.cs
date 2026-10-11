@@ -83,15 +83,15 @@ namespace MethodCache.SourceGenerator
                 }
             }
 
+            // An interface whose every method was rejected only reports its diagnostics
+            validInterfaces = validInterfaces.Where(i => i.CachedMethods.Length > 0 || i.InvalidateMethods.Length > 0).ToList();
+            if (validInterfaces.Count == 0) return;
+
             // Generate sources
             foreach (var info in validInterfaces)
             {
                 var decoratorCode = DecoratorEmitter.Emit(info);
-                // Another assembly's interface may share its name with one of this project's
-                var hintName = Utils.IsFromReferencedAssembly(info.Symbol)
-                    ? $"{Utils.GetDecoratorNamespace(info.Symbol)}.{info.Symbol.Name}Decorator.g.cs"
-                    : $"{info.Symbol.Name}Decorator.g.cs";
-                context.AddSource(hintName, decoratorCode);
+                context.AddSource(Utils.GetDecoratorHintName(info.Symbol), decoratorCode);
             }
 
             // Generate shared components

@@ -106,5 +106,5 @@ namespace LivePolicy
     }
 
     private static Task<int> GetAsync(object service, int id)
-        => (Task<int>)service.GetType().GetMethod("GetAsync")!.Invoke(service, new object[] { id })!;
+        => (Task<int>)InterfaceMethods.Find(service, "GetAsync").Invoke(service, new object[] { id })!;
 }

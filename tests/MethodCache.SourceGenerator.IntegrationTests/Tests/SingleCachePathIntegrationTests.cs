@@ -123,7 +123,7 @@ namespace SinglePath
 
     private static async Task<object?> Invoke(object service, string methodName, object argument)
     {
-        var result = service.GetType().GetMethod(methodName)!.Invoke(service, new[] { argument });
+        var result = InterfaceMethods.Find(service, methodName).Invoke(service, new[] { argument });
         switch (result)
         {
             case Task task:

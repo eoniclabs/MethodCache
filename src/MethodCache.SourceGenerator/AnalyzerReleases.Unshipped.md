@@ -12,3 +12,4 @@ MCG009 | MethodCacheGenerator | Warning | Reports dynamic tags referencing unkno
 MCG010 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] on a type it cannot cache.
 MCG011 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] listing a method it cannot cache.
 MCG012 | MethodCacheGenerator | Error | Reports an interface listed in more than one [assembly: CacheInterface].
+MCG013 | MethodCacheGenerator | Error | Reports a local interface that cannot be decorated, such as one with static abstract members.

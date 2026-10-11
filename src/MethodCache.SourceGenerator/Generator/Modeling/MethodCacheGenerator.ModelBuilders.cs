@@ -85,6 +85,8 @@ namespace MethodCache.SourceGenerator
             return tags;
         }
 
+        private static string EscapeFormatBraces(string text) => text.Replace("{", "{{").Replace("}", "}}");
+
         private static List<(string template, List<string> paramNames)> ParseDynamicTags(List<string> tags, IMethodSymbol method)
         {
             var dynamicTags = new List<(string template, List<string> paramNames)>();
@@ -93,25 +95,30 @@ namespace MethodCache.SourceGenerator
             foreach (var tag in tags)
             {
                 var paramNames = new List<string>();
-                var template = tag;
+                var template = new System.Text.StringBuilder();
+                var position = 0;
 
-                // Find all {parameterName} patterns in the tag
-                var matches = DynamicTagParameterRegex.Matches(tag);
-                foreach (System.Text.RegularExpressions.Match match in matches)
+                // Find all {parameterName} patterns in the tag; everything else is literal text, with braces
+                // doubled so string.Format keeps them
+                foreach (System.Text.RegularExpressions.Match match in DynamicTagParameterRegex.Matches(tag))
                 {
-                    var paramName = match.Groups[1].Value;
-                    if (parameterNames.TryGetValue(paramName, out var parameter))
+                    if (!parameterNames.TryGetValue(match.Groups[1].Value, out var parameter))
                     {
-                        // Use the parameter's own spelling, since the template may differ in case
-                        paramNames.Add(parameter.Name);
-                        // Replace {paramName} with {0}, {1}, etc. for string.Format
-                        template = template.Replace(match.Value, $"{{{paramNames.Count - 1}}}");
+                        continue;
                     }
+
+                    template.Append(EscapeFormatBraces(tag.Substring(position, match.Index - position)));
+                    // Use the parameter's own spelling, since the template may differ in case
+                    paramNames.Add(parameter.Name);
+                    template.Append('{').Append(paramNames.Count - 1).Append('}');
+                    position = match.Index + match.Length;
                 }
+
+                template.Append(EscapeFormatBraces(tag.Substring(position)));
 
                 if (paramNames.Any())
                 {
-                    dynamicTags.Add((template, paramNames));
+                    dynamicTags.Add((template.ToString(), paramNames));
                 }
             }
 

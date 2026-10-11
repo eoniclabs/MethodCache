@@ -55,11 +55,56 @@ namespace MethodCache.SourceGenerator
                 return ns ?? "MethodCache.Generated";
             }
 
+            /// <summary>An interface with static abstract members can't be a service type or get a decorator.</summary>
+            internal static bool HasStaticAbstractMembers(INamedTypeSymbol interfaceSymbol)
+                => new[] { interfaceSymbol }.Concat(interfaceSymbol.AllInterfaces).SelectMany(i => i.GetMembers()).Any(m => m.IsStatic && m.IsAbstract);
+
             internal static bool IsFromReferencedAssembly(INamedTypeSymbol interfaceSymbol)
                 => interfaceSymbol.Locations.All(l => l.IsInMetadata);
 
             internal static string GetDecoratorFullName(INamedTypeSymbol interfaceSymbol)
-                => $"global::{GetDecoratorNamespace(interfaceSymbol)}.{interfaceSymbol.Name}Decorator";
+                => $"global::{GetDecoratorNamespace(interfaceSymbol)}.{GetDecoratorClassName(interfaceSymbol)}";
+
+            /// <summary>
+            /// The decorator's class name. A nested interface adds its containing types (A.IService becomes
+            /// A_IServiceDecorator), so A.IService and B.IService in one namespace get different decorators. Another
+            /// assembly's interface already gets them in its namespace.
+            /// </summary>
+            internal static string GetDecoratorClassName(INamedTypeSymbol interfaceSymbol)
+            {
+                var name = interfaceSymbol.Name + "Decorator";
+                if (IsFromReferencedAssembly(interfaceSymbol))
+                {
+                    return name;
+                }
+
+                for (var type = interfaceSymbol.ContainingType; type != null; type = type.ContainingType)
+                {
+                    name = type.Name + "_" + name;
+                }
+
+                return name;
+            }
+
+            /// <summary>
+            /// A source file name unique per interface: namespace, containing types and generic arity included, so
+            /// App.Users.IService, App.Orders.IService, IRepo and IRepo&lt;T&gt; never collide.
+            /// </summary>
+            internal static string GetDecoratorHintName(INamedTypeSymbol interfaceSymbol)
+            {
+                var arity = interfaceSymbol.Arity > 0 ? "`" + interfaceSymbol.Arity : string.Empty;
+                return $"{GetDecoratorNamespace(interfaceSymbol)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
+            }
+
+            /// <summary>A parameter or member name as C# source: keywords such as <c>class</c> become <c>@class</c>.</summary>
+            internal static string Identifier(string name)
+                => Microsoft.CodeAnalysis.CSharp.SyntaxFacts.GetKeywordKind(name) != Microsoft.CodeAnalysis.CSharp.SyntaxKind.None
+                    ? "@" + name
+                    : name;
+
+            /// <summary>A string as a C# literal, with quotes, backslashes and control characters escaped.</summary>
+            internal static string Literal(string value)
+                => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value, quote: true);
 
             internal static string GetMethodId(IMethodSymbol method)
                 => method.ToDisplayString(MethodIdFormat);
