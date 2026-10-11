@@ -433,7 +433,7 @@ private static void InvokeMissCallbacks(CacheRuntimeOptions options, CacheContex
                 _version = version;
             }
 
-            public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+            public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
             {
                 var effectiveVersion = _version ?? policy.Version;
                 if (effectiveVersion.HasValue)

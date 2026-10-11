@@ -748,7 +748,7 @@ namespace MethodCache.SourceGenerator
             }
 
             private static string GeneratedKeyExpression(string safeFieldName, List<IParameterSymbol> keyParams)
-                => $"_keyGenerator.GenerateKey(_method_{safeFieldName}.KeyMethod, new object[] {{ {string.Join(", ", keyParams.Select(p => p.Name))} }}, cacheSnapshot.Policy)";
+                => $"_keyGenerator.GenerateKey(_method_{safeFieldName}.KeyMethod, new object?[] {{ {string.Join(", ", keyParams.Select(p => p.Name))} }}, cacheSnapshot.Policy)";
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
             {
