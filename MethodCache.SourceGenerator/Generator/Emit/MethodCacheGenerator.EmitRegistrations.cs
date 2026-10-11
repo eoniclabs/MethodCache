@@ -62,10 +62,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                typeof({interfaceFqn}),");
                     sb.AppendLine($"                static (provider, inner) => new {decoratorFqn}(");
                     sb.AppendLine($"                    ({interfaceFqn})inner,");
-                    sb.AppendLine("                    provider.GetRequiredService<ICacheManager>(),");
-                    sb.AppendLine("                    provider.GetRequiredService<IPolicyRegistry>(),");
-                    sb.AppendLine("                    provider.GetRequiredService<ICacheKeyGenerator>(),");
-                    sb.AppendLine("                    provider.GetService<ICacheMetricsProvider>()),");
+                    sb.AppendLine("                    global::MethodCache.Core.Runtime.Core.DecoratorServices.From(provider)),");
                     sb.AppendLine(hasPolicies
                         ? "                GeneratedPolicyRegistrations.AddPolicies,"
                         : "                null,");

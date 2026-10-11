@@ -64,17 +64,18 @@ public class PolicyHandleTests
     }
 
     [Fact]
-    public async Task GetSites_CreatesOncePerRegistry()
+    public async Task GetSites_CreatesOncePerContainer()
     {
         await using var first = BuildProvider();
         await using var second = BuildProvider();
-        var firstRegistry = first.GetRequiredService<IPolicyRegistry>();
-        var secondRegistry = second.GetRequiredService<IPolicyRegistry>();
+        var firstServices = first.GetRequiredService<DecoratorServices>();
+        var secondServices = second.GetRequiredService<DecoratorServices>();
 
-        var sites = CachedMethod.GetSites(firstRegistry, static r => new Sites(r));
+        var sites = firstServices.GetSites(static r => new Sites(r));
 
-        Assert.Same(sites, CachedMethod.GetSites(firstRegistry, static r => new Sites(r)));
-        Assert.NotSame(sites, CachedMethod.GetSites(secondRegistry, static r => new Sites(r)));
+        Assert.Same(sites, firstServices.GetSites(static r => new Sites(r)));
+        Assert.Same(firstServices, first.GetRequiredService<DecoratorServices>());
+        Assert.NotSame(sites, secondServices.GetSites(static r => new Sites(r)));
     }
 
     [Fact]

@@ -68,10 +68,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"            return services.AddSingleton<{interfaceFqn}>(sp =>");
                 sb.AppendLine($"                new {decoratorFqn}(");
                 sb.AppendLine("                    implementationFactory(sp),");
-                sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
-                sb.AppendLine("                    sp.GetRequiredService<IPolicyRegistry>(),");
-                sb.AppendLine("                    sp.GetRequiredService<ICacheKeyGenerator>(),");
-                sb.AppendLine("                    sp.GetService<ICacheMetricsProvider>()));");
+                sb.AppendLine("                    global::MethodCache.Core.Runtime.Core.DecoratorServices.From(sp)));");
                 sb.AppendLine("        }");
                 sb.AppendLine();
 
@@ -90,10 +87,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"            return services.{method}<{interfaceFqn}>(sp =>");
                     sb.AppendLine($"                new {decoratorFqn}(");
                     sb.AppendLine("                    implementationFactory(sp),");
-                    sb.AppendLine("                    sp.GetRequiredService<ICacheManager>(),");
-                    sb.AppendLine("                    sp.GetRequiredService<IPolicyRegistry>(),");
-                    sb.AppendLine("                    sp.GetRequiredService<ICacheKeyGenerator>(),");
-                    sb.AppendLine("                    sp.GetService<ICacheMetricsProvider>()));");
+                    sb.AppendLine("                    global::MethodCache.Core.Runtime.Core.DecoratorServices.From(sp)));");
                     sb.AppendLine("        }");
                     sb.AppendLine();
                 }

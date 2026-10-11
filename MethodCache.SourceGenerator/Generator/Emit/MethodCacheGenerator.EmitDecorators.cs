@@ -122,7 +122,6 @@ namespace MethodCache.SourceGenerator
                 // Fields
                 sb.AppendLine($"        private readonly {interfaceFqn} _decorated;");
                 sb.AppendLine("        private readonly ICacheManager _cacheManager;");
-                sb.AppendLine("        private readonly IPolicyRegistry _policyRegistry;");
                 sb.AppendLine("        private readonly ICacheKeyGenerator _keyGenerator;");
                 sb.AppendLine("        private readonly ICacheMetricsProvider? _metricsProvider;");
                 sb.AppendLine();
@@ -253,44 +252,21 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
             }
 
-            private static void EmitConstructor(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol)
-            {
-                // Constructor name should NOT include generic parameters - that's invalid C# syntax
-                sb.AppendLine($"        public {className}(");
-                sb.AppendLine($"            {interfaceFqn} decorated,");
-                sb.AppendLine("            ICacheManager cacheManager,");
-                sb.AppendLine("            IPolicyRegistry policyRegistry,");
-                sb.AppendLine("            ICacheKeyGenerator keyGenerator)");
-                sb.AppendLine("        {");
-                sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
-                sb.AppendLine("            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));");
-                sb.AppendLine("            _policyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));");
-                sb.AppendLine("            _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-            }
-
             private static void EmitConstructorWithPolicies(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
             {
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
-                sb.AppendLine($"        public {className}(");
-                sb.AppendLine($"            {interfaceFqn} decorated,");
-                sb.AppendLine("            ICacheManager cacheManager,");
-                sb.AppendLine("            IPolicyRegistry policyRegistry,");
-                sb.AppendLine("            ICacheKeyGenerator keyGenerator,");
-                sb.AppendLine("            ICacheMetricsProvider? metricsProvider = null)");
+                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Core.Runtime.Core.DecoratorServices services)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
-                sb.AppendLine("            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));");
-                sb.AppendLine("            _policyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));");
-                sb.AppendLine("            _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));");
-                sb.AppendLine("            _metricsProvider = metricsProvider;");
-                sb.AppendLine();
+                sb.AppendLine("            if (services == null) throw new ArgumentNullException(nameof(services));");
+                sb.AppendLine("            _cacheManager = services.CacheManager;");
+                sb.AppendLine("            _keyGenerator = services.KeyGenerator;");
+                sb.AppendLine("            _metricsProvider = services.MetricsProvider;");
                 if (cachedMethods.Length > 0)
                 {
                     sb.AppendLine();
-                    sb.AppendLine("            // Created once per policy registry, so a scoped or transient decorator costs only these field copies");
-                    sb.AppendLine("            var sites = CachedMethod.GetSites(_policyRegistry, static registry => new CachedMethodSites(registry));");
+                    sb.AppendLine("            // Created once per container, so a scoped or transient decorator costs only these field copies");
+                    sb.AppendLine("            var sites = services.GetSites(static registry => new CachedMethodSites(registry));");
                     foreach (var cached in cachedMethods)
                     {
                         var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
