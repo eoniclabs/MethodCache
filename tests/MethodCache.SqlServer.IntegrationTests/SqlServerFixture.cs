@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Testcontainers.MsSql;
 
 namespace MethodCache.SqlServer.IntegrationTests;
@@ -26,12 +27,30 @@ public sealed class SqlServerFixture : IAsyncLifetime
         {
             _container = new MsSqlBuilder().WithImage("mcr.microsoft.com/mssql/server:2022-latest").Build();
             await _container.StartAsync();
-            ConnectionString = _container.GetConnectionString();
+            ConnectionString = await CreateDatabaseAsync(_container.GetConnectionString());
         }
         catch (Exception ex) when (!InfrastructureRequired)
         {
             UnavailableReason = $"No SQL Server: set METHODCACHE_SQLSERVER_CONNECTION or start Docker ({ex.GetType().Name}).";
         }
+    }
+
+    /// <summary>
+    /// Creates a database with read committed snapshot isolation, the Azure SQL default, under which readers skip
+    /// rows that are still committing instead of waiting for them.
+    /// </summary>
+    private static async Task<string> CreateDatabaseAsync(string serverConnectionString)
+    {
+        await using (var connection = new SqlConnection(serverConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = new SqlCommand(
+                "CREATE DATABASE [MethodCacheTests]; ALTER DATABASE [MethodCacheTests] SET READ_COMMITTED_SNAPSHOT ON;",
+                connection);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        return new SqlConnectionStringBuilder(serverConnectionString) { InitialCatalog = "MethodCacheTests" }.ConnectionString;
     }
 
     public async Task DisposeAsync()

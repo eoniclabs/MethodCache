@@ -14,14 +14,15 @@ internal sealed class RedisBackplane : IBackplane
 {
     private const char Separator = '\n';
 
-    private readonly IConnectionMultiplexer _connection;
+    private readonly Func<Task<IConnectionMultiplexer>> _connect;
     private readonly RedisChannel _channel;
+    private IConnectionMultiplexer? _subscribed;
     private Action<RedisChannel, RedisValue>? _handler;
     private Func<BackplaneMessage, Task>? _onMessage;
 
-    public RedisBackplane(IConnectionMultiplexer connection, string channel)
+    public RedisBackplane(Func<Task<IConnectionMultiplexer>> connect, string channel)
     {
-        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+        _connect = connect ?? throw new ArgumentNullException(nameof(connect));
         ArgumentException.ThrowIfNullOrEmpty(channel);
         _channel = RedisChannel.Literal(channel);
     }
@@ -54,11 +55,13 @@ internal sealed class RedisBackplane : IBackplane
                 Observe(onMessage(message));
             }
         };
-        _connection.ConnectionRestored += OnConnectionRestored;
+        var connection = await _connect().ConfigureAwait(false);
+        _subscribed = connection;
+        connection.ConnectionRestored += OnConnectionRestored;
 
         try
         {
-            await _connection.GetSubscriber().SubscribeAsync(_channel, _handler).ConfigureAwait(false);
+            await connection.GetSubscriber().SubscribeAsync(_channel, _handler).ConfigureAwait(false);
         }
         catch (RedisConnectionException)
         {
@@ -70,19 +73,23 @@ internal sealed class RedisBackplane : IBackplane
     /// <inheritdoc />
     public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
     {
-        _connection.ConnectionRestored -= OnConnectionRestored;
         _onMessage = null;
-
+        var connection = Interlocked.Exchange(ref _subscribed, null);
         var handler = Interlocked.Exchange(ref _handler, null);
-        if (handler != null)
+        if (connection != null)
         {
-            await _connection.GetSubscriber().UnsubscribeAsync(_channel, handler).ConfigureAwait(false);
+            connection.ConnectionRestored -= OnConnectionRestored;
+            if (handler != null)
+            {
+                await connection.GetSubscriber().UnsubscribeAsync(_channel, handler).ConfigureAwait(false);
+            }
         }
     }
 
-    private Task PublishAsync(BackplaneMessageType type, string value)
+    private async Task PublishAsync(BackplaneMessageType type, string value)
     {
-        return _connection.GetSubscriber().PublishAsync(_channel, Format(type, InstanceId, value));
+        var connection = await _connect().ConfigureAwait(false);
+        await connection.GetSubscriber().PublishAsync(_channel, Format(type, InstanceId, value)).ConfigureAwait(false);
     }
 
     internal static string Format(BackplaneMessageType type, string instanceId, string value)

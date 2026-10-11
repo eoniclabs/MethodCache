@@ -1,8 +1,11 @@
 using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.Core.Storage.Abstractions;
+using Microsoft.Extensions.Caching.SqlServer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace MethodCache.SqlServer;
 
@@ -28,6 +31,10 @@ public static class SqlServerServiceCollectionExtensions
     /// <param name="services">The service collection</param>
     /// <param name="configure">Configures the connection, the tables and the backplane</param>
     /// <returns>The service collection for chaining</returns>
+    /// <remarks>
+    /// MethodCache keeps its own cache instance, so the app's <c>IDistributedCache</c> is left alone. Startup never
+    /// waits for SQL Server: missing tables are created in the background, retried until the database answers.
+    /// </remarks>
     public static IServiceCollection AddMethodCacheSqlServer(this IServiceCollection services, Action<SqlServerOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -37,23 +44,26 @@ public static class SqlServerServiceCollectionExtensions
         configure(options);
         options.Validate();
 
-        services.AddDistributedSqlServerCache(cacheOptions =>
-        {
-            cacheOptions.ConnectionString = options.ConnectionString;
-            cacheOptions.SchemaName = options.SchemaName;
-            cacheOptions.TableName = options.TableName;
-        });
-
         if (options.CreateTablesIfMissing)
         {
-            services.AddSingleton<IHostedService>(new SqlServerTables(options));
+            services.AddSingleton<IHostedService>(sp => new SqlServerTables(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>()));
         }
 
         if (options.EnableBackplane)
         {
-            services.TryAddSingleton<IBackplane>(_ => new SqlServerBackplane(options));
+            services.TryAddSingleton<IBackplane>(sp => new SqlServerBackplane(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerBackplane>()));
         }
 
-        return services.AddMethodCacheDistributedCache(cacheOptions => cacheOptions.KeyPrefix = options.KeyPrefix);
+        // MethodCache's own cache instance, so the app's IDistributedCache and its settings are left alone
+        return services.AddMethodCacheDistributedCache(
+            _ => new SqlServerCache(Options.Create(CacheOptions(options))),
+            cacheOptions => cacheOptions.KeyPrefix = options.KeyPrefix);
     }
+
+    internal static SqlServerCacheOptions CacheOptions(SqlServerOptions options) => new()
+    {
+        ConnectionString = options.ConnectionString,
+        SchemaName = options.SchemaName,
+        TableName = options.TableName,
+    };
 }

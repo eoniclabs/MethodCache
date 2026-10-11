@@ -15,12 +15,20 @@ With options:
 builder.Services.AddMethodCacheRedis(options =>
 {
     options.Configuration = "redis1:6379,redis2:6379,password=...";
-    options.KeyPrefix = "orders-api:";
-    options.BackplaneChannel = "orders-api:invalidations";
+    options.KeyPrefix = "orders-api:";   // the backplane channel follows: orders-api:invalidations
 });
 ```
 
-An `IConnectionMultiplexer` you have already registered is reused for both the cache and the backplane. The one MethodCache creates otherwise uses `AbortOnConnectFail = false`, so the application starts while Redis is down, and `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
+MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
+
+To share a connection your app already has instead:
+
+```csharp
+builder.Services.AddMethodCacheRedis(options =>
+    options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>());
+```
+
+MethodCache doesn't dispose a shared connection.
 
 ## How it works
 
@@ -54,6 +62,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | Option | Default | Description |
 |--------|---------|-------------|
 | `Configuration` | `localhost:6379` | StackExchange.Redis configuration string |
+| `ConnectionMultiplexerFactory` | none | Returns an existing connection to share instead of opening one |
 | `KeyPrefix` | `methodcache:` | Prefix for every key MethodCache writes |
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
-| `BackplaneChannel` | `methodcache:invalidations` | Pub/sub channel; applications that share Redis but not data need different channels |
+| `BackplaneChannel` | `KeyPrefix` + `invalidations` | Pub/sub channel; applications with different key prefixes get different channels |

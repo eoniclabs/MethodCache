@@ -21,9 +21,23 @@ public class SqlServerServiceCollectionExtensionsTests
         services.AddMethodCacheSqlServer(ConnectionString);
         using var provider = services.BuildServiceProvider();
 
-        provider.GetRequiredService<IDistributedCache>().Should().BeOfType<SqlServerCache>();
+        provider.GetRequiredKeyedService<IDistributedCache>("MethodCache").Should().BeOfType<SqlServerCache>();
         provider.GetRequiredService<IBackplane>().Should().BeOfType<SqlServerBackplane>();
         provider.GetServices<IHostedService>().Should().ContainSingle(s => s is SqlServerTables);
+    }
+
+    [Fact]
+    public void AddMethodCacheSqlServer_LeavesTheAppsDistributedCacheAlone()
+    {
+        var appCache = NSubstitute.Substitute.For<IDistributedCache>();
+        var services = new ServiceCollection();
+        services.AddSingleton(appCache);
+
+        services.AddMethodCacheSqlServer(ConnectionString);
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IDistributedCache>().Should().BeSameAs(appCache);
+        services.Should().NotContain(d => d.ServiceType == typeof(IConfigureOptions<SqlServerCacheOptions>));
     }
 
     [Fact]
@@ -31,8 +45,10 @@ public class SqlServerServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
+        SqlServerOptions? captured = null;
         services.AddMethodCacheSqlServer(options =>
         {
+            captured = options;
             options.ConnectionString = ConnectionString;
             options.SchemaName = "cache";
             options.TableName = "Entries";
@@ -40,7 +56,7 @@ public class SqlServerServiceCollectionExtensionsTests
         });
         using var provider = services.BuildServiceProvider();
 
-        var cacheOptions = provider.GetRequiredService<IOptions<SqlServerCacheOptions>>().Value;
+        var cacheOptions = SqlServerServiceCollectionExtensions.CacheOptions(captured!);
         cacheOptions.ConnectionString.Should().Be(ConnectionString);
         cacheOptions.SchemaName.Should().Be("cache");
         cacheOptions.TableName.Should().Be("Entries");

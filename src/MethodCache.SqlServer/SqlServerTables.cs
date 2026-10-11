@@ -1,16 +1,86 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace MethodCache.SqlServer;
 
 /// <summary>
-/// Creates the cache and invalidations tables at startup if they do not exist.
+/// Creates the cache and invalidations tables if they do not exist. Startup waits at most
+/// <see cref="StartupWait"/> for that; an unreachable database is retried in the background, and until the tables
+/// exist, methods run uncached.
 /// </summary>
-internal sealed class SqlServerTables(SqlServerOptions options) : IHostedService
+internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServerTables>? logger = null) : IHostedService, IDisposable
 {
-    public Task StartAsync(CancellationToken cancellationToken) => CreateIfMissingAsync(options, cancellationToken);
+    internal static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(10);
+    internal static readonly TimeSpan StartupWait = TimeSpan.FromSeconds(3);
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    private readonly CancellationTokenSource _stopping = new();
+    private Task? _creating;
+
+    internal Task? Creating => _creating;
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        // Normally the tables are ready before the first request; a database that is down only delays startup a bit
+        _creating = CreateWithRetriesAsync(_stopping.Token);
+        try
+        {
+            await _creating.WaitAsync(StartupWait, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+        }
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await _stopping.CancelAsync().ConfigureAwait(false);
+        if (_creating != null)
+        {
+            await _creating.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public void Dispose()
+    {
+        // Disposed without StopAsync, e.g. when startup was cancelled: the retries stop rather than outlive the app
+        _stopping.Cancel();
+        _stopping.Dispose();
+    }
+
+    private async Task CreateWithRetriesAsync(CancellationToken cancellationToken)
+    {
+        var logged = false;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await CreateIfMissingAsync(options, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (!logged)
+                {
+                    logged = true;
+                    logger?.LogWarning(ex, "MethodCache could not create its SQL Server tables; retrying every {Interval}.", RetryInterval);
+                }
+            }
+
+            try
+            {
+                await Task.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
 
     internal static async Task CreateIfMissingAsync(SqlServerOptions options, CancellationToken cancellationToken)
     {

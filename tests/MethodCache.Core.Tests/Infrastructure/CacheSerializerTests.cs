@@ -42,6 +42,22 @@ public class CacheSerializerTests
 
     [Theory]
     [MemberData(nameof(Serializers))]
+    public void RoundTrip_KeepsDateTimeKind(ISerializer serializer)
+    {
+        // A value read from the distributed cache must equal the one the method returned, kind included
+        foreach (var kind in new[] { DateTimeKind.Utc, DateTimeKind.Local, DateTimeKind.Unspecified })
+        {
+            var value = new DateTime(2026, 10, 10, 12, 0, 0, kind);
+
+            var copy = RoundTrip(serializer, value);
+
+            copy.Should().Be(value);
+            copy.Kind.Should().Be(kind);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Serializers))]
     public void Deserialize_EmptyInput_ReturnsDefault(ISerializer serializer)
     {
         serializer.Deserialize<string>(ReadOnlySequence<byte>.Empty).Should().BeNull();

@@ -171,6 +171,27 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 sp.GetService<IPolicyRegistry>()));
         }
 
+        // Service key of a distributed cache that only MethodCache uses, so the app's own IDistributedCache is untouched
+        private const string OwnDistributedCacheKey = "MethodCache";
+
+        /// <summary>
+        /// Keeps cached results in a distributed cache that only MethodCache uses, created by
+        /// <paramref name="cacheFactory"/>, as well as in memory. The app's own <see cref="IDistributedCache"/>, if
+        /// any, is left alone. Integrations such as <c>AddMethodCacheRedis</c> use this.
+        /// </summary>
+        /// <param name="services">The service collection</param>
+        /// <param name="cacheFactory">Creates the distributed cache, once</param>
+        /// <param name="configure">Optional distributed cache options</param>
+        /// <returns>The service collection for chaining</returns>
+        public static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Func<IServiceProvider, IDistributedCache> cacheFactory, Action<DistributedCacheOptions>? configure = null)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(cacheFactory);
+
+            services.AddKeyedSingleton<IDistributedCache>(OwnDistributedCacheKey, (sp, _) => cacheFactory(sp));
+            return services.AddMethodCacheDistributedCache(configure);
+        }
+
         /// <summary>
         /// Keeps cached results in the registered <see cref="IDistributedCache"/> (Redis, SQL Server, ...) as well as
         /// in memory. An in-memory miss reads the distributed cache before running the method, so instances share
@@ -196,7 +217,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
             services.TryAddSingleton<ISerializer, JsonCacheSerializer>();
             services.TryAddSingleton(static sp => new DistributedCacheLayer(
-                sp.GetRequiredService<IDistributedCache>(),
+                sp.GetKeyedService<IDistributedCache>(OwnDistributedCacheKey) ?? sp.GetRequiredService<IDistributedCache>(),
                 sp.GetRequiredService<ISerializer>(),
                 sp.GetRequiredService<IOptions<DistributedCacheOptions>>().Value,
                 sp.GetService<IBackplane>(),

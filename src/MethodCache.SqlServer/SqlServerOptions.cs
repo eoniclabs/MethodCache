@@ -48,7 +48,8 @@ public class SqlServerOptions
     public TimeSpan BackplanePollingInterval { get; set; } = TimeSpan.FromSeconds(1);
 
     /// <summary>
-    /// How long invalidations are kept in the invalidations table.
+    /// How long invalidations are kept in the invalidations table; at least one minute. An instance that could not
+    /// read the table for half this long may have missed invalidations, so it clears its in-memory cache.
     /// </summary>
     public TimeSpan BackplaneRetention { get; set; } = TimeSpan.FromHours(1);
 
@@ -73,6 +74,11 @@ public class SqlServerOptions
         if (BackplanePollingInterval <= TimeSpan.Zero || BackplaneRetention <= TimeSpan.Zero)
         {
             throw new InvalidOperationException("SqlServerOptions.BackplanePollingInterval and BackplaneRetention must be positive.");
+        }
+
+        if (BackplaneRetention < TimeSpan.FromMinutes(1))
+        {
+            throw new InvalidOperationException("SqlServerOptions.BackplaneRetention must be at least one minute.");
         }
     }
 }
