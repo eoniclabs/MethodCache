@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text;
+using FxVendor;
+using MethodCache.Core;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
 using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.Core.Management;
@@ -8,6 +10,9 @@ using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Demo;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
+// Chapter 5: caches the vendor's own interface, no wrapper. Only the listed method is cached.
+[assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync), Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -24,7 +29,8 @@ try
     // ── The whole setup ──────────────────────────────────────────────────────
     var services = new ServiceCollection();
     services.AddSingleton(typeof(CallCounter<>));
-    services.AddSingleton<ExchangeRateClient>();
+    services.AddSingleton<FxRatesClient>();
+    services.AddSingleton<IFxRatesClient>(sp => sp.GetRequiredService<FxRatesClient>());
 
     services.AddSingleton<IWeatherService, WeatherService>();
     services.AddSingleton<IUserProfiles, UserProfiles>();
@@ -184,29 +190,29 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
 
 static async Task ManualCachingAsync(IServiceProvider provider)
 {
-    Ui.Chapter(5, "Cache code you don't own", "For third-party clients, use ICacheManager with a key of your choice. Same engine, same invalidation.");
+    Ui.Chapter(5, "Cache code you don't own", "IFxRatesClient comes from a vendor's package. One line caches its rate lookups; orders still reach the API.");
     Ui.Code("""
-        var rate = await cache.GetOrCreateAsync(
-            "fx:EUR:SEK",
-            async (ctx, ct) => await client.GetRateAsync("EUR", "SEK"),
-            o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
+        [assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
+            Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+
+        services.AddSingleton<IFxRatesClient, FxRatesClient>();   // the vendor's client, as usual
         """);
 
-    var cache = provider.GetRequiredService<ICacheManager>();
-    var client = provider.GetRequiredService<ExchangeRateClient>();
-    var counter = provider.GetRequiredService<CallCounter<ExchangeRateClient>>();
+    var fx = provider.GetRequiredService<IFxRatesClient>();
+    var client = provider.GetRequiredService<FxRatesClient>();
 
     var stopwatch = Stopwatch.StartNew();
     for (var i = 0; i < 3; i++)
     {
-        await cache.GetOrCreateAsync(
-            "fx:EUR:SEK",
-            async (ctx, ct) => await client.GetRateAsync("EUR", "SEK"),
-            o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
+        await fx.GetRateAsync("EUR", "SEK");
     }
 
     Ui.Step("Three lookups of EUR → SEK", Ui.Ms(stopwatch.Elapsed));
-    Ui.Check(counter.Calls == 1, $"The exchange-rate API was called {Ui.Times(counter.Calls)}");
+    Ui.Check(client.RateCalls == 1, $"The exchange-rate API was called {Ui.Times(client.RateCalls)}");
+
+    await fx.PlaceOrderAsync("EUR", "SEK", 100m);
+    await fx.PlaceOrderAsync("EUR", "SEK", 100m);
+    Ui.Check(client.OrderCalls == 2, "PlaceOrderAsync isn't listed, so both orders reached the API");
 }
 
 static async Task InsightAsync(IServiceProvider provider)

@@ -1,11 +1,16 @@
 using MethodCache.Core;
 using MethodCache.Core.Infrastructure.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using Vendor.Rates;
+
+// A third-party interface, cached without a wrapper
+[assembly: CacheInterface(typeof(IRatesClient), nameof(IRatesClient.GetRateAsync), Duration = "00:01:00")]
 
 // Runs the README Quick Start as a Native AOT executable. Exits with 1 when a call that should hit the cache
 // reaches the implementation.
 var services = new ServiceCollection();
 services.AddScoped<IUserService, UserService>();
+services.AddSingleton<IRatesClient, RatesClient>();
 services.AddMethodCache();
 
 await using var provider = services.BuildServiceProvider();
@@ -28,6 +33,12 @@ var prices = provider.GetRequiredService<IPriceService>();
 await prices.GetPriceAsync("ABC");
 await prices.GetPriceAsync("ABC");
 
+var rates = provider.GetRequiredService<IRatesClient>();
+await rates.GetRateAsync("EUR", "SEK");
+await rates.GetRateAsync("EUR", "SEK");
+await rates.PlaceOrderAsync("book");
+await rates.PlaceOrderAsync("book");
+
 var failures = new List<string>();
 if (provider.GetRequiredService<IUserService>().GetType().Name != "IUserServiceDecorator")
 {
@@ -42,6 +53,16 @@ if (UserService.Calls != 1)
 if (PriceService.Calls != 1)
 {
     failures.Add($"IPriceService implementation called {PriceService.Calls} times, expected 1");
+}
+
+if (RatesClient.RateCalls != 1)
+{
+    failures.Add($"IRatesClient.GetRateAsync called {RatesClient.RateCalls} times, expected 1");
+}
+
+if (RatesClient.OrderCalls != 2)
+{
+    failures.Add($"IRatesClient.PlaceOrderAsync called {RatesClient.OrderCalls} times, expected 2 (it is not listed, so never cached)");
 }
 
 foreach (var failure in failures)

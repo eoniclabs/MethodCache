@@ -586,3 +586,19 @@ MethodCache.Core.Runtime.ICacheManager.TryGetFast<T>(System.ReadOnlySpan<char> c
 MethodCache.Core.Runtime.ICacheManager.TryGetFastTask<T>(System.ReadOnlySpan<char> cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetFast<T>(System.ReadOnlySpan<char> cacheKey, out T? value) -> bool
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.TryGetFastTask<T>(System.ReadOnlySpan<char> cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
+MethodCache.Core.CacheInterfaceAttribute
+MethodCache.Core.CacheInterfaceAttribute.CacheInterfaceAttribute(System.Type! interfaceType, params string![]! methods) -> void
+MethodCache.Core.CacheInterfaceAttribute.InterfaceType.get -> System.Type!
+MethodCache.Core.CacheInterfaceAttribute.Methods.get -> string![]!
+MethodCache.Core.CacheInterfaceAttribute.Group.get -> string?
+MethodCache.Core.CacheInterfaceAttribute.Group.set -> void
+MethodCache.Core.CacheInterfaceAttribute.Duration.get -> string?
+MethodCache.Core.CacheInterfaceAttribute.Duration.set -> void
+MethodCache.Core.CacheInterfaceAttribute.SlidingExpiration.get -> string?
+MethodCache.Core.CacheInterfaceAttribute.SlidingExpiration.set -> void
+MethodCache.Core.CacheInterfaceAttribute.RefreshAhead.get -> string?
+MethodCache.Core.CacheInterfaceAttribute.RefreshAhead.set -> void
+MethodCache.Core.CacheInterfaceAttribute.Tags.get -> string![]?
+MethodCache.Core.CacheInterfaceAttribute.Tags.set -> void
+MethodCache.Core.CacheInterfaceAttribute.Version.get -> int
+MethodCache.Core.CacheInterfaceAttribute.Version.set -> void

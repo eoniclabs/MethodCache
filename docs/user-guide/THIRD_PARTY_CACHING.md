@@ -2,12 +2,50 @@
 
 MethodCache can cache calls to libraries you do not own, such as API clients, cloud SDKs or payment gateways, to cut API costs and latency. Typical candidates are expensive reads whose results can be a little stale.
 
-Caching is generated for methods that carry a `[Cache]` attribute in your own code, so you cannot attach caching to a third-party interface through configuration alone. Use one of these two approaches:
+Pick one of three approaches:
 
 | Approach | Best for |
 |----------|----------|
-| **Wrapper interface with `[Cache]`** | Several methods of one client, with policies you want to tune from appsettings.json or at runtime |
+| **`[assembly: CacheInterface]`** | A client that ships an interface: cache chosen methods of it with one line, no wrapper |
+| **Wrapper interface with `[Cache]`** | A client without an interface (a sealed class or static methods), or per-method attributes you want in code |
 | **`ICacheManager.GetOrCreateAsync`** | One or two calls, or keys you want to build yourself |
+
+## Caching the Client's Own Interface
+
+Name the interface and the methods to cache in an assembly attribute, anywhere in your project:
+
+```csharp
+[assembly: CacheInterface(typeof(IWeatherClient),
+    nameof(IWeatherClient.GetCurrentAsync), nameof(IWeatherClient.GetForecastAsync),
+    Duration = "00:05:00", Tags = new[] { "weather", "city:{city}" })]
+```
+
+```csharp
+builder.Services.AddSingleton<IWeatherClient, WeatherClient>(); // the vendor's client, registered as usual
+builder.Services.AddMethodCache();                               // wraps IWeatherClient too
+```
+
+The listed methods behave exactly like methods with `[Cache]`: keys are built from the arguments, tag templates such as
+`city:{city}` use the method's parameter names, and hits on .NET 9 and later allocate nothing. Every other method of
+the interface calls the client directly, so writes are never cached by accident.
+
+- The settings on the attribute (`Duration`, `Tags`, `Group`, `SlidingExpiration`, `RefreshAhead`, `Version`) apply
+  to every listed method. Give one method different settings with the fluent API, `appsettings.json` or runtime
+  overrides, as for any cached method:
+
+  ```csharp
+  builder.Services.AddMethodCache(config => config
+      .ForService<IWeatherClient>()
+      .Method(c => c.GetForecastAsync(default!, default))
+      .Configure(o => o.WithDuration(TimeSpan.FromHours(1))));
+  ```
+
+- The method id in `appsettings.json` and the admin endpoints is the interface's full name, a dot and the method name,
+  for example `Vendor.Weather.IWeatherClient.GetForecastAsync`.
+- List one attribute per interface. The interface must be non-generic and come from another assembly; for your own
+  interfaces, put `[Cache]` on the methods. A method with overloads can't be listed yet.
+- Mistakes are build errors: MCG010 (a type it can't cache), MCG011 (a listed method that is missing, overloaded or
+  returns nothing to cache) and MCG012 (an interface listed twice).
 
 ## Wrapper Interface with Attributes
 
