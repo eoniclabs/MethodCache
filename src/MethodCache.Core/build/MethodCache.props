@@ -1,0 +1,9 @@
+<Project>
+  <!--
+    The source generator needs the Roslyn 4.8 compiler (.NET 8 SDK or Visual Studio 17.8) or newer. An older compiler
+    only warns (CS9057) and skips the generator, so nothing would be cached; make that a build error instead.
+  -->
+  <PropertyGroup>
+    <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
+  </PropertyGroup>
+</Project>

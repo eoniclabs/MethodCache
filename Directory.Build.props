@@ -5,6 +5,16 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>cache;caching;performance;method-caching;source-generator;roslyn-analyzer</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Company>EonicLabs</Company>
+    <PackageProjectUrl>https://github.com/eoniclabs/MethodCache</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Symbols, source link and docs, so users can step into MethodCache and get IntelliSense text -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
 
     <!-- Common package versions -->
     <MicrosoftExtensionsVersion>9.0.7</MicrosoftExtensionsVersion>
@@ -17,11 +27,23 @@
     <StackExchangeRedisVersion>2.8.12</StackExchangeRedisVersion>
   </PropertyGroup>
 
+  <!-- Normalized paths in the shipped DLLs and PDBs; only on CI, so local debugging keeps real paths -->
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- XML docs for every project under src/; members without docs are not an error -->
+  <PropertyGroup Condition="$([MSBuild]::MakeRelative($(MSBuildThisFileDirectory), $(MSBuildProjectDirectory)).StartsWith('src'))">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Nerdbank.GitVersioning" Version="3.6.133" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Items are evaluated after every property, so this sees a project's own PackageReadmeFile -->
+  <ItemGroup Condition="'$(PackageReadmeFile)' == 'README.md'">
     <None Include="$(MSBuildThisFileDirectory)README.md"
           Pack="true"
           PackagePath=""
@@ -29,7 +51,7 @@
           Condition="!Exists('$(MSBuildProjectDirectory)/README.md')" />
   </ItemGroup>
 
-  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md')">
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md') And '$(PackageReadmeFile)' == 'README.md'">
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
