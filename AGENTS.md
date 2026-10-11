@@ -33,11 +33,20 @@ Read this before changing the repository. It is written for human contributors a
 - Framework: xUnit. Place tests in `*.Tests` projects; files end with `*Tests.cs`.
 - Style: Arrange/Act/Assert, deterministic tests; name methods like `Method_State_Expected`.
 - Coverage: Aim for meaningful coverage on new/changed code; include negative and boundary cases.
+- Bug fixes start with a failing test. Write the test that shows the bug, see it fail, then fix it, and say in the pull request that the test failed before the fix. A bug found any other way means a kind of test is missing: add it where it belongs.
+- Where each kind of test lives:
+  - A new method shape the generator must handle: a case in `tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs`.
+  - Anything that depends on time (expiry, refresh, timeouts): a registered `FakeTimeProvider`, never `Task.Delay` or sleeps.
+  - Rules that must hold for every input (keys, tags, the memory engine against a model): CsCheck properties in `tests/MethodCache.Core.Tests/Properties`.
+  - A distributed cache or backplane that hangs, fails or loses messages: `tests/MethodCache.Core.Tests/FaultInjection`.
+  - Isolation between users, authorization, telemetry contents and untrusted input: the security tests, with the threat list in `docs/security.md` kept in step.
+  - Behavior the docs promise: a test in `tests/MethodCache.Docs.Tests`.
 - Integration: See `tests/MethodCache.Redis.IntegrationTests/README.md`; ensure Docker is running.
 
 ## Commits & Pull Requests
 - Commits: Imperative present tense (e.g., "Refactor X", "Add Y"); small, focused; include rationale in body when helpful.
-- PRs: Clear description, linked issues, testing notes, and any breaking changes. Include docs updates (README or samples) when behavior changes. Add screenshots only if UI/dev tooling is affected.
+- PRs: fill in `.github/pull_request_template.md`: what a user sees before and after, how it works, and how it was tested. Include docs updates (README or samples) when behavior changes. Add screenshots only if UI/dev tooling is affected.
+- Releases: follow `docs/developer/RELEASE_CHECKLIST.md`.
 
 ## Security & Configuration
 - Do not log sensitive data or include secrets in cache keys. Use environment variables or user-secrets for Redis connection strings.
