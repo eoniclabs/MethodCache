@@ -119,10 +119,10 @@ namespace MethodCache.Core.Runtime.Execution
             ArgumentNullException.ThrowIfNull(keyGenerator);
 
             var key = keyGenerator.GenerateKey(methodName, args, policy);
-            return GetOrCreateCoreAsync(key, methodName, factory, GetEntryPolicy(policy));
+            return GetOrCreateCoreAsync(key, methodName, factory, GetEntryPolicy(policy), CancellationToken.None);
         }
 
-        public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(cacheKey))
             {
@@ -130,7 +130,7 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             ArgumentNullException.ThrowIfNull(policy);
-            return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy));
+            return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken);
         }
 
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
@@ -411,7 +411,7 @@ namespace MethodCache.Core.Runtime.Execution
 
         #region Loading
 
-        private Task<T> GetOrCreateCoreAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy)
+        private Task<T> GetOrCreateCoreAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(factory);
 
@@ -419,46 +419,58 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 if (refreshDue)
                 {
-                    StartBackgroundRefresh(key, methodName, factory, policy, node!);
+                    StartBackgroundRefresh(key, methodName, factory, policy, node!, cancellationToken);
                 }
 
                 RecordHit(methodName);
                 return node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
             }
 
-            return LoadAsync(key, methodName, factory, policy);
-        }
-
-        private async Task<T> LoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy)
-        {
-            // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
-            var previous = _failSafeDuration > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
-
-            var flight = new Flight(policy.Tags);
-            Flight existing;
-            while (true)
+            if (cancellationToken.IsCancellationRequested)
             {
-                existing = _flights.GetOrAdd(key, flight);
-                if (ReferenceEquals(existing, flight) || !existing.Invalidated)
-                {
-                    break;
-                }
-
-                // The running load was invalidated, so its result predates the invalidation: start a fresh one.
-                // The old load only removes its own flight, so replacing it here is safe.
-                if (_flights.TryUpdate(key, flight, existing))
-                {
-                    existing = flight;
-                    break;
-                }
+                return Task.FromCanceled<T>(cancellationToken);
             }
 
-            if (!ReferenceEquals(existing, flight))
-            {
-                // Another caller is already loading this key: share its result.
-                RecordHit(methodName);
-                var shared = await existing.Task.ConfigureAwait(false);
+            return LoadAsync(key, methodName, factory, policy, cancellationToken);
+        }
 
+        /// <summary>
+        /// Loads a missing entry, or joins the load another caller already started for the key.
+        /// </summary>
+        /// <remarks>
+        /// <paramref name="factory"/> captures its caller's cancellation token, so a load can only be cancelled by
+        /// the caller that started it. Callers that joined wait with their own token; when the load they joined was
+        /// cancelled by its own caller, they load again instead of failing.
+        /// </remarks>
+        private async Task<T> LoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken)
+        {
+            Flight flight;
+            Node? previous;
+            while (true)
+            {
+                // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
+                previous = _failSafeDuration > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
+
+                flight = new Flight(policy.Tags);
+                var existing = JoinOrStartFlight(key, flight);
+                if (ReferenceEquals(existing, flight))
+                {
+                    break;
+                }
+
+                // Another caller is already loading this key: share its result.
+                object? shared;
+                try
+                {
+                    shared = await existing.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (existing.CancelledByCaller && !cancellationToken.IsCancellationRequested)
+                {
+                    // The caller that started the load cancelled it; this caller still wants the value
+                    continue;
+                }
+
+                RecordHit(methodName);
                 if (shared is T typed)
                 {
                     return typed;
@@ -507,6 +519,12 @@ namespace MethodCache.Core.Runtime.Execution
                 RecordLoadLatency(methodName, elapsed);
                 return result;
             }
+            catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            {
+                // The caller gave up; that says nothing about the dependency, so no error and no fail-safe value
+                flight.CancelByCaller(ex);
+                throw;
+            }
             catch (Exception ex)
             {
                 _metricsProvider.CacheError(methodName, ex.Message);
@@ -526,7 +544,27 @@ namespace MethodCache.Core.Runtime.Execution
             }
         }
 
-        private void StartBackgroundRefresh<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, Node node)
+        /// <summary>Registers <paramref name="flight"/> for the key, or returns the load already running for it.</summary>
+        private Flight JoinOrStartFlight(string key, Flight flight)
+        {
+            while (true)
+            {
+                var existing = _flights.GetOrAdd(key, flight);
+                if (ReferenceEquals(existing, flight) || !existing.Invalidated)
+                {
+                    return existing;
+                }
+
+                // The running load was invalidated, so its result predates the invalidation: start a fresh one.
+                // The old load only removes its own flight, so replacing it here is safe.
+                if (_flights.TryUpdate(key, flight, existing))
+                {
+                    return flight;
+                }
+            }
+        }
+
+        private void StartBackgroundRefresh<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, Node node, CancellationToken cancellationToken)
         {
             if (Interlocked.CompareExchange(ref node.RefreshState, 1, 0) != 0)
             {
@@ -564,6 +602,13 @@ namespace MethodCache.Core.Runtime.Execution
 
                     flight.Complete(result);
                     RecordLoadLatency(methodName, elapsed);
+                }
+                catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+                {
+                    // The refresh runs the call that found the entry due, so it ends with that caller's request.
+                    // The current value stays; callers that joined load again, and a later hit starts a new refresh.
+                    Volatile.Write(ref node.RefreshState, 0);
+                    flight.CancelByCaller(ex);
                 }
                 catch (Exception ex)
                 {
@@ -682,17 +727,22 @@ namespace MethodCache.Core.Runtime.Execution
             }
 
             var now = _engine.Now;
-            var lifetime = duration ?? policy.Duration ?? _defaultDuration;
+            var explicitDuration = duration ?? policy.Duration;
+            var lifetime = explicitDuration ?? _defaultDuration;
             if (_jitter > 0)
             {
                 lifetime += Random.Shared.NextInt64(_jitter);
             }
 
             lifetime = Math.Min(lifetime, _maxDuration); // after jitter, so MaxExpiration stays a hard upper bound
+            var absoluteExpiresAt = now + _maxDuration;
             if (policy.Sliding > 0)
             {
-                // An entry nobody reads expires after one sliding window; reads extend it (see TryGetFresh).
-                lifetime = Math.Min(lifetime, policy.Sliding);
+                // An entry nobody reads expires after one sliding window; reads extend it (see TryGetFresh), but
+                // never past its Duration. Without a Duration, only MaxExpiration bounds it.
+                var cap = explicitDuration != null ? lifetime : _maxDuration;
+                absoluteExpiresAt = now + cap;
+                lifetime = Math.Min(cap, policy.Sliding);
             }
 
             var logicalExpiresAt = now + lifetime;
@@ -701,7 +751,7 @@ namespace MethodCache.Core.Runtime.Execution
                 CreatedAt = now,
                 LogicalExpiresAt = logicalExpiresAt,
                 PhysicalExpiresAt = logicalExpiresAt + _failSafeDuration,
-                AbsoluteExpiresAt = now + _maxDuration,
+                AbsoluteExpiresAt = absoluteExpiresAt,
                 Tags = policy.Tags,
                 Policy = policy,
                 Weight = _weigher == null ? 1 : Math.Max(0, _weigher(key, value))
@@ -738,7 +788,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 if (policy.Sliding > 0)
                 {
-                    var extended = Math.Min(now + policy.Sliding, found.AbsoluteExpiresAt);
+                    var extended = Math.Min(now + policy.Sliding, Volatile.Read(ref found.AbsoluteExpiresAt));
                     if (extended > Volatile.Read(ref found.LogicalExpiresAt))
                     {
                         Volatile.Write(ref found.LogicalExpiresAt, extended);
@@ -757,7 +807,9 @@ namespace MethodCache.Core.Runtime.Execution
             var now = _engine.Now;
             if (!node.IsPhysicallyExpired(now) && TryRead(node, out value))
             {
-                // Serve the stale value for a short while before trying the factory again.
+                // Serve the stale value for a short while before trying the factory again. Reads must not extend it
+                // with sliding expiration, or the factory would never be tried again.
+                Volatile.Write(ref node.AbsoluteExpiresAt, now + _failSafeThrottle);
                 Volatile.Write(ref node.LogicalExpiresAt, now + _failSafeThrottle);
                 Interlocked.Exchange(ref node.RefreshState, 0);
                 return true;
@@ -1016,7 +1068,6 @@ namespace MethodCache.Core.Runtime.Execution
             }
         }
 
-        /// <summary>An in-progress load that concurrent callers for the same key join.</summary>
         /// <summary>
         /// One running load that other callers of the same key join. It is its own completion source, so a load
         /// allocates one object less.
@@ -1040,7 +1091,16 @@ namespace MethodCache.Core.Runtime.Execution
                 set => _invalidated = value;
             }
 
+            /// <summary>Set when the caller that started the load cancelled it; callers that joined load again.</summary>
+            public bool CancelledByCaller { get; private set; }
+
             public void Complete(object? result) => TrySetResult(result);
+
+            public void CancelByCaller(OperationCanceledException exception)
+            {
+                CancelledByCaller = true;
+                TrySetCanceled(exception.CancellationToken);
+            }
 
             public void Fail(Exception exception)
             {

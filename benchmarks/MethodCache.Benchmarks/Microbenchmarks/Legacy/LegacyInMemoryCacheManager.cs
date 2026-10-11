@@ -313,7 +313,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
             return GetAsyncInternal<T>(key, updateStatistics: false);
         }
 
-        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(cacheKey))
             {

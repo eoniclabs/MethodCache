@@ -188,8 +188,8 @@ public class TelemetryCacheManagerTests : IDisposable
 
         // Like a refresh-ahead hit: the factory runs in the background, outside the caller's execution context,
         // and the cached value returns at once.
-        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync("key", "TestMethod", It.IsAny<Func<Task<string>>>(), policy))
-            .Returns((string _, string _, Func<Task<string>> factory, CacheRuntimePolicy _) =>
+        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync("key", "TestMethod", It.IsAny<Func<Task<string>>>(), policy, It.IsAny<CancellationToken>()))
+            .Returns((string _, string _, Func<Task<string>> factory, CacheRuntimePolicy _, CancellationToken _) =>
             {
                 Task refresh;
                 using (ExecutionContext.SuppressFlow())
@@ -215,8 +215,8 @@ public class TelemetryCacheManagerTests : IDisposable
         _activitySourceMock.Setup(x => x.StartCacheOperation("TestMethod", TracingConstants.Operations.Get)).Returns(activity);
 
         // Like a remote store: the lookup completes asynchronously before the factory runs.
-        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync("key", "TestMethod", It.IsAny<Func<Task<string>>>(), policy))
-            .Returns(async (string _, string _, Func<Task<string>> factory, CacheRuntimePolicy _) =>
+        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync("key", "TestMethod", It.IsAny<Func<Task<string>>>(), policy, It.IsAny<CancellationToken>()))
+            .Returns(async (string _, string _, Func<Task<string>> factory, CacheRuntimePolicy _, CancellationToken _) =>
             {
                 await Task.Yield();
                 return await factory();

@@ -269,18 +269,6 @@ MethodCache.Core.Options.CacheLookupResult<T>
 MethodCache.Core.Options.CacheLookupResult<T>.CacheLookupResult() -> void
 MethodCache.Core.Options.CacheLookupResult<T>.Found.get -> bool
 MethodCache.Core.Options.CacheLookupResult<T>.Value.get -> T?
-MethodCache.Core.Options.StreamCacheOptions
-MethodCache.Core.Options.StreamCacheOptions.Builder
-MethodCache.Core.Options.StreamCacheOptions.Builder.Build() -> MethodCache.Core.Options.StreamCacheOptions!
-MethodCache.Core.Options.StreamCacheOptions.Builder.Builder() -> void
-MethodCache.Core.Options.StreamCacheOptions.Builder.EnableWindowing(bool enabled = true) -> MethodCache.Core.Options.StreamCacheOptions.Builder!
-MethodCache.Core.Options.StreamCacheOptions.Builder.WithDuration(System.TimeSpan duration) -> MethodCache.Core.Options.StreamCacheOptions.Builder!
-MethodCache.Core.Options.StreamCacheOptions.Builder.WithMaxMemorySize(int maxMemorySize) -> MethodCache.Core.Options.StreamCacheOptions.Builder!
-MethodCache.Core.Options.StreamCacheOptions.Builder.WithSegmentSize(int segmentSize) -> MethodCache.Core.Options.StreamCacheOptions.Builder!
-MethodCache.Core.Options.StreamCacheOptions.Duration.get -> System.TimeSpan?
-MethodCache.Core.Options.StreamCacheOptions.EnableWindowing.get -> bool
-MethodCache.Core.Options.StreamCacheOptions.MaxMemorySize.get -> int
-MethodCache.Core.Options.StreamCacheOptions.SegmentSize.get -> int
 MethodCache.Core.PolicyPipeline.Diagnostics.PolicyDiagnosticsReport
 MethodCache.Core.PolicyPipeline.Diagnostics.PolicyDiagnosticsReport.Contributions.get -> System.Collections.Generic.IReadOnlyList<MethodCache.Abstractions.Policies.PolicyContribution!>!
 MethodCache.Core.PolicyPipeline.Diagnostics.PolicyDiagnosticsReport.Contributions.init -> void
@@ -398,7 +386,7 @@ MethodCache.Core.Runtime.Execution.InMemoryCacheManager.Dispose() -> void
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.ExistsAsync(string! key) -> System.Threading.Tasks.ValueTask<bool>
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.GetAsync<T>(string! key) -> System.Threading.Tasks.ValueTask<T?>
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.GetOrCreateAsync<T>(string! methodName, object![]! args, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.Task<T>!
-MethodCache.Core.Runtime.Execution.InMemoryCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> System.Threading.Tasks.Task<T>!
+MethodCache.Core.Runtime.Execution.InMemoryCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.GetStatsAsync() -> System.Threading.Tasks.ValueTask<MethodCache.Core.Infrastructure.ICacheStats!>
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.InMemoryCacheManager(MethodCache.Core.Infrastructure.ICacheMetricsProvider! metricsProvider, Microsoft.Extensions.Options.IOptions<MethodCache.Core.Configuration.MemoryCacheOptions!>? options = null) -> void
 MethodCache.Core.Runtime.Execution.InMemoryCacheManager.InMemoryCacheManager(MethodCache.Core.Infrastructure.ICacheMetricsProvider! metricsProvider, Microsoft.Extensions.Options.IOptions<MethodCache.Core.Configuration.MemoryCacheOptions!>? options, System.TimeProvider? timeProvider) -> void
@@ -419,7 +407,7 @@ MethodCache.Core.Runtime.Execution.MockCacheManager.ForceCacheHit.set -> void
 MethodCache.Core.Runtime.Execution.MockCacheManager.ForceCacheMiss.get -> bool
 MethodCache.Core.Runtime.Execution.MockCacheManager.ForceCacheMiss.set -> void
 MethodCache.Core.Runtime.Execution.MockCacheManager.GetOrCreateAsync<T>(string! methodName, object![]! args, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.Task<T>!
-MethodCache.Core.Runtime.Execution.MockCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> System.Threading.Tasks.Task<T>!
+MethodCache.Core.Runtime.Execution.MockCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
 MethodCache.Core.Runtime.Execution.MockCacheManager.InvalidateByKeysAsync(params string![]! keys) -> System.Threading.Tasks.Task!
 MethodCache.Core.Runtime.Execution.MockCacheManager.InvalidateByTagPatternAsync(string! pattern) -> System.Threading.Tasks.Task!
 MethodCache.Core.Runtime.Execution.MockCacheManager.InvalidateByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task!
@@ -429,7 +417,7 @@ MethodCache.Core.Runtime.Execution.MockCacheManager.TryGetFast<T>(string! cacheK
 MethodCache.Core.Runtime.Execution.MockCacheManager.TryGetFastAsync<T>(string! cacheKey) -> System.Threading.Tasks.ValueTask<T?>
 MethodCache.Core.Runtime.Execution.NoOpCacheManager
 MethodCache.Core.Runtime.Execution.NoOpCacheManager.GetOrCreateAsync<T>(string! methodName, object![]! args, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.Task<T>!
-MethodCache.Core.Runtime.Execution.NoOpCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> System.Threading.Tasks.Task<T>!
+MethodCache.Core.Runtime.Execution.NoOpCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
 MethodCache.Core.Runtime.Execution.NoOpCacheManager.InvalidateByKeysAsync(params string![]! keys) -> System.Threading.Tasks.Task!
 MethodCache.Core.Runtime.Execution.NoOpCacheManager.InvalidateByTagPatternAsync(string! pattern) -> System.Threading.Tasks.Task!
 MethodCache.Core.Runtime.Execution.NoOpCacheManager.InvalidateByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task!
@@ -442,7 +430,7 @@ MethodCache.Core.Runtime.ICacheKeyProvider
 MethodCache.Core.Runtime.ICacheKeyProvider.CacheKeyPart.get -> string!
 MethodCache.Core.Runtime.ICacheManager
 MethodCache.Core.Runtime.ICacheManager.GetOrCreateAsync<T>(string! methodName, object![]! args, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.Task<T>!
-MethodCache.Core.Runtime.ICacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> System.Threading.Tasks.Task<T>!
+MethodCache.Core.Runtime.ICacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
 MethodCache.Core.Runtime.ICacheManager.InvalidateByKeysAsync(params string![]! keys) -> System.Threading.Tasks.Task!
 MethodCache.Core.Runtime.ICacheManager.InvalidateByTagPatternAsync(string! pattern) -> System.Threading.Tasks.Task!
 MethodCache.Core.Runtime.ICacheManager.InvalidateByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task!
@@ -511,8 +499,7 @@ static MethodCache.Core.Configuration.Surfaces.Runtime.RuntimeCacheConfiguratorE
 static MethodCache.Core.Configuration.Surfaces.Runtime.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.Core.Configuration.Surfaces.Runtime.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! methodExpression, System.Action<MethodCache.Core.Options.CacheEntryOptions.Builder!>! configure, MethodCache.Core.Configuration.Surfaces.Runtime.RuntimeOverrideMetadata? metadata = null) -> System.Threading.Tasks.Task!
 static MethodCache.Core.Infrastructure.Extensions.CacheManagerExtensions.GetOrCreateAsync<T>(this MethodCache.Core.Runtime.ICacheManager! cacheManager, string! key, System.Func<MethodCache.Core.Runtime.Core.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, System.Action<MethodCache.Core.Options.CacheEntryOptions.Builder!>? configure = null, System.IServiceProvider? services = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
 static MethodCache.Core.Infrastructure.Extensions.CacheManagerExtensions.GetOrCreateManyAsync<T>(this MethodCache.Core.Runtime.ICacheManager! cacheManager, System.Collections.Generic.IEnumerable<string!>! keys, System.Func<System.Collections.Generic.IReadOnlyList<string!>!, MethodCache.Core.Runtime.Core.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>>! factory, System.Action<MethodCache.Core.Options.CacheEntryOptions.Builder!>? configure = null, System.IServiceProvider? services = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>
-static MethodCache.Core.Infrastructure.Extensions.CacheManagerExtensions.GetOrCreateStreamAsync<T>(this MethodCache.Core.Runtime.ICacheManager! cacheManager, string! key, System.Func<MethodCache.Core.Runtime.Core.CacheContext!, System.Threading.CancellationToken, System.Collections.Generic.IAsyncEnumerable<T>!>! factory, System.Action<MethodCache.Core.Options.StreamCacheOptions.Builder!>? configure = null, System.IServiceProvider? services = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<T>!
-static MethodCache.Core.Infrastructure.Extensions.CacheManagerExtensions.TryGetAsync<T>(this MethodCache.Core.Runtime.ICacheManager! cacheManager, string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.Core.Options.CacheLookupResult<T>>
+static MethodCache.Core.Infrastructure.Extensions.CacheManagerExtensions.TryGetAsync<T>(this MethodCache.Core.Runtime.ICacheManager! cacheManager, string! key, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.Core.Options.CacheLookupResult<T>>
 static MethodCache.Core.Infrastructure.Extensions.MethodCacheMetricsServiceCollectionExtensions.AddConsoleCacheMetrics(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static MethodCache.Core.Infrastructure.Extensions.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static MethodCache.Core.Infrastructure.Extensions.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration!>? configure = null, params System.Reflection.Assembly![]? assemblies) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
