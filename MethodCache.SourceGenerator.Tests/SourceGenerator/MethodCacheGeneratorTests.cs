@@ -297,7 +297,7 @@ namespace TestApp
             // Sync methods with simple parameters use the ultra-fast path with GetOrCreateFastAsync
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateFastAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(_decorated.GetValue(id))");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(_decorated.GetValue(id))!");
             AssertContainsIgnoreWhitespace(decoratorSource, "cacheSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
@@ -372,7 +372,8 @@ namespace TestApp
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValueAsync\"");
-            AssertContainsIgnoreWhitespace(decoratorSource, "async () => await _decorated.GetValueAsync(id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => _decorated.GetValueAsync(id)!");
+            Assert.DoesNotContain("async () =>", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "cacheSnapshot.Policy");
             // Ultra-fast path returns Task.FromResult or createdTask directly, no async/await on the method
         }
@@ -676,7 +677,8 @@ namespace TestApp
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync<string>");
-            AssertContainsIgnoreWhitespace(decoratorSource, "async () => await _decorated.GetValueAsync(id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => _decorated.GetValueAsync(id)!");
+            Assert.DoesNotContain("async () =>", decoratorSource);
         }
 
         [Fact]
