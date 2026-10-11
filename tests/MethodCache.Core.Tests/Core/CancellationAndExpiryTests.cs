@@ -130,7 +130,8 @@ public class CancellationAndExpiryTests
         {
             Interlocked.Increment(ref calls);
             started.TrySetResult();
-            await Task.Delay(TimeSpan.FromMilliseconds(100), token);
+            // A's load only ends through its cancellation, so a slow machine cannot let it finish first
+            await Task.Delay(token.CanBeCanceled ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(100), token);
             return "value";
         }
 
@@ -210,11 +211,14 @@ public class CancellationAndExpiryTests
         var manager = CreateManager();
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var cts = new CancellationTokenSource();
+        var calls = 0;
 
         async ValueTask<string> Factory(CacheContext _, CancellationToken ct)
         {
+            // The first load outlasts A's cancellation by far, so a slow machine cannot let it finish first
+            var first = Interlocked.Increment(ref calls) == 1;
             started.TrySetResult();
-            await Task.Delay(TimeSpan.FromMilliseconds(100), ct);
+            await Task.Delay(first ? TimeSpan.FromSeconds(30) : TimeSpan.FromMilliseconds(100), ct);
             return "value";
         }
 
