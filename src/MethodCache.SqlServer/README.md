@@ -39,6 +39,23 @@ If the application's login may not create tables, set `CreateTablesIfMissing = f
 - Rows older than `BackplaneRetention` are deleted from the invalidations table.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
 
+## When SQL Server is down
+
+MethodCache keeps answering from memory and your methods; SQL Server never fails or stalls a call.
+
+- Every SQL Server call is capped at `OperationTimeout` (1 second).
+- After a failure or timeout, MethodCache skips SQL Server for `CircuitBreakerDuration` (10 seconds), then one call checks whether it is back. The first failure and the recovery are logged.
+- Invalidations that SQL Server doesn't accept are queued and retried until it does. They never throw. Until they are stored, this instance doesn't read entries from SQL Server, so an invalidated value can't come back.
+- `ClockSkewTolerance` (2 seconds) covers servers whose clocks differ: a tag invalidation also applies to entries created up to that long after it.
+
+```csharp
+builder.Services.Configure<DistributedCacheOptions>(options =>
+{
+    options.OperationTimeout = TimeSpan.FromMilliseconds(500);
+    options.CircuitBreakerDuration = TimeSpan.FromSeconds(30);
+});
+```
+
 ## Options
 
 | Option | Default | Description |

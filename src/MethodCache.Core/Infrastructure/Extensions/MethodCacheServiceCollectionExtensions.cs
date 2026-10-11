@@ -200,7 +200,8 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 sp.GetRequiredService<ISerializer>(),
                 sp.GetRequiredService<IOptions<DistributedCacheOptions>>().Value,
                 sp.GetService<IBackplane>(),
-                sp.GetService<TimeProvider>()));
+                sp.GetService<TimeProvider>(),
+                sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>()));
 
             EnsureCoreServices(services);
             return services;

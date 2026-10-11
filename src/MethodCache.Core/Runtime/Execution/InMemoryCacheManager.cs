@@ -103,7 +103,7 @@ namespace MethodCache.Core.Runtime.Execution
                 onKeyInvalidated: key => RemoveLocal(key),
                 onTagInvalidated: RemoveLocalTag,
                 onCleared: ClearLocal,
-                onError: ex => _metricsProvider.CacheError("Backplane", ex.Message));
+                onError: ex => _metricsProvider.CacheError("DistributedCache", ex.Message));
         }
 
         /// <summary>The underlying engine; exposed to tests that need deterministic policy behavior.</summary>
@@ -330,7 +330,7 @@ namespace MethodCache.Core.Runtime.Execution
 
             return _distributed == null
                 ? Task.CompletedTask
-                : _distributed.SetAsync(key, value, tags: null, _distributed.Now, expiration).AsTask();
+                : _distributed.WriteAsync(key, value, tags: null, _distributed.Now, expiration, replaces: true);
         }
 
         public ValueTask<bool> RemoveAsync(string key)
@@ -537,7 +537,7 @@ namespace MethodCache.Core.Runtime.Execution
             {
                 if (_distributed != null)
                 {
-                    var stored = await TryReadDistributedAsync<T>(key, methodName).ConfigureAwait(false);
+                    var stored = await _distributed.TryGetAsync<T>(key).ConfigureAwait(false);
                     if (stored.Found)
                     {
                         StoreLoaded(key, stored.Value, policy, flight, duration: Math.Max(1, ToNanos(stored.RemainingLifetime)));
@@ -557,10 +557,7 @@ namespace MethodCache.Core.Runtime.Execution
                 if (ShouldStore(result, policy, methodName))
                 {
                     StoreLoaded(key, result, policy, flight);
-                    if (_distributed != null)
-                    {
-                        await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
-                    }
+                    await WriteDistributedAsync(key, result, policy, flight, loadStartedAt).ConfigureAwait(false);
                 }
 
                 flight.Complete(result);
@@ -642,10 +639,7 @@ namespace MethodCache.Core.Runtime.Execution
                     if (ShouldStore(result, policy, methodName))
                     {
                         StoreLoaded(key, result, policy, flight, replacing: node);
-                        if (_distributed != null)
-                        {
-                            await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
-                        }
+                        await WriteDistributedAsync(key, result, policy, flight, loadStartedAt).ConfigureAwait(false);
                     }
 
                     flight.Complete(result);
@@ -898,48 +892,19 @@ namespace MethodCache.Core.Runtime.Execution
         }
 
         /// <summary>
-        /// Reads an entry from the distributed cache. A failure there counts as a miss, so the factory still runs.
+        /// Writes a loaded value to the distributed cache, unless the load was invalidated, so other servers can
+        /// read it. This never throws and is bounded by the distributed cache's operation timeout. A removal of the
+        /// key during the write is seen through the flight, and the written value is removed again.
         /// </summary>
-        private async ValueTask<DistributedEntry<T>> TryReadDistributedAsync<T>(string key, string methodName)
+        private Task WriteDistributedAsync<T>(string key, T result, EntryPolicy policy, Flight flight, long loadStartedAt)
         {
-            try
+            if (_distributed == null || flight.Invalidated || (result == null && !_options.CacheNullValues))
             {
-                return await _distributed!.TryGetAsync<T>(key).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _metricsProvider.CacheError(methodName, $"Distributed cache read failed: {ex.Message}");
-                return default;
-            }
-        }
-
-        /// <summary>
-        /// Writes a loaded value to the distributed cache, unless the load was invalidated. A failure there is
-        /// reported and otherwise ignored: the caller already has its value and the in-memory copy is stored.
-        /// </summary>
-        private async ValueTask WriteDistributedAsync<T>(string key, string methodName, T result, EntryPolicy policy, Flight flight, long loadStartedAt)
-        {
-            if (flight.Invalidated || (result == null && !_options.CacheNullValues))
-            {
-                return;
+                return Task.CompletedTask;
             }
 
-            try
-            {
-                var lifetime = Math.Min(policy.Duration ?? _defaultDuration, _maxDuration);
-                await _distributed!.SetAsync(key, result, policy.Tags, loadStartedAt, TimeSpan.FromTicks(lifetime / NanosPerTick)).ConfigureAwait(false);
-
-                // The key was removed while this value was being written; tag invalidations need no help, since
-                // the entry was created before them.
-                if (flight.Invalidated)
-                {
-                    await _distributed.RemoveAsync(new[] { key }).ConfigureAwait(false);
-                }
-            }
-            catch (Exception ex)
-            {
-                _metricsProvider.CacheError(methodName, $"Distributed cache write failed: {ex.Message}");
-            }
+            var lifetime = TimeSpan.FromTicks(Math.Min(policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
+            return _distributed.WriteAsync(key, result, policy.Tags, loadStartedAt, lifetime, () => flight.Invalidated);
         }
 
         private bool RemoveLocal(string key)
