@@ -97,3 +97,6 @@ await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.Ge
 Overloaded methods use namespace-qualified parameter types in their method ids and key prefixes.
 For example, overloads accepting `A.Request` and `B.Request` have separate cache entries even when their
 argument members have the same values. Configuration and runtime policy updates use those same qualified ids.
+
+An `ICacheKeyProvider.CacheKeyPart` getter may generate another key: hash buffers are owned by one
+invocation at a time, including when JSON property getters generate keys or a nested call throws.
