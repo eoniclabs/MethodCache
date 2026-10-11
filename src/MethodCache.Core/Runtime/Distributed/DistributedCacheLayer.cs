@@ -480,16 +480,17 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- operations, each bounded by the timeout ----------
 
-        private static async Task<byte[]?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
+        private static async Task<ReadOnlyMemory<byte>?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
         {
             if (layer._bufferCache == null)
             {
-                return await layer._cache.GetAsync(layer._entryPrefix + key, cancellationToken).ConfigureAwait(false);
+                var bytes = await layer._cache.GetAsync(layer._entryPrefix + key, cancellationToken).ConfigureAwait(false);
+                return bytes == null ? null : new ReadOnlyMemory<byte>(bytes);
             }
 
             var buffer = new ArrayBufferWriter<byte>();
             return await layer._bufferCache.TryGetAsync(layer._entryPrefix + key, buffer, cancellationToken).ConfigureAwait(false)
-                ? buffer.WrittenSpan.ToArray()
+                ? buffer.WrittenMemory
                 : null;
         }
 

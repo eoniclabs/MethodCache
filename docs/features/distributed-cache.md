@@ -25,6 +25,8 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
   its in-memory copy at once: Redis pub/sub, or a table that SQL Server instances poll.
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
+- A buffer-capable distributed cache fills an owned entry buffer which the deserializer reads directly, without an
+  additional full entry copy. The buffer remains valid across awaited metadata checks and is not returned to a pool.
 
 Disposing the cache manager disables its backplane callbacks and starts unsubscribing. Asynchronous service-provider
 disposal waits for cleanup; a stalled custom backplane is bounded by `OperationTimeout` for the subscription wait
