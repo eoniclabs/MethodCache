@@ -57,17 +57,19 @@
   </ItemGroup>
 
   <!--
-    The generator and analyzers ship inside this package under analyzers/dotnet/cs, so the compiler runs them for
+    The generator, analyzers and code fixes ship inside this package under analyzers/dotnet/cs, so the compiler runs them for
     anyone who installs MethodCache. The references only order the build; they add no assembly or package dependency.
   -->
   <ItemGroup>
     <ProjectReference Include="..\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
     <ProjectReference Include="..\MethodCache.Analyzers\MethodCache.Analyzers.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="..\MethodCache.CodeFixes\MethodCache.CodeFixes.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="..\MethodCache.SourceGenerator\bin\$(Configuration)\netstandard2.0\MethodCache.SourceGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="..\MethodCache.Analyzers\bin\$(Configuration)\netstandard2.0\MethodCache.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\MethodCache.CodeFixes\bin\$(Configuration)\netstandard2.0\MethodCache.CodeFixes.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="build\MethodCache.props" Pack="true" PackagePath="build;buildTransitive" />
   </ItemGroup>
 

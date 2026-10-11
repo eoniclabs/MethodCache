@@ -171,7 +171,7 @@ namespace VendorApp
     [Theory]
     [InlineData("nameof(IFxVendorClient.GetMissingAsync)", "MCG011", "\"GetMissingAsync\"")]
     [InlineData("nameof(IFxVendorClient.GetOverloadedAsync)", "MCG011", "overloads")]
-    [InlineData("nameof(IFxVendorClient.PingAsync)", "MCG011", "non-generic Task")]
+    [InlineData("nameof(IFxVendorClient.PingAsync)", "MCG011", "without a result")]
     public async Task ListingAMethodItCannotCache_IsAnError(string method, string id, string expected)
     {
         var source = $@"

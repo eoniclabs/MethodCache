@@ -125,7 +125,7 @@ namespace MethodCache.SourceGenerator
                     if (!validation.canProceed)
                     {
                         diagnostics.Add(Diagnostic.Create(Diagnostics.CacheInterfaceMethodNotUsable, location, typeName, name,
-                            validation.diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture)));
+                            UncacheableReason(validation.diagnostic)));
                         continue;
                     }
 
@@ -173,5 +173,17 @@ namespace MethodCache.SourceGenerator
                 }
             }
         }
+
+        // The [Cache] diagnostics end with "or remove [Cache]", which makes no sense for a method listed by name
+        private static string UncacheableReason(Diagnostic diagnostic) => diagnostic.Id switch
+        {
+            "MCG001" => "it returns void, so there is nothing to cache",
+            "MCG002" => "it returns a Task or ValueTask without a result, so there is nothing to cache",
+            "MCG003" => "ref, out and in parameters can't be part of a cache key",
+            "MCG006" => "pointer parameters can't be part of a cache key",
+            "MCG007" => "ref struct parameters such as Span<T> can't be part of a cache key",
+            "MCG014" => "it returns a lazy sequence, which would run again on every enumeration",
+            _ => diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture),
+        };
     }
 }

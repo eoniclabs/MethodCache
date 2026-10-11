@@ -186,6 +186,8 @@ namespace MethodCache.SourceGenerator
                         diagnostics.Add(Diagnostic.Create(
                             Diagnostics.DynamicTagParameterNotFound,
                             method.Locations.FirstOrDefault(),
+                            // The code fix reads the unknown name from here to offer the closest parameter
+                            System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("Parameter", paramName),
                             tag, paramName, method.ToDisplayString()));
                     }
                 }
