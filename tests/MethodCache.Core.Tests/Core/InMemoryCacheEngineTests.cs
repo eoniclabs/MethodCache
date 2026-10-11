@@ -837,6 +837,9 @@ public class InMemoryCacheEngineTests
 
         await Task.WhenAll(workers);
 
+        // The bound holds once pending writes are applied; with every core writing, the write buffer can hold
+        // entries eviction hasn't seen yet
+        manager.Engine.Maintain();
         var stats = await manager.GetStatsAsync();
         stats.Entries.Should().BeLessThanOrEqualTo(500);
     }

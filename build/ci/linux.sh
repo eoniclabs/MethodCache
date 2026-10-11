@@ -14,12 +14,14 @@
 #   METHODCACHE_CI_CACHE        NuGet package cache kept between runs (default: ~/.cache/methodcache-ci)
 #   METHODCACHE_CI_SHARED_LOCK  a lock file to hold shared while running, e.g. a build server's capacity lease
 #   METHODCACHE_CI_DOCKER_ARGS  extra `docker run` arguments, e.g. proxy settings
+#   The jobs' own settings (FRAMEWORK, DIFF_COVERAGE_*, PROPERTY_*, METHODCACHE_SOAK_SECONDS, MUTATION_ARGS) are
+#   passed into the container when set.
 set -euo pipefail
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 jobs=("$@")
 if [ ${#jobs[@]} -eq 0 ]; then
-  jobs=(build demo tests cultures aot packages docs)
+  jobs=(build demo tests diffcoverage properties soak cultures aot packages docs)
 fi
 
 run_id="${METHODCACHE_CI_RUN_ID:-local-$$}"
@@ -72,6 +74,9 @@ docker_args=(
   --volume "$cache_dir/nuget:/nuget"
   --env TESTCONTAINERS_HOST_OVERRIDE=localhost
   --env METHODCACHE_REDIS_URL --env METHODCACHE_SQLSERVER_CONNECTION
+  # The settings of the jobs, when set (build/ci/jobs.sh)
+  --env FRAMEWORK --env DIFF_COVERAGE_MIN --env DIFF_COVERAGE_BASE
+  --env PROPERTY_SECONDS --env PROPERTY_FRAMEWORKS --env METHODCACHE_SOAK_SECONDS --env MUTATION_ARGS
   --label "$label"
 )
 # shellcheck disable=SC2206 # the extra arguments are meant to split on spaces
