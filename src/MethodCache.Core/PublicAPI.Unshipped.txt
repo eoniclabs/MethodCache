@@ -33,8 +33,14 @@ MethodCache.Core.Configuration.LruUpdateStrategy.Precise = 2 -> MethodCache.Core
 MethodCache.Core.Configuration.LruUpdateStrategy.Probabilistic = 0 -> MethodCache.Core.Configuration.LruUpdateStrategy
 MethodCache.Core.Configuration.DistributedCacheOptions
 MethodCache.Core.Configuration.DistributedCacheOptions.DistributedCacheOptions() -> void
+MethodCache.Core.Configuration.DistributedCacheOptions.CircuitBreakerDuration.get -> System.TimeSpan
+MethodCache.Core.Configuration.DistributedCacheOptions.CircuitBreakerDuration.set -> void
+MethodCache.Core.Configuration.DistributedCacheOptions.ClockSkewTolerance.get -> System.TimeSpan
+MethodCache.Core.Configuration.DistributedCacheOptions.ClockSkewTolerance.set -> void
 MethodCache.Core.Configuration.DistributedCacheOptions.KeyPrefix.get -> string!
 MethodCache.Core.Configuration.DistributedCacheOptions.KeyPrefix.set -> void
+MethodCache.Core.Configuration.DistributedCacheOptions.OperationTimeout.get -> System.TimeSpan
+MethodCache.Core.Configuration.DistributedCacheOptions.OperationTimeout.set -> void
 MethodCache.Core.Configuration.DistributedCacheOptions.TagCheckInterval.get -> System.TimeSpan
 MethodCache.Core.Configuration.DistributedCacheOptions.TagCheckInterval.set -> void
 MethodCache.Core.Configuration.DistributedCacheOptions.TagRetention.get -> System.TimeSpan
