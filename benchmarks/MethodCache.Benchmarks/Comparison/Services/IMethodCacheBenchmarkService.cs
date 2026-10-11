@@ -7,16 +7,19 @@ namespace MethodCache.Benchmarks.Comparison.Services;
 public interface IMethodCacheBenchmarkService
 {
     [Cache(Duration = "00:10:00")]
-    Task<SamplePayload> GetAsync(string key);
+    Task<SamplePayload> GetAsync([CacheKey(UseAsRawKey = true)] string key);
 
     [Cache(Duration = "00:10:00")]
     SamplePayload Get([CacheKey(UseAsRawKey = true)] string key);
 
     [Cache(Duration = "00:10:00")]
-    Task<SamplePayload> GetOrCreateAsync(string key);
+    Task<SamplePayload> GetOrCreateAsync([CacheKey(UseAsRawKey = true)] string key);
 
     [Cache(Duration = "00:10:00")]
-    SamplePayload GetOrCreate(string key);
+    SamplePayload GetOrCreate([CacheKey(UseAsRawKey = true)] string key);
+
+    [Cache(Duration = "00:10:00")]
+    Task<T> GetOrCreateValueAsync<T>([CacheKey(UseAsRawKey = true)] string key, Func<Task<T>> factory);
 
     void Set(string key, SamplePayload value);
     void Remove(string key);

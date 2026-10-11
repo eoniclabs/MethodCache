@@ -66,7 +66,12 @@ Results land in `BenchmarkDotNet.Artifacts/results/`. `benchmarks/MethodCache.Be
 
 The benchmark setup is also compiled and exercised by `MethodCache.Benchmarks.Tests` on .NET 8, 9 and 10.
 It uses the actual benchmark sources, including the dependency-injection registrations, and checks that both
-base classes can populate and read the cache before a measurement runs. Run these checks with:
+base classes can populate and read the cache before a measurement runs. Adapter contract tests cover all nine
+adapters: one key identity across set, lookup, get-or-create and removal; overwrite; clear; value-type zero;
+and isolation between instances. MethodCache adapter expiration is checked with `FakeTimeProvider`.
+The source-generator adapter uses an explicit raw key for its shared operations and receives each factory
+as a method argument. Its direct async hit benchmark still calls the generated decorator; its `TryGet`
+operation uses a lookup that cannot execute a factory. Run these checks with:
 
 ```bash
 dotnet test tests/MethodCache.Benchmarks.Tests -c Release

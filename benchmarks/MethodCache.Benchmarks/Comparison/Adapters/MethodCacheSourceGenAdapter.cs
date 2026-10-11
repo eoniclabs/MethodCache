@@ -1,4 +1,5 @@
 using MethodCache.Benchmarks.Comparison.Services;
+using MethodCache.Core.Storage.Abstractions;
 
 namespace MethodCache.Benchmarks.Comparison.Adapters;
 
@@ -9,43 +10,25 @@ namespace MethodCache.Benchmarks.Comparison.Adapters;
 public class MethodCacheSourceGenAdapter : ICacheAdapter
 {
     private readonly IMethodCacheBenchmarkService _service;
-    private readonly MethodCacheBenchmarkService _baseService;
     private readonly CacheStatistics _stats = new();
+    private readonly ICacheManager _cacheManager;
+    private readonly IMemoryCache _memoryCache;
 
-    public MethodCacheSourceGenAdapter(IMethodCacheBenchmarkService service, MethodCacheBenchmarkService baseService)
+    public MethodCacheSourceGenAdapter(IMethodCacheBenchmarkService service, ICacheManager cacheManager)
     {
         _service = service;
-        _baseService = baseService;
+        _cacheManager = cacheManager;
+        _memoryCache = (IMemoryCache)cacheManager;
     }
 
     public string Name => "MethodCache (SourceGen)";
 
     public bool TryGet<TValue>(string key, out TValue? value)
     {
-        try
-        {
-            // OPTIMIZATION: Use synchronous Get to avoid Task allocation and sync-over-async overhead
-            var result = _service.Get(key);
-
-            if (result != null)
-            {
-                _stats.Hits++;
-                value = (TValue)(object)result;
-                return true;
-            }
-            else
-            {
-                _stats.Misses++;
-                value = default;
-                return false;
-            }
-        }
-        catch
-        {
-            _stats.Misses++;
-            value = default;
-            return false;
-        }
+        var found = _cacheManager.TryGetFast(key, out value);
+        if (found) _stats.Hits++;
+        else _stats.Misses++;
+        return found;
     }
 
     /// <summary>
@@ -59,60 +42,33 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
 
     public async Task<TValue> GetOrSetAsync<TValue>(string key, Func<Task<TValue>> factory, TimeSpan duration)
     {
-        // Configure the factory on the base service so it gets called on cache miss
-        // This ensures fair comparison with other libraries that execute factories
-        _baseService.Factory = async (k) => (SamplePayload)(object)(await factory())!;
-
-        try
+        var loaded = false;
+        var result = await _service.GetOrCreateValueAsync(key, async () =>
         {
-            // Source-generated caching handles this - will call factory on miss
-            var result = await _service.GetOrCreateAsync(key);
-            _stats.Hits++;
-            return (TValue)(object)result;
-        }
-        finally
-        {
-            // Clear factory to avoid affecting cache hit benchmarks
-            _baseService.Factory = null;
-        }
+            loaded = true;
+            _stats.Misses++;
+            _stats.FactoryCalls++;
+            return await factory();
+        });
+        // The generated benchmark policy is ten minutes; apply the adapter's requested duration on a miss.
+        if (loaded) await _memoryCache.SetAsync(key, result, duration);
+        else _stats.Hits++;
+        return result;
     }
 
     public TValue? GetOrCreate<TValue>(string key, Func<TValue> factory)
     {
-        // Source-generated caching handles this
-        var result = _service.GetOrCreate(key);
-        _stats.Hits++;
-        return (TValue)(object)result;
+        return GetOrSetAsync(key, () => Task.FromResult(factory()), TimeSpan.FromMinutes(10)).GetAwaiter().GetResult();
     }
 
     public void Set<TValue>(string key, TValue value, TimeSpan duration)
     {
-        if (value is not SamplePayload payload)
-        {
-            throw new InvalidOperationException("MethodCache benchmarks only support SamplePayload values.");
-        }
-
-        // Inject a one-time factory so the cache stores the provided payload
-        _baseService.Factory = _ => Task.FromResult(payload);
-        try
-        {
-            _service.GetOrCreateAsync(key).GetAwaiter().GetResult();
-        }
-        finally
-        {
-            _baseService.Factory = null;
-        }
+        _memoryCache.SetAsync(key, value, duration).GetAwaiter().GetResult();
     }
 
-    public void Remove(string key)
-    {
-        _service.Remove(key);
-    }
+    public void Remove(string key) => _memoryCache.RemoveAsync(key).GetAwaiter().GetResult();
 
-    public void Clear()
-    {
-        // Not needed for these benchmarks
-    }
+    public void Clear() => _memoryCache.ClearAsync().GetAwaiter().GetResult();
 
     public CacheStatistics GetStatistics() => _stats;
 

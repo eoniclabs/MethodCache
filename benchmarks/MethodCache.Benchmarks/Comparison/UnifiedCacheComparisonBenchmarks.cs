@@ -51,6 +51,8 @@ public class UnifiedCacheComparisonBenchmarks
     private ICacheAdapter _lazyCache = null!;
     private ICacheAdapter _easyCaching = null!;
 
+    private IDisposable? _sourceGenProvider;
+
     [GlobalSetup]
     public void GlobalSetup()
     {
@@ -84,9 +86,9 @@ public class UnifiedCacheComparisonBenchmarks
             sp.GetRequiredService<MethodCacheBenchmarkService>());
 
         var serviceProvider = services.BuildServiceProvider();
+        _sourceGenProvider = serviceProvider;
         var sourceGenService = serviceProvider.GetRequiredService<IMethodCacheBenchmarkService>();
-        var baseService = serviceProvider.GetRequiredService<MethodCacheBenchmarkService>();
-        _sourceGenMethodCache = new MethodCacheSourceGenAdapter(sourceGenService, baseService);
+        _sourceGenMethodCache = new MethodCacheSourceGenAdapter(sourceGenService, serviceProvider.GetRequiredService<ICacheManager>());
 
         _fusionCache = new FusionCacheAdapter();
         _lazyCache = new LazyCacheAdapter();
@@ -110,6 +112,7 @@ public class UnifiedCacheComparisonBenchmarks
         _legacyMethodCache?.Dispose();
         _manualKeyMethodCache?.Dispose();
         _sourceGenMethodCache?.Dispose();
+        _sourceGenProvider?.Dispose();
         _fusionCache?.Dispose();
         _lazyCache?.Dispose();
         _easyCaching?.Dispose();

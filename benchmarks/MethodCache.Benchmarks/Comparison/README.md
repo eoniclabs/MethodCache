@@ -2,6 +2,12 @@
 
 ## Overview
 
+The adapter suite has executable contract tests in `tests/MethodCache.Benchmarks.Tests` for all nine adapters.
+Set, lookup, get-or-create and remove share one key identity; clear removes entries; zero is a valid cached
+value; and each adapter owns an isolated cache. Earlier measurements of adapters with missing clear/removal
+or different operation keys must be rerun before they are used for a comparison. The published README hit
+numbers use the separate `ReadmeComparisonBenchmarks` class.
+
 This framework provides **two distinct comparison approaches** to address the fundamental challenge of comparing source-generated code (MethodCache) with runtime-based caching libraries:
 
 1. **Real Usage Comparison** (`RealMethodCacheComparison.cs`) - Shows actual performance as developers use each framework

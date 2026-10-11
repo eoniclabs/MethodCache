@@ -8,7 +8,7 @@ namespace MethodCache.Benchmarks.Comparison.Adapters;
 /// </summary>
 public class MemoryCacheAdapter : ICacheAdapter
 {
-    private readonly IMemoryCache _cache;
+    private readonly MemoryCache _cache;
     private readonly CacheStatistics _stats = new();
 
     public string Name => "Microsoft.Extensions.Caching.Memory";
@@ -65,9 +65,7 @@ public class MemoryCacheAdapter : ICacheAdapter
 
     public void Clear()
     {
-        // MemoryCache doesn't have a clear method
-        // We'd need to track keys or recreate the cache
-        // For now, just leave it as no-op
+        _cache.Clear();
     }
 
     public CacheStatistics GetStatistics() => _stats;
