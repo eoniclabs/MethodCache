@@ -1,0 +1,14 @@
+#nullable enable
+MethodCache.Redis.RedisOptions
+MethodCache.Redis.RedisOptions.BackplaneChannel.get -> string!
+MethodCache.Redis.RedisOptions.BackplaneChannel.set -> void
+MethodCache.Redis.RedisOptions.Configuration.get -> string!
+MethodCache.Redis.RedisOptions.Configuration.set -> void
+MethodCache.Redis.RedisOptions.EnableBackplane.get -> bool
+MethodCache.Redis.RedisOptions.EnableBackplane.set -> void
+MethodCache.Redis.RedisOptions.KeyPrefix.get -> string!
+MethodCache.Redis.RedisOptions.KeyPrefix.set -> void
+MethodCache.Redis.RedisOptions.RedisOptions() -> void
+MethodCache.Redis.RedisServiceCollectionExtensions
+static MethodCache.Redis.RedisServiceCollectionExtensions.AddMethodCacheRedis(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.Redis.RedisServiceCollectionExtensions.AddMethodCacheRedis(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Redis.RedisOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -464,7 +464,7 @@ Use this guide to migrate behavior first, then validate performance with your ow
 
 ## Next Steps
 
-1. **Add Distributed Cache**: Install `MethodCache.Providers.Redis` for L2 caching
+1. **Add Distributed Cache**: Install `MethodCache.Redis` for L2 caching
 2. **Monitor Performance**: Use `ICacheMetricsProvider` for observability
 3. **Optimize Key Generators**: Keep the default `FastHashKeyGenerator` in production
 

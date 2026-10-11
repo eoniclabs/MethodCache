@@ -488,7 +488,7 @@ Task UpdateProductAsync(int productId, ProductUpdateDto dto);
 
 ## Next Steps
 
-1. **Enable Distributed Cache**: Add `MethodCache.Providers.Redis` for multi-instance apps
+1. **Enable Distributed Cache**: Add `MethodCache.Redis` for multi-instance apps
 2. **Monitor Performance**: Implement `ICacheMetricsProvider` for observability
 3. **Optimize**: Keep the default `FastHashKeyGenerator`; it is the fastest key generator
 

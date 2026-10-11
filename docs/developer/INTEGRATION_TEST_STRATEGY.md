@@ -6,8 +6,8 @@ The Redis and SQL Server providers each have an integration test project that ru
 
 | Project | Environment variable | Fallback |
 |---------|----------------------|----------|
-| `MethodCache.Providers.Redis.IntegrationTests` | `METHODCACHE_REDIS_URL` | `redis:7-alpine` container |
-| `MethodCache.Providers.SqlServer.IntegrationTests` | `METHODCACHE_SQLSERVER_CONNECTION` | `mcr.microsoft.com/mssql/server:2022-latest` container |
+| `MethodCache.Redis.IntegrationTests` | `METHODCACHE_REDIS_URL` | `redis:7-alpine` container |
+| `MethodCache.SqlServer.IntegrationTests` | `METHODCACHE_SQLSERVER_CONNECTION` | `mcr.microsoft.com/mssql/server:2022-latest` container |
 
 Containers are started with Testcontainers when Docker is available. With neither a variable nor Docker, the tests are skipped. Set `METHODCACHE_REQUIRE_INFRA_TESTS=true` to make a missing server fail the run instead; the publish workflow does this.
 
