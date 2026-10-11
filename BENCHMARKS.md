@@ -23,6 +23,7 @@ This project includes comprehensive performance benchmarks using BenchmarkDotNet
 
 ## Benchmark Categories
 
+- **readme** - The README's numbers: a cached `GetUserAsync(int)` with MethodCache, `IMemoryCache` by hand, HybridCache and FusionCache. Results: [docs/benchmarks.md](docs/benchmarks.md)
 - **basic** - Basic caching operations (hit/miss, different data sizes)
 - **providers** - Compare different cache providers (InMemory, Redis, Hybrid)
 - **concurrent** - Concurrent access and scalability tests

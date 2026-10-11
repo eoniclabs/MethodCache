@@ -53,6 +53,12 @@ public class Program
                     DefaultConfig.Instance.AddJob(Job.ShortRun.WithGcServer(true)), cleanedArgs.Skip(1).ToArray());
                 break;
 
+            case "readme":
+                BenchmarkRunner.Run<MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks>(
+                    ReadmeConfig(quickRequested || Environment.GetEnvironmentVariable("BENCHMARK_QUICK") == "true"),
+                    cleanedArgs.Skip(1).ToArray());
+                break;
+
             case "hitratio":
                 MethodCache.Benchmarks.Microbenchmarks.HitRatioSimulation.Run();
                 break;
@@ -130,6 +136,7 @@ public class Program
         Console.WriteLine("Usage: MethodCache.Benchmarks <category>");
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
+        Console.WriteLine("  readme       - The README numbers: MethodCache vs IMemoryCache, HybridCache and FusionCache");
         Console.WriteLine("  basic        - Basic caching operations (hit/miss, different data sizes)");
         Console.WriteLine("  baseline     - Compare with Microsoft.Extensions.Caching.Memory and LazyCache");
         Console.WriteLine("  comparison   - Unified comparison: MethodCache vs FusionCache vs EasyCaching vs LazyCache");
@@ -152,6 +159,11 @@ public class Program
         Console.WriteLine("Options:");
         Console.WriteLine("  --quick, -q  Run using the lightweight benchmark job (same as BENCHMARK_QUICK=true)");
     }
+
+    private static IConfig ReadmeConfig(bool quick) =>
+        DefaultConfig.Instance.AddJob(Job.Default.WithId(quick ? "Quick" : "Default")
+            .WithIterationCount(quick ? 5 : 15).WithWarmupCount(quick ? 3 : 6)
+            .WithGcServer(false)); // Workstation GC, like most apps' defaults; also keeps the allocation counts exact
 
     private static IConfig CreateBenchmarkConfig(bool quickRequested)
     {
