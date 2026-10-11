@@ -43,7 +43,7 @@ namespace MethodCache.Extensibility
         private readonly MethodCacheMemoryOptions _options;
         private readonly MemoryUsageCalculator _memoryCalculator;
         private readonly Func<string, object?, long>? _weigher;
-        private readonly Timer? _maintenanceTimer;
+        private readonly ITimer? _maintenanceTimer;
         private readonly StripedCounter _hits = new();
         private readonly StripedCounter _misses = new();
 
@@ -100,7 +100,7 @@ namespace MethodCache.Extensibility
 
             if (_options.EnableBackgroundCleanup)
             {
-                _maintenanceTimer = new Timer(static state => ((MemoryCacheEngine)state!).Maintain(), _engine, _options.CleanupInterval, _options.CleanupInterval);
+                _maintenanceTimer = _timeProvider.CreateTimer(static state => ((MemoryCacheEngine)state!).Maintain(), _engine, _options.CleanupInterval, _options.CleanupInterval);
             }
 
             _distributed = distributed;
@@ -113,6 +113,9 @@ namespace MethodCache.Extensibility
 
         /// <summary>The underlying engine; exposed to tests that need deterministic policy behavior.</summary>
         internal MemoryCacheEngine Engine => _engine;
+
+        /// <summary>Whether a load or background refresh for <paramref name="key"/> is still running; lets tests wait for one to finish.</summary>
+        internal bool IsLoading(string key) => _flights.ContainsKey(key);
 
         #region ICacheManager
 

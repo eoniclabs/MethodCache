@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
 using MethodCache.Infrastructure;
 using MethodCache.Policies;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;
@@ -155,13 +156,14 @@ public class RuntimeCacheConfiguratorTests
     [Fact]
     public async Task UpsertAsync_WithMetadataAndExpiration_ExpiresOverride()
     {
-        var store = new RuntimePolicyStore();
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        using var store = new RuntimePolicyStore(time);
         var configurator = new RuntimeCacheConfigurator(store);
         var metadata = new RuntimeOverrideMetadata(
             Owner: "ops-team",
             Reason: "incident mitigation",
             Ticket: "INC-1234",
-            ExpiresAt: DateTimeOffset.UtcNow.AddMilliseconds(150));
+            ExpiresAt: time.GetUtcNow().AddMilliseconds(150));
 
         await configurator.UpsertAsync(
             "Expiring.Method",
@@ -173,10 +175,85 @@ public class RuntimeCacheConfiguratorTests
         Assert.Equal("ops-team", current!.Policy.Metadata["runtime.owner"]);
         Assert.Equal("incident mitigation", current.Policy.Metadata["runtime.reason"]);
 
-        await Task.Delay(250);
+        time.Advance(TimeSpan.FromMilliseconds(150));
 
         var expired = await configurator.GetOverrideAsync("Expiring.Method");
         Assert.Null(expired);
+    }
+
+    [Fact]
+    public async Task UpsertAsync_WithExpiration_AppliesUntilJustBeforeExpiresAt_AndNotFromExpiresAtOn()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        using var store = new RuntimePolicyStore(time);
+        var configurator = new RuntimeCacheConfigurator(store);
+        var expiresAt = time.GetUtcNow().AddMinutes(5);
+
+        await configurator.UpsertAsync(
+            "Expiring.Method",
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
+            new RuntimeOverrideMetadata(Owner: "ops", ExpiresAt: expiresAt));
+
+        time.Advance(TimeSpan.FromMinutes(5) - TimeSpan.FromTicks(1));
+        Assert.NotNull(await configurator.GetOverrideAsync("Expiring.Method"));
+
+        time.Advance(TimeSpan.FromTicks(1));
+        Assert.Null(await configurator.GetOverrideAsync("Expiring.Method"));
+    }
+
+    [Fact]
+    public async Task ExpiryTimer_RemovesTheOverride_AndRaisesARemovedChange_WithoutAnyRead()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        using var store = new RuntimePolicyStore(time);
+        var configurator = new RuntimeCacheConfigurator(store);
+        var changes = new List<PolicyChange>();
+        store.Changed += changes.Add;
+
+        await configurator.UpsertAsync(
+            "Short.Method",
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
+            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(1)));
+        await configurator.UpsertAsync(
+            "Long.Method",
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
+            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(10)));
+        changes.Clear();
+
+        time.Advance(TimeSpan.FromMinutes(1));
+        var removed = Assert.Single(changes);
+        Assert.Equal("Short.Method", removed.MethodId);
+        Assert.Equal(PolicyChangeReason.Removed, removed.Reason);
+
+        // The timer is re-armed for the next override, which still applies until its own ExpiresAt.
+        time.Advance(TimeSpan.FromMinutes(9) - TimeSpan.FromTicks(1));
+        Assert.Single(changes);
+        time.Advance(TimeSpan.FromTicks(1));
+        Assert.Equal(2, changes.Count);
+        Assert.Equal("Long.Method", changes[1].MethodId);
+    }
+
+    [Fact]
+    public async Task UpsertAsync_RenewingAnOverride_KeepsItPastTheOldExpiresAt()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        using var store = new RuntimePolicyStore(time);
+        var configurator = new RuntimeCacheConfigurator(store);
+
+        await configurator.UpsertAsync(
+            "Renewed.Method",
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
+            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(1)));
+        await configurator.UpsertAsync(
+            "Renewed.Method",
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
+            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(5)));
+
+        time.Advance(TimeSpan.FromMinutes(2));
+        Assert.NotNull(await configurator.GetOverrideAsync("Renewed.Method"));
+
+        time.Advance(TimeSpan.FromMinutes(3));
+        Assert.Null(await configurator.GetOverrideAsync("Renewed.Method"));
     }
 
     [Fact]

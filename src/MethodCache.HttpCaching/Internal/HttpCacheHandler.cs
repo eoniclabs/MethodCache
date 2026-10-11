@@ -442,7 +442,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         return Task.Run(async () =>
         {
             using var timeout = options.BackgroundRevalidationTimeout > TimeSpan.Zero
-                ? new CancellationTokenSource(options.BackgroundRevalidationTimeout)
+                ? new CancellationTokenSource(options.BackgroundRevalidationTimeout, _timeProvider)
                 : new CancellationTokenSource();
 
             try

@@ -5,6 +5,7 @@ using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Infrastructure;
 using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Management;
@@ -21,8 +22,9 @@ public class CacheAdministratorTests
         CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5), Tags = new[] { "docs" } },
         CachePolicyFields.Duration | CachePolicyFields.Tags);
 
-    private static ServiceProvider BuildProvider() =>
+    private static ServiceProvider BuildProvider(TimeProvider? time = null) =>
         new ServiceCollection()
+            .AddSingleton(time ?? TimeProvider.System)
             .AddMethodCache(config => config.ForService<IAdminDocService>()
                 .Method(x => x.GetAsync(default))
                 .Configure(options => options.WithDuration(TimeSpan.FromSeconds(30)).WithTags("docs")))
@@ -85,12 +87,14 @@ public class CacheAdministratorTests
     [Fact]
     public async Task RemoveEntry_ReturnsFalse_ForAnEntryThatHasExpired()
     {
-        await using var provider = BuildProvider();
+        var time = new FakeTimeProvider();
+        await using var provider = BuildProvider(time);
         var memory = provider.GetRequiredService<IMemoryCache>();
         var admin = provider.GetRequiredService<ICacheAdministrator>();
 
         await memory.SetAsync("short", "value", TimeSpan.FromMilliseconds(50));
-        await Task.Delay(200);
+        Assert.NotNull(admin.GetEntry("short"));
+        time.Advance(TimeSpan.FromMilliseconds(50));
 
         Assert.Null(admin.GetEntry("short"));
         Assert.False(await admin.RemoveEntryAsync("short"));

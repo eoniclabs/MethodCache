@@ -96,6 +96,12 @@ straight to the origin. Apps that share one Redis or SQL Server should each set 
 
 To store responses somewhere else entirely, register your own `IHttpCacheStorage` before `AddHttpCaching()`.
 
+### Time
+
+Freshness, eviction from the memory store and the background revalidation timeout all read the time from the
+`TimeProvider` registered in the container, if there is one. Register a fake `TimeProvider`, for example from
+`Microsoft.Extensions.TimeProvider.Testing`, to test expiry without waiting.
+
 ## Metrics
 
 Every request is counted on the `MethodCache` meter, so `AddMethodCacheInstrumentation()` from

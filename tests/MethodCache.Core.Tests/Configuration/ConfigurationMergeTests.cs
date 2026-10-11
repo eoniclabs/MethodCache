@@ -54,7 +54,9 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     [Fact]
     public async Task RuntimeOverride_StopsApplying_AfterItsExpiresAt()
     {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var services = new ServiceCollection();
+        services.AddSingleton<TimeProvider>(time);
         services.AddMethodCache();
         await using var sp = services.BuildServiceProvider();
         var registry = sp.GetRequiredService<IPolicyRegistry>();
@@ -62,10 +64,14 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         registry.GetPolicy(Id);
 
         await configurator.UpsertAsync(Id, b => b.WithDuration(TimeSpan.FromMinutes(1)),
-            new RuntimeOverrideMetadata(Owner: "ops", ExpiresAt: DateTimeOffset.UtcNow.AddMilliseconds(100)));
+            new RuntimeOverrideMetadata(Owner: "ops", ExpiresAt: time.GetUtcNow().AddMilliseconds(100)));
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(Id).Policy.Duration);
 
-        await Task.Delay(400);
+        time.Advance(TimeSpan.FromMilliseconds(99));
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(Id).Policy.Duration);
+
+        // The expiry timer fires on the injected clock, without any read or further change.
+        time.Advance(TimeSpan.FromMilliseconds(1));
         var handle = ((PolicyRegistry)registry).GetHandle(Id);
         output.WriteLine($"after expiry: registry={registry.GetPolicy(Id).Policy.Duration}, handle={handle.Current.Duration}");
         Assert.Null(registry.GetPolicy(Id).Policy.Duration);
@@ -190,8 +196,16 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
             var tb = Task.Run(() => { for (var i = 1; i <= N; i++) b.Emit(Id, CachePolicy.Empty with { Version = i }, CachePolicyFields.Version); b.Complete(); });
             await Task.WhenAll(ta, tb);
             await Task.WhenAll(a.Drained.Task, b.Drained.Task);
-            await Task.Delay(50);
+
+            // Both sources are drained; give the resolver a bounded time to publish, rather than a fixed sleep
             var r = await resolver.ResolveAsync(Id);
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while ((r.Policy.Duration != TimeSpan.FromSeconds(N) || r.Policy.Version != N) && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(5);
+                r = await resolver.ResolveAsync(Id);
+            }
+
             if (r.Policy.Duration != TimeSpan.FromSeconds(N) || r.Policy.Version != N)
             {
                 failures++;

@@ -2,6 +2,7 @@ using MethodCache.Extensibility;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -262,9 +263,11 @@ public class AdvancedCachingIntegrationTests
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
         var metricsProvider = new TestCacheMetricsProvider();
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
             services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TimeProvider>(time);
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.ITimeBasedService");
@@ -305,29 +308,28 @@ public class AdvancedCachingIntegrationTests
         Assert.Equal(shortResult1, shortResult2);
         Assert.Equal(longResult1, longResult2);
 
-        // Wait for short cache to expire (1 second + buffer)
-        await Task.Delay(1200);
+        // One tick before its 1 second Duration the short entry is still cached...
+        time.Advance(TimeSpan.FromSeconds(1) - TimeSpan.FromTicks(1));
+        var shortTaskBefore = (Task)shortMethod.Invoke(service, new object[] { "test" })!;
+        Assert.Equal(shortResult1, await GetTaskResult<string>(shortTaskBefore));
 
-        // Short cache should expire but long cache should still be valid
+        // ...and exactly at it the short entry expires while the long one is still valid
+        time.Advance(TimeSpan.FromTicks(1));
         var shortTask3 = (Task)shortMethod.Invoke(service, new object[] { "test" })!;
         var shortResult3 = await GetTaskResult<string>(shortTask3);
         
         var longTask3 = (Task)longMethod.Invoke(service, new object[] { "test" })!;
         var longResult3 = await GetTaskResult<string>(longTask3);
 
-        await metricsProvider.WaitForMetricsAsync(expectedHits: 3, expectedMisses: 3);
+        await metricsProvider.WaitForMetricsAsync(expectedHits: 4, expectedMisses: 3);
         var finalMetrics = metricsProvider.Metrics;
 
-        // Adjusted for simplified test infrastructure behavior
-        // After short cache expires: 2 initial misses + 1 expired short = 3 misses
-        // After short cache expires: 2 initial hits + 1 long still valid = 3 hits
-        Assert.Equal(3, finalMetrics.HitCount);
+        // 2 initial misses + 1 expired short = 3 misses; 2 initial hits + 1 short before expiry + 1 long = 4 hits
+        Assert.Equal(4, finalMetrics.HitCount);
         Assert.Equal(3, finalMetrics.MissCount);
-        
-        // Basic expiration test - adjusted for simplified test infrastructure
-        // Note: Simplified test infrastructure may not handle precise cache expiration timing
-        // Assert.NotEqual(shortResult1, shortResult3); // Commented out due to simplified test infrastructure
-        // Assert.Equal(longResult1, longResult3); // Commented out due to simplified test infrastructure
+        Assert.Equal(2, (int)implType!.GetProperty("ShortCallCount")!.GetValue(null)!);
+        Assert.Equal(1, (int)implType.GetProperty("LongCallCount")!.GetValue(null)!);
+        Assert.Equal(longResult1, longResult3);
         
         // Just verify we got results successfully
         Assert.NotNull(shortResult1);

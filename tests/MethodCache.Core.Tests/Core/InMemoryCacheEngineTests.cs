@@ -80,7 +80,8 @@ public class InMemoryCacheEngineTests
             .Select(_ => Task.Run(() => manager.GetOrCreateFastAsync("key", "M", Factory, Policy())))
             .ToArray();
 
-        await Task.Delay(50);
+        // Release the load only once it is running, so the other callers join it or find its result.
+        await WaitUntilAsync(() => Task.FromResult(Volatile.Read(ref calls) == 1));
         gate.SetResult();
         var results = await Task.WhenAll(callers);
 
@@ -213,8 +214,8 @@ public class InMemoryCacheEngineTests
         _time.Advance(TimeSpan.FromSeconds(55));
         (await manager.GetOrCreateFastAsync("key", "M", Factory, policy)).Should().Be(5); // starts the refresh
 
-        await WaitUntilAsync(() => Task.FromResult(Volatile.Read(ref calls) == 2));
-        await Task.Delay(50); // let the refresh finish deciding whether to store
+        // Wait for the refresh to finish deciding whether to store, not just for its factory to run.
+        await WaitUntilAsync(() => Task.FromResult(Volatile.Read(ref calls) == 2 && !manager.IsLoading("key")));
         (await manager.GetAsync<int>("key")).Should().Be(5);
     }
 
