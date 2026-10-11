@@ -3,7 +3,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace MethodCache.AspNetCore;
 
-/// <summary>Reports whether the cache answers and includes its statistics in the health report.</summary>
+/// <summary>
+/// Reports whether the cache answers and includes its statistics in the health report. Degraded while the
+/// distributed cache is unreachable, since MethodCache then serves from memory only.
+/// </summary>
 public sealed class MethodCacheHealthCheck : IHealthCheck
 {
     private readonly ICacheAdministrator _admin;
@@ -18,13 +21,23 @@ public sealed class MethodCacheHealthCheck : IHealthCheck
         try
         {
             var stats = await _admin.GetStatsAsync(cancellationToken).ConfigureAwait(false);
-            return HealthCheckResult.Healthy("MethodCache is available.", new Dictionary<string, object>
+            var data = new Dictionary<string, object>
             {
                 ["entries"] = stats.Entries,
                 ["hitRatio"] = stats.HitRatio,
                 ["evictions"] = stats.Evictions,
                 ["memoryUsageBytes"] = stats.MemoryUsage
-            });
+            };
+
+            var distributed = await _admin.CheckDistributedCacheAsync(cancellationToken).ConfigureAwait(false);
+            if (distributed.HasValue)
+            {
+                data["distributedCacheAvailable"] = distributed.Value;
+            }
+
+            return distributed == false
+                ? HealthCheckResult.Degraded("The distributed cache is unreachable; MethodCache serves from memory only.", data: data)
+                : HealthCheckResult.Healthy("MethodCache is available.", data);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

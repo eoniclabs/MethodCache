@@ -22,6 +22,12 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         _policies = policies;
     }
 
+    public ValueTask<bool?> CheckDistributedCacheAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return _cache.CheckDistributedCacheAsync(cancellationToken);
+    }
+
     public ValueTask<ICacheStats> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

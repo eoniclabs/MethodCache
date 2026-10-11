@@ -23,10 +23,15 @@ public interface IBaggagePropagator
     string? GetCacheTenantId();
 }
 
+/// <remarks>
+/// The baggage lives in an <see cref="AsyncLocal{T}"/> and is never changed in place: every change stores a new
+/// dictionary, so a value set in a child task does not leak into its parent or its siblings. The user and tenant
+/// ids identify people, so they are put on spans only with <see cref="OpenTelemetryOptions.ExportSensitiveData"/>.
+/// </remarks>
 internal class BaggagePropagator : IBaggagePropagator
 {
     private readonly OpenTelemetryOptions _options;
-    private readonly AsyncLocal<Dictionary<string, string>?> _localBaggage = new();
+    private readonly AsyncLocal<IReadOnlyDictionary<string, string>?> _localBaggage = new();
 
     public BaggagePropagator(IOptions<OpenTelemetryOptions> options)
     {
@@ -39,36 +44,15 @@ internal class BaggagePropagator : IBaggagePropagator
             return;
 
         var baggage = _localBaggage.Value;
-        if (baggage != null)
+        if (baggage == null)
+            return;
+
+        foreach (var kvp in baggage)
         {
-            foreach (var kvp in baggage.Where(kvp => IsCacheBaggageKey(kvp.Key)))
+            if (IsCacheBaggageKey(kvp.Key) && !string.IsNullOrEmpty(kvp.Value) && (_options.ExportSensitiveData || !IsSensitive(kvp.Key)))
             {
                 activity.SetBaggage(kvp.Key, kvp.Value);
             }
-        }
-
-        var correlationId = GetCacheCorrelationId();
-        if (!string.IsNullOrEmpty(correlationId))
-        {
-            activity.SetBaggage(TracingConstants.BaggageKeys.CacheCorrelationId, correlationId);
-        }
-
-        var invalidationId = GetCacheInvalidationId();
-        if (!string.IsNullOrEmpty(invalidationId))
-        {
-            activity.SetBaggage(TracingConstants.BaggageKeys.CacheInvalidationId, invalidationId);
-        }
-
-        var userId = GetCacheUserId();
-        if (!string.IsNullOrEmpty(userId) && _options.ExportSensitiveData)
-        {
-            activity.SetBaggage(TracingConstants.BaggageKeys.CacheUserId, userId);
-        }
-
-        var tenantId = GetCacheTenantId();
-        if (!string.IsNullOrEmpty(tenantId))
-        {
-            activity.SetBaggage(TracingConstants.BaggageKeys.CacheTenantId, tenantId);
         }
     }
 
@@ -77,87 +61,65 @@ internal class BaggagePropagator : IBaggagePropagator
         if (activity == null || !_options.EnableBaggagePropagation)
             return;
 
-        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
-        var hasCacheBaggage = false;
-
+        Dictionary<string, string>? updated = null;
         foreach (var baggageItem in activity.Baggage)
         {
             if (IsCacheBaggageKey(baggageItem.Key))
             {
-                baggage[baggageItem.Key] = baggageItem.Value ?? "";
-                hasCacheBaggage = true;
+                updated ??= Copy();
+                updated[baggageItem.Key] = baggageItem.Value ?? "";
             }
         }
 
-        if (hasCacheBaggage)
+        if (updated != null)
         {
-            _localBaggage.Value = baggage;
+            _localBaggage.Value = updated;
         }
     }
 
-    public void SetCacheCorrelationId(string correlationId)
+    public void SetCacheCorrelationId(string correlationId) => Set(TracingConstants.BaggageKeys.CacheCorrelationId, correlationId);
+
+    public void SetCacheInvalidationId(string invalidationId) => Set(TracingConstants.BaggageKeys.CacheInvalidationId, invalidationId);
+
+    public void SetCacheUserId(string? userId) => Set(TracingConstants.BaggageKeys.CacheUserId, userId);
+
+    public void SetCacheTenantId(string? tenantId) => Set(TracingConstants.BaggageKeys.CacheTenantId, tenantId);
+
+    public string? GetCacheCorrelationId() => Get(TracingConstants.BaggageKeys.CacheCorrelationId);
+
+    public string? GetCacheInvalidationId() => Get(TracingConstants.BaggageKeys.CacheInvalidationId);
+
+    public string? GetCacheUserId() => Get(TracingConstants.BaggageKeys.CacheUserId);
+
+    public string? GetCacheTenantId() => Get(TracingConstants.BaggageKeys.CacheTenantId);
+
+    private void Set(string key, string? value)
     {
-        if (!_options.EnableBaggagePropagation)
+        if (!_options.EnableBaggagePropagation || string.IsNullOrEmpty(value))
             return;
 
-        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
-        baggage[TracingConstants.BaggageKeys.CacheCorrelationId] = correlationId;
-        _localBaggage.Value = baggage;
+        var updated = Copy();
+        updated[key] = value;
+        _localBaggage.Value = updated;
     }
 
-    public void SetCacheInvalidationId(string invalidationId)
-    {
-        if (!_options.EnableBaggagePropagation)
-            return;
-
-        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
-        baggage[TracingConstants.BaggageKeys.CacheInvalidationId] = invalidationId;
-        _localBaggage.Value = baggage;
-    }
-
-    public void SetCacheUserId(string? userId)
-    {
-        if (!_options.EnableBaggagePropagation || string.IsNullOrEmpty(userId))
-            return;
-
-        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
-        baggage[TracingConstants.BaggageKeys.CacheUserId] = userId;
-        _localBaggage.Value = baggage;
-    }
-
-    public void SetCacheTenantId(string? tenantId)
-    {
-        if (!_options.EnableBaggagePropagation || string.IsNullOrEmpty(tenantId))
-            return;
-
-        var baggage = _localBaggage.Value ?? new Dictionary<string, string>();
-        baggage[TracingConstants.BaggageKeys.CacheTenantId] = tenantId;
-        _localBaggage.Value = baggage;
-    }
-
-    public string? GetCacheCorrelationId()
+    private string? Get(string key)
     {
         var baggage = _localBaggage.Value;
-        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheCorrelationId, out var value) ? value : null;
+        return baggage != null && baggage.TryGetValue(key, out var value) ? value : null;
     }
 
-    public string? GetCacheInvalidationId()
+    private Dictionary<string, string> Copy()
     {
-        var baggage = _localBaggage.Value;
-        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheInvalidationId, out var value) ? value : null;
+        var current = _localBaggage.Value;
+        return current == null
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : new Dictionary<string, string>(current, StringComparer.Ordinal);
     }
 
-    public string? GetCacheUserId()
-    {
-        var baggage = _localBaggage.Value;
-        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheUserId, out var value) ? value : null;
-    }
-
-    public string? GetCacheTenantId()
-    {
-        var baggage = _localBaggage.Value;
-        return baggage != null && baggage.TryGetValue(TracingConstants.BaggageKeys.CacheTenantId, out var value) ? value : null;
-    }
+    private static bool IsSensitive(string key)
+        => string.Equals(key, TracingConstants.BaggageKeys.CacheUserId, StringComparison.OrdinalIgnoreCase) ||
+           string.Equals(key, TracingConstants.BaggageKeys.CacheTenantId, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsCacheBaggageKey(string key)
     {
