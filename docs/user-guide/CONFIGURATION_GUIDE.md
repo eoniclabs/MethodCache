@@ -246,7 +246,7 @@ To inspect and empty the cache itself, use `ICacheAdministrator` (stats, cached 
 ```csharp
 builder.Services.AddHealthChecks().AddMethodCache();
 
-app.MapMethodCacheAdmin().RequireAuthorization("CacheAdmins"); // GET /methodcache/stats, /methods, /entries, ...
+app.MapMethodCacheAdmin("CacheAdmins"); // GET /methodcache/stats, /methods, /entries, ...
 ```
 
 See the [MethodCache.AspNetCore README](../../src/MethodCache.AspNetCore/README.md) for the endpoints. They do not change policies; use `IRuntimeCacheConfigurator` for that.

@@ -8,17 +8,18 @@ Admin endpoints and a health check for MethodCache's in-memory cache.
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddMethodCache();
 builder.Services.AddHealthChecks().AddMethodCache();
+builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireRole("Admin")));
 
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapMethodCacheAdmin().RequireAuthorization("CacheAdmins");
+app.MapMethodCacheAdmin("CacheAdmins");
 app.MapHealthChecks("/health");
 ```
 
-The endpoints require an authenticated user by default, because they expose cache keys and can empty the
-cache. Add `.RequireAuthorization("policy")` to require a specific policy.
+The authorization policy is required, because the endpoints expose cache keys and can empty the cache; a
+signed-in user without the policy gets 403.
 
 ## Endpoints
 
@@ -39,10 +40,11 @@ The same operations are available in code through `ICacheAdministrator` from `Me
 ## Health check
 
 `AddMethodCache()` on the health checks builder reports Healthy when the cache answers, with `entries`,
-`hitRatio`, `evictions` and `memoryUsageBytes` in the report data.
+`hitRatio`, `evictions` and `memoryUsageBytes` in the report data. With Redis or SQL Server it reports Degraded
+while that cache is unreachable and MethodCache serves from memory only (`distributedCacheAvailable` in the data).
+Each check asks the distributed cache once, waiting at most its operation timeout.
 
 ## Limits
 
 - Works with the default in-memory cache manager. A custom `ICacheManager` has no `ICacheAdministrator`.
-- Policies are read-only here. Changing a method's policy at runtime will be added when generated decorators
-  read their policy per call.
+- Policies are read-only here. Change them at runtime with `IRuntimeCacheConfigurator`.

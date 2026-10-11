@@ -64,6 +64,7 @@ namespace MethodCache.Core.Runtime.Distributed
         // Circuit breaker: Unix ms until which the cache is skipped (0 = closed); one caller probes after that.
         // _trips counts openings, so a probe can only close the opening it was let in for.
         private const long NotProbing = -1;
+        private const string HealthCheckKey = "\u0000health";
         private readonly object _breakerLock = new();
         private long _openUntil;
         private int _probing;
@@ -117,6 +118,27 @@ namespace MethodCache.Core.Runtime.Distributed
 
         /// <summary>Wall-clock time in Unix milliseconds, comparable across nodes.</summary>
         public long Now => _time.GetUtcNow().ToUnixTimeMilliseconds();
+
+        /// <summary>False while the breaker is open or invalidations wait to be stored, so only memory is used.</summary>
+        internal bool IsAvailable => Volatile.Read(ref _openUntil) == 0 && !_hasPending;
+
+        /// <summary>
+        /// Whether the distributed cache answers now. It is asked once, bounded by the operation timeout, so an outage
+        /// shows before any cached call has run into it; a failure opens the breaker, and once the breaker's time is up
+        /// this check is the probe that can close it again, so an idle app doesn't stay degraded.
+        /// </summary>
+        internal async Task<bool> CheckAvailableAsync(CancellationToken cancellationToken)
+        {
+            if (_hasPending || !TryEnter(out var probe))
+            {
+                return false;
+            }
+
+            // A cancelled check stops waiting; the probe itself still finishes within the timeout and frees the breaker
+            var answered = await TryRunAsync(ReadRemovalAsync, HealthCheckKey, "answer a health check", probe)
+                .WaitAsync(cancellationToken).ConfigureAwait(false);
+            return answered.Succeeded;
+        }
 
         /// <summary>
         /// Starts listening to the backplane, if there is one. Messages this node sent are ignored.

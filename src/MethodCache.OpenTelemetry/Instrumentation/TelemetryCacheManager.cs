@@ -19,9 +19,15 @@ namespace MethodCache.OpenTelemetry.Instrumentation;
 /// Adds tracing spans and operation durations around an <see cref="ICacheManager"/>.
 /// </summary>
 /// <remarks>
-/// Hit, miss and load-failure counters are not recorded here: the inner cache manager and the generated
-/// decorators report them through <see cref="MethodCache.Core.Infrastructure.ICacheMetricsProvider"/>, which
-/// <see cref="CacheMeterProvider"/> implements. Recording them here as well would count every call twice.
+/// Generated decorators answer hits from the cache manager's fast path (<c>TryGetFastTask</c>), which is not
+/// instrumented here so hits stay allocation-free; spans and operation durations therefore cover misses, loads and
+/// invalidations.
+/// <para>
+/// Hit, miss and load-failure counters are not recorded here, and they do count every call: the inner cache
+/// manager and the generated decorators report them through
+/// <see cref="MethodCache.Core.Infrastructure.ICacheMetricsProvider"/>, which <see cref="CacheMeterProvider"/>
+/// implements. Recording them here as well would count every call twice.
+/// </para>
 /// </remarks>
 internal class TelemetryCacheManager : ICacheManager
 {
@@ -72,8 +78,9 @@ internal class TelemetryCacheManager : ICacheManager
 
             SetActivityTagsFromPolicy(activity, policy);
 
+            // The key is generated once here, and the inner manager takes it as is
             var tracked = new TrackedFactory<T>(factory);
-            var result = await tracked.Run(f => _innerManager.GetOrCreateAsync(methodName, args, f, policy, keyGenerator)).ConfigureAwait(false);
+            var result = await tracked.Run(f => _innerManager.GetOrCreateFastAsync(cacheKey, methodName, f, policy)).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -233,7 +240,7 @@ internal class TelemetryCacheManager : ICacheManager
 
             stopwatch.Stop();
             _meterProvider.RecordOperationDuration("InvalidateByKeys", stopwatch.Elapsed.TotalMilliseconds,
-                new Dictionary<string, object?> { ["operation"] = "invalidate_by_keys", ["keys_count"] = keys.Length });
+                new Dictionary<string, object?> { ["operation"] = "invalidate_by_keys" });
         }
         catch (Exception ex)
         {
@@ -338,6 +345,10 @@ internal class TelemetryCacheManager : ICacheManager
         }
     }
 
+    /// <summary>
+    /// Metric dimensions must have few distinct values, so a method's cache tags (which can carry argument values,
+    /// such as <c>user:42</c>) and key counts stay on spans only.
+    /// </summary>
     private static Dictionary<string, object?>? CreateMetricTagsFromPolicy(CacheRuntimePolicy policy)
     {
         var tags = new Dictionary<string, object?>();
@@ -350,11 +361,6 @@ internal class TelemetryCacheManager : ICacheManager
         if (policy.Version.HasValue)
         {
             tags["version"] = policy.Version.Value;
-        }
-
-        if (policy.Tags.Count > 0)
-        {
-            tags["tags"] = string.Join(",", policy.Tags);
         }
 
         return tags.Count > 0 ? tags : null;

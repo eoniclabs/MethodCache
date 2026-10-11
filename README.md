@@ -224,7 +224,7 @@ See the [package README](src/MethodCache.HttpCaching/README.md).
 
 ```csharp
 builder.Services.AddHealthChecks().AddMethodCache();
-app.MapMethodCacheAdmin().RequireAuthorization("CacheAdmins");   // MethodCache.AspNetCore
+app.MapMethodCacheAdmin("CacheAdmins");   // MethodCache.AspNetCore
 builder.Services.AddMethodCacheOpenTelemetry();                  // MethodCache.OpenTelemetry
 builder.Services.AddOpenTelemetry()
     .WithTracing(t => t.AddMethodCacheInstrumentation())

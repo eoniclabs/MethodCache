@@ -1,7 +1,6 @@
 #nullable enable
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.EntriesCount = "Current number of entries in cache" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.ErrorsTotal = "Total number of cache errors" -> string!
-const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.EvictionsTotal = "Total number of cache evictions" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.HitRatio = "Cache hit ratio" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.HitsTotal = "Total number of cache hits" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.KeyGenerationDuration = "Duration of cache key generation" -> string!
@@ -9,13 +8,10 @@ const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.LoadDurat
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.MemoryBytes = "Current memory usage in bytes" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.MissesTotal = "Total number of cache misses" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.OperationDuration = "Duration of cache operations" -> string!
-const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.SerializationDuration = "Duration of serialization operations" -> string!
-const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions.StorageOperationDuration = "Duration of storage provider operations" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.MeterName = "MethodCache" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.MeterVersion = "1.0.0" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.EntriesCount = "methodcache.entries_count" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.ErrorsTotal = "methodcache.errors_total" -> string!
-const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.EvictionsTotal = "methodcache.evictions_total" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.HitRatio = "methodcache.hit_ratio" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.HitsTotal = "methodcache.hits_total" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.KeyGenerationDuration = "methodcache.key_generation_duration" -> string!
@@ -23,8 +19,6 @@ const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.LoadDuration = "
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.MemoryBytes = "methodcache.memory_bytes" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.MissesTotal = "methodcache.misses_total" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.OperationDuration = "methodcache.operation_duration" -> string!
-const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.SerializationDuration = "methodcache.serialization_duration" -> string!
-const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Names.StorageOperationDuration = "methodcache.storage_operation_duration" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Units.Bytes = "By" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Units.Count = "{count}" -> string!
 const MethodCache.OpenTelemetry.Metrics.MetricInstruments.Units.Milliseconds = "ms" -> string!
@@ -68,34 +62,19 @@ const MethodCache.OpenTelemetry.Tracing.TracingConstants.Operations.StorageOpera
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableBaggagePropagation.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableBaggagePropagation.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableDistributedTracing.get -> bool
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableDistributedTracing.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableHttpCorrelation.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableHttpCorrelation.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableMetrics.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableMetrics.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableTracing.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.EnableTracing.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.Environment.get -> string?
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.Environment.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ExportSensitiveData.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ExportSensitiveData.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.HashCacheKeys.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.HashCacheKeys.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.MetricExportInterval.get -> System.TimeSpan
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.MetricExportInterval.set -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.OpenTelemetryOptions() -> void
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.RecordCacheKeys.get -> bool
 MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.RecordCacheKeys.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.SamplingRatio.get -> double
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.SamplingRatio.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ServiceName.get -> string?
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ServiceName.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ServiceNamespace.get -> string?
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ServiceNamespace.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ServiceVersion.get -> string?
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.ServiceVersion.set -> void
-MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions.Validate() -> void
 MethodCache.OpenTelemetry.Extensions.ServiceCollectionExtensions
 MethodCache.OpenTelemetry.Metrics.MetricInstruments
 MethodCache.OpenTelemetry.Metrics.MetricInstruments.Descriptions
