@@ -13,7 +13,8 @@ publishing to nuget.org needs the maintainer's go-ahead.
   - [ ] `build/ci/linux.sh build mutation`: read the report, and add tests for surviving mutants in code that changed since the
     last release.
 - [ ] The benchmarks still support the numbers in `README.md` and `docs/benchmarks.md`
-  (`dotnet run -c Release --project benchmarks/MethodCache.Benchmarks`).
+  (`dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'`, as
+  `docs/benchmarks.md` describes).
 
 ## The packages
 
