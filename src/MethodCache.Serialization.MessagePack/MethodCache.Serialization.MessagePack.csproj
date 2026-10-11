@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>MethodCache.Serialization.MessagePack</PackageId>
-    <Authors>MethodCache Contributors</Authors>
     <Description>MessagePack serialization for MethodCache: compact binary values in Redis and SQL Server instead of the default System.Text.Json.</Description>
     <PackageTags>cache;methodcache;messagepack;serialization;redis;distributed-cache</PackageTags>
     <PackageProjectUrl>https://github.com/eoniclabs/MethodCache</PackageProjectUrl>

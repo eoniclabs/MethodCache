@@ -94,6 +94,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
+            8.0.x
             9.0.x
             10.0.x
 
@@ -109,3 +110,11 @@ jobs:
 
       - name: Install the package and run the Quick Start
         run: dotnet run --project tests/MethodCache.PackageSmokeTest --configuration Release
+
+      - name: Run the Quick Start again with the .NET 8 SDK (the oldest compiler the generator supports)
+        working-directory: tests/MethodCache.PackageSmokeTest
+        run: |
+          rm -rf bin obj
+          echo '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }' > global.json
+          dotnet --version
+          dotnet run --configuration Release
