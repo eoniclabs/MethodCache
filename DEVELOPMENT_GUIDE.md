@@ -1,23 +1,22 @@
 # Repository Guidelines
 
 ## Project Structure & Modules
-- `MethodCache.Core`: Core APIs, attributes, in-memory cache. Packs as the `MethodCache` package, which also carries the generator and analyzers.
-- `MethodCache.SourceGenerator`: Roslyn source generator for decorators (shipped inside `MethodCache`).
-- `MethodCache.Analyzers`: Compile-time checks and diagnostics (shipped inside `MethodCache`).
-- `MethodCache.Redis`: Redis L2 provider (+ compression, tags, locks).
-- `MethodCache.SqlServer`: SqlServer L2 provider.
-- `MethodCache.HttpCaching`: HTTP caching support.
-- `MethodCache.Benchmarks`: Performance benchmarks.
-- `MethodCache.Core.Tests`, `MethodCache.SourceGenerator.Tests`, `MethodCache.Analyzers.Tests`, other `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed integration tests.
-- `samples/MethodCache.Demo` (a guided console tour) and `samples/MethodCache.WebDemo` (ASP.NET Core): runnable examples. CI runs the console tour.
-- `Tests/MethodCache.PackageSmokeTest`: installs the packed `MethodCache` package from `artifacts/packages` and checks the generator runs (`dotnet pack MethodCache.Core -c Release -o artifacts/packages` first).
+- `src/`: the shipped libraries.
+  - `MethodCache.Core`: Core APIs, attributes, in-memory cache. Packs as the `MethodCache` package, which also carries the generator and analyzers.
+  - `MethodCache.SourceGenerator`: Roslyn source generator for decorators (shipped inside `MethodCache`).
+  - `MethodCache.Analyzers`: Compile-time checks and diagnostics (shipped inside `MethodCache`).
+  - `MethodCache.Redis`, `MethodCache.SqlServer`: distributed cache (L2) with a backplane.
+  - `MethodCache.Serialization.MessagePack`, `MethodCache.AspNetCore`, `MethodCache.OpenTelemetry`, `MethodCache.HttpCaching`: optional add-ons.
+- `tests/`: xUnit unit tests (`*.Tests`), Docker-backed integration tests (`*.IntegrationTests`), and two CI-only programs: `MethodCache.AotSmokeTest` (Native AOT) and `MethodCache.PackageSmokeTest` (installs the packed `MethodCache` package from `artifacts/packages`; run `dotnet pack src/MethodCache.Core -c Release -o artifacts/packages` first).
+- `samples/`: `MethodCache.Demo` (a guided console tour, run in CI) and `MethodCache.WebDemo` (ASP.NET Core).
+- `benchmarks/MethodCache.Benchmarks`: Performance benchmarks.
 
 ## Build, Test, Run
 - Restore: `dotnet restore`
 - Build: `dotnet build MethodCache.sln -c Release`
 - Unit tests: `dotnet test MethodCache.sln -c Release`
 - Coverage (to `test-results/`): `dotnet test --collect:"XPlat Code Coverage" --results-directory test-results`
-- Integration tests (Redis, requires Docker): `dotnet test MethodCache.Redis.IntegrationTests`
+- Integration tests (Redis, requires Docker): `dotnet test tests/MethodCache.Redis.IntegrationTests`
 - Demo: `dotnet run --project samples/MethodCache.Demo -c Release`
 
 ## Coding Style & Naming
@@ -30,7 +29,7 @@
 - Framework: xUnit. Place tests in `*.Tests` projects; files end with `*Tests.cs`.
 - Style: Arrange/Act/Assert, deterministic tests; name methods like `Method_State_Expected`.
 - Coverage: Aim for meaningful coverage on new/changed code; include negative and boundary cases.
-- Integration: See `MethodCache.Redis.IntegrationTests/README.md`; ensure Docker is running.
+- Integration: See `tests/MethodCache.Redis.IntegrationTests/README.md`; ensure Docker is running.
 
 ## Commits & Pull Requests
 - Commits: Imperative present tense (e.g., "Refactor X", "Add Y"); small, focused; include rationale in body when helpful.

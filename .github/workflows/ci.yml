@@ -76,7 +76,7 @@ jobs:
             10.0.x
 
       - name: Publish with Native AOT
-        run: dotnet publish Tests/MethodCache.AotSmokeTest --configuration Release --runtime linux-x64 --output ./aot-smoke
+        run: dotnet publish tests/MethodCache.AotSmokeTest --configuration Release --runtime linux-x64 --output ./aot-smoke
 
       - name: Run the AOT executable
         run: ./aot-smoke/MethodCache.AotSmokeTest
@@ -98,7 +98,7 @@ jobs:
             10.0.x
 
       - name: Pack the MethodCache package
-        run: dotnet pack MethodCache.Core --configuration Release --output ./artifacts/packages
+        run: dotnet pack src/MethodCache.Core --configuration Release --output ./artifacts/packages
 
       - name: Check the generator and analyzers are in the package
         run: |
@@ -108,4 +108,4 @@ jobs:
           done
 
       - name: Install the package and run the Quick Start
-        run: dotnet run --project Tests/MethodCache.PackageSmokeTest --configuration Release
+        run: dotnet run --project tests/MethodCache.PackageSmokeTest --configuration Release
