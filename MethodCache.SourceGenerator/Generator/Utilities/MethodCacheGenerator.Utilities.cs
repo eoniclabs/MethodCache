@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -40,7 +41,15 @@ namespace MethodCache.SourceGenerator
                 // with a type that assembly declares next to the interface
                 if (IsFromReferencedAssembly(interfaceSymbol))
                 {
-                    return ns is null ? "MethodCache.Generated" : "MethodCache.Generated." + ns;
+                    // Nested interfaces add their containing types, so Outer1.IClient and Outer2.IClient don't collide
+                    var result = ns is null ? "MethodCache.Generated" : "MethodCache.Generated." + ns;
+                    var containingTypes = new List<string>();
+                    for (var type = interfaceSymbol.ContainingType; type != null; type = type.ContainingType)
+                    {
+                        containingTypes.Insert(0, type.Name);
+                    }
+
+                    return containingTypes.Count == 0 ? result : result + "." + string.Join(".", containingTypes);
                 }
 
                 return ns ?? "MethodCache.Generated";

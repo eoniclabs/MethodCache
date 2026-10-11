@@ -111,6 +111,63 @@ namespace VendorApp
         Assert.DoesNotContain(methods, m => m.MethodId.EndsWith("IFxVendorClient.CreateOrderAsync", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task PropertiesIndexersAndEvents_ReachTheClient_AndNestedNamesDontCollide()
+    {
+        const string source = @"
+using MethodCache.Core;
+using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache.SourceGenerator.IntegrationTests.Vendor;
+using Microsoft.Extensions.DependencyInjection;
+
+[assembly: CacheInterface(typeof(SdkOne.IClient), nameof(SdkOne.IClient.GetAsync))]
+[assembly: CacheInterface(typeof(SdkTwo.IClient), nameof(SdkTwo.IClient.GetAsync))]
+
+namespace VendorApp
+{
+    public static class Startup
+    {
+        public static void Configure(IServiceCollection services, SessionVendorClient client)
+        {
+            services.AddSingleton<SdkOne.IClient>(client);
+            services.AddSingleton<SdkTwo.IClient>(client);
+            services.AddMethodCache();
+        }
+    }
+}";
+
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(source, "VendorApp_Session");
+        var client = new SessionVendorClient();
+        var services = new ServiceCollection();
+        testAssembly.Assembly.GetType("VendorApp.Startup")!
+            .GetMethod("Configure", BindingFlags.Public | BindingFlags.Static)!
+            .Invoke(null, new object[] { services, client });
+        await using var provider = services.BuildServiceProvider();
+
+        var one = provider.GetRequiredService<SdkOne.IClient>();
+        var two = provider.GetRequiredService<SdkTwo.IClient>();
+        Assert.NotEqual(one.GetType().FullName, two.GetType().FullName);
+
+        Assert.Equal(10, await one.GetAsync(1));
+        Assert.Equal(10, await one.GetAsync(1));
+        Assert.Equal(10, await two.GetAsync(1));
+        Assert.Equal(10, await two.GetAsync(1));
+        Assert.Equal(2, client.Calls);
+
+        Assert.Equal("eu", one.Region);
+        one.Region = "us";
+        Assert.Equal("us", client.Region);
+        Assert.Equal("item3", one[3]);
+
+        var raised = 0;
+        EventHandler handler = (_, _) => raised++;
+        one.Changed += handler;
+        client.RaiseChanged();
+        one.Changed -= handler;
+        client.RaiseChanged();
+        Assert.Equal(1, raised);
+    }
+
     [Theory]
     [InlineData("nameof(IFxVendorClient.GetMissingAsync)", "MCG011", "\"GetMissingAsync\"")]
     [InlineData("nameof(IFxVendorClient.GetOverloadedAsync)", "MCG011", "overloads")]
@@ -134,6 +191,7 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
     [InlineData("typeof(FxVendorClient), \"Square\"", "not an interface")]
     [InlineData("typeof(System.Collections.Generic.IList<int>), \"IndexOf\"", "generic")]
     [InlineData("typeof(IFxVendorClient)", "list the methods")]
+    [InlineData("typeof(IStaticVendorClient), \"GetAsync\"", "static abstract")]
     public async Task AnInterfaceItCannotCache_IsAnError(string arguments, string expected)
     {
         var source = $@"
