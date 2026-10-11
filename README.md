@@ -42,7 +42,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 - **Third-party clients too.** One line caches chosen methods of an SDK or API client's own interface, no wrapper needed ([how](#caching-code-you-dont-own)).
 - **HTTP responses as well.** `AddHttpCaching()` on an `HttpClient` honors `Cache-Control` and revalidates with ETags ([how](#http-responses)).
 - **One line to go distributed.** `AddMethodCacheRedis(...)` shares results between instances and keeps every instance's memory cache in sync.
-- **Built for production.** Stampede protection, fail-safe, a W-TinyLFU memory cache, admin endpoints, a health check and OpenTelemetry tracing and metrics.
+- **Built for production.** Stampede protection, fail-safe, a W-TinyLFU memory cache that stays within its size limit under load ([how strict](docs/features/memory-cache.md#how-strict-the-bound-is)), admin endpoints, a health check and OpenTelemetry tracing and metrics.
 
 ## See it run
 

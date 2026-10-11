@@ -42,6 +42,17 @@ builder.Services.Configure<MethodCacheMemoryOptions>(o =>
 
 The weigher must be fast, thread-safe and return a non-negative value. Without one, `MaxMemoryBytes` is ignored.
 
+## How strict the bound is
+
+Cache hits never wait for eviction. It runs in batches off the read path, so a new entry is stored at once and counted
+against `MaxItems` (or `MaxMemoryBytes`) when the next batch applies it. Under any load:
+
+- The counted size or weight is never more than one entry over the bound.
+- When writers get ahead of eviction, they wait for it and help with it, so at most `16 × processor count` (at least
+  64) inserts, plus two per writing thread, are stored but not yet counted.
+
+Moments after the writes stop, the cache is back within the bound.
+
 ## Null values
 
 `null` results are cached by default, so a method that returns `null` isn't run again on every call. Set

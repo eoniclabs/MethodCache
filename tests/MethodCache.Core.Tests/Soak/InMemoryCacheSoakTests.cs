@@ -35,6 +35,9 @@ public class InMemoryCacheSoakTests
     private const int MaxValueBytes = 4_096;
     private const long WeightBound = 2 * 1024 * 1024;
 
+    /// <summary>The weigher's result for the largest entry (keys are at most 16 characters).</summary>
+    private const long MaxEntryWeight = 64 + (2 * 16) + MaxValueBytes;
+
     private static readonly CacheRuntimePolicy HotPolicy = CacheRuntimePolicy.Empty("Soak.Hot") with
     {
         Duration = TimeSpan.FromMilliseconds(200),
@@ -152,11 +155,11 @@ public class InMemoryCacheSoakTests
         var counted = counters.LoadSucceeded + counters.FactoryFailures + counters.GetCalls + counters.TryGetHits;
         Assert.Equal(counted, stats.Hits + stats.Misses);
 
-        // The weight bound holds once pending work is applied. While writers outpace eviction, the entries waiting in
-        // the write buffer overshoot it for a moment (about 20 times over with every core writing, as here); a runaway
-        // buffer would show here
+        // The weight bound holds once pending work is applied, and even with every core writing the tracked weight is
+        // never more than one entry over it: eviction runs as each insert is applied, and writers that get ahead of
+        // maintenance wait and help with it instead of queueing more
         Assert.True(cache.Engine.TotalWeight <= WeightBound, $"weight {cache.Engine.TotalWeight} above the bound {WeightBound}");
-        Assert.True(maxWeight <= 64 * WeightBound, $"weight reached {maxWeight}, {maxWeight / WeightBound}x the bound {WeightBound}");
+        Assert.True(maxWeight <= WeightBound + MaxEntryWeight, $"weight reached {maxWeight}, more than one entry over the bound {WeightBound}");
 
         // No unbounded growth: once the load stops, managed memory is back near the lowest level the full cache
         // reached while running, and while running it never climbs without limit
