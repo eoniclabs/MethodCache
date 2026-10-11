@@ -165,7 +165,7 @@ job_properties() {
       failed=1
       echo "== A property failed on $framework. Replay it with the seed CsCheck printed:"
       # CsCheck prints it as CsCheck_Seed = "0N0XIzNsQ0O2"
-      { grep -oE 'CsCheck_Seed *= *"?[A-Za-z0-9_-]+' "$log" || true; } | sed -E 's/ *= *"?/=/' | sort -u \
+      { grep -aoE 'CsCheck_Seed *= *"?[A-Za-z0-9_-]+' "$log" || true; } | sed -E 's/ *= *"?/=/' | sort -u \
         | while read -r seed; do
         echo "   $seed dotnet test tests/MethodCache.Core.Tests -c Release -f $framework --filter \"FullyQualifiedName~MethodCache.Core.Tests.Properties\""
       done

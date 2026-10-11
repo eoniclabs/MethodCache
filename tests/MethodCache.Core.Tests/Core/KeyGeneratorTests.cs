@@ -540,5 +540,27 @@ namespace MethodCache.Core.Tests.Core
 
             Assert.Equal(keys.Length, keys.Distinct().Count());
         }
+
+        public sealed record Glyph(char Value, string Name);
+
+        [Theory]
+        [InlineData(typeof(FastHashKeyGenerator))]
+        [InlineData(typeof(JsonKeyGenerator))]
+        public void KeyGenerators_LoneSurrogatesInsideObjects_GetDistinctKeys(Type generatorType)
+        {
+            // Found by the random-seed run of CacheKeyPropertyTests: JSON writes every lone surrogate as U+FFFD, so
+            // lists, dictionary keys and records holding different ones shared a key
+            var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+            string[] texts = ["\uD834", "\uDD1E", "\uFFFD", "\uFFFFd834", "\uFFFF"];
+
+            var args = texts.Select(t => (object)new List<string> { t })
+                .Concat(texts.Select(t => (object)new Dictionary<string, int> { [t] = 1 }))
+                .Concat(new object[] { new Glyph('\uD834', ""), new Glyph('\uDD1E', ""), new Glyph('\uFFFD', ""), new Glyph('a', "\uD834") })
+                .ToArray();
+            var keys = args.Select(a => generator.GenerateKey("M", new[] { a }, policy)).ToArray();
+
+            Assert.Equal(keys.Length, keys.Distinct().Count());
+        }
     }
 }
