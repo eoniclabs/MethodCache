@@ -29,7 +29,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 ## Why MethodCache
 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments; your service stays plain code.
-- **Fast.** A cache hit costs about as much as hand-written `IMemoryCache` code, and 3 to 5 times less than HybridCache or FusionCache ([numbers](#performance)).
+- **Fast.** A cache hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache ([numbers](#performance)).
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
@@ -220,14 +220,15 @@ A cache hit on `Task<User> GetUserAsync(int id)`, each library on its default se
 
 | Approach | Mean | Allocated |
 |---|---:|---:|
-| `IMemoryCache` by hand | 91 ns | 112 B |
-| **MethodCache `[Cache]`** | **98 ns** | **160 B** |
-| HybridCache | 502 ns | 272 B |
-| FusionCache | 347 ns | 344 B |
+| `IMemoryCache` by hand | 92 ns | 112 B |
+| **MethodCache `[Cache]`** | **84 ns** | **0 B** |
+| HybridCache | 497 ns | 272 B |
+| FusionCache | 348 ns | 344 B |
 
-The generated decorator builds the key with one string concatenation and returns the cached `Task` itself, so a hit
-costs about the same as hand-written code. Measured with BenchmarkDotNet on .NET 10; see
-[docs/benchmarks.md](docs/benchmarks.md) for the setup and how to run it yourself.
+The generated decorator writes the key into a stack buffer and returns the cached `Task` itself, so a hit allocates
+nothing and is at least as fast as hand-written code (on .NET 9 and later; .NET 8 builds the key as a string).
+Measured with BenchmarkDotNet on .NET 10; see [docs/benchmarks.md](docs/benchmarks.md) for the setup and how to run
+it yourself.
 
 ## How it compares
 

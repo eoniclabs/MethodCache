@@ -46,6 +46,9 @@ internal sealed class MemoryCacheEngine
     private readonly record struct WriteTask(Node Node, WriteKind Kind);
 
     private readonly ConcurrentDictionary<string, Node> _map;
+#if NET9_0_OR_GREATER
+    private readonly ConcurrentDictionary<string, Node>.AlternateLookup<ReadOnlySpan<char>> _spanLookup;
+#endif
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Node, byte>> _tagIndex = new(StringComparer.Ordinal);
     private readonly ReadBuffer _readBuffer = new();
     private readonly ConcurrentQueue<WriteTask> _writeBuffer = new();
@@ -88,6 +91,9 @@ internal sealed class MemoryCacheEngine
         _mode = mode;
         _clock = clock;
         _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024)); // default comparer enables the non-randomized string hashing fast path
+#if NET9_0_OR_GREATER
+        _spanLookup = _map.GetAlternateLookup<ReadOnlySpan<char>>();
+#endif
 
         if (mode == EngineEvictionMode.TinyLfu)
         {
@@ -132,8 +138,24 @@ internal sealed class MemoryCacheEngine
     /// Looks up a live (not physically expired) node and records the access.
     /// </summary>
     public bool TryGet(string key, long now, out Node node)
+        => Accept(_map.TryGetValue(key, out node!), now, ref node);
+
+    /// <summary>
+    /// Like <see cref="TryGet(string, long, out Node)"/>, for a key held in a buffer. On .NET 9 and later the
+    /// lookup does not allocate.
+    /// </summary>
+    public bool TryGet(ReadOnlySpan<char> key, long now, out Node node)
     {
-        if (_map.TryGetValue(key, out node!))
+#if NET9_0_OR_GREATER
+        return Accept(_spanLookup.TryGetValue(key, out node!), now, ref node);
+#else
+        return TryGet(key.ToString(), now, out node);
+#endif
+    }
+
+    private bool Accept(bool found, long now, ref Node node)
+    {
+        if (found)
         {
             if (!node.IsPhysicallyExpired(now))
             {

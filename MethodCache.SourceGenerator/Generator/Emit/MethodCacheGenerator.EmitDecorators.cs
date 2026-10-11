@@ -320,9 +320,15 @@ namespace MethodCache.SourceGenerator
                 // Simple arguments, and records or DTOs made of them, are formatted inline; anything else goes
                 // through the key generator.
                 var rawKeyParam = GetRawKeyParameter(keyParams);
+                var stackKeyLookup = false;
                 if (rawKeyParam != null)
                 {
                     EmitRawKey(sb, rawKeyParam, "            ");
+                }
+                else if (keyParams.Count > 0 && keyParams.All(p => IsSimpleType(p.Type)))
+                {
+                    EmitStackKeyLookup(sb, keyParams, kind, valueType, safeFieldName);
+                    stackKeyLookup = true;
                 }
                 else if (TryBuildInlineKey(keyParams, out var inlineKey, out var exactTypeChecks))
                 {
@@ -343,11 +349,13 @@ namespace MethodCache.SourceGenerator
                     EmitGeneratedKey(sb, safeFieldName, keyParams);
                 }
 
-                sb.AppendLine();
-                var tagParameters = model.CacheAttr is null
-                    ? new List<string>()
-                    : ParseDynamicTags(ExtractTags(model.CacheAttr), method).SelectMany(t => t.paramNames).Distinct().ToList();
-                EmitCachedBody(sb, method, kind, valueType, safeFieldName, tagParameters);
+                if (!stackKeyLookup)
+                {
+                    sb.AppendLine();
+                    EmitHit(sb, kind, valueType, safeFieldName, "cacheKeyValue");
+                }
+
+                EmitMiss(sb, method, kind, valueType, safeFieldName, GetTagParameters(model, method));
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
@@ -362,17 +370,50 @@ namespace MethodCache.SourceGenerator
             }
 
             /// <summary>
-            /// Emits the lookup shared by every cached method: one synchronous probe whose result says whether an
-            /// entry exists (so null, 0 and false are hits too), then the cache manager's loading path on a miss.
+            /// Emits the key and the hit lookup for methods whose arguments are all simple values. On .NET 9 and later
+            /// the key is written into a stack buffer and looked up as a span, so a hit allocates no key string; the
+            /// string is only made on a miss. Older frameworks have no allocation-free dictionary lookup, so they keep
+            /// the string key.
             /// </summary>
-            private static void EmitCachedBody(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName, List<string> tagParameters)
+            private static void EmitStackKeyLookup(StringBuilder sb, List<IParameterSymbol> keyParams, ResultKind kind, ITypeSymbol valueType, string safeFieldName)
+            {
+                TryBuildInlineKey(keyParams, out var stringKey, out _);
+
+                sb.AppendLine("#if NET9_0_OR_GREATER");
+                sb.AppendLine("            var cacheKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);");
+                sb.AppendLine("            cacheKeyBuilder.Append(cacheSnapshot.KeyPrefix);");
+                foreach (var param in keyParams)
+                {
+                    sb.AppendLine(AppendSimpleValue(param.Name, param.Type));
+                }
+
+                sb.AppendLine();
+                EmitHit(sb, kind, valueType, safeFieldName, "cacheKeyBuilder.AsSpan()");
+                sb.AppendLine("            var cacheKeyValue = cacheKeyBuilder.ToString();");
+                sb.AppendLine("#else");
+                sb.AppendLine($"            var cacheKeyValue = {stringKey};");
+                sb.AppendLine();
+                EmitHit(sb, kind, valueType, safeFieldName, "cacheKeyValue");
+                sb.AppendLine("#endif");
+            }
+
+            private static List<string> GetTagParameters(MethodModel model, IMethodSymbol method)
+                => model.CacheAttr is null
+                    ? new List<string>()
+                    : ParseDynamicTags(ExtractTags(model.CacheAttr), method).SelectMany(t => t.paramNames).Distinct().ToList();
+
+            /// <summary>
+            /// Emits the lookup shared by every cached method: one synchronous probe whose result says whether an
+            /// entry exists (so null, 0 and false are hits too).
+            /// </summary>
+            private static void EmitHit(StringBuilder sb, ResultKind kind, ITypeSymbol valueType, string safeFieldName, string key)
             {
                 var type = Utils.GetReturnTypeForSignature(valueType);
 
                 // Task methods get the entry's completed task back, so a hit does not allocate a new Task
                 sb.AppendLine(kind == ResultKind.Task
-                    ? $"            if (_cacheManager.TryGetFastTask<{type}>(cacheKeyValue, out var cachedTask))"
-                    : $"            if (_cacheManager.TryGetFast<{type}>(cacheKeyValue, out var cachedValue))");
+                    ? $"            if (_cacheManager.TryGetFastTask<{type}>({key}, out var cachedTask))"
+                    : $"            if (_cacheManager.TryGetFast<{type}>({key}, out var cachedValue))");
                 sb.AppendLine("            {");
                 sb.AppendLine($"                _metricsProvider?.CacheHit(_method_{safeFieldName}.Name);");
                 switch (kind)
@@ -390,6 +431,12 @@ namespace MethodCache.SourceGenerator
 
                 sb.AppendLine("            }");
                 sb.AppendLine();
+            }
+
+            /// <summary>Emits the cache manager's loading path for a miss.</summary>
+            private static void EmitMiss(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName, List<string> tagParameters)
+            {
+                var type = Utils.GetReturnTypeForSignature(valueType);
                 sb.AppendLine("            // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)");
 
                 var policy = "cacheSnapshot.Policy";
@@ -558,6 +605,16 @@ namespace MethodCache.SourceGenerator
                 }
 
                 return $"MethodCacheKeys.Part({expression})";
+            }
+
+            private static string AppendSimpleValue(string expression, ITypeSymbol type)
+            {
+                if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T })
+                {
+                    return $"            if ({expression}.HasValue) cacheKeyBuilder.AppendPart({expression}.Value); else cacheKeyBuilder.AppendNullPart();";
+                }
+
+                return $"            cacheKeyBuilder.AppendPart({expression});";
             }
 
             private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
