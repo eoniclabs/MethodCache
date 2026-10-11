@@ -116,7 +116,7 @@ builder.Services.AddMethodCache(config =>
 });
 ```
 
-Settings are applied in order: the default policy, then the group, then the method. `DefaultPolicy` and `ForGroup` only apply to methods you list with `ForService<T>().Method(...)`; a `[Cache]` method that is not listed keeps the settings from its attribute.
+Each setting comes from the most specific place that sets it: the method itself (its `[Cache]` attribute, `ForService<T>().Method(...)` or JSON), then its group, then the defaults. `DefaultPolicy` and the JSON `Defaults` apply to every cached method, also ones that only have `[Cache]`, so `[Cache(Duration = "00:10:00")]` keeps its ten minutes while the defaults fill in what it leaves out. A method joins a group with `[Cache("name")]`, `WithGroup("name")` or `Group` in JSON, and gets that group's `ForGroup("name")` settings.
 
 Generated decorators build readable keys themselves when every argument is a simple value (string, number, `bool`, `Guid`, date, enum), an `ICacheKeyProvider`, or a record, class or struct whose public properties and fields are simple values, for example `MyApp.IUserService.Search:(alice:2)`. Other arguments, such as collections, go through the key generator. `FastHashKeyGenerator` is the default; replace it through dependency injection:
 
@@ -155,7 +155,7 @@ Configure cached methods from `appsettings.json` or any other `IConfiguration` s
 }
 ```
 
-Each key under `Services` is the method id: the interface's full name, a dot, and the method name. Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Defaults` is applied to every method listed under `Services`, and a method's own settings win. `Group`, `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
+Each key under `Services` is the method id: the interface's full name, a dot, and the method name. Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Defaults` applies to every cached method, also ones not listed under `Services`, and a method's own settings, including those in its `[Cache]` attribute, win. `Group` puts the method in a `ForGroup(...)` group; `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
 
 Only methods with a `[Cache]` attribute have a generated decorator, so the file can change their policy but cannot make other methods cached.
 

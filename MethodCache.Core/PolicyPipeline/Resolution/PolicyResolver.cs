@@ -254,25 +254,14 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     {
         var fields = CachePolicyMapper.DetectFields(snapshot.Policy);
         var layer = new PolicyLayer(registration.SourceId, registration.Priority, snapshot.Policy, fields, snapshot.Timestamp);
-        var result = UpdateResolution(snapshot.MethodId, layer);
-
-        if (raiseNotification)
-        {
-            RaisePolicyChanged(result);
-        }
+        UpdateResolution(snapshot.MethodId, layer);
     }
 
-    private PolicyResolutionResult UpdateResolution(string methodId, PolicyLayer layer)
+    private void UpdateResolution(string methodId, PolicyLayer layer)
     {
         var aggregator = _aggregators.GetOrAdd(methodId, static id => new PolicyAggregator(id));
-        var result = aggregator.SetLayer(layer);
-        _resolutions[methodId] = result;
-        if (_initialized)
-        {
-            RaisePolicyChanged(result);
-        }
-
-        return result;
+        aggregator.SetLayer(layer);
+        Refresh(methodId);
     }
 
     private void RemoveLayer(string methodId, LayerKey key, DateTimeOffset timestamp)
@@ -282,13 +271,43 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             return;
         }
 
-        var result = aggregator.RemoveLayer(key, timestamp);
-        _resolutions[methodId] = result;
+        aggregator.RemoveLayer(key);
+        Refresh(methodId, timestamp);
+    }
+
+    /// <summary>
+    /// Re-resolves a method after one of its layers changed. Defaults apply to many methods, so a change to the
+    /// global or a group's defaults re-resolves every method.
+    /// </summary>
+    private void Refresh(string changedId, DateTimeOffset? timestamp = null)
+    {
+        if (!MethodIds.IsDefaults(changedId))
+        {
+            Publish(_aggregators[changedId], timestamp);
+            return;
+        }
+
+        foreach (var aggregator in _aggregators.Values)
+        {
+            if (!MethodIds.IsDefaults(aggregator.MethodId))
+            {
+                Publish(aggregator, timestamp);
+            }
+        }
+    }
+
+    private void Publish(PolicyAggregator aggregator, DateTimeOffset? timestamp)
+    {
+        var result = aggregator.Rebuild(DefaultLayers, timestamp);
+        _resolutions[aggregator.MethodId] = result;
         if (_initialized)
         {
             RaisePolicyChanged(result);
         }
     }
+
+    private PolicyLayer[] DefaultLayers(string defaultsId)
+        => _aggregators.TryGetValue(defaultsId, out var aggregator) ? aggregator.Layers : Array.Empty<PolicyLayer>();
 
     private void RaisePolicyChanged(PolicyResolutionResult result)
     {
@@ -314,137 +333,147 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         }
     }
 
+    /// <summary>
+    /// Holds one method's layers, or the layers of the defaults for all methods or for one group.
+    /// </summary>
     private sealed class PolicyAggregator
     {
-        private readonly string _methodId;
         private readonly SortedDictionary<LayerKey, PolicyLayer> _layers = new();
-        private PolicyResolutionResult _current;
         private readonly object _sync = new();
-        private long _version = 0; // Increments on each policy change
+        private long _version; // Increments on each rebuild
 
         public PolicyAggregator(string methodId)
         {
-            _methodId = methodId;
-            _current = new PolicyResolutionResult(methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), DateTimeOffset.UtcNow, version: EmptyPolicyVersion);
+            MethodId = methodId;
         }
 
-        public PolicyResolutionResult SetLayer(PolicyLayer layer)
+        public string MethodId { get; }
+
+        /// <summary>The layers from lowest to highest priority.</summary>
+        public PolicyLayer[] Layers
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _layers.Values.ToArray();
+                }
+            }
+        }
+
+        public void SetLayer(PolicyLayer layer)
         {
             lock (_sync)
             {
                 _layers[layer.Key] = layer;
-                _current = BuildResult();
-                return _current;
             }
         }
 
-        public PolicyResolutionResult RemoveLayer(LayerKey key, DateTimeOffset timestamp)
+        public void RemoveLayer(LayerKey key)
         {
             lock (_sync)
             {
                 _layers.Remove(key);
-                _current = BuildResult(timestamp);
-                return _current;
             }
         }
 
-        private PolicyResolutionResult BuildResult(DateTimeOffset? timestampOverride = null)
+        /// <summary>
+        /// Resolves the method's policy: each setting comes from the method's own highest-priority layer that sets it,
+        /// then from its group's defaults, then from the defaults for all methods. So a value in <c>[Cache]</c> wins
+        /// over a default, whichever source the default comes from.
+        /// </summary>
+        public PolicyResolutionResult Rebuild(Func<string, PolicyLayer[]> defaultLayers, DateTimeOffset? timestampOverride)
         {
-            var resolvedAt = timestampOverride ?? DateTimeOffset.UtcNow;
-
-            // Increment version on each rebuild (policy update)
-            var currentVersion = ++_version;
-
-            if (_layers.Count == 0)
+            lock (_sync)
             {
-                return new PolicyResolutionResult(_methodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), resolvedAt, currentVersion);
+                var resolvedAt = timestampOverride ?? DateTimeOffset.UtcNow;
+                var currentVersion = ++_version;
+
+                if (_layers.Count == 0)
+                {
+                    return new PolicyResolutionResult(MethodId, CachePolicy.Empty, Array.Empty<PolicyContribution>(), resolvedAt, currentVersion);
+                }
+
+                IReadOnlyDictionary<string, string?> metadata = CachePolicy.Empty.Metadata;
+                foreach (var layer in _layers.Values.Reverse())
+                {
+                    if (layer.Fields.HasFlag(CachePolicyFields.Metadata) && metadata.Count == 0)
+                    {
+                        metadata = layer.Policy.Metadata;
+                    }
+                }
+
+                // Highest precedence first: the method's own layers, then its group's defaults, then the global ones
+                var layers = new List<PolicyLayer>(_layers.Values.Reverse());
+                if (metadata.TryGetValue("group", out var group) && !string.IsNullOrWhiteSpace(group))
+                {
+                    layers.AddRange(defaultLayers(MethodIds.Group(group)).Reverse());
+                }
+
+                layers.AddRange(defaultLayers(MethodIds.AllMethods).Reverse());
+
+                TimeSpan? duration = null;
+                IReadOnlyList<string>? tags = null;
+                TimeSpan? slidingExpiration = null;
+                TimeSpan? refreshAhead = null;
+                int? version = null;
+                List<PolicyContribution>? contributions = null;
+
+                foreach (var layer in layers)
+                {
+                    var fields = layer.Fields;
+                    var policy = layer.Policy;
+
+                    if (duration == null && fields.HasFlag(CachePolicyFields.Duration))
+                    {
+                        duration = policy.Duration;
+                    }
+
+                    if (tags == null && fields.HasFlag(CachePolicyFields.Tags))
+                    {
+                        tags = policy.Tags;
+                    }
+
+                    if (slidingExpiration == null && fields.HasFlag(CachePolicyFields.SlidingExpiration))
+                    {
+                        slidingExpiration = policy.SlidingExpiration;
+                    }
+
+                    if (refreshAhead == null && fields.HasFlag(CachePolicyFields.RefreshAhead))
+                    {
+                        refreshAhead = policy.RefreshAhead;
+                    }
+
+                    if (version == null && fields.HasFlag(CachePolicyFields.Version))
+                    {
+                        version = policy.Version;
+                    }
+
+                    if (policy.Provenance.Count > 0)
+                    {
+                        contributions ??= new List<PolicyContribution>();
+                        contributions.InsertRange(0, policy.Provenance);
+                    }
+                }
+
+                var effectivePolicy = CachePolicy.Empty with
+                {
+                    Duration = duration,
+                    Tags = tags ?? Array.Empty<string>(),
+                    SlidingExpiration = slidingExpiration,
+                    RefreshAhead = refreshAhead,
+                    Version = version,
+                    Metadata = metadata,
+                    Provenance = contributions is { Count: > 0 } ? new PolicyProvenance(contributions) : PolicyProvenance.Empty
+                };
+
+                return new PolicyResolutionResult(
+                    MethodId,
+                    effectivePolicy,
+                    contributions is { Count: > 0 } ? contributions : Array.Empty<PolicyContribution>(),
+                    resolvedAt,
+                    currentVersion);
             }
-
-            TimeSpan? duration = null;
-            IReadOnlyList<string>? tags = null;
-            TimeSpan? slidingExpiration = null;
-            TimeSpan? refreshAhead = null;
-            int? version = null;
-            IReadOnlyDictionary<string, string?> metadata = CachePolicy.Empty.Metadata;
-
-            foreach (var kvp in _layers.Reverse())
-            {
-                var layer = kvp.Value;
-                var fields = layer.Fields;
-                var policy = layer.Policy;
-
-                if (duration == null && fields.HasFlag(CachePolicyFields.Duration))
-                {
-                    duration = policy.Duration;
-                }
-
-                if (tags == null && fields.HasFlag(CachePolicyFields.Tags))
-                {
-                    tags = policy.Tags;
-                }
-
-                if (slidingExpiration == null && fields.HasFlag(CachePolicyFields.SlidingExpiration))
-                {
-                    slidingExpiration = policy.SlidingExpiration;
-                }
-
-                if (refreshAhead == null && fields.HasFlag(CachePolicyFields.RefreshAhead))
-                {
-                    refreshAhead = policy.RefreshAhead;
-                }
-
-                if (version == null && fields.HasFlag(CachePolicyFields.Version))
-                {
-                    version = policy.Version;
-                }
-
-                if (fields.HasFlag(CachePolicyFields.Metadata) && (metadata == CachePolicy.Empty.Metadata || metadata.Count == 0))
-                {
-                    metadata = policy.Metadata;
-                }
-            }
-
-            List<PolicyContribution>? contributionsBuilder = null;
-
-            foreach (var kvp in _layers)
-            {
-                var provenanceLayer = kvp.Value.Policy.Provenance;
-                if (provenanceLayer.Count == 0)
-                {
-                    continue;
-                }
-
-                contributionsBuilder ??= new List<PolicyContribution>();
-                foreach (var contribution in provenanceLayer)
-                {
-                    contributionsBuilder.Add(contribution);
-                }
-            }
-
-            IReadOnlyList<PolicyContribution> contributions;
-            var provenance = PolicyProvenance.Empty;
-            if (contributionsBuilder is { Count: > 0 })
-            {
-                contributions = contributionsBuilder;
-                provenance = new PolicyProvenance(contributionsBuilder);
-            }
-            else
-            {
-                contributions = Array.Empty<PolicyContribution>();
-            }
-
-            var effectivePolicy = CachePolicy.Empty with
-            {
-                Duration = duration,
-                Tags = tags ?? Array.Empty<string>(),
-                SlidingExpiration = slidingExpiration,
-                RefreshAhead = refreshAhead,
-                Version = version,
-                Metadata = metadata,
-                Provenance = provenance
-            };
-
-            return new PolicyResolutionResult(_methodId, effectivePolicy, contributions, resolvedAt, currentVersion);
         }
     }
 }

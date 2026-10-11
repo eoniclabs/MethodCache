@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Options;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.Runtime.Core;
@@ -48,30 +47,30 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             return groupConfiguration;
         }
 
+        /// <summary>
+        /// Builds one draft per configured method, plus the defaults for all methods and for each group. Defaults are
+        /// kept apart so they also reach methods configured only with <c>[Cache]</c>, whose own values win.
+        /// </summary>
         internal IReadOnlyList<PolicyDraft> BuildMethodPolicies()
         {
             var drafts = new List<PolicyDraft>();
-            var defaultOptions = BuildOptions(_defaultPolicyBuilders);
-            var groupOptions = new Dictionary<string, CacheEntryOptions>(StringComparer.Ordinal);
+
+            if (BuildOptions(_defaultPolicyBuilders) is { } defaultOptions)
+            {
+                drafts.Add(CachePolicyBuilderFactory.ForDefaults("DefaultPolicy()", defaultOptions).Build(MethodIds.AllMethods));
+            }
 
             foreach (var (groupName, groupConfiguration) in _groups)
             {
-                groupOptions[groupName] = groupConfiguration.BuildOptions();
+                var groupOptions = groupConfiguration.BuildOptions();
+                drafts.Add(CachePolicyBuilderFactory.ForDefaults($"group '{groupName}'", groupOptions).Build(MethodIds.Group(groupName)));
             }
 
             foreach (var serviceConfiguration in _services.Values)
             {
                 foreach (var (methodKey, methodConfiguration) in serviceConfiguration.Methods)
                 {
-                    CacheEntryOptions? groupOption = null;
-                    if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName) &&
-                        groupOptions.TryGetValue(methodConfiguration.GroupName, out var groupSettings))
-                    {
-                        groupOption = groupSettings;
-                    }
-
-                    var options = methodConfiguration.BuildOptions(defaultOptions, groupOption);
-                    var policyBuilder = CachePolicyBuilderFactory.ForMethod(methodKey, options);
+                    var policyBuilder = CachePolicyBuilderFactory.ForMethod(methodKey, methodConfiguration.BuildOptions());
 
                     if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName))
                     {
@@ -215,71 +214,15 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return this;
             }
 
-            public CacheEntryOptions BuildOptions(CacheEntryOptions? defaultOptions, CacheEntryOptions? groupOptions)
+            public CacheEntryOptions BuildOptions()
             {
                 var builder = new CacheEntryOptions.Builder();
-                ApplyTo(builder, defaultOptions);
-                ApplyTo(builder, groupOptions);
-
                 foreach (var configure in _configurations)
                 {
                     configure(builder);
                 }
 
                 return builder.Build();
-            }
-
-            private static void ApplyTo(CacheEntryOptions.Builder builder, CacheEntryOptions? options)
-            {
-                if (options == null)
-                {
-                    return;
-                }
-
-                if (options.Duration is TimeSpan duration)
-                {
-                    builder.WithDuration(duration);
-                }
-
-                if (options.Tags.Count > 0)
-                {
-                    builder.WithTags(options.Tags.ToArray());
-                }
-
-                if (options.SlidingExpiration is TimeSpan sliding)
-                {
-                    builder.WithSlidingExpiration(sliding);
-                }
-
-                if (options.RefreshAhead is TimeSpan refresh)
-                {
-                    builder.RefreshAhead(refresh);
-                }
-
-                if (options.Version is int version)
-                {
-                    builder.WithVersion(version);
-                }
-
-                if (options.Metrics is ICacheMetrics metrics)
-                {
-                    builder.WithMetrics(metrics);
-                }
-
-                if (options.Predicate is Func<CacheContext, bool> predicate)
-                {
-                    builder.WithPredicate(predicate);
-                }
-
-                foreach (var callback in options.OnHitCallbacks)
-                {
-                    builder.OnHit(callback);
-                }
-
-                foreach (var callback in options.OnMissCallbacks)
-                {
-                    builder.OnMiss(callback);
-                }
             }
         }
 
