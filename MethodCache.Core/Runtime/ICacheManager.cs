@@ -101,7 +101,7 @@ namespace MethodCache.Core.Runtime
         }
 
         /// <summary>
-        /// Like <see cref="TryGetFast{T}"/>, but returns the hit as a completed task for <see cref="Task{TResult}"/>
+        /// Like <see cref="TryGetFast{T}(string, out T)"/>, but returns the hit as a completed task for <see cref="Task{TResult}"/>
         /// methods. Implementations can hand out the same task for every hit on an entry, so a hit does not allocate.
         /// </summary>
         /// <typeparam name="T">Type of cached value</typeparam>
@@ -119,6 +119,28 @@ namespace MethodCache.Core.Runtime
             task = null;
             return false;
         }
+
+        /// <summary>
+        /// Like <see cref="TryGetFast{T}(string, out T)"/>, for a key held in a buffer such as one written by
+        /// <see cref="KeyGeneration.MethodCacheKeyBuilder"/>. The built-in memory cache looks it up without
+        /// allocating on .NET 9 and later; the default implementation converts the key to a string.
+        /// </summary>
+        /// <typeparam name="T">Type of cached value</typeparam>
+        /// <param name="cacheKey">Pre-computed cache key</param>
+        /// <param name="value">The cached value if found</param>
+        /// <returns>True if the value exists and is not expired</returns>
+        bool TryGetFast<T>(ReadOnlySpan<char> cacheKey, out T? value) => TryGetFast<T>(cacheKey.ToString(), out value);
+
+        /// <summary>
+        /// Like <see cref="TryGetFastTask{T}(string, out Task{T})"/>, for a key held in a buffer such as one written by
+        /// <see cref="KeyGeneration.MethodCacheKeyBuilder"/>.
+        /// </summary>
+        /// <typeparam name="T">Type of cached value</typeparam>
+        /// <param name="cacheKey">Pre-computed cache key</param>
+        /// <param name="task">A completed task holding the cached value, if found</param>
+        /// <returns>True if the value exists and is not expired</returns>
+        bool TryGetFastTask<T>(ReadOnlySpan<char> cacheKey, [NotNullWhen(true)] out Task<T>? task)
+            => TryGetFastTask<T>(cacheKey.ToString(), out task);
 
         /// <summary>
         /// Retrieves a cached value or executes the factory function using a pre-computed cache key.

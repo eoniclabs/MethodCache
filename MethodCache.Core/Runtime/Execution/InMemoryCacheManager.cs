@@ -175,10 +175,46 @@ namespace MethodCache.Core.Runtime.Execution
             return false;
         }
 
+        /// <inheritdoc />
+        public bool TryGetFast<T>(ReadOnlySpan<char> cacheKey, out T? value)
+        {
+            if (TryGetFastNode(cacheKey, out value, out _))
+            {
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        /// <inheritdoc />
+        public bool TryGetFastTask<T>(ReadOnlySpan<char> cacheKey, [NotNullWhen(true)] out Task<T>? task)
+        {
+            if (TryGetFastNode<T>(cacheKey, out var value, out var node))
+            {
+                task = node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
+                return true;
+            }
+
+            task = null;
+            return false;
+        }
+
         private bool TryGetFastNode<T>(string cacheKey, out T? value, out Node? node)
         {
-            if (_options.EnableFastPath
-                && TryGetFresh(cacheKey, _engine.Now, out value, out node, out var refreshDue)
+            var now = _engine.Now;
+            return AcceptFastNode(_options.EnableFastPath && _engine.TryGet(cacheKey, now, out var found) ? found : null, now, out value, out node);
+        }
+
+        private bool TryGetFastNode<T>(ReadOnlySpan<char> cacheKey, out T? value, out Node? node)
+        {
+            var now = _engine.Now;
+            return AcceptFastNode(_options.EnableFastPath && _engine.TryGet(cacheKey, now, out var found) ? found : null, now, out value, out node);
+        }
+
+        private bool AcceptFastNode<T>(Node? found, long now, out T? value, out Node? node)
+        {
+            if (TryAcceptFresh(found, now, out value, out node, out var refreshDue)
                 && !(refreshDue && Volatile.Read(ref node!.RefreshState) == 0))
             {
                 if (_options.EnableStatistics)
@@ -655,10 +691,13 @@ namespace MethodCache.Core.Runtime.Execution
         }
 
         private bool TryGetFresh<T>(string key, long now, out T? value, out Node? node, out bool refreshDue)
+            => TryAcceptFresh(_engine.TryGet(key, now, out var found) ? found : null, now, out value, out node, out refreshDue);
+
+        private bool TryAcceptFresh<T>(Node? found, long now, out T? value, out Node? node, out bool refreshDue)
         {
             refreshDue = false;
 
-            if (!_engine.TryGet(key, now, out var found) || found.IsLogicallyExpired(now) || !TryRead(found, out value))
+            if (found is null || found.IsLogicallyExpired(now) || !TryRead(found, out value))
             {
                 value = default;
                 node = null;
