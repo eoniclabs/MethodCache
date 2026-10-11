@@ -40,7 +40,6 @@ public static class ServiceCollectionExtensions
 
         var options = new OpenTelemetryOptions();
         configure?.Invoke(options);
-        options.Validate();
 
         services.Configure<OpenTelemetryOptions>(opt =>
         {
@@ -48,16 +47,9 @@ public static class ServiceCollectionExtensions
             opt.EnableMetrics = options.EnableMetrics;
             opt.RecordCacheKeys = options.RecordCacheKeys;
             opt.HashCacheKeys = options.HashCacheKeys;
-            opt.SamplingRatio = options.SamplingRatio;
             opt.ExportSensitiveData = options.ExportSensitiveData;
-            opt.MetricExportInterval = options.MetricExportInterval;
             opt.EnableHttpCorrelation = options.EnableHttpCorrelation;
             opt.EnableBaggagePropagation = options.EnableBaggagePropagation;
-            opt.EnableDistributedTracing = options.EnableDistributedTracing;
-            opt.ServiceName = options.ServiceName;
-            opt.ServiceVersion = options.ServiceVersion;
-            opt.ServiceNamespace = options.ServiceNamespace;
-            opt.Environment = options.Environment;
         });
 
         services.TryAddSingleton<ICacheActivitySource, CacheActivitySource>();

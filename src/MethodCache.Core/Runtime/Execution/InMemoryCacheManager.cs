@@ -58,6 +58,9 @@ namespace MethodCache.Core.Runtime.Execution
         private readonly bool _highResolutionTiming;
         private readonly DistributedCacheLayer? _distributed;
 
+        /// <summary>Whether the distributed cache is in use now; null without one.</summary>
+        internal bool? IsDistributedCacheAvailable => _distributed?.IsAvailable;
+
         private int _disposed;
 
         public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MemoryCacheOptions>? options = null)

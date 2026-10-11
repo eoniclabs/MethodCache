@@ -66,12 +66,12 @@ public class TelemetryCacheManagerTests : IDisposable
         _innerManagerMock.Setup(x => x.TryGetAsync<string>(methodName, args, settings, keyGenerator.Object))
             .ReturnsAsync(expectedValue);
 
-        _innerManagerMock.Setup(x => x.GetOrCreateAsync(
+        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync(
+                "test_key",
                 methodName,
-                args,
                 It.IsAny<Func<Task<string>>>(),
                 settings,
-                keyGenerator.Object))
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedValue);
 
         var activity = new Activity("test");
@@ -111,13 +111,13 @@ public class TelemetryCacheManagerTests : IDisposable
         _innerManagerMock.Setup(x => x.TryGetAsync<string>(methodName, args, settings, keyGenerator.Object))
             .ReturnsAsync((string?)null);
 
-        _innerManagerMock.Setup(x => x.GetOrCreateAsync(
+        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync(
+                "test_key",
                 methodName,
-                args,
                 It.IsAny<Func<Task<string>>>(),
                 settings,
-                keyGenerator.Object))
-            .Returns<string, object[], Func<Task<string>>, CacheRuntimePolicy, ICacheKeyGenerator>(
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, Func<Task<string>>, CacheRuntimePolicy, CancellationToken>(
                 async (_, _, factory, _, _) => await factory());
 
         var activity = new Activity("test");
@@ -153,12 +153,12 @@ public class TelemetryCacheManagerTests : IDisposable
         keyGenerator.Setup(x => x.GenerateKey(methodName, args, settings))
             .Returns("test_key");
 
-        _innerManagerMock.Setup(x => x.GetOrCreateAsync(
+        _innerManagerMock.Setup(x => x.GetOrCreateFastAsync(
+                "test_key",
                 methodName,
-                args,
                 It.IsAny<Func<Task<string>>>(),
                 settings,
-                keyGenerator.Object))
+                It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
 
         var activity = new Activity("test");

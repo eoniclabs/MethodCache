@@ -238,6 +238,7 @@ MethodCache.Core.Management.ICacheAdministrator
 MethodCache.Core.Management.ICacheAdministrator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.Core.Management.ICacheAdministrator.GetEntry(string! key) -> MethodCache.Core.Management.CacheEntryInfo?
 MethodCache.Core.Management.ICacheAdministrator.GetMethods() -> System.Collections.Generic.IReadOnlyList<MethodCache.Core.Management.CachedMethodInfo!>!
+MethodCache.Core.Management.ICacheAdministrator.IsDistributedCacheAvailable.get -> bool?
 MethodCache.Core.Management.ICacheAdministrator.GetStatsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.Core.Infrastructure.ICacheStats!>
 MethodCache.Core.Management.ICacheAdministrator.InvalidateTagsAsync(System.Collections.Generic.IReadOnlyCollection<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 MethodCache.Core.Management.ICacheAdministrator.ListEntries(string? keyPrefix = null, string? tag = null, int limit = 100) -> System.Collections.Generic.IReadOnlyList<MethodCache.Core.Management.CacheEntryInfo!>!

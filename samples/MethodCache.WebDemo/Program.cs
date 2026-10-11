@@ -23,8 +23,8 @@ if (!string.IsNullOrEmpty(redis))
     builder.Services.AddMethodCacheRedis(redis);
 }
 
-// Traces and metrics for every cache hit, miss and invalidation. Exported when OTEL_EXPORTER_OTLP_ENDPOINT is set.
-builder.Services.AddMethodCacheOpenTelemetry(options => options.ServiceName = "MethodCache.WebDemo");
+// Traces for cache misses and invalidations, metrics for every call. Exported when OTEL_EXPORTER_OTLP_ENDPOINT is set.
+builder.Services.AddMethodCacheOpenTelemetry();
 var telemetry = builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService(builder.Configuration["OTEL_SERVICE_NAME"] ?? "MethodCache.WebDemo"))
     .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddMethodCacheInstrumentation())
@@ -35,7 +35,7 @@ if (!string.IsNullOrEmpty(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
 }
 
 builder.Services.AddHealthChecks().AddMethodCache();
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireRole("Admin")));
 
 var app = builder.Build();
 
@@ -73,9 +73,9 @@ app.MapPut("/products/{id:int}/price", async (int id, PriceChange change, IProdu
     return Results.NoContent();
 });
 
-// The admin endpoints expose cache keys and can empty the cache, so they require an authenticated user.
-// This demo opens them in Development only. In production, keep RequireAuthorization (the default) with your policy.
-var admin = app.MapMethodCacheAdmin();
+// The admin endpoints expose cache keys and can empty the cache, so they require an authorization policy.
+// This demo opens them in Development only.
+var admin = app.MapMethodCacheAdmin("CacheAdmins");
 if (app.Environment.IsDevelopment())
 {
     admin.AllowAnonymous();

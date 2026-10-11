@@ -118,6 +118,9 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>Wall-clock time in Unix milliseconds, comparable across nodes.</summary>
         public long Now => _time.GetUtcNow().ToUnixTimeMilliseconds();
 
+        /// <summary>False while the breaker is open or invalidations wait to be stored, so only memory is used.</summary>
+        internal bool IsAvailable => Volatile.Read(ref _openUntil) == 0 && !_hasPending;
+
         /// <summary>
         /// Starts listening to the backplane, if there is one. Messages this node sent are ignored.
         /// <paramref name="onError"/> hears about every distributed cache or backplane failure.

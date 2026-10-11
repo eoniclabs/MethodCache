@@ -79,18 +79,6 @@ public class CacheMeterProviderTests
     }
 
     [Fact]
-    public void RecordStorageOperationDuration_RecordsMetric()
-    {
-        // Arrange
-        var provider = "Redis";
-        var operation = "get";
-        var durationMs = 10.5;
-
-        // Act & Assert - Should not throw
-        _meterProvider.RecordStorageOperationDuration(provider, operation, durationMs);
-    }
-
-    [Fact]
     public void UpdateEntriesCount_UpdatesGauge()
     {
         // Arrange
@@ -137,20 +125,5 @@ public class CacheMeterProviderTests
         ((ICacheMetricsProvider)_meterProvider).CacheMiss(methodName);
         ((ICacheMetricsProvider)_meterProvider).CacheError(methodName, errorMessage);
         ((ICacheMetricsProvider)_meterProvider).CacheLatency(methodName, latencyMs);
-    }
-
-    [Fact]
-    public void RecordCacheEviction_WithReason_RecordsCorrectly()
-    {
-        // Arrange
-        var methodName = "TestMethod";
-        var reason = "memory_pressure";
-        var tags = new Dictionary<string, object?>
-        {
-            ["cache.size"] = 1024
-        };
-
-        // Act & Assert - Should not throw
-        _meterProvider.RecordCacheEviction(methodName, reason, tags);
     }
 }

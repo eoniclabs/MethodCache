@@ -16,11 +16,8 @@ internal interface ICacheMeterProvider
     void RecordCacheHit(string methodName, Dictionary<string, object?>? tags = null);
     void RecordCacheMiss(string methodName, Dictionary<string, object?>? tags = null);
     void RecordCacheError(string methodName, string errorType, Dictionary<string, object?>? tags = null);
-    void RecordCacheEviction(string methodName, string reason, Dictionary<string, object?>? tags = null);
     void RecordOperationDuration(string methodName, double durationMs, Dictionary<string, object?>? tags = null);
     void RecordKeyGenerationDuration(string methodName, double durationMs);
-    void RecordSerializationDuration(string methodName, double durationMs);
-    void RecordStorageOperationDuration(string provider, string operation, double durationMs);
     void UpdateEntriesCount(long count);
     void UpdateMemoryUsage(long bytes);
     void UpdateHitRatio(double ratio);
@@ -34,12 +31,9 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     private readonly Counter<long> _hitsCounter;
     private readonly Counter<long> _missesCounter;
     private readonly Counter<long> _errorsCounter;
-    private readonly Counter<long> _evictionsCounter;
     private readonly Histogram<double> _operationDuration;
     private readonly Histogram<double> _loadDuration;
     private readonly Histogram<double> _keyGenerationDuration;
-    private readonly Histogram<double> _serializationDuration;
-    private readonly Histogram<double> _storageOperationDuration;
 
     private IMemoryCache? _observedCache;
     private long _currentEntries;
@@ -63,12 +57,9 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
             _hitsCounter = _meter.CreateCounter<long>(MetricInstruments.Names.HitsTotal);
             _missesCounter = _meter.CreateCounter<long>(MetricInstruments.Names.MissesTotal);
             _errorsCounter = _meter.CreateCounter<long>(MetricInstruments.Names.ErrorsTotal);
-            _evictionsCounter = _meter.CreateCounter<long>(MetricInstruments.Names.EvictionsTotal);
             _operationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.OperationDuration);
             _loadDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.LoadDuration);
             _keyGenerationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.KeyGenerationDuration);
-            _serializationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.SerializationDuration);
-            _storageOperationDuration = _meter.CreateHistogram<double>(MetricInstruments.Names.StorageOperationDuration);
             return;
         }
 
@@ -89,11 +80,6 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
             MetricInstruments.Units.Count,
             MetricInstruments.Descriptions.ErrorsTotal);
 
-        _evictionsCounter = _meter.CreateCounter<long>(
-            MetricInstruments.Names.EvictionsTotal,
-            MetricInstruments.Units.Count,
-            MetricInstruments.Descriptions.EvictionsTotal);
-
         _operationDuration = _meter.CreateHistogram<double>(
             MetricInstruments.Names.OperationDuration,
             MetricInstruments.Units.Milliseconds,
@@ -108,16 +94,6 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
             MetricInstruments.Names.KeyGenerationDuration,
             MetricInstruments.Units.Milliseconds,
             MetricInstruments.Descriptions.KeyGenerationDuration);
-
-        _serializationDuration = _meter.CreateHistogram<double>(
-            MetricInstruments.Names.SerializationDuration,
-            MetricInstruments.Units.Milliseconds,
-            MetricInstruments.Descriptions.SerializationDuration);
-
-        _storageOperationDuration = _meter.CreateHistogram<double>(
-            MetricInstruments.Names.StorageOperationDuration,
-            MetricInstruments.Units.Milliseconds,
-            MetricInstruments.Descriptions.StorageOperationDuration);
 
         _meter.CreateObservableGauge(
             MetricInstruments.Names.EntriesCount,
@@ -183,15 +159,6 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
         _errorsCounter.Add(1, tagList.ToArray());
     }
 
-    public void RecordCacheEviction(string methodName, string reason, Dictionary<string, object?>? tags = null)
-    {
-        if (!_options.EnableMetrics) return;
-
-        var tagList = CreateTagList(methodName, tags);
-        tagList.Add(new KeyValuePair<string, object?>("eviction.reason", reason));
-        _evictionsCounter.Add(1, tagList.ToArray());
-    }
-
     public void RecordOperationDuration(string methodName, double durationMs, Dictionary<string, object?>? tags = null)
     {
         if (!_options.EnableMetrics) return;
@@ -206,23 +173,6 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
 
         _keyGenerationDuration.Record(durationMs,
             new KeyValuePair<string, object?>("method", methodName));
-    }
-
-    public void RecordSerializationDuration(string methodName, double durationMs)
-    {
-        if (!_options.EnableMetrics) return;
-
-        _serializationDuration.Record(durationMs,
-            new KeyValuePair<string, object?>("method", methodName));
-    }
-
-    public void RecordStorageOperationDuration(string provider, string operation, double durationMs)
-    {
-        if (!_options.EnableMetrics) return;
-
-        _storageOperationDuration.Record(durationMs,
-            new KeyValuePair<string, object?>("provider", provider),
-            new KeyValuePair<string, object?>("operation", operation));
     }
 
     public void UpdateEntriesCount(long count)

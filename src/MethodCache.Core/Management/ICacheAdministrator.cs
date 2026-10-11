@@ -8,6 +8,12 @@ namespace MethodCache.Core.Management;
 /// </summary>
 public interface ICacheAdministrator
 {
+    /// <summary>
+    /// Whether the distributed cache (Redis, SQL Server) answers. <c>false</c> while it is unreachable and
+    /// MethodCache serves from memory only; <c>null</c> when no distributed cache is configured.
+    /// </summary>
+    bool? IsDistributedCacheAvailable { get; }
+
     /// <summary>Hit, miss, eviction, entry and memory statistics.</summary>
     ValueTask<ICacheStats> GetStatsAsync(CancellationToken cancellationToken = default);
 

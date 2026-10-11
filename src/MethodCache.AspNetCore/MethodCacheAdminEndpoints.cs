@@ -21,16 +21,23 @@ public static class MethodCacheAdminEndpoints
     /// <item><c>POST invalidate</c> with <c>{ "tags": [...] }</c>: remove entries by tag</item>
     /// <item><c>DELETE entries</c>: remove every entry</item>
     /// </list>
-    /// The endpoints require an authenticated user by default, because they expose cache keys and can empty the
-    /// cache. Chain <c>.RequireAuthorization("policy")</c> on the result to require a specific policy.
+    /// The endpoints expose cache keys and can empty the cache, so every request must satisfy the authorization
+    /// policy <paramref name="policyName"/>. A signed-in user is not enough on its own.
     /// </summary>
-    public static RouteGroupBuilder MapMethodCacheAdmin(this IEndpointRouteBuilder endpoints, string prefix = "/methodcache")
+    /// <example>
+    /// <code>
+    /// builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireRole("Admin")));
+    /// app.MapMethodCacheAdmin("CacheAdmins");
+    /// </code>
+    /// </example>
+    public static RouteGroupBuilder MapMethodCacheAdmin(this IEndpointRouteBuilder endpoints, string policyName, string prefix = "/methodcache")
     {
         ArgumentNullException.ThrowIfNull(endpoints);
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
         ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
 
         var group = endpoints.MapGroup(prefix);
-        group.RequireAuthorization();
+        group.RequireAuthorization(policyName);
         group.WithTags("MethodCache");
 
         group.MapGet("/stats", GetStatsAsync);

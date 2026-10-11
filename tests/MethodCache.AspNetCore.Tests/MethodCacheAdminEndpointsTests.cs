@@ -46,12 +46,12 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         builder.Services.AddHealthChecks().AddMethodCache();
         builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireUserName("admin")));
 
         _app = builder.Build();
         _app.UseAuthentication();
         _app.UseAuthorization();
-        _app.MapMethodCacheAdmin();
+        _app.MapMethodCacheAdmin("CacheAdmins");
         _app.MapHealthChecks("/health");
         await _app.StartAsync();
 
@@ -78,6 +78,23 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var response = await anonymous.GetAsync("/methodcache/stats");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Endpoints_RequireThePolicy_NotJustASignedInUser()
+    {
+        using var user = _app.GetTestClient();
+        user.DefaultRequestHeaders.Add(AuthHeader, "someone");
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/methodcache/entries")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.DeleteAsync("/methodcache/entries")).StatusCode);
+        Assert.Equal(3, (await _app.Services.GetRequiredService<ICacheAdministrator>().GetStatsAsync()).Entries);
+    }
+
+    [Fact]
+    public void MapMethodCacheAdmin_RequiresAPolicyName()
+    {
+        Assert.Throws<ArgumentException>(() => _app.MapMethodCacheAdmin(" "));
     }
 
     [Fact]
@@ -173,6 +190,40 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         Assert.Equal("methodcache", entry.Key);
         Assert.Equal(HealthStatus.Healthy, entry.Value.Status);
         Assert.Equal(3L, entry.Value.Data["entries"]);
+        Assert.False(entry.Value.Data.ContainsKey("distributedCacheAvailable"));
+    }
+
+    [Fact]
+    public async Task HealthCheck_IsDegradedWhileTheDistributedCacheIsUnreachable()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMethodCacheDistributedCache(_ => new UnreachableDistributedCache());
+        services.AddHealthChecks().AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        var cache = provider.GetRequiredService<ICacheManager>();
+        Assert.Equal("Ada", await cache.GetOrCreateFastAsync("users:1", "Users", () => Task.FromResult("Ada"), UsersPolicy));
+
+        var report = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+
+        var entry = Assert.Single(report.Entries);
+        Assert.Equal(HealthStatus.Degraded, entry.Value.Status);
+        Assert.Equal(false, entry.Value.Data["distributedCacheAvailable"]);
+    }
+
+    private sealed class UnreachableDistributedCache : Microsoft.Extensions.Caching.Distributed.IDistributedCache
+    {
+        public byte[]? Get(string key) => throw Unreachable();
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Task.FromException<byte[]?>(Unreachable());
+        public void Refresh(string key) => throw Unreachable();
+        public Task RefreshAsync(string key, CancellationToken token = default) => Task.FromException(Unreachable());
+        public void Remove(string key) => throw Unreachable();
+        public Task RemoveAsync(string key, CancellationToken token = default) => Task.FromException(Unreachable());
+        public void Set(string key, byte[] value, Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions options) => throw Unreachable();
+        public Task SetAsync(string key, byte[] value, Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions options, CancellationToken token = default) => Task.FromException(Unreachable());
+
+        private static Exception Unreachable() => new InvalidOperationException("unreachable");
     }
 
     private sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
