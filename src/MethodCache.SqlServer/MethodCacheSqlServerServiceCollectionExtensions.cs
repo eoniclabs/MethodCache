@@ -53,7 +53,7 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
 
         if (options.EnableBackplane)
         {
-            services.TryAddSingleton<IBackplane>(sp => new SqlServerBackplane(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerBackplane>()));
+            services.TryAddSingleton<IBackplane>(sp => new SqlServerBackplane(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerBackplane>(), sp.GetService<TimeProvider>()));
         }
 
         // MethodCache's own cache instance, so the app's IDistributedCache and its settings are left alone

@@ -200,7 +200,8 @@ Results live in memory and in Redis (or SQL Server, or any `IDistributedCache` v
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
 
 SQL Server backplane messages and retention cleanup are isolated by `KeyPrefix` when applications share
-the same tables; existing tables need the schema upgrade described in the [SQL Server guide](src/MethodCache.SqlServer/README.md).
+the same tables. Failed subscriber callbacks are retried before their messages are acknowledged.
+Existing tables need the schema upgrade described in the [SQL Server guide](src/MethodCache.SqlServer/README.md).
 Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
 If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips
 Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly

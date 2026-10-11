@@ -101,7 +101,9 @@ Without a backplane, other instances keep their in-memory copy of an invalidated
 
 SQL Server backplane publication, polling and retention cleanup are isolated by `KeyPrefix` even when
 applications share the same tables. Scope matching is case-sensitive and independent of SQL collation.
-See the SQL Server guide for the schema migration required by an existing invalidations table.
+Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
+messages and recovery clears. See the SQL Server guide for the schema migration required by an existing
+invalidations table.
 
 The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation and outage settings.

@@ -1096,7 +1096,9 @@ Without a backplane, other instances keep their in-memory copy of an invalidated
 
 SQL Server backplane publication, polling and retention cleanup are isolated by `KeyPrefix` even when
 applications share the same tables. Scope matching is case-sensitive and independent of SQL collation.
-See the SQL Server guide for the schema migration required by an existing invalidations table.
+Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
+messages and recovery clears. See the SQL Server guide for the schema migration required by an existing
+invalidations table.
 
 The [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) and [SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation and outage settings.
@@ -1879,6 +1881,9 @@ not share the same isolation contract. New tables require a non-null scope.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
+- A message is acknowledged only after its subscriber completes successfully. Failed messages remain pending
+  for the next poll, including late rows discovered through identity gaps; a failed recovery clear is retried.
+  A subscriber cancellation does not stop polling unless the backplane itself is stopping.
 - Rows older than `BackplaneRetention` are deleted from the invalidations table.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.

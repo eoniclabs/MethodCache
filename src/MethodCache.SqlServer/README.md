@@ -49,6 +49,9 @@ not share the same isolation contract. New tables require a non-null scope.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
+- A message is acknowledged only after its subscriber completes successfully. Failed messages remain pending
+  for the next poll, including late rows discovered through identity gaps; a failed recovery clear is retried.
+  A subscriber cancellation does not stop polling unless the backplane itself is stopping.
 - Rows older than `BackplaneRetention` are deleted from the invalidations table.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.

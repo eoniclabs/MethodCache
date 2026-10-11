@@ -36,20 +36,24 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     private readonly SqlServerOptions _options;
     private readonly ILogger _logger;
     private readonly byte[] _scope;
+    private readonly TimeProvider _timeProvider;
     private readonly List<GapRange> _gaps = new();
     private CancellationTokenSource? _polling;
     private Task? _loop;
     private long? _lastId;
+    private PendingBatch? _pendingBatch;
     private DateTime _lastPolled;
     private DateTime _nextCleanup;
     private bool _failing;
-    private System.Diagnostics.Stopwatch _subscribedAt = new();
+    private long _subscribedAt;
 
-    public SqlServerBackplane(SqlServerOptions options, ILogger<SqlServerBackplane>? logger = null)
+    public SqlServerBackplane(SqlServerOptions options, ILogger<SqlServerBackplane>? logger = null, TimeProvider? timeProvider = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = (ILogger?)logger ?? NullLogger.Instance;
         _scope = GetScope(options.KeyPrefix);
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _subscribedAt = _timeProvider.GetTimestamp();
     }
 
     /// <inheritdoc />
@@ -72,7 +76,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             throw new InvalidOperationException("The backplane already has a subscriber.");
         }
 
-        _subscribedAt = System.Diagnostics.Stopwatch.StartNew();
+        _subscribedAt = _timeProvider.GetTimestamp();
         _polling = new CancellationTokenSource();
         _loop = PollAsync(onMessage, _polling.Token);
         return Task.CompletedTask;
@@ -151,7 +155,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
     private async Task PollAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(_options.BackplanePollingInterval);
+        using var timer = new PeriodicTimer(_options.BackplanePollingInterval, _timeProvider);
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {
             try
@@ -163,7 +167,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
                     _logger.LogInformation("The MethodCache backplane reads invalidations from SQL Server again.");
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 // The rows stay in the table, so the next poll picks up whatever this one missed
                 if (!_failing)
@@ -177,34 +181,43 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
     internal async Task PollOnceAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         if (_lastId == null || now - _lastPolled >= _options.BackplaneRetention / 2)
         {
             // First poll: start from the invalidations written before this instance subscribed, with a margin, since
             // it may have cached values since then. After a longer outage, rows this instance never read may
             // already be deleted, so it drops everything it holds in memory and starts from now.
             var outage = _lastId != null;
-            var age = outage ? TimeSpan.Zero : _subscribedAt.Elapsed + FirstPollMargin;
-            _lastId = await ReadLastIdAsync(age, cancellationToken).ConfigureAwait(false);
-            _gaps.Clear();
-            _lastPolled = now;
+            var age = outage ? TimeSpan.Zero : _timeProvider.GetElapsedTime(_subscribedAt) + FirstPollMargin;
+            var lastId = await ReadLastIdAsync(age, cancellationToken).ConfigureAwait(false);
             if (outage)
             {
                 await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
             }
 
+            // A failed recovery clear must be attempted again; none of its state is acknowledged beforehand.
+            _lastId = lastId;
+            _gaps.Clear();
+            _pendingBatch = null;
+            _lastPolled = now;
             return;
         }
 
         for (var batch = 0; batch < MaxBatchesPerPoll; batch++)
         {
-            var (messages, newRows) = await ReadAsync(now, cancellationToken).ConfigureAwait(false);
-            foreach (var message in messages)
+            var pending = _pendingBatch ??= await ReadAsync(now, cancellationToken).ConfigureAwait(false);
+            while (pending.DeliveredCount < pending.Messages.Count)
             {
-                await onMessage(message).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                await onMessage(pending.Messages[pending.DeliveredCount]).ConfigureAwait(false);
+                pending.DeliveredCount++;
             }
 
-            if (newRows < BatchSize)
+            _lastId = pending.LastId;
+            _gaps.Clear();
+            _gaps.AddRange(pending.Gaps);
+            _pendingBatch = null;
+            if (pending.NewRows < BatchSize)
             {
                 break;
             }
@@ -215,11 +228,12 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     }
 
     /// <summary>Reads rows after the last id, and rows that filled earlier gaps. Returns how many new rows came.</summary>
-    private async Task<(List<BackplaneMessage> Messages, int NewRows)> ReadAsync(DateTime now, CancellationToken cancellationToken)
+    private async Task<PendingBatch> ReadAsync(DateTime now, CancellationToken cancellationToken)
     {
-        _gaps.RemoveAll(gap => now - gap.SeenAt > GapLifetime);
-
-        var gaps = _gaps.ToList();
+        // All discovery state is staged. A query or callback failure cannot consume a cursor or a gap id.
+        var gaps = _gaps.Where(gap => now - gap.SeenAt <= GapLifetime)
+            .Select(gap => gap with { Delivered = new HashSet<long>(gap.Delivered) }).ToList();
+        var nextGaps = new List<GapRange>(gaps);
         var sql = new StringBuilder($"""
             SELECT TOP (@batch) [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
             FROM {_options.QualifiedInvalidationsTableName}
@@ -265,7 +279,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
                 newRows++;
                 if (id > expected)
                 {
-                    AddGap(expected, id - 1, now);
+                    AddGap(nextGaps, expected, id - 1, now);
                 }
 
                 expected = id + 1;
@@ -286,22 +300,26 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             }
         }
 
-        _lastId = lastId;
-        return (messages, newRows);
+        return new PendingBatch(messages, newRows, lastId, nextGaps);
     }
 
-    private void AddGap(long from, long to, DateTime now)
+    private static void AddGap(List<GapRange> gaps, long from, long to, DateTime now)
     {
-        if (_gaps.Count < MaxGapRanges)
+        if (gaps.Count < MaxGapRanges)
         {
-            _gaps.Add(new GapRange(from, to, now));
+            gaps.Add(new GapRange(from, to, now));
             return;
         }
 
         // Too many: widen the newest range to cover this one too. Rows read normally in between may then be
         // delivered twice, which an invalidation tolerates.
-        var newest = _gaps[^1];
-        _gaps[^1] = new GapRange(newest.From, to, now) { Delivered = newest.Delivered };
+        var newest = gaps[^1];
+        gaps[^1] = new GapRange(newest.From, to, now) { Delivered = newest.Delivered };
+    }
+
+    private sealed record PendingBatch(List<BackplaneMessage> Messages, int NewRows, long LastId, List<GapRange> Gaps)
+    {
+        public int DeliveredCount { get; set; }
     }
 
     /// <summary>Identity values <see cref="From"/> to <see cref="To"/> skipped by rows that may still commit.</summary>
