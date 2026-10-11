@@ -2,9 +2,24 @@
   "$schema": "https://context7.com/schema/context7.json",
   "projectTitle": "MethodCache",
   "description": "Cache any .NET method with one attribute: a source generator turns [Cache] on interface methods into caching decorators, with keys from the arguments, tag invalidation, Redis or SQL Server, and live policy changes.",
-  "folders": ["docs", "src"],
-  "excludeFolders": ["docs/developer", "plans", "benchmarks", "tests", "samples", "artifacts"],
-  "excludeFiles": ["llms-full.txt"],
+  "folders": [
+    "docs",
+    "src/MethodCache.Redis",
+    "src/MethodCache.SqlServer",
+    "src/MethodCache.AspNetCore",
+    "src/MethodCache.OpenTelemetry",
+    "src/MethodCache.HttpCaching"
+  ],
+  "excludeFolders": [
+    "docs/developer"
+  ],
+  "excludeFiles": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "RELEASE.md",
+    "NUGET_README.md",
+    "llms-full.txt"
+  ],
   "rules": [
     "Put [Cache] and [CacheInvalidate] on interface methods, never on the implementing class.",
     "Register services first, then call builder.Services.AddMethodCache(); services registered after it are not cached.",
