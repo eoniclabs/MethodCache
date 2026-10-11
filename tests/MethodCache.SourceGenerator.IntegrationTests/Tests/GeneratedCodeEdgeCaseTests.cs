@@ -384,13 +384,14 @@ public interface ISvc { [Cache(Tags = new[] { ""user:{userid}"", ""order:{orderI
         var r = Run(Usings + @"namespace App {
 public record Product(int Id);
 public interface ISvc {
-  [Cache(Tags = new[] { ""product:{product.Id}"", ""user:{ userId }"", ""day:{day:yyyy-MM-dd}"", ""ok:{userId}"", ""json:{}"", ""range:{-1}"" })]
+  [Cache(Tags = new[] { ""product:{product.Id}"", ""user:{ userId }"", ""day:{day:yyyy-MM-dd}"", ""ok:{userId}"", ""json:{}"", ""range:{-1}"", ""unicode:{π.Id}"" })]
   Task<string> Get(Product product, int userId, DateTime day);
   [CacheInvalidate(Tags = new[] { ""product:{product?.Id}"" })] Task Update(Product product);
 }}", nameof(TagPlaceholderThatIsNotAParameterName_IsReported));
         AssertCompiles(r);
         var placeholders = r.GeneratorDiagnostics.Where(d => d.Id == "MCG015").Select(d => d.GetMessage()).ToList();
-        Assert.Equal(4, placeholders.Count);
+        Assert.Equal(5, placeholders.Count);
+        Assert.Contains(placeholders, m => m.Contains("'{π.Id}'"));
         Assert.Contains(placeholders, m => m.Contains("'{product.Id}'"));
         Assert.Contains(placeholders, m => m.Contains("'{ userId }'"));
         Assert.Contains(placeholders, m => m.Contains("'{day:yyyy-MM-dd}'"));

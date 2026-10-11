@@ -10,7 +10,7 @@ namespace MethodCache.SourceGenerator
         private static readonly Regex DynamicTagParameterRegex = new(@"\{(\w+)\}", RegexOptions.Compiled);
 
         // Anything in braces that starts like a name but isn't one, such as "{product.Id}", "{ id }" or "{date:yyyy}"
-        private static readonly Regex MalformedTagPlaceholderRegex = new(@"\{(\s*[A-Za-z_][^{}]*)\}", RegexOptions.Compiled);
+        private static readonly Regex MalformedTagPlaceholderRegex = new(@"\{(\s*[\p{L}_][^{}]*)\}", RegexOptions.Compiled);
     }
 }
 
