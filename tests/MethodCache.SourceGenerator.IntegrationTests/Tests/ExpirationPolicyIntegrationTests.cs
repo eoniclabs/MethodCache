@@ -82,14 +82,15 @@ namespace ExpirationPolicy
         time.Advance(TimeSpan.FromSeconds(40));
         Assert.Equal(1, await InvokeAsync(prices, "GetRefreshedAsync"));
 
+        // The reload bumps Calls before its value is stored, so wait for the cache to serve the new value
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while ((int)calls.GetValue(null)! < 2)
+        while (await InvokeAsync(prices, "GetRefreshedAsync") != 2)
         {
             Assert.True(DateTime.UtcNow < deadline, "The entry was not refreshed in the background.");
             await Task.Delay(10);
         }
 
-        Assert.Equal(2, await InvokeAsync(prices, "GetRefreshedAsync"));
+        Assert.Equal(2, (int)calls.GetValue(null)!);
     }
 
     private async Task<(ServiceProvider Provider, object Prices, FieldInfo Calls, ManualTimeProvider Time)> BuildAsync()

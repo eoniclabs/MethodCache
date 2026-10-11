@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using StackExchange.Redis;
+using IUserService = Docs.Readme.IUserService;
+using UserService = Docs.Readme.UserService;
 
 namespace Docs.Packages
 {
@@ -132,7 +134,7 @@ namespace Docs.Packages
         public static void Setup(WebApplicationBuilder builder)
         {
             // begin-snippet: aspnetcore-setup
-            builder.Services.AddScoped<Readme.IUserService, Readme.UserService>();
+            builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddMethodCache();
             builder.Services.AddHealthChecks().AddMethodCache();
             builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireRole("Admin")));

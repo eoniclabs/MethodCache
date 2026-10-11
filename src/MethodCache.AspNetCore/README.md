@@ -6,7 +6,7 @@ Admin endpoints and a health check for MethodCache's in-memory cache.
 
 <!-- snippet: aspnetcore-setup -->
 ```cs
-builder.Services.AddScoped<Readme.IUserService, Readme.UserService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddMethodCache();
 builder.Services.AddHealthChecks().AddMethodCache();
 builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireRole("Admin")));
