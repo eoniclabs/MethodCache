@@ -4,14 +4,17 @@ SQL Server as MethodCache's distributed cache. Results are shared between applic
 
 ## Usage
 
-```csharp
+<!-- snippet: sqlserver-basic -->
+```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheSqlServer(builder.Configuration.GetConnectionString("Cache")!);
 ```
+<!-- endSnippet -->
 
 With options:
 
-```csharp
+<!-- snippet: sqlserver-options -->
+```cs
 builder.Services.AddMethodCacheSqlServer(options =>
 {
     options.ConnectionString = connectionString;
@@ -19,6 +22,7 @@ builder.Services.AddMethodCacheSqlServer(options =>
     options.BackplanePollingInterval = TimeSpan.FromMilliseconds(500);
 });
 ```
+<!-- endSnippet -->
 
 ## Tables
 
@@ -49,13 +53,15 @@ MethodCache keeps answering from memory and your methods; SQL Server never fails
 - Invalidations that SQL Server doesn't accept are queued and retried until it does. They never throw. Until they are stored, this instance doesn't read entries from SQL Server, so an invalidated value can't come back.
 - `ClockSkewTolerance` (2 seconds) covers servers whose clocks differ: a tag invalidation also applies to entries created up to that long after it.
 
-```csharp
+<!-- snippet: distributed-outage-options -->
+```cs
 builder.Services.Configure<DistributedCacheOptions>(options =>
 {
     options.OperationTimeout = TimeSpan.FromMilliseconds(500);
     options.CircuitBreakerDuration = TimeSpan.FromSeconds(30);
 });
 ```
+<!-- endSnippet -->
 
 ## Options
 

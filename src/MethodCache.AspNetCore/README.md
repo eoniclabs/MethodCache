@@ -4,7 +4,8 @@ Admin endpoints and a health check for MethodCache's in-memory cache.
 
 ## Setup
 
-```csharp
+<!-- snippet: aspnetcore-setup -->
+```cs
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddMethodCache();
 builder.Services.AddHealthChecks().AddMethodCache();
@@ -17,6 +18,7 @@ app.UseAuthorization();
 app.MapMethodCacheAdmin("CacheAdmins");
 app.MapHealthChecks("/health");
 ```
+<!-- endSnippet -->
 
 The authorization policy is required, because the endpoints expose cache keys and can empty the cache; a
 signed-in user without the policy gets 403.
