@@ -22,7 +22,7 @@ builder.Services.AddMethodCacheSqlServer(options =>
 
 ## Tables
 
-By default the schema and two tables are created when the application starts, if they do not exist:
+By default the schema and two tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if SQL Server is down, creation is retried in the background and methods run uncached until it succeeds.
 
 - `MethodCache` holds the entries, in the layout `Microsoft.Extensions.Caching.SqlServer` uses (the same as `dotnet sql-cache create`).
 - `MethodCacheInvalidations` holds recent invalidations for the backplane.
@@ -31,12 +31,13 @@ If the application's login may not create tables, set `CreateTablesIfMissing = f
 
 ## How it works
 
-- Entries are stored through `Microsoft.Extensions.Caching.SqlServer`, which also removes expired rows.
+- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows. Your app's `IDistributedCache` is left alone.
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - Rows older than `BackplaneRetention` are deleted from the invalidations table.
+- An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
 
 ## When SQL Server is down
@@ -68,4 +69,4 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
-| `BackplaneRetention` | 1 hour | How long invalidations are kept |
+| `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute |

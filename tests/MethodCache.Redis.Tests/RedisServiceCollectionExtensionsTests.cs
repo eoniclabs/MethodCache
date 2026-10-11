@@ -13,15 +13,32 @@ namespace MethodCache.Redis.Tests;
 public class RedisServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddMethodCacheRedis_RegistersDistributedCacheAndBackplane()
+    public void AddMethodCacheRedis_RegistersItsOwnCacheAndBackplane()
     {
         var services = new ServiceCollection();
 
         services.AddMethodCacheRedis("localhost:6379");
+        using var provider = services.BuildServiceProvider();
 
-        services.Should().Contain(d => d.ServiceType == typeof(IDistributedCache));
-        services.Should().Contain(d => d.ServiceType == typeof(IConnectionMultiplexer));
-        services.Should().Contain(d => d.ServiceType == typeof(IBackplane));
+        provider.GetRequiredKeyedService<IDistributedCache>("MethodCache").Should().BeOfType<RedisDistributedCache>();
+        provider.GetRequiredService<IBackplane>().Should().BeOfType<RedisBackplane>();
+        provider.GetService<IDistributedCache>().Should().BeNull();
+        provider.GetService<IConnectionMultiplexer>().Should().BeNull();
+    }
+
+    [Fact]
+    public void AddMethodCacheRedis_LeavesTheAppsRedisCacheAlone()
+    {
+        var services = new ServiceCollection();
+        services.AddStackExchangeRedisCache(options => options.InstanceName = "app");
+
+        services.AddMethodCacheRedis("localhost:6379");
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IDistributedCache>().Should().BeAssignableTo<RedisCache>();
+        var appOptions = provider.GetRequiredService<IOptions<RedisCacheOptions>>().Value;
+        appOptions.InstanceName.Should().Be("app");
+        appOptions.ConnectionMultiplexerFactory.Should().BeNull();
     }
 
     [Fact]
@@ -35,19 +52,27 @@ public class RedisServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddMethodCacheRedis_ReusesRegisteredConnection()
+    public async Task AddMethodCacheRedis_UsesTheConnectionFromTheFactory_WithoutDisposingIt()
     {
         var connection = Substitute.For<IConnectionMultiplexer>();
         var services = new ServiceCollection();
         services.AddSingleton(connection);
 
-        services.AddMethodCacheRedis("unused:1234");
-        using var provider = services.BuildServiceProvider();
+        services.AddMethodCacheRedis(options => options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>());
+        var provider = services.BuildServiceProvider();
 
-        provider.GetRequiredService<IConnectionMultiplexer>().Should().BeSameAs(connection);
-        var cacheOptions = provider.GetRequiredService<IOptions<RedisCacheOptions>>().Value;
-        cacheOptions.ConnectionMultiplexerFactory.Should().NotBeNull();
-        cacheOptions.ConnectionMultiplexerFactory!().Result.Should().BeSameAs(connection);
+        (await provider.GetRequiredService<RedisConnection>().GetAsync()).Should().BeSameAs(connection);
+        provider.GetRequiredService<RedisConnection>().Dispose();
+        connection.DidNotReceive().Dispose();
+    }
+
+    [Theory]
+    [InlineData("app:", null, "app:invalidations")]
+    [InlineData("methodcache:", null, "methodcache:invalidations")]
+    [InlineData("app:", "custom", "custom")]
+    public void BackplaneChannel_DefaultsToTheKeyPrefix(string prefix, string? channel, string expected)
+    {
+        new RedisOptions { KeyPrefix = prefix, BackplaneChannel = channel }.EffectiveBackplaneChannel.Should().Be(expected);
     }
 
     [Fact]

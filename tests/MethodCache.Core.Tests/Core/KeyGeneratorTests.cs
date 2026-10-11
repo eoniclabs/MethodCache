@@ -1,3 +1,4 @@
+using FluentAssertions;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Runtime;
 using MethodCache.Core.Runtime.Core;
@@ -232,6 +233,18 @@ namespace MethodCache.Core.Tests.Core
 
             Assert.Equal(key1, key2);
             Assert.NotEqual(key1, key3); // Version is hashed into the key, so different versions produce different keys
+        }
+
+        [Fact]
+        public void MessagePackKeyGenerator_KeysStartWithTheMethodAndVersion()
+        {
+            var generator = new MessagePackKeyGenerator();
+            var versioned = CacheRuntimePolicy.FromPolicy("App.IUsers.Find", CachePolicy.Empty with { Version = 3 }, CachePolicyFields.Version);
+
+            generator.GenerateKey("App.IUsers.Find", new object?[] { 1, null }, CacheRuntimePolicy.Empty("App.IUsers.Find"))
+                .Should().MatchRegex("^App\\.IUsers\\.Find:[0-9a-f]{64}$");
+            generator.GenerateKey("App.IUsers.Find", new object?[] { 1 }, versioned)
+                .Should().MatchRegex("^App\\.IUsers\\.Find:v3:[0-9a-f]{64}$");
         }
 
         [Fact]

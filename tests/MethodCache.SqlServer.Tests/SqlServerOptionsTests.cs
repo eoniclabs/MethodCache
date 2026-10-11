@@ -42,6 +42,31 @@ public class SqlServerOptionsTests
     }
 
     [Fact]
+    public void Validate_RequiresAtLeastOneMinuteOfRetention()
+    {
+        // Instances clear their memory after an outage of half the retention, so a short one would clear constantly
+        var options = new SqlServerOptions { ConnectionString = "Server=.", BackplaneRetention = TimeSpan.FromSeconds(30) };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task Startup_DoesNotFailOrWaitLong_WhenTheDatabaseIsUnreachable()
+    {
+        var options = new SqlServerOptions { ConnectionString = "Server=127.0.0.1,1;Connect Timeout=30;TrustServerCertificate=true" };
+        var tables = new SqlServerTables(options);
+        var started = System.Diagnostics.Stopwatch.StartNew();
+
+        await tables.StartAsync(CancellationToken.None);
+
+        started.Elapsed.Should().BeLessThan(SqlServerTables.StartupWait + TimeSpan.FromSeconds(2));
+        await tables.StopAsync(CancellationToken.None);
+        tables.Dispose();
+    }
+
+    [Fact]
     public void QualifiedNames_QuoteIdentifiers()
     {
         var options = new SqlServerOptions { SchemaName = "cache", TableName = "odd]name", InvalidationsTableName = "Invalidations" };

@@ -1,6 +1,10 @@
 using System.Data;
+using System.Globalization;
+using System.Text;
 using MethodCache.Core.Storage.Abstractions;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MethodCache.SqlServer;
 
@@ -9,25 +13,39 @@ namespace MethodCache.SqlServer;
 /// </summary>
 /// <remarks>
 /// Identity values are handed out before transactions commit, so a row can become visible after a row with a
-/// higher id was already read. Each poll therefore also re-reads the last few seconds of rows and skips the ids
-/// it has already handled.
+/// higher id was already read. Ids skipped that way are remembered as gaps and looked up again for a few seconds.
+/// When this instance could not poll for longer than the table keeps rows, it may have missed invalidations, so it
+/// clears its in-memory cache.
 /// </remarks>
 internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDisposable
 {
     private const int BatchSize = 1000;
-    private static readonly TimeSpan Lookback = TimeSpan.FromSeconds(5);
+    private const int MaxBatchesPerPoll = 10;
+    private const int CleanupBatchSize = 5000;
+    private const int MaxCleanupBatches = 20;
+
+    // A larger jump is SQL Server's identity cache skipping values after a restart, not rows still committing
+    private const int MaxGapRange = 100;
+    private const int MaxGaps = 1000;
+    private static readonly TimeSpan GapLifetime = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan FirstPollMargin = TimeSpan.FromSeconds(1);
 
     private readonly SqlServerOptions _options;
-    private HashSet<long> _handled = new();
+    private readonly ILogger _logger;
+    private readonly Dictionary<long, DateTime> _gaps = new();
     private CancellationTokenSource? _polling;
     private Task? _loop;
     private long? _lastId;
+    private DateTime _lastPolled;
     private DateTime _nextCleanup;
+    private bool _failing;
+    private System.Diagnostics.Stopwatch _subscribedAt = new();
 
-    public SqlServerBackplane(SqlServerOptions options)
+    public SqlServerBackplane(SqlServerOptions options, ILogger<SqlServerBackplane>? logger = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _logger = (ILogger?)logger ?? NullLogger.Instance;
     }
 
     /// <inheritdoc />
@@ -50,6 +68,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             throw new InvalidOperationException("The backplane already has a subscriber.");
         }
 
+        _subscribedAt = System.Diagnostics.Stopwatch.StartNew();
         _polling = new CancellationTokenSource();
         _loop = PollAsync(onMessage, _polling.Token);
         return Task.CompletedTask;
@@ -110,15 +129,17 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<long> ReadMaxIdAsync(CancellationToken cancellationToken)
+    /// <summary>The last id written more than <paramref name="age"/> ago, by the database's clock.</summary>
+    private async Task<long> ReadLastIdAsync(TimeSpan age, CancellationToken cancellationToken)
     {
-        var sql = $"SELECT ISNULL(MAX([Id]), 0) FROM {_options.QualifiedInvalidationsTableName};";
+        var sql = $"SELECT ISNULL(MAX([Id]), 0) FROM {_options.QualifiedInvalidationsTableName} WHERE [CreatedAt] < DATEADD(millisecond, -@age, SYSUTCDATETIME());";
 
         var connection = new SqlConnection(_options.ConnectionString);
         await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         var command = new SqlCommand(sql, connection);
         await using var commandScope = command.ConfigureAwait(false);
+        command.Parameters.Add(new SqlParameter("@age", SqlDbType.Int) { Value = (int)Math.Min(int.MaxValue, age.TotalMilliseconds) });
         return (long)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))!;
     }
 
@@ -130,94 +151,152 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             try
             {
                 await PollOnceAsync(onMessage, cancellationToken).ConfigureAwait(false);
+                if (_failing)
+                {
+                    _failing = false;
+                    _logger.LogInformation("The MethodCache backplane reads invalidations from SQL Server again.");
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // The rows stay in the table, so the next poll picks up whatever this one missed. If the database
-                // is unreachable for longer than BackplaneRetention, entries may be stale until they expire.
+                // The rows stay in the table, so the next poll picks up whatever this one missed
+                if (!_failing)
+                {
+                    _failing = true;
+                    _logger.LogWarning(ex, "The MethodCache backplane could not read invalidations from SQL Server; retrying every {Interval}.", _options.BackplanePollingInterval);
+                }
             }
         }
     }
 
     internal async Task PollOnceAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken)
     {
-        if (_lastId is not { } lastId)
+        var now = DateTime.UtcNow;
+        if (_lastId == null || now - _lastPolled >= _options.BackplaneRetention / 2)
         {
-            // Start from what is in the table now: older invalidations happened before this instance cached
-            // anything. This runs on the first successful poll, so a database that is down or a table that is
-            // not created yet at startup only delays it.
-            _lastId = await ReadMaxIdAsync(cancellationToken).ConfigureAwait(false);
+            // First poll: start from the invalidations written before this instance subscribed, with a margin, since
+            // it may have cached values since then. After a longer outage, rows this instance never read may
+            // already be deleted, so it drops everything it holds in memory and starts from now.
+            var outage = _lastId != null;
+            var age = outage ? TimeSpan.Zero : _subscribedAt.Elapsed + FirstPollMargin;
+            _lastId = await ReadLastIdAsync(age, cancellationToken).ConfigureAwait(false);
+            _gaps.Clear();
+            _lastPolled = now;
+            if (outage)
+            {
+                await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+            }
+
             return;
         }
 
-        var sql = $"""
+        for (var batch = 0; batch < MaxBatchesPerPoll; batch++)
+        {
+            var (messages, newRows) = await ReadAsync(now, cancellationToken).ConfigureAwait(false);
+            foreach (var message in messages)
+            {
+                await onMessage(message).ConfigureAwait(false);
+            }
+
+            if (newRows < BatchSize)
+            {
+                break;
+            }
+        }
+
+        _lastPolled = now;
+        await CleanupAsync(now, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads rows after the last id, and rows that filled earlier gaps. Returns how many new rows came.</summary>
+    private async Task<(List<BackplaneMessage> Messages, int NewRows)> ReadAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        foreach (var expired in _gaps.Where(gap => now - gap.Value > GapLifetime).Select(gap => gap.Key).ToList())
+        {
+            _gaps.Remove(expired);
+        }
+
+        var gapIds = _gaps.Keys.ToList();
+        var sql = new StringBuilder($"""
             SELECT TOP (@batch) [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
             FROM {_options.QualifiedInvalidationsTableName}
-            WHERE [Id] > @lastId OR [CreatedAt] >= DATEADD(millisecond, -@lookback, SYSUTCDATETIME())
+            WHERE [Id] > @lastId
             ORDER BY [Id];
-            """;
+            """);
+        if (gapIds.Count > 0)
+        {
+            sql.Append($"""
+
+                SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
+                FROM {_options.QualifiedInvalidationsTableName}
+                WHERE [Id] IN ({string.Join(", ", gapIds.Select((_, i) => "@gap" + i.ToString(CultureInfo.InvariantCulture)))});
+                """);
+        }
 
         var messages = new List<BackplaneMessage>();
-        var returned = new HashSet<long>();
+        var newRows = 0;
+        var lastId = _lastId!.Value;
         var connection = new SqlConnection(_options.ConnectionString);
         await using (connection.ConfigureAwait(false))
         {
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            var command = new SqlCommand(sql, connection);
+            var command = new SqlCommand(sql.ToString(), connection);
             await using var commandScope = command.ConfigureAwait(false);
             command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
             command.Parameters.Add(new SqlParameter("@lastId", SqlDbType.BigInt) { Value = lastId });
-            command.Parameters.Add(new SqlParameter("@lookback", SqlDbType.Int) { Value = (int)Lookback.TotalMilliseconds });
+            for (var i = 0; i < gapIds.Count; i++)
+            {
+                command.Parameters.Add(new SqlParameter("@gap" + i.ToString(CultureInfo.InvariantCulture), SqlDbType.BigInt) { Value = gapIds[i] });
+            }
 
             var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
             await using var readerScope = reader.ConfigureAwait(false);
+
+            var expected = lastId + 1;
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 var id = reader.GetInt64(0);
-                var createdAt = reader.GetDateTime(4);
-                if (id > lastId)
+                newRows++;
+                if (id > expected && id - expected <= MaxGapRange)
                 {
-                    lastId = id;
+                    for (var missing = expected; missing < id && _gaps.Count < MaxGaps; missing++)
+                    {
+                        _gaps[missing] = now;
+                    }
                 }
 
-                returned.Add(id);
-                if (_handled.Contains(id))
-                {
-                    continue;
-                }
+                expected = id + 1;
+                lastId = id;
+                AddMessage(reader, messages);
+            }
 
-                var instanceId = reader.GetString(1);
-                if (instanceId == InstanceId)
+            if (await reader.NextResultAsync(cancellationToken).ConfigureAwait(false))
+            {
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    continue;
-                }
-
-                var message = CreateMessage((BackplaneMessageType)reader.GetByte(2), reader.GetString(3), instanceId, createdAt);
-                if (message != null)
-                {
-                    messages.Add(message);
+                    _gaps.Remove(reader.GetInt64(0));
+                    AddMessage(reader, messages);
                 }
             }
         }
 
         _lastId = lastId;
-        foreach (var message in messages)
+        return (messages, newRows);
+    }
+
+    private void AddMessage(SqlDataReader reader, List<BackplaneMessage> messages)
+    {
+        var instanceId = reader.GetString(1);
+        if (instanceId == InstanceId)
         {
-            await onMessage(message).ConfigureAwait(false);
+            return;
         }
 
-        // A row that a complete read no longer returns has left the lookback window for good, so its id need not
-        // be remembered. A full batch may have cut off rows, so keep everything until a read is complete.
-        if (returned.Count < BatchSize)
+        var message = CreateMessage((BackplaneMessageType)reader.GetByte(2), reader.GetString(3), instanceId, reader.GetDateTime(4));
+        if (message != null)
         {
-            _handled = returned;
+            messages.Add(message);
         }
-        else
-        {
-            _handled.UnionWith(returned);
-        }
-
-        await CleanupAsync(cancellationToken).ConfigureAwait(false);
     }
 
     internal static BackplaneMessage? CreateMessage(BackplaneMessageType type, string target, string instanceId, DateTime createdAt)
@@ -231,9 +310,8 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         };
     }
 
-    private async Task CleanupAsync(CancellationToken cancellationToken)
+    private async Task CleanupAsync(DateTime now, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
         if (now < _nextCleanup)
         {
             return;
@@ -245,10 +323,18 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         var connection = new SqlConnection(_options.ConnectionString);
         await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        var command = new SqlCommand(sql, connection);
-        await using var commandScope = command.ConfigureAwait(false);
-        command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
-        command.Parameters.Add(new SqlParameter("@retention", SqlDbType.Int) { Value = (int)Math.Min(int.MaxValue, _options.BackplaneRetention.TotalSeconds) });
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+        // Small batches keep locks short; repeat until the table is caught up, however fast rows are written
+        for (var batch = 0; batch < MaxCleanupBatches; batch++)
+        {
+            var command = new SqlCommand(sql, connection);
+            await using var commandScope = command.ConfigureAwait(false);
+            command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = CleanupBatchSize });
+            command.Parameters.Add(new SqlParameter("@retention", SqlDbType.Int) { Value = (int)Math.Min(int.MaxValue, _options.BackplaneRetention.TotalSeconds) });
+            if (await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) < CleanupBatchSize)
+            {
+                return;
+            }
+        }
     }
 }

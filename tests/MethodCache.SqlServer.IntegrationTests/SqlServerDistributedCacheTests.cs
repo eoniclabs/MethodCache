@@ -110,6 +110,49 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await WaitUntil(async () => await Get(second, "key", "v2") == "v2");
     }
 
+    [SkippableFact]
+    public async Task ABurstOfInvalidations_DoesNotDelayNewOnes()
+    {
+        var first = await CreateNodeAsync();
+        var second = await CreateNodeAsync();
+        await Get(first, "key", "v1");
+        (await Get(second, "key", "unused")).Should().Be("v1");
+
+        // More rows than one read returns, all recent, from another instance
+        await ExecuteAsync($"""
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
+            SELECT TOP (3000) 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            FROM sys.all_objects a CROSS JOIN sys.all_objects b;
+            """);
+        await first.InvalidateByKeysAsync("key");
+
+        var started = DateTime.UtcNow;
+        await WaitUntil(async () => await Get(second, "key", "v2") == "v2");
+        (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromSeconds(3));
+    }
+
+    [SkippableFact]
+    public async Task Cleanup_RemovesEveryExpiredInvalidation()
+    {
+        await CreateNodeAsync();
+        await ExecuteAsync($"""
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target], [CreatedAt])
+            SELECT TOP (12000) 'other', 0, 'old', DATEADD(hour, -2, SYSUTCDATETIME())
+            FROM sys.all_objects a CROSS JOIN sys.all_objects b;
+            """);
+        await CreateNodeAsync();
+
+        await WaitUntil(async () => await CountRowsAsync("MethodCacheInvalidations") == 0);
+    }
+
+    private async Task ExecuteAsync(string sql)
+    {
+        await using var connection = new SqlConnection(_sqlServer.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new SqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
     private async Task<int> CountRowsAsync(string table)
     {
         await using var connection = new SqlConnection(_sqlServer.ConnectionString);
