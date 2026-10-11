@@ -139,7 +139,7 @@ public class SourceGeneratorTestEngine
 
         foreach (var extensionType in extensionTypes)
         {
-            var methods = extensionType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            var methods = extensionType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
                 .Where(m => m.Name.StartsWith("Add") && m.Name.EndsWith("WithCaching"))
                 .ToList();
 

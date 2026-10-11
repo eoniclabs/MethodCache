@@ -33,7 +33,8 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
                 sb.AppendLine("namespace Microsoft.Extensions.DependencyInjection");
                 sb.AppendLine("{");
-                sb.AppendLine("    public static class MethodCacheServiceCollectionExtensions");
+                // Internal: these helpers belong to the application, not to the public API of a library that uses MethodCache
+                sb.AppendLine("    internal static class MethodCacheServiceCollectionExtensions");
                 sb.AppendLine("    {");
 
                 foreach (var info in interfaces.Where(i => !i.Symbol.IsGenericType))
@@ -57,7 +58,7 @@ namespace MethodCache.SourceGenerator
                 var interfaceHasCachedMethods = info.CachedMethods.Any(m => !m.Method.IsGenericMethod);
 
                 // Default (Singleton for backward compatibility)
-                sb.AppendLine($"        public static IServiceCollection Add{baseName}(");
+                sb.AppendLine($"        internal static IServiceCollection Add{baseName}(");
                 sb.AppendLine($"            this IServiceCollection services,");
                 sb.AppendLine($"            Func<IServiceProvider, {interfaceFqn}> implementationFactory)");
                 sb.AppendLine("        {");
@@ -76,7 +77,7 @@ namespace MethodCache.SourceGenerator
                 var lifetimes = new[] { ("Singleton", "AddSingleton"), ("Scoped", "AddScoped"), ("Transient", "AddTransient") };
                 foreach (var (suffix, method) in lifetimes)
                 {
-                    sb.AppendLine($"        public static IServiceCollection Add{baseName}{suffix}(");
+                    sb.AppendLine($"        internal static IServiceCollection Add{baseName}{suffix}(");
                     sb.AppendLine($"            this IServiceCollection services,");
                     sb.AppendLine($"            Func<IServiceProvider, {interfaceFqn}> implementationFactory)");
                     sb.AppendLine("        {");

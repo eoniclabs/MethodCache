@@ -110,7 +110,7 @@ namespace ExpirationPolicy
     }
 
     private static Task<int> InvokeAsync(object service, string method)
-        => (Task<int>)service.GetType().GetMethod(method)!.Invoke(service, new object[] { 1 })!;
+        => (Task<int>)InterfaceMethods.Find(service, method).Invoke(service, new object[] { 1 })!;
 
     private sealed class ManualTimeProvider : TimeProvider
     {

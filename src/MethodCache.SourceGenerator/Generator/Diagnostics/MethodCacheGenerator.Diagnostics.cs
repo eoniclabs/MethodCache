@@ -95,6 +95,14 @@ namespace MethodCache.SourceGenerator
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor UnsupportedInterface = new(
+                id: "MCG013",
+                title: "Interface cannot be cached",
+                messageFormat: "'{0}' cannot be cached: {1}",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
         }
     }
 }
