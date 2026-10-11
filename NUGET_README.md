@@ -18,7 +18,7 @@ builder.Services.AddMethodCache();
 ```
 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments.
-- **Fast.** A hit allocates nothing and is as fast as hand-written `IMemoryCache` code (~85 ns), 4 to 6 times less than HybridCache or FusionCache.
+- **Fast.** A hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and takes 4 to 6 times less time than HybridCache or FusionCache.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`.
 - **Tune it without redeploying.** Attributes, global defaults, `appsettings.json` (reloaded live) and runtime overrides.
 - **Third-party clients too.** `[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync))]` caches an SDK client's methods without a wrapper.
