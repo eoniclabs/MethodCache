@@ -41,6 +41,8 @@ foreach ($job in $Jobs) {
         (Get-Content (Join-Path $results 'build.exit')).Trim() -ne '0') {
         'skipped: the build failed' | Out-File -Encoding ascii $log
         'skipped' | Out-File -Encoding ascii $exitFile
+        # A job that could not run is not a pass, also when the failed build was an earlier invocation's
+        $failed = $true
         continue
     }
 

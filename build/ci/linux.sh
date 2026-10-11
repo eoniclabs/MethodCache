@@ -82,6 +82,8 @@ for job in "${jobs[@]}"; do
   if [ "$job" != build ] && [ -f "$results_dir/build.exit" ] && [ "$(cat "$results_dir/build.exit")" != 0 ]; then
     echo "skipped: the build failed" > "$results_dir/$job.log"
     echo skipped > "$results_dir/$job.exit"
+    # A job that could not run is not a pass, also when the failed build was an earlier invocation's
+    failed=1
     continue
   fi
   echo "=== $job (log: $results_dir/$job.log)"
