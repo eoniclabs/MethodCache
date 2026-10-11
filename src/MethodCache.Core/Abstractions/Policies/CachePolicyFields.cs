@@ -11,5 +11,6 @@ public enum CachePolicyFields
     SlidingExpiration = 1 << 2,
     Version = 1 << 3,
     Metadata = 1 << 4,
-    RefreshAhead = 1 << 5
+    RefreshAhead = 1 << 5,
+    CacheWhen = 1 << 6
 }

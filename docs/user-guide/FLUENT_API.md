@@ -99,9 +99,10 @@ public interface IFluentMethodCacheConfiguration
 public interface IFluentServiceConfiguration<TService>
 {
     IFluentMethodConfiguration Method(Expression<Action<TService>> method);
-    IFluentMethodConfiguration Method<TResult>(Expression<Func<TService, TResult>> method);
+    IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, TResult>> method);
     IFluentMethodConfiguration Method(Expression<Func<TService, Task>> method);
-    IFluentMethodConfiguration Method<TResult>(Expression<Func<TService, Task<TResult>>> method);
+    IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, Task<TResult>>> method);
+    IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, ValueTask<TResult>>> method);
 }
 
 public interface IFluentMethodConfiguration
@@ -111,6 +112,13 @@ public interface IFluentMethodConfiguration
     IFluentMethodConfiguration WithVersion(int version);
 }
 
+// Returned when the method has a result; TResult is the awaited type for async methods.
+public interface IFluentMethodConfiguration<TResult> : IFluentMethodConfiguration
+{
+    IFluentMethodConfiguration<TResult> CacheWhen(Func<TResult, bool> predicate);
+    // Configure, WithGroup and WithVersion return IFluentMethodConfiguration<TResult> here.
+}
+
 public interface IFluentGroupConfiguration
 {
     IFluentGroupConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
@@ -118,6 +126,7 @@ public interface IFluentGroupConfiguration
 ```
 
 - Each setting comes from the most specific place that sets it: the method itself (its `[Cache]` attribute or `ForService<T>().Method(...)`), then its group, then `DefaultPolicy`. `DefaultPolicy` applies to every cached method, also ones that only have `[Cache]`. A method joins a group with `[Cache("name")]` or `WithGroup("name")`.
+- `CacheWhen` stores a result only when the predicate returns true. A rejected result is still returned to the caller, the entry it would have replaced (including a fail-safe value) stays, and the next call runs the method again. The predicate runs once per load, never on a cache hit; if it throws, the result is returned and not stored. It is set from code only, so it can't come from appsettings.
 - Cached methods take duration, tags, sliding expiration, refresh-ahead and version from here. `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to `GetOrCreateAsync`; configuring them for a cached method throws `InvalidOperationException` at startup instead of being ignored.
 
 ### Supporting Types
@@ -277,6 +286,11 @@ services.AddMethodCache(config =>
           .Configure(options => options
               .WithSlidingExpiration(TimeSpan.FromMinutes(5))
               .WithTags("users"));
+
+    // Don't remember empty search results: the next search hits the database again.
+    config.ForService<IProductService>()
+          .Method(s => s.SearchAsync(Any<string>.Value))
+          .CacheWhen(results => results.Count > 0);
 });
 ```
 

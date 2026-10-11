@@ -494,10 +494,13 @@ namespace MethodCache.Core.Runtime.Execution
                 var result = await factory().ConfigureAwait(false);
                 var elapsed = ElapsedSince(start);
 
-                StoreLoaded(key, result, policy, flight);
-                if (_distributed != null)
+                if (ShouldStore(result, policy, methodName))
                 {
-                    await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                    StoreLoaded(key, result, policy, flight);
+                    if (_distributed != null)
+                    {
+                        await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                    }
                 }
 
                 flight.Complete(result);
@@ -549,10 +552,14 @@ namespace MethodCache.Core.Runtime.Execution
 
                     // Replace only the node being refreshed, so a write or removal that slipped in before this
                     // refresh registered its flight is never overwritten or resurrected.
-                    StoreLoaded(key, result, policy, flight, replacing: node);
-                    if (_distributed != null)
+                    // A result CacheWhen rejects leaves the current value in place until it expires.
+                    if (ShouldStore(result, policy, methodName))
                     {
-                        await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                        StoreLoaded(key, result, policy, flight, replacing: node);
+                        if (_distributed != null)
+                        {
+                            await WriteDistributedAsync(key, methodName, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                        }
                     }
 
                     flight.Complete(result);
@@ -603,6 +610,28 @@ namespace MethodCache.Core.Runtime.Execution
             using (ExecutionContext.SuppressFlow())
             {
                 _ = Task.Run(work);
+            }
+        }
+
+        /// <summary>
+        /// Asks the method's <c>CacheWhen</c> predicate whether a factory result may be stored. A predicate that throws
+        /// is reported and treated as "don't store", so a successful call never fails because of it.
+        /// </summary>
+        private bool ShouldStore<T>(T result, EntryPolicy policy, string methodName)
+        {
+            if (policy.CacheWhen is not { } cacheWhen)
+            {
+                return true;
+            }
+
+            try
+            {
+                return cacheWhen(result);
+            }
+            catch (Exception ex)
+            {
+                _metricsProvider.CacheError(methodName, $"CacheWhen threw: {ex.Message}");
+                return false;
             }
         }
 
@@ -962,6 +991,8 @@ namespace MethodCache.Core.Runtime.Execution
 
             public string[]? Tags { get; init; }
 
+            public Func<object?, bool>? CacheWhen { get; init; }
+
             /// <summary>The policy this was built from. The weak table does not let this back-reference keep the key alive.</summary>
             public CacheRuntimePolicy? Source { get; init; }
 
@@ -979,6 +1010,7 @@ namespace MethodCache.Core.Runtime.Execution
                     Duration = policy.Duration is { } duration && duration > TimeSpan.Zero ? ToNanos(duration) : null,
                     Sliding = policy.SlidingExpiration is { } sliding && sliding > TimeSpan.Zero ? ToNanos(sliding) : 0,
                     RefreshWindow = refreshWindow,
+                    CacheWhen = policy.CacheWhen,
                     Tags = policy.Tags.Count > 0 ? policy.Tags.Distinct(StringComparer.Ordinal).ToArray() : null
                 };
             }

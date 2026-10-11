@@ -474,6 +474,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 IReadOnlyList<string>? tags = null;
                 TimeSpan? slidingExpiration = null;
                 TimeSpan? refreshAhead = null;
+                Func<object?, bool>? cacheWhen = null;
+                var cacheWhenSet = false;
                 int? version = null;
                 List<PolicyContribution>? contributions = null;
 
@@ -502,6 +504,12 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                         refreshAhead = policy.RefreshAhead;
                     }
 
+                    if (!cacheWhenSet && fields.HasFlag(CachePolicyFields.CacheWhen))
+                    {
+                        cacheWhen = policy.CacheWhen;
+                        cacheWhenSet = true;
+                    }
+
                     if (version == null && fields.HasFlag(CachePolicyFields.Version))
                     {
                         version = policy.Version;
@@ -520,6 +528,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     Tags = tags ?? Array.Empty<string>(),
                     SlidingExpiration = slidingExpiration,
                     RefreshAhead = refreshAhead,
+                    CacheWhen = cacheWhen,
                     Version = version,
                     Metadata = metadata,
                     Provenance = contributions is { Count: > 0 } ? new PolicyProvenance(contributions) : PolicyProvenance.Empty

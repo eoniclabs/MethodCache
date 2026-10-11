@@ -46,6 +46,11 @@ namespace MethodCache.Core.Runtime.Core
         /// </summary>
         public TimeSpan? RefreshAhead { get; init; }
 
+        /// <summary>
+        /// Decides whether a freshly loaded result is stored. Null stores every result.
+        /// </summary>
+        public Func<object?, bool>? CacheWhen { get; init; }
+
         // ============= Metadata & Indexing =============
 
         /// <summary>
@@ -116,6 +121,7 @@ namespace MethodCache.Core.Runtime.Core
                 Version = result.Policy.Version,
                 SlidingExpiration = result.Policy.SlidingExpiration,
                 RefreshAhead = result.Policy.RefreshAhead,
+                CacheWhen = result.Policy.CacheWhen,
                 Metadata = metadata,
                 Fields = fields
             };
@@ -156,6 +162,7 @@ namespace MethodCache.Core.Runtime.Core
                 Version = policy.Version,
                 SlidingExpiration = policy.SlidingExpiration,
                 RefreshAhead = policy.RefreshAhead,
+                CacheWhen = policy.CacheWhen,
                 Metadata = metadataDict,
                 Fields = fields
             };

@@ -19,6 +19,9 @@ public sealed class CachePolicyBuilder
     private TimeSpan? _refreshAhead;
     private bool _refreshAheadSet;
 
+    private Func<object?, bool>? _cacheWhen;
+    private bool _cacheWhenSet;
+
     private readonly Dictionary<string, string?> _metadata = new(StringComparer.Ordinal);
     private bool _metadataSet;
 
@@ -28,6 +31,7 @@ public sealed class CachePolicyBuilder
         _slidingExpirationSet ||
         _versionSet ||
         _refreshAheadSet ||
+        _cacheWhenSet ||
         _metadataSet;
 
     public CachePolicyBuilder WithDuration(TimeSpan? duration)
@@ -99,6 +103,13 @@ public sealed class CachePolicyBuilder
         return this;
     }
 
+    public CachePolicyBuilder WithCacheWhen(Func<object?, bool>? cacheWhen)
+    {
+        _cacheWhen = cacheWhen;
+        _cacheWhenSet = true;
+        return this;
+    }
+
     public CachePolicyBuilder AddMetadata(string key, string? value)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -163,6 +174,12 @@ public sealed class CachePolicyBuilder
             _refreshAheadSet = true;
         }
 
+        if (source._cacheWhenSet && (overwriteExisting || !_cacheWhenSet))
+        {
+            _cacheWhen = source._cacheWhen;
+            _cacheWhenSet = true;
+        }
+
         if (source._metadataSet && (overwriteExisting || !_metadataSet))
         {
             _metadata.Clear();
@@ -189,6 +206,8 @@ public sealed class CachePolicyBuilder
             _versionSet = _versionSet,
             _refreshAhead = _refreshAhead,
             _refreshAheadSet = _refreshAheadSet,
+            _cacheWhen = _cacheWhen,
+            _cacheWhenSet = _cacheWhenSet,
             _metadataSet = _metadataSet,
             _tagsSet = _tagsSet
         };
@@ -255,6 +274,12 @@ public sealed class CachePolicyBuilder
         {
             policy = policy with { RefreshAhead = _refreshAhead };
             fields |= CachePolicyFields.RefreshAhead;
+        }
+
+        if (_cacheWhenSet)
+        {
+            policy = policy with { CacheWhen = _cacheWhen };
+            fields |= CachePolicyFields.CacheWhen;
         }
 
         if (_metadataSet)
