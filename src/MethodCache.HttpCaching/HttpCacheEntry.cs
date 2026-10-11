@@ -88,27 +88,43 @@ public sealed record HttpCacheEntry
     public string? VariantGeneration { get; init; }
 
     /// <summary>
-    /// Creates a cache entry from an HTTP response message.
+    /// Creates a cache entry from an HTTP response message, reading at most <paramref name="maxSize"/> bytes of its
+    /// body (0 for no limit). Returns <c>null</c> when the body is larger; the response then still holds the whole
+    /// body for the caller, streamed rather than buffered.
     /// </summary>
-    internal static async Task<HttpCacheEntry> FromResponseAsync(
+    internal static async Task<HttpCacheEntry?> FromResponseAsync(
         HttpRequestMessage request,
         HttpResponseMessage response,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        long maxSize = 0,
+        CancellationToken cancellationToken = default)
     {
-        // Read content first
-        var content = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-
-        // Capture content headers before replacing content
         var contentHeaders = SerializeHeaders(response.Content.Headers);
-
-        // Replace the consumed content with a new ByteArrayContent so the response can still be read
-        response.Content = new ByteArrayContent(content);
-
-        // Restore the original content headers
-        foreach (var header in contentHeaders)
+        var body = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var limit = maxSize > 0 ? maxSize : long.MaxValue;
+        var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while (buffer.Length <= limit && (read = await body.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
         {
-            response.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            buffer.Write(chunk, 0, read);
         }
+
+        if (buffer.Length > limit)
+        {
+            // Too large to cache: hand the caller what was read followed by the rest of the stream
+            buffer.Position = 0;
+            response.Content = new StreamContent(new ConcatenatedStream(buffer, body));
+            RestoreHeaders(response.Content.Headers, contentHeaders);
+            return null;
+        }
+
+        var content = buffer.ToArray();
+        await body.DisposeAsync().ConfigureAwait(false);
+
+        // The body was consumed, so the caller reads it from a copy
+        response.Content = new ByteArrayContent(content);
+        RestoreHeaders(response.Content.Headers, contentHeaders);
 
         return new HttpCacheEntry
         {
@@ -116,13 +132,15 @@ public sealed record HttpCacheEntry
             Method = request.Method.ToString(),
             StatusCode = response.StatusCode,
             Content = content,
-            Headers = SerializeHeaders(response.Headers),
+            Headers = SerializeHeaders(response.Headers, StorableHeaders(response.Headers)),
             ContentHeaders = contentHeaders,
             ETag = response.Headers.ETag?.Tag,
             LastModified = response.Content.Headers.LastModified,
             CacheControl = response.Headers.CacheControl,
             Expires = response.Content.Headers.Expires,
-            Date = response.Headers.Date,
+
+            // RFC 9110 section 6.6.1: without a Date, the time it was received stands in for it
+            Date = response.Headers.Date ?? now,
             StoredAt = now,
             InitialAge = CalculateInitialAge(response, now),
             VaryHeaders = response.Headers.Vary?.ToArray()
@@ -167,15 +185,31 @@ public sealed record HttpCacheEntry
             mergedHeaders[header.Key] = header.Value;
         }
 
-        var updatedHeaders = SerializeHeaders(notModifiedResponse.Headers);
+        var updatedHeaders = SerializeHeaders(notModifiedResponse.Headers, StorableHeaders(notModifiedResponse.Headers));
         foreach (var header in updatedHeaders)
         {
             mergedHeaders[header.Key] = header.Value;
         }
 
+        // RFC 9111 section 3.2: the 304's header fields replace the stored ones, content headers such as Expires
+        // included, except those that describe its own (empty) body
+        var mergedContentHeaders = new Dictionary<string, string[]>(ContentHeaders, StringComparer.OrdinalIgnoreCase);
+        if (notModifiedResponse.Content != null)
+        {
+            foreach (var header in notModifiedResponse.Content.Headers)
+            {
+                if (!string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(header.Key, "Content-Range", StringComparison.OrdinalIgnoreCase))
+                {
+                    mergedContentHeaders[header.Key] = header.Value.ToArray();
+                }
+            }
+        }
+
         return this with
         {
             Headers = mergedHeaders,
+            ContentHeaders = mergedContentHeaders,
             ETag = notModifiedResponse.Headers.ETag?.Tag ?? ETag,
             LastModified = notModifiedResponse.Content?.Headers.LastModified ?? LastModified,
             CacheControl = notModifiedResponse.Headers.CacheControl ?? CacheControl,
@@ -202,13 +236,83 @@ public sealed record HttpCacheEntry
         return apparentAge > ageValue ? apparentAge : ageValue;
     }
 
-    private static Dictionary<string, string[]> SerializeHeaders(HttpHeaders headers)
+    private static Dictionary<string, string[]> SerializeHeaders(HttpHeaders headers, Func<string, bool>? include = null)
     {
         var result = new Dictionary<string, string[]>();
         foreach (var header in headers)
         {
-            result[header.Key] = header.Value.ToArray();
+            if (include == null || include(header.Key))
+            {
+                result[header.Key] = header.Value.ToArray();
+            }
         }
         return result;
+    }
+
+    private static void RestoreHeaders(HttpContentHeaders target, Dictionary<string, string[]> headers)
+    {
+        foreach (var header in headers)
+        {
+            target.TryAddWithoutValidation(header.Key, header.Value);
+        }
+    }
+
+    /// <summary>
+    /// RFC 9111 section 3.1: hop-by-hop fields describe one connection, not the response, so they are not stored.
+    /// <c>Age</c> is recomputed when the entry is served.
+    /// </summary>
+    private static Func<string, bool> StorableHeaders(HttpResponseHeaders headers)
+    {
+        var connectionOptions = headers.Connection.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return name => !HopByHopHeaders.Contains(name) && !connectionOptions.Contains(name);
+    }
+
+    private static readonly HashSet<string> HopByHopHeaders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Age", "Connection", "Keep-Alive", "Proxy-Connection", "TE", "Trailer", "Transfer-Encoding", "Upgrade"
+    };
+
+    /// <summary>Reads one stream to its end, then the other.</summary>
+    private sealed class ConcatenatedStream(Stream first, Stream second) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var read = first.Read(buffer, offset, count);
+            return read > 0 ? read : second.Read(buffer, offset, count);
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var read = await first.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            return read > 0 ? read : await second.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                first.Dispose();
+                second.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 }

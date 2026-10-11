@@ -6,8 +6,8 @@ namespace MethodCache.HttpCaching.Internal;
 /// <summary>
 /// Storage keys: <c>{client}:{hash of method and URI}</c> for a URL, and
 /// <c>{URL key}|{hash of the variant generation and the selecting header values}</c> for each of its variants.
-/// Everything that tells callers apart (key headers, <c>Authorization</c> in a private cache, <c>Vary</c>) lives in
-/// the variant key, so removing the URL entry invalidates the URL for every caller.
+/// Everything that tells callers apart (key headers, <c>Authorization</c> and <c>Cookie</c> in a private cache,
+/// <c>Vary</c>) lives in the variant key, so removing the URL entry invalidates the URL for every caller.
 /// </summary>
 internal static class HttpCacheKeys
 {
@@ -24,7 +24,7 @@ internal static class HttpCacheKeys
 
     /// <summary>
     /// The request headers that select a variant of a response: the configured key headers, <c>Authorization</c>
-    /// in a private cache (so callers never see each other's responses) and the response's <c>Vary</c> headers.
+    /// and <c>Cookie</c> in a private cache (so callers never see each other's responses) and the response's <c>Vary</c> headers.
     /// Empty when the URL has a single response for everyone.
     /// </summary>
     public static string[] SelectingHeaders(HttpCacheOptions options, string[]? varyHeaders)
@@ -32,7 +32,9 @@ internal static class HttpCacheKeys
         var headers = new HashSet<string>(options.KeyHeaders, StringComparer.OrdinalIgnoreCase);
         if (!options.IsSharedCache)
         {
+            // Who the caller is: a bearer token, or a session cookie
             headers.Add("Authorization");
+            headers.Add("Cookie");
         }
 
         if (varyHeaders != null)
@@ -62,6 +64,20 @@ internal static class HttpCacheKeys
         }
 
         return baseKey + "|" + Convert.ToBase64String(hash.GetHashAndReset());
+    }
+
+    /// <summary>Whether the request sends any of <paramref name="headers"/>.</summary>
+    public static bool SendsAny(HttpRequestMessage request, string[] headers)
+    {
+        foreach (var header in headers)
+        {
+            if (request.Headers.TryGetValues(header, out _) || request.Content?.Headers.TryGetValues(header, out _) == true)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void AppendHeader(IncrementalHash hash, HttpRequestMessage request, string header)
