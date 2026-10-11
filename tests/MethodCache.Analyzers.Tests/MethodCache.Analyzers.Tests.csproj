@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MethodCache.Analyzers\MethodCache.Analyzers.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.CodeFixes\MethodCache.CodeFixes.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
   </ItemGroup>
 </Project>

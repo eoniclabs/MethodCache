@@ -101,10 +101,10 @@ jobs:
       - name: Pack the MethodCache package
         run: dotnet pack src/MethodCache.Core --configuration Release --output ./artifacts/packages
 
-      - name: Check the generator and analyzers are in the package
+      - name: Check the generator, analyzers and code fixes are in the package
         run: |
           contents=$(unzip -l ./artifacts/packages/MethodCache.*.nupkg)
-          for dll in analyzers/dotnet/cs/MethodCache.SourceGenerator.dll analyzers/dotnet/cs/MethodCache.Analyzers.dll; do
+          for dll in analyzers/dotnet/cs/MethodCache.SourceGenerator.dll analyzers/dotnet/cs/MethodCache.Analyzers.dll analyzers/dotnet/cs/MethodCache.CodeFixes.dll; do
             echo "$contents" | grep -q "$dll" || { echo "Missing $dll"; exit 1; }
           done
 

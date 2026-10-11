@@ -21,6 +21,9 @@ namespace MethodCache.Analyzers
         private const string Category = "Usage";
         private const string AttributeNamespace = "MethodCache.Core";
 
+        // Each id has its own heading in the diagnostics guide, so IDEs and build output link straight to the fix
+        private static string HelpLink(string id) => "https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#" + id.ToLowerInvariant();
+
         internal static readonly DiagnosticDescriptor AttributeOnClassRule = new DiagnosticDescriptor(
             AttributeOnClassDiagnosticId,
             "MethodCache attribute on a class member has no effect",
@@ -28,7 +31,8 @@ namespace MethodCache.Analyzers
             Category,
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "The source generator decorates interfaces, so [Cache] and [CacheInvalidate] are read from interface methods only. On a class, struct or record member they are ignored and the method is not cached.");
+            description: "The source generator decorates interfaces, so [Cache] and [CacheInvalidate] are read from interface methods only. On a class, struct or record member they are ignored and the method is not cached.",
+            helpLinkUri: HelpLink(AttributeOnClassDiagnosticId));
 
         internal static readonly DiagnosticDescriptor InvalidTimeSpanRule = new DiagnosticDescriptor(
             InvalidTimeSpanDiagnosticId,
@@ -37,7 +41,8 @@ namespace MethodCache.Analyzers
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe and FailSafeTimeout on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".");
+            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe and FailSafeTimeout on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".",
+            helpLinkUri: HelpLink(InvalidTimeSpanDiagnosticId));
 
         private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout" };
 
