@@ -32,6 +32,13 @@ namespace DynamicTags
 
         [CacheInvalidate(Tags = new[] { ""team:{team}"" })]
         Task UpdateTeamAsync(string? team);
+
+        // ""{other}"" is not a parameter (MCG009), so both sides keep the tag as literal text
+        [Cache(Duration = ""00:10:00"", Tags = new[] { ""item:{other}"" })]
+        Task<string> GetItemAsync(int id);
+
+        [CacheInvalidate(Tags = new[] { ""item:{other}"" })]
+        Task ResetItemsAsync(int id);
     }
 
     public class UserService : IUserService
@@ -45,6 +52,10 @@ namespace DynamicTags
         public Task UpdateUserAsync(int userId) => Task.CompletedTask;
 
         public Task UpdateTeamAsync(string? team) => Task.CompletedTask;
+
+        public Task<string> GetItemAsync(int id) => Task.FromResult(Count(""item:"" + id));
+
+        public Task ResetItemsAsync(int id) => Task.CompletedTask;
 
         private string Count(string key)
         {
@@ -94,6 +105,21 @@ namespace DynamicTags
 
         Assert.Equal(2, calls()["team:null"]);
         Assert.Equal(1, calls()["team:red"]);
+    }
+
+    [Fact]
+    public async Task InvalidateWithUnknownPlaceholder_RemovesEntriesTaggedWithTheLiteralText()
+    {
+        var (service, calls) = await CreateServiceAsync("DynamicTags_Literal");
+
+        await service.Call("GetItemAsync", 1);
+        await service.Call("GetItemAsync", 2);
+        await service.Call("ResetItemsAsync", 3);
+        await service.Call("GetItemAsync", 1);
+        await service.Call("GetItemAsync", 2);
+
+        Assert.Equal(2, calls()["item:1"]);
+        Assert.Equal(2, calls()["item:2"]);
     }
 
     private async Task<(ServiceProxy Service, Func<Dictionary<string, int>> Calls)> CreateServiceAsync(string assemblyName)

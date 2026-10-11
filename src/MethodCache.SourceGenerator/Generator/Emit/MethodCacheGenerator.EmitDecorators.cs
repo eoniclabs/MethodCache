@@ -18,7 +18,8 @@ namespace MethodCache.SourceGenerator
             // Add static tags
             if (staticTags.Any())
             {
-                var staticTagsWithoutDynamic = staticTags.Where(t => !DynamicTagParameterRegex.IsMatch(t)).ToList();
+                // A placeholder that names no parameter stays literal text (MCG009), as it does on cached entries
+                var staticTagsWithoutDynamic = staticTags.Where(t => !NamesParameter(method, t)).ToList();
                 if (staticTagsWithoutDynamic.Any())
                 {
                     sb.Append($"{indent}__mcTags.AddRange(new[] {{ ");
@@ -37,6 +38,19 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("));");
             }
+        }
+
+        private static bool NamesParameter(IMethodSymbol method, string tag)
+        {
+            foreach (System.Text.RegularExpressions.Match match in DynamicTagParameterRegex.Matches(tag))
+            {
+                if (method.Parameters.Any(p => string.Equals(p.Name, match.Groups[1].Value, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -705,11 +719,22 @@ namespace MethodCache.SourceGenerator
                     return $"{name} ?? \"null\"";
                 }
 
+                // Invariant, so 1.5 is "1.5" and -1 is "-1" on every machine, whatever its culture
+                const string invariant = "global::System.Globalization.CultureInfo.InvariantCulture";
                 var isNullableValueType = param.Type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T };
-                return param.Type.IsValueType && !isNullableValueType
-                    ? $"{name}.ToString()"
-                    : $"{name}?.ToString() ?? \"null\"";
+                if (param.Type.IsValueType && !isNullableValueType)
+                {
+                    return IsFormattable(param.Type)
+                        ? $"{name}.ToString(null, {invariant})"
+                        : $"{name}.ToString()";
+                }
+
+                return $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
             }
+
+            private static bool IsFormattable(ITypeSymbol type)
+                // Enums format the same in every culture, and their provider overload is obsolete
+                => type.TypeKind != TypeKind.Enum && type.AllInterfaces.Any(i => i.ToDisplayString() == "System.IFormattable");
 
             private static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
             {
