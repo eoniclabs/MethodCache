@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 
 namespace MethodCache.Infrastructure;
 
@@ -136,6 +137,24 @@ public ref struct MethodCacheKeyBuilder
     /// <summary>Appends a separator and an enum argument by its numeric value.</summary>
     public void AppendPart<TEnum>(TEnum value) where TEnum : struct, Enum
     {
+        // Not Enum.TryFormat: it writes a negative value with the current culture's minus sign (U+2212 in sv-SE)
+        switch (Type.GetTypeCode(typeof(TEnum)))
+        {
+            case TypeCode.SByte:
+                AppendFormatted(Unsafe.As<TEnum, sbyte>(ref value), default);
+                return;
+            case TypeCode.Int16:
+                AppendFormatted(Unsafe.As<TEnum, short>(ref value), default);
+                return;
+            case TypeCode.Int32:
+                AppendFormatted(Unsafe.As<TEnum, int>(ref value), default);
+                return;
+            case TypeCode.Int64:
+                AppendFormatted(Unsafe.As<TEnum, long>(ref value), default);
+                return;
+        }
+
+        // Unsigned: no sign to format
         AppendSeparator();
         int written;
         while (!Enum.TryFormat(value, _chars[_length..], out written, "D"))

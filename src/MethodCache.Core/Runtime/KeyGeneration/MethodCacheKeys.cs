@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Runtime.CompilerServices;
 
 namespace MethodCache;
 
@@ -129,5 +130,13 @@ public static class MethodCacheKeys
     public static string Part(DateTimeOffset value) => value.ToString("O", CultureInfo.InvariantCulture);
 
     /// <summary>Formats an enum argument by its numeric value, so renaming a member keeps existing keys.</summary>
-    public static string Part<TEnum>(TEnum value) where TEnum : struct, Enum => value.ToString("D");
+    public static string Part<TEnum>(TEnum value) where TEnum : struct, Enum => Type.GetTypeCode(typeof(TEnum)) switch
+    {
+        // Not ToString("D"): it writes a negative value with the current culture's minus sign (U+2212 in sv-SE)
+        TypeCode.SByte => Unsafe.As<TEnum, sbyte>(ref value).ToString(CultureInfo.InvariantCulture),
+        TypeCode.Int16 => Unsafe.As<TEnum, short>(ref value).ToString(CultureInfo.InvariantCulture),
+        TypeCode.Int32 => Unsafe.As<TEnum, int>(ref value).ToString(CultureInfo.InvariantCulture),
+        TypeCode.Int64 => Unsafe.As<TEnum, long>(ref value).ToString(CultureInfo.InvariantCulture),
+        _ => value.ToString("D"), // unsigned: no sign to format
+    };
 }

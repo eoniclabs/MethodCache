@@ -25,6 +25,7 @@ public interface IUserService
 - **Everything else**, such as arrays and collections, goes through the key generator. The default,
   `FastHashKeyGenerator`, hashes the arguments into a key such as `ByIdsAsync:11b474c4…`.
 - A `CancellationToken` parameter is never part of the key.
+- Keys don't depend on the current culture: `-1`, `1.5` and dates are written the same under every culture.
 
 On .NET 9 and later the decorator writes simple keys into a stack buffer and looks them up without allocating.
 

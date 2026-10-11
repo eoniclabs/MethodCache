@@ -145,6 +145,35 @@ public class CancellationAndExpiryTests
     }
 
     [Fact]
+    public async Task CallersThatJoinedALoad_LoadAgainOnlyOnce_WhenTheCallerThatStartedItCancels()
+    {
+        // Found by ConcurrentLoadPropertyTests (shrunk: 4 callers, the first cancels, the factory succeeds; the
+        // factory ran 3 times). The callers that joined retried one by one, and each one that came after the reload
+        // had finished ran the factory again instead of using the value it had stored.
+        for (var round = 0; round < 20; round++)
+        {
+            var manager = CreateManager();
+            var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1) };
+            using var cts = new CancellationTokenSource();
+            var calls = 0;
+
+            var a = manager.GetOrCreateFastAsync("key", "M", async () =>
+            {
+                await Task.Delay(Timeout.Infinite, cts.Token);
+                return 0;
+            }, policy, cts.Token);
+            var others = Enumerable.Range(0, 3)
+                .Select(_ => manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult(Interlocked.Increment(ref calls)), policy))
+                .ToArray();
+            cts.Cancel();
+
+            await FluentActions.Awaiting(() => a).Should().ThrowAsync<OperationCanceledException>();
+            (await Task.WhenAll(others)).Should().AllBeEquivalentTo(1, "the callers that waited share one reload");
+            calls.Should().Be(1);
+        }
+    }
+
+    [Fact]
     public async Task CallerThatJoinedALoad_CanStopWaitingWithoutCancellingIt()
     {
         var manager = CreateManager();

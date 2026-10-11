@@ -504,5 +504,41 @@ namespace MethodCache.Core.Tests.Core
         }
 
         #endregion
+
+        public enum Balance { Overdrawn = -1, Zero = 0 }
+
+        [Fact]
+        public void FastHashKeyGenerator_NegativeEnum_GetsTheSameKeyInEveryCulture()
+        {
+            // Found by CacheKeyPropertyTests: Enum.ToString("D") writes -1 as "−1" under sv-SE
+            var generator = new FastHashKeyGenerator();
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+            var invariant = generator.GenerateKey("M", new object[] { Balance.Overdrawn }, policy);
+
+            var original = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("sv-SE");
+                Assert.Equal(invariant, generator.GenerateKey("M", new object[] { Balance.Overdrawn }, policy));
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentCulture = original;
+            }
+        }
+
+        [Fact]
+        public void FastHashKeyGenerator_LoneSurrogates_GetDistinctKeys()
+        {
+            // Found by CacheKeyPropertyTests: UTF-8 encoding turned both halves of a surrogate pair into U+FFFD
+            var generator = new FastHashKeyGenerator();
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+
+            var keys = new[] { "\uD834", "\uDD1E", "�", "𝄞" }
+                .Select(s => generator.GenerateKey("M", new object[] { s }, policy))
+                .ToArray();
+
+            Assert.Equal(keys.Length, keys.Distinct().Count());
+        }
     }
 }

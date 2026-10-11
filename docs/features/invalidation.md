@@ -37,7 +37,8 @@ public interface IOrderService
 `"order:{orderId}"` is filled in from the method's arguments: `GetAsync(42)` is tagged `order:42`, and
 `CancelAsync(42, 7)` removes `order:42`. The name in braces must be a parameter of the method it is on (case doesn't
 matter); an unknown name is reported as [MCG009](../user-guide/DIAGNOSTICS.md#mcg009), with a code fix that offers the
-closest parameter.
+closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
+the tag `order:{org}` on both the cached call and the invalidation.
 
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
 share one tag; it is reported as [MCG015](../user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
