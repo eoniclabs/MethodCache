@@ -35,7 +35,8 @@ On .NET 9 and later the decorator writes simple keys into a stack buffer and loo
 
 ## Types whose state is private
 
-A type with only private state would give every value the same key, so the key generators refuse it with an
+A type with only private state, including private fields inherited from a base class, would give every value the
+same key, so the key generators refuse it with an
 `InvalidOperationException` instead of returning wrong results. Implement `ICacheKeyProvider` on it:
 
 <!-- snippet: keys-provider -->

@@ -47,12 +47,27 @@ internal static class KeyArguments
         }
 
         if (json.Length == 2 && json[0] == (byte)'{' && json[1] == (byte)'}' &&
-            HasHiddenState.GetOrAdd(type, static t => t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Length > 0))
+            HasHiddenState.GetOrAdd(type, HasInstanceFields))
         {
             throw Unsupported(type, "its state is not public, so every value would get the same key", inner: null);
         }
 
         return json;
+    }
+
+    private static bool HasInstanceFields(Type type)
+    {
+        // GetFields without DeclaredOnly omits private base fields. Inspect every level so inheritance cannot
+        // turn stateful objects into the same empty JSON object.
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            if (current.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static InvalidOperationException Unsupported(Type type, string reason, Exception? inner)
