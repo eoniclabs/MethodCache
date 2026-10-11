@@ -77,7 +77,8 @@ await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.Ge
 ## Things to know
 
 - **Keys contain the arguments.** Don't cache methods that take secrets such as passwords or tokens as arguments; pass
-  an identifier instead. Hashed keys are not encryption.
+  an identifier instead. Hashed keys are not encryption. No argument, whatever characters it contains, can produce
+  another call's key; see [Security](../security.md).
 - **`Version` changes every key** of a method, so values cached by an earlier version are ignored. See
   [Expiration](expiration.md#versions).
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin

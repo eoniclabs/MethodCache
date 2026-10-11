@@ -26,6 +26,7 @@ pages is compiled and tested in CI.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
 - [Testing](features/testing.md): test with caching on, or turn it off.
+- [Security](security.md): what each package protects against, and what it leaves to you.
 
 ## For coding agents
 

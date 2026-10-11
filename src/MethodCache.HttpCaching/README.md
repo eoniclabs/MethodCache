@@ -27,6 +27,7 @@ That is all. Your typed client keeps calling `GetAsync` as before.
   `Location` / `Content-Location`) for every caller, language and key header value, so nobody reads stale data
   after a write.
 - Cached responses carry an `Age` header, as the standard requires.
+- `Set-Cookie` is never stored: the caller the server answered gets it, nobody served from the cache does.
 - Each HttpClient has its own settings and its own entries.
 - Request directives are honored: `no-cache` (revalidates and stores the answer), `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
 - `Range` requests go to the origin, and `206 Partial Content` is never stored.
@@ -51,7 +52,7 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 
 | Option | Default | |
 |---|---|---|
-| `IsSharedCache` | `false` | `false`: a private cache; `Authorization` and `Cookie` are part of the key so callers never see each other's responses. `true`: a shared cache; `private` and authorized responses are not stored, `s-maxage` applies |
+| `IsSharedCache` | `false` | `false`: a private cache; `Authorization` and `Cookie` are part of the key so callers never see each other's responses. `true`: a shared cache; `private` and authorized responses are not stored, `s-maxage` applies, and a response stored for an anonymous request is served to every caller (see [Security](../../docs/security.md#methodcachehttpcaching)) |
 | `DefaultMaxAge` | `null` | Freshness for a response with only an `ETag`/`Last-Modified`. `null` revalidates every time |
 | `AllowHeuristicFreshness` | `true` | 10% of the time since `Last-Modified`, at most `MaxHeuristicFreshness` (1 hour) |
 | `StaleRetention` | 24 hours | How long a stale entry is kept for revalidation and the stale options below |

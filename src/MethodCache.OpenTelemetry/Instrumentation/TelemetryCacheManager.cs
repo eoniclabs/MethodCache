@@ -254,7 +254,7 @@ internal class TelemetryCacheManager : ICacheManager
         try
         {
             _baggagePropagator.InjectBaggage(activity);
-            activity?.SetTag("cache.pattern", pattern);
+            _activitySource.SetCacheTagPattern(activity, pattern);
 
             await _innerManager.InvalidateByTagPatternAsync(pattern).ConfigureAwait(false);
 
