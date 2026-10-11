@@ -20,6 +20,9 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
+    /// <summary>
+    /// Registers MethodCache in an <see cref="IServiceCollection"/>.
+    /// </summary>
     public static class MethodCacheServiceCollectionExtensions
     {
         /// <summary>
@@ -81,6 +84,15 @@ namespace Microsoft.Extensions.DependencyInjection
             return services;
         }
 
+        /// <summary>
+        /// Reads cache policies for <c>[Cache]</c> methods from a configuration section, such as <c>"MethodCache"</c> in
+        /// <c>appsettings.json</c>. These win over attributes and startup code, and changes apply when the configuration
+        /// reloads. An invalid value throws at startup; an invalid reload is logged and the previous policies stay.
+        /// </summary>
+        /// <param name="services">The service collection</param>
+        /// <param name="configuration">The application's configuration</param>
+        /// <param name="sectionName">The section to read policies from</param>
+        /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddMethodCacheFromConfiguration(this IServiceCollection services, IConfiguration configuration, string sectionName = "MethodCache")
         {
             if (services == null)

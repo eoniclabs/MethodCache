@@ -32,6 +32,7 @@ public class JsonKeyGenerator : ICacheKeyGenerator
     /// <summary>The longest argument list, in characters, that is written into the key as is.</summary>
     public const int MaxReadableLength = 200;
 
+    /// <inheritdoc />
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     {
         var buffer = new ArrayBufferWriter<byte>(128);

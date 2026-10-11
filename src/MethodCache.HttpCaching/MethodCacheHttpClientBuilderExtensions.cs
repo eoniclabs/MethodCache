@@ -8,6 +8,9 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
+/// <summary>
+/// Adds HTTP caching to an <see cref="IHttpClientBuilder"/>.
+/// </summary>
 public static class MethodCacheHttpClientBuilderExtensions
 {
     /// <summary>

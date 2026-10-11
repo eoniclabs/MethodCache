@@ -6,9 +6,13 @@ namespace MethodCache.Extensibility
     /// </summary>
     public sealed class NullCacheMetricsProvider : ICacheMetricsProvider
     {
+        /// <inheritdoc />
         public void CacheHit(string methodName) { }
+        /// <inheritdoc />
         public void CacheMiss(string methodName) { }
+        /// <inheritdoc />
         public void CacheError(string methodName, string errorMessage) { }
+        /// <inheritdoc />
         public void CacheLatency(string methodName, long elapsedMilliseconds) { }
     }
 }
