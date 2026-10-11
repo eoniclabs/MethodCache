@@ -81,7 +81,7 @@ public class HttpCacheEntry
         HttpResponseMessage response)
     {
         // Read content first
-        var content = await response.Content.ReadAsByteArrayAsync();
+        var content = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 
         // Capture content headers before replacing content
         var contentHeaders = SerializeHeaders(response.Content.Headers);

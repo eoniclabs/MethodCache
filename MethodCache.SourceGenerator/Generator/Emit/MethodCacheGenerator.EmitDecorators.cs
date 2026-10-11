@@ -333,9 +333,9 @@ namespace MethodCache.SourceGenerator
 
                 if (kind == ResultKind.Sync)
                 {
-                    sb.AppendLine("            // WARNING: This is a sync-over-async pattern that may cause deadlocks");
-                    sb.AppendLine("            // in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms).");
-                    sb.AppendLine("            // Consider making the method async to avoid potential issues.");
+                    sb.AppendLine("            // Hits return without blocking. A miss blocks this thread while the value loads; the cache never");
+                    sb.AppendLine("            // resumes on the caller's SynchronizationContext, so this can't deadlock. With Redis or SQL Server");
+                    sb.AppendLine("            // the wait includes the network read, so prefer async methods on hot paths there.");
                 }
 
                 // One read gives the policy and key prefix for this call, even if the policy changes meanwhile

@@ -65,15 +65,6 @@ namespace MethodCache.SourceGenerator
                         if (!validation.canProceed) continue;
                     }
 
-                    // Check for sync-over-async warning
-                    if (!Utils.IsTask(method.ReturnType, out _) && !Utils.IsValueTask(method.ReturnType, out _))
-                    {
-                        diagnostics.Add(Diagnostic.Create(
-                            Diagnostics.SyncOverAsyncWarning,
-                            method.Locations.FirstOrDefault(),
-                            method.ToDisplayString()));
-                    }
-
                     cachedMethods.Add(new MethodModel(method, cacheAttr, null));
                 }
                 else if (invalidateAttr != null)

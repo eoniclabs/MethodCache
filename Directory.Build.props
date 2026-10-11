@@ -48,5 +48,6 @@
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
     <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt" />
     <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt" />
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)libraries.globalconfig" />
   </ItemGroup>
 </Project>

@@ -72,7 +72,7 @@ namespace MethodCache.Core.Runtime.Execution
         {
             if (ForceCacheMiss || !_cache.TryGetValue(cacheKey, out var value))
             {
-                var result = await factory();
+                var result = await factory().ConfigureAwait(false);
                 if (result != null)
                 {
                     _cache.TryAdd(cacheKey, result);

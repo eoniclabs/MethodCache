@@ -99,9 +99,11 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     {
         var sql = $"INSERT INTO {_options.QualifiedInvalidationsTableName} ([InstanceId], [MessageType], [Target]) VALUES (@instanceId, @type, @target);";
 
-        await using var connection = new SqlConnection(_options.ConnectionString);
+        var connection = new SqlConnection(_options.ConnectionString);
+        await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new SqlCommand(sql, connection);
+        var command = new SqlCommand(sql, connection);
+        await using var commandScope = command.ConfigureAwait(false);
         command.Parameters.Add(new SqlParameter("@instanceId", SqlDbType.VarChar, 32) { Value = InstanceId });
         command.Parameters.Add(new SqlParameter("@type", SqlDbType.TinyInt) { Value = (byte)type });
         command.Parameters.Add(new SqlParameter("@target", SqlDbType.NVarChar, -1) { Value = target });
@@ -112,9 +114,11 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     {
         var sql = $"SELECT ISNULL(MAX([Id]), 0) FROM {_options.QualifiedInvalidationsTableName};";
 
-        await using var connection = new SqlConnection(_options.ConnectionString);
+        var connection = new SqlConnection(_options.ConnectionString);
+        await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new SqlCommand(sql, connection);
+        var command = new SqlCommand(sql, connection);
+        await using var commandScope = command.ConfigureAwait(false);
         return (long)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))!;
     }
 
@@ -155,15 +159,18 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
         var messages = new List<BackplaneMessage>();
         var returned = new HashSet<long>();
-        await using (var connection = new SqlConnection(_options.ConnectionString))
+        var connection = new SqlConnection(_options.ConnectionString);
+        await using (connection.ConfigureAwait(false))
         {
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            await using var command = new SqlCommand(sql, connection);
+            var command = new SqlCommand(sql, connection);
+            await using var commandScope = command.ConfigureAwait(false);
             command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
             command.Parameters.Add(new SqlParameter("@lastId", SqlDbType.BigInt) { Value = lastId });
             command.Parameters.Add(new SqlParameter("@lookback", SqlDbType.Int) { Value = (int)Lookback.TotalMilliseconds });
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await using var readerScope = reader.ConfigureAwait(false);
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 var id = reader.GetInt64(0);
@@ -235,9 +242,11 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         _nextCleanup = now + CleanupInterval;
         var sql = $"DELETE TOP (@batch) FROM {_options.QualifiedInvalidationsTableName} WHERE [CreatedAt] < DATEADD(second, -@retention, SYSUTCDATETIME());";
 
-        await using var connection = new SqlConnection(_options.ConnectionString);
+        var connection = new SqlConnection(_options.ConnectionString);
+        await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new SqlCommand(sql, connection);
+        var command = new SqlCommand(sql, connection);
+        await using var commandScope = command.ConfigureAwait(false);
         command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
         command.Parameters.Add(new SqlParameter("@retention", SqlDbType.Int) { Value = (int)Math.Min(int.MaxValue, _options.BackplaneRetention.TotalSeconds) });
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);

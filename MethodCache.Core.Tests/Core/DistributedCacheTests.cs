@@ -57,6 +57,27 @@ public class DistributedCacheTests
         node.GetOrCreateFastAsync(key, "M", () => Task.FromResult(value()), Policy(tags));
 
     [Fact]
+    public void BlockingOnAMiss_NeverNeedsTheCallersSynchronizationContext()
+    {
+        // Generated decorators for synchronous methods block on the load. On a UI or classic ASP.NET thread that
+        // only deadlocks if a continuation needs the blocked thread's context, so none may post to it.
+        var node = CreateNode(backplane: false, cache: new SlowDistributedCache(_shared));
+        var context = new RecordingSynchronizationContext();
+        string? result = null;
+
+        var thread = new Thread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(context);
+            result = Get(node, "key", () => "loaded").GetAwaiter().GetResult();
+        });
+        thread.Start();
+
+        thread.Join(TimeSpan.FromSeconds(10)).Should().BeTrue();
+        result.Should().Be("loaded");
+        context.Posts.Should().Be(0);
+    }
+
+    [Fact]
     public async Task EntriesWrittenByAnotherSerializer_AreMisses()
     {
         var messagePack = CreateNode(backplane: false, serializer: new MessagePackCacheSerializer());
@@ -349,5 +370,52 @@ public class DistributedCacheTests
         public Task RemoveAsync(string key, CancellationToken token = default) => throw new InvalidOperationException("down");
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => throw new InvalidOperationException("down");
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => throw new InvalidOperationException("down");
+    }
+
+    /// <summary>Completes every call asynchronously, like a real network cache.</summary>
+    private sealed class SlowDistributedCache(IDistributedCache inner) : IDistributedCache
+    {
+        public byte[]? Get(string key) => inner.Get(key);
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => inner.Set(key, value, options);
+        public void Refresh(string key) => inner.Refresh(key);
+        public void Remove(string key) => inner.Remove(key);
+
+        public async Task<byte[]?> GetAsync(string key, CancellationToken token = default)
+        {
+            await Task.Delay(10, token).ConfigureAwait(false);
+            return inner.Get(key);
+        }
+
+        public async Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        {
+            await Task.Delay(10, token).ConfigureAwait(false);
+            inner.Set(key, value, options);
+        }
+
+        public async Task RefreshAsync(string key, CancellationToken token = default)
+        {
+            await Task.Delay(10, token).ConfigureAwait(false);
+            inner.Refresh(key);
+        }
+
+        public async Task RemoveAsync(string key, CancellationToken token = default)
+        {
+            await Task.Delay(10, token).ConfigureAwait(false);
+            inner.Remove(key);
+        }
+    }
+
+    /// <summary>Runs posted work on the thread pool so a test can't hang, and counts it.</summary>
+    private sealed class RecordingSynchronizationContext : SynchronizationContext
+    {
+        private int _posts;
+
+        public int Posts => Volatile.Read(ref _posts);
+
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+            Interlocked.Increment(ref _posts);
+            ThreadPool.QueueUserWorkItem(_ => d(state));
+        }
     }
 }

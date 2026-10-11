@@ -26,17 +26,16 @@ namespace MethodCache.SourceGenerator
     /// - Cache invalidation only occurs after successful method execution
     /// - Proper ConfigureAwait(false) usage throughout generated code
     /// 
-    /// Sync-over-Async Warnings:
-    /// - Synchronous cached methods receive warnings about potential deadlocks
-    /// - Generated code includes warnings about SynchronizationContext risks
-    /// - Consider using async methods to avoid deadlock potential
+    /// Synchronous methods:
+    /// - Hits return without blocking; a miss blocks the calling thread while the value loads
+    /// - The cache never resumes on the caller's SynchronizationContext, so blocking can't deadlock
+    /// - With Redis or SQL Server a miss also waits for the network read; prefer async methods on hot paths there
     /// 
     /// Limitations:
     /// - Only works on interface methods (not class methods)
     /// - Does not support ref/out/in parameters  
     /// - Does not support void return types for caching
     /// - Does not support non-generic Task/ValueTask returns
-    /// - Sync-over-async pattern may cause deadlocks in certain contexts
     /// </summary>
     [Generator(LanguageNames.CSharp)]
     public sealed partial class MethodCacheGenerator : IIncrementalGenerator

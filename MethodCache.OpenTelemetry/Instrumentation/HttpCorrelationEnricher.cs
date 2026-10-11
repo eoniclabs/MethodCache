@@ -175,7 +175,7 @@ internal class HttpCorrelationMiddleware
             }
         }
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
 
         if (activity != null && context.Response.HasStarted)
         {

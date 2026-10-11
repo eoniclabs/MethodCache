@@ -68,7 +68,7 @@ internal class CorrelationMiddleware
             // Ensure correlation ID is in response headers
             context.Response.Headers["X-Correlation-Id"] = correlationContext.CorrelationId;
 
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
 
             // Set response properties
             _correlationManager.SetProperty("http.status_code", context.Response.StatusCode);

@@ -1,0 +1,5 @@
+is_global = true
+
+# Library code must never resume on the caller's SynchronizationContext: synchronous [Cache] methods block on
+# the load, so a captured context deadlocks WPF, WinForms and classic ASP.NET callers.
+dotnet_diagnostic.CA2007.severity = error
