@@ -17,7 +17,7 @@ console apps, workers and ASP.NET Core. Your app brings the SDK and exporters. F
 - **Spans for misses and invalidations**:
   - Each span has the method, hit or miss, TTL, group and version. Keys and tags only when you turn them on, since they contain argument values.
   - Spans are children of the current request span and copy its `http.*` and `url.*` attributes.
-- **Hits stay allocation-free**: generated decorators answer hits from the cache's fast path, which has no span. Hits still count in `methodcache.hits_total`.
+- **Hits stay allocation-free in the metric producer**: generated decorators answer hits from the cache's fast path, which has no span. The normal method tag and custom lists of up to eight total tags use inline storage; larger custom lists can allocate. SDK processors and exporters have their own costs. Hits still count in `methodcache.hits_total`, and unused instruments skip tag construction.
 
 ## Installation
 

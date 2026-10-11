@@ -79,6 +79,9 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-Hits have no span, so they stay allocation-free, but they are counted. Cache keys and tags are left off spans unless
+Hits have no span and the metric producer allocates nothing for its normal method tag, with or without a listener.
+It skips tag construction for instruments without listeners. Custom metric tag lists with at most eight total
+tags also stay within the producer's inline storage; larger lists can allocate. SDK processors and exporters
+have their own costs. Hits are still counted. Cache keys and tags are left off spans unless
 you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
 [package README](../../src/MethodCache.OpenTelemetry/README.md) and [Security](../security.md).

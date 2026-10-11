@@ -1171,7 +1171,10 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 ```
 
-Hits have no span, so they stay allocation-free, but they are counted. Cache keys and tags are left off spans unless
+Hits have no span and the metric producer allocates nothing for its normal method tag, with or without a listener.
+It skips tag construction for instruments without listeners. Custom metric tag lists with at most eight total
+tags also stay within the producer's inline storage; larger lists can allocate. SDK processors and exporters
+have their own costs. Hits are still counted. Cache keys and tags are left off spans unless
 you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
 [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.OpenTelemetry/README.md) and [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
@@ -1969,7 +1972,7 @@ console apps, workers and ASP.NET Core. Your app brings the SDK and exporters. F
 - **Spans for misses and invalidations**:
   - Each span has the method, hit or miss, TTL, group and version. Keys and tags only when you turn them on, since they contain argument values.
   - Spans are children of the current request span and copy its `http.*` and `url.*` attributes.
-- **Hits stay allocation-free**: generated decorators answer hits from the cache's fast path, which has no span. Hits still count in `methodcache.hits_total`.
+- **Hits stay allocation-free in the metric producer**: generated decorators answer hits from the cache's fast path, which has no span. The normal method tag and custom lists of up to eight total tags use inline storage; larger custom lists can allocate. SDK processors and exporters have their own costs. Hits still count in `methodcache.hits_total`, and unused instruments skip tag construction.
 
 ## Installation
 

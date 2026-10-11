@@ -339,6 +339,8 @@ auto-recovery. MethodCache is for when you want caching to be a line of metadata
 Distributed-cache backplane callbacks stop when the cache manager is disposed. Use asynchronous service-provider
 disposal to await cleanup; a Redis connection supplied by the application remains available to its other users.
 Buffer-capable L2 reads deserialize directly from the owned entry buffer without making another full entry copy.
+The OpenTelemetry metric producer records normal hit tags without allocations and skips tag construction when
+an instrument has no listeners; SDK processors and exporters have their own costs.
 
 Supported frameworks: .NET 8, 9 and 10.
 

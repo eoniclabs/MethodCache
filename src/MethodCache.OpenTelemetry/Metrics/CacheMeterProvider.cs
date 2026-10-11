@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 using System.Threading;
@@ -40,9 +40,6 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     // Aggregate counters for O(1) hit ratio calculation
     private long _totalHits;
     private long _totalMisses;
-
-    private readonly ConcurrentDictionary<string, long> _methodHits = new();
-    private readonly ConcurrentDictionary<string, long> _methodMisses = new();
 
     public CacheMeterProvider(IOptions<OpenTelemetryOptions> options)
     {
@@ -125,11 +122,13 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     {
         if (!_options.EnableMetrics) return;
 
-        _methodHits.AddOrUpdate(methodName, 1, (_, old) => old + 1);
         Interlocked.Increment(ref _totalHits);
 
-        var tagList = CreateTagList(methodName, tags);
-        _hitsCounter.Add(1, tagList.ToArray());
+        if (_hitsCounter.Enabled)
+        {
+            var tagList = CreateTagList(methodName, tags);
+            _hitsCounter.Add(1, in tagList);
+        }
 
         UpdateHitRatioInternal();
     }
@@ -138,30 +137,32 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     {
         if (!_options.EnableMetrics) return;
 
-        _methodMisses.AddOrUpdate(methodName, 1, (_, old) => old + 1);
         Interlocked.Increment(ref _totalMisses);
 
-        var tagList = CreateTagList(methodName, tags);
-        _missesCounter.Add(1, tagList.ToArray());
+        if (_missesCounter.Enabled)
+        {
+            var tagList = CreateTagList(methodName, tags);
+            _missesCounter.Add(1, in tagList);
+        }
 
         UpdateHitRatioInternal();
     }
 
     public void RecordCacheError(string methodName, string errorType, Dictionary<string, object?>? tags = null)
     {
-        if (!_options.EnableMetrics) return;
+        if (!_options.EnableMetrics || !_errorsCounter.Enabled) return;
 
         var tagList = CreateTagList(methodName, tags);
-        tagList.Add(new KeyValuePair<string, object?>("error.type", errorType));
-        _errorsCounter.Add(1, tagList.ToArray());
+        tagList.Add("error.type", errorType);
+        _errorsCounter.Add(1, in tagList);
     }
 
     public void RecordOperationDuration(string methodName, double durationMs, Dictionary<string, object?>? tags = null)
     {
-        if (!_options.EnableMetrics) return;
+        if (!_options.EnableMetrics || !_operationDuration.Enabled) return;
 
         var tagList = CreateTagList(methodName, tags);
-        _operationDuration.Record(durationMs, tagList.ToArray());
+        _operationDuration.Record(durationMs, in tagList);
     }
 
     public void RecordKeyGenerationDuration(string methodName, double durationMs)
@@ -233,9 +234,9 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
         _currentHitRatio = total > 0 ? (double)totalHits / total : 0;
     }
 
-    private List<KeyValuePair<string, object?>> CreateTagList(string methodName, Dictionary<string, object?>? additionalTags)
+    private static TagList CreateTagList(string methodName, Dictionary<string, object?>? additionalTags)
     {
-        var tags = new List<KeyValuePair<string, object?>>
+        var tags = new TagList
         {
             new("method", methodName)
         };
@@ -244,7 +245,7 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
         {
             foreach (var tag in additionalTags)
             {
-                tags.Add(new KeyValuePair<string, object?>(tag.Key, tag.Value));
+                tags.Add(tag);
             }
         }
 
