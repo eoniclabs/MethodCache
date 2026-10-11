@@ -1,16 +1,16 @@
 # Repository Guidelines
 
 ## Project Structure & Modules
-- `MethodCache.Core`: Core APIs, attributes, in-memory cache.
-- `MethodCache.SourceGenerator`: Roslyn source generator for decorators.
-- `MethodCache.Analyzers`: Compile-time checks and diagnostics.
+- `MethodCache.Core`: Core APIs, attributes, in-memory cache. Packs as the `MethodCache` package, which also carries the generator and analyzers.
+- `MethodCache.SourceGenerator`: Roslyn source generator for decorators (shipped inside `MethodCache`).
+- `MethodCache.Analyzers`: Compile-time checks and diagnostics (shipped inside `MethodCache`).
 - `MethodCache.Providers.Redis`: Redis L2 provider (+ compression, tags, locks).
 - `MethodCache.Providers.SqlServer`: SqlServer L2 provider.
 - `MethodCache.HttpCaching`: HTTP caching support.
-- `MethodCache.Infrastructure`: Common infrastructure for providers.
 - `MethodCache.Benchmarks`: Performance benchmarks.
 - `MethodCache.Core.Tests`, `MethodCache.SourceGenerator.Tests`, `MethodCache.Analyzers.Tests`, other `*.Tests`: xUnit unit tests; `*.IntegrationTests`: Docker-backed integration tests.
 - `samples/MethodCache.Demo` (a guided console tour) and `samples/MethodCache.WebDemo` (ASP.NET Core): runnable examples. CI runs the console tour.
+- `Tests/MethodCache.PackageSmokeTest`: installs the packed `MethodCache` package from `artifacts/packages` and checks the generator runs (`dotnet pack MethodCache.Core -c Release -o artifacts/packages` first).
 
 ## Build, Test, Run
 - Restore: `dotnet restore`

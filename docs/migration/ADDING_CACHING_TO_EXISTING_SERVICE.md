@@ -5,8 +5,7 @@ This guide walks you through adding MethodCache to an existing service with mini
 ## Prerequisites
 
 ```bash
-dotnet add package MethodCache.Core
-dotnet add package MethodCache.SourceGenerator
+dotnet add package MethodCache
 ```
 
 ## Quick Start: 3-Step Process
@@ -489,10 +488,9 @@ Task UpdateProductAsync(int productId, ProductUpdateDto dto);
 
 ## Next Steps
 
-1. **Add Analyzers**: `dotnet add package MethodCache.Analyzers` for compile-time validation
-2. **Enable Distributed Cache**: Add `MethodCache.Providers.Redis` for multi-instance apps
-3. **Monitor Performance**: Implement `ICacheMetricsProvider` for observability
-4. **Optimize**: Keep the default `FastHashKeyGenerator`; it is the fastest key generator
+1. **Enable Distributed Cache**: Add `MethodCache.Providers.Redis` for multi-instance apps
+2. **Monitor Performance**: Implement `ICacheMetricsProvider` for observability
+3. **Optimize**: Keep the default `FastHashKeyGenerator`; it is the fastest key generator
 
 ## Resources
 

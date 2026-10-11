@@ -80,3 +80,32 @@ jobs:
 
       - name: Run the AOT executable
         run: ./aot-smoke/MethodCache.AotSmokeTest
+
+  package-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Pack the MethodCache package
+        run: dotnet pack MethodCache.Core --configuration Release --output ./artifacts/packages
+
+      - name: Check the generator and analyzers are in the package
+        run: |
+          contents=$(unzip -l ./artifacts/packages/MethodCache.*.nupkg)
+          for dll in analyzers/dotnet/cs/MethodCache.SourceGenerator.dll analyzers/dotnet/cs/MethodCache.Analyzers.dll; do
+            echo "$contents" | grep -q "$dll" || { echo "Missing $dll"; exit 1; }
+          done
+
+      - name: Install the package and run the Quick Start
+        run: dotnet run --project Tests/MethodCache.PackageSmokeTest --configuration Release

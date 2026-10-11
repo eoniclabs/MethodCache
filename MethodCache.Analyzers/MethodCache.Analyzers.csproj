@@ -9,7 +9,8 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
-    <IsPackable>true</IsPackable>
+    <!-- Shipped inside the MethodCache package, not on its own -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   

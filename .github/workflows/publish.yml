@@ -51,11 +51,8 @@ jobs:
       - name: Pack
         run: |
           projects=(
-            "MethodCache/MethodCache.csproj"
+            # Package id MethodCache: the runtime plus the source generator and analyzers
             "MethodCache.Core/MethodCache.Core.csproj"
-            "MethodCache.Abstractions/MethodCache.Abstractions.csproj"
-            "MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj"
-            "MethodCache.Analyzers/MethodCache.Analyzers.csproj"
             "MethodCache.Providers.Redis/MethodCache.Providers.Redis.csproj"
             "MethodCache.Providers.SqlServer/MethodCache.Providers.SqlServer.csproj"
             "MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj"
