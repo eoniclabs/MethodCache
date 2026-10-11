@@ -40,7 +40,7 @@ matter); an unknown name is reported as [MCG009](../user-guide/DIAGNOSTICS.md#mc
 closest parameter.
 
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
-share one tag. Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
+share one tag; it is reported as [MCG015](../user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](../getting-started.md).
 
 ## From code
