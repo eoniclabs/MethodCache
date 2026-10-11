@@ -20,14 +20,16 @@ namespace MethodCache.SourceGenerator
         {
             internal static string Emit(List<InterfaceInfo> interfaces, ImmutableArray<INamedTypeSymbol?> classes)
             {
-                var candidates = classes
-                    .Where(c => c != null && IsAccessibleFromAssembly(c))
+                var allClasses = classes
+                    .Where(c => c != null)
                     .Cast<INamedTypeSymbol>()
                     .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
                     .ToList();
+                var candidates = allClasses.Where(IsAccessibleFromAssembly).ToList();
 
                 // A generic interface is registered once per closed type the assembly implements, such as
-                // IRepository<User> for UserRepository : IRepository<User>
+                // IRepository<User> for UserRepository : IRepository<User>. Private classes count too, since the
+                // application can still register them through a factory
                 var registrable = new List<(InterfaceInfo Info, INamedTypeSymbol Service)>();
                 foreach (var info in interfaces)
                 {
@@ -37,7 +39,7 @@ namespace MethodCache.SourceGenerator
                         continue;
                     }
 
-                    var closedTypes = candidates
+                    var closedTypes = allClasses
                         .SelectMany(c => c.AllInterfaces)
                         .Where(i => SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, info.Symbol.OriginalDefinition)
                                     && i.TypeArguments.All(t => IsNameableFrom(t, info.Symbol.ContainingAssembly)))

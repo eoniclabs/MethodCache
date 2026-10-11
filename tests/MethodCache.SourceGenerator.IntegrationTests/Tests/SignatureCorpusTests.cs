@@ -122,7 +122,7 @@ public class SignatureCorpusTests
     /// One app in the corpus. <see cref="Declarations"/> holds the cached interface and its implementation
     /// <c>Svc</c>, which must count calls in a static <c>Calls</c> field via <c>Svc.Hit()</c>.
     /// </summary>
-    private sealed record Shape(string Declarations, string Service, string A, string B, string Usings = "")
+    private sealed record Shape(string Declarations, string Service, string A, string B, string Usings = "", string Registrations = "")
     {
         public string ToSource() => $$"""
             using System;
@@ -148,6 +148,7 @@ public class SignatureCorpusTests
                     public static async Task<int[]> RunAsync()
                     {
                         var services = new ServiceCollection();
+                        {{Registrations}}
                         services.AddMethodCache();
                         await using var provider = services.BuildServiceProvider();
                         var s = provider.GetRequiredService<{{Service}}>();
@@ -351,6 +352,24 @@ public class SignatureCorpusTests
                     public Task<string?> Get(int id) => Task.FromResult<string?>("n" + id);
                 }
             """, "IRepo<int>", "await s.Get(1)", "await s.Get(2)"),
+
+        ["generic interface implemented by a private class registered through a factory"] = new("""
+                public interface IRepo<T>
+                {
+                    [Cache] Task<T?> Get(int id);
+                }
+
+                public static class Repos
+                {
+                    public static IRepo<string> Create() => new Svc();
+
+                    private sealed class Svc : IRepo<string>
+                    {
+                        public Task<string?> Get(int id) { Counter.Hit(); return Task.FromResult<string?>("v" + id); }
+                    }
+                }
+            """, "IRepo<string>", "await s.Get(1)", "await s.Get(2)",
+            Registrations: "services.AddSingleton<IRepo<string>>(_ => Repos.Create());"),
 
         // Interface shapes
         ["internal interface"] = new("""
