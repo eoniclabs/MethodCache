@@ -98,7 +98,7 @@ internal static class MethodIds
     };
 
     /// <summary>
-    /// A parameter type as the generator writes it: C# keywords for built-in types, otherwise the simple name with
+    /// A parameter type as the generator writes it: C# keywords for built-in types, otherwise the qualified name with
     /// its type arguments, <c>?</c> for nullable value types and <c>[]</c> for arrays.
     /// </summary>
     private static void AppendParameterType(StringBuilder builder, Type type)
@@ -128,16 +128,38 @@ internal static class MethodIds
             return;
         }
 
+        if (type.IsGenericParameter)
+        {
+            builder.Append(type.Name);
+            return;
+        }
+
+        var arguments = type.IsGenericType ? type.GetGenericArguments() : Type.EmptyTypes;
+        var inherited = type.DeclaringType?.GetGenericArguments().Length ?? 0;
+        if (type.DeclaringType is { } declaringType)
+        {
+            if (inherited > 0)
+            {
+                declaringType = declaringType.GetGenericTypeDefinition().MakeGenericType(arguments.Take(inherited).ToArray());
+            }
+
+            AppendParameterType(builder, declaringType);
+            builder.Append('.');
+        }
+        else if (!type.IsGenericParameter && !string.IsNullOrEmpty(type.Namespace))
+        {
+            builder.Append(type.Namespace).Append('.');
+        }
+
         var name = type.Name;
         var tick = name.IndexOf('`');
         builder.Append(tick >= 0 ? name.Substring(0, tick) : name);
-        if (type.IsGenericType && !type.IsGenericParameter)
+        if (arguments.Length > inherited)
         {
-            var arguments = type.GetGenericArguments();
             builder.Append('<');
-            for (var i = 0; i < arguments.Length; i++)
+            for (var i = inherited; i < arguments.Length; i++)
             {
-                if (i > 0)
+                if (i > inherited)
                 {
                     builder.Append(", ");
                 }

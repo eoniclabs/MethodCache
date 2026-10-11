@@ -158,3 +158,6 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 
 `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to [manual caching](manual-caching.md); configuring them for a
 cached method throws `InvalidOperationException` at startup.
+
+For overloaded methods, non-built-in parameter types are qualified by namespace, for example
+`MyApp.IUsers.Find(MyApp.Request)`. This is also the format used by expression-based and runtime configuration.

@@ -272,6 +272,20 @@ public class SignatureCorpusTests
             """, "ISvc", "await s.GetAll()", "await s.GetOther()"),
 
         // Overloads and generics
+        ["overloads with equal type names in different namespaces"] = new("""
+                namespace A { public sealed record Request(int Id); }
+                namespace B { public sealed record Request(int Id); }
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(A.Request request);
+                    [Cache] Task<string> Get(B.Request request);
+                }
+                public class Svc : ISvc
+                {
+                    public Task<string> Get(A.Request request) { Counter.Hit(); return Task.FromResult("A"); }
+                    public Task<string> Get(B.Request request) { Counter.Hit(); return Task.FromResult("B"); }
+                }
+            """, "ISvc", "await s.Get(new A.Request(1))", "await s.Get(new B.Request(1))"),
         ["overloads"] = new("""
                 public interface ISvc
                 {

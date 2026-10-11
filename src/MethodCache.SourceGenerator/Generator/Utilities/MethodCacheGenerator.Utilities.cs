@@ -18,10 +18,10 @@ namespace MethodCache.SourceGenerator
                 memberOptions: SymbolDisplayMemberOptions.IncludeParameters | SymbolDisplayMemberOptions.IncludeContainingType,
                 parameterOptions: SymbolDisplayParameterOptions.IncludeType,
                 globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included);
-        
+
             internal static string GetFullyQualifiedName(ITypeSymbol type)
                 => type.ToDisplayString(FullyQualifiedFormat);
-        
+
             /// <summary>
             /// The namespace of an interface's decorator: the interface's own, or MethodCache.Generated for an
             /// interface in the global namespace, such as one declared next to top-level statements.
@@ -130,7 +130,12 @@ namespace MethodCache.SourceGenerator
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
 
-            /// <summary>A parameter type as MethodIds writes it: C# keywords, simple names, T?, T[].</summary>
+            private static readonly SymbolDisplayFormat ParameterTypeIdFormat = new(
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+            /// <summary>A parameter type as MethodIds writes it: C# keywords, qualified names, T?, T[].</summary>
             private static string ParameterTypeName(ITypeSymbol type)
             {
                 switch (type)
@@ -165,15 +170,13 @@ namespace MethodCache.SourceGenerator
                     return keyword;
                 }
 
-                return type is INamedTypeSymbol { IsGenericType: true } generic
-                    ? type.Name + "<" + string.Join(", ", generic.TypeArguments.Select(ParameterTypeName)) + ">"
-                    : type.Name;
+                return type.ToDisplayString(ParameterTypeIdFormat);
             }
-        
+
             internal static bool IsCancellationToken(ITypeSymbol type)
                 => type.Name == nameof(CancellationToken) &&
                    type.ContainingNamespace?.ToDisplayString() == "System.Threading";
-        
+
             internal static bool IsTask(ITypeSymbol type, out ITypeSymbol? innerType)
             {
                 if (type is INamedTypeSymbol namedType)
@@ -195,7 +198,7 @@ namespace MethodCache.SourceGenerator
                 innerType = null;
                 return false;
             }
-        
+
             internal static bool IsValueTask(ITypeSymbol type, out ITypeSymbol? innerType)
             {
                 if (type is INamedTypeSymbol namedType)
@@ -217,7 +220,7 @@ namespace MethodCache.SourceGenerator
                 innerType = null;
                 return false;
             }
-        
+
             // Fully qualified so generated code never depends on the user's usings, and with nullable annotations
             // so the decorator's signatures match the interface it implements exactly (no CS8613/CS8614 warnings)
             private static readonly SymbolDisplayFormat SignatureFormat = SymbolDisplayFormat.FullyQualifiedFormat

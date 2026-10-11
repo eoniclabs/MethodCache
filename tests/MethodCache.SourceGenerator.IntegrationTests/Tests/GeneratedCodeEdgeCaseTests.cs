@@ -446,7 +446,7 @@ public interface IOrders {
         AssertCompiles(r);
         var policies = r.Sources["GeneratedPolicyRegistrations.g.cs"];
         Assert.Contains("\"App.IOrders.Find(int)\"", policies);
-        Assert.Contains("\"App.IOrders.Find(string, CancellationToken)\"", policies);
-        Assert.Contains("\"App.IOrders.Find(int?, string[], List<Guid>, T)\"", policies);
+        Assert.Contains("\"App.IOrders.Find(string, System.Threading.CancellationToken)\"", policies);
+        Assert.Contains("\"App.IOrders.Find(int?, string[], System.Collections.Generic.List<System.Guid>, T)\"", policies);
     }
 }

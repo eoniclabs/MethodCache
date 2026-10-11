@@ -92,3 +92,7 @@ await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.Ge
   [Expiration](expiration.md#versions).
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](monitoring.md)).
+
+Overloaded methods use namespace-qualified parameter types in their method ids and key prefixes.
+For example, overloads accepting `A.Request` and `B.Request` have separate cache entries even when their
+argument members have the same values. Configuration and runtime policy updates use those same qualified ids.
