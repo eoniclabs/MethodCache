@@ -1,42 +1,43 @@
 using MethodCache.HttpCaching.Configuration;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.HttpCaching.Metrics;
-using MethodCache.HttpCaching.Options;
 using MethodCache.HttpCaching.Storage;
 using MethodCache.HttpCaching.Validation;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace MethodCache.HttpCaching.Extensions;
 
 public static class HttpClientBuilderExtensions
 {
+    /// <summary>
+    /// Adds HTTP caching (ETag/Last-Modified revalidation, Cache-Control, Vary) to this HttpClient.
+    /// Options set in <paramref name="configure"/> apply to this client only.
+    /// </summary>
     public static IHttpClientBuilder AddHttpCaching(
         this IHttpClientBuilder builder,
         Action<HttpCachingBuilder>? configure = null)
     {
-        builder.Services.TryAddSingleton<IMemoryCache>(sp =>
-        {
-            var storageOptions = sp.GetRequiredService<IOptions<HttpCacheStorageOptions>>().Value;
-            var memoryOptions = new MemoryCacheOptions();
+        var services = builder.Services;
+        var name = builder.Name ?? Microsoft.Extensions.Options.Options.DefaultName;
 
-            if (storageOptions.MaxCacheSize > 0)
-            {
-                memoryOptions.SizeLimit = storageOptions.MaxCacheSize;
-            }
+        services.TryAddSingleton<IHttpCacheMetrics, HttpCacheMetrics>();
+        services.TryAddSingleton<VaryHeaderCacheKeyGenerator>();
+        services.TryAddKeyedSingleton(name, (_, _) => new HttpCacheClientState(name));
 
-            return new MemoryCache(memoryOptions);
-        });
-        builder.Services.TryAddSingleton<IHttpCacheMetrics, HttpCacheMetrics>();
-        builder.Services.TryAddSingleton<VaryHeaderCacheKeyGenerator>();
-
-        var cachingBuilder = new HttpCachingBuilder(builder.Services);
+        var cachingBuilder = new HttpCachingBuilder(services, name);
         configure?.Invoke(cachingBuilder);
         cachingBuilder.Apply();
 
-        builder.Services.AddTransient<HttpCacheHandler>();
-        builder.AddHttpMessageHandler<HttpCacheHandler>();
+        builder.AddHttpMessageHandler(sp => new HttpCacheHandler(
+            sp.GetRequiredKeyedService<HttpCacheClientState>(name),
+            sp.GetRequiredService<IHttpCacheStorage>(),
+            sp.GetRequiredService<IOptionsMonitor<HttpCacheOptions>>(),
+            sp.GetRequiredService<VaryHeaderCacheKeyGenerator>(),
+            sp.GetService<TimeProvider>() ?? TimeProvider.System,
+            sp.GetRequiredService<ILogger<HttpCacheHandler>>(),
+            sp.GetService<IHttpCacheMetrics>()));
 
         return builder;
     }

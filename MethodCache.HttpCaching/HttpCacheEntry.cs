@@ -6,7 +6,7 @@ namespace MethodCache.HttpCaching;
 /// <summary>
 /// Represents a cached HTTP response with metadata for validation and freshness calculation.
 /// </summary>
-public class HttpCacheEntry
+public sealed record HttpCacheEntry
 {
     /// <summary>
     /// The URI of the request that generated this cache entry.
@@ -66,7 +66,13 @@ public class HttpCacheEntry
     /// <summary>
     /// When this entry was stored in the cache.
     /// </summary>
-    public DateTimeOffset StoredAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset StoredAt { get; init; }
+
+    /// <summary>
+    /// How old the response already was when it was stored: the larger of its <c>Age</c> header and the time
+    /// since its <c>Date</c> (RFC 9111 section 4.2.3).
+    /// </summary>
+    public TimeSpan InitialAge { get; init; }
 
     /// <summary>
     /// The Vary headers that affect caching for this response.
@@ -74,11 +80,17 @@ public class HttpCacheEntry
     public string[]? VaryHeaders { get; init; }
 
     /// <summary>
+    /// For a response with <c>Vary</c>: the storage keys of the variants cached for this URL, oldest first.
+    /// </summary>
+    public string[]? VariantKeys { get; init; }
+
+    /// <summary>
     /// Creates a cache entry from an HTTP response message.
     /// </summary>
-    public static async Task<HttpCacheEntry> FromResponseAsync(
+    internal static async Task<HttpCacheEntry> FromResponseAsync(
         HttpRequestMessage request,
-        HttpResponseMessage response)
+        HttpResponseMessage response,
+        DateTimeOffset now)
     {
         // Read content first
         var content = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
@@ -108,7 +120,8 @@ public class HttpCacheEntry
             CacheControl = response.Headers.CacheControl,
             Expires = response.Content.Headers.Expires,
             Date = response.Headers.Date,
-            StoredAt = DateTimeOffset.UtcNow,
+            StoredAt = now,
+            InitialAge = CalculateInitialAge(response, now),
             VaryHeaders = response.Headers.Vary?.ToArray()
         };
     }
@@ -116,11 +129,12 @@ public class HttpCacheEntry
     /// <summary>
     /// Converts this cache entry back to an HTTP response message.
     /// </summary>
-    public HttpResponseMessage ToHttpResponse()
+    internal HttpResponseMessage ToHttpResponse(HttpRequestMessage? request = null)
     {
         var response = new HttpResponseMessage(StatusCode)
         {
-            Content = new ByteArrayContent(Content)
+            Content = new ByteArrayContent(Content),
+            RequestMessage = request
         };
 
         // Restore response headers
@@ -141,7 +155,7 @@ public class HttpCacheEntry
     /// <summary>
     /// Updates this entry with new headers from a 304 Not Modified response.
     /// </summary>
-    public HttpCacheEntry WithUpdatedHeaders(HttpResponseMessage notModifiedResponse)
+    internal HttpCacheEntry WithUpdatedHeaders(HttpResponseMessage notModifiedResponse, DateTimeOffset now)
     {
         var mergedHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
 
@@ -156,37 +170,33 @@ public class HttpCacheEntry
             mergedHeaders[header.Key] = header.Value;
         }
 
-        return new HttpCacheEntry
+        return this with
         {
-            RequestUri = RequestUri,
-            Method = Method,
-            StatusCode = HttpStatusCode.OK, // Return 200 to client, not 304
-            Content = Content,
             Headers = mergedHeaders,
-            ContentHeaders = ContentHeaders, // Keep original content headers
             ETag = notModifiedResponse.Headers.ETag?.Tag ?? ETag,
             LastModified = notModifiedResponse.Content?.Headers.LastModified ?? LastModified,
             CacheControl = notModifiedResponse.Headers.CacheControl ?? CacheControl,
             Expires = notModifiedResponse.Content?.Headers.Expires ?? Expires,
             Date = notModifiedResponse.Headers.Date ?? Date,
-            StoredAt = DateTimeOffset.UtcNow, // Reset storage time
+            StoredAt = now,
+            InitialAge = CalculateInitialAge(notModifiedResponse, now),
             VaryHeaders = notModifiedResponse.Headers.Vary?.ToArray() ?? VaryHeaders
         };
-    }
-    /// <summary>
-    /// Calculates the age of this cache entry.
-    /// </summary>
-    public TimeSpan GetAge()
-    {
-        return DateTimeOffset.UtcNow - StoredAt;
     }
 
     /// <summary>
     /// Determines if this cache entry can be validated with conditional requests.
     /// </summary>
-    public bool CanValidate()
+    internal bool CanValidate()
     {
         return !string.IsNullOrEmpty(ETag) || LastModified.HasValue;
+    }
+
+    private static TimeSpan CalculateInitialAge(HttpResponseMessage response, DateTimeOffset now)
+    {
+        var apparentAge = response.Headers.Date is { } date && now > date ? now - date : TimeSpan.Zero;
+        var ageValue = response.Headers.Age ?? TimeSpan.Zero;
+        return apparentAge > ageValue ? apparentAge : ageValue;
     }
 
     private static Dictionary<string, string[]> SerializeHeaders(HttpHeaders headers)

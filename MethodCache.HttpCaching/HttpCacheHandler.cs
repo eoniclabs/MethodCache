@@ -1,9 +1,8 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Net;
 using System.Text;
-using System.Threading;
 using MethodCache.HttpCaching.Metrics;
 using MethodCache.HttpCaching.Options;
 using MethodCache.HttpCaching.Storage;
@@ -16,38 +15,40 @@ namespace MethodCache.HttpCaching;
 /// <summary>
 /// HTTP message handler that implements standards-compliant HTTP caching according to RFC 9111.
 /// </summary>
-public class HttpCacheHandler : DelegatingHandler
+internal sealed class HttpCacheHandler : DelegatingHandler
 {
-    // Instance-level variant tracking prevents memory leaks across handler instances
-    // Each handler instance manages its own variant limits independently
-    private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _variantIndex = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, byte> _revalidationsInFlight = new(StringComparer.Ordinal);
+    private const string UncacheableVaryKeyPrefix = "UNCACHEABLE";
 
+    private readonly HttpCacheClientState _state;
     private readonly IHttpCacheStorage _storage;
     private readonly IOptionsMonitor<HttpCacheOptions> _optionsMonitor;
     private readonly VaryHeaderCacheKeyGenerator _varyKeyGenerator;
+    private readonly TimeProvider _timeProvider;
     private readonly IHttpCacheMetrics? _metrics;
     private readonly ILogger<HttpCacheHandler> _logger;
 
     public HttpCacheHandler(
+        HttpCacheClientState state,
         IHttpCacheStorage storage,
         IOptionsMonitor<HttpCacheOptions> optionsMonitor,
         VaryHeaderCacheKeyGenerator varyKeyGenerator,
+        TimeProvider timeProvider,
         ILogger<HttpCacheHandler> logger,
         IHttpCacheMetrics? metrics = null)
     {
+        _state = state;
         _storage = storage;
         _optionsMonitor = optionsMonitor;
         _varyKeyGenerator = varyKeyGenerator;
+        _timeProvider = timeProvider;
         _logger = logger;
         _metrics = metrics;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var options = _optionsMonitor.CurrentValue;
+        var options = _optionsMonitor.Get(_state.Name);
         var behavior = options.Behavior;
-        var freshnessOptions = options.Freshness;
         var variation = options.Variation;
         var diagnostics = options.Diagnostics;
         var metricsEnabled = options.Metrics.EnableMetrics && _metrics != null;
@@ -59,17 +60,23 @@ public class HttpCacheHandler : DelegatingHandler
         if (!IsMethodCacheable(request.Method, options) || ShouldBypassCache(behavior, requestDirectives))
         {
             var bypassResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            if (IsUnsafeMethod(request.Method) && (int)bypassResponse.StatusCode is >= 200 and < 400)
+            {
+                await InvalidateAfterUnsafeRequestAsync(request, bypassResponse, options, cancellationToken).ConfigureAwait(false);
+            }
+
             RecordBypassMetrics(request, bypassResponse, stopwatch, metricsEnabled);
             return bypassResponse;
         }
 
         var negotiationHandler = new ContentNegotiationHandler(variation);
         var acceptedContent = negotiationHandler.ParseAcceptHeader(request);
-        var freshnessCalculator = new FreshnessCalculator(behavior, freshnessOptions);
+        var freshnessCalculator = new FreshnessCalculator(behavior, options.Freshness, _timeProvider);
         var advancedDirectives = new AdvancedCacheDirectives(behavior);
 
-        var cacheKey = GenerateCacheKey(request, options, acceptedContent);
-        var cachedEntry = await GetCacheEntryAsync(request, cacheKey, behavior, variation, negotiationHandler, acceptedContent, cancellationToken).ConfigureAwait(false);
+        var cacheKey = GenerateCacheKey(request, options);
+        var cachedEntry = await GetCacheEntryAsync(request, cacheKey, behavior, negotiationHandler, acceptedContent, cancellationToken).ConfigureAwait(false);
 
         if (cachedEntry == null && requestDirectives.RequiresCacheOnly(behavior))
         {
@@ -98,17 +105,17 @@ public class HttpCacheHandler : DelegatingHandler
                 requestDirectives.IsSatisfiedBy(cachedEntry, currentAge, freshnessLifetime.Value, behavior) &&
                 freshnessCalculator.IsFresh(cachedEntry))
             {
-                var hit = CreateCacheHitResponse(cachedEntry, "HIT", options, freshnessLifetime);
+                var hit = CreateCacheHitResponse(request, cachedEntry, "HIT", options, freshnessCalculator);
                 RecordHitMetrics(request, hit, stopwatch, metricsEnabled);
                 return hit;
             }
 
             if (freshnessLifetime.HasValue && currentAge > freshnessLifetime.Value && freshnessCalculator.CanUseStaleWhileRevalidate(cachedEntry))
             {
-                var stale = CreateCacheHitResponse(cachedEntry, "STALE", options, freshnessLifetime);
+                var stale = CreateCacheHitResponse(request, cachedEntry, "STALE", options, freshnessCalculator);
                 RecordStaleMetrics(request, stale, stopwatch, metricsEnabled);
 
-                if (_revalidationsInFlight.TryAdd(cacheKey, 0))
+                if (_state.RevalidationsInFlight.TryAdd(cacheKey, 0))
                 {
                     _ = QueueRevalidationAsync(request, cachedEntry, cacheKey, options);
                 }
@@ -131,7 +138,7 @@ public class HttpCacheHandler : DelegatingHandler
         catch (Exception ex) when (cachedEntry != null && freshnessCalculator.CanUseStaleIfError(cachedEntry))
         {
             _logger.LogWarning(ex, "Request failed, serving stale content for {Uri}", request.RequestUri);
-            var staleError = CreateCacheHitResponse(cachedEntry, "STALE-IF-ERROR", options, freshnessCalculator.GetFreshnessLifetime(cachedEntry));
+            var staleError = CreateCacheHitResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshnessCalculator);
             RecordStaleMetrics(request, staleError, stopwatch, metricsEnabled);
             return staleError;
         }
@@ -141,21 +148,21 @@ public class HttpCacheHandler : DelegatingHandler
         if (upstreamResponse.StatusCode == HttpStatusCode.NotModified && cachedEntry != null)
         {
             _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", request.RequestUri);
-            var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse);
-            await StoreCacheEntryAsync(request, cacheKey, updatedEntry, options, variation, cancellationToken).ConfigureAwait(false);
+            var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow());
+            await StoreCacheEntryAsync(request, cacheKey, updatedEntry, options, freshnessCalculator, cancellationToken).ConfigureAwait(false);
 
             upstreamResponse.Dispose();
-            var revalidated = CreateCacheHitResponse(updatedEntry, "REVALIDATED", options, freshnessCalculator.GetFreshnessLifetime(updatedEntry));
+            var revalidated = CreateCacheHitResponse(request, updatedEntry, "REVALIDATED", options, freshnessCalculator);
             RecordValidationMetrics(request, revalidated, stopwatch, metricsEnabled);
             return revalidated;
         }
 
-        if (ShouldCacheResponse(request, upstreamResponse, options, advancedDirectives, responseDirectives, requestDirectives))
+        if (ShouldCacheResponse(upstreamResponse, options, advancedDirectives, responseDirectives, requestDirectives))
         {
             try
             {
-                var cacheEntry = await HttpCacheEntry.FromResponseAsync(request, upstreamResponse).ConfigureAwait(false);
-                await StoreCacheEntryAsync(request, cacheKey, cacheEntry, options, variation, cancellationToken).ConfigureAwait(false);
+                var cacheEntry = await HttpCacheEntry.FromResponseAsync(request, upstreamResponse, _timeProvider.GetUtcNow()).ConfigureAwait(false);
+                await StoreCacheEntryAsync(request, cacheKey, cacheEntry, options, freshnessCalculator, cancellationToken).ConfigureAwait(false);
                 _logger.LogDebug("Cached response for {Uri}, size: {Size} bytes", request.RequestUri, cacheEntry.Content.Length);
             }
             catch (Exception ex)
@@ -173,8 +180,12 @@ public class HttpCacheHandler : DelegatingHandler
         return upstreamResponse;
     }
 
-    private bool IsMethodCacheable(HttpMethod method, HttpCacheOptions options)
+    private static bool IsMethodCacheable(HttpMethod method, HttpCacheOptions options)
         => options.CacheableMethods.Contains(method);
+
+    // RFC 9110 section 9.2.1: GET, HEAD, OPTIONS and TRACE are safe; everything else may change the resource.
+    private static bool IsUnsafeMethod(HttpMethod method)
+        => method != HttpMethod.Get && method != HttpMethod.Head && method != HttpMethod.Options && method != HttpMethod.Trace;
 
     private static bool ShouldBypassCache(CacheBehaviorOptions behavior, RequestCacheDirectives directives)
     {
@@ -191,51 +202,119 @@ public class HttpCacheHandler : DelegatingHandler
         return false;
     }
 
-    private string GenerateCacheKey(HttpRequestMessage request, HttpCacheOptions options, ContentNegotiationHandler.AcceptedContent acceptedContent)
+    /// <summary>
+    /// RFC 9111 section 4.4: a successful unsafe request invalidates the cached responses for its target URI and for
+    /// same-origin <c>Location</c> and <c>Content-Location</c> URIs.
+    /// </summary>
+    private async ValueTask InvalidateAfterUnsafeRequestAsync(HttpRequestMessage request, HttpResponseMessage response, HttpCacheOptions options, CancellationToken cancellationToken)
+    {
+        if (request.RequestUri is not { IsAbsoluteUri: true } target)
+        {
+            return;
+        }
+
+        var uris = new List<Uri>(3) { target };
+        AddSameOrigin(uris, target, response.Headers.Location);
+        AddSameOrigin(uris, target, response.Content?.Headers.ContentLocation);
+
+        foreach (var uri in uris)
+        {
+            foreach (var method in options.CacheableMethods)
+            {
+                using var probe = new HttpRequestMessage(method, uri);
+                foreach (var header in request.Headers)
+                {
+                    probe.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+
+                var key = GenerateCacheKey(probe, options);
+                await RemoveWithVariantsAsync(key, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        _logger.LogDebug("Invalidated cached responses for {Uri} after {Method}", target, request.Method);
+    }
+
+    private static void AddSameOrigin(List<Uri> uris, Uri target, Uri? candidate)
+    {
+        if (candidate == null)
+        {
+            return;
+        }
+
+        var absolute = candidate.IsAbsoluteUri ? candidate : new Uri(target, candidate);
+        if (Uri.Compare(absolute, target, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0 &&
+            !uris.Contains(absolute))
+        {
+            uris.Add(absolute);
+        }
+    }
+
+    private async ValueTask RemoveWithVariantsAsync(string baseKey, CancellationToken cancellationToken)
+    {
+        var existing = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
+        if (existing == null)
+        {
+            return;
+        }
+
+        await RemoveKeysAsync(existing.VariantKeys, cancellationToken).ConfigureAwait(false);
+        await _storage.RemoveAsync(baseKey, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask RemoveKeysAsync(IEnumerable<string>? keys, CancellationToken cancellationToken)
+    {
+        if (keys == null)
+        {
+            return;
+        }
+
+        foreach (var key in keys)
+        {
+            await _storage.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private string GenerateCacheKey(HttpRequestMessage request, HttpCacheOptions options)
     {
         if (options.CacheKeyGenerator is { } custom)
         {
-            return custom(request);
+            return _state.Name + ":" + custom(request);
         }
 
-        // Use hashing for compact, deterministic keys (similar to MessagePackKeyGenerator)
-        using var sha256 = SHA256.Create();
+        using var sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 
-        // Hash method
-        var methodBytes = Encoding.UTF8.GetBytes(request.Method.Method);
-        sha256.TransformBlock(methodBytes, 0, methodBytes.Length, null, 0);
+        sha256.AppendData(Encoding.UTF8.GetBytes(request.Method.Method));
+        sha256.AppendData(Encoding.UTF8.GetBytes(request.RequestUri?.ToString() ?? string.Empty));
 
-        // Hash URI
-        var uriBytes = Encoding.UTF8.GetBytes(request.RequestUri?.ToString() ?? string.Empty);
-        sha256.TransformBlock(uriBytes, 0, uriBytes.Length, null, 0);
-
-        // Hash additional vary headers in sorted order
         foreach (var header in options.Variation.AdditionalVaryHeaders.OrderBy(h => h, StringComparer.OrdinalIgnoreCase))
         {
-            var headerNameBytes = Encoding.UTF8.GetBytes(NormalizeHeaderName(header));
-            sha256.TransformBlock(headerNameBytes, 0, headerNameBytes.Length, null, 0);
-
-            var headerValue = GetHeaderValue(request, header);
-            var headerValueBytes = Encoding.UTF8.GetBytes(headerValue);
-            sha256.TransformBlock(headerValueBytes, 0, headerValueBytes.Length, null, 0);
+            sha256.AppendData(Encoding.UTF8.GetBytes(NormalizeHeaderName(header)));
+            sha256.AppendData(Encoding.UTF8.GetBytes(GetHeaderValue(request, header)));
         }
 
-        // Hash authorization if private cache
+        // A private cache keeps each caller's responses apart
         if (!options.Behavior.IsSharedCache && request.Headers.Authorization is { } auth)
         {
-            var authBytes = Encoding.UTF8.GetBytes(auth.ToString());
-            sha256.TransformBlock(authBytes, 0, authBytes.Length, null, 0);
+            sha256.AppendData(Encoding.UTF8.GetBytes(auth.ToString()));
         }
 
-        sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-        return Convert.ToBase64String(sha256.Hash!);
+        return _state.Name + ":" + Convert.ToBase64String(sha256.GetHashAndReset());
+    }
+
+    /// <summary>
+    /// The variant key starts with the base key, so a variant can only be found through its own URL, method and caller.
+    /// </summary>
+    private string? GenerateVariantKey(HttpRequestMessage request, string baseKey, string[] varyHeaders)
+    {
+        var varyKey = _varyKeyGenerator.GenerateKey(request, varyHeaders);
+        return varyKey.StartsWith(UncacheableVaryKeyPrefix, StringComparison.Ordinal) ? null : baseKey + "|" + varyKey;
     }
 
     private async ValueTask<HttpCacheEntry?> GetCacheEntryAsync(
         HttpRequestMessage request,
         string baseKey,
         CacheBehaviorOptions behavior,
-        CacheVariationOptions variation,
         ContentNegotiationHandler negotiationHandler,
         ContentNegotiationHandler.AcceptedContent acceptedContent,
         CancellationToken cancellationToken)
@@ -257,19 +336,19 @@ public class HttpCacheHandler : DelegatingHandler
             return negotiationHandler.IsAcceptable(entry, acceptedContent) ? entry : null;
         }
 
-        var varyKey = _varyKeyGenerator.GenerateKey(request, entry.VaryHeaders);
-        if (varyKey.StartsWith("UNCACHEABLE", StringComparison.Ordinal))
+        var variantKey = GenerateVariantKey(request, baseKey, entry.VaryHeaders);
+        if (variantKey == null)
         {
             return null;
         }
 
-        var varyEntry = await _storage.GetAsync(varyKey, cancellationToken).ConfigureAwait(false);
-        if (varyEntry == null)
+        var variant = await _storage.GetAsync(variantKey, cancellationToken).ConfigureAwait(false);
+        if (variant == null)
         {
             return null;
         }
 
-        return negotiationHandler.IsAcceptable(varyEntry, acceptedContent) ? varyEntry : null;
+        return negotiationHandler.IsAcceptable(variant, acceptedContent) ? variant : null;
     }
 
     private async ValueTask StoreCacheEntryAsync(
@@ -277,67 +356,66 @@ public class HttpCacheHandler : DelegatingHandler
         string baseKey,
         HttpCacheEntry entry,
         HttpCacheOptions options,
-        CacheVariationOptions variation,
+        FreshnessCalculator freshnessCalculator,
         CancellationToken cancellationToken)
     {
+        var timeToLive = GetTimeToLive(entry, options, freshnessCalculator);
+        if (timeToLive <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        var previous = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
+
         if (entry.VaryHeaders == null || entry.VaryHeaders.Length == 0 || !options.Behavior.RespectVary)
         {
-            _variantIndex.TryRemove(baseKey, out _);
-            await _storage.SetAsync(baseKey, entry, cancellationToken).ConfigureAwait(false);
+            await RemoveKeysAsync(previous?.VariantKeys, cancellationToken).ConfigureAwait(false);
+            await _storage.SetAsync(baseKey, entry with { VariantKeys = null }, timeToLive, cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        var varyKey = _varyKeyGenerator.GenerateKey(request, entry.VaryHeaders);
-        if (varyKey.StartsWith("UNCACHEABLE", StringComparison.Ordinal))
+        var variantKey = GenerateVariantKey(request, baseKey, entry.VaryHeaders);
+        if (variantKey == null)
         {
             return;
         }
 
-        await Task.WhenAll(
-            _storage.SetAsync(baseKey, entry, cancellationToken).AsTask(),
-            _storage.SetAsync(varyKey, entry, cancellationToken).AsTask()
-        ).ConfigureAwait(false);
+        // The base entry keeps the variant list, oldest first, so it lives and dies with the cached URL
+        var maxVariants = options.Variation.EnableMultipleVariants ? Math.Max(1, options.Variation.MaxVariantsPerUrl) : 1;
+        var variants = previous?.VariantKeys?.Where(k => !string.Equals(k, variantKey, StringComparison.Ordinal)).ToList() ?? new List<string>();
+        variants.Add(variantKey);
 
-        if (variation.EnableMultipleVariants)
+        var evicted = variants.Count > maxVariants ? variants.GetRange(0, variants.Count - maxVariants) : null;
+        if (evicted != null)
         {
-            await EnforceVariantLimitAsync(baseKey, varyKey, variation.MaxVariantsPerUrl, cancellationToken).ConfigureAwait(false);
+            variants.RemoveRange(0, evicted.Count);
+            await RemoveKeysAsync(evicted, cancellationToken).ConfigureAwait(false);
         }
-        else
-        {
-            if (_variantIndex.TryRemove(baseKey, out var queue))
-            {
-                while (queue.TryDequeue(out var existing))
-                {
-                    if (!string.Equals(existing, varyKey, StringComparison.Ordinal))
-                    {
-                        await _storage.RemoveAsync(existing, cancellationToken).ConfigureAwait(false);
-                    }
-                }
-            }
-        }
+
+        await _storage.SetAsync(variantKey, entry with { VariantKeys = null }, timeToLive, cancellationToken).ConfigureAwait(false);
+        await _storage.SetAsync(baseKey, entry with { VariantKeys = variants.ToArray() }, timeToLive, cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask EnforceVariantLimitAsync(string baseKey, string varyKey, int maxVariants, CancellationToken cancellationToken)
+    /// <summary>
+    /// Keeps an entry for its remaining freshness, plus <see cref="CacheFreshnessOptions.StaleRetention"/> when it
+    /// can still be used stale: revalidated with its validators or served by stale-while-revalidate / stale-if-error.
+    /// </summary>
+    private static TimeSpan GetTimeToLive(HttpCacheEntry entry, HttpCacheOptions options, FreshnessCalculator freshnessCalculator)
     {
-        if (maxVariants <= 0)
+        var remaining = (freshnessCalculator.GetFreshnessLifetime(entry) ?? TimeSpan.Zero) - freshnessCalculator.GetCurrentAge(entry);
+        if (remaining < TimeSpan.Zero)
         {
-            return;
+            remaining = TimeSpan.Zero;
         }
 
-        var queue = _variantIndex.GetOrAdd(baseKey, _ => new ConcurrentQueue<string>());
-        queue.Enqueue(varyKey);
+        var usableWhenStale = entry.CanValidate() ||
+                              options.Behavior.EnableStaleWhileRevalidate ||
+                              options.Behavior.EnableStaleIfError;
 
-        while (queue.Count > maxVariants && queue.TryDequeue(out var evicted))
-        {
-            if (!string.Equals(evicted, varyKey, StringComparison.Ordinal))
-            {
-                await _storage.RemoveAsync(evicted, cancellationToken).ConfigureAwait(false);
-            }
-        }
+        return usableWhenStale ? remaining + options.Freshness.StaleRetention : remaining;
     }
 
-    private bool ShouldCacheResponse(
-        HttpRequestMessage request,
+    private static bool ShouldCacheResponse(
         HttpResponseMessage response,
         HttpCacheOptions options,
         AdvancedCacheDirectives advancedDirectives,
@@ -389,9 +467,13 @@ public class HttpCacheHandler : DelegatingHandler
         return response.Headers.ETag != null || response.Content?.Headers.LastModified != null;
     }
 
-    private HttpResponseMessage CreateCacheHitResponse(HttpCacheEntry entry, string cacheStatus, HttpCacheOptions options, TimeSpan? freshnessLifetime)
+    private static HttpResponseMessage CreateCacheHitResponse(HttpRequestMessage request, HttpCacheEntry entry, string cacheStatus, HttpCacheOptions options, FreshnessCalculator freshnessCalculator)
     {
-        var response = entry.ToHttpResponse();
+        var response = entry.ToHttpResponse(request);
+        var age = freshnessCalculator.GetCurrentAge(entry);
+
+        // RFC 9111 section 5.1: a response served from cache carries its current age
+        response.Headers.Age = TimeSpan.FromSeconds(Math.Floor(age.TotalSeconds));
 
         if (options.Diagnostics.AddDiagnosticHeaders)
         {
@@ -400,12 +482,12 @@ public class HttpCacheHandler : DelegatingHandler
                 response.Headers.TryAddWithoutValidation("X-Cache", cacheStatus);
             }
 
-            response.Headers.TryAddWithoutValidation("X-Cache-Age", entry.GetAge().TotalSeconds.ToString("0"));
+            response.Headers.TryAddWithoutValidation("X-Cache-Age", age.TotalSeconds.ToString("0", CultureInfo.InvariantCulture));
 
-            if (freshnessLifetime.HasValue)
+            if (freshnessCalculator.GetFreshnessLifetime(entry) is { } freshnessLifetime)
             {
-                var ttl = freshnessLifetime.Value - entry.GetAge();
-                response.Headers.TryAddWithoutValidation("X-Cache-TTL", Math.Max(0, ttl.TotalSeconds).ToString("0"));
+                var ttl = freshnessLifetime - age;
+                response.Headers.TryAddWithoutValidation("X-Cache-TTL", Math.Max(0, ttl.TotalSeconds).ToString("0", CultureInfo.InvariantCulture));
             }
         }
 
@@ -449,7 +531,7 @@ public class HttpCacheHandler : DelegatingHandler
             }
             finally
             {
-                _revalidationsInFlight.TryRemove(baseKey, out _);
+                _state.RevalidationsInFlight.TryRemove(baseKey, out _);
             }
         }, CancellationToken.None);
     }
@@ -467,24 +549,24 @@ public class HttpCacheHandler : DelegatingHandler
         try
         {
             var response = await base.SendAsync(requestCopy, cancellationToken).ConfigureAwait(false);
-            var variation = options.Variation;
+            var freshnessCalculator = new FreshnessCalculator(options.Behavior, options.Freshness, _timeProvider);
             var advancedDirectives = new AdvancedCacheDirectives(options.Behavior);
             var requestDirectives = RequestCacheDirectives.Parse(originalRequest);
 
             if (response.StatusCode == HttpStatusCode.NotModified)
             {
-                var updatedEntry = cachedEntry.WithUpdatedHeaders(response);
-                await StoreCacheEntryAsync(originalRequest, baseCacheKey, updatedEntry, options, variation, cancellationToken).ConfigureAwait(false);
+                var updatedEntry = cachedEntry.WithUpdatedHeaders(response, _timeProvider.GetUtcNow());
+                await StoreCacheEntryAsync(requestCopy, baseCacheKey, updatedEntry, options, freshnessCalculator, cancellationToken).ConfigureAwait(false);
                 _metrics?.RecordValidation(0);
             }
             else
             {
                 var responseDirectives = advancedDirectives.ParseResponse(response);
 
-                if (ShouldCacheResponse(originalRequest, response, options, advancedDirectives, responseDirectives, requestDirectives))
+                if (ShouldCacheResponse(response, options, advancedDirectives, responseDirectives, requestDirectives))
                 {
-                    var newEntry = await HttpCacheEntry.FromResponseAsync(originalRequest, response).ConfigureAwait(false);
-                    await StoreCacheEntryAsync(originalRequest, baseCacheKey, newEntry, options, variation, cancellationToken).ConfigureAwait(false);
+                    var newEntry = await HttpCacheEntry.FromResponseAsync(requestCopy, response, _timeProvider.GetUtcNow()).ConfigureAwait(false);
+                    await StoreCacheEntryAsync(requestCopy, baseCacheKey, newEntry, options, freshnessCalculator, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -503,7 +585,9 @@ public class HttpCacheHandler : DelegatingHandler
             requestCopy.Dispose();
         }
     }
-            private void RecordHitMetrics(HttpRequestMessage request, HttpResponseMessage response, Stopwatch? stopwatch, bool enabled)
+
+
+    private void RecordHitMetrics(HttpRequestMessage request, HttpResponseMessage response, Stopwatch? stopwatch, bool enabled)
     {
         if (!enabled)
         {

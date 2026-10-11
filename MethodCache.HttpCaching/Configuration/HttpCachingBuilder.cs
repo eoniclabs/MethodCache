@@ -8,15 +8,18 @@ namespace MethodCache.HttpCaching.Configuration;
 public sealed class HttpCachingBuilder
 {
     private readonly IServiceCollection _services;
+    private readonly string _name;
     private readonly List<Action<HttpCacheOptions>> _optionActions = new();
     private readonly List<Action<HttpCacheStorageOptions>> _storageOptionActions = new();
     private Action<IServiceCollection>? _storageRegistration;
 
-    public HttpCachingBuilder(IServiceCollection services)
+    internal HttpCachingBuilder(IServiceCollection services, string name)
     {
         _services = services;
+        _name = name;
     }
 
+    /// <summary>Configures the caching options for this HttpClient only.</summary>
     public HttpCachingBuilder Configure(Action<HttpCacheOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -24,6 +27,7 @@ public sealed class HttpCachingBuilder
         return this;
     }
 
+    /// <summary>Configures the storage limits. The storage is shared by every HttpClient that uses HTTP caching.</summary>
     public HttpCachingBuilder ConfigureStorage(Action<HttpCacheStorageOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -66,12 +70,12 @@ public sealed class HttpCachingBuilder
 
     internal void Apply()
     {
-        _services.AddOptions<HttpCacheOptions>();
+        _services.AddOptions<HttpCacheOptions>(_name);
         _services.AddOptions<HttpCacheStorageOptions>();
 
         foreach (var configure in _optionActions)
         {
-            _services.Configure(configure);
+            _services.Configure(_name, configure);
         }
 
         foreach (var configureStorage in _storageOptionActions)

@@ -18,8 +18,9 @@ public interface IHttpCacheStorage
     /// </summary>
     /// <param name="key">The cache key.</param>
     /// <param name="entry">The cache entry to store.</param>
+    /// <param name="timeToLive">How long to keep the entry. This covers its freshness plus the time a stale entry is kept for revalidation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask SetAsync(string key, HttpCacheEntry entry, CancellationToken cancellationToken = default);
+    ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a cache entry by its key.
