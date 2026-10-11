@@ -1,9 +1,8 @@
 using System.Buffers;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using MethodCache.Core.Storage.Abstractions;
 
-namespace MethodCache.Core.Infrastructure.Serialization;
+namespace MethodCache.Extensibility;
 
 /// <summary>
 /// Default serializer for values in the distributed cache: UTF-8 JSON written with System.Text.Json.

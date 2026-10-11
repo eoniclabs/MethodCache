@@ -1,10 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using Microsoft.Extensions.DependencyInjection;
 using MethodCache.Benchmarks.Comparison.Adapters;
 using MethodCache.Benchmarks.Comparison.Services;
-using MethodCache.Core.Infrastructure.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Comparison;
 
@@ -69,10 +68,10 @@ public class UnifiedCacheComparisonBenchmarks
         }); // Don't auto-scan assembly - we register explicitly below
 
         // PERFORMANCE OPTIMIZATION: Configure cache options for benchmarking
-        services.Configure<MethodCache.Core.Configuration.MemoryCacheOptions>(opts =>
+        services.Configure<MethodCache.MethodCacheMemoryOptions>(opts =>
         {
             opts.EnableStatistics = false;  // Skip Interlocked operations (~5-10µs saved)
-            opts.EvictionPolicy = MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LRU;  // Use lazy LRU
+            opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;  // Use lazy LRU
         });
 
 

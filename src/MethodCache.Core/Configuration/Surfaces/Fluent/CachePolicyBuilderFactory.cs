@@ -1,4 +1,3 @@
-using MethodCache.Core.Options;
 using MethodCache.Core.PolicyPipeline.Model;
 
 namespace MethodCache.Core.Configuration.Surfaces.Fluent;

@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Infrastructure
+namespace MethodCache
 {
     /// <summary>
     /// Statistics for cache operations.

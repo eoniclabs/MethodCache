@@ -3,11 +3,10 @@ using BitFaster.Caching;
 using BitFaster.Caching.Lfu;
 using BitFaster.Caching.Lru;
 using MethodCache.Benchmarks.Microbenchmarks.Legacy;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime.Execution;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.Caching.Memory;
-using MethodCacheOptions = MethodCache.Core.Configuration.MemoryCacheOptions;
+
+using MethodCacheOptions = MethodCache.MethodCacheMemoryOptions;
 using MsMemoryCacheOptions = Microsoft.Extensions.Caching.Memory.MemoryCacheOptions;
 using MsOptions = Microsoft.Extensions.Options.Options;
 
@@ -26,10 +25,10 @@ public static class HitRatioSimulation
     private static readonly Contender[] Contenders =
     {
         new("MethodCache (W-TinyLFU)", capacity => FromManager(new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity })))),
-        new("MethodCache (LRU)", capacity => FromManager(new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.LRU })))),
+        new("MethodCache (LRU)", capacity => FromManager(new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.Lru })))),
         new("Previous engine (LRU)", capacity =>
         {
-            var legacy = new LegacyInMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.LRU }));
+            var legacy = new LegacyInMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.Lru }));
             return (key => legacy.TryGetFast<string>(key, out _), key => legacy.SetAsync(key, key, Ttl).GetAwaiter().GetResult(), legacy.Dispose);
         }),
         new("MS MemoryCache (SizeLimit)", capacity =>

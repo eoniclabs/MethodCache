@@ -76,12 +76,10 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using System.Linq;");
                 sb.AppendLine("using System.Threading;");
                 sb.AppendLine("using System.Threading.Tasks;");
-                sb.AppendLine("using MethodCache.Core;");
-                sb.AppendLine("using MethodCache.Abstractions.Registry;");
-                sb.AppendLine("using MethodCache.Core.Runtime;");
-                sb.AppendLine("using MethodCache.Core.Runtime.Core;");
-                sb.AppendLine("using MethodCache.Core.Runtime.KeyGeneration;");
-                sb.AppendLine("using MethodCache.Core.Infrastructure;");
+                sb.AppendLine("using MethodCache;");
+                sb.AppendLine("using MethodCache.Extensibility;");
+                sb.AppendLine("using MethodCache.Infrastructure;");
+                sb.AppendLine("using MethodCache.Policies;");
                 sb.AppendLine();
                 sb.AppendLine($"namespace {ns}");
                 sb.AppendLine("{");
@@ -224,7 +222,7 @@ namespace MethodCache.SourceGenerator
             private static void EmitConstructorWithPolicies(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
             {
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
-                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Core.Runtime.Core.DecoratorServices services)");
+                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Infrastructure.DecoratorServices services)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
                 sb.AppendLine("            if (services == null) throw new ArgumentNullException(nameof(services));");
@@ -529,7 +527,7 @@ namespace MethodCache.SourceGenerator
                     else if (ImplementsCacheKeyProvider(param.Type))
                     {
                         // Through the interface, so explicit and re-implemented CacheKeyPart members are the ones called
-                        var keyPart = $"MethodCacheKeys.Part(((global::MethodCache.Core.Runtime.ICacheKeyProvider){name}).CacheKeyPart)";
+                        var keyPart = $"MethodCacheKeys.Part(((global::MethodCache.ICacheKeyProvider){name}).CacheKeyPart)";
                         pieces.Add(param.Type.IsValueType
                             ? keyPart
                             : $"({name} is null ? MethodCacheKeys.Null : {keyPart})");
@@ -604,7 +602,7 @@ namespace MethodCache.SourceGenerator
 
             private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
                 => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
-                   type.AllInterfaces.Any(i => i.ToDisplayString() == "MethodCache.Core.Runtime.ICacheKeyProvider");
+                   type.AllInterfaces.Any(i => i.ToDisplayString() == "MethodCache.ICacheKeyProvider");
 
             /// <summary>
             /// Collects the public instance properties and fields of a concrete class or struct, the same members
@@ -731,7 +729,7 @@ namespace MethodCache.SourceGenerator
 
             private static bool IsRawKeyAttribute(AttributeData attribute)
             {
-                if (!string.Equals(attribute.AttributeClass?.ToDisplayString(), "MethodCache.Core.CacheKeyAttribute", StringComparison.Ordinal))
+                if (!string.Equals(attribute.AttributeClass?.ToDisplayString(), "MethodCache.CacheKeyAttribute", StringComparison.Ordinal))
                 {
                     return false;
                 }

@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Infrastructure.Metrics
+namespace MethodCache.Extensibility
 {
     public interface ICacheMetrics
     {

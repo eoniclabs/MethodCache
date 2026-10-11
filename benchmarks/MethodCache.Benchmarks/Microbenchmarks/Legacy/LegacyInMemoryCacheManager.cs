@@ -1,18 +1,12 @@
-// Snapshot of InMemoryCacheManager before the W-TinyLFU engine, kept only as a benchmark baseline.
+﻿// Snapshot of InMemoryCacheManager before the W-TinyLFU engine, kept only as a benchmark baseline.
 #pragma warning disable CS0618
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Infrastructure.Metrics;
 using MethodCache.Core.Infrastructure.Utilities;
-using MethodCache.Core.Options;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using Microsoft.Extensions.Options;
 
 namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
@@ -23,6 +17,9 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
     /// </summary>
     public class LegacyInMemoryCacheManager : ICacheManager, IMemoryCache
     {
+        // The old default; the setting is gone from the options
+        private const double EvictionSamplePercentage = 0.1;
+
         private class EnhancedCacheEntry
         {
             private long _accessCount;
@@ -79,7 +76,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
         private readonly ConcurrentDictionary<string, Lazy<Task<object>>> _lightweightGates = new(); // Lightweight coordination gate per cache key
         private readonly ConcurrentDictionary<string, DistributedLockState> _distributedLocks = new();
         private readonly ICacheMetricsProvider _metricsProvider;
-        private readonly MemoryCacheOptions _options;
+        private readonly MethodCacheMemoryOptions _options;
         private readonly Timer? _cleanupTimer;
         private readonly SemaphoreSlim _evictionSemaphore;
         private readonly MemoryUsageCalculator _memoryCalculator;
@@ -96,10 +93,10 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
         private long _evictions;
         private bool _disposed = false;
 
-        public LegacyInMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MemoryCacheOptions>? options = null)
+        public LegacyInMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options = null)
         {
             _metricsProvider = metricsProvider;
-            _options = options?.Value ?? new MemoryCacheOptions();
+            _options = options?.Value ?? new MethodCacheMemoryOptions();
             _evictionSemaphore = new SemaphoreSlim(1, 1);
             _memoryCalculator = new MemoryUsageCalculator(_options);
             
@@ -658,9 +655,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
                     ApplySlidingExpiration(entry);
                     entry.UpdateAccess();
                 }
-                else if (_options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU ||
-                         _options.EvictionPolicy == MemoryCacheEvictionPolicy.LFU ||
-                         _options.EvictionPolicy == MemoryCacheEvictionPolicy.LFU_Precise)
+                else if (_options.EvictionPolicy == MemoryCacheEvictionPolicy.Lru)
                 {
                     // Only update access for LRU/LFU policies when no advanced features
                     entry.UpdateAccess();
@@ -1144,27 +1139,11 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
                 // Use appropriate eviction algorithm based on policy
                 switch (_options.EvictionPolicy)
                 {
-                    case MemoryCacheEvictionPolicy.LRU:
-                    case MemoryCacheEvictionPolicy.FIFO:
+                    case MemoryCacheEvictionPolicy.Lru:
+                    case MemoryCacheEvictionPolicy.Fifo:
                         actualEvicted = EvictFromAccessOrderO1(evictCount);
                         break;
-                        
-                    case MemoryCacheEvictionPolicy.LFU:
-                        actualEvicted = EvictLFUApproximate(evictCount);
-                        break;
-                        
-                    case MemoryCacheEvictionPolicy.LFU_Precise:
-                        actualEvicted = EvictLFUPrecise(evictCount);
-                        break;
-                        
-                    case MemoryCacheEvictionPolicy.TTL:
-                        actualEvicted = EvictTTLApproximate(evictCount);
-                        break;
-                        
-                    case MemoryCacheEvictionPolicy.TTL_Precise:
-                        actualEvicted = EvictTTLPrecise(evictCount);
-                        break;
-                        
+
                     default:
                         actualEvicted = EvictFromAccessOrderO1(evictCount);
                         break;
@@ -1193,14 +1172,14 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
                 return 0;
             }
 
-            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * _options.EvictionSamplePercentage));
+            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * EvictionSamplePercentage));
             sampleSize = Math.Min(sampleSize, totalItems);
 
             var candidates = sampleSize >= totalItems
                 ? _cache.ToList()
                 : TakeRandomSample(sampleSize);
 
-            var ordered = (_options.EvictionPolicy == MemoryCacheEvictionPolicy.LRU
+            var ordered = (_options.EvictionPolicy == MemoryCacheEvictionPolicy.Lru
                     ? candidates.OrderBy(kvp => kvp.Value.LastAccessedAt)
                     : candidates.OrderBy(kvp => kvp.Value.CreatedAt))
                 .Take(maxEvictions)
@@ -1227,7 +1206,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
         private int EvictLFUApproximate(int maxEvictions)
         {
             var totalItems = _cache.Count;
-            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * _options.EvictionSamplePercentage));
+            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * EvictionSamplePercentage));
             sampleSize = Math.Min(sampleSize, totalItems);
             
             var candidates = _cache.Take(sampleSize)
@@ -1282,7 +1261,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
         private int EvictTTLApproximate(int maxEvictions)
         {
             var totalItems = _cache.Count;
-            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * _options.EvictionSamplePercentage));
+            var sampleSize = Math.Max(maxEvictions, (int)(totalItems * EvictionSamplePercentage));
             sampleSize = Math.Min(sampleSize, totalItems);
             
             var candidates = _cache.Take(sampleSize)

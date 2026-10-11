@@ -1,9 +1,7 @@
-using BenchmarkDotNet.Attributes;
-using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Benchmarks.Core;
-using MethodCache.Core;
 using System.Runtime.CompilerServices;
-using MethodCache.Core.Runtime;
+using BenchmarkDotNet.Attributes;
+using MethodCache.Benchmarks.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Scenarios;
 

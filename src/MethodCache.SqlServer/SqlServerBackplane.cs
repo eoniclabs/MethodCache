@@ -1,7 +1,7 @@
 using System.Data;
 using System.Globalization;
 using System.Text;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -1,4 +1,4 @@
-namespace MethodCache.Core
+namespace MethodCache
 {
     /// <summary>
     /// Marks a method to automatically invalidate cache entries when executed.

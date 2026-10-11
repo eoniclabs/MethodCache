@@ -1,20 +1,8 @@
 using System.Collections.Concurrent;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Configuration.Surfaces.Runtime;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Infrastructure.Serialization;
-using MethodCache.Core.Options;
-using MethodCache.Core.Management;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.PolicyPipeline.Sources;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Distributed;
-using MethodCache.Core.Runtime.Execution;
+using MethodCache.Policies;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -22,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 using Xunit.Abstractions;
-using MemoryCacheOptions = MethodCache.Core.Configuration.MemoryCacheOptions;
+
 using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace MethodCache.Core.Tests.Configuration;
@@ -214,17 +202,17 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         Assert.Equal(0, failures);
     }
 
-    private sealed class ChannelSource(string id) : MethodCache.Abstractions.Sources.IPolicySource
+    private sealed class ChannelSource(string id) : MethodCache.Policies.IPolicySource
     {
-        private readonly System.Threading.Channels.Channel<MethodCache.Abstractions.Resolution.PolicyChange> _ch = System.Threading.Channels.Channel.CreateUnbounded<MethodCache.Abstractions.Resolution.PolicyChange>();
+        private readonly System.Threading.Channels.Channel<MethodCache.Policies.PolicyChange> _ch = System.Threading.Channels.Channel.CreateUnbounded<MethodCache.Policies.PolicyChange>();
         public TaskCompletionSource Drained { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public string SourceId => id;
         public void Emit(string methodId, CachePolicy policy, CachePolicyFields fields) =>
-            _ch.Writer.TryWrite(new MethodCache.Abstractions.Resolution.PolicyChange(id, methodId, new MethodCache.Abstractions.Resolution.CachePolicyDelta(fields, CachePolicyFields.None, policy), MethodCache.Abstractions.Resolution.PolicyChangeReason.Updated, DateTimeOffset.UtcNow));
+            _ch.Writer.TryWrite(new MethodCache.Policies.PolicyChange(id, methodId, new MethodCache.Policies.CachePolicyDelta(fields, CachePolicyFields.None, policy), MethodCache.Policies.PolicyChangeReason.Updated, DateTimeOffset.UtcNow));
         public void Complete() => _ch.Writer.TryComplete();
-        public Task<IReadOnlyCollection<MethodCache.Abstractions.Resolution.PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyCollection<MethodCache.Abstractions.Resolution.PolicySnapshot>>(Array.Empty<MethodCache.Abstractions.Resolution.PolicySnapshot>());
-        public async IAsyncEnumerable<MethodCache.Abstractions.Resolution.PolicyChange> WatchAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public Task<IReadOnlyCollection<MethodCache.Policies.PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyCollection<MethodCache.Policies.PolicySnapshot>>(Array.Empty<MethodCache.Policies.PolicySnapshot>());
+        public async IAsyncEnumerable<MethodCache.Policies.PolicyChange> WatchAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await foreach (var c in _ch.Reader.ReadAllAsync(cancellationToken)) yield return c;
             Drained.TrySetResult();

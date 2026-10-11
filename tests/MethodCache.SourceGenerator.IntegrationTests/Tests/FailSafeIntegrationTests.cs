@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,8 +20,8 @@ public class FailSafeIntegrationTests
     private const string Source = @"
 using System;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FailSafe

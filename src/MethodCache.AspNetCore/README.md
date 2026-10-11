@@ -35,7 +35,7 @@ All paths are relative to the prefix (`/methodcache` by default).
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `DELETE` | `entries` | Removes every entry |
 
-The same operations are available in code through `ICacheAdministrator` from `MethodCache.Core`.
+The same operations are available in code through `ICacheAdministrator` in the `MethodCache` namespace.
 
 ## Health check
 

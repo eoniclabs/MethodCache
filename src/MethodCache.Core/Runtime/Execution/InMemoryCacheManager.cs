@@ -1,19 +1,15 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Infrastructure;
 using MethodCache.Core.Infrastructure.Utilities;
-using MethodCache.Core.Options;
-using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.Distributed;
-using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Infrastructure;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Runtime.Execution
+namespace MethodCache.Extensibility
 {
     /// <summary>
     /// High-performance in-memory cache manager.
@@ -44,7 +40,7 @@ namespace MethodCache.Core.Runtime.Execution
         private readonly MemoryCacheEngine _engine;
         private readonly ConcurrentDictionary<string, Flight> _flights = new(StringComparer.Ordinal);
         private readonly ICacheMetricsProvider _metricsProvider;
-        private readonly MemoryCacheOptions _options;
+        private readonly MethodCacheMemoryOptions _options;
         private readonly MemoryUsageCalculator _memoryCalculator;
         private readonly Func<string, object?, long>? _weigher;
         private readonly Timer? _maintenanceTimer;
@@ -64,7 +60,7 @@ namespace MethodCache.Core.Runtime.Execution
 
         private int _disposed;
 
-        public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MemoryCacheOptions>? options = null)
+        public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options = null)
             : this(metricsProvider, options, timeProvider: null)
         {
         }
@@ -72,7 +68,7 @@ namespace MethodCache.Core.Runtime.Execution
         /// <summary>
         /// Creates a cache manager that reads time from <paramref name="timeProvider"/> (useful for tests).
         /// </summary>
-        public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MemoryCacheOptions>? options, TimeProvider? timeProvider)
+        public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options, TimeProvider? timeProvider)
             : this(metricsProvider, options, timeProvider, distributed: null)
         {
         }
@@ -81,10 +77,10 @@ namespace MethodCache.Core.Runtime.Execution
         /// Creates a cache manager that keeps entries in memory and in <paramref name="distributed"/>, read on an
         /// in-memory miss before the factory runs.
         /// </summary>
-        internal InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MemoryCacheOptions>? options, TimeProvider? timeProvider, DistributedCacheLayer? distributed)
+        internal InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options, TimeProvider? timeProvider, DistributedCacheLayer? distributed)
         {
             _metricsProvider = metricsProvider ?? throw new ArgumentNullException(nameof(metricsProvider));
-            _options = options?.Value ?? new MemoryCacheOptions();
+            _options = options?.Value ?? new MethodCacheMemoryOptions();
             _memoryCalculator = new MemoryUsageCalculator(_options);
             _weigher = _options.Weigher;
 
@@ -1041,8 +1037,8 @@ namespace MethodCache.Core.Runtime.Execution
 
         private static EngineEvictionMode ToEngineMode(MemoryCacheEvictionPolicy policy) => policy switch
         {
-            MemoryCacheEvictionPolicy.LRU => EngineEvictionMode.Lru,
-            MemoryCacheEvictionPolicy.FIFO => EngineEvictionMode.Fifo,
+            MemoryCacheEvictionPolicy.Lru => EngineEvictionMode.Lru,
+            MemoryCacheEvictionPolicy.Fifo => EngineEvictionMode.Fifo,
             _ => EngineEvictionMode.TinyLfu
         };
 

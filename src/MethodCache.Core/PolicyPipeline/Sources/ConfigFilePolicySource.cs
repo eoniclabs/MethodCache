@@ -1,10 +1,9 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
-using MethodCache.Abstractions.Sources;
 using MethodCache.Core.Configuration.Surfaces.ConfigFile;
 using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 

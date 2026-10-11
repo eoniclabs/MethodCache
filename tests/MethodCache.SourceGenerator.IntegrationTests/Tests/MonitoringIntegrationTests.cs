@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache;
+using MethodCache.Extensibility;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -14,8 +14,8 @@ public class MonitoringIntegrationTests
 {
     private const string Source = @"
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Monitoring
@@ -72,7 +72,7 @@ namespace Monitoring
         Assert.Equal(2, metrics.Latencies.Count);
         Assert.All(metrics.Latencies, elapsed => Assert.True(elapsed >= 0));
 
-        var stats = await provider.GetRequiredService<IMemoryCache>().GetStatsAsync();
+        var stats = await provider.GetRequiredService<ICacheAdministrator>().GetStatsAsync();
         Assert.Equal(2, stats.Entries);
     }
 

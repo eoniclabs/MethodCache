@@ -1,4 +1,4 @@
-using MethodCache.Core.Runtime.Core;
+using MethodCache.Infrastructure;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Core;

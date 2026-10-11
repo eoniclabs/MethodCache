@@ -2,9 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using MethodCache.Abstractions.Resolution;
-
-namespace MethodCache.Abstractions.Sources;
+namespace MethodCache.Policies;
 
 public interface IPolicySource
 {

@@ -1,7 +1,6 @@
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Policies;
 
-namespace MethodCache.Core.Configuration.Surfaces.Runtime;
+namespace MethodCache;
 
 /// <summary>
 /// Represents a single runtime override update.

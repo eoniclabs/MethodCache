@@ -1,16 +1,14 @@
-using BenchmarkDotNet.Attributes;
-using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Benchmarks.Core;
-using MethodCache.Core;
-using MethodCache.Core.Runtime;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Benchmarks.Infrastructure;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
+using BenchmarkDotNet.Attributes;
 using MessagePack;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Benchmarks.Core;
+using MethodCache.Benchmarks.Infrastructure;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using MethodCache.Serialization.MessagePack;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Scenarios;
 

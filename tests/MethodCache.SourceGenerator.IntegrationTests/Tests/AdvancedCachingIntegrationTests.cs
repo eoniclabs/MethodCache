@@ -1,10 +1,9 @@
-using Xunit;
-using Xunit.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure;
+using MethodCache.Extensibility;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
 

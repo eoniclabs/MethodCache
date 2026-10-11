@@ -1,8 +1,8 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
-using MethodCache.Core.Configuration.Surfaces.Runtime;
-using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache;
+using MethodCache.Policies;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -17,8 +17,8 @@ public class LivePolicyIntegrationTests
 {
     private const string Source = @"
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LivePolicy

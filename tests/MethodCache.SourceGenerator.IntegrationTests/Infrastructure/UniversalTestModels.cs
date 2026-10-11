@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
-using MethodCache.Core.Runtime.Core;
+using MethodCache;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
 {
@@ -110,8 +110,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
-using MethodCache.Core.Runtime.Core;";
+using MethodCache;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;";
     }
 }

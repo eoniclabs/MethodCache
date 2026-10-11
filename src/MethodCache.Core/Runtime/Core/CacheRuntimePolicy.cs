@@ -1,7 +1,6 @@
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
+using MethodCache.Policies;
 
-namespace MethodCache.Core.Runtime.Core
+namespace MethodCache.Infrastructure
 {
     /// <summary>
     /// The definitive runtime representation of a cache policy, containing all

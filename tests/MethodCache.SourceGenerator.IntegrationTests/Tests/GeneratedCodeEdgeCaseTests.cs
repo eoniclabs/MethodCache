@@ -23,7 +23,7 @@ public class GeneratedCodeEdgeCaseTests
     {
         var tpa = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator);
         var list = tpa.Select(p => (MetadataReference)MetadataReference.CreateFromFile(p)).ToList();
-        foreach (var t in new[] { typeof(MethodCache.Core.CacheAttribute), typeof(MethodCache.Abstractions.Policies.CachePolicy) })
+        foreach (var t in new[] { typeof(MethodCache.CacheAttribute), typeof(MethodCache.Policies.CachePolicy) })
         {
             if (!tpa.Contains(t.Assembly.Location)) list.Add(MetadataReference.CreateFromFile(t.Assembly.Location));
         }
@@ -62,8 +62,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 ";
 

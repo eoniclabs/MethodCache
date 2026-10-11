@@ -1,12 +1,9 @@
+using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using MethodCache.Benchmarks.Comparison.Services;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.KeyGeneration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using System.Runtime.CompilerServices;
 
 namespace MethodCache.Benchmarks.Comparison;
 

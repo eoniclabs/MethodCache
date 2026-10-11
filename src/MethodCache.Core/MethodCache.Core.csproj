@@ -54,6 +54,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.Core.Tests" />
     <InternalsVisibleTo Include="MethodCache.SourceGenerator" />
+    <InternalsVisibleTo Include="MethodCache.Benchmarks" />
+    <InternalsVisibleTo Include="MethodCache.SourceGenerator.IntegrationTests" />
   </ItemGroup>
 
   <!--

@@ -1,10 +1,6 @@
 using System.Runtime.CompilerServices;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Options;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Core.Extensions

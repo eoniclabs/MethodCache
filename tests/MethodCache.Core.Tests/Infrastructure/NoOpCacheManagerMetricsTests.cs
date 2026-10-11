@@ -1,6 +1,5 @@
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using NSubstitute;
 using Xunit;
 

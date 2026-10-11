@@ -1,9 +1,9 @@
 using System.Reflection;
-using Xunit;
-using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Core.Infrastructure.Registration;
-using MethodCache.Core.PolicyPipeline.Resolution;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
 
@@ -17,8 +17,8 @@ public class QuickStartRegistrationTests
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart
@@ -110,8 +110,8 @@ namespace QuickStart
     {
         const string source = @"
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart
@@ -143,8 +143,8 @@ namespace QuickStart
     {
         const string source = @"
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart
@@ -255,8 +255,8 @@ namespace QuickStart
         const string source = @"
 using System;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart

@@ -1,5 +1,4 @@
-using MethodCache.Abstractions.Resolution;
-using MethodCache.Abstractions.Sources;
+using MethodCache.Policies;
 
 namespace MethodCache.Core.PolicyPipeline.Sources;
 

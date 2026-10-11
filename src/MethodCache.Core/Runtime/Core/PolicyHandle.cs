@@ -1,14 +1,15 @@
-using MethodCache.Abstractions.Registry;
-using MethodCache.Abstractions.Resolution;
+using System.ComponentModel;
 using MethodCache.Core.PolicyPipeline.Resolution;
+using MethodCache.Policies;
 
-namespace MethodCache.Core.Runtime.Core
+namespace MethodCache.Infrastructure
 {
     /// <summary>
     /// The live policy of one cached method. Every decorator for the method shares the same handle and reads
     /// <see cref="Current"/> on each call, so a runtime override or a configuration reload reaches services that
     /// were already created, at the cost of one volatile read.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class PolicyHandle
     {
         private readonly object _sync = new();

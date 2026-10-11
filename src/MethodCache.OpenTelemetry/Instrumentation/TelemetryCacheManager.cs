@@ -5,15 +5,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
-using MethodCache.OpenTelemetry.Metrics;
-using MethodCache.OpenTelemetry.Propagators;
-using MethodCache.OpenTelemetry.Tracing;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.OpenTelemetry.Instrumentation;
+namespace MethodCache.OpenTelemetry;
 
 /// <summary>
 /// Adds tracing spans and operation durations around an <see cref="ICacheManager"/>.
@@ -25,7 +20,7 @@ namespace MethodCache.OpenTelemetry.Instrumentation;
 /// <para>
 /// Hit, miss and load-failure counters are not recorded here, and they do count every call: the inner cache
 /// manager and the generated decorators report them through
-/// <see cref="MethodCache.Core.Infrastructure.ICacheMetricsProvider"/>, which <see cref="CacheMeterProvider"/>
+/// <see cref="MethodCache.Extensibility.ICacheMetricsProvider"/>, which <see cref="CacheMeterProvider"/>
 /// implements. Recording them here as well would count every call twice.
 /// </para>
 /// </remarks>

@@ -1,16 +1,18 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Infrastructure.Registration
+namespace MethodCache.Infrastructure
 {
     /// <summary>
     /// The generated decorators of every loaded assembly. The source generator registers each assembly's
     /// decorators from a module initializer, so <c>AddMethodCache()</c> finds them without scanning types,
     /// which keeps registration working under trimming and Native AOT.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public static class MethodCacheDecorators
     {
         private static readonly ConcurrentDictionary<Type, DecoratorRegistration> Registrations = new();
@@ -68,6 +70,7 @@ namespace MethodCache.Core.Infrastructure.Registration
     /// <summary>
     /// How to wrap one service interface in its generated caching decorator.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class DecoratorRegistration
     {
         /// <param name="serviceType">The interface with cache attributes.</param>

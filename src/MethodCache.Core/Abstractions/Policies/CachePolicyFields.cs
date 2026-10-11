@@ -1,6 +1,6 @@
 using System;
 
-namespace MethodCache.Abstractions.Policies;
+namespace MethodCache.Policies;
 
 [Flags]
 public enum CachePolicyFields

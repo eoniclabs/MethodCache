@@ -1,12 +1,10 @@
 using FluentAssertions;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Options;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Runtime.Memory;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
+
 using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace MethodCache.Core.Tests.Core;
@@ -24,9 +22,9 @@ public class InMemoryCacheEngineTests
 
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
 
-    private InMemoryCacheManager CreateManager(Action<MemoryCacheOptions>? configure = null)
+    private InMemoryCacheManager CreateManager(Action<MethodCacheMemoryOptions>? configure = null)
     {
-        var options = new MemoryCacheOptions { EnableBackgroundCleanup = false };
+        var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
         return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time);
     }
@@ -562,8 +560,8 @@ public class InMemoryCacheEngineTests
 
     [Theory]
     [InlineData(MemoryCacheEvictionPolicy.TinyLfu)]
-    [InlineData(MemoryCacheEvictionPolicy.LRU)]
-    [InlineData(MemoryCacheEvictionPolicy.FIFO)]
+    [InlineData(MemoryCacheEvictionPolicy.Lru)]
+    [InlineData(MemoryCacheEvictionPolicy.Fifo)]
     public async Task Size_IsBoundedByMaxItems(MemoryCacheEvictionPolicy policy)
     {
         var manager = CreateManager(o =>
@@ -797,7 +795,7 @@ public class InMemoryCacheEngineTests
     [Fact]
     public async Task ConcurrentMixedOperations_KeepInvariants()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MemoryCacheOptions { MaxItems = 500 }));
+        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheMemoryOptions { MaxItems = 500 }));
         var tagged = Policy() with { Tags = new[] { "t1", "t2" } };
 
         var workers = Enumerable.Range(0, Environment.ProcessorCount).Select(worker => Task.Run(async () =>

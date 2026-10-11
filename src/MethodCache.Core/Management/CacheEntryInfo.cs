@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Management;
+namespace MethodCache;
 
 /// <summary>A snapshot of one cache entry. The cached value itself is not included.</summary>
 /// <param name="Key">The cache key.</param>

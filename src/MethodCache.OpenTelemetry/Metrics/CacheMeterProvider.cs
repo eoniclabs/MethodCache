@@ -3,13 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 using System.Threading;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.Options;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Storage.Abstractions;
-using MethodCache.OpenTelemetry.Configuration;
 
-namespace MethodCache.OpenTelemetry.Metrics;
+namespace MethodCache.OpenTelemetry;
 
 internal interface ICacheMeterProvider
 {
@@ -35,7 +32,7 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     private readonly Histogram<double> _loadDuration;
     private readonly Histogram<double> _keyGenerationDuration;
 
-    private IMemoryCache? _observedCache;
+    private ICacheAdministrator? _observedCache;
     private long _currentEntries;
     private long _currentMemoryBytes;
     private double _currentHitRatio;
@@ -118,7 +115,7 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     /// Reports the entry count and memory usage gauges from <paramref name="cache"/> instead of from
     /// <see cref="UpdateEntriesCount"/> and <see cref="UpdateMemoryUsage"/>.
     /// </summary>
-    public void ObserveCache(IMemoryCache cache)
+    public void ObserveCache(ICacheAdministrator cache)
     {
         ArgumentNullException.ThrowIfNull(cache);
         Volatile.Write(ref _observedCache, cache);

@@ -2,10 +2,10 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -18,8 +18,7 @@ public class CacheKeyFormatIntegrationTests
     private const string Source = @"
 using System;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Runtime;
+using MethodCache;
 
 namespace KeyFormat
 {

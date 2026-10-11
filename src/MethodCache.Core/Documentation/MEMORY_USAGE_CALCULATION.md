@@ -15,7 +15,7 @@ The `EstimateMemoryUsage` method in `InMemoryCacheManager` has been enhanced to 
 - **Use Case**: Production caching where performance is paramount
 
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Fast;
 });
@@ -36,7 +36,7 @@ services.Configure<MemoryCacheOptions>(options =>
 - **Use Case**: Development, monitoring dashboards, capacity planning
 
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Accurate;
     options.AccurateModeRecalculationInterval = 1000; // Recalculate every 1000 operations
@@ -58,7 +58,7 @@ services.Configure<MemoryCacheOptions>(options =>
 - **Use Case**: Production monitoring with acceptable performance impact
 
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Sampling;
     options.SamplingPercentage = 0.1; // Sample 10% of entries
@@ -80,7 +80,7 @@ services.Configure<MemoryCacheOptions>(options =>
 - **Use Case**: High-performance scenarios where memory stats are unnecessary
 
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Disabled;
 });
@@ -101,7 +101,7 @@ Based on benchmarks with 1000 cache entries:
 
 ### High-Performance Production
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Fast;
     options.EnableStatistics = true;
@@ -110,7 +110,7 @@ services.Configure<MemoryCacheOptions>(options =>
 
 ### Development/Debugging
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Accurate;
     options.AccurateModeRecalculationInterval = 100; // More frequent updates
@@ -120,7 +120,7 @@ services.Configure<MemoryCacheOptions>(options =>
 
 ### Production Monitoring
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Sampling;
     options.SamplingPercentage = 0.05; // 5% sampling for large caches
@@ -130,7 +130,7 @@ services.Configure<MemoryCacheOptions>(options =>
 
 ### Maximum Performance
 ```csharp
-services.Configure<MemoryCacheOptions>(options =>
+services.Configure<MethodCacheMemoryOptions>(options =>
 {
     options.MemoryCalculationMode = MemoryUsageCalculationMode.Disabled;
     options.EnableStatistics = false; // Disable all statistics

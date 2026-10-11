@@ -1,8 +1,5 @@
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
-using MethodCache.Core.Options;
-using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Policies;
 
 namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 

@@ -1,9 +1,9 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
+using System.Diagnostics.CodeAnalysis;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.Core.Runtime
+namespace MethodCache
 {
     /// <summary>
     /// Manages caching operations with support for L1 (in-memory) and L2 (distributed) cache layers.
@@ -122,7 +122,7 @@ namespace MethodCache.Core.Runtime
 
         /// <summary>
         /// Like <see cref="TryGetFast{T}(string, out T)"/>, for a key held in a buffer such as one written by
-        /// <see cref="KeyGeneration.MethodCacheKeyBuilder"/>. The built-in memory cache looks it up without
+        /// <see cref="MethodCache.Infrastructure.MethodCacheKeyBuilder"/>. The built-in memory cache looks it up without
         /// allocating on .NET 9 and later; the default implementation converts the key to a string.
         /// </summary>
         /// <typeparam name="T">Type of cached value</typeparam>
@@ -133,7 +133,7 @@ namespace MethodCache.Core.Runtime
 
         /// <summary>
         /// Like <see cref="TryGetFastTask{T}(string, out Task{T})"/>, for a key held in a buffer such as one written by
-        /// <see cref="KeyGeneration.MethodCacheKeyBuilder"/>.
+        /// <see cref="MethodCache.Infrastructure.MethodCacheKeyBuilder"/>.
         /// </summary>
         /// <typeparam name="T">Type of cached value</typeparam>
         /// <param name="cacheKey">Pre-computed cache key</param>

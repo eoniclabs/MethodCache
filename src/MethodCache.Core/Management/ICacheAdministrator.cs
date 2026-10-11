@@ -1,6 +1,4 @@
-using MethodCache.Core.Infrastructure;
-
-namespace MethodCache.Core.Management;
+namespace MethodCache;
 
 /// <summary>
 /// Inspects and changes the cache while the application runs: statistics, entries, invalidation and the

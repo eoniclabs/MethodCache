@@ -1,4 +1,4 @@
-namespace MethodCache.Abstractions.Resolution;
+namespace MethodCache.Policies;
 
 public enum PolicyChangeReason
 {

@@ -1,12 +1,8 @@
+using System.Linq;
 using BenchmarkDotNet.Attributes;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MethodCache.Core;
-using MethodCache.Abstractions.Registry;
-using System.Linq;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Execution;
 
 namespace MethodCache.Benchmarks.Core;
 

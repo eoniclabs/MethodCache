@@ -17,8 +17,8 @@ public class DefaultPolicyIntegrationTests
     private const string Source = @"
 using System;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DefaultPolicy

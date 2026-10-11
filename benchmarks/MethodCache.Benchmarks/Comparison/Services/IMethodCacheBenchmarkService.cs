@@ -1,5 +1,3 @@
-using MethodCache.Core;
-
 namespace MethodCache.Benchmarks.Comparison.Services;
 
 /// <summary>

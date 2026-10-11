@@ -1,8 +1,7 @@
 using System;
-using Xunit;
 using System.Collections.Generic;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
+using MethodCache.Policies;
+using Xunit;
 
 namespace MethodCache.Core.Tests.Abstractions;
 

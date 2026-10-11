@@ -1,4 +1,4 @@
-namespace MethodCache.Abstractions.Policies;
+namespace MethodCache.Policies;
 
 public enum PolicyContributionKind
 {

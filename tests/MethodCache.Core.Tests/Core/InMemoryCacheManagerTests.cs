@@ -1,9 +1,6 @@
 using FluentAssertions;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Options;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using Microsoft.Extensions.Options;
 using Xunit;
 

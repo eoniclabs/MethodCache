@@ -3,14 +3,14 @@ using BenchmarkDotNet.Configs;
 using BitFaster.Caching;
 using BitFaster.Caching.Lfu;
 using MethodCache.Benchmarks.Microbenchmarks.Legacy;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using ZiggyCreatures.Caching.Fusion;
-using MethodCacheOptions = MethodCache.Core.Configuration.MemoryCacheOptions;
+
+using MethodCacheOptions = MethodCache.MethodCacheMemoryOptions;
 using MsMemoryCacheOptions = Microsoft.Extensions.Caching.Memory.MemoryCacheOptions;
 using MsOptions = Microsoft.Extensions.Options.Options;
 
@@ -53,7 +53,7 @@ public class MemoryEngineBenchmarks
         _missKeys = Enumerable.Range(0, 2_000_000).Select(i => $"miss:{i}").ToArray();
 
         _engine = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity }));
-        _legacy = new LegacyInMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity, EvictionPolicy = global::MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LRU }));
+        _legacy = new LegacyInMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity, EvictionPolicy = global::MethodCache.MemoryCacheEvictionPolicy.Lru }));
         _memoryCache = new MemoryCache(new MsMemoryCacheOptions { SizeLimit = Capacity });
         _bitFaster = new ConcurrentLfuBuilder<string, string>().WithCapacity(Capacity).WithExpireAfterWrite(Ttl).Build();
         _bitFasterAsync = new ConcurrentLfuBuilder<string, string>().WithCapacity(Capacity).WithExpireAfterWrite(Ttl).AsAsyncCache().Build();

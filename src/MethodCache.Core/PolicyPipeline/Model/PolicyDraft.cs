@@ -1,8 +1,8 @@
-using MethodCache.Abstractions.Policies;
+using MethodCache.Policies;
 
 namespace MethodCache.Core.PolicyPipeline.Model;
 
-public readonly record struct PolicyDraft(
+internal readonly record struct PolicyDraft(
     string MethodId,
     CachePolicy Policy,
     CachePolicyFields Fields,

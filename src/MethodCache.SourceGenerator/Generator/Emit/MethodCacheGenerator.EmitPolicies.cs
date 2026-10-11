@@ -39,13 +39,9 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using System.Globalization;");
                 sb.AppendLine("using System.Threading;");
                 sb.AppendLine("using System.Threading.Tasks;");
-                sb.AppendLine("using MethodCache.Abstractions.Policies;");
-                sb.AppendLine("using MethodCache.Abstractions.Resolution;");
-                sb.AppendLine("using MethodCache.Abstractions.Sources;");
-                sb.AppendLine("using MethodCache.Core.Runtime;");
-                sb.AppendLine("using MethodCache.Core.PolicyPipeline.Model;");
-                sb.AppendLine("using MethodCache.Core.PolicyPipeline.Resolution;");
-                sb.AppendLine("using MethodCache.Core.Configuration.Surfaces.ConfigFile;");
+                sb.AppendLine("using MethodCache;");
+                sb.AppendLine("using MethodCache.Infrastructure;");
+                sb.AppendLine("using MethodCache.Policies;");
                 sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
                 sb.AppendLine();
                 sb.AppendLine("namespace MethodCache.Generated");

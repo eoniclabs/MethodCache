@@ -1,6 +1,8 @@
+using MethodCache.Extensibility;
+
 namespace MethodCache.Core.Infrastructure
 {
-    public class ConsoleCacheMetricsProvider : ICacheMetricsProvider
+    internal sealed class ConsoleCacheMetricsProvider : ICacheMetricsProvider
     {
         public void CacheHit(string methodName)
         {

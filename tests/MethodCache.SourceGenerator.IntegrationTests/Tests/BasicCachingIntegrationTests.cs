@@ -1,10 +1,10 @@
-using Xunit;
-using Xunit.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure;
+using MethodCache;
+using MethodCache.Extensibility;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
 
@@ -30,7 +30,7 @@ public class BasicCachingIntegrationTests
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 namespace TestNamespace
 {
@@ -209,7 +209,7 @@ namespace TestNamespace
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 namespace TestNamespace
 {
