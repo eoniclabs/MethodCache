@@ -12,9 +12,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
     public class CacheEntry
     {
         public object Value { get; set; } = null!;
-        public DateTime ExpiryTime { get; set; }
-        
-        public bool IsExpired => DateTime.UtcNow > ExpiryTime;
+        public DateTimeOffset ExpiryTime { get; set; }
     }
 
     /// <summary>
@@ -24,11 +22,19 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
     {
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
         private readonly ICacheMetricsProvider _metricsProvider;
+        private readonly TimeProvider _time;
 
-        public TestMockCacheManager(ICacheMetricsProvider metricsProvider)
+        /// <summary>
+        /// Reads time from <paramref name="timeProvider"/>, so a test that registers a FakeTimeProvider controls expiry.
+        /// </summary>
+        public TestMockCacheManager(ICacheMetricsProvider metricsProvider, TimeProvider? timeProvider = null)
         {
             _metricsProvider = metricsProvider;
+            _time = timeProvider ?? TimeProvider.System;
         }
+
+        // Like the real cache, an entry expires exactly at the end of its Duration
+        private bool IsExpired(CacheEntry entry) => _time.GetUtcNow() >= entry.ExpiryTime;
 
         // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
@@ -39,7 +45,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             // Check cache first and verify not expired
             if (_cache.TryGetValue(key, out var cacheEntry))
             {
-                if (!cacheEntry.IsExpired)
+                if (!IsExpired(cacheEntry))
                 {
                     _metricsProvider.CacheHit(methodName);
                     return (T)cacheEntry.Value;
@@ -58,7 +64,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
                 var result = await factory();
                 if (result != null)
                 {
-                    var expiryTime = DateTime.UtcNow.Add(policy.Duration ?? TimeSpan.FromMinutes(5));
+                    var expiryTime = _time.GetUtcNow().Add(policy.Duration ?? TimeSpan.FromMinutes(5));
                     var newEntry = new CacheEntry
                     {
                         Value = result,
@@ -81,7 +87,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
 
             if (_cache.TryGetValue(key, out var cacheEntry))
             {
-                if (!cacheEntry.IsExpired)
+                if (!IsExpired(cacheEntry))
                 {
                     return ValueTask.FromResult((T?)cacheEntry.Value);
                 }
@@ -97,7 +103,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
 
         public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
-            if (_cache.TryGetValue(cacheKey, out var cacheEntry) && !cacheEntry.IsExpired)
+            if (_cache.TryGetValue(cacheKey, out var cacheEntry) && !IsExpired(cacheEntry))
             {
                 return ValueTask.FromResult((T?)cacheEntry.Value);
             }
@@ -107,7 +113,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
 
         public bool TryGetFast<T>(string cacheKey, out T? value)
         {
-            if (_cache.TryGetValue(cacheKey, out var cacheEntry) && !cacheEntry.IsExpired)
+            if (_cache.TryGetValue(cacheKey, out var cacheEntry) && !IsExpired(cacheEntry))
             {
                 value = (T)cacheEntry.Value;
                 return true;
@@ -122,7 +128,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             // Check cache first and verify not expired
             if (_cache.TryGetValue(cacheKey, out var cacheEntry))
             {
-                if (!cacheEntry.IsExpired)
+                if (!IsExpired(cacheEntry))
                 {
                     // The decorator only reports hits it serves itself; this one is ours to report.
                     _metricsProvider.CacheHit(methodName);
@@ -142,7 +148,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
                 var result = await factory();
                 if (result != null)
                 {
-                    var expiryTime = DateTime.UtcNow.Add(policy.Duration ?? TimeSpan.FromMinutes(5));
+                    var expiryTime = _time.GetUtcNow().Add(policy.Duration ?? TimeSpan.FromMinutes(5));
                     var newEntry = new CacheEntry
                     {
                         Value = result,

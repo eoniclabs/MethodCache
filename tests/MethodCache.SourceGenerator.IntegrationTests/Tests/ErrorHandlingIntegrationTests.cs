@@ -129,8 +129,8 @@ namespace TestNamespace
             await errorTask;
         });
 
-        // Should have recorded 2 errors, no additional hits/misses for the error case
-        await Task.Delay(100); // Allow metrics to be recorded
+        // Should have recorded 2 errors, no additional hits/misses for the error case. The cache manager records an
+        // error before the exception reaches the caller, so there is nothing to wait for.
         var errorMetrics = metricsProvider.Metrics;
         Assert.Equal(2, errorMetrics.ErrorCount);
 

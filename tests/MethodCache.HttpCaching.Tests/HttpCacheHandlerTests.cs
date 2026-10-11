@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -44,8 +45,9 @@ public class HttpCacheHandlerTests
         var options = new HttpCacheOptions();
         options.DefaultMaxAge = TimeSpan.FromMilliseconds(1);
 
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
         var innerHandler = new TestHttpMessageHandler();
-        var handler = HttpCacheTestFactory.CreateHandler(options, innerHandler);
+        var handler = HttpCacheTestFactory.CreateHandler(options, innerHandler, timeProvider: time);
         var httpClient = new HttpClient(handler);
 
         var initialResponse = new HttpResponseMessage(HttpStatusCode.OK)
@@ -53,7 +55,7 @@ public class HttpCacheHandlerTests
             Content = new StringContent("Hello, World!"),
             Headers =
             {
-                Date = DateTimeOffset.UtcNow,
+                Date = time.GetUtcNow(),
                 ETag = new EntityTagHeaderValue("\"abc123\""),
                 CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMilliseconds(1) }
             }
@@ -62,7 +64,7 @@ public class HttpCacheHandlerTests
         var notModifiedResponse = new HttpResponseMessage(HttpStatusCode.NotModified)
         {
             Headers = {
-                Date = DateTimeOffset.UtcNow,
+                Date = time.GetUtcNow(),
                 ETag = new EntityTagHeaderValue("\"abc123\"")
             }
         };
@@ -71,7 +73,7 @@ public class HttpCacheHandlerTests
 
         var response1 = await httpClient.GetAsync("https://api.example.com/data");
 
-        await Task.Delay(10);
+        time.Advance(TimeSpan.FromMilliseconds(1));
 
         var response2 = await httpClient.GetAsync("https://api.example.com/data");
 
