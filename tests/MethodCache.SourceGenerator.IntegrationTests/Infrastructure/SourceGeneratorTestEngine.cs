@@ -109,7 +109,7 @@ public class SourceGeneratorTestEngine
         // Add all required MethodCache infrastructure for testing
         services.AddSingleton<ICacheManager, TestMockCacheManager>();
         // Add additional dependencies that might be needed
-        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+        services.AddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
 
         // Add default metrics provider (will be overridden by tests)
         services.AddSingleton<ICacheMetricsProvider, TestCacheMetricsProvider>();

@@ -120,7 +120,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
         private static void EnsureCoreServices(IServiceCollection services)
         {
             AddDefaultCacheManager(services);
-            services.TryAddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+            services.TryAddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
             services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();
             services.TryAddSingleton(static sp => new DecoratorServices(
                 sp.GetRequiredService<ICacheManager>(),
