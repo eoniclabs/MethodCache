@@ -33,7 +33,9 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
         _keyPrefix = options.Value.KeyPrefix;
         _memory = new MemoryCache(new MemoryCacheOptions
         {
-            SizeLimit = _maxCacheSize > 0 ? _maxCacheSize : null
+            SizeLimit = _maxCacheSize > 0 ? _maxCacheSize : null,
+            // Entries expire on the same clock the handler judges freshness by
+            Clock = ReferenceEquals(_timeProvider, TimeProvider.System) ? null : new TimeProviderClock(_timeProvider)
         });
     }
 
@@ -132,5 +134,10 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
         }
 
         _memory.Set(key, entry, options);
+    }
+
+    private sealed class TimeProviderClock(TimeProvider timeProvider) : Microsoft.Extensions.Internal.ISystemClock
+    {
+        public DateTimeOffset UtcNow => timeProvider.GetUtcNow();
     }
 }

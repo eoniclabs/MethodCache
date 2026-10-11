@@ -155,16 +155,10 @@ namespace TestNamespace
         // First call - should be cache miss
         var user1Task = (Task)getUserMethod.Invoke(userService, new object[] { 1 })!;
         var user1 = await GetTaskResult(user1Task, testUserType);
-        
-        // Give some time for any async operations
-        await Task.Delay(100);
 
         // Second call with same parameters - should be cache hit
         var user2Task = (Task)getUserMethod.Invoke(userService, new object[] { 1 })!;
         var user2 = await GetTaskResult(user2Task, testUserType);
-        
-        // Give some time for any async operations
-        await Task.Delay(100);
 
         // Verify cached data is the same using reflection
         var user1Id = testUserType.GetProperty("Id")!.GetValue(user1);

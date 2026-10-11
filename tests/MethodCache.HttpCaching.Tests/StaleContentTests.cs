@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
+using MethodCache.HttpCaching.Internal;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -14,7 +16,8 @@ public class StaleContentTests
         options.AddDiagnosticHeaders = true;
         options.DefaultMaxAge = null;
 
-        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
+        var state = new HttpCacheClientState("test");
+        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options, state);
 
         // Stale for two minutes, inside the 300 second stale-while-revalidate window
         var pastDate = DateTimeOffset.UtcNow.AddMinutes(-7);
@@ -46,14 +49,17 @@ public class StaleContentTests
         var response2 = await client.GetAsync("https://api.example.com/data");
         var content2 = await response2.Content.ReadAsStringAsync();
 
-        await Task.Delay(100);
+        await HttpCacheTestFactory.WaitUntilAsync(() => state.RevalidationsInFlight.IsEmpty, "the background revalidation has finished");
+        var response3 = await client.GetAsync("https://api.example.com/data");
 
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal("original content", content1);
         Assert.Equal("original content", content2);
         Assert.Equal("STALE", response2.Headers.GetValues("X-Cache").FirstOrDefault());
-        Assert.True(innerHandler.RequestCount >= 2);
+        Assert.Equal(2, innerHandler.RequestCount);
+        Assert.Equal("updated content", await response3.Content.ReadAsStringAsync());
+        Assert.Equal("HIT", response3.Headers.GetValues("X-Cache").FirstOrDefault());
     }
 
     [Fact]
@@ -103,7 +109,8 @@ public class StaleContentTests
         var options = new HttpCacheOptions();
         options.EnableStaleWhileRevalidate = false;
 
-        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options, timeProvider: time);
 
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -121,7 +128,7 @@ public class StaleContentTests
         innerHandler.SetResponses(response, TestHttpMessageHandler.CloneResponse(response));
 
         var response1 = await client.GetAsync("https://api.example.com/data");
-        await Task.Delay(10);
+        time.Advance(TimeSpan.FromMilliseconds(1));
         var response2 = await client.GetAsync("https://api.example.com/data");
 
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
@@ -135,7 +142,8 @@ public class StaleContentTests
         var options = new HttpCacheOptions();
         options.EnableStaleIfError = false;
 
-        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options, timeProvider: time);
 
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -146,7 +154,7 @@ public class StaleContentTests
         innerHandler.SetResponse(response);
 
         var response1 = await client.GetAsync("https://api.example.com/data");
-        await Task.Delay(1100);
+        time.Advance(TimeSpan.FromSeconds(1));
         innerHandler.ShouldThrowException = true;
 
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
@@ -194,25 +202,35 @@ public class StaleContentTests
         options.EnableStaleWhileRevalidate = true;
         options.AddDiagnosticHeaders = true;
 
-        using var handler = new SlowOriginHandler();
-        using var httpClient = new HttpClient(HttpCacheTestFactory.CreateHandler(options, handler));
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+        var state = new HttpCacheClientState("test");
+        using var handler = new GatedOriginHandler(time);
+        using var httpClient = new HttpClient(HttpCacheTestFactory.CreateHandler(options, handler, state, timeProvider: time));
 
         _ = await httpClient.GetAsync("https://api.example.com/concurrent-swr");
-        await Task.Delay(20);
+        time.Advance(TimeSpan.FromSeconds(1)); // past max-age, inside stale-while-revalidate
 
-        var tasks = Enumerable.Range(0, 10)
-            .Select(_ => httpClient.GetAsync("https://api.example.com/concurrent-swr"));
-        await Task.WhenAll(tasks);
+        // The revalidation is held open, so every concurrent request finds it still in flight
+        var responses = await Task.WhenAll(Enumerable.Range(0, 10)
+            .Select(_ => httpClient.GetAsync("https://api.example.com/concurrent-swr")));
 
-        await Task.Delay(100);
+        Assert.All(responses, r => Assert.Equal("STALE", r.Headers.GetValues("X-Cache").FirstOrDefault()));
+        Assert.Single(state.RevalidationsInFlight);
+
+        handler.Release();
+        await HttpCacheTestFactory.WaitUntilAsync(() => state.RevalidationsInFlight.IsEmpty, "the background revalidation has finished");
 
         Assert.Equal(2, handler.RequestCount);
     }
 
-    private sealed class SlowOriginHandler : HttpMessageHandler
+    /// <summary>Answers the first request at once and holds every later one until <see cref="Release"/>.</summary>
+    private sealed class GatedOriginHandler(TimeProvider time) : HttpMessageHandler
     {
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _requestCount;
         public int RequestCount => Volatile.Read(ref _requestCount);
+
+        public void Release() => _gate.TrySetResult();
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -220,7 +238,7 @@ public class StaleContentTests
 
             if (requestNumber > 1)
             {
-                await Task.Delay(300, cancellationToken);
+                await _gate.Task.WaitAsync(cancellationToken);
             }
 
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -228,7 +246,7 @@ public class StaleContentTests
                 Content = new StringContent($"payload-{requestNumber}"),
                 Headers =
                 {
-                    Date = DateTimeOffset.UtcNow.AddMinutes(-2),
+                    Date = time.GetUtcNow(),
                     CacheControl = new CacheControlHeaderValue
                     {
                         MaxAge = TimeSpan.FromMilliseconds(1),
@@ -239,6 +257,3 @@ public class StaleContentTests
         }
     }
 }
-
-
-

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -112,47 +113,34 @@ public class PrivateSharedCacheTests
         options.IsSharedCache = true;
         options.AddDiagnosticHeaders = true;
 
-        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options, timeProvider: time);
 
-        var firstResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        HttpResponseMessage Response(string content) => new(HttpStatusCode.OK)
         {
-            Content = new StringContent("first"),
+            Content = new StringContent(content),
             Headers =
             {
                 CacheControl = new CacheControlHeaderValue
                 {
-                    MaxAge = TimeSpan.FromSeconds(2),
-                    SharedMaxAge = TimeSpan.FromMilliseconds(150)
+                    MaxAge = TimeSpan.FromMinutes(2),
+                    SharedMaxAge = TimeSpan.FromSeconds(10)
                 },
-                Date = DateTimeOffset.UtcNow
+                Date = time.GetUtcNow()
             }
         };
 
-        var secondResponse = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("second"),
-            Headers =
-            {
-                CacheControl = new CacheControlHeaderValue
-                {
-                    MaxAge = TimeSpan.FromSeconds(2),
-                    SharedMaxAge = TimeSpan.FromMilliseconds(150)
-                },
-                Date = DateTimeOffset.UtcNow
-            }
-        };
-
-        innerHandler.SetResponses(firstResponse, secondResponse);
+        innerHandler.SetResponses(Response("first"), Response("second"));
 
         var response1 = await client.GetAsync("https://api.example.com/shared-expiry");
-        await Task.Delay(250);
+        time.Advance(TimeSpan.FromSeconds(10) - TimeSpan.FromTicks(1));
+        var beforeSMaxAge = await client.GetAsync("https://api.example.com/shared-expiry");
+        time.Advance(TimeSpan.FromTicks(1));
         var response2 = await client.GetAsync("https://api.example.com/shared-expiry");
 
-        var content1 = await response1.Content.ReadAsStringAsync();
-        var content2 = await response2.Content.ReadAsStringAsync();
-
-        Assert.Equal("first", content1);
-        Assert.Equal("second", content2);
+        Assert.Equal("first", await response1.Content.ReadAsStringAsync());
+        Assert.Equal("first", await beforeSMaxAge.Content.ReadAsStringAsync());
+        Assert.Equal("second", await response2.Content.ReadAsStringAsync());
         Assert.Equal(2, innerHandler.RequestCount);
     }
 
