@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using CsCheck;
+using MethodCache.Core.Tests.Core;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using Microsoft.Extensions.Time.Testing;
@@ -32,6 +33,7 @@ namespace MethodCache.Core.Tests.Properties;
 /// so nothing is evicted; TTL jitter is off; there is no refresh-ahead or background cleanup timer, so nothing runs
 /// outside the operations. Seeds and replay: see <see cref="PropertySettings"/>.</para>
 /// </remarks>
+[Collection(nameof(CpuIntensiveCollection))]
 public class MemoryCacheModelTests
 {
     private static readonly TimeSpan DefaultExpiration = TimeSpan.FromSeconds(20);

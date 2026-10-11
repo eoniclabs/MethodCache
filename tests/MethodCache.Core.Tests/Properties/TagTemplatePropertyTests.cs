@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using CsCheck;
+using MethodCache.Core.Tests.Core;
 using MethodCache.Infrastructure;
 using Xunit;
 
@@ -13,6 +14,7 @@ namespace MethodCache.Core.Tests.Properties;
 /// <c>string.Format</c> from a template the source generator prepares. When the two disagree for some argument, the
 /// invalidation misses the entry and callers keep getting stale data. Seeds and replay: see <see cref="PropertySettings"/>.
 /// </summary>
+[Collection(nameof(CpuIntensiveCollection))]
 public class TagTemplatePropertyTests
 {
     private static readonly string[] NamePool = { "id", "userId", "org", "x", "Name" };

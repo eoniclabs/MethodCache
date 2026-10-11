@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using CsCheck;
+using MethodCache.Core.Tests.Core;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using Xunit;
@@ -31,6 +32,7 @@ namespace MethodCache.Core.Tests.Properties;
 /// <see cref="DateTimeOffset"/>'s offset, and string content compared ordinally.</para>
 /// <para>Seeds and replay: see <see cref="PropertySettings"/>.</para>
 /// </remarks>
+[Collection(nameof(CpuIntensiveCollection))]
 public class CacheKeyPropertyTests
 {
     public enum Color { Red = 1, Green = 2, Minus = -1 }

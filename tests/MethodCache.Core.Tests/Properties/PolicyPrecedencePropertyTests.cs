@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using CsCheck;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
+using MethodCache.Core.Tests.Core;
 using MethodCache.Policies;
 using Xunit;
 
@@ -17,6 +18,7 @@ namespace MethodCache.Core.Tests.Properties;
 /// highest layer; failing that, the defaults' from the highest layer; else unset. Seeds and replay: see
 /// <see cref="PropertySettings"/>.
 /// </remarks>
+[Collection(nameof(CpuIntensiveCollection))]
 public class PolicyPrecedencePropertyTests
 {
     private const string MethodId = "MethodCache.Core.Tests.Properties.IPrecedenceService.Get";

@@ -1,4 +1,5 @@
 using CsCheck;
+using MethodCache.Core.Tests.Core;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using Microsoft.Extensions.Time.Testing;
@@ -13,6 +14,7 @@ namespace MethodCache.Core.Tests.Properties;
 /// factory runs once however many callers miss together), one caller's cancellation does not cancel or fail the
 /// others, and a failed load is not cached. Seeds and replay: see <see cref="PropertySettings"/>.
 /// </summary>
+[Collection(nameof(CpuIntensiveCollection))]
 public class ConcurrentLoadPropertyTests
 {
     private static readonly string[] Keys = { "k0", "k1", "k2" };
