@@ -1,0 +1,77 @@
+# MethodCache: instructions for coding agents
+
+Copy this file into your project as agent instructions, for example as `.github/copilot-instructions.md`, a Cursor
+rule, a Claude Code skill or a section of `AGENTS.md`. It tells a coding agent how to add caching with MethodCache
+correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md
+
+## Adding caching to a service
+
+1. The `MethodCache` package contains the library, the source generator and the analyzers. Nothing else is needed
+   for in-memory caching.
+2. Put `[Cache]` on the **interface** method, never on the class. Put `[CacheInvalidate(Tags = [...])]` on the
+   interface methods that change the data. Don't change the implementation.
+3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them.
+
+<!-- snippet: getting-started-interface -->
+```cs
+public interface IProductService
+{
+    [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
+    Task<Product> GetAsync(int id, CancellationToken ct = default);
+
+    [Cache(Duration = "00:01:00", Tags = ["products"])]
+    Task<List<Product>> SearchAsync(string text, int page);
+
+    [CacheInvalidate(Tags = ["products", "product:{id}"])]
+    Task UpdateAsync(int id, Product product);
+}
+
+public sealed class ProductService(Database db) : IProductService
+{
+    public Task<Product> GetAsync(int id, CancellationToken ct = default) => db.LoadProductAsync(id, ct);
+
+    public Task<List<Product>> SearchAsync(string text, int page) => db.SearchAsync(text, page);
+
+    public Task UpdateAsync(int id, Product product) => db.SaveAsync(product);
+}
+```
+<!-- endSnippet -->
+
+<!-- snippet: getting-started-registration -->
+```cs
+builder.Services.AddSingleton<Database>();
+builder.Services.AddScoped<IProductService, ProductService>();   // any lifetime
+builder.Services.AddMethodCache();                               // after your registrations
+```
+<!-- endSnippet -->
+
+## Rules
+
+- Only interface methods that return a value can be cached: sync, `Task<T>` or `ValueTask<T>`. Return a list, never
+  a lazy `IEnumerable<T>` or `IQueryable<T>`.
+- Callers must use the interface. Calling the method from inside the class, or resolving the class itself, bypasses
+  the cache.
+- Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
+  is not part of the key. Every value that changes the result must be a parameter.
+- Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template and stays
+  literal; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
+- Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`,
+  `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the first argument.
+- Cached objects are shared between callers: return immutable types such as records.
+- For a type with only private state used as an argument, implement `ICacheKeyProvider`.
+- For a client from a NuGet package with an interface, use
+  `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` instead of a wrapper.
+- Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,
+  prefixed key such as `$"order:{id}"`.
+- Fix every `MC` and `MCG` build diagnostic; each links to its explanation, and many have a code fix.
+- In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
+  caching off.
+
+## Namespaces
+
+- `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
+  `IRuntimeCacheConfigurator`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`, `ICacheKeyProvider`.
+- `MethodCache.Extensibility`: `ISerializer`, `JsonCacheSerializer`, `ICacheKeyGenerator`, `JsonKeyGenerator`,
+  `NoOpCacheManager`.
+- `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
+  `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).

@@ -49,6 +49,7 @@ Read this before changing the repository. It is written for human contributors a
 - Library code must use `ConfigureAwait(false)` on every await (`CA2007` is an error in `src/`).
 - New or changed diagnostics need a row in `docs/user-guide/DIAGNOSTICS.md` and an entry in `src/MethodCache.Analyzers/AnalyzerReleases.Unshipped.md` when they come from the analyzers.
 - C# examples in Markdown are not written by hand. They live in `tests/MethodCache.Docs.Tests` between `// begin-snippet: name` and `// end-snippet`, a `.md` file references them with a line `snippet: name`, and `dotnet tool restore && dotnet mdsnippets` copies them in (CI fails when the docs are out of date). Edit the `.cs` file, never the code between `<!-- snippet: -->` and `<!-- endSnippet -->`.
+- `llms.txt` and `llms-full.txt` are generated from the pages `docs/README.md` links: after changing docs, run `python3 .github/scripts/generate-llms.py` (CI fails when they are out of date). Keep `docs/ai/methodcache.md` in step with the rules it states.
 - Behavior changes need the user docs updated in the same pull request: `README.md`, the feature page under `docs/features/` (indexed in `docs/README.md`), and the package's NuGet README. For `MethodCache` (`src/MethodCache.Core`) that is `NUGET_README.md` at the repository root; the add-on packages use their own `src/*/README.md`.
 - CI also runs the demo, a Native AOT publish of `tests/MethodCache.AotSmokeTest`, and the package smoke test (including with the .NET 8 SDK). Run the ones your change can affect before pushing.
 

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "MethodCache",
+  "description": "Cache any .NET method with one attribute: a source generator turns [Cache] on interface methods into caching decorators, with keys from the arguments, tag invalidation, Redis or SQL Server, and live policy changes.",
+  "folders": ["docs", "src"],
+  "excludeFolders": ["docs/developer", "plans", "benchmarks", "tests", "samples", "artifacts"],
+  "excludeFiles": ["llms-full.txt"],
+  "rules": [
+    "Put [Cache] and [CacheInvalidate] on interface methods, never on the implementing class.",
+    "Register services first, then call builder.Services.AddMethodCache(); services registered after it are not cached.",
+    "Callers must use the interface: calling a cached method from inside its class bypasses the cache.",
+    "Don't write keys for [Cache] methods; they come from the method and its arguments.",
+    "Tag templates take a parameter name only, like \"product:{id}\"; \"{product.Id}\" stays literal text.",
+    "Durations are TimeSpan strings, like Duration = \"00:10:00\".",
+    "Return materialized lists, not IEnumerable<T> or IQueryable<T>, from cached methods.",
+    "Use ICacheManager.GetOrCreateAsync with an explicit, prefixed key when an attribute doesn't fit."
+  ]
+}
