@@ -84,19 +84,3 @@ public sealed class ProductCatalog : IProductCatalog
 
     public Task<decimal> GetPriceAsync(string sku) => Task.FromResult(129m);
 }
-
-/// <summary>A third-party client you cannot add attributes to.</summary>
-public sealed class ExchangeRateClient(CallCounter<ExchangeRateClient> counter)
-{
-    public async Task<decimal> GetRateAsync(string from, string to)
-    {
-        counter.Increment();
-        await Task.Delay(250);
-        return (from, to) switch
-        {
-            ("EUR", "SEK") => 11.42m,
-            ("USD", "SEK") => 10.61m,
-            _ => 1m,
-        };
-    }
-}
