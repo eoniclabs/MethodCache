@@ -1,0 +1,33 @@
+{
+  "stryker-config": {
+    "project": "MethodCache.Core.csproj",
+    "test-projects": [ "MethodCache.Core.Tests.csproj" ],
+    "target-framework": "net10.0",
+    "configuration": "Release",
+    "coverage-analysis": "perTest",
+    "mutation-level": "Standard",
+    "mutate": [
+      "**/*.cs",
+      "!**/obj/**",
+      "!**/Infrastructure/ConsoleCacheMetricsProvider.cs",
+      "!**/Infrastructure/NullCacheMetricsProvider.cs"
+    ],
+    "ignore-mutations": [ "string" ],
+    "ignore-methods": [
+      "ConfigureAwait",
+      "*Exception.ctor",
+      "*.ThrowIfNull",
+      "*.ThrowIfNullOrEmpty",
+      "*.ThrowIfNullOrWhiteSpace",
+      "*.CacheError",
+      "*.LogDebug",
+      "*.LogTrace",
+      "*.LogInformation",
+      "*.LogWarning",
+      "*.LogError"
+    ],
+    "additional-timeout": 5000,
+    "reporters": [ "progress", "cleartext", "html", "json" ],
+    "thresholds": { "high": 80, "low": 60, "break": 0 }
+  }
+}

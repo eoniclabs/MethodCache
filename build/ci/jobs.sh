@@ -11,8 +11,16 @@
 #   build/ci/jobs.sh packages   pack all 7 packages, install them in apps (needs METHODCACHE_REDIS_URL and
 #                               METHODCACHE_SQLSERVER_CONNECTION), and build the Quick Start with the .NET 8 SDK
 #   build/ci/jobs.sh docs       the docs snippets and llms.txt match their sources
+#   build/ci/jobs.sh diffcoverage  at least 80% of the lines a change adds under src/ are covered by tests
 #
-# demo, tests, unit and cultures expect "build" to have run first in the same checkout.
+# Longer checks, not in the default linux.sh list (build/ci/README.md gives their run time):
+#   build/ci/jobs.sh properties  the CsCheck properties from random seeds, PROPERTY_SECONDS (5) each
+#   build/ci/jobs.sh soak        the soak tests for METHODCACHE_SOAK_SECONDS (30)
+#   build/ci/jobs.sh mutation    Stryker.NET on MethodCache.Core, a report in artifacts/mutation; never fails on
+#                                the score
+#
+# demo, tests, unit, cultures, diffcoverage, properties and soak expect "build" to have run first in the same
+# checkout.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
@@ -118,8 +126,81 @@ job_docs() {
   }
 }
 
+job_diffcoverage() {
+  # The net10.0 tests with coverage (the Docker-backed ones too, when Docker is there), then the share of added and
+  # changed lines under src/ they ran: DIFF_COVERAGE_MIN percent (default 80) or the job fails, listing the
+  # uncovered lines. DIFF_COVERAGE_BASE overrides the commit to compare with (default: merge base with origin/main).
+  local results=artifacts/diff-coverage
+  rm -rf "$results"
+  dotnet test "$solution" --configuration Release --no-build --framework net10.0 \
+    --collect "XPlat Code Coverage" --results-directory "$results"
+  local reports=() report
+  while IFS= read -r -d '' report; do reports+=("$report"); done \
+    < <(find "$results" -name coverage.cobertura.xml -print0)
+  if [ ${#reports[@]} -eq 0 ]; then
+    echo "No coverage reports in $results"
+    exit 1
+  fi
+  python3 build/ci/diff_coverage.py --min "${DIFF_COVERAGE_MIN:-80}" \
+    ${DIFF_COVERAGE_BASE:+--base "$DIFF_COVERAGE_BASE"} "${reports[@]}"
+}
+
+job_properties() {
+  # The CsCheck properties (tests/MethodCache.Core.Tests/Properties) from a fresh random seed, each for
+  # PROPERTY_SECONDS (CsCheck_Time) instead of its fixed iteration count, on PROPERTY_FRAMEWORKS. CsCheck prints
+  # the seed of a failure (CsCheck_Seed = "..."); it is repeated at the end with the command that replays it.
+  local seconds="${PROPERTY_SECONDS:-5}" framework log status failed=0
+  mkdir -p artifacts/properties
+  for framework in ${PROPERTY_FRAMEWORKS:-net10.0 net8.0}; do
+    echo "== Properties on $framework from random seeds, $seconds s each"
+    log="artifacts/properties/$framework.log"
+    set +e
+    METHODCACHE_PROPERTY_RANDOM_SEED=true CsCheck_Time="$seconds" \
+      dotnet test tests/MethodCache.Core.Tests --configuration Release --no-build --framework "$framework" \
+      --filter "FullyQualifiedName~MethodCache.Core.Tests.Properties" --logger "console;verbosity=normal" 2>&1 \
+      | tee "$log"
+    status=${PIPESTATUS[0]}
+    set -e
+    if [ "$status" -ne 0 ]; then
+      failed=1
+      echo "== A property failed on $framework. Replay it with the seed CsCheck printed:"
+      # CsCheck prints it as CsCheck_Seed = "0N0XIzNsQ0O2"
+      { grep -aoE 'CsCheck_Seed *= *"?[A-Za-z0-9_-]+' "$log" || true; } | sed -E 's/ *= *"?/=/' | sort -u \
+        | while read -r seed; do
+        echo "   $seed dotnet test tests/MethodCache.Core.Tests -c Release -f $framework --filter \"FullyQualifiedName~MethodCache.Core.Tests.Properties\""
+      done
+    fi
+  done
+  return "$failed"
+}
+
+job_soak() {
+  # The soak tests (Category=Soak, skipped in every other run) under sustained concurrent load for
+  # METHODCACHE_SOAK_SECONDS each; FRAMEWORK picks the target framework (default net10.0)
+  METHODCACHE_SOAK_SECONDS="${METHODCACHE_SOAK_SECONDS:-30}" \
+    dotnet test tests/MethodCache.Core.Tests --configuration Release --no-build --framework "${FRAMEWORK:-net10.0}" \
+    --filter "Category=Soak" --logger "console;verbosity=detailed"
+}
+
+job_mutation() {
+  # Stryker.NET (a local tool) mutates src/MethodCache.Core and runs tests/MethodCache.Core.Tests against each
+  # mutant; the settings are in tests/MethodCache.Core.Tests/stryker-config.json. A report only: the HTML and JSON
+  # reports go to artifacts/mutation/core/reports and the score never fails the job (break threshold 0).
+  # MUTATION_ARGS adds Stryker options, e.g. "--concurrency 8" or "--mutate **/Runtime/Memory/*.cs" for a subset.
+  local output="$PWD/artifacts/mutation/core"
+  rm -rf "$output"
+  dotnet tool restore
+  (
+    cd tests/MethodCache.Core.Tests
+    set -f # a --mutate glob in MUTATION_ARGS goes to Stryker as it is
+    # shellcheck disable=SC2086 # MUTATION_ARGS is a list of options
+    dotnet stryker --skip-version-check --output "$output" ${MUTATION_ARGS:-}
+  )
+  echo "== Mutation report: $output/reports/mutation-report.html and mutation-report.json"
+}
+
 if [ $# -eq 0 ]; then
-  sed -n '2,16p' "${BASH_SOURCE[0]}"
+  sed -n '2,23p' "${BASH_SOURCE[0]}"
   exit 2
 fi
 
