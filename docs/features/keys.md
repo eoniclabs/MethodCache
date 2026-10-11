@@ -24,6 +24,10 @@ public interface IUserService
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
 - **Everything else**, such as arrays and collections, goes through the key generator. The default,
   `FastHashKeyGenerator`, hashes the arguments into a key such as `ByIdsAsync:11b474c4…`.
+- **Values inside hashed arguments keep their runtime type.** Where a value's type differs from the type it is declared
+  as (an element of `object[]` or `List<object>`, an `object` property, a property typed as a base class or interface),
+  the key records the value's type and all of its members: `new object[] { 1 }` and `new object[] { 1L }` get
+  different keys, and so do two `Circle`s behind a `Shape` property that differ only in `Radius`.
 - A `CancellationToken` parameter is never part of the key.
 - Keys don't depend on the current culture: `-1`, `1.5` and dates are written the same under every culture.
 
@@ -57,7 +61,9 @@ builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, JsonKey
 <!-- endSnippet -->
 
 The JSON is followed by a short hash of the arguments' runtime types (`[42,"alice"]:3f2a…`), so arguments that
-write the same JSON, such as `1` and `1L` or two classes with the same properties, still get different keys.
+write the same JSON, such as `1` and `1L` or two classes with the same properties, still get different keys. A value
+inside an argument whose type differs from its declared type is written with its type, for example
+`[{"\uFFFFt":"System.Int64","v":1}]` for `new object[] { 1L }`.
 
 Both generators are in `MethodCache.Extensibility`. Keys built by the decorator itself (simple values, records,
 `ICacheKeyProvider`) don't change with the generator.
@@ -79,6 +85,9 @@ await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.Ge
 - **Keys contain the arguments.** Don't cache methods that take secrets such as passwords or tokens as arguments; pass
   an identifier instead. Hashed keys are not encryption. No argument, whatever characters it contains, can produce
   another call's key; see [Security](../security.md).
+- **Keys from the key generators changed** for arguments that hold values in `object`, base-class or interface slots,
+  when the runtime types above became part of the key. Entries cached under the earlier keys are not found again and
+  expire on their own.
 - **`Version` changes every key** of a method, so values cached by an earlier version are ignored. See
   [Expiration](expiration.md#versions).
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin

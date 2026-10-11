@@ -563,5 +563,136 @@ namespace MethodCache.Core.Tests.Core
 
             Assert.Equal(keys.Length, keys.Distinct().Count());
         }
+
+        public sealed record Boxed(object? Value);
+
+        public abstract record Shape(string Name);
+
+        public record Circle(string Name, int Radius) : Shape(Name);
+
+        public sealed record Square(string Name, int Side) : Shape(Name);
+
+        public sealed record ShapeHolder(Shape? Shape);
+
+        public interface IShape { string Name { get; } }
+
+        public sealed record Triangle(string Name, int Base) : IShape;
+
+        public sealed record Hexagon(string Name, int Base) : IShape;
+
+        public sealed record IShapeHolder(IShape? Shape);
+
+        public sealed record CircleHolder(Circle? Circle);
+
+        public sealed record LargeCircle(string Name, int Radius, int Scale) : Circle(Name, Radius);
+
+        public static TheoryData<string, object, object> NestedValuesOfDifferentTypes() => new()
+        {
+            { "int and long in object[]", new object[] { 1 }, new object[] { 1L } },
+            { "int and double in object[]", new object[] { 1 }, new object[] { 1.0 } },
+            { "int and decimal in object[]", new object[] { 1 }, new object[] { 1m } },
+            { "int and short in object[]", new object[] { 1 }, new object[] { (short)1 } },
+            { "int and enum in object[]", new object[] { 1 }, new object[] { DayOfWeek.Monday } },
+            { "int and long in List<object>", new List<object> { 1 }, new List<object> { 1L } },
+            { "int and double in List<object>", new List<object> { 1 }, new List<object> { 1.0 } },
+            { "int and long in an object property", new Boxed(1), new Boxed(1L) },
+            { "int and double in an object property", new Boxed(1), new Boxed(1.0) },
+            { "int and long in Dictionary<string, object>", new Dictionary<string, object> { ["a"] = 1 }, new Dictionary<string, object> { ["a"] = 1L } },
+            { "derived-only property behind a base-typed property", new ShapeHolder(new Circle("a", 1)), new ShapeHolder(new Circle("a", 2)) },
+            { "two derived types behind a base-typed property", new ShapeHolder(new Circle("a", 1)), new ShapeHolder(new Square("a", 1)) },
+            { "two types behind an interface-typed property", new IShapeHolder(new Triangle("a", 1)), new IShapeHolder(new Hexagon("a", 1)) },
+            { "derived-only property behind an interface-typed property", new IShapeHolder(new Triangle("a", 1)), new IShapeHolder(new Triangle("a", 2)) },
+            { "a derived record behind its non-sealed base", new CircleHolder(new Circle("a", 1)), new CircleHolder(new LargeCircle("a", 1, 2)) },
+            { "base-typed list elements", new List<Shape> { new Circle("a", 1) }, new List<Shape> { new Circle("a", 2) } },
+            { "int and long in nested object[]", new object[] { new object[] { 1 } }, new object[] { new object[] { 1L } } },
+            { "int[] and long[] in object[]", new object[] { new[] { 1 } }, new object[] { new[] { 1L } } },
+            { "int[] and List<int> in object[]", new object[] { new[] { 1 } }, new object[] { new List<int> { 1 } } },
+        };
+
+        [Theory]
+        [MemberData(nameof(NestedValuesOfDifferentTypes))]
+        public void FastHashKeyGenerator_NestedValuesOfDifferentRuntimeTypes_GetDistinctKeys(string because, object first, object second)
+            => AssertDistinctButStable(new FastHashKeyGenerator(), because, first, second);
+
+        [Theory]
+        [MemberData(nameof(NestedValuesOfDifferentTypes))]
+        public void JsonKeyGenerator_NestedValuesOfDifferentRuntimeTypes_GetDistinctKeys(string because, object first, object second)
+            => AssertDistinctButStable(new JsonKeyGenerator(), because, first, second);
+
+        [Theory]
+        [InlineData(typeof(FastHashKeyGenerator))]
+        [InlineData(typeof(JsonKeyGenerator))]
+        public void KeyGenerators_NestedObjectValues_GetDistinctKeysForEveryType(Type generatorType)
+        {
+            // int, long, string, double, float, decimal and enum values that all write "1" or 1 in JSON
+            var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+            object[] ones = [1, 1L, "1", 1.0, 1.0f, 1m, (byte)1, DayOfWeek.Monday, '1'];
+
+            var args = ones.Select(o => (object)new object[] { o })
+                .Concat(ones.Select(o => (object)new List<object> { o }))
+                .Concat(ones.Select(o => (object)new Boxed(o)))
+                .Concat(ones.Select(o => (object)new object[] { new object[] { o } }))
+                .Concat(new object[] { new Dictionary<string, object> { ["\uFFFFt"] = "System.Int32", ["v"] = 1 } })
+                .ToArray();
+            var keys = args.Select(a => generator.GenerateKey("M", new[] { a }, policy)).ToArray();
+
+            Assert.Equal(keys.Length, keys.Distinct().Count());
+        }
+
+        [Theory]
+        [InlineData(typeof(FastHashKeyGenerator))]
+        [InlineData(typeof(JsonKeyGenerator))]
+        public void KeyGenerators_NestedValuesOfTheDeclaredType_KeepTheirPlainJson(Type generatorType)
+        {
+            // Only values whose runtime type differs from the declared one are tagged, so exact values read as before
+            var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+
+            var key = generator.GenerateKey("M", new object[] { new CircleHolder(new Circle("a", 1)) }, policy);
+            var again = generator.GenerateKey("M", new object[] { new CircleHolder(new Circle("a", 1)) }, policy);
+
+            key.Should().Be(again);
+            if (generator is JsonKeyGenerator)
+            {
+                key.Should().StartWith("M:[{\"Circle\":{\"Radius\":1,\"Name\":\"a\"}}]:");
+            }
+        }
+
+        [Theory]
+        [InlineData(typeof(FastHashKeyGenerator))]
+        [InlineData(typeof(JsonKeyGenerator))]
+        public void KeyGenerators_ObjectArrayHoldingItself_IsRefused(Type generatorType)
+        {
+            // The runtime-type wrapper must not turn a cycle into unbounded recursion
+            var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+            var cycle = new object[1];
+            cycle[0] = cycle;
+
+            var act = () => generator.GenerateKey("M", new object[] { cycle }, policy);
+
+            act.Should().Throw<InvalidOperationException>().WithMessage("*can't be serialized*");
+        }
+
+        private static void AssertDistinctButStable(ICacheKeyGenerator generator, string because, object first, object second)
+        {
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+
+            var firstKey = generator.GenerateKey("M", new[] { first }, policy);
+            var secondKey = generator.GenerateKey("M", new[] { second }, policy);
+
+            firstKey.Should().NotBe(secondKey, because);
+            generator.GenerateKey("M", new[] { first }, policy).Should().Be(firstKey, "the same arguments give the same key");
+        }
+
+        [Fact]
+        public void FastHashKeyGenerator_TypeNamesLeaveOutAssemblyVersions()
+        {
+            // A runtime update changes the versions in Type.FullName of a generic type; keys must not change with it
+            FastHashKeyGenerator.TypeName(typeof(List<int>)).Should().Be("System.Collections.Generic.List`1[System.Int32]");
+            FastHashKeyGenerator.TypeName(typeof(Dictionary<string, int[]>[]))
+                .Should().Be("System.Collections.Generic.Dictionary`2[System.String,System.Int32[]][]");
+        }
     }
 }
