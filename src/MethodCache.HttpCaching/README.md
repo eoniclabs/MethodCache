@@ -28,6 +28,8 @@ That is all. Your typed client keeps calling `GetAsync` as before.
 - Each HttpClient has its own settings and its own entries.
 - Request directives are honored: `no-cache` (revalidates and stores the answer), `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
 - `Range` requests go to the origin, and `206 Partial Content` is never stored.
+- Requests that carry their own `If-None-Match` or `If-Modified-Since` go to the origin, so your `304` reaches you.
+- Statuses that are cacheable by default (`200`, `203`, `204`, `301`, `404`, ...) are stored; other `2xx` responses only when they say how long they stay fresh (`max-age` or `Expires`).
 
 ## Settings
 

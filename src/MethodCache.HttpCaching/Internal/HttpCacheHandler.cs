@@ -68,7 +68,9 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         // Unsafe methods are never served from cache, even if listed in CacheableMethods, so they always invalidate.
         // Range requests go to the origin: a partial response is never stored, and a stored full one isn't cut up.
-        if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null)
+        // So do requests with the caller's own validators: its 304 must reach it, not be replaced by the cache's.
+        if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
+            HasCallerConditionals(request))
         {
             var bypassResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -345,12 +347,18 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return false;
         }
 
-        if (!IsCacheableStatus(response.StatusCode))
+        var cacheControl = response.Headers.CacheControl;
+
+        // Other statuses may be stored only with explicit freshness, and never 206: it holds part of the representation
+        var hasExplicitFreshness = cacheControl?.MaxAge != null ||
+                                   (options.IsSharedCache && cacheControl?.SharedMaxAge != null) ||
+                                   response.Content?.Headers.Expires != null;
+        if (!IsCacheableStatus(response.StatusCode) &&
+            !(hasExplicitFreshness && (int)response.StatusCode is >= 200 and < 300 and not 206))
         {
             return false;
         }
 
-        var cacheControl = response.Headers.CacheControl;
         if (cacheControl?.NoStore == true || request.Headers.CacheControl?.NoStore == true)
         {
             return false;
@@ -361,9 +369,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return false;
         }
 
-        var hasFreshness = cacheControl?.MaxAge != null ||
-                           (options.IsSharedCache && cacheControl?.SharedMaxAge != null) ||
-                           response.Content?.Headers.Expires != null ||
+        var hasFreshness = hasExplicitFreshness ||
                            (options.AllowHeuristicFreshness && response.Content?.Headers.LastModified != null);
         var hasValidator = response.Headers.ETag != null || response.Content?.Headers.LastModified != null;
 
@@ -403,6 +409,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         return response;
     }
+
+    private static bool HasCallerConditionals(HttpRequestMessage request)
+        => request.Headers.IfNoneMatch.Count > 0 || request.Headers.IfModifiedSince != null ||
+           request.Headers.IfMatch.Count > 0 || request.Headers.IfUnmodifiedSince != null;
 
     private static void AddConditionalHeaders(HttpRequestMessage request, HttpCacheEntry cachedEntry)
     {

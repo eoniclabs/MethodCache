@@ -202,6 +202,52 @@ public class HttpCacheSafetyTests
         Assert.Equal(3, inner.RequestCount);
     }
 
+    [Fact]
+    public async Task CallerConditionalRequest_GetsTheOrigins304_NotTheCachedBody()
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        var first = Cacheable("v1");
+        first.Headers.ETag = new EntityTagHeaderValue("\"e1\"");
+        var notModified = new HttpResponseMessage(HttpStatusCode.NotModified) { Content = new ByteArrayContent([]) };
+        notModified.Headers.ETag = new EntityTagHeaderValue("\"e1\"");
+        inner.SetResponses(first, notModified);
+
+        await client.GetStringAsync(Url);
+        using var conditional = new HttpRequestMessage(HttpMethod.Get, Url);
+        conditional.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+        conditional.Headers.IfNoneMatch.Add(new EntityTagHeaderValue("\"mine\""));
+        var response = await client.SendAsync(conditional);
+
+        Assert.Equal(HttpStatusCode.NotModified, response.StatusCode);
+        Assert.Contains(inner.Requests[1].Headers.IfNoneMatch, tag => tag.Tag == "\"mine\"");
+    }
+
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    public async Task NonDefaultSuccessStatus_IsStoredOnlyWithExplicitFreshness(bool maxAge, int expectedRequests)
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        HttpResponseMessage Accepted(string body)
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.Accepted) { Content = new StringContent(body) };
+            response.Headers.ETag = new EntityTagHeaderValue("\"e1\"");
+            if (maxAge)
+            {
+                response.Headers.CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(5) };
+            }
+
+            return response;
+        }
+
+        inner.SetResponses(Accepted("a"), Accepted("b"));
+
+        await client.GetStringAsync(Url);
+        await client.GetStringAsync(Url);
+
+        Assert.Equal(expectedRequests, inner.RequestCount);
+    }
+
     private static IEnumerable<string> HttpCacheKeys(TimeToLiveStorage storage) => storage.TimeToLives.Keys;
 
     private static async Task<string> GetWithCookie(HttpClient client, string cookie)
