@@ -42,9 +42,11 @@ internal sealed class SqlServerTables(SqlServerOptions options) : IHostedService
             END
             """;
 
-        await using var connection = new SqlConnection(options.ConnectionString);
+        var connection = new SqlConnection(options.ConnectionString);
+        await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new SqlCommand(sql, connection);
+        var command = new SqlCommand(sql, connection);
+        await using var commandScope = command.ConfigureAwait(false);
         command.Parameters.Add(new SqlParameter("@schema", System.Data.SqlDbType.NVarChar, 128) { Value = options.SchemaName });
         command.Parameters.Add(new SqlParameter("@quotedSchema", System.Data.SqlDbType.NVarChar, 260) { Value = SqlServerOptions.Quote(options.SchemaName) });
         command.Parameters.Add(new SqlParameter("@table", System.Data.SqlDbType.NVarChar, 520) { Value = options.QualifiedTableName });

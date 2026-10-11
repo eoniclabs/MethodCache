@@ -259,7 +259,7 @@ internal class HotReloadHostedService : IHostedService
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         // Initialize hot reload monitoring
-        await _reloadManager.ReloadFromSourceAsync(cancellationToken);
+        await _reloadManager.ReloadFromSourceAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
