@@ -319,8 +319,8 @@ To enable coverage badges in your fork or org:
 - [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md)
 - [Migration: Adding Caching to Existing Service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
 - [Migration: From IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
-- [Sample App](MethodCache.SampleApp/)
-- [Demo Project](MethodCache.Demo/)
+- [Demo: a guided console tour](samples/MethodCache.Demo/)
+- [Web demo: ASP.NET Core, admin endpoints, OpenTelemetry, Redis](samples/MethodCache.WebDemo/)
 
 ## Contributing
 

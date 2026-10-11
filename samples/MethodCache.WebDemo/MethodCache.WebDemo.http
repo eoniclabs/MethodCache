@@ -1,0 +1,41 @@
+# Open in Rider or Visual Studio and run the requests one by one. Watch X-Elapsed-Ms in each response.
+@host = http://localhost:5080
+
+### 1. The first call queries the "database" (about 300 ms)
+GET {{host}}/products/1
+
+### 2. The same call again comes from the cache (about 1 ms)
+GET {{host}}/products/1
+
+### 3. A cached list
+GET {{host}}/products?category=keyboards
+
+### 4. Change a price: invalidates product 1 and the lists, nothing else
+PUT {{host}}/products/1/price
+Content-Type: application/json
+
+{ "price": 119 }
+
+### 5. Product 1 is loaded again, with the new price
+GET {{host}}/products/1
+
+### 6. Product 2 is still cached
+GET {{host}}/products/2
+
+### 7. Hits, misses and entries
+GET {{host}}/methodcache/stats
+
+### 8. What is cached right now
+GET {{host}}/methodcache/entries
+
+### 9. Every cached method's policy and where each value came from
+GET {{host}}/methodcache/methods
+
+### 10. Invalidate by tag from the outside
+POST {{host}}/methodcache/invalidate
+Content-Type: application/json
+
+{ "tags": ["products"] }
+
+### 11. Health check
+GET {{host}}/health

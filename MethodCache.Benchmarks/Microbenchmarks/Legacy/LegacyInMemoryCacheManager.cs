@@ -430,7 +430,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
 
             if (_cache.TryGetValue(cacheKey, out var entry) && !entry.IsExpired)
             {
-                if (_options.FastPathTrackMetrics && _options.EnableStatistics)
+                if (_options.EnableStatistics)
                 {
                     Interlocked.Increment(ref _hits);
                 }

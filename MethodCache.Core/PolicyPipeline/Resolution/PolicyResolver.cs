@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Core.PolicyPipeline.Sources;
 
 namespace MethodCache.Core.PolicyPipeline.Resolution;
 
@@ -15,6 +16,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private readonly ConcurrentDictionary<string, PolicyAggregator> _aggregators = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, PolicyResolutionResult> _resolutions = new(StringComparer.Ordinal);
     private readonly List<Task> _watcherTasks = new();
+    private readonly List<(IImmediatePolicySource Source, Action<PolicyChange> Handler)> _immediateSubscriptions = new();
+    private readonly object _immediateSync = new(); // Orders an immediate source's snapshot against its changes
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _initializationGate = new(1, 1);
     private int _disposed;
@@ -122,6 +125,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             return;
         }
 
+        Unsubscribe();
+
         // The watchers still observe the token, so the source is cancelled but not disposed
         _cts.Cancel();
     }
@@ -134,6 +139,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         {
             return;
         }
+
+        Unsubscribe();
 
         if (_watcherTasks.Count == 0)
         {
@@ -175,6 +182,12 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
             foreach (var registration in _registrations)
             {
+                if (registration.Source is IImmediatePolicySource immediate)
+                {
+                    SubscribeImmediate(registration, immediate);
+                    continue;
+                }
+
                 var snapshots = await registration.Source.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
 
                 foreach (var snapshot in snapshots)
@@ -190,7 +203,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
             _initialized = true;
 
-            foreach (var registration in _registrations)
+            foreach (var registration in _registrations.Where(static r => r.Source is not IImmediatePolicySource))
             {
                 _watcherTasks.Add(Task.Run(() => WatchSourceAsync(registration, _cts.Token), CancellationToken.None));
             }
@@ -198,6 +211,51 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         finally
         {
             _initializationGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Applies an immediate source's changes on the thread that makes them. Subscribing and reading the snapshot under
+    /// one lock means no change is lost or applied before the snapshot it follows.
+    /// </summary>
+    private void SubscribeImmediate(PolicySourceRegistration registration, IImmediatePolicySource source)
+    {
+        void Handler(PolicyChange change)
+        {
+            lock (_immediateSync)
+            {
+                if (Volatile.Read(ref _disposed) == 0)
+                {
+                    HandleChange(registration, change);
+                }
+            }
+        }
+
+        lock (_immediateSync)
+        {
+            source.Changed += Handler;
+            _immediateSubscriptions.Add((source, Handler));
+
+            foreach (var snapshot in source.GetSnapshot())
+            {
+                if (!string.IsNullOrWhiteSpace(snapshot.MethodId))
+                {
+                    ApplySnapshot(registration, snapshot, raiseNotification: false);
+                }
+            }
+        }
+    }
+
+    private void Unsubscribe()
+    {
+        lock (_immediateSync)
+        {
+            foreach (var (source, handler) in _immediateSubscriptions)
+            {
+                source.Changed -= handler;
+            }
+
+            _immediateSubscriptions.Clear();
         }
     }
 

@@ -478,6 +478,19 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task Statistics_CountHitsOnTheFastPath()
+    {
+        // Generated decorators read hits through TryGetFastTask, so skipping them there left the hit ratio near zero
+        var manager = CreateManager();
+        await manager.SetAsync("k", "value", OneMinute);
+
+        manager.TryGetFastTask<string>("k", out _).Should().BeTrue();
+        manager.TryGetFast<string>("k", out _).Should().BeTrue();
+
+        (await manager.GetStatsAsync()).Hits.Should().Be(2);
+    }
+
+    [Fact]
     public async Task TinyLfu_KeepsFrequentlyUsedEntries_DuringAScan()
     {
         var manager = CreateManager(o => o.MaxItems = 1000);

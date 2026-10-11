@@ -35,6 +35,10 @@ jobs:
       - name: Build
         run: dotnet build MethodCache.sln --configuration Release --no-restore
 
+      - name: Run the demo
+        # Each chapter checks its own claims and the run fails if one does not hold
+        run: dotnet run --project samples/MethodCache.Demo --configuration Release --no-build
+
       - name: Test with coverage
         run: dotnet test MethodCache.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
         env:

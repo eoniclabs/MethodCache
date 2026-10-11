@@ -176,25 +176,19 @@ namespace MethodCache.Core.Configuration
         public bool EnableBackgroundCleanup { get; set; } = true;
 
         /// <summary>
-        /// Whether to enable detailed statistics tracking.
+        /// Whether to count hits, misses and evictions, including hits on the fast path. Each count is a striped
+        /// counter increment; turn it off only if you never read the statistics.
         /// </summary>
         public bool EnableStatistics { get; set; } = true;
 
         /// <summary>
         /// Whether to enable the ultra-fast cache hit path.
-        /// When enabled, skips metrics tracking, LRU updates, and refresh-ahead checks on cache hits
+        /// When enabled, skips LRU updates and refresh-ahead checks on cache hits
         /// for zero-parameter methods returning reference types, providing 2-3x performance improvement.
         /// Cache misses always use the full-featured path with all protections.
         /// Default: true
         /// </summary>
         public bool EnableFastPath { get; set; } = true;
-
-        /// <summary>
-        /// When fast path is enabled, whether to still track metrics on cache hits.
-        /// Enabling this adds a small overhead but maintains accurate hit/miss statistics.
-        /// Default: false (prioritize performance)
-        /// </summary>
-        public bool FastPathTrackMetrics { get; set; } = false;
 
         /// <summary>
         /// Memory usage calculation mode.

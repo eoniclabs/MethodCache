@@ -1,0 +1,16 @@
+# Redis for the shared cache, and the Aspire dashboard to see MethodCache's traces and metrics.
+#   docker compose up -d
+#   dashboard: http://localhost:18888
+services:
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+
+  dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.5
+    environment:
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"
+      - "4317:18889"
