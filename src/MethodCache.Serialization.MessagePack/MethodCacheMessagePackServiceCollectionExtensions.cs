@@ -1,13 +1,13 @@
-using MethodCache.Core.Storage.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
+using MethodCache.Extensibility;
+using MethodCache.Serialization.MessagePack;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace MethodCache.Serialization.MessagePack;
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// Registers MessagePack serialization for MethodCache.
 /// </summary>
-public static class MessagePackServiceCollectionExtensions
+public static class MethodCacheMessagePackServiceCollectionExtensions
 {
     /// <summary>
     /// Stores cached values in the distributed cache (Redis, SQL Server or any <c>IDistributedCache</c>) as

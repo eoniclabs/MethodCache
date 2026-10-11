@@ -4,9 +4,8 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
-using MethodCache.OpenTelemetry.Configuration;
 
-namespace MethodCache.OpenTelemetry.Tracing;
+namespace MethodCache.OpenTelemetry;
 
 internal interface ICacheActivitySource
 {

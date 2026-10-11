@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
-using MethodCache.Core.Options;
 
-namespace MethodCache.Core.Configuration.Surfaces.Fluent
+namespace MethodCache
 {
     public interface IFluentMethodCacheConfiguration
     {

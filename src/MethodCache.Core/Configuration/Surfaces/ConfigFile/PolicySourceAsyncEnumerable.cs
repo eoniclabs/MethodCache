@@ -1,8 +1,10 @@
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using MethodCache.Abstractions.Resolution;
+using MethodCache.Policies;
 
-namespace MethodCache.Core.Configuration.Surfaces.ConfigFile;
+namespace MethodCache.Infrastructure;
 
+[EditorBrowsable(EditorBrowsableState.Never)]
 public static class PolicySourceAsyncEnumerable
 {
     public static async IAsyncEnumerable<PolicyChange> Empty([EnumeratorCancellation] CancellationToken cancellationToken)

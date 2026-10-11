@@ -1,11 +1,10 @@
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Storage.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
+using MethodCache.Extensibility;
+using MethodCache.Redis;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace MethodCache.Redis;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static class RedisServiceCollectionExtensions
+public static class MethodCacheRedisServiceCollectionExtensions
 {
     /// <summary>
     /// Uses Redis as MethodCache's distributed cache: results are shared between instances, and invalidations

@@ -2,18 +2,13 @@ using System.Collections.Immutable;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using MethodCache.Core.PolicyPipeline.Resolution;
+using MethodCache.Extensibility;
+using MethodCache.Policies;
+using MethodCache.SourceGenerator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
-using MethodCache.SourceGenerator;
-using MethodCache.Core;
-using MethodCache.Abstractions.Sources;
-using MethodCache.Abstractions.Resolution;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.PolicyPipeline.Resolution;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
@@ -280,8 +275,8 @@ namespace {namespaceName}
             MetadataReference.CreateFromFile(typeof(System.Collections.Concurrent.ConcurrentDictionary<,>).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(MethodCache.Abstractions.Policies.CachePolicy).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator).Assembly.Location), // Include Core assembly for Runtime types
+            MetadataReference.CreateFromFile(typeof(MethodCache.Policies.CachePolicy).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(MethodCache.Extensibility.ICacheKeyGenerator).Assembly.Location), // Include Core assembly for Runtime types
             MetadataReference.CreateFromFile(typeof(SourceGeneratorTestEngine).Assembly.Location), // Include this assembly for test models
         };
 

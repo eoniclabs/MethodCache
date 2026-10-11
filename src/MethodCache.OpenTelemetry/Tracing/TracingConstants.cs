@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace MethodCache.OpenTelemetry.Tracing;
+namespace MethodCache.OpenTelemetry;
 
 public static class TracingConstants
 {

@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Infrastructure
+namespace MethodCache.Extensibility
 {
     /// <summary>
     /// No-op implementation of <see cref="ICacheMetricsProvider"/> used when metrics tracking

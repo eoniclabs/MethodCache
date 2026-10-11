@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
+using MethodCache.AspNetCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace MethodCache.AspNetCore;
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>Registers the MethodCache health check.</summary>
 public static class MethodCacheHealthChecksBuilderExtensions

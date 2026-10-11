@@ -1,10 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -43,7 +40,7 @@ namespace MethodCache.Core.Tests.Core
                 // Arrange
                 var services = new ServiceCollection();
                 services.AddSingleton<ICacheMetricsProvider, TestCacheMetricsProvider>();
-                services.Configure<MemoryCacheOptions>(options =>
+                services.Configure<MethodCacheMemoryOptions>(options =>
                 {
                     options.MemoryCalculationMode = mode;
                     options.SamplingPercentage = 0.2; // 20% for sampling
@@ -92,7 +89,7 @@ namespace MethodCache.Core.Tests.Core
             // Arrange
             var services = new ServiceCollection();
             services.AddSingleton<ICacheMetricsProvider, TestCacheMetricsProvider>();
-            services.Configure<MemoryCacheOptions>(options =>
+            services.Configure<MethodCacheMemoryOptions>(options =>
             {
                 options.MemoryCalculationMode = MemoryUsageCalculationMode.Fast;
                 options.EnableStatistics = true;

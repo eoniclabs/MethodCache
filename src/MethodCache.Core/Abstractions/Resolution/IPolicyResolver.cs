@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MethodCache.Abstractions.Resolution;
+namespace MethodCache.Policies;
 
 public interface IPolicyResolver
 {

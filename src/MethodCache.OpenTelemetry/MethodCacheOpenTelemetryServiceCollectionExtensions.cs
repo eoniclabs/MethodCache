@@ -1,23 +1,13 @@
 using System;
 using System.Linq;
-using Microsoft.Extensions.DependencyInjection;
+using MethodCache;
+using MethodCache.Extensibility;
+using MethodCache.OpenTelemetry;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Trace;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Storage;
-using MethodCache.Core.Storage.Abstractions;
-using MethodCache.OpenTelemetry.Configuration;
-using MethodCache.OpenTelemetry.Instrumentation;
-using MethodCache.OpenTelemetry.Metrics;
-using MethodCache.OpenTelemetry.Propagators;
-using MethodCache.OpenTelemetry.Tracing;
 
-namespace MethodCache.OpenTelemetry.Extensions;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static class ServiceCollectionExtensions
+public static class MethodCacheOpenTelemetryServiceCollectionExtensions
 {
     /// <summary>
     /// Adds tracing and metrics to MethodCache. Call this after <c>AddMethodCache()</c>, which registers the cache
@@ -75,29 +65,15 @@ public static class ServiceCollectionExtensions
             var baggagePropagator = provider.GetRequiredService<IBaggagePropagator>();
 
             // Entry count and memory gauges read the cache's own statistics.
-            if (inner is IMemoryCache cache && meterProvider is CacheMeterProvider cacheMeterProvider)
+            if (provider.GetService<ICacheAdministrator>() is { } administrator && meterProvider is CacheMeterProvider cacheMeterProvider)
             {
-                cacheMeterProvider.ObserveCache(cache);
+                cacheMeterProvider.ObserveCache(administrator);
             }
 
             return new TelemetryCacheManager(inner, activitySource, meterProvider, baggagePropagator);
         });
 
         return services;
-    }
-
-    public static TracerProviderBuilder AddMethodCacheInstrumentation(
-        this TracerProviderBuilder builder)
-    {
-        builder.AddSource(TracingConstants.ActivitySourceName);
-        return builder;
-    }
-
-    public static MeterProviderBuilder AddMethodCacheInstrumentation(
-        this MeterProviderBuilder builder)
-    {
-        builder.AddMeter(MetricInstruments.MeterName);
-        return builder;
     }
 
     /// <summary>Marks that the cache manager is already wrapped for telemetry.</summary>

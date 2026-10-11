@@ -1,6 +1,6 @@
 using System;
 
-namespace MethodCache.Core.Configuration
+namespace MethodCache
 {
     /// <summary>
     /// Options for the distributed cache (L2) that MethodCache uses behind its in-memory cache.

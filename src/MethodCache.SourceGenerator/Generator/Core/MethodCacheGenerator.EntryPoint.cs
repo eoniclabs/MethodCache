@@ -15,7 +15,7 @@ namespace MethodCache.SourceGenerator
             // Look for methods with Cache attribute and get their containing interfaces
             var interfaceProvider = context.SyntaxProvider
                 .ForAttributeWithMetadataName(
-                    fullyQualifiedMetadataName: "MethodCache.Core.CacheAttribute",
+                    fullyQualifiedMetadataName: "MethodCache.CacheAttribute",
                     predicate: static (node, _) => node.Parent is InterfaceDeclarationSyntax,
                     transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
                 .Where(static info => info != null)
@@ -24,7 +24,7 @@ namespace MethodCache.SourceGenerator
             // Also check for CacheInvalidate attributes on methods
             var invalidateProvider = context.SyntaxProvider
                 .ForAttributeWithMetadataName(
-                    fullyQualifiedMetadataName: "MethodCache.Core.CacheInvalidateAttribute",
+                    fullyQualifiedMetadataName: "MethodCache.CacheInvalidateAttribute",
                     predicate: static (node, _) => node.Parent is InterfaceDeclarationSyntax,
                     transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
                 .Where(static info => info != null)
@@ -64,7 +64,7 @@ namespace MethodCache.SourceGenerator
             // Interfaces from other assemblies, named by [assembly: CacheInterface(typeof(IClient), "Method", ...)]
             var externalProvider = context.SyntaxProvider
                 .ForAttributeWithMetadataName(
-                    fullyQualifiedMetadataName: "MethodCache.Core.CacheInterfaceAttribute",
+                    fullyQualifiedMetadataName: "MethodCache.CacheInterfaceAttribute",
                     predicate: static (node, _) => node is CompilationUnitSyntax,
                     transform: static (ctx, ct) => GetExternalInterfaces(ctx, ct))
                 .SelectMany(static (items, _) => items)
@@ -113,7 +113,7 @@ namespace MethodCache.SourceGenerator
             }
 
             var extensionsCode = DIExtensionsEmitter.Emit(validInterfaces);
-            context.AddSource("MethodCacheServiceCollectionExtensions.g.cs", extensionsCode);
+            context.AddSource("GeneratedCachingServiceCollectionExtensions.g.cs", extensionsCode);
 
             var registrationsCode = DecoratorRegistrationsEmitter.Emit(validInterfaces, classes);
             if (!string.IsNullOrEmpty(registrationsCode))

@@ -1,10 +1,10 @@
-using MethodCache.Core.Management;
-using Microsoft.AspNetCore.Builder;
+using MethodCache;
+using MethodCache.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 
-namespace MethodCache.AspNetCore;
+namespace Microsoft.AspNetCore.Builder;
 
 /// <summary>Maps HTTP endpoints for inspecting and changing the cache at runtime.</summary>
 public static class MethodCacheAdminEndpoints

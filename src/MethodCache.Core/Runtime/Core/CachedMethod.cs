@@ -1,12 +1,13 @@
-using MethodCache.Core.Runtime.KeyGeneration;
+using System.ComponentModel;
 
-namespace MethodCache.Core.Runtime.Core
+namespace MethodCache.Infrastructure
 {
     /// <summary>
     /// One cached method as its generated decorator sees it: the name it reports, its live policy and the key
     /// prefix that policy implies. Decorators read <see cref="Current"/> once per call; the prefix is only rebuilt
     /// when the policy changes, for example when a runtime override bumps the version.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class CachedMethod
     {
         private readonly PolicyHandle _handle;

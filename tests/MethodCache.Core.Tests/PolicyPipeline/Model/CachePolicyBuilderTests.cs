@@ -1,6 +1,6 @@
 using System;
-using MethodCache.Abstractions.Policies;
 using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Policies;
 using Xunit;
 
 namespace MethodCache.Core.Tests.PolicyPipeline.Model;

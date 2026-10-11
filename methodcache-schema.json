@@ -8,7 +8,7 @@
 
   "coreInterfaces": {
     "ICacheManager": {
-      "namespace": "MethodCache.Core",
+      "namespace": "MethodCache",
       "description": "Main interface for cache operations with L1/L2 support",
       "methods": [
         {
@@ -55,7 +55,7 @@
     },
 
     "ICacheKeyGenerator": {
-      "namespace": "MethodCache.Core",
+      "namespace": "MethodCache",
       "description": "Interface for generating cache keys from method signatures",
       "implementations": [
         {
@@ -91,7 +91,7 @@
 
   "attributes": {
     "CacheAttribute": {
-      "namespace": "MethodCache.Core",
+      "namespace": "MethodCache",
       "targets": ["Method"],
       "description": "Declarative caching with source generation",
       "properties": {
@@ -146,7 +146,7 @@
     },
 
     "CacheInvalidateAttribute": {
-      "namespace": "MethodCache.Core",
+      "namespace": "MethodCache",
       "targets": ["Method"],
       "description": "Automatic cache invalidation on method execution",
       "properties": {
@@ -239,7 +239,7 @@
 
   "packages": [
     {
-      "name": "MethodCache.Core",
+      "name": "MethodCache",
       "description": "Core abstractions, in-memory cache manager, attributes",
       "required": true
     },

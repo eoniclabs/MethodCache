@@ -1,12 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using FxVendor;
-using MethodCache.Core;
-using MethodCache.Core.Configuration.Surfaces.Runtime;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Management;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache;
 using MethodCache.Demo;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

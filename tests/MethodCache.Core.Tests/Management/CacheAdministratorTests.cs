@@ -1,12 +1,9 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Management;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 

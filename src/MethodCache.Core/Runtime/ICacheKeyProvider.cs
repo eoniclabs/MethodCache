@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Runtime
+namespace MethodCache
 {
     public interface ICacheKeyProvider
     {

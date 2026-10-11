@@ -1,10 +1,8 @@
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Infrastructure.Extensions;
-using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Comparison.Adapters;
 

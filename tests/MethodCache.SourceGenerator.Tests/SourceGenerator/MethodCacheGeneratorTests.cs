@@ -1,5 +1,5 @@
 using System.Reflection;
-using MethodCache.Core;
+using MethodCache;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
@@ -117,7 +117,7 @@ namespace MethodCache.SourceGenerator.Tests.SourceGenerator
         [Fact]
         public async Task GeneratesCacheMethodRegistryForCachedInterfaceMethod()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -146,7 +146,7 @@ namespace TestApp
         public async Task GeneratesModuleInitializerThatRegistersDecorators()
         {
             var source = @"using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 namespace TestApp
 {
@@ -205,7 +205,7 @@ namespace TestApp
         {
             // Interfaces declared next to top-level statements live in the global namespace
             var source = @"using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public interface IGlobalService
 {
@@ -234,8 +234,7 @@ public class GlobalService : IGlobalService
         [Fact]
         public async Task GeneratorIncludesAdvancedFluentOptionsFromAttributes()
         {
-            var source = @"using MethodCache.Core;
-using MethodCache.Core.Runtime;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -270,7 +269,7 @@ namespace TestApp
         [Fact]
         public async Task GeneratesCacheDecoratorForCachedInterfaceMethod()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -305,7 +304,7 @@ namespace TestApp
         [Fact]
         public async Task GeneratesInvalidateDecoratorForInvalidateInterfaceMethod()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -337,7 +336,7 @@ namespace TestApp
         [Fact]
         public async Task GeneratesCacheDecoratorForAsyncMethod()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 using System.Threading.Tasks;
 
 namespace TestApp
@@ -384,7 +383,7 @@ namespace TestApp
         [Fact]
         public async Task GeneratesMultipleMethodsInSameInterface()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 using System.Threading.Tasks;
 
 namespace TestApp
@@ -430,7 +429,7 @@ namespace TestApp
         [Fact]
         public async Task GeneratesForMultipleInterfaces()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -470,7 +469,7 @@ namespace TestApp
         [Fact]
         public async Task GeneratesFluentConfigurationWithAttributeOptions()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -495,7 +494,7 @@ namespace TestApp
         [Fact]
         public async Task HandlesMethodsWithComplexParameters()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 using System.Collections.Generic;
 
 namespace TestApp
@@ -532,7 +531,7 @@ namespace TestApp
         [Fact]
         public async Task HandlesMethodsWithNoParameters()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -590,7 +589,7 @@ namespace TestApp
         [Fact]
         public async Task HandlesNestedNamespaces()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp.Services.Data
 {
@@ -618,7 +617,7 @@ namespace TestApp.Services.Data
         [Fact]
         public async Task HandlesVoidReturnType()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -641,7 +640,7 @@ namespace TestApp
         [Fact]
         public async Task HandlesAsyncMethods()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 using System.Threading.Tasks;
 
 namespace TestApp
@@ -684,7 +683,7 @@ namespace TestApp
         [Fact]
         public async Task HandlesMultipleInvalidateTagsCorrectly()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 namespace TestApp
 {
@@ -735,7 +734,7 @@ namespace TestApp
         [Fact]
         public async Task HandlesMixedMethodTypes()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 using System.Threading.Tasks;
 
 namespace TestApp
@@ -790,7 +789,7 @@ namespace TestApp
 #nullable enable
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 namespace TestApp
 {

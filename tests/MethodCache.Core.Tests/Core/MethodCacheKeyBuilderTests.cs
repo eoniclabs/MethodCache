@@ -1,5 +1,5 @@
 using System.Globalization;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Infrastructure;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Core

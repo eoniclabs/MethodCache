@@ -1,6 +1,6 @@
-using Xunit;
-using Microsoft.Extensions.DependencyInjection;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
 
@@ -13,8 +13,8 @@ public class DynamicCacheTagTests
     private const string Source = @"
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DynamicTags

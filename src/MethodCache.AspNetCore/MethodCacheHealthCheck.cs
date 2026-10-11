@@ -1,4 +1,3 @@
-using MethodCache.Core.Management;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace MethodCache.AspNetCore;

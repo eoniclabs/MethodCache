@@ -20,11 +20,10 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#nullable enable");
                 sb.AppendLine("using System;");
                 sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
-                sb.AppendLine("using MethodCache.Core;");
-                sb.AppendLine("using MethodCache.Abstractions.Registry;");
-                sb.AppendLine("using MethodCache.Core.Runtime;");
-                sb.AppendLine("using MethodCache.Core.Runtime.KeyGeneration;");
-                sb.AppendLine("using MethodCache.Core.Infrastructure;");
+                sb.AppendLine("using MethodCache;");
+                sb.AppendLine("using MethodCache.Extensibility;");
+                sb.AppendLine("using MethodCache.Infrastructure;");
+                sb.AppendLine("using MethodCache.Policies;");
                 if (hasCachedMethods)
                 {
                     sb.AppendLine("using MethodCache.Generated;");
@@ -33,7 +32,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("namespace Microsoft.Extensions.DependencyInjection");
                 sb.AppendLine("{");
                 // Internal: these helpers belong to the application, not to the public API of a library that uses MethodCache
-                sb.AppendLine("    internal static class MethodCacheServiceCollectionExtensions");
+                sb.AppendLine("    internal static class GeneratedCachingServiceCollectionExtensions");
                 sb.AppendLine("    {");
 
                 foreach (var info in interfaces.Where(i => !i.Symbol.IsGenericType))
@@ -67,7 +66,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"            return services.AddSingleton<{interfaceFqn}>(sp =>");
                 sb.AppendLine($"                new {decoratorFqn}(");
                 sb.AppendLine("                    implementationFactory(sp),");
-                sb.AppendLine("                    global::MethodCache.Core.Runtime.Core.DecoratorServices.From(sp)));");
+                sb.AppendLine("                    global::MethodCache.Infrastructure.DecoratorServices.From(sp)));");
                 sb.AppendLine("        }");
                 sb.AppendLine();
 
@@ -86,7 +85,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"            return services.{method}<{interfaceFqn}>(sp =>");
                     sb.AppendLine($"                new {decoratorFqn}(");
                     sb.AppendLine("                    implementationFactory(sp),");
-                    sb.AppendLine("                    global::MethodCache.Core.Runtime.Core.DecoratorServices.From(sp)));");
+                    sb.AppendLine("                    global::MethodCache.Infrastructure.DecoratorServices.From(sp)));");
                     sb.AppendLine("        }");
                     sb.AppendLine();
                 }

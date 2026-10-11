@@ -1,14 +1,11 @@
 using BenchmarkDotNet.Attributes;
+using MethodCache.Benchmarks.Core;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
+using MethodCache.Redis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Benchmarks.Core;
-using MethodCache.Core;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
-using MethodCache.Core.Runtime.KeyGeneration;
-using MethodCache.Redis;
 
 namespace MethodCache.Benchmarks.Scenarios;
 

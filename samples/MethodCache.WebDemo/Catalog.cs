@@ -1,5 +1,4 @@
 using System.Text.Json;
-using MethodCache.Core;
 
 namespace MethodCache.WebDemo;
 

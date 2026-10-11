@@ -1,7 +1,9 @@
-using MethodCache.Abstractions.Policies;
+using System.ComponentModel;
+using MethodCache.Policies;
 
-namespace MethodCache.Core.PolicyPipeline.Model;
+namespace MethodCache.Infrastructure;
 
+[EditorBrowsable(EditorBrowsableState.Never)]
 public static class CachePolicyMapper
 {
     public static CachePolicy AttachContribution(CachePolicy policy, string sourceId, CachePolicyFields fields, DateTimeOffset timestamp, IReadOnlyDictionary<string, string?>? metadata = null, string? notes = null)

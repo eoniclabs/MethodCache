@@ -1,5 +1,5 @@
 
-namespace MethodCache.Core
+namespace MethodCache
 {
     /// <summary>
     /// Marks a method for automatic caching using MethodCache source generation.

@@ -1,6 +1,4 @@
 using FluentAssertions;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

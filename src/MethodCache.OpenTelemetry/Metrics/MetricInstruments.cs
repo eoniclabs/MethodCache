@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-namespace MethodCache.OpenTelemetry.Metrics;
+namespace MethodCache.OpenTelemetry;
 
 public static class MetricInstruments
 {

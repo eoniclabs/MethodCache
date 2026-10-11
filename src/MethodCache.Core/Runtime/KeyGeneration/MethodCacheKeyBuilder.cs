@@ -1,6 +1,7 @@
+using System.ComponentModel;
 using System.Globalization;
 
-namespace MethodCache.Core.Runtime.KeyGeneration;
+namespace MethodCache.Infrastructure;
 
 /// <summary>
 /// Writes a cache key into a caller-supplied buffer, usually on the stack, so a cache hit can be looked up without
@@ -15,6 +16,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// if (cacheManager.TryGetFast&lt;User&gt;(key.AsSpan(), out var user)) { ... }
 /// </code>
 /// </example>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public ref struct MethodCacheKeyBuilder
 {
     /// <summary>A buffer size, in characters, that fits typical keys without growing.</summary>

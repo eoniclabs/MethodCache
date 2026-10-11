@@ -1,6 +1,6 @@
 using System;
 
-namespace MethodCache.Core
+namespace MethodCache
 {
     /// <summary>
     /// Configures how a method parameter is used in cache key generation.

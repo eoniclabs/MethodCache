@@ -29,8 +29,6 @@ dotnet add package OpenTelemetry.Extensions.Hosting   # the SDK and AddOpenTelem
 ## Setup
 
 ```csharp
-using MethodCache.OpenTelemetry.Extensions;
-
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheOpenTelemetry(); // after AddMethodCache, which registers the cache it instruments
 

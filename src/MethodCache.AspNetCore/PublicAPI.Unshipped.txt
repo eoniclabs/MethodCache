@@ -1,26 +1,26 @@
 #nullable enable
-MethodCache.AspNetCore.CacheStatsResponse
-MethodCache.AspNetCore.CacheStatsResponse.CacheStatsResponse(long Hits, long Misses, double HitRatio, long Evictions, long Entries, long MemoryUsage) -> void
-MethodCache.AspNetCore.CacheStatsResponse.Entries.get -> long
-MethodCache.AspNetCore.CacheStatsResponse.Entries.init -> void
-MethodCache.AspNetCore.CacheStatsResponse.Evictions.get -> long
-MethodCache.AspNetCore.CacheStatsResponse.Evictions.init -> void
-MethodCache.AspNetCore.CacheStatsResponse.HitRatio.get -> double
-MethodCache.AspNetCore.CacheStatsResponse.HitRatio.init -> void
-MethodCache.AspNetCore.CacheStatsResponse.Hits.get -> long
-MethodCache.AspNetCore.CacheStatsResponse.Hits.init -> void
-MethodCache.AspNetCore.CacheStatsResponse.MemoryUsage.get -> long
-MethodCache.AspNetCore.CacheStatsResponse.MemoryUsage.init -> void
-MethodCache.AspNetCore.CacheStatsResponse.Misses.get -> long
-MethodCache.AspNetCore.CacheStatsResponse.Misses.init -> void
-MethodCache.AspNetCore.InvalidateRequest
-MethodCache.AspNetCore.InvalidateRequest.InvalidateRequest(System.Collections.Generic.IReadOnlyList<string!>? Tags) -> void
-MethodCache.AspNetCore.InvalidateRequest.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>?
-MethodCache.AspNetCore.InvalidateRequest.Tags.init -> void
-MethodCache.AspNetCore.MethodCacheAdminEndpoints
 MethodCache.AspNetCore.MethodCacheHealthCheck
 MethodCache.AspNetCore.MethodCacheHealthCheck.CheckHealthAsync(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult>!
-MethodCache.AspNetCore.MethodCacheHealthCheck.MethodCacheHealthCheck(MethodCache.Core.Management.ICacheAdministrator! admin) -> void
-MethodCache.AspNetCore.MethodCacheHealthChecksBuilderExtensions
-static MethodCache.AspNetCore.MethodCacheAdminEndpoints.MapMethodCacheAdmin(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! policyName, string! prefix = "/methodcache") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
-static MethodCache.AspNetCore.MethodCacheHealthChecksBuilderExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder! builder, string! name = "methodcache", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = null, System.Collections.Generic.IEnumerable<string!>? tags = null) -> Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder!
+MethodCache.AspNetCore.MethodCacheHealthCheck.MethodCacheHealthCheck(MethodCache.ICacheAdministrator! admin) -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse
+Microsoft.AspNetCore.Builder.CacheStatsResponse.CacheStatsResponse(long Hits, long Misses, double HitRatio, long Evictions, long Entries, long MemoryUsage) -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Entries.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Entries.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Evictions.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Evictions.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.HitRatio.get -> double
+Microsoft.AspNetCore.Builder.CacheStatsResponse.HitRatio.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Hits.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Hits.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.MemoryUsage.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.MemoryUsage.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Misses.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.Misses.init -> void
+Microsoft.AspNetCore.Builder.InvalidateRequest
+Microsoft.AspNetCore.Builder.InvalidateRequest.InvalidateRequest(System.Collections.Generic.IReadOnlyList<string!>? Tags) -> void
+Microsoft.AspNetCore.Builder.InvalidateRequest.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Microsoft.AspNetCore.Builder.InvalidateRequest.Tags.init -> void
+Microsoft.AspNetCore.Builder.MethodCacheAdminEndpoints
+Microsoft.Extensions.DependencyInjection.MethodCacheHealthChecksBuilderExtensions
+static Microsoft.AspNetCore.Builder.MethodCacheAdminEndpoints.MapMethodCacheAdmin(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! policyName, string! prefix = "/methodcache") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static Microsoft.Extensions.DependencyInjection.MethodCacheHealthChecksBuilderExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder! builder, string! name = "methodcache", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = null, System.Collections.Generic.IEnumerable<string!>? tags = null) -> Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder!

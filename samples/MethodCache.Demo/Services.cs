@@ -1,5 +1,3 @@
-using MethodCache.Core;
-
 namespace MethodCache.Demo;
 
 public sealed record Forecast(string City, int TemperatureC, string Summary, DateTimeOffset FetchedAt);

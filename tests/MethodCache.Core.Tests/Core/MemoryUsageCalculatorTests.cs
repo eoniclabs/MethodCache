@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Configuration;
 using MethodCache.Core.Infrastructure.Utilities;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,7 +23,7 @@ namespace MethodCache.Core.Tests.Core
         public void FastMode_ShouldBeVeryFast()
         {
             // Arrange
-            var options = new MemoryCacheOptions { MemoryCalculationMode = MemoryUsageCalculationMode.Fast };
+            var options = new MethodCacheMemoryOptions { MemoryCalculationMode = MemoryUsageCalculationMode.Fast };
             var calculator = new MemoryUsageCalculator(options);
             var cache = CreateTestCache(1000);
 
@@ -44,8 +42,8 @@ namespace MethodCache.Core.Tests.Core
         public void AccurateMode_ShouldBeMoreAccurate()
         {
             // Arrange
-            var fastOptions = new MemoryCacheOptions { MemoryCalculationMode = MemoryUsageCalculationMode.Fast };
-            var accurateOptions = new MemoryCacheOptions 
+            var fastOptions = new MethodCacheMemoryOptions { MemoryCalculationMode = MemoryUsageCalculationMode.Fast };
+            var accurateOptions = new MethodCacheMemoryOptions 
             { 
                 MemoryCalculationMode = MemoryUsageCalculationMode.Accurate,
                 AccurateModeRecalculationInterval = 1 // Force recalculation every time
@@ -73,7 +71,7 @@ namespace MethodCache.Core.Tests.Core
         public void SamplingMode_ShouldBalancePerformanceAndAccuracy()
         {
             // Arrange
-            var options = new MemoryCacheOptions 
+            var options = new MethodCacheMemoryOptions 
             { 
                 MemoryCalculationMode = MemoryUsageCalculationMode.Sampling,
                 SamplingPercentage = 0.2 // 20% sampling
@@ -97,7 +95,7 @@ namespace MethodCache.Core.Tests.Core
         public void DisabledMode_ShouldReturnZero()
         {
             // Arrange
-            var options = new MemoryCacheOptions { MemoryCalculationMode = MemoryUsageCalculationMode.Disabled };
+            var options = new MethodCacheMemoryOptions { MemoryCalculationMode = MemoryUsageCalculationMode.Disabled };
             var calculator = new MemoryUsageCalculator(options);
             var cache = CreateTestCache(100);
 
@@ -112,7 +110,7 @@ namespace MethodCache.Core.Tests.Core
         public void AccurateMode_ShouldThrottleRecalculations()
         {
             // Arrange
-            var options = new MemoryCacheOptions 
+            var options = new MethodCacheMemoryOptions 
             { 
                 MemoryCalculationMode = MemoryUsageCalculationMode.Accurate,
                 AccurateModeRecalculationInterval = 100 // Only recalculate every 100 operations
@@ -149,7 +147,7 @@ namespace MethodCache.Core.Tests.Core
         public void AllModes_ShouldHandleEmptyCache(MemoryUsageCalculationMode mode)
         {
             // Arrange
-            var options = new MemoryCacheOptions { MemoryCalculationMode = mode };
+            var options = new MethodCacheMemoryOptions { MemoryCalculationMode = mode };
             var calculator = new MemoryUsageCalculator(options);
             var cache = new ConcurrentDictionary<string, TestCacheEntry>();
 
@@ -179,7 +177,7 @@ namespace MethodCache.Core.Tests.Core
 
             foreach (var mode in modes)
             {
-                var options = new MemoryCacheOptions 
+                var options = new MethodCacheMemoryOptions 
                 { 
                     MemoryCalculationMode = mode,
                     AccurateModeRecalculationInterval = 1 // Force accurate calculation

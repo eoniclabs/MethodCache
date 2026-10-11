@@ -1,11 +1,9 @@
 using FluentAssertions;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
+
 using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace MethodCache.Core.Tests.Core;
@@ -14,9 +12,9 @@ public class CancellationAndExpiryTests
 {
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
 
-    private InMemoryCacheManager CreateManager(Action<MemoryCacheOptions>? configure = null)
+    private InMemoryCacheManager CreateManager(Action<MethodCacheMemoryOptions>? configure = null)
     {
-        var options = new MemoryCacheOptions { EnableBackgroundCleanup = false };
+        var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
         return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time);
     }

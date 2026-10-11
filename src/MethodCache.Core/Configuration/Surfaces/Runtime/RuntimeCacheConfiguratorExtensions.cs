@@ -1,8 +1,7 @@
 using System.Linq.Expressions;
-using MethodCache.Core.Options;
 using MethodCache.Core.PolicyPipeline.Model;
 
-namespace MethodCache.Core.Configuration.Surfaces.Runtime;
+namespace MethodCache;
 
 /// <summary>
 /// Names the method to override with an expression instead of its id, for example

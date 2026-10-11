@@ -1,6 +1,5 @@
 using FluentAssertions;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.SqlServer;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,7 +55,7 @@ public class SqlServerServiceCollectionExtensionsTests
         });
         using var provider = services.BuildServiceProvider();
 
-        var cacheOptions = SqlServerServiceCollectionExtensions.CacheOptions(captured!);
+        var cacheOptions = MethodCacheSqlServerServiceCollectionExtensions.CacheOptions(captured!);
         cacheOptions.ConnectionString.Should().Be(ConnectionString);
         cacheOptions.SchemaName.Should().Be("cache");
         cacheOptions.TableName.Should().Be("Entries");

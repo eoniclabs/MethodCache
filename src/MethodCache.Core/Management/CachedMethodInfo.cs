@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Management;
+namespace MethodCache;
 
 /// <summary>The effective cache policy of one method.</summary>
 /// <param name="MethodId">The method id, such as <c>MyApp.IUserService.GetUserAsync</c>.</param>

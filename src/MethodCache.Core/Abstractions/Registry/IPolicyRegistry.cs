@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 
-using MethodCache.Abstractions.Resolution;
-
-namespace MethodCache.Abstractions.Registry;
+namespace MethodCache.Policies;
 
 public interface IPolicyRegistry
 {

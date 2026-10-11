@@ -64,10 +64,10 @@ MethodCache.HttpCaching.HttpCacheStorageOptions.MaxCacheSize.get -> long
 MethodCache.HttpCaching.HttpCacheStorageOptions.MaxCacheSize.set -> void
 MethodCache.HttpCaching.HttpCacheStorageOptions.UseDistributedCache.get -> bool
 MethodCache.HttpCaching.HttpCacheStorageOptions.UseDistributedCache.set -> void
-MethodCache.HttpCaching.HttpClientBuilderExtensions
 MethodCache.HttpCaching.IHttpCacheStorage
 MethodCache.HttpCaching.IHttpCacheStorage.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.HttpCaching.IHttpCacheStorage.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.HttpCaching.HttpCacheEntry?>
 MethodCache.HttpCaching.IHttpCacheStorage.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.HttpCaching.IHttpCacheStorage.SetAsync(string! key, MethodCache.HttpCaching.HttpCacheEntry! entry, System.TimeSpan timeToLive, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-static MethodCache.HttpCaching.HttpClientBuilderExtensions.AddHttpCaching(this Microsoft.Extensions.DependencyInjection.IHttpClientBuilder! builder, System.Action<MethodCache.HttpCaching.HttpCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IHttpClientBuilder!
+Microsoft.Extensions.DependencyInjection.MethodCacheHttpClientBuilderExtensions
+static Microsoft.Extensions.DependencyInjection.MethodCacheHttpClientBuilderExtensions.AddHttpCaching(this Microsoft.Extensions.DependencyInjection.IHttpClientBuilder! builder, System.Action<MethodCache.HttpCaching.HttpCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IHttpClientBuilder!

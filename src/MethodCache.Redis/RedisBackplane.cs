@@ -1,4 +1,4 @@
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using StackExchange.Redis;
 
 namespace MethodCache.Redis;

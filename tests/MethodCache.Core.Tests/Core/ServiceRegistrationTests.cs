@@ -1,15 +1,9 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Core;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Configuration.Surfaces.Runtime;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
+using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;

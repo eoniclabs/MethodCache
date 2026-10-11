@@ -2,8 +2,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Text;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,7 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace MethodCache.Core.Runtime.Distributed
 {
     /// <summary>
-    /// The distributed cache (L2) behind <see cref="Execution.InMemoryCacheManager"/>. Entries are stored in any
+    /// The distributed cache (L2) behind <see cref="MethodCache.Extensibility.InMemoryCacheManager"/>. Entries are stored in any
     /// <see cref="IDistributedCache"/> (Redis, SQL Server, ...) together with their tags and creation time.
     /// </summary>
     /// <remarks>

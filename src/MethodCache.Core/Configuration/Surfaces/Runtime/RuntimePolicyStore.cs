@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 
 namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 

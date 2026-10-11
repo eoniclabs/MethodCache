@@ -1,15 +1,14 @@
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
+using MethodCache.SqlServer;
 using Microsoft.Extensions.Caching.SqlServer;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.SqlServer;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static class SqlServerServiceCollectionExtensions
+public static class MethodCacheSqlServerServiceCollectionExtensions
 {
     /// <summary>
     /// Uses SQL Server as MethodCache's distributed cache: results are shared between instances, and invalidations
@@ -56,7 +55,7 @@ public static class SqlServerServiceCollectionExtensions
 
         // MethodCache's own cache instance, so the app's IDistributedCache and its settings are left alone
         return services.AddMethodCacheDistributedCache(
-            _ => new SqlServerCache(Options.Create(CacheOptions(options))),
+            _ => new SqlServerCache(Microsoft.Extensions.Options.Options.Create(CacheOptions(options))),
             cacheOptions => cacheOptions.KeyPrefix = options.KeyPrefix);
     }
 

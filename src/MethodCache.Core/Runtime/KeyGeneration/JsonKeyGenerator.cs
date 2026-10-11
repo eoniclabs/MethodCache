@@ -3,9 +3,10 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.Core.Runtime.KeyGeneration;
+namespace MethodCache.Extensibility;
 
 /// <summary>
 /// Human-readable cache key generator: the method's key prefix followed by its arguments as a JSON array.

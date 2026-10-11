@@ -1,12 +1,10 @@
-using BenchmarkDotNet.Attributes;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Caching.Memory;
-using MethodCache.Benchmarks.Core;
-using MethodCache.Core;
 using System.Runtime.CompilerServices;
-using MethodCache.Core.Runtime;
+using BenchmarkDotNet.Attributes;
 using LazyCache;
 using LazyCache.Providers;
+using MethodCache.Benchmarks.Core;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Scenarios;
 

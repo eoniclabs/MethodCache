@@ -1,7 +1,6 @@
 using System.Buffers;
 using FluentAssertions;
-using MethodCache.Core.Infrastructure.Serialization;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using MethodCache.Serialization.MessagePack;
 using Xunit;
 

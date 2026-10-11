@@ -4,6 +4,8 @@
 compile time: no reflection, no hand-written keys, no `TryGetValue` boilerplate, and it works with Native AOT.
 
 ```csharp
+using MethodCache;
+
 public interface IUserService
 {
     [Cache(Duration = "00:10:00", Tags = ["user:{id}"])]

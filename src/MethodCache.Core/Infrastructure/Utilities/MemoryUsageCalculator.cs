@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
-using MethodCache.Core.Configuration;
 
 namespace MethodCache.Core.Infrastructure.Utilities
 {
@@ -19,15 +18,15 @@ namespace MethodCache.Core.Infrastructure.Utilities
     /// These calculations should be used for relative comparison and trends,
     /// not absolute memory usage decisions.
     /// </summary>
-    public class MemoryUsageCalculator
+    internal sealed class MemoryUsageCalculator
     {
-        private readonly MemoryCacheOptions _options;
+        private readonly MethodCacheMemoryOptions _options;
         private readonly ConcurrentDictionary<Type, long> _typeSizeCache = new();
         private long _operationCounter = 0;
         private long _lastAccurateCalculation = 0;
         private readonly Random _random = new();
 
-        public MemoryUsageCalculator(MemoryCacheOptions options)
+        public MemoryUsageCalculator(MethodCacheMemoryOptions options)
         {
             _options = options;
         }

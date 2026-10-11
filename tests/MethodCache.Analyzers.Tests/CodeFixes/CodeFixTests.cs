@@ -1,12 +1,12 @@
 using System.Collections.Immutable;
 using System.Reflection;
+using MethodCache;
 using MethodCache.CodeFixes;
-using MethodCache.Core;
 using MethodCache.SourceGenerator;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using Xunit;
@@ -19,7 +19,7 @@ namespace MethodCache.Analyzers.Tests.CodeFixes
         public async Task MC0001_MovesCacheToTheInterfaceMethod()
         {
             var source = @"using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public interface IUserService
 {
@@ -34,7 +34,7 @@ public class UserService : IUserService
 }";
 
             var expected = @"using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public interface IUserService
 {
@@ -58,7 +58,7 @@ public class UserService : IUserService
         public async Task MC0001_MovesAcrossFiles_AndAddsTheUsing()
         {
             var service = @"using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public class UserService : IUserService
 {
@@ -79,7 +79,7 @@ public interface IUserService
             Assert.DoesNotContain("[Cache]", fixedSources[0]);
             Assert.Contains("    [System.Obsolete]\n    public Task<string> GetAsync", fixedSources[0].Replace("\r\n", "\n"));
             Assert.Equal(@"using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public interface IUserService
 {
@@ -92,7 +92,7 @@ public interface IUserService
         [Fact]
         public async Task MC0001_WithoutAnInterface_RemovesTheAttribute()
         {
-            var source = @"using MethodCache.Core;
+            var source = @"using MethodCache;
 
 public class Users
 {
@@ -103,7 +103,7 @@ public class Users
             var (title, fixedSources) = await FixAsync(new MoveAttributeToInterfaceCodeFixProvider(), "MC0001", source);
 
             Assert.Equal("Remove [CacheInvalidate]", title);
-            Assert.Equal(@"using MethodCache.Core;
+            Assert.Equal(@"using MethodCache;
 
 public class Users
 {
@@ -119,7 +119,7 @@ public class Users
         {
             var source = $@"using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public interface IStore
 {{
@@ -132,7 +132,7 @@ public interface IStore
             Assert.Equal("Remove [Cache]", title);
             Assert.Equal($@"using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public interface IStore
 {{
@@ -144,7 +144,7 @@ public interface IStore
         public async Task MCG009_ReplacesTheUnknownParameterWithTheClosestName()
         {
             var source = @"using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 public interface IUserService
 {

@@ -1,8 +1,7 @@
 using System.Globalization;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Core
