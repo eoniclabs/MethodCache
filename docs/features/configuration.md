@@ -161,3 +161,5 @@ cached method throws `InvalidOperationException` at startup.
 
 For overloaded methods, non-built-in parameter types are qualified by namespace, for example
 `MyApp.IUsers.Find(MyApp.Request)`. This is also the format used by expression-based and runtime configuration.
+
+Generated decorators preserve generic constraints, including `unmanaged`, on cached interfaces and methods.

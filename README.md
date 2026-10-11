@@ -34,7 +34,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 
 ## Why MethodCache
 
-- **One attribute, zero boilerplate.** Keys are built from the method and its arguments (values of different types never share a key, nested ones included); your service stays plain code. Overloaded methods include namespace-qualified parameter types in their identities. Arguments with only private state, including inherited fields, are refused. Custom key providers can safely compose other keys.
+- **One attribute, zero boilerplate.** Keys are built from the method and its arguments (values of different types never share a key, nested ones included); your service stays plain code. Overloaded methods include namespace-qualified parameter types in their identities. Arguments with only private state, including inherited fields, are refused. Custom key providers can safely compose other keys. Generic interfaces and methods preserve their `unmanaged` constraints.
 - **Fast.** A cache hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache ([numbers](#performance)).
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.

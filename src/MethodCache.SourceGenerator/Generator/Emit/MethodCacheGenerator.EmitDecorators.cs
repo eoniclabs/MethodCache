@@ -1072,10 +1072,10 @@ namespace MethodCache.SourceGenerator
 
                 if (tp.HasReferenceTypeConstraint)
                     constraints.Add("class");
-                if (tp.HasValueTypeConstraint)
-                    constraints.Add("struct");
                 if (tp.HasUnmanagedTypeConstraint)
                     constraints.Add("unmanaged");
+                else if (tp.HasValueTypeConstraint)
+                    constraints.Add("struct");
                 if (tp.HasNotNullConstraint)
                     constraints.Add("notnull");
 

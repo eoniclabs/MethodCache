@@ -315,6 +315,17 @@ public class SignatureCorpusTests
         ["generic method"] = Member("Task<T?> Get<T>(int id)", "Task<T?> Get<T>(int id) { Counter.Hit(); return Task.FromResult<T?>(default); }", "await s.Get<int>(1)", "await s.Get<string>(1)"),
         ["generic method with class constraint"] = Member("Task<T?> Get<T>(int id) where T : class", "Task<T?> Get<T>(int id) where T : class { Counter.Hit(); return Task.FromResult<T?>(null); }", "await s.Get<string>(1)", "await s.Get<object>(1)"),
         ["generic method with struct constraint"] = Member("Task<T> Get<T>(int id) where T : struct", "Task<T> Get<T>(int id) where T : struct { Counter.Hit(); return Task.FromResult(default(T)); }", "await s.Get<int>(1)", "await s.Get<long>(1)"),
+        ["generic method with unmanaged constraint"] = Member("Task<T> Get<T>(int id) where T : unmanaged", "Task<T> Get<T>(int id) where T : unmanaged { Counter.Hit(); return Task.FromResult(default(T)); }", "await s.Get<int>(1)", "await s.Get<long>(1)"),
+        ["generic interface with unmanaged constraint"] = new("""
+                public interface ISvc<T> where T : unmanaged
+                {
+                    [Cache] Task<T> Get(int id);
+                }
+                public class Svc : ISvc<int>
+                {
+                    public Task<int> Get(int id) { Counter.Hit(); return Task.FromResult(id); }
+                }
+            """, "ISvc<int>", "await s.Get(1)", "await s.Get(2)"),
         ["generic method with interface constraint"] = Member("Task<string> Get<T>(T value) where T : IComparable<T>", "Task<string> Get<T>(T value) where T : IComparable<T> { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1)", "await s.Get(2)"),
         ["generic constraint from another namespace"] = new("""
                 public interface ISvc
