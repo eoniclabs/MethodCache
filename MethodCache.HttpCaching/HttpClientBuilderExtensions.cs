@@ -1,4 +1,6 @@
 using MethodCache.HttpCaching.Internal;
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -15,7 +17,8 @@ public static class HttpClientBuilderExtensions
     /// <param name="builder">The HttpClient to cache.</param>
     /// <param name="configure">Settings for this HttpClient only.</param>
     /// <remarks>
-    /// Responses are stored in memory by default. Register your own <see cref="IHttpCacheStorage"/> to store them elsewhere.
+    /// Responses are stored in memory. Set <see cref="HttpCacheStorageOptions.UseDistributedCache"/> to share them through
+    /// Redis or SQL Server as well, or register your own <see cref="IHttpCacheStorage"/> to store them elsewhere.
     /// </remarks>
     public static IHttpClientBuilder AddHttpCaching(this IHttpClientBuilder builder, Action<HttpCacheOptions>? configure = null)
     {
@@ -23,8 +26,20 @@ public static class HttpClientBuilderExtensions
         var name = builder.Name ?? Microsoft.Extensions.Options.Options.DefaultName;
 
         services.AddOptions<HttpCacheStorageOptions>();
-        services.TryAddSingleton<IHttpCacheStorage, InMemoryHttpCacheStorage>();
-        services.TryAddSingleton<HttpCacheMetrics>();
+        services.TryAddSingleton<IHttpCacheStorage>(static sp =>
+        {
+            var storageOptions = sp.GetRequiredService<IOptions<HttpCacheStorageOptions>>();
+            IDistributedCache? distributed = null;
+            if (storageOptions.Value.UseDistributedCache)
+            {
+                distributed = sp.GetService<IDistributedCache>() ?? throw new InvalidOperationException(
+                    "HttpCacheStorageOptions.UseDistributedCache is on, but no IDistributedCache is registered. " +
+                    "Register one first, for example with AddMethodCacheRedis() or AddStackExchangeRedisCache().");
+            }
+
+            return new HttpCacheStore(storageOptions, sp.GetRequiredService<ILogger<HttpCacheStore>>(), sp.GetService<TimeProvider>(), distributed);
+        });
+        services.TryAddSingleton(static sp => new HttpCacheMetrics(sp.GetService<IMeterFactory>()));
         services.TryAddKeyedSingleton(name, (_, _) => new HttpCacheClientState(name));
 
         var options = services.AddOptions<HttpCacheOptions>(name);

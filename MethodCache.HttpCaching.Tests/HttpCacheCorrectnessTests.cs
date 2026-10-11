@@ -164,9 +164,9 @@ public class HttpCacheCorrectnessTests
     {
         using var appCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
         Microsoft.Extensions.Caching.Memory.CacheExtensions.Set(appCache, "app", 42);
-        using var storage = new InMemoryHttpCacheStorage(
+        using var storage = new HttpCacheStore(
             Microsoft.Extensions.Options.Options.Create(new HttpCacheStorageOptions()),
-            NullLogger<InMemoryHttpCacheStorage>.Instance);
+            NullLogger<HttpCacheStore>.Instance);
 
         await storage.ClearAsync();
 
@@ -186,6 +186,52 @@ public class HttpCacheCorrectnessTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("v1", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task StaleIfError_ServesStaleContent_WhenHttpClientTimesOut()
+    {
+        var clock = new ManualTimeProvider();
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { EnableStaleIfError = true }, timeProvider: clock);
+        inner.SetResponses(Cacheable("v1", maxAge: TimeSpan.FromSeconds(60)));
+
+        await client.GetStringAsync(Url);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        inner.ExceptionToThrow = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout");
+
+        Assert.Equal("v1", await client.GetStringAsync(Url));
+    }
+
+    [Fact]
+    public async Task StaleIfError_DoesNotSwallowCallerCancellation()
+    {
+        var clock = new ManualTimeProvider();
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { EnableStaleIfError = true }, timeProvider: clock);
+        inner.SetResponses(Cacheable("v1", maxAge: TimeSpan.FromSeconds(60)));
+
+        await client.GetStringAsync(Url);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        inner.ExceptionToThrow = new OperationCanceledException(cancellation.Token);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.GetStringAsync(Url, cancellation.Token));
+    }
+
+    [Fact]
+    public async Task UnsafeMethodInCacheableMethods_IsNotCached_AndStillInvalidates()
+    {
+        var options = new HttpCacheOptions();
+        options.CacheableMethods.Add(HttpMethod.Post);
+        var (client, inner) = HttpCacheTestFactory.CreateClient(options);
+        inner.SetResponses(Cacheable("v1"), Cacheable("posted"), Cacheable("posted again"), Cacheable("v2"));
+
+        Assert.Equal("v1", await client.GetStringAsync(Url));
+        await client.PostAsync(Url, new StringContent("x"));
+        await client.PostAsync(Url, new StringContent("x"));
+        Assert.Equal("v2", await client.GetStringAsync(Url));
+
+        Assert.Equal(4, inner.RequestCount);
     }
 
     [Fact]
