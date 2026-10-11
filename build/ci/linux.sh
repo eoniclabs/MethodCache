@@ -29,7 +29,8 @@ label="methodcache.ci.run=$run_id"
 mkdir -p "$cache_dir/nuget" "$results_dir"
 
 if [ -n "${METHODCACHE_CI_SHARED_LOCK:-}" ]; then
-  exec 9> "$METHODCACHE_CI_SHARED_LOCK"
+  # Append mode: the lock may belong to another tool, so never truncate it
+  exec 9>> "$METHODCACHE_CI_SHARED_LOCK"
   echo "Waiting for a shared hold on $METHODCACHE_CI_SHARED_LOCK"
   flock --shared --timeout 1800 9
 fi

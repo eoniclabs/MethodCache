@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+# The MethodCache CI coordinator. Runs on Megatron (macOS) from a LaunchAgent every minute: it finds open pull
+# requests and the head of main that have no result yet, runs the CI jobs on the build servers and posts the
+# results to GitHub as commit statuses plus a comment on the pull request.
+#
+#   Linux    Nimbus over SSH: build/ci/linux.sh in Docker
+#   Windows  baloo over SSH: build/ci/windows.ps1
+#   macOS    this Mac: build/ci/jobs.sh build unit
+#
+#   coordinator.sh                 one pass over open PRs and main (what the LaunchAgent runs)
+#   coordinator.sh --pr <number>   run one PR now, also a PR from a fork or one that already has a result
+#
+# Pull requests from forks never run automatically: their code would run on our servers. Read the diff, then
+# start them with --pr.
+#
+# The installed copy (build/ci/install-coordinator.sh) is what runs, not the one in a pull request, so a pull
+# request cannot change how it is tested. Settings come from ~/.config/methodcache-ci/env (see the installer).
+set -uo pipefail
+
+config="${METHODCACHE_CI_CONFIG:-$HOME/.config/methodcache-ci/env}"
+# shellcheck source=/dev/null
+[ -f "$config" ] && . "$config"
+
+repo="${METHODCACHE_CI_REPO:-eoniclabs/MethodCache}"
+clone_url="${METHODCACHE_CI_CLONE_URL:-https://github.com/$repo.git}"
+nimbus="${METHODCACHE_CI_NIMBUS:-agent-admin@100.103.39.117}"
+nimbus_root="${METHODCACHE_CI_NIMBUS_ROOT:-methodcache-ci}"            # relative to the SSH user's home
+nimbus_lock="${METHODCACHE_CI_NIMBUS_SHARED_LOCK:-/srv/skribera-ci/ci-build-capacity.lock}"
+windows="${METHODCACHE_CI_WINDOWS:-bldr@baloo}"
+windows_root="${METHODCACHE_CI_WINDOWS_ROOT:-C:\\mc}"
+state="${METHODCACHE_CI_STATE:-$HOME/.cache/methodcache-ci}"
+timeout_seconds="${METHODCACHE_CI_TIMEOUT_SECONDS:-3600}"
+keep_runs_days="${METHODCACHE_CI_KEEP_RUNS_DAYS:-3}"
+
+contexts=("MethodCache CI (Linux)" "MethodCache CI (Windows)" "MethodCache CI (macOS)")
+aggregate="MethodCache CI"
+
+mkdir -p "$state/done" "$state/runs"
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*"; }
+
+# One coordinator at a time; a pass that finds another one running just ends
+# (macOS has no flock(1); mkdir is atomic, and a lock whose process is gone is taken over)
+lock="$state/coordinator.lock"
+if ! mkdir "$lock" 2> /dev/null; then
+  if kill -0 "$(cat "$lock/pid" 2> /dev/null)" 2> /dev/null; then exit 0; fi
+  rm -rf "$lock" && mkdir "$lock" || exit 0
+fi
+echo $$ > "$lock/pid"
+trap 'rm -rf "$lock"' EXIT
+
+post_status() { # sha context state description
+  gh api --silent "repos/$repo/statuses/$1" -f state="$3" -f context="$2" -f description="${4:0:140}" \
+    || log "could not post status $2=$3 for $1"
+}
+
+with_timeout() { # seconds command...; macOS has no timeout(1) by default
+  local seconds=$1; shift
+  "$@" &
+  local pid=$!
+  ( sleep "$seconds" && kill -TERM "$pid" 2> /dev/null ) &
+  local watchdog=$!
+  wait "$pid"; local code=$?
+  kill "$watchdog" 2> /dev/null; wait "$watchdog" 2> /dev/null
+  return "$code"
+}
+
+# The checkout steps every platform runs: a mirror kept between runs, then a clone of the exact commit
+# (full history, which Nerdbank.GitVersioning needs).
+checkout_script() { # root sha run_id
+  cat <<SCRIPT
+set -euo pipefail
+cd ~ && mkdir -p '$1/runs' && cd '$1'
+[ -d mirror.git ] || git clone --quiet --mirror '$clone_url' mirror.git
+git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
+find runs -mindepth 1 -maxdepth 1 -mtime +$keep_runs_days -exec rm -rf {} +
+# A plain local clone (hard links), not --shared: Nerdbank.GitVersioning cannot read objects through alternates
+rm -rf 'runs/$3' && git clone --quiet --no-checkout mirror.git 'runs/$3'
+git -C 'runs/$3' checkout --quiet --detach '$2'
+cd 'runs/$3'
+SCRIPT
+}
+
+run_linux() { # sha run_id results_dir
+  {
+    checkout_script "$nimbus_root" "$1" "$2"
+    cat <<SCRIPT
+export METHODCACHE_CI_RUN_ID='$2' METHODCACHE_CI_CACHE=~/'$nimbus_root/cache'
+[ -e '$nimbus_lock' ] && export METHODCACHE_CI_SHARED_LOCK='$nimbus_lock'
+nice -n 10 build/ci/linux.sh
+SCRIPT
+  } | with_timeout "$timeout_seconds" ssh -o BatchMode=yes "$nimbus" bash -s > "$3/console.log" 2>&1
+  local code=$?
+  # The job logs come back whatever happened
+  ssh -o BatchMode=yes "$nimbus" "cd ~/'$nimbus_root/runs/$2/artifacts/ci' && tar -cf - *.log *.exit" < /dev/null 2> /dev/null \
+    | tar -xf - -C "$3" 2> /dev/null
+  return "$code"
+}
+
+run_windows() { # sha run_id results_dir
+  local root=$windows_root
+  local script
+  script=$(cat <<SCRIPT
+\$ErrorActionPreference = 'Stop'
+New-Item -ItemType Directory -Force -Path '$root\\runs' | Out-Null
+Set-Location '$root'
+function Invoke-Git { git @args; if (\$LASTEXITCODE -ne 0) { exit \$LASTEXITCODE } }
+if (-not (Test-Path mirror.git)) { Invoke-Git clone --quiet --mirror '$clone_url' mirror.git }
+Invoke-Git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
+Get-ChildItem runs -Directory | Where-Object { \$_.LastWriteTime -lt (Get-Date).AddDays(-$keep_runs_days) } |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+\$run = 'runs\\$2'
+if (Test-Path \$run) { Remove-Item -Recurse -Force \$run }
+Invoke-Git -c core.longpaths=true clone --quiet --no-checkout mirror.git \$run
+Invoke-Git -C \$run -c core.longpaths=true checkout --quiet --detach '$1'
+\$env:METHODCACHE_CI_RESULTS = Join-Path (Resolve-Path \$run) 'artifacts\\ci'
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path \$run 'build\\ci\\windows.ps1')
+exit \$LASTEXITCODE
+SCRIPT
+)
+  local encoded
+  encoded=$(printf '%s' "$script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')
+  with_timeout "$timeout_seconds" ssh -o BatchMode=yes "$windows" "powershell -NoProfile -EncodedCommand $encoded" \
+    < /dev/null > "$3/console.log" 2>&1
+  local code=$?
+  # Windows has tar.exe; the job logs come back whatever happened
+  ssh -o BatchMode=yes "$windows" "tar -cf - -C $root\\runs\\$2\\artifacts\\ci ." < /dev/null 2> /dev/null \
+    | tar -xf - -C "$3" 2> /dev/null
+  return "$code"
+}
+
+run_macos() { # sha run_id results_dir
+  (
+    eval "$(checkout_script "$state/macos" "$1" "$2")"
+    METHODCACHE_CI_RESULTS="$3" FRAMEWORK= bash -c '
+      for job in build unit; do
+        if [ "$job" = unit ] && [ "$(cat "$METHODCACHE_CI_RESULTS/build.exit" 2> /dev/null)" != 0 ]; then
+          echo skipped > "$METHODCACHE_CI_RESULTS/unit.exit"; continue
+        fi
+        build/ci/jobs.sh "$job" > "$METHODCACHE_CI_RESULTS/$job.log" 2>&1
+        echo $? > "$METHODCACHE_CI_RESULTS/$job.exit"
+      done
+      ! grep -qvx 0 "$METHODCACHE_CI_RESULTS"/*.exit'
+  ) > "$3/console.log" 2>&1
+}
+
+# "build ✓, tests ✗, docs skipped" from the .exit files of one platform, in the order the jobs ran
+summary_of() { # results_dir
+  local summary="" file job code
+  for file in $(ls -tr "$1"/*.exit 2> /dev/null); do
+    job=$(basename "$file" .exit); code=$(tr -d '[:space:]' < "$file")
+    case "$code" in
+      0) summary+="${summary:+, }$job ✓" ;;
+      skipped) summary+="${summary:+, }$job skipped" ;;
+      *) summary+="${summary:+, }$job ✗" ;;
+    esac
+  done
+  echo "${summary:-no results}"
+}
+
+# The lines of a job log worth reading first: errors and failed tests, else the end of the log
+excerpt_of() { # log_file
+  local errors
+  errors=$(grep -E ': error |\[FAIL\]|^ +Failed |^Failed!|Error Message:|Assert\.' "$1" 2> /dev/null | grep -v '^\s*at ' | sort -u | head -n 40)
+  if [ -n "$errors" ]; then echo "$errors"; else grep -v '^\s*$' "$1" 2> /dev/null | tail -n 40; fi | cut -c1-300
+}
+
+failed_jobs_of() { # results_dir
+  local file
+  for file in "$1"/*.exit; do
+    [ -e "$file" ] || continue
+    case "$(tr -d '[:space:]' < "$file")" in 0|skipped) ;; *) basename "$file" .exit ;; esac
+  done
+}
+
+run_commit() { # sha pr(optional)
+  local sha=$1 pr=${2:-}
+  local run_id
+  run_id="$(date '+%Y%m%d-%H%M%S')-${sha:0:12}"
+  local run_dir="$state/runs/$run_id"
+  mkdir -p "$run_dir/linux" "$run_dir/windows" "$run_dir/macos"
+  log "run $run_id for ${pr:+PR #$pr }$sha"
+
+  local context
+  for context in "$aggregate" "${contexts[@]}"; do post_status "$sha" "$context" pending "Running on the build servers"; done
+  local started=$SECONDS
+
+  run_linux "$sha" "$run_id" "$run_dir/linux" & local linux_pid=$!
+  run_windows "$sha" "$run_id" "$run_dir/windows" & local windows_pid=$!
+  run_macos "$sha" "$run_id" "$run_dir/macos" & local macos_pid=$!
+
+  local all_ok=1 platform pid code
+  for platform in linux windows macos; do
+    case $platform in linux) pid=$linux_pid; context=${contexts[0]} ;; windows) pid=$windows_pid; context=${contexts[1]} ;;
+                      macos) pid=$macos_pid; context=${contexts[2]} ;; esac
+    wait "$pid"; code=$?
+    if [ "$code" -eq 0 ] && [ -z "$(failed_jobs_of "$run_dir/$platform")" ] && ls "$run_dir/$platform"/*.exit > /dev/null 2>&1; then
+      post_status "$sha" "$context" success "$(summary_of "$run_dir/$platform")"
+    else
+      all_ok=0
+      post_status "$sha" "$context" failure "$(summary_of "$run_dir/$platform") (exit $code)"
+    fi
+  done
+
+  local minutes=$(( (SECONDS - started + 59) / 60 ))
+  if [ "$all_ok" -eq 1 ]; then
+    post_status "$sha" "$aggregate" success "All platforms passed in $minutes min"
+  else
+    post_status "$sha" "$aggregate" failure "A platform failed, see the PR comment ($minutes min)"
+  fi
+  # A platform that produced no job result (a server was unreachable) is retried after 30 minutes
+  if [ "$all_ok" -eq 0 ] && { ! ls "$run_dir/linux"/*.exit || ! ls "$run_dir/windows"/*.exit || ! ls "$run_dir/macos"/*.exit; } > /dev/null 2>&1; then
+    echo retry > "$state/done/$sha"
+  else
+    echo done > "$state/done/$sha"
+  fi
+
+  [ -n "$pr" ] && comment_on "$pr" "$sha" "$run_dir" "$all_ok" "$minutes" "$run_id"
+  log "run $run_id finished: $([ "$all_ok" -eq 1 ] && echo passed || echo failed)"
+}
+
+comment_on() { # pr sha run_dir all_ok minutes run_id
+  local body platform job
+  body="### $([ "$4" -eq 1 ] && echo '✅ MethodCache CI passed' || echo '❌ MethodCache CI failed') on \`${2:0:12}\`
+
+| Platform | Jobs |
+|---|---|
+| Linux (Nimbus) | $(summary_of "$3/linux") |
+| Windows (baloo) | $(summary_of "$3/windows") |
+| macOS (Megatron) | $(summary_of "$3/macos") |
+
+$5 min, run \`$6\`. Full logs are on Megatron in \`~/.cache/methodcache-ci/runs/$6\`."
+  for platform in linux windows macos; do
+    local failed
+    failed=$(failed_jobs_of "$3/$platform")
+    if [ -z "$failed" ] && ! ls "$3/$platform"/*.exit > /dev/null 2>&1; then
+      body+="
+
+<details><summary>$platform: no job ran</summary>
+
+\`\`\`
+$(tail -n 40 "$3/$platform/console.log" 2> /dev/null | cut -c1-300)
+\`\`\`
+</details>"
+    fi
+    for job in $failed; do
+      body+="
+
+<details><summary>$platform: $job</summary>
+
+\`\`\`
+$(excerpt_of "$3/$platform/$job.log")
+\`\`\`
+</details>"
+    done
+  done
+  gh pr comment "$1" --repo "$repo" --body "$body" > /dev/null || log "could not comment on PR #$1"
+}
+
+if [ "${1:-}" = --pr ]; then
+  pr=${2:?--pr needs a pull request number}
+  sha=$(gh pr view "$pr" --repo "$repo" --json headRefOid --jq .headRefOid) || exit 1
+  run_commit "$sha" "$pr"
+  exit 0
+fi
+
+# A commit has a result, unless its last run could not reach a server and that was over 30 minutes ago
+already_ran() { # sha
+  local marker="$state/done/$1"
+  [ -e "$marker" ] || return 1
+  [ "$(cat "$marker")" = retry ] && [ -n "$(find "$marker" -mmin +30)" ] && return 1
+  return 0
+}
+
+# Newest main first, then open PRs from this repository, each at most once per commit
+main_sha=$(gh api "repos/$repo/commits/main" --jq .sha) || exit 1
+already_ran "$main_sha" || run_commit "$main_sha"
+
+pull_requests=$(gh pr list --repo "$repo" --state open --limit 50 \
+  --json number,headRefOid,isCrossRepository \
+  --jq '.[] | select(.isCrossRepository | not) | "\(.number) \(.headRefOid)"') || exit 1
+while read -r pr sha; do
+  [ -n "$sha" ] || continue
+  already_ran "$sha" && continue
+  run_commit "$sha" "$pr" < /dev/null
+done <<< "$pull_requests"
+
+find "$state/runs" -mindepth 1 -maxdepth 1 -mtime +14 -exec rm -rf {} + 2> /dev/null
+find "$state/done" -type f -mtime +30 -delete 2> /dev/null
+exit 0
