@@ -67,7 +67,7 @@ namespace MethodCache.SourceGenerator
             internal static readonly DiagnosticDescriptor DynamicTagParameterNotFound = new(
                 id: "MCG009",
                 title: "Dynamic tag references unknown parameter",
-                messageFormat: "[CacheInvalidate] tag '{0}' references parameter '{1}' which does not exist on method '{2}'",
+                messageFormat: "Tag '{0}' references parameter '{1}' which does not exist on method '{2}'; it stays literal text",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Warning,
                 isEnabledByDefault: true);
@@ -92,6 +92,14 @@ namespace MethodCache.SourceGenerator
                 id: "MCG012",
                 title: "Interface listed in more than one CacheInterface attribute",
                 messageFormat: "'{0}' is listed in more than one [assembly: CacheInterface]; list all its methods in one attribute",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+            internal static readonly DiagnosticDescriptor UnsupportedLazySequence = new(
+                id: "MCG014",
+                title: "Cannot cache a lazy sequence",
+                messageFormat: "[Cache] on '{0}' would cache the {1}, not its items, so the work would run on every enumeration; return a materialized type such as List<T> or T[]",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);

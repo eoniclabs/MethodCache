@@ -19,11 +19,6 @@ namespace MethodCache.SourceGenerator
                 parameterOptions: SymbolDisplayParameterOptions.IncludeType,
                 globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included);
         
-            internal static readonly SymbolDisplayFormat MethodIdFormat = new(
-                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-                memberOptions: SymbolDisplayMemberOptions.IncludeContainingType);
-        
             internal static string GetFullyQualifiedName(ITypeSymbol type)
                 => type.ToDisplayString(FullyQualifiedFormat);
         
@@ -106,8 +101,74 @@ namespace MethodCache.SourceGenerator
             internal static string Literal(string value)
                 => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value, quote: true);
 
+            /// <summary>
+            /// The method's policy id, matching MethodIds.For at runtime: the declaring interface's definition and the
+            /// method name, plus the parameter types when the name is overloaded, such as <c>App.IUsers.Find(int)</c>.
+            /// </summary>
             internal static string GetMethodId(IMethodSymbol method)
-                => method.ToDisplayString(MethodIdFormat);
+            {
+                var definition = method.OriginalDefinition;
+                return definition.ContainingType.ToDisplayString(TypeIdFormat) + "." + GetMethodName(definition);
+            }
+
+            /// <summary>The method's name in ids and keys: <c>Find</c>, or <c>Find(int)</c> when it is overloaded.</summary>
+            internal static string GetMethodName(IMethodSymbol method)
+            {
+                var definition = method.OriginalDefinition;
+                return IsOverloaded(definition)
+                    ? definition.Name + "(" + string.Join(", ", definition.Parameters.Select(p => ParameterTypeName(p.Type))) + ")"
+                    : definition.Name;
+            }
+
+            /// <summary>Whether the declaring interface has more than one method with this name.</summary>
+            internal static bool IsOverloaded(IMethodSymbol method)
+                => method.OriginalDefinition.ContainingType.GetMembers(method.Name)
+                    .OfType<IMethodSymbol>()
+                    .Count(m => m.MethodKind == MethodKind.Ordinary) > 1;
+
+            private static readonly SymbolDisplayFormat TypeIdFormat = new(
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
+
+            /// <summary>A parameter type as MethodIds writes it: C# keywords, simple names, T?, T[].</summary>
+            private static string ParameterTypeName(ITypeSymbol type)
+            {
+                switch (type)
+                {
+                    case IArrayTypeSymbol array:
+                        return ParameterTypeName(array.ElementType) + "[" + new string(',', array.Rank - 1) + "]";
+                    case INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable:
+                        return ParameterTypeName(nullable.TypeArguments[0]) + "?";
+                }
+
+                var keyword = type.SpecialType switch
+                {
+                    SpecialType.System_Boolean => "bool",
+                    SpecialType.System_Byte => "byte",
+                    SpecialType.System_SByte => "sbyte",
+                    SpecialType.System_Int16 => "short",
+                    SpecialType.System_UInt16 => "ushort",
+                    SpecialType.System_Int32 => "int",
+                    SpecialType.System_UInt32 => "uint",
+                    SpecialType.System_Int64 => "long",
+                    SpecialType.System_UInt64 => "ulong",
+                    SpecialType.System_Single => "float",
+                    SpecialType.System_Double => "double",
+                    SpecialType.System_Decimal => "decimal",
+                    SpecialType.System_Char => "char",
+                    SpecialType.System_String => "string",
+                    SpecialType.System_Object => "object",
+                    _ => null
+                };
+                if (keyword != null)
+                {
+                    return keyword;
+                }
+
+                return type is INamedTypeSymbol { IsGenericType: true } generic
+                    ? type.Name + "<" + string.Join(", ", generic.TypeArguments.Select(ParameterTypeName)) + ">"
+                    : type.Name;
+            }
         
             internal static bool IsCancellationToken(ITypeSymbol type)
                 => type.Name == nameof(CancellationToken) &&

@@ -153,11 +153,6 @@ namespace MethodCache.SourceGenerator
                             continue;
                         }
 
-                        if (method.Method.IsGenericMethod)
-                        {
-                            continue;
-                        }
-
                         var methodId = Utils.GetMethodId(method.Method);
                         if (!seen.Add(methodId))
                         {

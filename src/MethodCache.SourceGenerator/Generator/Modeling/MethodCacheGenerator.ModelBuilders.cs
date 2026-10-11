@@ -34,6 +34,12 @@ namespace MethodCache.SourceGenerator
                 }
             }
 
+            // A lazy sequence would be cached as the iterator or query, which runs again on every enumeration
+            if (GetLazySequenceKind(method.ReturnType) is { } sequence)
+            {
+                return (Diagnostic.Create(Diagnostics.UnsupportedLazySequence, location, methodName, sequence), false);
+            }
+
             // Check for ref/out/in parameters
             if (method.Parameters.Any(p => p.RefKind != RefKind.None))
             {
@@ -53,6 +59,45 @@ namespace MethodCache.SourceGenerator
             }
 
             return (null, true);
+        }
+
+        /// <summary>
+        /// Names the lazy sequence a method returns, directly or through Task/ValueTask: IEnumerable, IQueryable or
+        /// IAsyncEnumerable. Task&lt;IEnumerable&lt;T&gt;&gt; is allowed, since async methods return materialized results.
+        /// </summary>
+        private static string? GetLazySequenceKind(ITypeSymbol returnType)
+        {
+            static string? Kind(ITypeSymbol type, bool viaTask)
+            {
+                if (type is not INamedTypeSymbol named)
+                {
+                    return null;
+                }
+
+                var name = named.OriginalDefinition.ToDisplayString();
+                switch (name)
+                {
+                    case "System.Collections.Generic.IAsyncEnumerable<T>":
+                        return "IAsyncEnumerable";
+                    case "System.Linq.IQueryable<T>":
+                    case "System.Linq.IQueryable":
+                    case "System.Linq.IOrderedQueryable<T>":
+                        return "IQueryable";
+                    case "System.Collections.Generic.IEnumerable<T>":
+                    case "System.Collections.IEnumerable":
+                    case "System.Linq.IOrderedEnumerable<TElement>":
+                        return viaTask ? null : "IEnumerable";
+                    default:
+                        return null;
+                }
+            }
+
+            if ((Utils.IsTask(returnType, out var inner) || Utils.IsValueTask(returnType, out inner)) && inner != null)
+            {
+                return Kind(inner, viaTask: true);
+            }
+
+            return Kind(returnType, viaTask: false);
         }
 
         private static bool IsRefLikeType(ITypeSymbol type)

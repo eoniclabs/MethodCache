@@ -79,6 +79,9 @@ namespace MethodCache.SourceGenerator
                         if (!validation.canProceed) continue;
                     }
 
+                    // A typo in a {parameter} placeholder would otherwise stay literal text in every entry's tag
+                    diagnostics.AddRange(ValidateDynamicTags(ExtractTags(cacheAttr), method));
+
                     cachedMethods.Add(new MethodModel(method, cacheAttr, null));
                 }
                 else if (invalidateAttr != null)
