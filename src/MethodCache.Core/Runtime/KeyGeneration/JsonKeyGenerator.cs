@@ -18,7 +18,8 @@ namespace MethodCache.Extensibility;
 /// hash of the arguments' runtime types, so <c>1</c> and <c>1L</c>, which write the same JSON, get different keys.
 /// An argument list longer than
 /// <see cref="MaxReadableLength"/> characters is replaced by its SHA-256, so keys stay within the limits of stores
-/// such as SQL Server. Arguments are serialized with System.Text.Json, public fields included, and an
+/// such as SQL Server. Arguments are serialized with System.Text.Json, public fields included (a value inside them
+/// whose runtime type differs from its declared type is written with that type's name), and an
 /// <see cref="ICacheKeyProvider"/> as its <see cref="ICacheKeyProvider.CacheKeyPart"/>.
 /// For production, prefer the default <see cref="FastHashKeyGenerator"/>.
 /// </remarks>
@@ -86,7 +87,7 @@ public class JsonKeyGenerator : ICacheKeyGenerator
 
             if (args[i] is { } arg)
             {
-                AppendTypeName(names, arg.GetType());
+                names.Append(KeyArguments.TypeName(arg.GetType()));
             }
             else
             {
@@ -96,40 +97,5 @@ public class JsonKeyGenerator : ICacheKeyGenerator
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(names.ToString()));
         return Convert.ToHexString(hash, 0, 8).ToLowerInvariant();
-    }
-
-    /// <summary>
-    /// Writes the namespace-qualified name of <paramref name="type"/>, with its generic arguments but without the
-    /// assembly versions <see cref="Type.FullName"/> puts in them, so the name stays the same across releases.
-    /// </summary>
-    private static void AppendTypeName(StringBuilder builder, Type type)
-    {
-        if (type.IsArray)
-        {
-            AppendTypeName(builder, type.GetElementType()!);
-            builder.Append('[').Append(',', type.GetArrayRank() - 1).Append(']');
-            return;
-        }
-
-        if (!type.IsGenericType)
-        {
-            builder.Append(type.FullName ?? type.Name);
-            return;
-        }
-
-        var definition = type.GetGenericTypeDefinition();
-        builder.Append(definition.FullName ?? definition.Name).Append('[');
-        var arguments = type.GetGenericArguments();
-        for (var i = 0; i < arguments.Length; i++)
-        {
-            if (i > 0)
-            {
-                builder.Append(',');
-            }
-
-            AppendTypeName(builder, arguments[i]);
-        }
-
-        builder.Append(']');
     }
 }
