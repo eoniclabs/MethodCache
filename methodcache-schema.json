@@ -257,7 +257,7 @@
       "recommended": true
     },
     {
-      "name": "MethodCache.Providers.Redis",
+      "name": "MethodCache.Redis",
       "description": "Redis L2 provider with hybrid orchestration",
       "required": false,
       "useCases": ["Distributed caching", "Multi-instance applications"]

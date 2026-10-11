@@ -9,11 +9,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.SourceGenerator
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Analyzers", "MethodCache.Analyzers\MethodCache.Analyzers.csproj", "{EA0416D2-C7EC-44BD-BBDE-948C3C86E78F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.Redis", "MethodCache.Providers.Redis\MethodCache.Providers.Redis.csproj", "{B59594A0-E0DD-446F-A214-F81933EBB452}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Redis", "MethodCache.Redis\MethodCache.Redis.csproj", "{B59594A0-E0DD-446F-A214-F81933EBB452}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.Redis.Tests", "MethodCache.Providers.Redis.Tests\MethodCache.Providers.Redis.Tests.csproj", "{C59594A0-E0DD-446F-A214-F81933EBB453}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Redis.Tests", "MethodCache.Redis.Tests\MethodCache.Redis.Tests.csproj", "{C59594A0-E0DD-446F-A214-F81933EBB453}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.Redis.IntegrationTests", "MethodCache.Providers.Redis.IntegrationTests\MethodCache.Providers.Redis.IntegrationTests.csproj", "{D59594A0-E0DD-446F-A214-F81933EBB454}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Redis.IntegrationTests", "MethodCache.Redis.IntegrationTests\MethodCache.Redis.IntegrationTests.csproj", "{D59594A0-E0DD-446F-A214-F81933EBB454}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Core.Tests", "MethodCache.Core.Tests\MethodCache.Core.Tests.csproj", "{82C68F61-137F-4DBC-8290-032E79F95147}"
 EndProject
@@ -29,13 +29,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.HttpCaching", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.HttpCaching.IntegrationTests", "MethodCache.HttpCaching.IntegrationTests\MethodCache.HttpCaching.IntegrationTests.csproj", "{9F3B335D-100E-48A0-A384-B32C1E3277D0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.SqlServer", "MethodCache.Providers.SqlServer\MethodCache.Providers.SqlServer.csproj", "{2A1AD2C6-6247-46AE-AF24-0C15EF5653B6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.SqlServer", "MethodCache.SqlServer\MethodCache.SqlServer.csproj", "{2A1AD2C6-6247-46AE-AF24-0C15EF5653B6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.HttpCaching.Tests", "MethodCache.HttpCaching.Tests\MethodCache.HttpCaching.Tests.csproj", "{858B68C6-4FDF-4F96-86C3-C602365AF99D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.SqlServer.IntegrationTests", "MethodCache.Providers.SqlServer.IntegrationTests\MethodCache.Providers.SqlServer.IntegrationTests.csproj", "{E4354D51-1FA3-47C4-8B35-096D56A7003D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.SqlServer.IntegrationTests", "MethodCache.SqlServer.IntegrationTests\MethodCache.SqlServer.IntegrationTests.csproj", "{E4354D51-1FA3-47C4-8B35-096D56A7003D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Providers.SqlServer.Tests", "MethodCache.Providers.SqlServer.Tests\MethodCache.Providers.SqlServer.Tests.csproj", "{8BCCCA18-6D11-425D-84B1-14839ACDA67E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.SqlServer.Tests", "MethodCache.SqlServer.Tests\MethodCache.SqlServer.Tests.csproj", "{8BCCCA18-6D11-425D-84B1-14839ACDA67E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.OpenTelemetry", "MethodCache.OpenTelemetry\MethodCache.OpenTelemetry.csproj", "{403D8DD5-EFAD-42CB-8EBB-0A53B37FEC43}"
 EndProject

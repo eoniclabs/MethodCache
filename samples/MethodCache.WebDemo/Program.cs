@@ -2,7 +2,7 @@ using System.Diagnostics;
 using MethodCache.AspNetCore;
 using MethodCache.Core.Infrastructure.Extensions;
 using MethodCache.OpenTelemetry.Extensions;
-using MethodCache.Providers.Redis;
+using MethodCache.Redis;
 using MethodCache.WebDemo;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
