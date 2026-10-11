@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using MethodCache.HttpCaching.Extensions;
 using Xunit;
 
 namespace MethodCache.HttpCaching.IntegrationTests;
@@ -37,13 +36,13 @@ public class HttpCachingRegistrationTests
     public void EachHttpClient_GetsItsOwnOptions()
     {
         var services = new ServiceCollection();
-        services.AddHttpClient("fast").AddHttpCaching(c => c.Configure(o => o.Freshness.DefaultMaxAge = TimeSpan.FromMinutes(1)));
-        services.AddHttpClient("slow").AddHttpCaching(c => c.Configure(o => o.Freshness.DefaultMaxAge = TimeSpan.FromHours(1)));
+        services.AddHttpClient("fast").AddHttpCaching(o => o.DefaultMaxAge = TimeSpan.FromMinutes(1));
+        services.AddHttpClient("slow").AddHttpCaching(o => o.DefaultMaxAge = TimeSpan.FromHours(1));
 
         var monitor = services.BuildServiceProvider().GetRequiredService<IOptionsMonitor<HttpCacheOptions>>();
 
-        Assert.Equal(TimeSpan.FromMinutes(1), monitor.Get("fast").Freshness.DefaultMaxAge);
-        Assert.Equal(TimeSpan.FromHours(1), monitor.Get("slow").Freshness.DefaultMaxAge);
+        Assert.Equal(TimeSpan.FromMinutes(1), monitor.Get("fast").DefaultMaxAge);
+        Assert.Equal(TimeSpan.FromHours(1), monitor.Get("slow").DefaultMaxAge);
     }
 
     [Fact]

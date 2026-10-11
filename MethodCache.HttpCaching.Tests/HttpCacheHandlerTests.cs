@@ -3,9 +3,6 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using MethodCache.HttpCaching.Options;
-using MethodCache.HttpCaching.Storage;
-using MethodCache.HttpCaching.Validation;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -45,7 +42,7 @@ public class HttpCacheHandlerTests
     public async Task Get_Request_Returns304_WhenETagMatches()
     {
         var options = new HttpCacheOptions();
-        options.Freshness.DefaultMaxAge = TimeSpan.FromMilliseconds(1);
+        options.DefaultMaxAge = TimeSpan.FromMilliseconds(1);
 
         var innerHandler = new TestHttpMessageHandler();
         var handler = HttpCacheTestFactory.CreateHandler(options, innerHandler);

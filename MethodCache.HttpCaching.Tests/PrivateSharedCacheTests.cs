@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Memory;
-using MethodCache.HttpCaching.Options;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -12,8 +11,8 @@ public class PrivateSharedCacheTests
     public async Task PrivateCache_CachesPrivateResponses()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.IsSharedCache = false;
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.IsSharedCache = false;
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -45,8 +44,8 @@ public class PrivateSharedCacheTests
     public async Task SharedCache_DoesNotCachePrivateResponses()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.IsSharedCache = true;
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.IsSharedCache = true;
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -77,8 +76,8 @@ public class PrivateSharedCacheTests
     public async Task SharedCache_UsesSMaxAge_OverMaxAge()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.IsSharedCache = true;
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.IsSharedCache = true;
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -110,8 +109,8 @@ public class PrivateSharedCacheTests
     public async Task SharedCache_PrefersSMaxAge_WhenSMaxAgeExpiresBeforeMaxAge()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.IsSharedCache = true;
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.IsSharedCache = true;
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -161,8 +160,8 @@ public class PrivateSharedCacheTests
     public async Task PrivateCache_IgnoresSMaxAge_UsesMaxAge()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.IsSharedCache = false;
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.IsSharedCache = false;
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 
@@ -194,8 +193,8 @@ public class PrivateSharedCacheTests
     public async Task SharedCache_CachesPublicResponses()
     {
         var options = new HttpCacheOptions();
-        options.Behavior.IsSharedCache = true;
-        options.Diagnostics.AddDiagnosticHeaders = true;
+        options.IsSharedCache = true;
+        options.AddDiagnosticHeaders = true;
 
         var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
 

@@ -1,8 +1,7 @@
+using MethodCache.HttpCaching.Internal;
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging.Abstractions;
-using MethodCache.HttpCaching.Options;
-using MethodCache.HttpCaching.Storage;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -147,7 +146,7 @@ public class HttpCacheCorrectnessTests
     public async Task MaxVariantsPerUrl_EvictsTheOldestVariant()
     {
         var options = new HttpCacheOptions();
-        options.Variation.MaxVariantsPerUrl = 2;
+        options.MaxVariantsPerUrl = 2;
         var (client, inner) = HttpCacheTestFactory.CreateClient(options);
         inner.SetResponses(Variant("sv", "sv"), Variant("en", "en"), Variant("de", "de"), Variant("sv-again", "sv"));
 
@@ -172,6 +171,90 @@ public class HttpCacheCorrectnessTests
         await storage.ClearAsync();
 
         Assert.True(appCache.TryGetValue("app", out _));
+    }
+
+    [Fact]
+    public async Task StaleIfError_ServesStaleContent_WhenOriginReturns503()
+    {
+        var clock = new ManualTimeProvider();
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { EnableStaleIfError = true }, timeProvider: clock);
+        inner.SetResponses(Cacheable("v1", maxAge: TimeSpan.FromSeconds(60)), new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+
+        await client.GetStringAsync(Url);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        var response = await client.GetAsync(Url);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("v1", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task MustRevalidate_IsNeverServedStale()
+    {
+        var clock = new ManualTimeProvider();
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { EnableStaleIfError = true }, timeProvider: clock);
+        var first = Cacheable("v1", maxAge: TimeSpan.FromSeconds(60));
+        first.Headers.CacheControl!.MustRevalidate = true;
+        inner.SetResponses(first, new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+
+        await client.GetStringAsync(Url);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        var response = await client.GetAsync(Url);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task OnlyIfCached_ReturnsGatewayTimeout_InsteadOfCallingTheOrigin()
+    {
+        var clock = new ManualTimeProvider();
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions(), timeProvider: clock);
+        inner.SetResponses(Cacheable("v1", maxAge: TimeSpan.FromSeconds(60)));
+
+        await client.GetStringAsync(Url);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        using var request = new HttpRequestMessage(HttpMethod.Get, Url);
+        request.Headers.CacheControl = new CacheControlHeaderValue { OnlyIfCached = true };
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.GatewayTimeout, response.StatusCode);
+        Assert.Equal(1, inner.RequestCount);
+    }
+
+    [Fact]
+    public async Task SharedCache_DoesNotStoreAuthorizedResponses_UnlessPublic()
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { IsSharedCache = true });
+        var publicResponse = Cacheable("public");
+        publicResponse.Headers.CacheControl!.Public = true;
+        inner.SetResponses(Cacheable("a"), Cacheable("b"), publicResponse);
+
+        await GetAuthorized(client, Url);
+        await GetAuthorized(client, Url);
+        await GetAuthorized(client, Url + "?public");
+
+        Assert.Equal("public", await GetAuthorized(client, Url + "?public"));
+        Assert.Equal(3, inner.RequestCount);
+    }
+
+    [Fact]
+    public async Task ResponsesLargerThanMaxResponseSize_AreNotCached()
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { MaxResponseSize = 4 });
+        inner.SetResponses(Cacheable("too large"), Cacheable("too large"));
+
+        await client.GetStringAsync(Url);
+        await client.GetStringAsync(Url);
+
+        Assert.Equal(2, inner.RequestCount);
+    }
+
+    private static async Task<string> GetAuthorized(HttpClient client, string url)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "token");
+        using var response = await client.SendAsync(request);
+        return await response.Content.ReadAsStringAsync();
     }
 
     private static async Task<string> GetInLanguage(HttpClient client, string language)

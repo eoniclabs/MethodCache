@@ -1,4 +1,4 @@
-using MethodCache.HttpCaching.Metrics;
+using MethodCache.HttpCaching.Internal;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests.Metrics;
