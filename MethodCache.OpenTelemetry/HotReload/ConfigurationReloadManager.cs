@@ -84,13 +84,13 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
     {
         if (_disposed) return false;
 
-        await _updateSemaphore.WaitAsync(cancellationToken);
+        await _updateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             // Validate configuration
             if (_changeHandlers.TryGetValue(section, out var handler))
             {
-                var validationResult = await ValidateConfigurationInternalAsync(handler, newConfiguration);
+                var validationResult = await ValidateConfigurationInternalAsync(handler, newConfiguration).ConfigureAwait(false);
                 if (!validationResult.IsValid)
                 {
                     _logger.LogWarning("Configuration validation failed for section {Section}: {Errors}",
@@ -112,7 +112,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
             {
                 try
                 {
-                    await handler.HandleConfigurationChangeAsync(oldConfiguration, newConfiguration, cancellationToken);
+                    await handler.HandleConfigurationChangeAsync(oldConfiguration, newConfiguration, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -151,7 +151,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
     {
         if (_disposed) return false;
 
-        await _updateSemaphore.WaitAsync(cancellationToken);
+        await _updateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (!_currentConfigurations.TryGetValue(section, out var currentConfig))
@@ -174,7 +174,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
             // Validate the updated configuration
             if (_changeHandlers.TryGetValue(section, out var handler))
             {
-                var validationResult = await ValidateConfigurationInternalAsync(handler, configCopy);
+                var validationResult = await ValidateConfigurationInternalAsync(handler, configCopy).ConfigureAwait(false);
                 if (!validationResult.IsValid)
                 {
                     _logger.LogWarning("Property update validation failed for {Section}.{Property}: {Errors}",
@@ -194,7 +194,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
             {
                 try
                 {
-                    await handler.HandleConfigurationChangeAsync(currentConfig, configCopy, cancellationToken);
+                    await handler.HandleConfigurationChangeAsync(currentConfig, configCopy, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -230,7 +230,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
     {
         if (_changeHandlers.TryGetValue(section, out var handler))
         {
-            return await ValidateConfigurationInternalAsync(handler, configuration);
+            return await ValidateConfigurationInternalAsync(handler, configuration).ConfigureAwait(false);
         }
 
         return new ValidationResult { IsValid = true };
@@ -253,7 +253,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
         }
 
         _logger.LogInformation("Rolling back configuration for section {Section} to {Timestamp}", section, targetEntry.Timestamp);
-        return await UpdateConfigurationAsync(section, targetEntry.Configuration, cancellationToken);
+        return await UpdateConfigurationAsync(section, targetEntry.Configuration, cancellationToken).ConfigureAwait(false);
     }
 
     public Dictionary<ConfigurationSection, object> GetAllConfigurations()
@@ -276,7 +276,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
             // Reinitialize configurations
             InitializeConfigurations();
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             _logger.LogInformation("Configuration reloaded successfully from source");
         }
         catch (Exception ex)
@@ -338,7 +338,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
         {
             try
             {
-                await ReloadFromSourceAsync();
+                await ReloadFromSourceAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -378,7 +378,7 @@ internal class ConfigurationReloadManager : IConfigurationReloadManager, IDispos
 
     private async Task<ValidationResult> ValidateConfigurationInternalAsync<T>(IConfigurationChangeHandlerBase handler, T configuration) where T : class
     {
-        return await handler.ValidateAsync(configuration);
+        return await handler.ValidateAsync(configuration).ConfigureAwait(false);
     }
 
 

@@ -73,7 +73,7 @@ internal class TelemetryCacheManager : ICacheManager
             SetActivityTagsFromPolicy(activity, policy);
 
             var tracked = new TrackedFactory<T>(factory);
-            var result = await tracked.Run(f => _innerManager.GetOrCreateAsync(methodName, args, f, policy, keyGenerator));
+            var result = await tracked.Run(f => _innerManager.GetOrCreateAsync(methodName, args, f, policy, keyGenerator)).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -108,7 +108,7 @@ internal class TelemetryCacheManager : ICacheManager
             _activitySource.SetCacheKey(activity, cacheKey);
             SetActivityTagsFromPolicy(activity, policy);
 
-            var result = await _innerManager.TryGetAsync<T>(methodName, args, policy, keyGenerator);
+            var result = await _innerManager.TryGetAsync<T>(methodName, args, policy, keyGenerator).ConfigureAwait(false);
             var requiresExistenceCheck =
                 typeof(T).IsValueType &&
                 Nullable.GetUnderlyingType(typeof(T)) is null &&
@@ -166,7 +166,7 @@ internal class TelemetryCacheManager : ICacheManager
             SetActivityTagsFromPolicy(activity, policy);
 
             var tracked = new TrackedFactory<T>(factory);
-            var result = await tracked.Run(f => _innerManager.GetOrCreateFastAsync(cacheKey, methodName, f, policy));
+            var result = await tracked.Run(f => _innerManager.GetOrCreateFastAsync(cacheKey, methodName, f, policy)).ConfigureAwait(false);
 
             stopwatch.Stop();
             _activitySource.SetCacheHit(activity, !tracked.LoadedForCaller);
@@ -194,7 +194,7 @@ internal class TelemetryCacheManager : ICacheManager
             _baggagePropagator.InjectBaggage(activity);
             _activitySource.SetCacheTags(activity, tags);
 
-            await _innerManager.InvalidateByTagsAsync(tags);
+            await _innerManager.InvalidateByTagsAsync(tags).ConfigureAwait(false);
 
             stopwatch.Stop();
             _meterProvider.RecordOperationDuration("InvalidateByTags", stopwatch.Elapsed.TotalMilliseconds,
@@ -219,7 +219,7 @@ internal class TelemetryCacheManager : ICacheManager
             _baggagePropagator.InjectBaggage(activity);
             activity?.SetTag("cache.keys_count", keys.Length);
 
-            await _innerManager.InvalidateByKeysAsync(keys);
+            await _innerManager.InvalidateByKeysAsync(keys).ConfigureAwait(false);
 
             stopwatch.Stop();
             _meterProvider.RecordOperationDuration("InvalidateByKeys", stopwatch.Elapsed.TotalMilliseconds,
@@ -244,7 +244,7 @@ internal class TelemetryCacheManager : ICacheManager
             _baggagePropagator.InjectBaggage(activity);
             activity?.SetTag("cache.pattern", pattern);
 
-            await _innerManager.InvalidateByTagPatternAsync(pattern);
+            await _innerManager.InvalidateByTagPatternAsync(pattern).ConfigureAwait(false);
 
             stopwatch.Stop();
             _meterProvider.RecordOperationDuration("InvalidateByTagPattern", stopwatch.Elapsed.TotalMilliseconds,

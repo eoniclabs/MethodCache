@@ -168,7 +168,7 @@ internal abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChange
 
     public virtual async Task HandleConfigurationChangeAsync(T? oldConfiguration, T newConfiguration, CancellationToken cancellationToken = default)
     {
-        await OnConfigurationChangedAsync(oldConfiguration, newConfiguration, cancellationToken);
+        await OnConfigurationChangedAsync(oldConfiguration, newConfiguration, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual Task<ValidationResult> ValidateAsync(T configuration)
@@ -182,7 +182,7 @@ internal abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChange
         if (newConfiguration is T typedNew)
         {
             var typedOld = oldConfiguration as T;
-            await HandleConfigurationChangeAsync(typedOld, typedNew, cancellationToken);
+            await HandleConfigurationChangeAsync(typedOld, typedNew, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -194,7 +194,7 @@ internal abstract class ConfigurationChangeHandlerBase<T> : IConfigurationChange
     {
         if (configuration is T typedConfig)
         {
-            return await ValidateAsync(typedConfig);
+            return await ValidateAsync(typedConfig).ConfigureAwait(false);
         }
         else
         {
@@ -218,19 +218,19 @@ internal class OpenTelemetryOptionsChangeHandler : ConfigurationChangeHandlerBas
         if (oldConfiguration?.EnableTracing != newConfiguration.EnableTracing)
         {
             // Restart activity sources if needed
-            await RestartTracingAsync(newConfiguration.EnableTracing, cancellationToken);
+            await RestartTracingAsync(newConfiguration.EnableTracing, cancellationToken).ConfigureAwait(false);
         }
 
         // Handle metrics enable/disable
         if (oldConfiguration?.EnableMetrics != newConfiguration.EnableMetrics)
         {
-            await RestartMetricsAsync(newConfiguration.EnableMetrics, cancellationToken);
+            await RestartMetricsAsync(newConfiguration.EnableMetrics, cancellationToken).ConfigureAwait(false);
         }
 
         // Handle sampling ratio changes
         if (oldConfiguration == null || Math.Abs(oldConfiguration.SamplingRatio - newConfiguration.SamplingRatio) > 0.001)
         {
-            await UpdateSamplingRatioAsync(newConfiguration.SamplingRatio, cancellationToken);
+            await UpdateSamplingRatioAsync(newConfiguration.SamplingRatio, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -256,19 +256,19 @@ internal class OpenTelemetryOptionsChangeHandler : ConfigurationChangeHandlerBas
     private async Task RestartTracingAsync(bool enabled, CancellationToken cancellationToken)
     {
         // Implementation would restart tracing components
-        await Task.Delay(100, cancellationToken); // Placeholder
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Placeholder
     }
 
     private async Task RestartMetricsAsync(bool enabled, CancellationToken cancellationToken)
     {
         // Implementation would restart metrics components
-        await Task.Delay(100, cancellationToken); // Placeholder
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Placeholder
     }
 
     private async Task UpdateSamplingRatioAsync(double newRatio, CancellationToken cancellationToken)
     {
         // Implementation would update sampling configuration
-        await Task.Delay(50, cancellationToken); // Placeholder
+        await Task.Delay(50, cancellationToken).ConfigureAwait(false); // Placeholder
     }
 }
 
@@ -285,14 +285,14 @@ internal class SecurityOptionsChangeHandler : ConfigurationChangeHandlerBase<Sec
         if (oldConfiguration?.EnablePIIDetection != newConfiguration.EnablePIIDetection ||
             oldConfiguration?.PIITypesToDetect != newConfiguration.PIITypesToDetect)
         {
-            await ReconfigurePIIDetectionAsync(newConfiguration, cancellationToken);
+            await ReconfigurePIIDetectionAsync(newConfiguration, cancellationToken).ConfigureAwait(false);
         }
 
         // Handle encryption changes
         if (oldConfiguration?.EnableAttributeEncryption != newConfiguration.EnableAttributeEncryption ||
             oldConfiguration?.EncryptionKey != newConfiguration.EncryptionKey)
         {
-            await ReconfigureEncryptionAsync(newConfiguration, cancellationToken);
+            await ReconfigureEncryptionAsync(newConfiguration, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -323,12 +323,12 @@ internal class SecurityOptionsChangeHandler : ConfigurationChangeHandlerBase<Sec
     private async Task ReconfigurePIIDetectionAsync(SecurityOptions configuration, CancellationToken cancellationToken)
     {
         // Implementation would reconfigure PII detection
-        await Task.Delay(100, cancellationToken); // Placeholder
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Placeholder
     }
 
     private async Task ReconfigureEncryptionAsync(SecurityOptions configuration, CancellationToken cancellationToken)
     {
         // Implementation would reconfigure encryption
-        await Task.Delay(100, cancellationToken); // Placeholder
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Placeholder
     }
 }

@@ -64,14 +64,6 @@ namespace MethodCache.SourceGenerator
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);
 
-            internal static readonly DiagnosticDescriptor SyncOverAsyncWarning = new(
-                id: "MCG008",
-                title: "Synchronous method caching may cause deadlocks",
-                messageFormat: "Method '{0}' is synchronous but uses async caching infrastructure. This may cause deadlocks in environments with SynchronizationContext (ASP.NET Framework, WPF, WinForms). Consider making the method async or use with caution.",
-                category: "MethodCacheGenerator",
-                defaultSeverity: DiagnosticSeverity.Info,
-                isEnabledByDefault: true);
-
             internal static readonly DiagnosticDescriptor DynamicTagParameterNotFound = new(
                 id: "MCG009",
                 title: "Dynamic tag references unknown parameter",
