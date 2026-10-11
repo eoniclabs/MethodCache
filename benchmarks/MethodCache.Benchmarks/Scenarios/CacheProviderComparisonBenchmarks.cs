@@ -2,15 +2,12 @@ using BenchmarkDotNet.Attributes;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
-using MethodCache.Policies;
-using MethodCache.Redis;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace MethodCache.Benchmarks.Scenarios;
 
 /// <summary>
-/// Benchmarks comparing different cache provider implementations
+/// Benchmarks for implemented in-memory provider scenarios
 /// </summary>
 [MemoryDiagnoser]
 [SimpleJob]
@@ -18,9 +15,6 @@ namespace MethodCache.Benchmarks.Scenarios;
 public class CacheProviderComparisonBenchmarks : BenchmarkBase
 {
     private ICacheProviderTestService _inMemoryService = null!;
-    private ICacheProviderTestService _hybridService = null!;
-    private ICacheProviderTestService? _redisService;
-
     [Params(10, 100, 1000)]
     public int ItemCount { get; set; }
 
@@ -29,60 +23,17 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
 
     protected override void OnSetupComplete()
     {
-        // Create services with different cache providers
-        var inMemoryProvider = CreateServiceProviderWithCache<InMemoryCacheManager>();
-        var hybridProvider = CreateServiceProviderWithCache<InMemoryCacheManager>(); // Use InMemory instead of Hybrid for benchmarks
-        
-        _inMemoryService = inMemoryProvider.GetRequiredService<ICacheProviderTestService>();
-        _hybridService = hybridProvider.GetRequiredService<ICacheProviderTestService>();
-
-        // Try to create Redis service if available
-        try
-        {
-            var redisProvider = CreateServiceProviderWithRedis();
-            if (redisProvider != null)
-            {
-                _redisService = redisProvider.GetRequiredService<ICacheProviderTestService>();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning("Redis not available for benchmarks: {Error}", ex.Message);
-        }
+        _inMemoryService = ServiceProvider.GetRequiredService<ICacheProviderTestService>();
+        // Populate outside the measured hit method, including the first iteration.
+        for (var i = 0; i < ItemCount; i++)
+            _inMemoryService.GetItemAsync(i, DataType).GetAwaiter().GetResult();
     }
 
-    private IServiceProvider? CreateServiceProviderWithRedis()
+    [IterationSetup(Target = nameof(InMemory_CacheHits))]
+    public void WarmHits()
     {
-        try
-        {
-            var services = new ServiceCollection();
-            ConfigureServices(services);
-            
-            // Replace with Redis cache manager
-            services.Remove(services.First(s => s.ServiceType == typeof(ICacheManager)));
-            services.AddSingleton<ICacheManager>(provider =>
-            {
-                // Skip Redis implementation for now - too complex for benchmark setup
-                throw new NotSupportedException("Redis benchmarks not implemented in this version");
-            });
-            
-            services.AddSingleton<ICacheProviderTestService, CacheProviderTestService>();
-            
-            var provider = services.BuildServiceProvider();
-            
-            // Test Redis connectivity
-            var cacheManager = provider.GetRequiredService<ICacheManager>();
-            var descriptor = CacheRuntimePolicy.FromPolicy("test", CachePolicy.Empty, CachePolicyFields.None);
-            cacheManager.GetOrCreateAsync("test", Array.Empty<object>(), () => Task.FromResult("test"),
-                descriptor, provider.GetRequiredService<ICacheKeyGenerator>())
-                .Wait(TimeSpan.FromSeconds(5));
-            
-            return provider;
-        }
-        catch
-        {
-            return null;
-        }
+        for (var i = 0; i < ItemCount; i++)
+            _inMemoryService.GetItemAsync(i, DataType).GetAwaiter().GetResult();
     }
 
     protected override void ConfigureBenchmarkServices(IServiceCollection services)
@@ -97,54 +48,15 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
     }
 
     [Benchmark]
-    public async Task<List<object>> Hybrid_CacheHits()
-    {
-        return await RunCacheHitsTest(_hybridService);
-    }
-
-    [Benchmark]
-    public async Task<List<object>?> Redis_CacheHits()
-    {
-        if (_redisService == null) return null;
-        return await RunCacheHitsTest(_redisService);
-    }
-
-    [Benchmark]
     public async Task<List<object>> InMemory_CacheMisses()
     {
         return await RunCacheMissesTest(_inMemoryService);
     }
 
     [Benchmark]
-    public async Task<List<object>> Hybrid_CacheMisses()
-    {
-        return await RunCacheMissesTest(_hybridService);
-    }
-
-    [Benchmark]
-    public async Task<List<object>?> Redis_CacheMisses()
-    {
-        if (_redisService == null) return null;
-        return await RunCacheMissesTest(_redisService);
-    }
-
-    [Benchmark]
     public async Task InMemory_BulkInvalidation()
     {
         await RunBulkInvalidationTest(_inMemoryService);
-    }
-
-    [Benchmark]
-    public async Task Hybrid_BulkInvalidation()
-    {
-        await RunBulkInvalidationTest(_hybridService);
-    }
-
-    [Benchmark]
-    public async Task? Redis_BulkInvalidation()
-    {
-        if (_redisService == null) return;
-        await RunBulkInvalidationTest(_redisService);
     }
 
     private async Task<List<object>> RunCacheHitsTest(ICacheProviderTestService service)
@@ -163,16 +75,16 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
     private async Task<List<object>> RunCacheMissesTest(ICacheProviderTestService service)
     {
         var results = new List<object>();
-        
+
         // Ensure cache is clear
         await service.ClearCacheAsync();
-        
+
         // Measure cache misses
         for (int i = 0; i < ItemCount; i++)
         {
             results.Add(await service.GetItemAsync(i, DataType));
         }
-        
+
         return results;
     }
 
@@ -183,7 +95,7 @@ public class CacheProviderComparisonBenchmarks : BenchmarkBase
         {
             await service.GetItemAsync(i, DataType);
         }
-        
+
         // Measure bulk invalidation
         await service.InvalidateAllAsync();
     }
@@ -211,8 +123,13 @@ public class CacheProviderTestService : ICacheProviderTestService
 
     public virtual async Task<object> GetItemAsync(int id, string dataType)
     {
-        // Source generator handles caching - just call the business logic
-        return await CreateItemAsync(id, dataType);
+        var policy = CacheRuntimePolicy.Empty(nameof(GetItemAsync)) with
+        {
+            Duration = TimeSpan.FromMinutes(10),
+            Tags = new[] { "items" }
+        };
+        return await _cacheManager.GetOrCreateAsync(nameof(GetItemAsync), new object[] { id, dataType },
+            () => CreateItemAsync(id, dataType), policy, _keyGenerator);
     }
 
     public virtual async Task InvalidateAllAsync()
@@ -225,7 +142,7 @@ public class CacheProviderTestService : ICacheProviderTestService
         await _cacheManager.InvalidateByTagsAsync("items");
     }
 
-    private async Task<object> CreateItemAsync(int id, string dataType)
+    protected virtual async Task<object> CreateItemAsync(int id, string dataType)
     {
         // Simulate database/API call
         await Task.Delay(Random.Shared.Next(1, 5));

@@ -50,7 +50,7 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> 
 | `basic` | Hits and misses with different payload sizes |
 | `baseline` | MethodCache against `IMemoryCache` and LazyCache |
 | `comparison` | Several libraries behind one adapter interface |
-| `providers` | In-memory, Redis and hybrid storage |
+| `providers` | In-memory hits, misses and tag invalidation |
 | `concurrent` | Concurrent access and scalability |
 | `memory` | Memory use and GC pressure |
 | `realworld` | Application-shaped scenarios |
@@ -68,7 +68,9 @@ The benchmark setup is also compiled and exercised by `MethodCache.Benchmarks.Te
 It uses the actual benchmark sources, including the dependency-injection registrations, and checks that both
 base classes can populate and read the cache before a measurement runs. Adapter contract tests cover all nine
 adapters: one key identity across set, lookup, get-or-create and removal; overwrite; clear; value-type zero;
-and isolation between instances. MethodCache adapter expiration is checked with `FakeTimeProvider`.
+and isolation between instances. Scenario checks ensure each concurrent miss invocation executes its factories,
+invalidation removes the entries used by the scenario, and provider hits reuse populated values. Redis and
+hybrid provider comparisons are excluded until they have implementations. MethodCache adapter expiration is checked with `FakeTimeProvider`.
 The source-generator adapter uses an explicit raw key for its shared operations and receives each factory
 as a method argument. Its direct async hit benchmark still calls the generated decorator; its `TryGet`
 operation uses a lookup that cannot execute a factory. Run these checks with:
