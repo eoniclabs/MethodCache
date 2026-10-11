@@ -12,6 +12,7 @@ using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.PolicyPipeline.Sources;
 using MethodCache.Core.Runtime;
+using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Runtime.KeyGeneration;
@@ -121,6 +122,11 @@ namespace MethodCache.Core.Infrastructure.Extensions
             AddDefaultCacheManager(services);
             services.TryAddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
             services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();
+            services.TryAddSingleton(static sp => new DecoratorServices(
+                sp.GetRequiredService<ICacheManager>(),
+                sp.GetRequiredService<IPolicyRegistry>(),
+                sp.GetRequiredService<ICacheKeyGenerator>(),
+                sp.GetService<ICacheMetricsProvider>()));
 
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
