@@ -125,7 +125,8 @@ public class InMemoryCacheEngineTests
     public async Task SlidingExpiration_IsExtendedByReads_AndCappedByMaxExpiration()
     {
         var manager = CreateManager(o => o.MaxExpiration = TimeSpan.FromMinutes(3));
-        var policy = Policy() with { SlidingExpiration = TimeSpan.FromSeconds(30), Duration = TimeSpan.FromSeconds(30) };
+        // Without a Duration, only MaxExpiration bounds a sliding entry
+        var policy = Policy() with { SlidingExpiration = TimeSpan.FromSeconds(30), Duration = null };
         var calls = 0;
         Task<int> Factory() => Task.FromResult(++calls);
 

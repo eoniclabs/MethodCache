@@ -158,7 +158,7 @@ internal class TelemetryCacheManager : ICacheManager
         return _innerManager.TryGetFastTask(cacheKey, out task);
     }
 
-    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+    public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
     {
         using var activity = _activitySource.StartCacheOperation(methodName, TracingConstants.Operations.Get);
         var stopwatch = Stopwatch.StartNew();
@@ -176,7 +176,7 @@ internal class TelemetryCacheManager : ICacheManager
             SetActivityTagsFromPolicy(activity, policy);
 
             var tracked = new TrackedFactory<T>(factory);
-            var result = await tracked.Run(f => _innerManager.GetOrCreateFastAsync(cacheKey, methodName, f, policy)).ConfigureAwait(false);
+            var result = await tracked.Run(f => _innerManager.GetOrCreateFastAsync(cacheKey, methodName, f, policy, cancellationToken)).ConfigureAwait(false);
 
             stopwatch.Stop();
             _activitySource.SetCacheHit(activity, !tracked.LoadedForCaller);

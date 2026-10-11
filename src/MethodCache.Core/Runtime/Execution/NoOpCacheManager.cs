@@ -45,7 +45,7 @@ namespace MethodCache.Core.Runtime.Execution
             return false;
         }
 
-        public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             // Always execute the factory, effectively disabling caching
             return RunAsync(methodName, factory);

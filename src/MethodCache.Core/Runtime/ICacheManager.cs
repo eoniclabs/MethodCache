@@ -152,13 +152,17 @@ namespace MethodCache.Core.Runtime
         /// <param name="methodName">Name of the method being cached (for metrics/diagnostics)</param>
         /// <param name="factory">Factory function to execute if cache miss occurs</param>
         /// <param name="policy">Runtime policy containing cache configuration and options</param>
+        /// <param name="cancellationToken">
+        /// The caller's token, which <paramref name="factory"/> also observes. Cancelling it cancels this caller's
+        /// wait; a load it started is cancelled too, and callers that joined that load start their own.
+        /// </param>
         /// <returns>The cached or newly created value</returns>
         /// <remarks>
         /// This overload is designed for source-generated code that can compute cache keys inline
         /// for simple parameter types (string, int, Guid, etc.) without MessagePack serialization overhead.
         /// Use this for maximum performance when you can deterministically generate cache keys.
         /// </remarks>
-        Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy);
+        Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invalidates all cache entries associated with the specified tags.

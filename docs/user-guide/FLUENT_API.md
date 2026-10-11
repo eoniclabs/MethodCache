@@ -57,6 +57,7 @@ public static class CacheManagerExtensions
     public static ValueTask<CacheLookupResult<T>> TryGetAsync<T>(
         this ICacheManager cacheManager,
         string key,
+        int? version = null,
         CancellationToken cancellationToken = default);
 
     public static ValueTask<IDictionary<string, T>> GetOrCreateManyAsync<T>(
@@ -66,21 +67,14 @@ public static class CacheManagerExtensions
         Action<CacheEntryOptions.Builder>? configure = null,
         IServiceProvider? services = null,
         CancellationToken cancellationToken = default);
-
-    public static IAsyncEnumerable<T> GetOrCreateStreamAsync<T>(
-        this ICacheManager cacheManager,
-        string key,
-        Func<CacheContext, CancellationToken, IAsyncEnumerable<T>> factory,
-        Action<StreamCacheOptions.Builder>? configure = null,
-        IServiceProvider? services = null,
-        CancellationToken cancellationToken = default);
-
 }
 ```
 
 - `CacheLookupResult<T>` is an allocation-free struct containing `bool Found` and `T? Value`. When `Found` is false, `Value` is default.
 - `GetOrCreateManyAsync` batches cache lookups and invokes the factory with only missing keys, enabling single round trips to L2 providers.
-- `GetOrCreateStreamAsync` supports caching of streaming data. Implementations may buffer segments or apply windowing based on `StreamCacheOptions`.
+- Concurrent `GetOrCreateAsync` calls for the same key share one factory run. A caller's `cancellationToken` stops its own wait. If it cancels a factory run that other callers joined, they run the factory again rather than fail, and fail-safe never treats a caller's own cancellation as a failing dependency.
+- An entry stored with `WithVersion(n)` is found by `TryGetAsync` with the same `version`, and by `GetOrCreateAsync` and `GetOrCreateManyAsync` configured with `WithVersion(n)`.
+- To cache a sequence, materialize it in the factory (for example `await stream.ToListAsync(ct)`) and cache the list.
 - Invalidation lives on `ICacheManager` itself: `InvalidateByKeysAsync(params string[] keys)`, `InvalidateByTagsAsync(params string[] tags)` and `InvalidateByTagPatternAsync(string pattern)`.
 - `InvalidateByTagPatternAsync` wildcard syntax is `*` (zero or more chars) and `?` (exactly one char). Other characters are literal, and matching is against the full tag string.
 - Distributed cache caveat: pattern invalidation works on the in-memory cache only. With a distributed cache configured it throws `NotSupportedException`, because the distributed cache cannot list its tags.
@@ -183,30 +177,6 @@ public sealed class CacheContext
 - `Services` is the service provider you passed in, if any.
 - `Items` is scoped per call, so callbacks such as `OnHit`, `OnMiss` and `When` can share data without leaking state.
 
-#### StreamCacheOptions
-Namespace: `MethodCache.Core.Options`.
-
-```csharp
-public sealed class StreamCacheOptions
-{
-    public TimeSpan? Duration { get; }
-    public int SegmentSize { get; }
-    public int MaxMemorySize { get; }
-    public bool EnableWindowing { get; }
-
-    public sealed class Builder
-    {
-        public Builder WithDuration(TimeSpan duration);
-        public Builder WithSegmentSize(int segmentSize);
-        public Builder WithMaxMemorySize(int maxMemorySize);
-        public Builder EnableWindowing(bool enabled = true);
-        public StreamCacheOptions Build();
-    }
-}
-```
-
-- Streaming options allow providers to tune buffering strategies for `IAsyncEnumerable` payloads.
-
 #### Observability Interfaces
 Namespace: `MethodCache.Core.Infrastructure.Metrics`.
 
@@ -256,21 +226,6 @@ var users = await cacheManager.GetOrCreateManyAsync(
     },
     configure: options => options.WithDuration(TimeSpan.FromHours(1))
 );
-```
-
-### Streaming Cache
-```csharp
-await foreach (var dto in cacheManager.GetOrCreateStreamAsync(
-    key: $"report:{year}-{month:00}",
-    factory: (context, ct) => reportService.GetMonthlyReportStreamAsync(year, month, ct),
-    configure: options => options
-        .WithDuration(TimeSpan.FromMinutes(10))
-        .WithSegmentSize(500)
-        .EnableWindowing()
-))
-{
-    yield return dto;
-}
 ```
 
 ### Configuring Cached Methods

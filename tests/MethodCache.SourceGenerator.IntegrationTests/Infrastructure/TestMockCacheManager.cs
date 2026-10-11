@@ -120,7 +120,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             return false;
         }
 
-        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+        public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             // Check cache first and verify not expired
             if (_cache.TryGetValue(cacheKey, out var cacheEntry))

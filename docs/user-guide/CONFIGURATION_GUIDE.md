@@ -51,6 +51,8 @@ builder.Services.AddMethodCache();
 
 `[Cache]` takes an optional group name and the properties `Duration`, `SlidingExpiration`, `RefreshAhead` (strings in `TimeSpan` format), `Tags` and `Version`. Tags can contain templates such as `"user:{userId}"`, which are filled in from the method's arguments.
 
+`SlidingExpiration` keeps an entry while it is read, but never longer than its `Duration`; without a `Duration`, only `MaxExpiration` limits it. A `CancellationToken` parameter is not part of the cache key. Concurrent calls with the same arguments share one call to your method, and a caller that cancels only stops its own wait: if it started that call, the other callers make the call again instead of failing.
+
 ## Manual Caching
 
 Use `ICacheManager.GetOrCreateAsync` with an explicit key when attributes are not practical, such as third-party integrations or legacy code paths.

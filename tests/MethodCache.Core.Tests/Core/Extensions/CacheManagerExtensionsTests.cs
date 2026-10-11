@@ -146,9 +146,9 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 options => options.WithDuration(TimeSpan.FromMinutes(5)).WithTags("reports"));
 
             Assert.Equal("MethodCache.Fluent", cacheManager.LastMethodName);
-            Assert.NotNull(cacheManager.LastSettings);
-            Assert.Equal(TimeSpan.FromMinutes(5), cacheManager.LastSettings!.Duration);
-            Assert.Contains("reports", cacheManager.LastSettings.Tags);
+            Assert.NotNull(cacheManager.LastPolicy);
+            Assert.Equal(TimeSpan.FromMinutes(5), cacheManager.LastPolicy!.Duration);
+            Assert.Contains("reports", cacheManager.LastPolicy.Tags);
         }
 
         [Fact]
@@ -214,58 +214,18 @@ namespace MethodCache.Core.Tests.Core.Extensions
             // Assert runtime result
             Assert.Equal(99, result);
 
-            // Assert legacy pipeline mapping
             Assert.Equal("MethodCache.Fluent", cacheManager.LastMethodName);
-            Assert.NotNull(cacheManager.LastArgs);
-            Assert.Empty(cacheManager.LastArgs!);
+            Assert.Equal("report:monthly", cacheManager.LastKey);
 
-            Assert.NotNull(cacheManager.LastSettings);
-            Assert.Equal(duration, cacheManager.LastSettings!.Duration);
-            Assert.Contains("reports", cacheManager.LastSettings.Tags);
-            Assert.Contains("metrics", cacheManager.LastSettings.Tags);
-            Assert.Equal(TimeSpan.FromMinutes(2), cacheManager.LastPolicy!.SlidingExpiration);
-
-            // Ensure the fixed key generator preserves the fluent key
-            Assert.NotNull(cacheManager.LastKeyGenerator);
-            var generatedKey = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), CreateEmptyPolicy("ignored"));
-            Assert.Equal("report:monthly", generatedKey);
+            Assert.NotNull(cacheManager.LastPolicy);
+            Assert.Equal(duration, cacheManager.LastPolicy!.Duration);
+            Assert.Contains("reports", cacheManager.LastPolicy.Tags);
+            Assert.Contains("metrics", cacheManager.LastPolicy.Tags);
+            Assert.Equal(TimeSpan.FromMinutes(2), cacheManager.LastPolicy.SlidingExpiration);
         }
 
         private static CacheRuntimePolicy CreateEmptyPolicy(string methodName) =>
             CacheRuntimePolicy.Empty(methodName);
-
-        [Fact]
-        public async Task GetOrCreateStreamAsync_MaterializesAndCachesSequence()
-        {
-            var cacheManager = new MockCacheManager();
-            var enumerations = 0;
-
-            async IAsyncEnumerable<int> Factory(CacheContext context, [EnumeratorCancellation] CancellationToken token)
-            {
-                enumerations++;
-                yield return 1;
-                await Task.Delay(1, token);
-                yield return 2;
-            }
-
-            var first = new List<int>();
-            await foreach (var item in cacheManager.GetOrCreateStreamAsync("stream:users", Factory))
-            {
-                first.Add(item);
-            }
-
-            Assert.Equal(new[] { 1, 2 }, first);
-            Assert.Equal(1, enumerations);
-
-            var second = new List<int>();
-            await foreach (var item in cacheManager.GetOrCreateStreamAsync("stream:users", Factory))
-            {
-                second.Add(item);
-            }
-
-            Assert.Equal(new[] { 1, 2 }, second);
-            Assert.Equal(1, enumerations); // Cached sequence reused
-        }
 
         [Fact]
         public async Task InvalidateByKeysAsync_RemovesCachedEntry()
@@ -318,9 +278,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 static (_, _) => new ValueTask<int>(42),
                 options => options.WithVersion(3));
 
-            Assert.NotNull(cacheManager.LastKeyGenerator);
-            var generated = cacheManager.LastKeyGenerator!.GenerateKey("ignored", Array.Empty<object>(), CreateEmptyPolicy("test"));
-            Assert.Equal("user:version::v3", generated);
+            Assert.Equal("user:version::v3", cacheManager.LastKey);
         }
 
         // Enhanced Conditional Logic Tests
@@ -446,39 +404,14 @@ namespace MethodCache.Core.Tests.Core.Extensions
         private sealed class CapturingCacheManager : ICacheManager
         {
             public string? LastMethodName { get; private set; }
-            public object[]? LastArgs { get; private set; }
+            public string? LastKey { get; private set; }
             public CacheRuntimePolicy? LastPolicy { get; private set; }
-            public ICacheKeyGenerator? LastKeyGenerator { get; private set; }
 
-            // Compatibility property for tests that still reference LastSettings
-            public dynamic? LastSettings => LastPolicy;
-
-            // Legacy property for tests that haven't migrated yet
-            public CacheRuntimePolicy? LastDescriptor => LastPolicy;
-
-            // New CacheRuntimePolicy-based methods (primary implementation)
             public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
-            {
-                LastMethodName = methodName;
-                LastArgs = args;
-                LastPolicy = policy;
-                LastKeyGenerator = keyGenerator;
-
-                // Debug: Generate and print the cache key to see if they're the same
-                var cacheKey = keyGenerator.GenerateKey(methodName, args, policy);
-                System.Console.WriteLine($"MockCacheManager cache key: '{cacheKey}'");
-
-                return factory();
-            }
+                => GetOrCreateFastAsync(keyGenerator.GenerateKey(methodName, args, policy), methodName, factory, policy);
 
             public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
-            {
-                LastMethodName = methodName;
-                LastArgs = args;
-                LastPolicy = policy;
-                LastKeyGenerator = keyGenerator;
-                return new ValueTask<T?>(default(T));
-            }
+                => new(default(T));
 
             public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
             {
@@ -491,9 +424,11 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 return false;
             }
 
-            public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy)
+            public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
             {
-                // For testing purposes, just execute the factory
+                LastKey = cacheKey;
+                LastMethodName = methodName;
+                LastPolicy = policy;
                 return factory();
             }
 
