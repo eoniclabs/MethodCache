@@ -44,7 +44,7 @@ public class HttpCacheKeysTests
     [Fact]
     public void SelectingHeaders_PrivateCache_SeparatesCallers_SharedCacheDoesNot()
     {
-        Assert.Equal(["Authorization"], HttpCacheKeys.SelectingHeaders(new HttpCacheOptions(), null));
+        Assert.Equal(["Authorization", "Cookie"], HttpCacheKeys.SelectingHeaders(new HttpCacheOptions(), null));
         Assert.Empty(HttpCacheKeys.SelectingHeaders(new HttpCacheOptions { IsSharedCache = true }, null));
 
         var alice = Get(new AuthenticationHeaderValue("Bearer", "alice"));

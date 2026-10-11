@@ -66,8 +66,9 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         var isUnsafe = IsUnsafeMethod(request.Method);
 
-        // Unsafe methods are never served from cache, even if listed in CacheableMethods, so they always invalidate
-        if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoCache || requestDirectives.NoStore)
+        // Unsafe methods are never served from cache, even if listed in CacheableMethods, so they always invalidate.
+        // Range requests go to the origin: a partial response is never stored, and a stored full one isn't cut up.
+        if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null)
         {
             var bypassResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -87,13 +88,14 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         {
             var currentAge = freshness.GetCurrentAge(cachedEntry);
 
-            if (cachedEntry.CacheControl?.NoCache != true &&
+            // Request no-cache (RFC 9111 section 5.2.1.4): never answer from the cache, but revalidate and store
+            if (cachedEntry.CacheControl?.NoCache != true && !requestDirectives.NoCache &&
                 requestDirectives.Accepts(currentAge, freshnessLifetime, freshness.MayServeStale(cachedEntry)))
             {
                 return Record(Outcome.Hit, request, CreateCachedResponse(request, cachedEntry, "HIT", options, freshness), startedAt);
             }
 
-            if (currentAge > freshnessLifetime && freshness.CanUseStaleWhileRevalidate(cachedEntry))
+            if (currentAge > freshnessLifetime && !requestDirectives.NoCache && freshness.CanUseStaleWhileRevalidate(cachedEntry))
             {
                 if (_state.RevalidationsInFlight.TryAdd(cacheKey, 0))
                 {
@@ -213,7 +215,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var entry = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
         if (entry?.VariantGeneration is not { } generation)
         {
-            return entry;
+            // Stored in place for a request that sent none of its selecting headers: only such requests may use it
+            return entry?.VaryHeaders is { Length: > 0 } inline && HttpCacheKeys.SendsAny(request, inline) ? null : entry;
         }
 
         var variantKey = HttpCacheKeys.ForVariant(baseKey, generation, request, entry.VaryHeaders ?? []);
@@ -235,10 +238,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         try
         {
-            var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow()).ConfigureAwait(false);
-            if (options.MaxResponseSize > 0 && entry.Content.Length > options.MaxResponseSize)
+            var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken).ConfigureAwait(false);
+            if (entry == null)
             {
-                return;
+                return; // Larger than MaxResponseSize; the caller still reads all of it
             }
 
             await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
@@ -271,10 +274,20 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return;
         }
 
-        // The URL entry holds no response, only the headers that select a variant and a generation that is part of
-        // every variant key. Reusing the current generation keeps the other variants reachable; a new URL entry (after
-        // an invalidation) starts a new generation, so variants cached before it are never served again.
+        // A request that sends none of the selecting headers (an anonymous call in a private cache) shares its
+        // variant with every such request, so the response is stored in the URL entry itself: one read per hit.
         var current = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
+        if (current?.VariantGeneration == null &&
+            !selectingHeaders.Contains("*", StringComparer.Ordinal) &&
+            !HttpCacheKeys.SendsAny(request, selectingHeaders))
+        {
+            await _storage.SetAsync(baseKey, entry with { VariantGeneration = null, VaryHeaders = selectingHeaders }, timeToLive, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        // Otherwise the URL entry holds no response, only the headers that select a variant and a generation that is
+        // part of every variant key. Reusing the current generation keeps the other variants reachable; a new URL entry (after
+        // an invalidation) starts a new generation, so variants cached before it are never served again.
         var generation = current?.VariantGeneration is { } existing && current.VaryHeaders is { } currentHeaders &&
                          currentHeaders.SequenceEqual(selectingHeaders, StringComparer.OrdinalIgnoreCase)
             ? existing
@@ -286,17 +299,24 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return;
         }
 
+        // The URL entry lives as long as its longest-lived variant, so a short-lived variant doesn't hide the others.
+        // It holds no response, so its Expires records when it expires.
+        var now = _timeProvider.GetUtcNow();
+        var urlTimeToLive = generation == current?.VariantGeneration && current.Expires is { } urlExpires && urlExpires - now > timeToLive
+            ? urlExpires - now
+            : timeToLive;
         var urlEntry = new HttpCacheEntry
         {
             RequestUri = entry.RequestUri,
             Method = entry.Method,
             StoredAt = entry.StoredAt,
+            Expires = now + urlTimeToLive,
             VaryHeaders = selectingHeaders,
             VariantGeneration = generation
         };
 
         await _storage.SetAsync(variantKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
-        await _storage.SetAsync(baseKey, urlEntry, timeToLive, cancellationToken).ConfigureAwait(false);
+        await _storage.SetAsync(baseKey, urlEntry, urlTimeToLive, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -325,9 +345,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return false;
         }
 
-        if (!response.IsSuccessStatusCode &&
-            response.StatusCode != HttpStatusCode.MovedPermanently &&
-            response.StatusCode != HttpStatusCode.NotFound)
+        if (!IsCacheableStatus(response.StatusCode))
         {
             return false;
         }
@@ -351,6 +369,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         return hasFreshness || hasValidator;
     }
+
+    /// <summary>
+    /// Status codes that are cacheable by default (RFC 9110 section 15.1). 206 Partial Content is left out: it holds
+    /// only part of the representation and would be served to requests for all of it.
+    /// </summary>
+    private static bool IsCacheableStatus(HttpStatusCode status) => (int)status is 200 or 203 or 204 or 300 or 301 or 308 or 404 or 405 or 410 or 414 or 501;
 
     // RFC 9111 section 3.5: a shared cache stores a response to an authorized request only when it says it may.
     private static bool AllowsSharedAuthorized(System.Net.Http.Headers.CacheControlHeaderValue? cacheControl)
