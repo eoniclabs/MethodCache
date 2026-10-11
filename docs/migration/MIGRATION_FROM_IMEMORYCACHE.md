@@ -96,8 +96,7 @@ public class UserService : IUserService
 ### Step 1: Install MethodCache
 
 ```bash
-dotnet add package MethodCache.Core
-dotnet add package MethodCache.SourceGenerator
+dotnet add package MethodCache
 ```
 
 ### Step 2: Register MethodCache
@@ -399,7 +398,7 @@ public Task<User> GetUserAsync(int userId)
 
 ## Checklist
 
-- [ ] Install MethodCache.Core and MethodCache.SourceGenerator
+- [ ] Install the MethodCache package
 - [ ] Register MethodCache in DI (`AddMethodCache`)
 - [ ] Extract interfaces for services with caching (if using attribute strategy)
 - [ ] Add `[Cache]` attributes to read operations
@@ -465,10 +464,9 @@ Use this guide to migrate behavior first, then validate performance with your ow
 
 ## Next Steps
 
-1. **Enable Analyzers**: Add `MethodCache.Analyzers` for compile-time validation
-2. **Add Distributed Cache**: Install `MethodCache.Providers.Redis` for L2 caching
-3. **Monitor Performance**: Use `ICacheMetricsProvider` for observability
-4. **Optimize Key Generators**: Keep the default `FastHashKeyGenerator` in production
+1. **Add Distributed Cache**: Install `MethodCache.Providers.Redis` for L2 caching
+2. **Monitor Performance**: Use `ICacheMetricsProvider` for observability
+3. **Optimize Key Generators**: Keep the default `FastHashKeyGenerator` in production
 
 ## Resources
 

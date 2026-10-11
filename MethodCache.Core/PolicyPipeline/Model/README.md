@@ -1,6 +1,6 @@
 # Policy Models
 
-Data models and helpers for the policy pipeline. The `CachePolicy` record itself is in `MethodCache.Abstractions.Policies`.
+Data models and helpers for the policy pipeline. The `CachePolicy` record itself is in `Abstractions/Policies` (namespace `MethodCache.Abstractions.Policies`).
 
 ## Key Files
 
