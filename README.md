@@ -336,6 +336,9 @@ auto-recovery. MethodCache is for when you want caching to be a line of metadata
 
 ## Packages
 
+Distributed-cache backplane callbacks stop when the cache manager is disposed. Use asynchronous service-provider
+disposal to await cleanup; a Redis connection supplied by the application remains available to its other users.
+
 Supported frameworks: .NET 8, 9 and 10.
 
 | Package | What it adds | Status |

@@ -26,6 +26,11 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
+Disposing the cache manager disables its backplane callbacks and starts unsubscribing. Asynchronous service-provider
+disposal waits for cleanup; a stalled custom backplane is bounded by `OperationTimeout` for the subscription wait
+and again for the unsubscribe wait. If its subscription later finishes despite cancellation, MethodCache attempts
+to unsubscribe again. Redis removes only its own handlers and preserves a connection supplied by the application.
+
 ## When the distributed cache is down
 
 Calls keep working from memory and your methods; the distributed cache never fails or stalls a call. Each call to it

@@ -27,7 +27,7 @@ namespace MethodCache.Core.Runtime.Distributed
     /// until the distributed cache accepts them; until then nothing is read from it, so an invalidated value
     /// can't come back.</para>
     /// </remarks>
-    internal sealed class DistributedCacheLayer : IDisposable
+    internal sealed class DistributedCacheLayer : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Reserved tag that every entry implicitly carries; invalidating it clears the whole cache. Application tags
@@ -86,6 +86,10 @@ namespace MethodCache.Core.Runtime.Distributed
         private Action<Exception>? _onError;
         private int _subscribed;
         private int _disposed;
+        private readonly object _lifecycleLock = new();
+        private Task _subscriptionTask = Task.CompletedTask;
+        private Task? _shutdownTask;
+        private volatile bool _subscriptionWaitTimedOut;
 
         public DistributedCacheLayer(
             IDistributedCache cache,
@@ -148,14 +152,20 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         public void Attach(Action<string> onKeyInvalidated, Action<string> onTagInvalidated, Action onCleared, Action<Exception> onError)
         {
-            _onRemoteKeyInvalidated = onKeyInvalidated;
-            _onRemoteTagInvalidated = onTagInvalidated;
-            _onRemoteCleared = onCleared;
-            _onError = onError;
-
-            if (_backplane != null && Interlocked.Exchange(ref _subscribed, 1) == 0)
+            lock (_lifecycleLock)
             {
-                _ = SubscribeAsync(_backplane);
+                ObjectDisposedException.ThrowIf(_disposed != 0, this);
+                _onRemoteKeyInvalidated = onKeyInvalidated;
+                _onRemoteTagInvalidated = onTagInvalidated;
+                _onRemoteCleared = onCleared;
+                _onError = onError;
+
+                if (_backplane != null && Interlocked.Exchange(ref _subscribed, 1) == 0)
+                {
+                    var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _subscriptionTask = completion.Task;
+                    _ = SubscribeAsync(_backplane, completion);
+                }
             }
         }
 
@@ -414,9 +424,57 @@ namespace MethodCache.Core.Runtime.Distributed
 
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            lock (_lifecycleLock)
             {
-                _retryTimer?.Dispose();
+                if (_disposed != 0) return;
+                Volatile.Write(ref _disposed, 1);
+                _onRemoteKeyInvalidated = null;
+                _onRemoteTagInvalidated = null;
+                _onRemoteCleared = null;
+                _onError = null;
+                lock (_pendingLock)
+                {
+                    _retryTimer?.Dispose();
+                    _retryTimer = null;
+                    _pendingKeys.Clear();
+                    _pendingTags.Clear();
+                }
+                _shutdownTask = ShutdownAsync();
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            Dispose();
+            Task shutdown;
+            lock (_lifecycleLock) shutdown = _shutdownTask!;
+            await shutdown.ConfigureAwait(false);
+        }
+
+        private async Task ShutdownAsync()
+        {
+            if (_backplane == null || _subscribed == 0) return;
+            try
+            {
+                await _subscriptionTask.WaitAsync(_timeout, _time).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                _subscriptionWaitTimedOut = true;
+            }
+            await UnsubscribeAsync().ConfigureAwait(false);
+        }
+
+        private async Task UnsubscribeAsync()
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(_timeout, _time);
+                await _backplane!.UnsubscribeAsync(timeout.Token).WaitAsync(_timeout, _time).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "MethodCache could not finish unsubscribing from its backplane.");
             }
         }
 
@@ -652,6 +710,7 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             lock (_pendingLock)
             {
+                if (Volatile.Read(ref _disposed) != 0) return;
                 _pendingKeys.UnionWith(keys);
                 _pendingTags.UnionWith(tags);
 
@@ -741,7 +800,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
-        private async Task SubscribeAsync(IBackplane backplane)
+        private async Task SubscribeAsync(IBackplane backplane, TaskCompletionSource completion)
         {
             try
             {
@@ -751,42 +810,53 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 _onError?.Invoke(ex);
             }
+            finally
+            {
+                // A client that ignores cancellation can register after bounded shutdown has returned.
+                if (_subscriptionWaitTimedOut)
+                    await UnsubscribeAsync().ConfigureAwait(false);
+                completion.TrySetResult();
+            }
         }
 
         private Task OnBackplaneMessageAsync(BackplaneMessage message)
         {
-            if (message.InstanceId == _backplane!.InstanceId)
+            lock (_lifecycleLock)
             {
+                if (_disposed != 0) return Task.CompletedTask;
+                if (message.InstanceId == _backplane!.InstanceId)
+                {
+                    return Task.CompletedTask;
+                }
+
+                try
+                {
+                    switch (message.Type)
+                    {
+                        case BackplaneMessageType.KeyInvalidation when message.Key != null:
+                            _onRemoteKeyInvalidated?.Invoke(message.Key);
+                            break;
+
+                        case BackplaneMessageType.TagInvalidation when message.Tag == ClearTag:
+                        case BackplaneMessageType.ClearAll:
+                            _tagStamps.Clear();
+                            _onRemoteCleared?.Invoke();
+                            break;
+
+                        case BackplaneMessageType.TagInvalidation when message.Tag != null:
+                            // Re-read the stamp the other node wrote rather than trusting this node's clock
+                            _tagStamps.TryRemove(message.Tag, out _);
+                            _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _onError?.Invoke(ex);
+                }
+
                 return Task.CompletedTask;
             }
-
-            try
-            {
-                switch (message.Type)
-                {
-                    case BackplaneMessageType.KeyInvalidation when message.Key != null:
-                        _onRemoteKeyInvalidated?.Invoke(message.Key);
-                        break;
-
-                    case BackplaneMessageType.TagInvalidation when message.Tag == ClearTag:
-                    case BackplaneMessageType.ClearAll:
-                        _tagStamps.Clear();
-                        _onRemoteCleared?.Invoke();
-                        break;
-
-                    case BackplaneMessageType.TagInvalidation when message.Tag != null:
-                        // Re-read the stamp the other node wrote rather than trusting this node's clock
-                        _tagStamps.TryRemove(message.Tag, out _);
-                        _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _onError?.Invoke(ex);
-            }
-
-            return Task.CompletedTask;
         }
 
         // ---------- entry format ----------

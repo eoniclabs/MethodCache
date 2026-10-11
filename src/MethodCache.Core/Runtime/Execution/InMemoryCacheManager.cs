@@ -425,6 +425,7 @@ namespace MethodCache.Extensibility
             }
 
             _maintenanceTimer?.Dispose();
+            _distributed?.Dispose();
             _engine.Clear();
             GC.SuppressFinalize(this);
         }

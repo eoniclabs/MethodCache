@@ -34,7 +34,9 @@ builder.Services.AddMethodCacheRedis(options =>
 ```
 <!-- endSnippet -->
 
-MethodCache doesn't dispose a shared connection.
+MethodCache doesn't dispose a shared connection. It does remove its own pub/sub handler and connection-restored
+handler when the service provider is disposed, leaving the connection and other subscribers available to the app.
+Use asynchronous service-provider disposal to wait for subscription cleanup.
 
 ## How it works
 
