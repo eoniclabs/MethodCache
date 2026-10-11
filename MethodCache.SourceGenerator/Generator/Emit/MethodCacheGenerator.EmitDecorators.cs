@@ -375,6 +375,7 @@ namespace MethodCache.SourceGenerator
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
+                EmitLoader(sb, method, kind, valueType, safeFieldName);
             }
 
             private enum ResultKind
@@ -391,7 +392,6 @@ namespace MethodCache.SourceGenerator
             private static void EmitCachedBody(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName, List<string> tagParameters)
             {
                 var type = Utils.GetReturnTypeForSignature(valueType);
-                var call = BuildMethodCall(method);
 
                 // Task methods get the entry's completed task back, so a hit does not allocate a new Task
                 sb.AppendLine(kind == ResultKind.Task
@@ -416,9 +416,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
                 sb.AppendLine("            // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)");
 
-                var factory = kind == ResultKind.Sync
-                    ? $"() => Task.FromResult({call})"
-                    : $"async () => await {call}.ConfigureAwait(false)";
                 var policy = "cacheSnapshot.Policy";
                 if (tagParameters.Count > 0)
                 {
@@ -429,7 +426,9 @@ namespace MethodCache.SourceGenerator
                     policy = "cachedPolicyWithTags";
                 }
 
-                var load = $"_cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _method_{safeFieldName}.Name, {factory}, {policy})";
+                // The key code may have tested reference arguments for null; they are passed on unchanged
+                var arguments = string.Concat(method.Parameters.Select(p => ", " + p.Name + (p.Type.IsValueType ? "" : "!")));
+                var load = $"{LoaderName(method, safeFieldName)}(cacheKeyValue, {policy}{arguments})";
 
                 switch (kind)
                 {
@@ -443,6 +442,46 @@ namespace MethodCache.SourceGenerator
                         sb.AppendLine($"            return {load}.ConfigureAwait(false).GetAwaiter().GetResult();");
                         break;
                 }
+            }
+
+            private static string LoaderName(IMethodSymbol method, string safeFieldName)
+            {
+                var typeArgs = method.TypeParameters.Any()
+                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
+                    : string.Empty;
+                return $"__Load_{safeFieldName}{typeArgs}";
+            }
+
+            /// <summary>
+            /// Emits the miss path as its own method. The factory lambda captures the arguments; in the cached method
+            /// itself the compiler would allocate that closure on entry, so every hit would pay for it.
+            /// </summary>
+            private static void EmitLoader(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName)
+            {
+                var type = Utils.GetReturnTypeForSignature(valueType);
+                var parameters = string.Concat(method.Parameters.Select(p => $", {Utils.GetReturnTypeForSignature(p.Type)} {p.Name}"));
+                var call = BuildMethodCall(method);
+
+                // The decorated method's own task is the factory, so a miss doesn't add an async state machine
+                var factory = kind switch
+                {
+                    ResultKind.Task => $"() => {call}!",
+                    ResultKind.ValueTask => $"() => {call}.AsTask()!",
+                    _ => $"() => Task.FromResult({call})!"
+                };
+
+                sb.AppendLine($"        private Task<{type}> {LoaderName(method, safeFieldName)}(string cacheKeyValue, CacheRuntimePolicy policy{parameters})");
+                foreach (var tp in method.TypeParameters)
+                {
+                    var constraints = BuildConstraints(tp);
+                    if (!string.IsNullOrEmpty(constraints))
+                    {
+                        sb.AppendLine($"            {constraints}");
+                    }
+                }
+
+                sb.AppendLine($"            => _cacheManager.GetOrCreateFastAsync<{type}>(cacheKeyValue, _method_{safeFieldName}.Name, {factory}, policy);");
+                sb.AppendLine();
             }
 
             /// <summary>

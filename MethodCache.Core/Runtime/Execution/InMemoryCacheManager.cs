@@ -946,19 +946,21 @@ namespace MethodCache.Core.Runtime.Execution
         }
 
         /// <summary>An in-progress load that concurrent callers for the same key join.</summary>
-        private sealed class Flight
+        /// <summary>
+        /// One running load that other callers of the same key join. It is its own completion source, so a load
+        /// allocates one object less.
+        /// </summary>
+        private sealed class Flight : TaskCompletionSource<object?>
         {
-            private readonly TaskCompletionSource<object?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
             private volatile bool _invalidated;
 
             public Flight(string[]? tags)
+                : base(TaskCreationOptions.RunContinuationsAsynchronously)
             {
                 Tags = tags;
             }
 
             public string[]? Tags { get; }
-
-            public Task<object?> Task => _completion.Task;
 
             /// <summary>Set when the key or one of its tags is invalidated while loading; the result is then not stored.</summary>
             public bool Invalidated
@@ -967,13 +969,13 @@ namespace MethodCache.Core.Runtime.Execution
                 set => _invalidated = value;
             }
 
-            public void Complete(object? result) => _completion.TrySetResult(result);
+            public void Complete(object? result) => TrySetResult(result);
 
             public void Fail(Exception exception)
             {
-                if (_completion.TrySetException(exception))
+                if (TrySetException(exception))
                 {
-                    _ = _completion.Task.Exception; // observed: no UnobservedTaskException when nobody joined
+                    _ = Task.Exception; // observed: no UnobservedTaskException when nobody joined
                 }
             }
         }
