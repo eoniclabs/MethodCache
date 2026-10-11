@@ -91,6 +91,19 @@ public class DistributedCacheTests
     }
 
     [Fact]
+    public async Task CacheWhen_RejectedResults_AreNotWrittenToTheDistributedCache()
+    {
+        var first = CreateNode();
+        var second = CreateNode();
+        var policy = Policy() with { CacheWhen = v => v is not "rejected" };
+
+        await first.GetOrCreateFastAsync("key", "M", () => Task.FromResult("rejected"), policy);
+        var result = await second.GetOrCreateFastAsync("key", "M", () => Task.FromResult("from second"), policy);
+
+        result.Should().Be("from second");
+    }
+
+    [Fact]
     public async Task SecondInstance_ReadsTheValueTheFirstStored()
     {
         var first = CreateNode();

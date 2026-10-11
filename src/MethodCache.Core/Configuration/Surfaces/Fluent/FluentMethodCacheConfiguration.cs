@@ -77,6 +77,11 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                         policyBuilder.AddMetadata("group", methodConfiguration.GroupName);
                     }
 
+                    if (methodConfiguration.CacheWhen != null)
+                    {
+                        policyBuilder.WithCacheWhen(methodConfiguration.CacheWhen);
+                    }
+
                     drafts.Add(policyBuilder.Build(methodKey));
                 }
             }
@@ -144,9 +149,9 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return CreateMethodConfiguration(method);
             }
 
-            public IFluentMethodConfiguration Method<TResult>(Expression<Func<TService, TResult>> method)
+            public IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, TResult>> method)
             {
-                return CreateMethodConfiguration(method);
+                return new FluentMethodConfiguration<TResult>(CreateMethodConfiguration(method));
             }
 
             public IFluentMethodConfiguration Method(Expression<Func<TService, Task>> method)
@@ -154,12 +159,17 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return CreateMethodConfiguration(method);
             }
 
-            public IFluentMethodConfiguration Method<TResult>(Expression<Func<TService, Task<TResult>>> method)
+            public IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, Task<TResult>>> method)
             {
-                return CreateMethodConfiguration(method);
+                return new FluentMethodConfiguration<TResult>(CreateMethodConfiguration(method));
             }
 
-            private IFluentMethodConfiguration CreateMethodConfiguration(LambdaExpression expression)
+            public IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, ValueTask<TResult>>> method)
+            {
+                return new FluentMethodConfiguration<TResult>(CreateMethodConfiguration(method));
+            }
+
+            private FluentMethodConfiguration CreateMethodConfiguration(LambdaExpression expression)
             {
                 var methodInfo = ExtractMethodInfo(expression);
                 return _inner.GetOrCreate(methodInfo);
@@ -208,6 +218,8 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
 
             public string? GroupName => _groupName;
 
+            public Func<object?, bool>? CacheWhen { get; set; }
+
             public IFluentMethodConfiguration WithVersion(int version)
             {
                 _configurations.Add(builder => builder.WithVersion(version));
@@ -224,6 +236,50 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
 
                 return builder.Build();
             }
+        }
+
+        /// <summary>Typed view of a method's configuration, so <c>CacheWhen</c> gets the result type without a cast.</summary>
+        private sealed class FluentMethodConfiguration<TResult> : IFluentMethodConfiguration<TResult>
+        {
+            private readonly FluentMethodConfiguration _inner;
+
+            public FluentMethodConfiguration(FluentMethodConfiguration inner)
+            {
+                _inner = inner;
+            }
+
+            public IFluentMethodConfiguration<TResult> Configure(Action<CacheEntryOptions.Builder> configure)
+            {
+                _inner.Configure(configure);
+                return this;
+            }
+
+            public IFluentMethodConfiguration<TResult> WithGroup(string groupName)
+            {
+                _inner.WithGroup(groupName);
+                return this;
+            }
+
+            public IFluentMethodConfiguration<TResult> WithVersion(int version)
+            {
+                _inner.WithVersion(version);
+                return this;
+            }
+
+            public IFluentMethodConfiguration<TResult> CacheWhen(Func<TResult, bool> predicate)
+            {
+                ArgumentNullException.ThrowIfNull(predicate);
+
+                // Results reach the cache as object; a null can only be a TResult that allows null.
+                _inner.CacheWhen = value => value is TResult result ? predicate(result) : value is not null || predicate(default!);
+                return this;
+            }
+
+            IFluentMethodConfiguration IFluentMethodConfiguration.Configure(Action<CacheEntryOptions.Builder> configure) => Configure(configure);
+
+            IFluentMethodConfiguration IFluentMethodConfiguration.WithGroup(string groupName) => WithGroup(groupName);
+
+            IFluentMethodConfiguration IFluentMethodConfiguration.WithVersion(int version) => WithVersion(version);
         }
 
         private sealed class FluentGroupConfiguration : IFluentGroupConfiguration

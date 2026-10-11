@@ -199,6 +199,39 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task CacheWhen_RejectedRefresh_KeepsTheCurrentValue()
+    {
+        var manager = CreateManager();
+        var policy = Policy() with { RefreshAhead = TimeSpan.FromSeconds(10), CacheWhen = v => (int)v! > 0 };
+        var next = 5;
+        var calls = 0;
+        Task<int> Factory() { Interlocked.Increment(ref calls); return Task.FromResult(next); }
+
+        await manager.GetOrCreateFastAsync("key", "M", Factory, policy);
+        next = 0;
+        _time.Advance(TimeSpan.FromSeconds(55));
+        (await manager.GetOrCreateFastAsync("key", "M", Factory, policy)).Should().Be(5); // starts the refresh
+
+        await WaitUntilAsync(() => Task.FromResult(Volatile.Read(ref calls) == 2));
+        await Task.Delay(50); // let the refresh finish deciding whether to store
+        (await manager.GetAsync<int>("key")).Should().Be(5);
+    }
+
+    [Fact]
+    public async Task CacheWhen_RejectedLoad_KeepsTheFailSafeValue()
+    {
+        var manager = CreateManager(o => o.EnableFailSafe = true);
+        var policy = Policy() with { CacheWhen = v => v is not "" };
+
+        await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("stale"), policy);
+        _time.Advance(TimeSpan.FromMinutes(2));
+        (await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult(""), policy)).Should().BeEmpty();
+
+        var result = await manager.GetOrCreateFastAsync<string>("key", "M", () => throw new TimeoutException(), policy);
+        result.Should().Be("stale");
+    }
+
+    [Fact]
     public async Task FailSafe_ReturnsStaleValue_WhenFactoryThrows()
     {
         var manager = CreateManager(o => o.EnableFailSafe = true);

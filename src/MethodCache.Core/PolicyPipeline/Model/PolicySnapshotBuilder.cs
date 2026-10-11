@@ -47,7 +47,8 @@ internal static class PolicySnapshotBuilder
                             CachePolicyFields.SlidingExpiration |
                             CachePolicyFields.Version |
                             CachePolicyFields.Metadata |
-                            CachePolicyFields.RefreshAhead;
+                            CachePolicyFields.RefreshAhead |
+                            CachePolicyFields.CacheWhen;
 
         var delta = new CachePolicyDelta(
             reason == PolicyChangeReason.Removed ? CachePolicyFields.None : fields,

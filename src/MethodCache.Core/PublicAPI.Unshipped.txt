@@ -106,8 +106,8 @@ MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration.WithVe
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Action<TService>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
 MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
-MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
-MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>!
 MethodCache.Core.Configuration.Surfaces.Runtime.IRuntimeCacheConfigurator
 MethodCache.Core.Configuration.Surfaces.Runtime.IRuntimeCacheConfigurator.ApplyAsync(System.Action<MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodCacheConfiguration!>! configure) -> System.Threading.Tasks.Task!
 MethodCache.Core.Configuration.Surfaces.Runtime.IRuntimeCacheConfigurator.ClearAsync() -> System.Threading.Tasks.Task!
@@ -694,3 +694,15 @@ MethodCache.Abstractions.Sources.IPolicySource.SourceId.get -> string!
 MethodCache.Abstractions.Sources.IPolicySource.WatchAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Abstractions.Resolution.PolicyChange!>!
 static MethodCache.Abstractions.Policies.CachePolicy.Empty.get -> MethodCache.Abstractions.Policies.CachePolicy!
 static MethodCache.Abstractions.Policies.PolicyProvenance.Empty.get -> MethodCache.Abstractions.Policies.PolicyProvenance!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.ValueTask<TResult>>!>! method) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>.CacheWhen(System.Func<TResult, bool>! predicate) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>.Configure(System.Action<MethodCache.Core.Options.CacheEntryOptions.Builder!>! configure) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>.WithGroup(string! groupName) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>!
+MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>.WithVersion(int version) -> MethodCache.Core.Configuration.Surfaces.Fluent.IFluentMethodConfiguration<TResult>!
+MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder.WithCacheWhen(System.Func<object?, bool>? cacheWhen) -> MethodCache.Core.PolicyPipeline.Model.CachePolicyBuilder!
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.CacheWhen.get -> System.Func<object?, bool>?
+MethodCache.Core.Runtime.Core.CacheRuntimePolicy.CacheWhen.init -> void
+MethodCache.Abstractions.Policies.CachePolicy.CacheWhen.get -> System.Func<object?, bool>?
+MethodCache.Abstractions.Policies.CachePolicy.CacheWhen.init -> void
+MethodCache.Abstractions.Policies.CachePolicyFields.CacheWhen = 64 -> MethodCache.Abstractions.Policies.CachePolicyFields
