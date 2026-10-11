@@ -259,9 +259,10 @@ internal sealed class RuntimePolicyStore : IDisposable
                 continue;
             }
 
-            if (_policies.TryRemove(methodId, out var removed))
+            // Only the expired override: one renewed since it was read stays
+            if (_policies.TryRemove(new KeyValuePair<string, StoredPolicy>(methodId, stored)))
             {
-                var metadata = BuildContributionMetadata(removed.Metadata);
+                var metadata = BuildContributionMetadata(stored.Metadata);
                 EnqueueRemovedChange(methodId, "Runtime override expired", metadata);
             }
         }
