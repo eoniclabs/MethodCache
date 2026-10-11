@@ -11,6 +11,7 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 | `Dockerfile` | | the Linux build image: .NET 10 SDK plus the .NET 8 and 9 SDKs, clang for Native AOT, Python |
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
+| `publish.sh <tag>` | Megatron | publishes a release tag the build servers passed to GitHub Packages |
 
 Run all Linux jobs locally, the way the build server does:
 
@@ -61,3 +62,15 @@ build/ci/install-coordinator.sh           # install (or update) and start
 The coordinator is copied out of the checkout, so a pull request cannot change how it is itself tested. Settings
 (server addresses, the shared lock) are in `~/.config/methodcache-ci/env`; a Linux run fails when the shared lock
 cannot be opened, and an empty `METHODCACHE_CI_NIMBUS_SHARED_LOCK=` runs without it. Stop it with `--remove`.
+
+## Publishing a release
+
+`release.sh` (or `release.ps1`) bumps the version and pushes the tag. Once the build servers passed the tagged
+commit, publish it on Megatron:
+
+```bash
+build/ci/publish.sh v1.2.0
+```
+
+It packs the 7 packages from a fresh clone of the tag and pushes them to GitHub Packages, never to nuget.org. See
+`RELEASE.md` for the details.
