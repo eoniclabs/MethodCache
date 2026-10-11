@@ -38,6 +38,9 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     {
         var connectionString = _sqlServer.RequireConnectionString();
         var services = new ServiceCollection();
+        // SQL Server runs under emulation on some developer hosts, and all three TFMs share its CPU in CI.
+        // Test sharing/invalidations with a realistic infrastructure budget; production still defaults to 1s.
+        services.Configure<DistributedCacheOptions>(options => options.OperationTimeout = TimeSpan.FromSeconds(5));
         services.AddMethodCache();
         services.AddMethodCacheSqlServer(options =>
         {
@@ -48,10 +51,13 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
 
         var provider = services.BuildServiceProvider();
         _nodes.Add(provider);
-        foreach (var hostedService in provider.GetServices<IHostedService>())
+        var hostedServices = provider.GetServices<IHostedService>().ToArray();
+        foreach (var hostedService in hostedServices)
         {
             await hostedService.StartAsync(CancellationToken.None);
         }
+        using var readinessDeadline = new CancellationTokenSource(Eventually);
+        await SqlServerFixture.WaitForTablesAsync(hostedServices, readinessDeadline.Token);
 
         return provider.GetRequiredService<ICacheManager>();
     }

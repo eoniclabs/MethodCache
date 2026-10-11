@@ -66,6 +66,15 @@ except `mutation`, which builds for itself.
 
 Results and logs go to `artifacts/ci/<job>.log` and `.exit` as for every job when run through `linux.sh`.
 
+## SQL Server integration readiness
+
+The fixture opens a connection and runs a readiness query before cache operations start. Node setup also waits
+for `SqlServerTables.Creating`, because hosted startup can return while background table creation is still
+running. Tests give each distributed operation five seconds for emulated SQL Server or concurrent framework
+runs; the shipped library still defaults to one second. Readiness regression tests cover pending creation,
+creation errors and cancellation. Set `METHODCACHE_REQUIRE_INFRA_TESTS=true` to make unavailable infrastructure
+fail the run.
+
 ## Dependency audit
 
 Restore audits direct and transitive dependencies in every project, including test tooling. `NU1903` and
