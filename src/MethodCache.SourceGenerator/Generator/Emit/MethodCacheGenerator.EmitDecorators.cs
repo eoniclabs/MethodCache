@@ -130,8 +130,7 @@ namespace MethodCache.SourceGenerator
                 // Each cached method reads its live policy and key prefix from a CachedMethod shared per registry
                 foreach (var cached in info.CachedMethods)
                 {
-                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
-                    sb.AppendLine($"        private readonly CachedMethod _method_{safeFieldName};");
+                    sb.AppendLine($"        private readonly CachedMethod _method_{SiteName(cached, info.CachedMethods)};");
                 }
                 sb.AppendLine();
 
@@ -153,7 +152,7 @@ namespace MethodCache.SourceGenerator
                     var invalidate = info.InvalidateMethods.FirstOrDefault(m => SymbolEqualityComparer.Default.Equals(m.Method, method));
 
                     if (cached != null)
-                        EmitCachedMethod(sb, cached, info.Symbol);
+                        EmitCachedMethod(sb, cached, SiteName(cached, info.CachedMethods));
                     else if (invalidate != null)
                         EmitInvalidateMethod(sb, invalidate);
                     else
@@ -198,8 +197,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        {");
                 foreach (var cached in cachedMethods)
                 {
-                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
-                    sb.AppendLine($"            public readonly CachedMethod {safeFieldName};");
+                    sb.AppendLine($"            public readonly CachedMethod {SiteName(cached, cachedMethods)};");
                 }
                 sb.AppendLine();
                 sb.AppendLine("            public CachedMethodSites(IPolicyRegistry registry)");
@@ -207,15 +205,16 @@ namespace MethodCache.SourceGenerator
                 foreach (var cached in cachedMethods)
                 {
                     var methodId = Utils.GetMethodId(cached.Method);
-                    var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
-                    var methodName = cached.Method.Name;
+                    var safeFieldName = SiteName(cached, cachedMethods);
+                    // Overloads add their parameter types, so Find(int) and Find(string) never share keys
+                    var methodName = Utils.GetMethodName(cached.Method);
 
                     // Generic interfaces report the closed type in their name, for example IRepository<User>.Get
                     var displayName = interfaceSymbol.IsGenericType
                         ? $"\"{interfaceSymbol.Name}<\" + string.Join(\",\", typeof({interfaceFqn}).GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\""
-                        : $"\"{methodName}\"";
+                        : Utils.Literal(methodName);
 
-                    sb.AppendLine($"                {safeFieldName} = new CachedMethod(PolicyHandle.For(registry, \"{methodId}\"), typeof({interfaceFqn}), \"{methodName}\", {displayName});");
+                    sb.AppendLine($"                {safeFieldName} = new CachedMethod(PolicyHandle.For(registry, {Utils.Literal(methodId)}), typeof({interfaceFqn}), {Utils.Literal(methodName)}, {displayName});");
                 }
                 sb.AppendLine("            }");
                 sb.AppendLine("        }");
@@ -239,18 +238,27 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("            var sites = services.GetSites(static registry => new CachedMethodSites(registry));");
                     foreach (var cached in cachedMethods)
                     {
-                        var safeFieldName = cached.Method.Name.Replace("<", "").Replace(">", "");
-                        sb.AppendLine($"            _method_{safeFieldName} = sites.{safeFieldName};");
+                        var siteName = SiteName(cached, cachedMethods);
+                        sb.AppendLine($"            _method_{siteName} = sites.{siteName};");
                     }
                 }
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
 
-            private static void EmitCachedMethod(StringBuilder sb, MethodModel model, INamedTypeSymbol interfaceSymbol)
+            /// <summary>
+            /// The field and site name of a cached method: its name, or its name and position when the interface
+            /// caches several methods with that name (overloads, or the same name from two base interfaces).
+            /// </summary>
+            private static string SiteName(MethodModel model, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
+            {
+                var sameName = cachedMethods.Where(m => m.Method.Name == model.Method.Name).ToList();
+                return sameName.Count == 1 ? model.Method.Name : model.Method.Name + "_" + sameName.IndexOf(model);
+            }
+
+            private static void EmitCachedMethod(StringBuilder sb, MethodModel model, string safeFieldName)
             {
                 var method = model.Method;
-                var safeFieldName = method.Name.Replace("<", "").Replace(">", "");
 
                 // Build cache key parameters (exclude CancellationToken)
                 var keyParams = ImmutableArrayExtensions.Where(method.Parameters, p => !Utils.IsCancellationToken(p.Type))
@@ -286,6 +294,7 @@ namespace MethodCache.SourceGenerator
 
                 // One read gives the policy and key prefix for this call, even if the policy changes meanwhile
                 sb.AppendLine($"            var __mcSnapshot = _method_{safeFieldName}.Current;");
+                var keyStart = sb.Length;
 
                 // Simple arguments, and records or DTOs made of them, are formatted inline; anything else goes
                 // through the key generator.
@@ -323,6 +332,18 @@ namespace MethodCache.SourceGenerator
                 {
                     sb.AppendLine();
                     EmitHit(sb, kind, valueType, safeFieldName, "__mcKey");
+                }
+
+                if (method.IsGenericMethod)
+                {
+                    // The type arguments are part of the key, so Get<int>(1) and Get<string>(1) never share an entry
+                    var typeArguments = string.Join(", \",\", ", method.TypeParameters.Select(tp => $"typeof({tp.Name}).ToString()"));
+                    var declarations = $"            var __mcTypeArguments = string.Concat(\"<\", {typeArguments}, \">\");\n" +
+                                       "            var __mcPrefix = string.Concat(__mcSnapshot.KeyPrefix, __mcTypeArguments);\n";
+                    // The key code was emitted with the plain prefix; point it at the one with the type arguments
+                    sb.Replace("__mcSnapshot.KeyPrefix", "__mcPrefix", keyStart, sb.Length - keyStart);
+                    sb.Insert(keyStart, declarations);
+                    sb.Replace($"_method_{safeFieldName}.KeyMethod", $"string.Concat(_method_{safeFieldName}.KeyMethod, __mcTypeArguments)", keyStart, sb.Length - keyStart);
                 }
 
                 EmitMiss(sb, method, kind, valueType, safeFieldName, GetTagParameters(model, method));

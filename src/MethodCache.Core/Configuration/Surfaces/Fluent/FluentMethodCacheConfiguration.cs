@@ -119,7 +119,7 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             {
                 if (methodInfo == null) throw new ArgumentNullException(nameof(methodInfo));
 
-                var methodKey = BuildMethodKey(_serviceType, methodInfo);
+                var methodKey = MethodIds.For(methodInfo);
                 if (!_methods.TryGetValue(methodKey, out var configuration))
                 {
                     configuration = new FluentMethodConfiguration(methodKey);
@@ -130,9 +130,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             }
 
             public IReadOnlyDictionary<string, FluentMethodConfiguration> Methods => _methods;
-
-            private static string BuildMethodKey(Type serviceType, MethodInfo methodInfo)
-                => MethodIds.For(serviceType, methodInfo.Name);
         }
 
         private sealed class FluentServiceConfiguration<TService> : IFluentServiceConfiguration<TService>

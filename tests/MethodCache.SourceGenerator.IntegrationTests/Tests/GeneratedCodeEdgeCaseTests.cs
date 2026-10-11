@@ -273,4 +273,131 @@ public static class Probe { public static async Task<string> Go(IServiceProvider
         // One load, one after each invalidation
         Assert.Equal("7:Blue|3|5|ISvcDecorator", text);
     }
+
+    [Fact]
+    public async Task GenericMethod_KeysIncludeTypeArgument()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface ISvc { [Cache] Task<string> Describe<T>(int id); }
+public class Svc : ISvc { public Task<string> Describe<T>(int id) => Task.FromResult(typeof(T).Name + "":"" + id); }
+public static class Startup { public static void Configure(IServiceCollection s) { s.AddSingleton<ISvc, Svc>(); s.AddMethodCache(); } }
+public static class Probe { public static async Task<string> Go(ISvc s) => await s.Describe<int>(1) + ""|"" + await s.Describe<string>(1); }
+}", nameof(GenericMethod_KeysIncludeTypeArgument), load: true);
+        AssertCompiles(r);
+        var svc = Resolve(r.Assembly!, "App.ISvc", out _);
+        Assert.EndsWith("Decorator", svc.GetType().Name);
+        var text = await (Task<string>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc })!;
+        _out.WriteLine(text);
+        Assert.Equal("Int32:1|String:1", text);
+    }
+
+    [Fact]
+    public async Task GenericMethod_TagsFromAttributeAreApplied()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface ISvc {
+  [Cache(Tags = new[] { ""t"" })] Task<string> Describe<T>(int id);
+  [CacheInvalidate(Tags = new[] { ""t"" })] Task Reset();
+}
+public class Svc : ISvc { public int Calls; public Task<string> Describe<T>(int id) { Calls++; return Task.FromResult(""x""); } public Task Reset() => Task.CompletedTask; }
+public static class Startup { public static void Configure(IServiceCollection s) { s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>()); s.AddMethodCache(); } }
+public static class Probe { public static async Task<int> Go(ISvc s, Svc impl) { await s.Describe<int>(1); await s.Describe<int>(1); await s.Reset(); await s.Describe<int>(1); return impl.Calls; } }
+}", nameof(GenericMethod_TagsFromAttributeAreApplied), load: true);
+        AssertCompiles(r);
+        var svc = Resolve(r.Assembly!, "App.ISvc", out var sp);
+        var impl = sp.GetRequiredService(r.Assembly!.GetType("App.Svc")!);
+        var calls = await (Task<int>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
+        _out.WriteLine("calls=" + calls + " policies:\n" + (r.Sources.TryGetValue("GeneratedPolicyRegistrations.g.cs", out var p) ? p : "<none>"));
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task DerivedInterfaceWithoutOwnAttributes_IsDecorated()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface IRepo { [Cache] Task<string> Get(int id); }
+public interface IUserRepo : IRepo { }
+public class UserRepo : IUserRepo { public Task<string> Get(int id) => Task.FromResult(""u"" + id); }
+public static class Startup { public static void Configure(IServiceCollection s) { s.AddSingleton<IUserRepo, UserRepo>(); s.AddMethodCache(); } }
+}", nameof(DerivedInterfaceWithoutOwnAttributes_IsDecorated), load: true);
+        AssertCompiles(r);
+        var svc = Resolve(r.Assembly!, "App.IUserRepo", out _);
+        _out.WriteLine(svc.GetType().FullName);
+        Assert.EndsWith("Decorator", svc.GetType().Name);
+    }
+
+    [Fact]
+    public void LazySequences_AreReportedAndNotCached()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface ISvc {
+  [Cache] IEnumerable<int> Numbers(int n);
+  [Cache] IAsyncEnumerable<int> Stream(int n);
+  [Cache] Task<IEnumerable<int>> Loaded(int n);
+}}", nameof(LazySequences_AreReportedAndNotCached));
+        Assert.Equal(2, r.GeneratorDiagnostics.Count(d => d.Id == "MCG014"));
+        Assert.Empty(r.Errors);
+    }
+
+    [Fact]
+    public void UnknownParameterInCacheTag_IsReported()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface ISvc { [Cache(Tags = new[] { ""user:{userid}"", ""order:{orderId}"" })] Task<string> Get(int userId); }
+}", nameof(UnknownParameterInCacheTag_IsReported));
+        AssertCompiles(r);
+        var warning = Assert.Single(r.GeneratorDiagnostics, d => d.Id == "MCG009");
+        Assert.Contains("orderId", warning.GetMessage());
+    }
+
+    [Fact]
+    public async Task Overloads_AreCachedSeparatelyWithTheirOwnPolicies()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface ISvc {
+  [Cache(Tags = new[] { ""ints"" })] Task<string> Get(int id);
+  [Cache(Tags = new[] { ""strings"" })] Task<string> Get(string id);
+  [CacheInvalidate(Tags = new[] { ""ints"" })] Task ResetInts();
+}
+public class Svc : ISvc {
+  public int Calls;
+  public Task<string> Get(int id) { Calls++; return Task.FromResult(""int:"" + id); }
+  public Task<string> Get(string id) { Calls++; return Task.FromResult(""string:"" + id); }
+  public Task ResetInts() => Task.CompletedTask;
+}
+public static class Startup { public static void Configure(IServiceCollection s) { s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>()); s.AddMethodCache(); } }
+public static class Probe { public static async Task<string> Go(ISvc s, Svc impl) {
+  var a = await s.Get(1); var b = await s.Get(""1""); await s.Get(1); await s.Get(""1"");
+  var loads = impl.Calls;
+  await s.ResetInts(); await s.Get(1); await s.Get(""1"");
+  return a + ""|"" + b + ""|"" + loads + ""|"" + impl.Calls;
+} }
+}", nameof(Overloads_AreCachedSeparatelyWithTheirOwnPolicies), load: true);
+        AssertCompiles(r);
+        var svc = Resolve(r.Assembly!, "App.ISvc", out var sp);
+        var impl = sp.GetRequiredService(r.Assembly!.GetType("App.Svc")!);
+        var text = await (Task<string>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
+        // Separate entries; invalidating "ints" reloads only Get(int)
+        Assert.Equal("int:1|string:1|2|3", text);
+        Assert.Contains("\"App.ISvc.Get(int)\"", r.Sources["GeneratedPolicyRegistrations.g.cs"]);
+        Assert.Contains("\"App.ISvc.Get(string)\"", r.Sources["GeneratedPolicyRegistrations.g.cs"]);
+    }
+
+
+    [Fact]
+    public void OverloadIds_MatchTheRuntimeFormat()
+    {
+        // MethodIdsTests checks the runtime side of the same ids
+        var r = Run(Usings + @"namespace App {
+public interface IOrders {
+  [Cache] Task<string> Find(int id);
+  [Cache] Task<string> Find(string name, CancellationToken cancellationToken);
+  [Cache] Task<string> Find<T>(int? id, string[] names, List<Guid> ids, T extra);
+}}", nameof(OverloadIds_MatchTheRuntimeFormat));
+        AssertCompiles(r);
+        var policies = r.Sources["GeneratedPolicyRegistrations.g.cs"];
+        Assert.Contains("\"App.IOrders.Find(int)\"", policies);
+        Assert.Contains("\"App.IOrders.Find(string, CancellationToken)\"", policies);
+        Assert.Contains("\"App.IOrders.Find(int?, string[], List<Guid>, T)\"", policies);
+    }
 }

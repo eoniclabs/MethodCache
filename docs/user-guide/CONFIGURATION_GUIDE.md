@@ -155,7 +155,7 @@ Configure cached methods from `appsettings.json` or any other `IConfiguration` s
 }
 ```
 
-Each key under `Services` is the method id: the interface's full name, a dot, and the method name. Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Defaults` applies to every cached method, also ones not listed under `Services`, and a method's own settings, including those in its `[Cache]` attribute, win. `Group` puts the method in a `ForGroup(...)` group; `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
+Each key under `Services` is the method id: the full name of the interface that declares the method, a dot, and the method name. A generic interface is written with its type parameters (`MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its parameter types (`MyApp.IUserService.FindAsync(int)`, `MyApp.IUserService.FindAsync(string, CancellationToken)`). Supported settings are `Duration`, `SlidingExpiration`, `RefreshAhead`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Defaults` applies to every cached method, also ones not listed under `Services`, and a method's own settings, including those in its `[Cache]` attribute, win. `Group` puts the method in a `ForGroup(...)` group; `Metadata` and `Notes` are recorded with the policy for diagnostics and do not change caching.
 
 Only methods with a `[Cache]` attribute have a generated decorator, so the file can change their policy but cannot make other methods cached.
 
