@@ -10,13 +10,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace MethodCache.Core.Runtime.Distributed
 {
     /// <summary>
-    /// The distributed cache (L2) behind <see cref="MethodCache.Extensibility.InMemoryCacheManager"/>. Entries are stored in any
-    /// <see cref="IDistributedCache"/> (Redis, SQL Server, ...) together with their tags and creation time.
+    /// The distributed cache (L2) behind <see cref="MethodCache.Extensibility.InMemoryCacheManager"/>. Entries are stored in an
+    /// <see cref="IAtomicInvalidationStore"/> (Redis, SQL Server, ...) together with their tags and creation time.
     /// </summary>
     /// <remarks>
-    /// <para>Tags are invalidated by timestamp, as in HybridCache and FusionCache: invalidating a tag stores the
+    /// <para>Tags are invalidated by monotonic timestamp: invalidating a tag stores the
     /// time it happened, and an entry read later counts as missing when one of its tags was invalidated after the
-    /// entry was created. No reverse index from tags to keys is needed, so any distributed cache works. A removed
+    /// entry was created. No reverse index from tags to keys is needed, with backend atomic writes that cannot move timestamps backwards. A removed
     /// key leaves a short-lived removal stamp, so a load that started before the removal doesn't leave its older
     /// value behind.</para>
     /// <para>An optional <see cref="IBackplane"/> tells other nodes to drop their in-memory copies when an entry is
@@ -45,6 +45,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private const int MaxTrackedTags = 10_000;
 
         private readonly IDistributedCache _cache;
+        private readonly IAtomicInvalidationStore _stampStore;
         private readonly IBufferDistributedCache? _bufferCache;
         private readonly ISerializer _serializer;
 
@@ -100,6 +101,8 @@ namespace MethodCache.Core.Runtime.Distributed
             ILogger? logger = null)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _stampStore = cache as IAtomicInvalidationStore ?? throw new ArgumentException(
+                "The distributed cache must implement IAtomicInvalidationStore so concurrent invalidations cannot move timestamps backwards. Use MethodCache.Redis/SqlServer or implement backend-atomic stamps in your custom provider.", nameof(cache));
             _bufferCache = cache as IBufferDistributedCache;
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _contentType = Encoding.UTF8.GetBytes(serializer.ContentType);
@@ -375,13 +378,11 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         private async Task<bool> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe)
         {
-            var stamp = new byte[sizeof(long)];
-            BinaryPrimitives.WriteInt64LittleEndian(stamp, now);
 
             // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
             var stamped = await Task.WhenAll(
-                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, stamp, _tagRetention), "invalidate a tag", probe))
-                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, stamp, RemovalLifetime), "remove a key", probe))))
+                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, now, _tagRetention), "invalidate a tag", probe))
+                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, now, RemovalLifetime), "remove a key", probe))))
                 .ConfigureAwait(false);
             if (stamped.Any(static result => !result.Succeeded))
             {
@@ -509,10 +510,9 @@ namespace MethodCache.Core.Runtime.Distributed
             return true;
         }
 
-        private static async Task<bool> StoreStampAsync(DistributedCacheLayer layer, (string Key, byte[] Stamp, TimeSpan Lifetime) state, CancellationToken cancellationToken)
+        private static async Task<bool> StoreStampAsync(DistributedCacheLayer layer, (string Key, long Timestamp, TimeSpan Lifetime) state, CancellationToken cancellationToken)
         {
-            var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = state.Lifetime };
-            await layer._cache.SetAsync(state.Key, state.Stamp, options, cancellationToken).ConfigureAwait(false);
+            await layer._stampStore.WriteInvalidationStampAsync(state.Key, state.Timestamp, state.Lifetime, cancellationToken).ConfigureAwait(false);
             return true;
         }
 

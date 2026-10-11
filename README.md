@@ -196,7 +196,12 @@ builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCac
 ```
 <!-- endSnippet -->
 
-Results live in memory and in Redis (or SQL Server, or any `IDistributedCache` via `AddMethodCacheDistributedCache()`).
+Results live in memory and in Redis (or SQL Server, or a custom `IAtomicInvalidationStore` via `AddMethodCacheDistributedCache()`).
+Redis and SQL Server write invalidation timestamps atomically and never shorten a newer stamp’s retention.
+SQL Server hashes exact cache keys to prevent collation from merging distinct data or invalidation metadata.
+A custom method-result cache must implement `IAtomicInvalidationStore` as well as `IDistributedCache`; a plain
+read followed by a write is insufficient, and an unsupported provider is rejected when the cache manager is resolved.
+
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
 
 SQL Server backplane messages and retention cleanup are isolated by `KeyPrefix` when applications share

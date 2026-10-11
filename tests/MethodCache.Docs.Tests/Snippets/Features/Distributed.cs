@@ -25,12 +25,12 @@ namespace Docs.Distributed
             // end-snippet
         }
 
-        public static void Custom(WebApplicationBuilder builder)
+        public static void Custom(WebApplicationBuilder builder, MethodCache.Extensibility.IAtomicInvalidationStore customCache)
         {
             // begin-snippet: distributed-custom
             builder.Services.AddMethodCache();
             builder.Services.AddMethodCacheDistributedCache(
-                _ => new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));   // any IDistributedCache
+                _ => customCache);   // IDistributedCache with backend-atomic invalidation stamps
             // end-snippet
         }
 

@@ -30,6 +30,7 @@ builder.Services.AddMethodCache();
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`.
 - **Tune it without redeploying.** Attributes, global defaults, `appsettings.json` (reloaded live) and runtime overrides.
 - **Third-party clients too.** `[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync))]` caches an SDK client's methods without a wrapper.
+- **Safe distributed invalidation.** Redis and SQL Server keep the maximum invalidation timestamp with backend atomic operations. SQL Server hashes exact keys to prevent collation collisions. Custom method-result providers must implement `IAtomicInvalidationStore`; plain `IDistributedCache` implementations are rejected when the cache manager is resolved.
 - **One line to go distributed.** `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)`, with every instance's memory cache kept in sync. Asynchronous service-provider disposal awaits backplane cleanup and preserves application-owned Redis connections.
 - **Buffer-based L2 reads.** Buffer-capable providers deserialize the owned entry buffer directly, avoiding an extra full entry copy.
 - **Built for production.** Stampede protection, a W-TinyLFU memory cache that stays within its size limit under load, admin endpoints, a health check and OpenTelemetry. Admin entry listing keeps only the requested number of candidates while scanning the cache.

@@ -30,4 +30,7 @@
     <ProjectReference Include="..\..\src\MethodCache.Redis\MethodCache.Redis.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../TestSupport/InvalidationStampContract.cs" Link="TestSupport/InvalidationStampContract.cs" />
+  </ItemGroup>
 </Project>

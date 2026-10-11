@@ -23,6 +23,10 @@ builder.Services.AddMethodCacheRedis(options =>
 ```
 <!-- endSnippet -->
 
+Invalidation stamps use a Lua operation that keeps the highest signed timestamp and preserves the longest
+retention. An older write that arrives later cannot undo a newer invalidation. Upgrade all instances sharing
+a prefix together so no older build still writes stamps unconditionally.
+
 MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
 
 To share a connection your app already has instead:

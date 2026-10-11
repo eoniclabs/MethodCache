@@ -22,7 +22,7 @@ public class DistributedCacheTests
 
     // MemoryDistributedCache only handles byte arrays; BufferCache covers IBufferDistributedCache
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
-    private readonly IDistributedCache _shared = new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
+    private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
     private readonly TestBackplaneHub _hub = new();
 
     private InMemoryCacheManager CreateNode(bool backplane = true, IDistributedCache? cache = null, Action<DistributedCacheOptions>? configure = null, ISerializer? serializer = null, TimeProvider? time = null)
@@ -304,7 +304,7 @@ public class DistributedCacheTests
     public async Task AddMethodCacheDistributedCache_StoresMethodResultsInTheRegisteredDistributedCache()
     {
         var services = new ServiceCollection();
-        services.AddDistributedMemoryCache();
+        services.AddSingleton<IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache();
         services.AddMethodCacheDistributedCache(options => options.KeyPrefix = "app:");
 
@@ -677,8 +677,10 @@ public class DistributedCacheTests
         }
     }
 
-    private sealed class BufferCache(IDistributedCache inner) : IBufferDistributedCache
+    private sealed class BufferCache(IDistributedCache inner) : IBufferDistributedCache, IAtomicInvalidationStore
     {
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => ((IAtomicInvalidationStore)inner).WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken);
+
         public int BufferReads { get; private set; }
 
         public async ValueTask<bool> TryGetAsync(string key, System.Buffers.IBufferWriter<byte> destination, CancellationToken token = default)
@@ -711,8 +713,10 @@ public class DistributedCacheTests
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => inner.SetAsync(key, value, options, token);
     }
 
-    private sealed class FailingDistributedCache : IDistributedCache
+    private sealed class FailingDistributedCache : IAtomicInvalidationStore
     {
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => throw new InvalidOperationException("down");
+
         public byte[]? Get(string key) => throw new InvalidOperationException("down");
         public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => throw new InvalidOperationException("down");
         public void Refresh(string key) => throw new InvalidOperationException("down");
@@ -734,8 +738,10 @@ public class DistributedCacheTests
     }
 
     /// <summary>Never answers and ignores cancellation, like a server that stopped responding.</summary>
-    private sealed class HangingDistributedCache : IDistributedCache
+    private sealed class HangingDistributedCache : IAtomicInvalidationStore
     {
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => new TaskCompletionSource().Task;
+
         public byte[]? Get(string key) => throw new NotSupportedException();
         public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => new TaskCompletionSource<byte[]?>().Task;
         public void Refresh(string key) => throw new NotSupportedException();
@@ -750,8 +756,14 @@ public class DistributedCacheTests
     /// Fails every call while <see cref="Down"/> is set, counts the calls that reach it, and runs hooks before
     /// reads and writes. A call held by a hook continues inline when the hook completes.
     /// </summary>
-    private sealed class ToggleDistributedCache(IDistributedCache inner) : IDistributedCache
+    private sealed class ToggleDistributedCache(IDistributedCache inner) : IAtomicInvalidationStore
     {
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => Run(async () =>
+        {
+            if (BeforeSet != null) await BeforeSet(key).ConfigureAwait(false);
+            await ((IAtomicInvalidationStore)inner).WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken).ConfigureAwait(false);
+        });
+
         public bool Down { get; set; }
 
         public int Calls { get; private set; }
@@ -800,8 +812,10 @@ public class DistributedCacheTests
     }
 
     /// <summary>Completes every call asynchronously, like a real network cache.</summary>
-    private sealed class SlowDistributedCache(IDistributedCache inner) : IDistributedCache
+    private sealed class SlowDistributedCache(IDistributedCache inner) : IAtomicInvalidationStore
     {
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => Task.Run(() => ((IAtomicInvalidationStore)inner).WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken), cancellationToken);
+
         public byte[]? Get(string key) => inner.Get(key);
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => inner.Set(key, value, options);
         public void Refresh(string key) => inner.Refresh(key);

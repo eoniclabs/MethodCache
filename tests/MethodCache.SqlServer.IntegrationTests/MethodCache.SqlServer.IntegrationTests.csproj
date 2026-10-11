@@ -35,4 +35,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../TestSupport/InvalidationStampContract.cs" Link="TestSupport/InvalidationStampContract.cs" />
+  </ItemGroup>
 </Project>

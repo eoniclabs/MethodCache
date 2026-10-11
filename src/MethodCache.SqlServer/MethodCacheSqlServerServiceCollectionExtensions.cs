@@ -58,7 +58,7 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
 
         // MethodCache's own cache instance, so the app's IDistributedCache and its settings are left alone
         return services.AddMethodCacheDistributedCache(
-            _ => new SqlServerCache(Microsoft.Extensions.Options.Options.Create(CacheOptions(options))),
+            _ => new SqlServerDistributedCache(options),
             cacheOptions => cacheOptions.KeyPrefix = options.KeyPrefix);
     }
 

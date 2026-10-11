@@ -117,9 +117,10 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
         }
     }
 
-    private sealed class TrackingBufferCache : IBufferDistributedCache
+    private sealed class TrackingBufferCache : IBufferDistributedCache, MethodCache.Extensibility.IAtomicInvalidationStore
     {
-        private readonly IDistributedCache _inner = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        private readonly IDistributedCache _inner = new MethodCache.TestSupport.AtomicTestCache();
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => ((MethodCache.Extensibility.IAtomicInvalidationStore)_inner).WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken);
         public ReadOnlyMemory<byte> LastDestination;
         public Func<Task>? BeforeComplete;
         public Action? OnComplete;

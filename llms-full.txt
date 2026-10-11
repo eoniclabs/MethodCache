@@ -83,6 +83,10 @@ builder.Services.AddMethodCache();                               // after your r
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
 
+Custom distributed method-result caches must implement `MethodCache.Extensibility.IAtomicInvalidationStore`,
+including backend-atomic maximum timestamps and retention preservation. A plain `IDistributedCache` is
+rejected when the method cache manager is resolved. Redis and SQL Server supply this contract.
+
 
 ---
 
@@ -1075,13 +1079,25 @@ builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.Mes
 Each entry records its format, so after a switch older entries count as misses. Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md)).
 
-## Any IDistributedCache
+## Custom distributed caches
 
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheDistributedCache(
-    _ => new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));   // any IDistributedCache
+    _ => customCache);   // IDistributedCache with backend-atomic invalidation stamps
 ```
+
+`customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
+`IDistributedCache`. MethodCache rejects a provider without this capability when the cache manager is
+resolved. Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
+signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
+stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
+insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
+transaction with a key/range update lock. This applies to tag, clear and key-removal stamps.
+
+Upgrade all instances that share a prefix together: older unconditional stamp writers do not obey this
+contract. Timestamp metadata keeps its existing binary format. The HTTP response cache has its own
+generation contract and still accepts a plain `IDistributedCache` for response storage.
 
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
 `IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them.
@@ -1102,6 +1118,11 @@ invalidations table.
 
 The [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) and [SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation and outage settings.
+
+SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
+trailing spaces, NULs and different Unicode representations distinct despite SQL collation. The
+logical key still includes `KeyPrefix` and keeps the 449 UTF-16 code-unit limit. On upgrade, old
+unhashed cache rows become misses and expire normally; upgrade all instances sharing a prefix together.
 
 
 ---
@@ -1401,7 +1422,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 |---|---|
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
-| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. |
+| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. |
 | Backplane messages | Carry keys and tags as the last field, so a key with newlines can't forge another message type. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
 ## MethodCache.AspNetCore (admin endpoints)
@@ -1778,6 +1799,10 @@ builder.Services.AddMethodCacheRedis(options =>
 });
 ```
 
+Invalidation stamps use a Lua operation that keeps the highest signed timestamp and preserves the longest
+retention. An older write that arrives later cannot undo a newer invalidation. Upgrade all instances sharing
+a prefix together so no older build still writes stamps unconditionally.
+
 MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
 
 To share a connection your app already has instead:
@@ -1879,6 +1904,9 @@ not share the same isolation contract. New tables require a non-null scope.
 - Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows. Your app's `IDistributedCache` is left alone.
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
+- Tag, clear and key-removal timestamps are written with a transaction and a key/range update lock. They
+  keep the highest unexpired signed timestamp and never shorten an existing stamp’s retention. An older
+  write cannot undo a newer invalidation. Upgrade all instances sharing a prefix together.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message is acknowledged only after its subscriber completes successfully. Failed messages remain pending
@@ -1919,6 +1947,11 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
 | `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute |
+
+SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
+trailing spaces, NULs and different Unicode representations distinct despite SQL collation. The
+logical key still includes `KeyPrefix` and keeps the 449 UTF-16 code-unit limit. On upgrade, old
+unhashed cache rows become misses and expire normally; upgrade all instances sharing a prefix together.
 
 
 ---

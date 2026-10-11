@@ -77,3 +77,7 @@ builder.Services.AddMethodCache();                               // after your r
   `NoOpCacheManager`.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
+
+Custom distributed method-result caches must implement `MethodCache.Extensibility.IAtomicInvalidationStore`,
+including backend-atomic maximum timestamps and retention preservation. A plain `IDistributedCache` is
+rejected when the method cache manager is resolved. Redis and SQL Server supply this contract.

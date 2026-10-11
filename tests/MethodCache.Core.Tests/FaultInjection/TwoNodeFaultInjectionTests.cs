@@ -30,7 +30,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
     private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(10);
 
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
-    private readonly IDistributedCache _shared = new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
+    private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
     private readonly ChaosBackplaneHub _hub;
     private readonly List<ServiceProvider> _providers = new();
 

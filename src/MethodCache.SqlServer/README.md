@@ -47,6 +47,9 @@ not share the same isolation contract. New tables require a non-null scope.
 - Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows. Your app's `IDistributedCache` is left alone.
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
+- Tag, clear and key-removal timestamps are written with a transaction and a key/range update lock. They
+  keep the highest unexpired signed timestamp and never shorten an existing stamp’s retention. An older
+  write cannot undo a newer invalidation. Upgrade all instances sharing a prefix together.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message is acknowledged only after its subscriber completes successfully. Failed messages remain pending
@@ -89,3 +92,8 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
 | `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute |
+
+SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
+trailing spaces, NULs and different Unicode representations distinct despite SQL collation. The
+logical key still includes `KeyPrefix` and keeps the 449 UTF-16 code-unit limit. On upgrade, old
+unhashed cache rows become misses and expire normally; upgrade all instances sharing a prefix together.

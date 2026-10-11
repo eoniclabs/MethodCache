@@ -20,7 +20,7 @@ public class SqlServerServiceCollectionExtensionsTests
         services.AddMethodCacheSqlServer(ConnectionString);
         using var provider = services.BuildServiceProvider();
 
-        provider.GetRequiredKeyedService<IDistributedCache>("MethodCache").Should().BeOfType<SqlServerCache>();
+        provider.GetRequiredKeyedService<IDistributedCache>("MethodCache").Should().BeOfType<SqlServerDistributedCache>();
         provider.GetRequiredService<IBackplane>().Should().BeOfType<SqlServerBackplane>();
         provider.GetServices<IHostedService>().Should().ContainSingle(s => s is SqlServerTables);
     }

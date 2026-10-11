@@ -104,7 +104,7 @@ public class BackplaneShutdownTests
     }
 
     private static DistributedCacheLayer Create(ControlledBackplane backplane, FakeTimeProvider? clock = null) => new(
-        new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions())),
+        new MethodCache.TestSupport.AtomicTestCache(),
         new JsonCacheSerializer(), new DistributedCacheOptions { OperationTimeout = TimeSpan.FromSeconds(1) }, backplane, clock ?? new FakeTimeProvider());
 
     private sealed class ControlledBackplane : IBackplane

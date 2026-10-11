@@ -51,4 +51,7 @@
     <ProjectReference Include="..\..\src\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../TestSupport/AtomicTestCache.cs" Link="TestSupport/AtomicTestCache.cs" />
+  </ItemGroup>
 </Project>

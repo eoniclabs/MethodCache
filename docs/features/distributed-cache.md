@@ -78,15 +78,27 @@ builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.Mes
 Each entry records its format, so after a switch older entries count as misses. Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](native-aot.md)).
 
-## Any IDistributedCache
+## Custom distributed caches
 
 <!-- snippet: distributed-custom -->
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheDistributedCache(
-    _ => new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));   // any IDistributedCache
+    _ => customCache);   // IDistributedCache with backend-atomic invalidation stamps
 ```
 <!-- endSnippet -->
+
+`customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
+`IDistributedCache`. MethodCache rejects a provider without this capability when the cache manager is
+resolved. Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
+signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
+stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
+insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
+transaction with a key/range update lock. This applies to tag, clear and key-removal stamps.
+
+Upgrade all instances that share a prefix together: older unconditional stamp writers do not obey this
+contract. Timestamp metadata keeps its existing binary format. The HTTP response cache has its own
+generation contract and still accepts a plain `IDistributedCache` for response storage.
 
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
 `IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them.
@@ -107,3 +119,8 @@ invalidations table.
 
 The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation and outage settings.
+
+SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
+trailing spaces, NULs and different Unicode representations distinct despite SQL collation. The
+logical key still includes `KeyPrefix` and keeps the 449 UTF-16 code-unit limit. On upgrade, old
+unhashed cache rows become misses and expire normally; upgrade all instances sharing a prefix together.

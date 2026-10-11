@@ -16,7 +16,7 @@ public class BackplaneDisposalTests
         var services = new ServiceCollection();
         services.AddSingleton<IBackplane>(backplane);
         services.AddMethodCache();
-        services.AddMethodCacheDistributedCache(_ => new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));
+        services.AddMethodCacheDistributedCache(_ => new MethodCache.TestSupport.AtomicTestCache());
         var provider = services.BuildServiceProvider();
         provider.GetRequiredService<ICacheManager>();
         await provider.DisposeAsync();

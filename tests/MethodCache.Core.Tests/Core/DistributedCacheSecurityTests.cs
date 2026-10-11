@@ -25,7 +25,7 @@ public class DistributedCacheSecurityTests
     private const string EntryPrefix = "methodcache:e:";
 
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
-    private readonly IDistributedCache _shared = new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
+    private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
     private readonly Hub _hub = new();
 
     private InMemoryCacheManager CreateNode(ISerializer? serializer = null) => new(
