@@ -1,6 +1,7 @@
 # Creating a Release
 
-This document explains how to create and publish a new version of MethodCache to GitHub Packages.
+This document explains how to create and publish a new version of MethodCache to GitHub Packages. Go through
+[the release checklist](docs/developer/RELEASE_CHECKLIST.md) first.
 
 ## Quick Release (Recommended)
 
