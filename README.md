@@ -1,334 +1,285 @@
 # MethodCache
 
-[![NuGet Version](https://img.shields.io/badge/NuGet%20Version-not%20published-lightgrey)](https://www.nuget.org/packages?q=MethodCache)
-[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 [![Build Status](https://github.com/eoniclabs/MethodCache/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/eoniclabs/MethodCache/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/eoniclabs/MethodCache/graph/badge.svg?branch=main)](https://codecov.io/gh/eoniclabs/MethodCache)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-512BD4)](https://dotnet.microsoft.com/)
+[![NuGet](https://img.shields.io/badge/NuGet-not%20yet%20published-lightgrey)](https://www.nuget.org/packages?q=MethodCache)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MethodCache is a .NET caching library that supports two usage styles:
+**Cache any .NET method with one attribute.** MethodCache's source generator writes the caching code for you at
+compile time: no reflection, no hand-written keys, no `TryGetValue` boilerplate, and it works with Native AOT.
 
-- Declarative caching with attributes and source-generated decorators.
-- Explicit caching with a fluent runtime API.
+```csharp
+public interface IUserService
+{
+    [Cache(Duration = "00:10:00", Tags = ["user:{id}"])]
+    Task<User> GetUserAsync(int id);
 
-It is designed for teams that want caching behavior to be easy to add, easy to review, and easy to change as production needs evolve.
+    [CacheInvalidate(Tags = ["user:{id}"])]
+    Task RenameAsync(int id, string name);
+}
 
-## Contents
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddMethodCache();
+```
 
-- [Quick Start](#quick-start)
-- [Feature Overview](#feature-overview)
-- [How To Use MethodCache](#how-to-use-methodcache)
-  - [Attribute-based Caching](#attribute-based-caching)
-  - [Manual Caching](#manual-caching)
-  - [Configuration Sources](#configuration-sources)
-  - [Invalidation](#invalidation)
-  - [Distributed Cache](#distributed-cache)
-  - [Runtime Overrides](#runtime-overrides)
-  - [Third-party Library Caching](#third-party-library-caching)
-- [Packages](#packages)
-- [Benchmarks](#benchmarks)
-- [CI and Coverage](#ci-and-coverage)
-- [Documentation and Samples](#documentation-and-samples)
-- [Contributing](#contributing)
+That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory until it expires or
+`RenameAsync(42, ...)` invalidates user 42, and only user 42.
 
-## Quick Start
+## Why MethodCache
 
-### 1. Install
+- **One attribute, zero boilerplate.** Keys are built from the method and its arguments; your service stays plain code.
+- **Fast.** A cache hit costs about as much as hand-written `IMemoryCache` code, and 4 to 5 times less than HybridCache or FusionCache ([numbers](#performance)).
+- **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
+- **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
+- **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
+- **One line to go distributed.** `AddMethodCacheRedis(...)` shares results between instances and keeps every instance's memory cache in sync.
+- **Built for production.** Stampede protection, a W-TinyLFU memory cache, admin endpoints, a health check and OpenTelemetry tracing and metrics.
+
+## See it run
+
+```bash
+git clone https://github.com/eoniclabs/MethodCache
+cd MethodCache
+dotnet run -c Release --project samples/MethodCache.Demo
+```
+
+A six-chapter tour where every number is measured live and every claim is checked (CI runs it too):
+
+```text
+  1. One attribute
+    First call (runs the method)        425.2 ms
+    Second call (from the cache)          0.9 ms
+    ✓ WeatherService ran once for 1,100,002 calls
+
+  2. Stampede protection
+    ✓ WeatherService ran once
+    ✓ All 100 callers got the same result
+
+  3. Tags that understand your arguments
+    Load users 1 and 2, twice each    2 database queries
+    Rename user 1, load both again    1 new database query
+    ✓ User 2 still came from the cache: Alan Turing
+  ...
+  All 6 chapters behaved as described.
+```
+
+For ASP.NET Core with admin endpoints, OpenTelemetry and two instances sharing Redis, see the
+[web demo](samples/MethodCache.WebDemo/).
+
+## Before and after
+
+<table>
+<tr><th>IMemoryCache by hand</th><th>MethodCache</th></tr>
+<tr><td>
+
+```csharp
+public async Task<User> GetUserAsync(int id)
+{
+    var key = $"user:{id}";
+    if (_cache.TryGetValue(key, out User? user))
+        return user!;
+
+    // Two callers can both miss and both hit the database
+    user = await _db.LoadUserAsync(id);
+    _cache.Set(key, user, TimeSpan.FromMinutes(10));
+    return user;
+}
+
+public async Task RenameAsync(int id, string name)
+{
+    await _db.RenameAsync(id, name);
+    _cache.Remove($"user:{id}");
+    // ...and every other key that held this user
+}
+```
+
+</td><td>
+
+```csharp
+[Cache(Duration = "00:10:00", Tags = ["user:{id}"])]
+Task<User> GetUserAsync(int id);
+
+[CacheInvalidate(Tags = ["user:{id}"])]
+Task RenameAsync(int id, string name);
+```
+
+The implementation only talks to the database.
+Concurrent misses run it once, and the tag reaches
+every cached method tagged with that user.
+
+</td></tr>
+</table>
+
+## Getting started
+
+MethodCache is not on nuget.org yet. Until it is, reference the projects from this repository (the
+[demo's project file](samples/MethodCache.Demo/MethodCache.Demo.csproj) shows how). Once published:
 
 ```bash
 dotnet add package MethodCache
 ```
 
-The meta-package includes `MethodCache.Core`, `MethodCache.SourceGenerator`, and `MethodCache.Analyzers`.
+1. Put `[Cache]` on interface methods that return data (sync, `Task<T>` or `ValueTask<T>`).
+2. Register your services as usual, then call `builder.Services.AddMethodCache()`. It wraps every registered
+   interface that has cached methods in its generated decorator and keeps the lifetime you chose.
 
-### 2. Add caching attributes
+A service registered after `AddMethodCache()` is not cached. If you don't register an implementation at all,
+`AddMethodCache()` registers it as a singleton when it lives in the same project as the interface.
 
-```csharp
-public interface IUserService
-{
-    [Cache(Duration = "00:10:00", Tags = new[] { "users", "user:{userId}" })]
-    Task<UserProfile> GetUserAsync(int userId);
+## Features
 
-    [CacheInvalidate(Tags = new[] { "users", "user:{userId}" })]
-    Task UpdateUserAsync(int userId, UserUpdate update);
-}
-```
+### Invalidation
 
-### 3. Register MethodCache
+Invalidate by tag with `[CacheInvalidate]`, or from code by tag, key or pattern:
 
 ```csharp
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddMethodCache();
+await cache.InvalidateByTagsAsync("user:42");
+await cache.InvalidateByKeysAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
+await cache.InvalidateByTagPatternAsync("tenant:7:*");   // in-memory only
 ```
 
-`AddMethodCache()` wraps `IUserService` in its generated cache decorator and keeps the lifetime you chose. Call it after your own registrations: a service registered later is not cached.
+Generated keys look like `MyApp.IUserService.GetUserAsync:42`, and `MethodCacheKeys` builds the same keys, so you
+never guess the format.
 
-You can also skip registering the service yourself. `AddMethodCache()` then registers `UserService` as a singleton, provided it is in the same project as `IUserService` (the source generator picks the class named like the interface, or the first one that implements it). If the interface lives in another project, pass that project's assembly:
+### Configuration without redeploying
 
-```csharp
-builder.Services.AddMethodCache(configure: null, typeof(IUserService).Assembly);
-```
-
-An implementation in a different project from its interface is never registered for you; register it yourself and `AddMethodCache()` decorates it.
-
-Registration uses no reflection over your types, so it works with trimming and Native AOT.
-
-That is enough to enable source-generated cache decorators for attributed methods.
-
-## Feature Overview
-
-| Feature | Benefit | How to use |
-|---------|---------|------------|
-| Source-generated decorators | Removes runtime reflection and keeps business methods clean | Add `[Cache]` on interface methods and register MethodCache |
-| Manual caching | Cache calls without attributes or without changing external code | Use `ICacheManager.GetOrCreateAsync(key, factory, options)` |
-| Multiple configuration sources | Keep defaults in code and adjust behavior per environment | Combine attributes, startup configuration, file-based config, and runtime overrides |
-| Tag-based invalidation | Invalidate related entries without tracking keys manually | Tag entries in `[Cache]` and call invalidation APIs by tag |
-| Runtime overrides | Change cache behavior without redeploying | Use `IRuntimeCacheConfigurator` to apply and remove overrides |
-| Distributed cache | Share results between instances and invalidate everywhere | `AddMethodCacheRedis()`, `AddMethodCacheSqlServer()` or any `IDistributedCache` |
-| Analyzer support | Catch invalid or risky caching patterns at compile time | Install analyzers (included in `MethodCache`) |
-
-## How To Use MethodCache
-
-### Attribute-based Caching
-
-Attributes are the shortest path for application services and repositories.
-
-```csharp
-public interface IOrdersService
-{
-    [Cache("orders", Duration = "00:15:00", Tags = new[] { "orders", "customer:{customerId}" })]
-    Task<IReadOnlyList<Order>> GetByCustomerAsync(int customerId);
-}
-```
-
-For precomputed keys, you can mark a parameter as the raw cache key:
-
-```csharp
-public interface ILookupService
-{
-    [Cache(Duration = "00:10:00")]
-    Task<T> GetAsync<T>([CacheKey(UseAsRawKey = true)] string cacheKey);
-}
-```
-
-Use raw keys only when your key naming is globally unique.
-
-### Manual Caching
-
-Use `GetOrCreateAsync` with an explicit key when attributes are not practical (for example, third-party clients).
-
-```csharp
-var user = await cache.GetOrCreateAsync(
-    $"user:{userId}",
-    async (ctx, ct) => await userService.GetUserAsync(userId),
-    o => o.WithDuration(TimeSpan.FromMinutes(30))
-          .WithTags("users", $"user:{userId}"));
-```
-
-You choose the key, so two calls share an entry only when their keys are equal.
-
-### Configuration Sources
-
-MethodCache supports layered configuration. Higher-priority sources override lower-priority ones, field by field:
-
-1. Attributes (`[Cache]`)
-2. Startup code (`AddMethodCache(config => ...)`)
-3. Configuration such as appsettings.json (`AddMethodCacheFromConfiguration`)
-4. Runtime overrides (`IRuntimeCacheConfigurator`)
+Each setting comes from the highest layer that sets it: runtime overrides, then `appsettings.json`, then startup code,
+then the attribute. Global and group defaults fill in what a method leaves unset.
 
 ```csharp
 builder.Services.AddMethodCache(config =>
-{
-    config.ForService<IOrdersService>()
-          .Method(s => s.GetByCustomerAsync(default))
-          .Configure(o => o.WithDuration(TimeSpan.FromMinutes(5)));
-});
-builder.Services.AddMethodCacheFromConfiguration(builder.Configuration); // "MethodCache" section
+    config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(5))));
+builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 ```
 
 ```json
 {
   "MethodCache": {
     "Services": {
-      "MyApp.IOrdersService.GetByCustomerAsync": { "Duration": "00:10:00", "Tags": ["orders"] }
+      "MyApp.IUserService.GetUserAsync": { "Duration": "00:30:00" }
     }
   }
 }
 ```
 
-Changes to the configuration section apply while the application runs; invalid values throw at startup. This lets you keep safe defaults in code while still adapting behavior in operations. See the [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md).
+Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
+policy in code, and the change applies to the next call. See the [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md).
 
-### Invalidation
-
-Use exact keys, tags, or tag patterns depending on your domain model.
-
-```csharp
-await cacheManager.InvalidateByKeysAsync(
-    MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(123)));
-await cacheManager.InvalidateByTagsAsync("users", "tenant:42");
-await cacheManager.InvalidateByTagPatternAsync("user:*");
-```
-
-Generated keys have the form `{Service}.{Method}[:v{Version}]:{arguments}`, for example `MyApp.IUserService.GetUserAsync:123`. `MethodCacheKeys` builds the same keys, so you never have to guess the format. Arguments that are not simple values (records, classes, collections) are hashed, but the key still starts with `{Service}.{Method}`.
-
-`InvalidateByTagPatternAsync` supports simple wildcard matching:
-
-- `*` matches zero or more characters
-- `?` matches exactly one character
-- All other characters are treated as literals (for example `:`, `.`, `[`, `(`)
-- Matching is full-tag (equivalent to anchoring the pattern to both start and end)
-
-Examples:
-
-```csharp
-await cacheManager.InvalidateByTagPatternAsync("user:*");       // user:1, user:1:profile
-await cacheManager.InvalidateByTagPatternAsync("tenant:42:*");  // all tenant:42:* tags
-await cacheManager.InvalidateByTagPatternAsync("user:??");      // user:12, not user:123
-await cacheManager.InvalidateByTagPatternAsync("*:profile");    // any tag ending with :profile
-```
-
-Pattern invalidation works on the in-memory cache only. With a distributed cache it throws `NotSupportedException`, because the distributed cache cannot list its tags; invalidate exact tags instead.
-
-### Distributed Cache
-
-MethodCache keeps results in memory. To share them between instances, add a distributed cache. Redis and SQL Server have a package each, and both also keep every instance's in-memory cache in sync:
+### Distributed cache
 
 ```csharp
 builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheRedis("localhost:6379");          // MethodCache.Providers.Redis
-// or
-builder.Services.AddMethodCacheSqlServer(connectionString);      // MethodCache.Providers.SqlServer
+builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCacheSqlServer(connectionString)
 ```
 
-Any other `IDistributedCache` works too:
+Results live in memory and in Redis (or SQL Server, or any `IDistributedCache` via `AddMethodCacheDistributedCache()`).
+An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
+Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
+
+### Caching code you don't own
+
+For third-party clients, use the same engine with a key you choose:
 
 ```csharp
-builder.Services.AddStackExchangeRedisCache(options => options.Configuration = "localhost:6379");
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheDistributedCache();
+var rate = await cache.GetOrCreateAsync(
+    $"fx:{from}:{to}",
+    async (ctx, ct) => await client.GetRateAsync(from, to),
+    o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
 ```
 
-On an in-memory miss MethodCache reads the distributed cache before running your method, and it stores new results in both. Invalidating a key or tag reaches every instance: tag invalidations are stored as timestamps, so any distributed cache works without tag tables. The Redis and SQL Server packages also register an `IBackplane`, so other instances drop their in-memory copies right away; with a plain `IDistributedCache` and no backplane they keep them until they expire.
+Or wrap the client in your own interface with `[Cache]` and get attributes, configuration and runtime overrides too.
+See the [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md).
 
-Values are stored as JSON with System.Text.Json. For smaller values, store them as MessagePack instead:
+### Monitoring
 
 ```csharp
-builder.Services.AddMethodCacheMessagePack();                    // MethodCache.Serialization.MessagePack
+builder.Services.AddHealthChecks().AddMethodCache();
+app.MapMethodCacheAdmin().RequireAuthorization("CacheAdmins");   // MethodCache.AspNetCore
+builder.Services.AddMethodCacheOpenTelemetry();                  // MethodCache.OpenTelemetry
+builder.Services.AddOpenTelemetry()
+    .WithTracing(t => t.AddMethodCacheInstrumentation())
+    .WithMetrics(m => m.AddMethodCacheInstrumentation());
 ```
 
-Under Native AOT, register the JSON serializer with your `JsonSerializerContext` so no reflection is needed:
+The admin endpoints show hits, misses, live entries and every method's effective policy, and can invalidate by tag.
+The same operations are available in code through `ICacheAdministrator`.
+
+### Native AOT
+
+Registration and keys use no reflection. Under Native AOT, register the JSON serializer with your
+`JsonSerializerContext`:
 
 ```csharp
 builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(AppJsonContext.Default.Options));
 ```
 
-### Runtime Overrides
+## Performance
 
-Use runtime overrides for temporary operational changes (shorter durations, feature rollout, incident mitigation).
+A cache hit on `Task<User> GetUserAsync(int id)`, each library on its default settings:
 
-```csharp
-var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
+| Approach | Mean | Allocated |
+|---|---:|---:|
+| `IMemoryCache` by hand | 90 ns | 112 B |
+| **MethodCache `[Cache]`** | **87 ns** | **0 B** |
+| HybridCache | 478 ns | 272 B |
+| FusionCache | 344 ns | 344 B |
 
-await configurator.ApplyAsync(fluent =>
-{
-    fluent.ForService<IOrdersService>()
-          .Method(s => s.GetByCustomerAsync(default))
-          .Configure(o => o.WithDuration(TimeSpan.FromMinutes(2)));
-});
-```
+The generated decorator builds the key with one string concatenation and returns the cached `Task` itself, so a hit
+costs the same as hand-written code and allocates nothing. Measured with BenchmarkDotNet on .NET 10; see
+[docs/benchmarks.md](docs/benchmarks.md) for the setup and how to run it yourself.
 
-### Third-party Library Caching
+## How it compares
 
-You can cache third-party libraries in two ways:
+| | MethodCache | HybridCache | FusionCache |
+|---|:---:|:---:|:---:|
+| Cache a method with an attribute | ✅ | ❌ | ❌ |
+| Keys built from the arguments | ✅ | ❌ you write keys | ❌ you write keys |
+| Stampede protection | ✅ | ✅ | ✅ |
+| Memory + distributed cache | ✅ | ✅ | ✅ |
+| Other instances drop their memory copy at once | ✅ Redis, SQL Server | ❌ | ✅ |
+| Tag invalidation | ✅ with argument templates | ✅ | ✅ |
+| Change a method's policy from appsettings.json or at runtime | ✅ | ❌ | ❌ |
+| Admin endpoints and health check | ✅ | ❌ | ❌ |
 
-1. A wrapper interface in your project with `[Cache]` attributes, whose implementation calls the library. Its policies can then be tuned in appsettings.json or at runtime.
-2. Manual caching (`GetOrCreateAsync` with an explicit key) in your wrapper or service code.
-
-Manual caching example:
-
-```csharp
-public sealed class WeatherFacade
-{
-    private readonly IWeatherApiClient _client;
-    private readonly ICacheManager _cache;
-
-    public ValueTask<WeatherResponse> GetCurrentAsync(string city) =>
-        _cache.GetOrCreateAsync(
-            $"weather:{city}",
-            async (ctx, ct) => await _client.GetCurrentAsync(city),
-            o => o.WithDuration(TimeSpan.FromMinutes(5))
-                  .WithTags("weather", $"city:{city}"));
-}
-```
-
-See the [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md) for the wrapper approach.
+HybridCache ships with .NET and is the natural choice when you want a plain `GetOrCreateAsync` API and nothing more.
+FusionCache is more mature and has more resilience features, such as fail-safe and timeouts. MethodCache is for
+when you want caching to be a line of metadata on the method rather than code inside it.
 
 ## Packages
 
-Supported frameworks: .NET 8.0, .NET 9.0, .NET 10.0.
+Supported frameworks: .NET 8, 9 and 10.
 
-### Stable
+| Package | What it adds | Status |
+|---|---|---|
+| `MethodCache` | Core, source generator and analyzers. Start here | Stable |
+| `MethodCache.Providers.Redis` | Redis as the distributed cache, with a pub/sub backplane | Beta |
+| `MethodCache.Providers.SqlServer` | SQL Server as the distributed cache, with a polling backplane | Experimental |
+| `MethodCache.AspNetCore` | Admin endpoints and a health check | Experimental |
+| `MethodCache.OpenTelemetry` | Tracing and metrics | Beta |
+| `MethodCache.Serialization.MessagePack` | MessagePack instead of JSON in the distributed cache | Experimental |
+| `MethodCache.HttpCaching` | HTTP response caching middleware | Experimental |
 
-| Package | Purpose |
-|---------|---------|
-| `MethodCache` | Meta-package with core, generator, and analyzers |
-| `MethodCache.Core` | Core abstractions and default in-memory cache manager |
-| `MethodCache.SourceGenerator` | Roslyn source generator for decorators |
-| `MethodCache.Analyzers` | Compile-time validation for cache usage |
-| `MethodCache.Abstractions` | Shared interfaces and policy contracts |
-
-### Beta
-
-| Package | Purpose |
-|---------|---------|
-| `MethodCache.Providers.Redis` | Redis as the distributed cache, with a pub/sub backplane |
-| `MethodCache.OpenTelemetry` | Tracing and metrics integration |
-
-### Experimental
-
-| Package | Purpose |
-|---------|---------|
-| `MethodCache.Providers.SqlServer` | SQL Server as the distributed cache, with a polling backplane |
-| `MethodCache.Serialization.MessagePack` | MessagePack instead of JSON for values in the distributed cache |
-| `MethodCache.HttpCaching` | HTTP response caching middleware |
-| `MethodCache.AspNetCore` | Admin endpoints and health check for inspecting and invalidating the cache at runtime |
-
-## Benchmarks
-
-Benchmark sources and reports are in [MethodCache.Benchmarks](MethodCache.Benchmarks/) and [BenchmarkDotNet.Artifacts](MethodCache.Benchmarks/BenchmarkDotNet.Artifacts/results/).
-
-Use these to compare scenarios (hit, miss-and-set, concurrent access, stampede protection) in your own environment.
-
-## CI and Coverage
-
-- Workflow: `.github/workflows/ci.yml`
-- Triggers: push and pull request to `main`
-- Steps: restore, build (Release), test with `XPlat Code Coverage`, upload test-results artifact
-- Coverage upload: Codecov via GitHub OIDC
-
-To enable coverage badges in your fork or org:
-
-1. Ensure the repository is connected in Codecov.
-2. Run the CI workflow at least once on GitHub Actions.
-3. If your Codecov setup requires it, add `CODECOV_TOKEN` in repository secrets.
-
-## Documentation and Samples
+## Documentation
 
 - [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md)
 - [Fluent API Guide](docs/user-guide/FLUENT_API.md)
 - [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md)
-- [Migration: Adding Caching to Existing Service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
-- [Migration: From IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
-- [Demo: a guided console tour](samples/MethodCache.Demo/)
-- [Web demo: ASP.NET Core, admin endpoints, OpenTelemetry, Redis](samples/MethodCache.WebDemo/)
+- [Adding caching to an existing service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
+- [Migrating from IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
+- [Demo](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
 
 ## Contributing
 
-Issues and pull requests are welcome.
-
-Before submitting a change, run:
+Issues and pull requests are welcome. Before you open a pull request, run:
 
 ```bash
 dotnet format
 dotnet test MethodCache.sln
 ```
+
+See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) for the repository layout.
+
+## License
+
+[MIT](LICENSE)

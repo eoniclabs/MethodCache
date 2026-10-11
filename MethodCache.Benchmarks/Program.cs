@@ -53,6 +53,13 @@ public class Program
                     DefaultConfig.Instance.AddJob(Job.ShortRun.WithGcServer(true)), cleanedArgs.Skip(1).ToArray());
                 break;
 
+            case "readme":
+                BenchmarkRunner.Run<MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks>(
+                    DefaultConfig.Instance.AddJob(Job.Default.WithId(quickRequested ? "Quick" : "Default")
+                        .WithIterationCount(quickRequested ? 5 : 15).WithWarmupCount(quickRequested ? 3 : 6)),
+                    cleanedArgs.Skip(1).ToArray());
+                break;
+
             case "hitratio":
                 MethodCache.Benchmarks.Microbenchmarks.HitRatioSimulation.Run();
                 break;
@@ -130,6 +137,7 @@ public class Program
         Console.WriteLine("Usage: MethodCache.Benchmarks <category>");
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
+        Console.WriteLine("  readme       - The README numbers: MethodCache vs IMemoryCache, HybridCache and FusionCache");
         Console.WriteLine("  basic        - Basic caching operations (hit/miss, different data sizes)");
         Console.WriteLine("  baseline     - Compare with Microsoft.Extensions.Caching.Memory and LazyCache");
         Console.WriteLine("  comparison   - Unified comparison: MethodCache vs FusionCache vs EasyCaching vs LazyCache");
