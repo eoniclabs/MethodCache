@@ -12,7 +12,9 @@ Names that are C# keywords are escaped in the generated code, including property
 parameters. Property getters/setters and event add/remove accessors reach the original implementation.
 
 Unsupported cached method shapes receive a [generator diagnostic](../user-guide/DIAGNOSTICS.md), with a code fix
-to remove the cache attribute where available. See [keys](keys.md) for argument identity and
+to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer
+results are rejected before cached code is emitted. Those methods are forwarded when another method on the
+interface is cacheable. See [keys](keys.md) for argument identity and
 [configuration](configuration.md) for generated policy identifiers.
 
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes

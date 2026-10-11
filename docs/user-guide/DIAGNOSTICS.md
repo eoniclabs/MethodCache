@@ -10,11 +10,11 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MC0004](#mc0004) | Error | A time span that is not a positive `TimeSpan` | |
 | [MCG001](#mcg001) | Error | `[Cache]` on a `void` method | Remove `[Cache]` |
 | [MCG002](#mcg002) | Error | `[Cache]` on `Task`/`ValueTask` without a result | Remove `[Cache]` |
-| [MCG003](#mcg003) | Error | `[Cache]` with `ref`, `out` or `in` parameters | Remove `[Cache]` |
+| [MCG003](#mcg003) | Error | `[Cache]` with reference parameters or returns | Remove `[Cache]` |
 | [MCG004](#mcg004) | Error | `[Cache]` and `[CacheInvalidate]` on the same method | |
 | [MCG005](#mcg005) | Warning | `[CacheInvalidate]` without tags | |
-| [MCG006](#mcg006) | Error | `[Cache]` with a pointer parameter | Remove `[Cache]` |
-| [MCG007](#mcg007) | Error | `[Cache]` with a `Span<T>` or other ref struct parameter | Remove `[Cache]` |
+| [MCG006](#mcg006) | Error | `[Cache]` with pointer or function pointer parameters or returns | Remove `[Cache]` |
+| [MCG007](#mcg007) | Error | `[Cache]` with ref struct parameters or returns | Remove `[Cache]` |
 | [MCG009](#mcg009) | Warning | A tag names a parameter the method does not have | Use the closest parameter |
 | [MCG010](#mcg010) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
 | [MCG011](#mcg011) | Error | `[assembly: CacheInterface]` lists a method it can't cache | |
@@ -63,8 +63,8 @@ changes data, you probably want `[CacheInvalidate(Tags = ...)]` instead.
 
 ## MCG003
 
-`[Cache]` on a method with `ref`, `out` or `in` parameters. Those can't be part of a cache key, and a cached call
-could not set an `out` value. Pass the values by value and return them, for example as a record.
+`[Cache]` on a method with `ref`, `out` or `in` parameters, or a `ref` / `ref readonly` return.
+A cached value cannot preserve references or set an `out` value. Pass and return values by value, for example as a record.
 
 ## MCG004
 
@@ -85,12 +85,13 @@ Task UpdateAsync(int id, User user);
 
 ## MCG006
 
-`[Cache]` on a method with a pointer parameter. Pointers can't be part of a cache key; pass a value or an array.
+`[Cache]` on a method with pointer or function pointer parameters or returns. These cannot be stored as cached
+values or keys; use a value or an array. Unsupported methods are still forwarded through an unsafe implementation.
 
 ## MCG007
 
-`[Cache]` on a method with a `Span<T>`, `ReadOnlySpan<T>` or other ref struct parameter. They can't be stored in a
-cache key; pass an array, `Memory<T>` or a string.
+`[Cache]` on a method with `Span<T>`, `ReadOnlySpan<T>` or other ref struct parameters or returns. These cannot be
+stored in a cache; use an array, `Memory<T>` or a string.
 
 ## MCG009
 

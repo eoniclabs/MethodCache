@@ -40,20 +40,20 @@ namespace MethodCache.SourceGenerator
                 return (Diagnostic.Create(Diagnostics.UnsupportedLazySequence, location, methodName, sequence), false);
             }
 
-            // Check for ref/out/in parameters
-            if (method.Parameters.Any(p => p.RefKind != RefKind.None))
+            // References cannot be represented by a cached value or key.
+            if (method.ReturnsByRef || method.ReturnsByRefReadonly || method.Parameters.Any(p => p.RefKind != RefKind.None))
             {
                 return (Diagnostic.Create(Diagnostics.UnsupportedRefParams, location, methodName), false);
             }
 
             // Check for pointer types
-            if (method.Parameters.Any(p => p.Type.TypeKind == TypeKind.Pointer))
+            if (IsPointerType(method.ReturnType) || method.Parameters.Any(p => IsPointerType(p.Type)))
             {
                 return (Diagnostic.Create(Diagnostics.UnsupportedPointerType, location, methodName), false);
             }
 
             // Check for ref struct types
-            if (method.Parameters.Any(p => IsRefLikeType(p.Type)))
+            if (IsRefLikeType(method.ReturnType) || method.Parameters.Any(p => IsRefLikeType(p.Type)))
             {
                 return (Diagnostic.Create(Diagnostics.UnsupportedRefLikeType, location, methodName), false);
             }
@@ -99,6 +99,9 @@ namespace MethodCache.SourceGenerator
 
             return Kind(returnType, viaTask: false);
         }
+
+        private static bool IsPointerType(ITypeSymbol type)
+            => type.TypeKind is TypeKind.Pointer or TypeKind.FunctionPointer;
 
         private static bool IsRefLikeType(ITypeSymbol type)
         {

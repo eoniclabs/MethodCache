@@ -1021,7 +1021,8 @@ namespace MethodCache.SourceGenerator
                 var parameters = string.Join(", ", method.Parameters.Select(p =>
                     $"{ParameterModifier(p)}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.Identifier(p.Name)}"));
 
-                sb.AppendLine($"        {modifiers}{byRef}{returnType} {declaring}.{Utils.Identifier(method.Name)}{typeParams}({parameters})");
+                var unsafeModifier = IsPointerType(method.ReturnType) || method.Parameters.Any(p => IsPointerType(p.Type)) ? "unsafe " : "";
+                sb.AppendLine($"        {modifiers}{unsafeModifier}{byRef}{returnType} {declaring}.{Utils.Identifier(method.Name)}{typeParams}({parameters})");
 
                 // An explicit implementation inherits the constraints; it may only say how T? reads
                 foreach (var tp in method.TypeParameters)

@@ -86,9 +86,26 @@ public class SignatureCorpusTests
     public async Task UnsupportedShape_ReportsItsDiagnostic_AndTheProjectStillCompiles(string name)
     {
         var (member, implementation, expectedId) = Unsupported[name];
-        var source = Member(member, implementation, "await Task.CompletedTask", "await Task.CompletedTask").ToSource()
-            .Replace("var s = provider.GetRequiredService<ISvc>();", "var s = (ISvc)new Svc();")
-            .Replace("if (!s.GetType().Name.Contains(\"Decorator\", StringComparison.Ordinal))", "if (s is null)");
+        // Keep one valid cached method too: unsupported members must still forward without breaking its decorator.
+        var source = $$"""
+            using System;
+            using System.Collections.Generic;
+            using System.Threading.Tasks;
+            using MethodCache;
+            namespace Corpus
+            {
+                public interface ISvc
+                {
+                    [Cache] string Ping(int id);
+                    [Cache] {{member}};
+                }
+                public class Svc : ISvc
+                {
+                    public string Ping(int id) => id.ToString();
+                    public {{implementation}}
+                }
+            }
+            """;
 
         GeneratedTestAssembly compiled;
         try
@@ -112,6 +129,12 @@ public class SignatureCorpusTests
         ["ref parameter"] = ("Task<string> Get(ref int id)", "Task<string> Get(ref int id) => Task.FromResult(\"v\");", "MCG003"),
         ["out parameter"] = ("string Get(int id, out int found)", "string Get(int id, out int found) { found = 1; return \"v\"; }", "MCG003"),
         ["ReadOnlySpan parameter"] = ("string Get(ReadOnlySpan<char> id)", "string Get(ReadOnlySpan<char> id) => \"v\";", "MCG007"),
+        ["Span result"] = ("Span<int> Get(int id)", "Span<int> Get(int id) => new[] { id };", "MCG007"),
+        ["ReadOnlySpan result"] = ("ReadOnlySpan<int> Get(int id)", "ReadOnlySpan<int> Get(int id) => new[] { id };", "MCG007"),
+        ["ref result"] = ("ref int Get(int id)", "ref int Get(int id) => ref _value; private int _value;", "MCG003"),
+        ["ref readonly result"] = ("ref readonly int Get(int id)", "ref readonly int Get(int id) => ref _value; private int _value;", "MCG003"),
+        ["pointer result"] = ("unsafe int* Get(int id)", "unsafe int* Get(int id) => null;", "MCG006"),
+        ["function pointer result"] = ("unsafe delegate*<int> Get(int id)", "unsafe delegate*<int> Get(int id) => null;", "MCG006"),
         ["IEnumerable result"] = ("IEnumerable<int> Get(int id)", "IEnumerable<int> Get(int id) { yield return id; }", "MCG014"),
         ["IAsyncEnumerable result"] = ("IAsyncEnumerable<int> Get(int id)", "async IAsyncEnumerable<int> Get(int id) { await Task.Yield(); yield return id; }", "MCG014"),
     };
