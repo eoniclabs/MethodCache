@@ -29,7 +29,8 @@ label="methodcache.ci.run=$run_id"
 mkdir -p "$cache_dir/nuget" "$results_dir"
 
 if [ -n "${METHODCACHE_CI_SHARED_LOCK:-}" ]; then
-  exec 9> "$METHODCACHE_CI_SHARED_LOCK"
+  # Append mode: the lock may belong to another tool, so never truncate it
+  exec 9>> "$METHODCACHE_CI_SHARED_LOCK"
   echo "Waiting for a shared hold on $METHODCACHE_CI_SHARED_LOCK"
   flock --shared --timeout 1800 9
 fi
@@ -96,7 +97,10 @@ for job in "${jobs[@]}"; do
   echo "    exit $code after $((SECONDS - started)) s"
   if [ "$code" -ne 0 ]; then
     failed=1
-    tail -n 40 "$results_dir/$job.log"
+    # The failed tests and errors first, then the end of the log; best effort, so a log without matches never
+    # stops the remaining jobs under set -e
+    grep -E -A 6 '\[FAIL\]|: error |Error Message:' "$results_dir/$job.log" | head -n 120 || true
+    tail -n 15 "$results_dir/$job.log"
   fi
 done
 exit "$failed"

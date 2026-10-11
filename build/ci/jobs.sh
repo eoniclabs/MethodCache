@@ -44,7 +44,9 @@ job_tests() {
 job_unit() {
   local framework_args=()
   if [ -n "${FRAMEWORK:-}" ]; then framework_args=(--framework "$FRAMEWORK"); fi
-  dotnet test "$solution" --configuration Release --no-build "${framework_args[@]}" --filter "$without_docker"
+  # (the ${...+...} form, because macOS's bash 3.2 treats an empty array as unset under set -u)
+  dotnet test "$solution" --configuration Release --no-build ${framework_args[@]+"${framework_args[@]}"} \
+    --filter "$without_docker"
 }
 
 job_cultures() {

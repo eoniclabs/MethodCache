@@ -61,7 +61,10 @@ foreach ($job in $Jobs) {
     Write-Host "    exit $code"
     if ($code -ne 0) {
         $failed = $true
-        Get-Content $log -Tail 40
+        # The failed tests and errors first, then the end of the log
+        Select-String -Path $log -Pattern '\[FAIL\]', ': error ', 'Error Message:' -Context 0, 6 |
+            Select-Object -First 20 | ForEach-Object { $_.ToString() }
+        Get-Content $log -Tail 15
     }
 }
 if ($failed) { exit 1 }
