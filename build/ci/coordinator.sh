@@ -285,7 +285,15 @@ run_commit() { # sha pr(optional)
 }
 
 comment_on() { # pr sha run_dir all_ok minutes run_id
-  local body platform job
+  local body platform job truncated=0
+  # GitHub rejects a comment over 65,536 characters, so excerpts stop at a budget and the rest is in the logs
+  add_excerpt() {
+    if [ $(( ${#body} + ${#1} )) -le 60000 ]; then body+=$1
+    elif [ "$truncated" -eq 0 ]; then truncated=1; body+="
+
+More failures than fit in a comment: see the logs on Megatron."
+    fi
+  }
   body="### $([ "$4" -eq 1 ] && echo '✅ MethodCache CI passed' || echo '❌ MethodCache CI failed') on \`${2:0:12}\`
 
 | Platform | Jobs |
@@ -299,7 +307,7 @@ $5 min, run \`$6\`. Full logs are on Megatron in \`~/.cache/methodcache-ci/runs/
     local failed
     failed=$(failed_jobs_of "$3/$platform")
     if [ -z "$failed" ] && ! ls "$3/$platform"/*.exit > /dev/null 2>&1; then
-      body+="
+      add_excerpt "
 
 <details><summary>$platform: no job ran</summary>
 
@@ -309,7 +317,7 @@ $(tail -n 40 "$3/$platform/console.log" 2> /dev/null | cut -c1-300)
 </details>"
     fi
     for job in $failed; do
-      body+="
+      add_excerpt "
 
 <details><summary>$platform: $job</summary>
 
