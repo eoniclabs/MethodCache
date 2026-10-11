@@ -77,32 +77,16 @@ check_release_status() {
         print_warning "✗ Remote tag $tag_name does not exist"
     fi
 
-    # Check GitHub Actions workflow status
+    # Check the build servers' result for the tagged commit
     print_info ""
-    print_info "Checking workflow runs for tag $tag_name..."
-    local workflow_status=$(gh run list --workflow=publish.yml --limit=5 --json headBranch,status,conclusion,url 2>/dev/null || echo "[]")
-
-    # Find run for this tag
-    local run_for_tag=$(echo "$workflow_status" | grep -o "{[^}]*\"headBranch\":\"$tag_name\"[^}]*}" || true)
-    if [ -n "$run_for_tag" ]; then
-        local status=$(echo "$run_for_tag" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
-        local conclusion=$(echo "$run_for_tag" | grep -o '"conclusion":"[^"]*"' | cut -d'"' -f4)
-        local url=$(echo "$run_for_tag" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
-
-        if [ "$status" = "completed" ]; then
-            if [ "$conclusion" = "success" ]; then
-                print_success "✓ Workflow completed successfully"
-            else
-                print_error "✗ Workflow failed (conclusion: $conclusion)"
-                print_info "  View details: $url"
-            fi
-        else
-            print_warning "⏳ Workflow still running (status: $status)"
-            print_info "  View details: $url"
-        fi
-    else
-        print_warning "✗ No workflow run found for tag $tag_name"
-    fi
+    print_info "Checking the MethodCache CI status of $tag_name..."
+    local ci_state=$(gh api "repos/$GITHUB_ORG/$GITHUB_REPO/commits/$tag_name/status" \
+        --jq '[.statuses[] | select(.context == "MethodCache CI")][0].state // "missing"' 2>/dev/null || echo "unknown")
+    case "$ci_state" in
+        success) print_success "✓ The build servers passed $tag_name" ;;
+        pending) print_warning "⏳ The build servers are still running $tag_name" ;;
+        *) print_warning "✗ MethodCache CI is '$ci_state' for $tag_name" ;;
+    esac
 
     # Check published packages
     print_info ""
@@ -233,7 +217,7 @@ cleanup_release() {
     print_info "  ./release.sh $version"
 }
 
-# Function to retry a failed release (re-trigger workflow)
+# Function to retry a failed release (publish the tag again)
 retry_release() {
     local version=$1
     local tag_name="v$version"
@@ -248,42 +232,9 @@ retry_release() {
         exit 1
     fi
 
-    # Check if any packages are already published
-    local any_published=false
-    for package in "${PACKAGES[@]}"; do
-        if check_package_version "$package" "$version"; then
-            any_published=true
-            break
-        fi
-    done
-
-    if [ "$any_published" = true ]; then
-        print_error "✗ Some packages are already published for version $version."
-        print_info "  Cannot simply retry - need to cleanup first."
-        print_info "  Run: ./release.sh --cleanup $version"
-        exit 1
-    fi
-
     print_info ""
-    print_info "No packages published yet. Re-triggering workflow..."
-    print_info ""
-
-    # Delete and re-push tag to trigger workflow
-    print_info "Deleting remote tag $tag_name..."
-    git push origin --delete "$tag_name"
-
-    print_info "Re-pushing tag $tag_name..."
-    # Make sure we have the local tag
-    if ! git tag -l "$tag_name" | grep -q "$tag_name"; then
-        # Create tag at current HEAD (should be the version bump commit)
-        git tag "$tag_name"
-    fi
-    git push origin "$tag_name"
-
-    print_success ""
-    print_success "✓ Release $version re-triggered!"
-    print_success ""
-    print_info "Monitor the workflow: https://github.com/$GITHUB_ORG/$GITHUB_REPO/actions"
+    print_info "Publishing is a manual step on Megatron; running it again skips the packages already published:"
+    print_info "  build/ci/publish.sh $tag_name"
 }
 
 # Function to suggest next versions
@@ -368,7 +319,7 @@ show_help() {
     print_info "  <version>            Create a new release"
     print_info "  --status <version>   Check the status of a release"
     print_info "  --cleanup <version>  Clean up a failed release (delete packages, tags)"
-    print_info "  --retry <version>    Retry a failed release (re-trigger workflow)"
+    print_info "  --retry <version>    Retry a failed release (publish the tag again)"
     echo ""
     print_info "Options:"
     print_info "  --skip-tests         Skip running tests before release"
@@ -493,7 +444,8 @@ print_success ""
 print_success "✓ Release $VERSION created successfully!"
 print_success ""
 print_info "Next steps:"
-print_info "1. Monitor the workflow: https://github.com/eoniclabs/MethodCache/actions"
-print_info "2. Verify packages: https://github.com/eoniclabs/MethodCache/packages"
-print_info "3. Update release notes: https://github.com/eoniclabs/MethodCache/releases/tag/$TAG_NAME"
+print_info "1. Wait for the MethodCache CI status on the tagged commit (the build servers run it within minutes)"
+print_info "2. Publish on Megatron: build/ci/publish.sh $TAG_NAME"
+print_info "3. Verify packages: https://github.com/eoniclabs/MethodCache/packages"
+print_info "4. Update release notes: https://github.com/eoniclabs/MethodCache/releases/tag/$TAG_NAME"
 print_success ""

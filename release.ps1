@@ -8,7 +8,7 @@
     2. Updating version.json using nbgv
     3. Committing the version change
     4. Creating and pushing a git tag
-    5. Triggering the GitHub Actions publish workflow
+    5. Telling you to publish the tag on Megatron (build/ci/publish.sh) once the build servers passed it
 
     When run without parameters, shows suggested version numbers based on the current version.
 .PARAMETER Version
@@ -20,7 +20,7 @@
 .PARAMETER Cleanup
     Clean up a failed release (delete packages, tags, revert commit)
 .PARAMETER Retry
-    Retry a failed release (re-trigger workflow)
+    Retry a failed release (publish the tag again)
 .EXAMPLE
     .\release.ps1
     Shows suggested version numbers based on current version
@@ -126,30 +126,19 @@ function Get-ReleaseStatus {
         Write-Warn "✗ Remote tag $tagName does not exist"
     }
 
-    # Check GitHub Actions workflow status
+    # Check the build servers' result for the tagged commit
     Write-Info ""
-    Write-Info "Checking workflow runs for tag $tagName..."
+    Write-Info "Checking the MethodCache CI status of $tagName..."
+    $ciState = "unknown"
     try {
-        $runs = gh run list --workflow=publish.yml --limit=5 --json headBranch,status,conclusion,url 2>$null | ConvertFrom-Json
-        $runForTag = $runs | Where-Object { $_.headBranch -eq $tagName } | Select-Object -First 1
-
-        if ($runForTag) {
-            if ($runForTag.status -eq "completed") {
-                if ($runForTag.conclusion -eq "success") {
-                    Write-Success "✓ Workflow completed successfully"
-                } else {
-                    Write-Err "✗ Workflow failed (conclusion: $($runForTag.conclusion))"
-                    Write-Info "  View details: $($runForTag.url)"
-                }
-            } else {
-                Write-Warn "⏳ Workflow still running (status: $($runForTag.status))"
-                Write-Info "  View details: $($runForTag.url)"
-            }
-        } else {
-            Write-Warn "✗ No workflow run found for tag $tagName"
-        }
-    } catch {
-        Write-Warn "Could not check workflow status"
+        $combined = gh api "repos/$GitHubOrg/$GitHubRepo/commits/$tagName/status" 2>$null | ConvertFrom-Json
+        $ci = $combined.statuses | Where-Object { $_.context -eq "MethodCache CI" } | Select-Object -First 1
+        $ciState = if ($ci) { $ci.state } else { "missing" }
+    } catch { }
+    switch ($ciState) {
+        "success" { Write-Success "✓ The build servers passed $tagName" }
+        "pending" { Write-Warn "⏳ The build servers are still running $tagName" }
+        default { Write-Warn "✗ MethodCache CI is '$ciState' for $tagName" }
     }
 
     # Check published packages
@@ -286,7 +275,7 @@ function Invoke-ReleaseCleanup {
     Write-Info "  .\release.ps1 -Version $ReleaseVersion"
 }
 
-# Function to retry a failed release (re-trigger workflow)
+# Function to retry a failed release (publish the tag again)
 function Invoke-ReleaseRetry {
     param([string]$ReleaseVersion)
 
@@ -303,43 +292,9 @@ function Invoke-ReleaseRetry {
         exit 1
     }
 
-    # Check if any packages are already published
-    $anyPublished = $false
-    foreach ($package in $Packages) {
-        if (Test-PackageVersion -Package $package -PackageVersion $ReleaseVersion) {
-            $anyPublished = $true
-            break
-        }
-    }
-
-    if ($anyPublished) {
-        Write-Err "✗ Some packages are already published for version $ReleaseVersion."
-        Write-Info "  Cannot simply retry - need to cleanup first."
-        Write-Info "  Run: .\release.ps1 -Cleanup $ReleaseVersion"
-        exit 1
-    }
-
     Write-Info ""
-    Write-Info "No packages published yet. Re-triggering workflow..."
-    Write-Info ""
-
-    # Delete and re-push tag to trigger workflow
-    Write-Info "Deleting remote tag $tagName..."
-    git push origin --delete $tagName
-
-    Write-Info "Re-pushing tag $tagName..."
-    # Make sure we have the local tag
-    $localTag = git tag -l $tagName
-    if (-not $localTag) {
-        # Create tag at current HEAD (should be the version bump commit)
-        git tag $tagName
-    }
-    git push origin $tagName
-
-    Write-Success ""
-    Write-Success "✓ Release $ReleaseVersion re-triggered!"
-    Write-Success ""
-    Write-Info "Monitor the workflow: https://github.com/$GitHubOrg/$GitHubRepo/actions"
+    Write-Info "Publishing is a manual step on Megatron; running it again skips the packages already published:"
+    Write-Info "  build/ci/publish.sh $tagName"
 }
 
 # Function to suggest next version
@@ -511,7 +466,8 @@ Write-Success ""
 Write-Success "✓ Release $Version created successfully!"
 Write-Success ""
 Write-Info "Next steps:"
-Write-Info "1. Monitor the workflow: https://github.com/eoniclabs/MethodCache/actions"
-Write-Info "2. Verify packages: https://github.com/eoniclabs/MethodCache/packages"
-Write-Info "3. Update release notes: https://github.com/eoniclabs/MethodCache/releases/tag/$tagName"
+Write-Info "1. Wait for the MethodCache CI status on the tagged commit (the build servers run it within minutes)"
+Write-Info "2. Publish on Megatron: build/ci/publish.sh $tagName"
+Write-Info "3. Verify packages: https://github.com/eoniclabs/MethodCache/packages"
+Write-Info "4. Update release notes: https://github.com/eoniclabs/MethodCache/releases/tag/$tagName"
 Write-Success ""
