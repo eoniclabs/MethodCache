@@ -21,10 +21,11 @@ Comprehensive OpenTelemetry instrumentation for MethodCache, providing distribut
 - **Provider-specific metrics**: Redis, SQL Server, Memory storage
 
 ### 🔗 HTTP Correlation
-- Automatic correlation with HTTP requests
-- Request ID and trace ID propagation
-- User and tenant context tracking
+- Cache spans are children of the current request span and copy its `http.*` and `url.*` tags
 - Baggage propagation across service boundaries
+
+The package depends only on OpenTelemetry, so it works the same in console apps, workers and ASP.NET Core. For
+request spans, add `OpenTelemetry.Instrumentation.AspNetCore` to your app as usual.
 
 ## Installation
 
@@ -66,10 +67,6 @@ builder.Services.AddOpenTelemetry()
         .AddPrometheusExporter());
 
 var app = builder.Build();
-
-// Enable HTTP correlation middleware
-app.UseMethodCacheHttpCorrelation();
-
 app.Run();
 ```
 
@@ -288,9 +285,9 @@ TracingConstants.ActivitySource.HasListeners() // Should be true
 
 ### Missing HTTP Correlation
 
-Ensure middleware is registered:
+Cache spans pick up HTTP tags from the request span, so make sure ASP.NET Core instrumentation is enabled:
 ```csharp
-app.UseMethodCacheHttpCorrelation(); // Must be early in pipeline
+.WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddMethodCacheInstrumentation())
 ```
 
 ### High Memory Usage
