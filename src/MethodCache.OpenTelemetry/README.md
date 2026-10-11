@@ -24,13 +24,15 @@ Comprehensive OpenTelemetry instrumentation for MethodCache, providing distribut
 - Cache spans are children of the current request span and copy its `http.*` and `url.*` tags
 - Baggage propagation across service boundaries
 
-The package depends only on OpenTelemetry, so it works the same in console apps, workers and ASP.NET Core. For
-request spans, add `OpenTelemetry.Instrumentation.AspNetCore` to your app as usual.
+The package depends only on the OpenTelemetry API, as instrumentation libraries should, so it works the same in
+console apps, workers and ASP.NET Core. Your app brings the SDK and exporters. For request spans, add
+`OpenTelemetry.Instrumentation.AspNetCore` to your app as usual.
 
 ## Installation
 
 ```bash
 dotnet add package MethodCache.OpenTelemetry
+dotnet add package OpenTelemetry.Extensions.Hosting   # the SDK and AddOpenTelemetry(), if your app doesn't have it yet
 ```
 
 ## Quick Start
