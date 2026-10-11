@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using MethodCache.HttpCaching.Options;
 using MethodCache.HttpCaching.Tests;
 using Xunit;
 
@@ -149,39 +148,6 @@ public class VaryHeaderIntegrationTests
         var request2 = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data");
         request2.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request2.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue("en-US"));
-        var response2 = await client.SendAsync(request2);
-
-        Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
-        Assert.Equal(1, innerHandler.RequestCount);
-    }
-
-    [Fact]
-    public async Task CacheIgnoreVary_WhenDisabled_IgnoresVaryHeaders()
-    {
-        var options = new HttpCacheOptions();
-        options.Behavior.RespectVary = false;
-        var (client, innerHandler) = HttpCacheTestFactory.CreateClient(options);
-
-        var response = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("content", System.Text.Encoding.UTF8, "text/plain"),
-            Headers =
-            {
-                Date = DateTimeOffset.UtcNow,
-                CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(10) },
-                Vary = { "Accept" }
-            }
-        };
-
-        innerHandler.SetResponses(response, TestHttpMessageHandler.CloneResponse(response));
-
-        var request1 = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data");
-        request1.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        var response1 = await client.SendAsync(request1);
-
-        var request2 = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data");
-        request2.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
         var response2 = await client.SendAsync(request2);
 
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);

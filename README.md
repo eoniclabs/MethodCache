@@ -272,7 +272,7 @@ Supported frameworks: .NET 8, 9 and 10.
 | `MethodCache.AspNetCore` | Admin endpoints and a health check | Experimental |
 | `MethodCache.OpenTelemetry` | Tracing and metrics | Beta |
 | `MethodCache.Serialization.MessagePack` | MessagePack instead of JSON in the distributed cache | Experimental |
-| `MethodCache.HttpCaching` | HTTP response caching middleware | Experimental |
+| `MethodCache.HttpCaching` | HTTP caching for `HttpClient`: ETag revalidation, Cache-Control, Vary | Experimental |
 
 ## Documentation
 

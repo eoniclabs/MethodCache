@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>EonicLabs</Authors>
-    <Description>Standards-compliant HTTP caching handler for HttpClient that implements RFC 7234 caching semantics</Description>
+    <Description>HTTP caching for HttpClient: ETag and Last-Modified revalidation, Cache-Control and Vary, as in RFC 9111</Description>
     <PackageProjectUrl>https://github.com/eoniclabs/MethodCache</PackageProjectUrl>
     <RepositoryUrl>https://github.com/eoniclabs/MethodCache</RepositoryUrl>
     <PackageTags>cache;http;httpclient;caching;etag;conditional;304</PackageTags>
@@ -20,7 +20,6 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
-    <PackageReference Include="System.Text.Json" Version="9.0.9" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
   </ItemGroup>
 

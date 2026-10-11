@@ -1,11 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
-using MethodCache.HttpCaching.Options;
-using MethodCache.HttpCaching.Storage;
 using MethodCache.HttpCaching.Tests;
-using MethodCache.HttpCaching.Validation;
-using MethodCache.HttpCaching.Extensions;
 using Xunit;
 
 namespace MethodCache.HttpCaching.IntegrationTests;
@@ -29,31 +25,30 @@ public class HttpCacheIntegrationTests
         Assert.NotNull(httpClient);
 
         var storage = provider.GetRequiredService<IHttpCacheStorage>();
-        Assert.IsType<InMemoryHttpCacheStorage>(storage);
+        Assert.IsType<MethodCache.HttpCaching.Internal.InMemoryHttpCacheStorage>(storage);
     }
 
     [Fact]
-    public void AddHttpCaching_WithBuilderConfiguration_AppliesOptions()
+    public void AddHttpCaching_WithConfiguration_AppliesOptions()
     {
         var services = new ServiceCollection();
+        services.Configure<HttpCacheStorageOptions>(storage => storage.MaxCacheSize = 50 * 1024 * 1024);
         services.AddHttpClient<TestApiClient>()
-            .AddHttpCaching(builder => builder
-                .Configure(options =>
-                {
-                    options.Behavior.EnableStaleWhileRevalidate = true;
-                    options.Behavior.EnableStaleIfError = true;
-                    options.Freshness.DefaultMaxAge = TimeSpan.FromMinutes(10);
-                    options.Diagnostics.AddDiagnosticHeaders = true;
-                })
-                .ConfigureStorage(storage => storage.MaxCacheSize = 50 * 1024 * 1024));
+            .AddHttpCaching(options =>
+            {
+                options.EnableStaleWhileRevalidate = true;
+                options.EnableStaleIfError = true;
+                options.DefaultMaxAge = TimeSpan.FromMinutes(10);
+                options.AddDiagnosticHeaders = true;
+            });
 
         var provider = services.BuildServiceProvider();
 
         var cacheOptions = provider.GetRequiredService<IOptionsMonitor<HttpCacheOptions>>().Get(nameof(TestApiClient));
-        Assert.True(cacheOptions.Behavior.EnableStaleWhileRevalidate);
-        Assert.True(cacheOptions.Behavior.EnableStaleIfError);
-        Assert.Equal(TimeSpan.FromMinutes(10), cacheOptions.Freshness.DefaultMaxAge);
-        Assert.True(cacheOptions.Diagnostics.AddDiagnosticHeaders);
+        Assert.True(cacheOptions.EnableStaleWhileRevalidate);
+        Assert.True(cacheOptions.EnableStaleIfError);
+        Assert.Equal(TimeSpan.FromMinutes(10), cacheOptions.DefaultMaxAge);
+        Assert.True(cacheOptions.AddDiagnosticHeaders);
 
         var storageOptions = provider.GetRequiredService<IOptions<HttpCacheStorageOptions>>().Value;
         Assert.Equal(50 * 1024 * 1024, storageOptions.MaxCacheSize);
@@ -66,7 +61,7 @@ public class HttpCacheIntegrationTests
         services.AddSingleton<IHttpCacheStorage, FakeHttpCacheStorage>();
 
         services.AddHttpClient<TestApiClient>()
-            .AddHttpCaching(builder => builder.ConfigureStorage(_ => { }));
+            .AddHttpCaching();
 
         var provider = services.BuildServiceProvider();
         var storage = provider.GetRequiredService<IHttpCacheStorage>();

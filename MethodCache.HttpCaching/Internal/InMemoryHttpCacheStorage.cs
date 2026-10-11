@@ -1,15 +1,14 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MethodCache.HttpCaching.Options;
 
-namespace MethodCache.HttpCaching.Storage;
+namespace MethodCache.HttpCaching.Internal;
 
 /// <summary>
 /// In-memory HTTP cache storage. It owns its own <see cref="MemoryCache"/>, so it never touches the application's
 /// <see cref="IMemoryCache"/>.
 /// </summary>
-public sealed class InMemoryHttpCacheStorage : IHttpCacheStorage, IDisposable
+internal sealed class InMemoryHttpCacheStorage : IHttpCacheStorage, IDisposable
 {
     private readonly MemoryCache _cache;
     private readonly ILogger<InMemoryHttpCacheStorage> _logger;
@@ -42,12 +41,6 @@ public sealed class InMemoryHttpCacheStorage : IHttpCacheStorage, IDisposable
     {
         if (timeToLive <= TimeSpan.Zero)
         {
-            return ValueTask.CompletedTask;
-        }
-
-        if (_storage.MaxResponseSize > 0 && entry.Content.Length > _storage.MaxResponseSize)
-        {
-            _logger.LogDebug("Entry {Key} exceeds in-memory response size limit ({Size} > {Limit}), skipping", key, entry.Content.Length, _storage.MaxResponseSize);
             return ValueTask.CompletedTask;
         }
 
