@@ -103,7 +103,8 @@ internal class CacheActivitySource : ICacheActivitySource
     {
         if (activity == null || !_options.EnableHttpCorrelation) return;
 
-        var currentActivity = Activity.Current;
+        // A started cache span is itself Activity.Current, so read the request span from its parent
+        var currentActivity = activity.Parent ?? (ReferenceEquals(Activity.Current, activity) ? null : Activity.Current);
         if (currentActivity != null)
         {
             foreach (var tag in currentActivity.Tags)
