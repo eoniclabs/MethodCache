@@ -965,15 +965,15 @@ namespace MethodCache.SourceGenerator
                     var parameters = string.Join(", ", property.Parameters.Select(p =>
                     {
                         var modifier = p.RefKind == RefKind.In ? "in " : string.Empty;
-                        return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {p.Name}";
+                        return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.Identifier(p.Name)}";
                     }));
                     name = $"this[{parameters}]";
-                    access = $"{target}[{string.Join(", ", property.Parameters.Select(p => p.Name))}]";
+                    access = $"{target}[{string.Join(", ", property.Parameters.Select(p => Utils.Identifier(p.Name)))}]";
                 }
                 else
                 {
-                    name = property.Name;
-                    access = $"{target}.{property.Name}";
+                    name = Utils.Identifier(property.Name);
+                    access = $"{target}.{name}";
                 }
 
                 sb.AppendLine($"        {byRef}{type} {declaring}.{name}");
@@ -994,8 +994,9 @@ namespace MethodCache.SourceGenerator
             private static void EmitPassthroughEvent(StringBuilder sb, IEventSymbol @event)
             {
                 var declaring = Utils.GetReturnTypeForSignature(@event.ContainingType);
-                var target = $"(({declaring})_decorated).{@event.Name}";
-                sb.AppendLine($"        event {Utils.GetReturnTypeForSignature(@event.Type)} {declaring}.{@event.Name}");
+                var name = Utils.Identifier(@event.Name);
+                var target = $"(({declaring})_decorated).{name}";
+                sb.AppendLine($"        event {Utils.GetReturnTypeForSignature(@event.Type)} {declaring}.{name}");
                 sb.AppendLine("        {");
                 sb.AppendLine($"            add => {target} += value;");
                 sb.AppendLine($"            remove => {target} -= value;");

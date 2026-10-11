@@ -6,6 +6,7 @@ pages is compiled and tested in CI.
 ## Caching methods
 
 - [Getting started](getting-started.md): put `[Cache]` on an interface method and register it.
+- [Generated decorators](features/source-generator.md): supported signatures and forwarded interface members.
 - [Cache keys](features/keys.md): how keys are built from the arguments, and how to control them.
 - [Expiration](features/expiration.md): duration, sliding expiration, refresh-ahead and versions.
 - [Invalidation](features/invalidation.md): tags with argument templates, keys and patterns.

@@ -339,7 +339,7 @@ Supported frameworks: .NET 8, 9 and 10.
 The [documentation](docs/README.md) has a page per feature, and every C# example in it is compiled and tested in CI:
 
 - [Getting started](docs/getting-started.md)
-- Caching methods: [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
+- Caching methods: [generated decorators](docs/features/source-generator.md), [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
   [invalidation](docs/features/invalidation.md), [fail-safe](docs/features/fail-safe.md),
   [conditional caching](docs/features/conditional-caching.md), [configuration](docs/features/configuration.md)
 - [Manual caching](docs/features/manual-caching.md) and [third-party code](docs/features/third-party.md)

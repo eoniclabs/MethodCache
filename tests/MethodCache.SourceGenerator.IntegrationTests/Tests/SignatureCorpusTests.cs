@@ -228,6 +228,55 @@ public class SignatureCorpusTests
 
         // Parameter names that are keywords or collide with names in generated code
         ["keyword parameter names"] = Member("Task<string> Get(int @class, string @event)", "Task<string> Get(int @class, string @event) { Counter.Hit(); return Task.FromResult(@event); }", "await s.Get(1, \"a\")", "await s.Get(1, \"b\")"),
+        ["keyword property and event names"] = new("""
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(int id);
+                    int @class { get; set; }
+                    event Action? @event;
+                }
+                public class Svc : ISvc
+                {
+                    private int _value;
+                    public int @class { get => _value; set { _value = value; @event?.Invoke(); } }
+                    public event Action? @event;
+                    public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(id.ToString()); }
+                }
+                public static class Checks
+                {
+                    public static Task<string> Call(ISvc service, int id)
+                    {
+                        var raised = false;
+                        Action handler = () => raised = true;
+                        service.@event += handler;
+                        service.@class = id;
+                        service.@event -= handler;
+                        if (!raised || service.@class != id) throw new InvalidOperationException("passthrough failed");
+                        return service.Get(service.@class);
+                    }
+                }
+            """, "ISvc", "await Checks.Call(s, 1)", "await Checks.Call(s, 2)"),
+        ["keyword indexer parameter name"] = new("""
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(int id);
+                    int this[int @class] { get; set; }
+                }
+                public class Svc : ISvc
+                {
+                    private readonly Dictionary<int, int> _values = new();
+                    public int this[int @class] { get => _values[@class]; set => _values[@class] = value; }
+                    public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(id.ToString()); }
+                }
+                public static class Checks
+                {
+                    public static Task<string> Call(ISvc service, int id)
+                    {
+                        service[0] = id;
+                        return service.Get(service[0]);
+                    }
+                }
+            """, "ISvc", "await Checks.Call(s, 1)", "await Checks.Call(s, 2)"),
         ["generated local names as parameters"] = Member("Task<string> Get(int result, int key, int value, int policy, int cacheKey, int cacheSnapshot)", "Task<string> Get(int result, int key, int value, int policy, int cacheKey, int cacheSnapshot) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1, 2, 3, 4, 5, 6)", "await s.Get(1, 2, 3, 4, 5, 7)"),
         ["more generated names as parameters"] = Member("Task<string> Get(int factory, int services, int inner, int metrics, int buffer, int args)", "Task<string> Get(int factory, int services, int inner, int metrics, int buffer, int args) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1, 2, 3, 4, 5, 6)", "await s.Get(1, 2, 3, 4, 5, 7)"),
 

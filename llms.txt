@@ -7,6 +7,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 ## Docs
 
 - [Getting started](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/getting-started.md): put `[Cache]` on an interface method and register it.
+- [Generated decorators](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/source-generator.md): supported signatures and forwarded interface members.
 - [Cache keys](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/keys.md): how keys are built from the arguments, and how to control them.
 - [Expiration](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/expiration.md): duration, sliding expiration, refresh-ahead and versions.
 - [Invalidation](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/invalidation.md): tags with argument templates, keys and patterns.

@@ -33,4 +33,6 @@ builder.Services.AddMethodCache();
 - **One line to go distributed.** `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)`, with every instance's memory cache kept in sync.
 - **Built for production.** Stampede protection, a W-TinyLFU memory cache that stays within its size limit under load, admin endpoints, a health check and OpenTelemetry.
 
+[Supported signatures and forwarded members](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/source-generator.md) include properties, events and indexers whose names are C# keywords.
+
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache
