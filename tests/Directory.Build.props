@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    Test projects run on every target framework the libraries ship for, so the net8.0 and net10.0
+    builds (and their #if branches) are exercised, not only the one framework the tests happen to use.
+    The CI-only programs (the AOT and package smoke tests) and the docs tests, which compile the net10.0 samples,
+    keep their own single TargetFramework.
+  -->
+  <PropertyGroup Condition="!$(MSBuildProjectName.Contains('SmokeTest')) And '$(MSBuildProjectName)' != 'MethodCache.Docs.Tests'">
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+  </PropertyGroup>
+</Project>

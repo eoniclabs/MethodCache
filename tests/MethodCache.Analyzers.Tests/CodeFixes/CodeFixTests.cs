@@ -86,7 +86,7 @@ public interface IUserService
     [System.ComponentModel.Description(""x"")]
     [Cache]
     Task<string> GetAsync(int id);
-}", fixedSources[1].Replace("\r\n", "\n"));
+}".Replace("\r\n", "\n"), fixedSources[1].Replace("\r\n", "\n"));
         }
 
         [Fact]

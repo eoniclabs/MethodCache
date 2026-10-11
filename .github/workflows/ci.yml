@@ -26,6 +26,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
+            8.0.x
             9.0.x
             10.0.x
 
@@ -39,10 +40,11 @@ jobs:
         # Each chapter checks its own claims and the run fails if one does not hold
         run: dotnet run --project samples/MethodCache.Demo --configuration Release --no-build
 
-      - name: Test with coverage
+      - name: Test with coverage (net8.0, net9.0 and net10.0)
         run: dotnet test MethodCache.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
         env:
-          METHODCACHE_REQUIRE_INFRA_TESTS: "false"
+          # Redis and SQL Server run in Testcontainers on this runner; a missing container fails the run instead of skipping
+          METHODCACHE_REQUIRE_INFRA_TESTS: "true"
 
       - name: Upload test results artifact
         if: always()
@@ -58,6 +60,63 @@ jobs:
           files: ./TestResults/**/coverage.cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+
+  unit-tests-windows:
+    # Paths, line endings and the Windows runtime; the Docker-backed Redis and SQL Server tests run on Linux only
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Build
+        run: dotnet build MethodCache.sln --configuration Release
+
+      - name: Test
+        run: dotnet test MethodCache.sln --configuration Release --no-build --filter "FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
+
+  unit-tests-culture:
+    # Turkish (dotted/dotless i, comma decimals) and Swedish (U+2212 minus sign, comma decimals) catch
+    # formatting and parsing that depends on the current culture
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Build
+        run: dotnet build MethodCache.sln --configuration Release
+
+      - name: Test with tr-TR
+        run: dotnet test MethodCache.sln --configuration Release --no-build --framework net10.0 --filter "FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
+        env:
+          LANG: tr_TR.UTF-8
+          LC_ALL: tr_TR.UTF-8
+
+      - name: Test with sv-SE
+        run: dotnet test MethodCache.sln --configuration Release --no-build --framework net10.0 --filter "FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
+        env:
+          LANG: sv_SE.UTF-8
+          LC_ALL: sv_SE.UTF-8
 
   aot-smoke-test:
     runs-on: ubuntu-latest
