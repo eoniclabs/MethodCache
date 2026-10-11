@@ -36,7 +36,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 - **Third-party clients too.** One line caches chosen methods of an SDK or API client's own interface, no wrapper needed ([how](#caching-code-you-dont-own)).
 - **HTTP responses as well.** `AddHttpCaching()` on an `HttpClient` honors `Cache-Control` and revalidates with ETags ([how](#http-responses)).
 - **One line to go distributed.** `AddMethodCacheRedis(...)` shares results between instances and keeps every instance's memory cache in sync.
-- **Built for production.** Stampede protection, a W-TinyLFU memory cache, admin endpoints, a health check and OpenTelemetry tracing and metrics.
+- **Built for production.** Stampede protection, fail-safe, a W-TinyLFU memory cache, admin endpoints, a health check and OpenTelemetry tracing and metrics.
 
 ## See it run
 
@@ -270,6 +270,7 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --fi
 | Cache a third-party client's interface without a wrapper | ✅ | ❌ | ❌ |
 | Keys built from the arguments | ✅ | ❌ you write keys | ❌ you write keys |
 | Stampede protection | ✅ | ✅ | ✅ |
+| Fail-safe and soft timeouts | ✅ | ❌ | ✅ |
 | Memory + distributed cache | ✅ | ✅ | ✅ |
 | Other instances drop their memory copy at once | ✅ Redis, SQL Server | ❌ | ✅ |
 | Tag invalidation | ✅ with argument templates | ✅ | ✅ |
@@ -277,8 +278,8 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --fi
 | Admin endpoints and health check | ✅ | ❌ | ❌ |
 
 HybridCache ships with .NET and is the natural choice when you want a plain `GetOrCreateAsync` API and nothing more.
-FusionCache is more mature and has more resilience features, such as fail-safe and timeouts. MethodCache is for
-when you want caching to be a line of metadata on the method rather than code inside it.
+FusionCache is more mature and has more resilience features, such as fail-safe in the distributed cache and
+auto-recovery. MethodCache is for when you want caching to be a line of metadata on the method rather than code inside it.
 
 ## Packages
 

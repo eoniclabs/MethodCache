@@ -146,6 +146,9 @@ internal sealed class ConfigFilePolicySource : IPolicySource
            left.Policy.Duration == right.Policy.Duration &&
            left.Policy.SlidingExpiration == right.Policy.SlidingExpiration &&
            left.Policy.RefreshAhead == right.Policy.RefreshAhead &&
+           left.Policy.FailSafe == right.Policy.FailSafe &&
+           left.Policy.FailSafeTimeout == right.Policy.FailSafeTimeout &&
+           left.Policy.FailSafeRetryAfter == right.Policy.FailSafeRetryAfter &&
            left.Policy.Version == right.Policy.Version &&
            left.Policy.Tags.SequenceEqual(right.Policy.Tags) &&
            SameMetadata(left.Policy.Metadata, right.Policy.Metadata) &&

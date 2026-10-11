@@ -50,6 +50,12 @@ namespace MethodCache.Core
         /// <summary>Gets or sets a refresh-ahead window, as <see cref="CacheAttribute.RefreshAhead"/>.</summary>
         public string? RefreshAhead { get; set; }
 
+        /// <summary>Gets or sets the fail-safe duration or <c>"off"</c>, as <see cref="CacheAttribute.FailSafe"/>.</summary>
+        public string? FailSafe { get; set; }
+
+        /// <summary>Gets or sets the fail-safe timeout, as <see cref="CacheAttribute.FailSafeTimeout"/>.</summary>
+        public string? FailSafeTimeout { get; set; }
+
         /// <summary>
         /// Gets or sets tags for the cached entries, as <see cref="CacheAttribute.Tags"/>. Templates such as
         /// <c>"fx:{from}"</c> use the method's parameter names.

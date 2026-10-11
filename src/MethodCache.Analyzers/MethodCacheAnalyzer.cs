@@ -37,9 +37,9 @@ namespace MethodCache.Analyzers
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "Duration, SlidingExpiration and RefreshAhead on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\".");
+            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe and FailSafeTimeout on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".");
 
-        private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead" };
+        private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout" };
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule);
 
@@ -115,6 +115,7 @@ namespace MethodCache.Analyzers
             {
                 if (Array.IndexOf(TimeSpanProperties, argument.Key) >= 0 &&
                     argument.Value.Value is string text &&
+                    !(argument.Key == "FailSafe" && string.Equals(text, "off", StringComparison.OrdinalIgnoreCase)) &&
                     (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero))
                 {
                     yield return (argument.Key, text);

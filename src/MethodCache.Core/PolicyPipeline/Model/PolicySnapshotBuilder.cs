@@ -48,7 +48,10 @@ internal static class PolicySnapshotBuilder
                             CachePolicyFields.Version |
                             CachePolicyFields.Metadata |
                             CachePolicyFields.RefreshAhead |
-                            CachePolicyFields.CacheWhen;
+                            CachePolicyFields.CacheWhen |
+                            CachePolicyFields.FailSafe |
+                            CachePolicyFields.FailSafeTimeout |
+                            CachePolicyFields.FailSafeRetryAfter;
 
         var delta = new CachePolicyDelta(
             reason == PolicyChangeReason.Removed ? CachePolicyFields.None : fields,
