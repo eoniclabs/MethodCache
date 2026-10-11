@@ -182,7 +182,7 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 ```
 
 Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
-policy in code, and the change applies to the next call. See the [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md).
+policy in code, and the change applies to the next call. See [Configuration](docs/features/configuration.md).
 
 ### Distributed cache
 
@@ -230,7 +230,7 @@ var rate = await cache.GetOrCreateAsync(
 ```
 <!-- endSnippet -->
 
-See the [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md).
+See [Caching third-party code](docs/features/third-party.md).
 
 ### HTTP responses
 
@@ -335,26 +335,16 @@ Supported frameworks: .NET 8, 9 and 10.
 
 ## Documentation
 
-- [Configuration Guide](docs/user-guide/CONFIGURATION_GUIDE.md)
-- [Fluent API Guide](docs/user-guide/FLUENT_API.md)
-- [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md)
-- [Build Diagnostics](docs/user-guide/DIAGNOSTICS.md)
-- [Adding caching to an existing service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
-- [Migrating from IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
+The [documentation](docs/README.md) has a page per feature, and every C# example in it is compiled and tested in CI:
+
+- [Getting started](docs/getting-started.md)
+- Caching methods: [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
+  [invalidation](docs/features/invalidation.md), [fail-safe](docs/features/fail-safe.md),
+  [conditional caching](docs/features/conditional-caching.md), [configuration](docs/features/configuration.md)
+- [Manual caching](docs/features/manual-caching.md) and [third-party code](docs/features/third-party.md)
+- Production: [distributed cache](docs/features/distributed-cache.md), [monitoring](docs/features/monitoring.md),
+  [memory cache](docs/features/memory-cache.md), [Native AOT](docs/features/native-aot.md), [testing](docs/features/testing.md)
+- [Troubleshooting](docs/troubleshooting.md), [build diagnostics](docs/user-guide/DIAGNOSTICS.md) and
+  [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
 - Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md)
 - [Demo](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
-
-## Contributing
-
-Issues and pull requests are welcome. Before you open a pull request, run:
-
-```bash
-dotnet format
-dotnet test MethodCache.sln
-```
-
-See [AGENTS.md](AGENTS.md) for the repository layout and contribution rules.
-
-## License
-
-[MIT](LICENSE)
