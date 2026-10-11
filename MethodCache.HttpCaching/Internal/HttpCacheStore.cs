@@ -7,18 +7,18 @@ namespace MethodCache.HttpCaching.Internal;
 
 /// <summary>
 /// The built-in HTTP cache storage: a size-limited memory cache of its own (it never touches the application's
-/// <c>IMemoryCache</c>), plus the registered <see cref="IDistributedCache"/> when
+/// <c>IMemoryCache</c>), or the registered <see cref="IDistributedCache"/> when
 /// <see cref="HttpCacheStorageOptions.UseDistributedCache"/> is on, so every instance of the app shares responses.
+/// Distributed mode keeps no local copies: an invalidation after a POST on one instance must be seen by all of them.
 /// </summary>
 internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
 {
-    private const string DistributedKeyPrefix = "methodcache-http:";
-
     private readonly MemoryCache _memory;
     private readonly IDistributedCache? _distributed;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<HttpCacheStore> _logger;
     private readonly long _maxCacheSize;
+    private readonly string _keyPrefix;
 
     public HttpCacheStore(
         IOptions<HttpCacheStorageOptions> options,
@@ -30,6 +30,7 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
         _timeProvider = timeProvider ?? TimeProvider.System;
         _distributed = distributed;
         _maxCacheSize = options.Value.MaxCacheSize;
+        _keyPrefix = options.Value.KeyPrefix;
         _memory = new MemoryCache(new MemoryCacheOptions
         {
             SizeLimit = _maxCacheSize > 0 ? _maxCacheSize : null
@@ -38,32 +39,20 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
 
     public async ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
-        if (_memory.TryGetValue(key, out HttpCacheEntry? entry))
-        {
-            return entry;
-        }
-
         if (_distributed == null)
         {
-            return null;
+            return _memory.TryGetValue(key, out HttpCacheEntry? entry) ? entry : null;
         }
 
         try
         {
-            var data = await _distributed.GetAsync(DistributedKeyPrefix + key, cancellationToken).ConfigureAwait(false);
+            var data = await _distributed.GetAsync(_keyPrefix + key, cancellationToken).ConfigureAwait(false);
             if (data == null || HttpCacheEntrySerializer.Deserialize(data) is not { } stored)
             {
                 return null;
             }
 
-            var remaining = stored.ExpiresAt - _timeProvider.GetUtcNow();
-            if (remaining <= TimeSpan.Zero)
-            {
-                return null;
-            }
-
-            SetLocal(key, stored.Entry, remaining);
-            return stored.Entry;
+            return stored.ExpiresAt > _timeProvider.GetUtcNow() ? stored.Entry : null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -79,10 +68,9 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
             return;
         }
 
-        SetLocal(key, entry, timeToLive);
-
         if (_distributed == null)
         {
+            SetLocal(key, entry, timeToLive);
             return;
         }
 
@@ -90,7 +78,7 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
         {
             var data = HttpCacheEntrySerializer.Serialize(entry, _timeProvider.GetUtcNow() + timeToLive);
             var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = timeToLive };
-            await _distributed.SetAsync(DistributedKeyPrefix + key, data, options, cancellationToken).ConfigureAwait(false);
+            await _distributed.SetAsync(_keyPrefix + key, data, options, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -100,16 +88,15 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
 
     public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
-        _memory.Remove(key);
-
         if (_distributed == null)
         {
+            _memory.Remove(key);
             return;
         }
 
         try
         {
-            await _distributed.RemoveAsync(DistributedKeyPrefix + key, cancellationToken).ConfigureAwait(false);
+            await _distributed.RemoveAsync(_keyPrefix + key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -118,11 +105,17 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
     }
 
     /// <summary>
-    /// Clears this instance's memory. <see cref="IDistributedCache"/> cannot enumerate keys, so distributed entries
-    /// stay until they expire.
+    /// Clears the memory cache. <see cref="IDistributedCache"/> cannot enumerate keys, so distributed entries stay
+    /// until they expire.
     /// </summary>
     public ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
+        if (_distributed != null)
+        {
+            _logger.LogWarning("ClearAsync cannot clear the distributed HTTP cache; its entries stay until they expire");
+            return ValueTask.CompletedTask;
+        }
+
         _memory.Clear();
         _logger.LogInformation("HTTP cache cleared");
         return ValueTask.CompletedTask;

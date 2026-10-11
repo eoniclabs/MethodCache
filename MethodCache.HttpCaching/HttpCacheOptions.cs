@@ -66,7 +66,10 @@ public sealed class HttpCacheOptions
     /// </summary>
     public ISet<string> KeyHeaders { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Request methods whose responses are cached. Default GET and HEAD.</summary>
+    /// <summary>
+    /// Request methods whose responses are cached. Default GET and HEAD. Unsafe methods such as POST are never
+    /// cached; a successful one removes the cached responses for its URL instead.
+    /// </summary>
     public ISet<HttpMethod> CacheableMethods { get; } = new HashSet<HttpMethod> { HttpMethod.Get, HttpMethod.Head };
 
     /// <summary>

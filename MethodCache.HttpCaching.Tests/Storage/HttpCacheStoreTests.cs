@@ -45,9 +45,23 @@ public class HttpCacheStoreTests
         using var second = CreateStore(distributed: distributed);
 
         await first.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1));
+        Assert.NotNull(await second.GetAsync("k")); // second instance has read it once
         await first.RemoveAsync("k");
 
         Assert.Null(await second.GetAsync("k"));
+    }
+
+    [Fact]
+    public async Task KeyPrefix_KeepsApplicationsSharingADistributedCacheApart()
+    {
+        var distributed = new MemoryDistributedCache(Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
+        using var orders = CreateStore(new HttpCacheStorageOptions { KeyPrefix = "orders:" }, distributed);
+        using var billing = CreateStore(new HttpCacheStorageOptions { KeyPrefix = "billing:" }, distributed);
+
+        await orders.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1));
+
+        Assert.Null(await billing.GetAsync("k"));
+        Assert.NotNull(distributed.Get("orders:k"));
     }
 
     [Fact]
@@ -56,9 +70,9 @@ public class HttpCacheStoreTests
         using var store = CreateStore(distributed: new ThrowingDistributedCache());
 
         await store.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1));
+        await store.RemoveAsync("k");
 
-        Assert.NotNull(await store.GetAsync("k"));
-        Assert.Null(await store.GetAsync("other"));
+        Assert.Null(await store.GetAsync("k"));
     }
 
     [Fact]

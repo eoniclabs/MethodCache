@@ -141,12 +141,22 @@ public class HttpCachingRegistrationTests
 
         var services = new ServiceCollection();
         services.AddHttpClient("metered").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => new CountingOrigin());
-        var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("metered");
+        services.AddHttpClient("down").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => new FailingOrigin());
+        var factory = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
+        var client = factory.CreateClient("metered");
         await client.GetStringAsync("https://api.example.com/metered");
         await client.GetStringAsync("https://api.example.com/metered");
+        await Assert.ThrowsAsync<HttpRequestException>(() => factory.CreateClient("down").GetStringAsync("https://api.example.com/down"));
 
         Assert.Contains("miss", outcomes);
         Assert.Contains("hit", outcomes);
+        Assert.Contains("error", outcomes);
+    }
+
+    private sealed class FailingOrigin : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => throw new HttpRequestException("origin down");
     }
 
     private sealed class ETagOrigin : HttpMessageHandler

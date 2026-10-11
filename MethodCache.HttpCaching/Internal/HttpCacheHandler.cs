@@ -40,22 +40,38 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         Miss,
         Stale,
         Revalidated,
-        Bypass
+        Bypass,
+        Error
     }
 
-    private static readonly string[] OutcomeNames = ["hit", "miss", "stale", "revalidated", "bypass"];
+    private static readonly string[] OutcomeNames = ["hit", "miss", "stale", "revalidated", "bypass", "error"];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var options = _optionsMonitor.Get(_state.Name);
         var startedAt = _metrics != null ? Stopwatch.GetTimestamp() : 0;
+        try
+        {
+            return await SendThroughCacheAsync(request, startedAt, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception) when (RecordFailure(startedAt))
+        {
+            throw; // never reached: the filter records the failure and lets the exception through untouched
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, long startedAt, CancellationToken cancellationToken)
+    {
+        var options = _optionsMonitor.Get(_state.Name);
         var requestDirectives = RequestCacheDirectives.Parse(request);
 
-        if (!options.CacheableMethods.Contains(request.Method) || requestDirectives.NoCache || requestDirectives.NoStore)
+        var isUnsafe = IsUnsafeMethod(request.Method);
+
+        // Unsafe methods are never served from cache, even if listed in CacheableMethods, so they always invalidate
+        if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoCache || requestDirectives.NoStore)
         {
             var bypassResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-            if (IsUnsafeMethod(request.Method) && (int)bypassResponse.StatusCode is >= 200 and < 400)
+            if (isUnsafe && (int)bypassResponse.StatusCode is >= 200 and < 400)
             {
                 await InvalidateAfterUnsafeRequestAsync(request, bypassResponse, options, cancellationToken).ConfigureAwait(false);
             }
@@ -109,7 +125,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         {
             upstreamResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException && cachedEntry != null && freshness.CanUseStaleIfError(cachedEntry))
+        // An HttpClient timeout surfaces as TaskCanceledException; only the caller's own cancellation skips stale-if-error
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested && cachedEntry != null && freshness.CanUseStaleIfError(cachedEntry))
         {
             _logger.LogWarning(ex, "Request failed, serving stale content for {Uri}", request.RequestUri);
             return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness), startedAt);
@@ -455,5 +472,11 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     {
         _metrics?.Record(_state.Name, OutcomeNames[(int)outcome], Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
         return response;
+    }
+
+    private bool RecordFailure(long startedAt)
+    {
+        _metrics?.Record(_state.Name, OutcomeNames[(int)Outcome.Error], Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+        return false;
     }
 }

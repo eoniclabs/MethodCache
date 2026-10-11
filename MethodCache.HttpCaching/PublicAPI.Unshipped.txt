@@ -60,6 +60,8 @@ MethodCache.HttpCaching.HttpCacheOptions.StaleRetention.get -> System.TimeSpan
 MethodCache.HttpCaching.HttpCacheOptions.StaleRetention.set -> void
 MethodCache.HttpCaching.HttpCacheStorageOptions
 MethodCache.HttpCaching.HttpCacheStorageOptions.HttpCacheStorageOptions() -> void
+MethodCache.HttpCaching.HttpCacheStorageOptions.KeyPrefix.get -> string!
+MethodCache.HttpCaching.HttpCacheStorageOptions.KeyPrefix.set -> void
 MethodCache.HttpCaching.HttpCacheStorageOptions.MaxCacheSize.get -> long
 MethodCache.HttpCaching.HttpCacheStorageOptions.MaxCacheSize.set -> void
 MethodCache.HttpCaching.HttpCacheStorageOptions.UseDistributedCache.get -> bool

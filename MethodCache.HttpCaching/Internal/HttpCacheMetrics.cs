@@ -20,7 +20,7 @@ internal sealed class HttpCacheMetrics : IDisposable
     {
         var meter = meterFactory?.Create(MeterName) ?? (_ownedMeter = new Meter(MeterName));
         _requests = meter.CreateCounter<long>(RequestsName, "{request}",
-            "HttpClient requests through the HTTP cache, by client and outcome (hit, miss, revalidated, stale, bypass)");
+            "HttpClient requests through the HTTP cache, by client and outcome (hit, miss, revalidated, stale, bypass, error)");
         _duration = meter.CreateHistogram<double>(DurationName, "ms",
             "Time to answer an HttpClient request through the HTTP cache, by client and outcome");
     }
