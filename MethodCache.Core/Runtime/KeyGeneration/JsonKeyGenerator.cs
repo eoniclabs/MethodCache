@@ -32,10 +32,10 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </example>
 public class JsonKeyGenerator : ICacheKeyGenerator
 {
-    public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+    public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         => GenerateKeyInternal(methodName, args, policy.Version);
 
-    private static string GenerateKeyInternal(string methodName, object[] args, int? version)
+    private static string GenerateKeyInternal(string methodName, object?[] args, int? version)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append(methodName);

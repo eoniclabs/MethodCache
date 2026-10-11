@@ -241,7 +241,7 @@ namespace TestApp
 {
     public class CustomKeyGenerator : ICacheKeyGenerator
     {
-        public string GenerateKey(string methodName, object[] args, CacheRuntimePolicy policy)
+        public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
             => $""custom:{methodName}:{args.Length}"";
     }
 
@@ -781,6 +781,59 @@ namespace TestApp
 
             // Check pass-through for regular method
             AssertContainsIgnoreWhitespace(decoratorSource, "_decorated.RegularMethod()");
+        }
+
+        [Fact]
+        public void NullableSignatures_CompileWithoutWarningsInGeneratedCode()
+        {
+            var source = @"
+#nullable enable
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MethodCache.Core;
+
+namespace TestApp
+{
+    public sealed record User(string Name);
+
+    public interface ITestService
+    {
+        [Cache]
+        Task<User?> FindAsync(string? name);
+
+        [Cache]
+        ValueTask<IReadOnlyList<User?>> ListAsync(int[]? ids);
+
+        [Cache]
+        string? Describe(int? id);
+    }
+}";
+            // Everything the test run can load: the framework plus MethodCache and its dependencies
+            var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+                .Concat(Directory.GetFiles(AppContext.BaseDirectory, "*.dll"))
+                .GroupBy(Path.GetFileName)
+                .Select(g => MetadataReference.CreateFromFile(g.First()))
+                .ToArray();
+            var compilation = CSharpCompilation.Create(
+                "compilation",
+                new[] { CSharpSyntaxTree.ParseText(source) },
+                references,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+
+            CSharpGeneratorDriver.Create(new MethodCacheGenerator())
+                .RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+            var generatedTrees = outputCompilation.SyntaxTrees.Skip(1).ToHashSet();
+            var problems = outputCompilation.GetDiagnostics()
+                .Where(d => d.Severity >= DiagnosticSeverity.Warning && generatedTrees.Contains(d.Location.SourceTree!))
+                .ToList();
+            foreach (var problem in problems)
+            {
+                _output.WriteLine(problem.ToString());
+                _output.WriteLine(problem.Location.SourceTree!.GetText().Lines[problem.Location.GetLineSpan().StartLinePosition.Line].ToString());
+            }
+
+            Assert.Empty(problems);
         }
     }
 }
