@@ -37,7 +37,7 @@ needs the full history and `origin/main` (the build servers clone both). It take
 
 `properties` and `soak` are in the default `linux.sh` job list, so every pull request runs them with short settings.
 `mutation` takes about an hour, so it is not: start it on a build server when you want a report
-(`build/ci/linux.sh mutation`). Each one is a plain entry point that runs on any machine with the SDKs (macOS
+(`build/ci/linux.sh build mutation`; `build` first, because the other jobs skip themselves after a failed build). Each one is a plain entry point that runs on any machine with the SDKs (macOS
 included) or in the build image (`linux.sh build <job>`). All of them expect `build` first in the same checkout,
 except `mutation`, which builds for itself.
 

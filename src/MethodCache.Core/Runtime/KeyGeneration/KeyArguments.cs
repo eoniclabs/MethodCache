@@ -54,6 +54,12 @@ internal static class KeyArguments
             $"MethodCache cannot build a cache key from an argument of type '{type.FullName}': {reason}. " +
             $"Implement {nameof(ICacheKeyProvider)} on the type, or pass a type with public properties.", inner);
 
+    /// <summary>
+    /// The one property of the object a lone surrogate is written as. Dictionary keys starting with U+FFFF are escaped
+    /// and no C# member name can hold it, so no other value writes this object.
+    /// </summary>
+    private const string MarkerName = "\uFFFF";
+
     /// <summary>True when <paramref name="value"/> has a surrogate that is not part of a pair.</summary>
     private static bool HasLoneSurrogate(ReadOnlySpan<char> value)
     {
@@ -73,7 +79,7 @@ internal static class KeyArguments
     }
 
     /// <summary>
-    /// Writes a string with a lone surrogate as an array of its UTF-16 code units, which no string value equals. As a
+    /// Writes a string with a lone surrogate as <c>{"\uFFFF": [its UTF-16 code units]}</c>, which no other value writes. As a
     /// property name, such a string and any name starting with U+FFFF get a U+FFFF prefix; the former then continues
     /// with its code units in hex, the latter with its own U+FFFF, so no two names meet.
     /// </summary>
@@ -92,13 +98,15 @@ internal static class KeyArguments
                 return;
             }
 
-            writer.WriteStartArray();
+            writer.WriteStartObject();
+            writer.WriteStartArray(MarkerName);
             foreach (var c in value)
             {
                 writer.WriteNumberValue(c);
             }
 
             writer.WriteEndArray();
+            writer.WriteEndObject();
         }
 
         public override void WriteAsPropertyName(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
@@ -114,7 +122,7 @@ internal static class KeyArguments
         }
     }
 
-    /// <summary>Writes a lone surrogate char as its number, which no one-char string equals.</summary>
+    /// <summary>Writes a lone surrogate char as <c>{"\uFFFF": its number}</c>, which no other value writes.</summary>
     private sealed class LosslessCharConverter : JsonConverter<char>
     {
         public override char Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -124,7 +132,9 @@ internal static class KeyArguments
         {
             if (char.IsSurrogate(value))
             {
-                writer.WriteNumberValue(value);
+                writer.WriteStartObject();
+                writer.WriteNumber(MarkerName, value);
+                writer.WriteEndObject();
             }
             else
             {

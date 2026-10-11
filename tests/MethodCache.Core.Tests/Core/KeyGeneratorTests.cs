@@ -557,6 +557,7 @@ namespace MethodCache.Core.Tests.Core
             var args = texts.Select(t => (object)new List<string> { t })
                 .Concat(texts.Select(t => (object)new Dictionary<string, int> { [t] = 1 }))
                 .Concat(new object[] { new Glyph('\uD834', ""), new Glyph('\uDD1E', ""), new Glyph('\uFFFD', ""), new Glyph('a', "\uD834") })
+                .Concat(new object[] { new object[] { "\uD834" }, new object[] { new[] { 0xD834 } }, new object[] { '\uD834' }, new object[] { 0xD834 } })
                 .ToArray();
             var keys = args.Select(a => generator.GenerateKey("M", new[] { a }, policy)).ToArray();
 
