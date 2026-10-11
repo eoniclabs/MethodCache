@@ -34,6 +34,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
 - **Third-party clients too.** One line caches chosen methods of an SDK or API client's own interface, no wrapper needed ([how](#caching-code-you-dont-own)).
+- **HTTP responses as well.** `AddHttpCaching()` on an `HttpClient` honors `Cache-Control` and revalidates with ETags ([how](#http-responses)).
 - **One line to go distributed.** `AddMethodCacheRedis(...)` shares results between instances and keeps every instance's memory cache in sync.
 - **Built for production.** Stampede protection, a W-TinyLFU memory cache, admin endpoints, a health check and OpenTelemetry tracing and metrics.
 
@@ -203,6 +204,20 @@ var rate = await cache.GetOrCreateAsync(
 
 See the [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md).
 
+### HTTP responses
+
+When the API sends caching headers, let `HttpClient` use them instead of choosing a duration yourself:
+
+```csharp
+builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+    .AddHttpCaching();   // MethodCache.HttpCaching
+```
+
+Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
+reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
+that URL. With `UseDistributedCache`, all instances share the responses through the same Redis or SQL Server.
+See the [package README](src/MethodCache.HttpCaching/README.md).
+
 ### Monitoring
 
 ```csharp
@@ -267,12 +282,12 @@ Supported frameworks: .NET 8, 9 and 10.
 | Package | What it adds | Status |
 |---|---|---|
 | `MethodCache` | Core, source generator and analyzers. Start here | Stable |
-| `MethodCache.Redis` | Redis as the distributed cache, with a pub/sub backplane | Beta |
-| `MethodCache.SqlServer` | SQL Server as the distributed cache, with a polling backplane | Experimental |
-| `MethodCache.AspNetCore` | Admin endpoints and a health check | Experimental |
-| `MethodCache.OpenTelemetry` | Tracing and metrics | Beta |
+| [`MethodCache.Redis`](src/MethodCache.Redis/README.md) | Redis as the distributed cache, with a pub/sub backplane | Beta |
+| [`MethodCache.SqlServer`](src/MethodCache.SqlServer/README.md) | SQL Server as the distributed cache, with a polling backplane | Experimental |
+| [`MethodCache.AspNetCore`](src/MethodCache.AspNetCore/README.md) | Admin endpoints and a health check | Experimental |
+| [`MethodCache.OpenTelemetry`](src/MethodCache.OpenTelemetry/README.md) | Tracing and metrics | Beta |
 | `MethodCache.Serialization.MessagePack` | MessagePack instead of JSON in the distributed cache | Experimental |
-| `MethodCache.HttpCaching` | HTTP caching for `HttpClient`: ETag revalidation, Cache-Control, Vary | Experimental |
+| [`MethodCache.HttpCaching`](src/MethodCache.HttpCaching/README.md) | HTTP caching for `HttpClient`: Cache-Control, ETag revalidation, Vary, optionally shared through the distributed cache | Experimental |
 
 ## Documentation
 
@@ -281,6 +296,7 @@ Supported frameworks: .NET 8, 9 and 10.
 - [Third-party Caching Guide](docs/user-guide/THIRD_PARTY_CACHING.md)
 - [Adding caching to an existing service](docs/migration/ADDING_CACHING_TO_EXISTING_SERVICE.md)
 - [Migrating from IMemoryCache](docs/migration/MIGRATION_FROM_IMEMORYCACHE.md)
+- Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md)
 - [Demo](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
 
 ## Contributing
