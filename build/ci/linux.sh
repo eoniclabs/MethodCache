@@ -97,8 +97,9 @@ for job in "${jobs[@]}"; do
   echo "    exit $code after $((SECONDS - started)) s"
   if [ "$code" -ne 0 ]; then
     failed=1
-    # The failed tests and errors first, then the end of the log
-    grep -E -A 6 '\[FAIL\]|: error |Error Message:' "$results_dir/$job.log" | head -n 120
+    # The failed tests and errors first, then the end of the log; best effort, so a log without matches never
+    # stops the remaining jobs under set -e
+    grep -E -A 6 '\[FAIL\]|: error |Error Message:' "$results_dir/$job.log" | head -n 120 || true
     tail -n 15 "$results_dir/$job.log"
   fi
 done

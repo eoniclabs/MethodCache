@@ -101,12 +101,16 @@ run_linux() { # sha run_id results_dir
     cat <<SCRIPT
 export METHODCACHE_CI_RUN_ID='$2' METHODCACHE_CI_CACHE=~/'$nimbus_root/cache'
 [ -e '$nimbus_lock' ] && export METHODCACHE_CI_SHARED_LOCK='$nimbus_lock'
-nice -n 10 build/ci/linux.sh
+code=0
+nice -n 10 build/ci/linux.sh || code=\$?
+# Written only when every job got its turn, so a dropped connection or timeout is retried
+echo "\$code" > artifacts/ci/finished
+exit "\$code"
 SCRIPT
   } | with_timeout "$timeout_seconds" ssh "${ssh_options[@]}" "$nimbus" bash -s > "$3/console.log" 2>&1
   local code=$?
   # The job logs come back whatever happened
-  with_timeout 300 ssh "${ssh_options[@]}" "$nimbus" "cd ~/'$nimbus_root/runs/$2/artifacts/ci' && tar -cf - *.log *.exit" \
+  with_timeout 300 ssh "${ssh_options[@]}" "$nimbus" "cd ~/'$nimbus_root/runs/$2/artifacts/ci' && tar -cf - *.log *.exit finished" \
     < /dev/null 2> /dev/null | tar -xf - -C "$3" 2> /dev/null
   return "$code"
 }
@@ -148,6 +152,8 @@ $results = Join-Path $run 'artifacts\ci'
 $env:METHODCACHE_CI_RESULTS = $results
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $run 'build\ci\windows.ps1')
 $code = $LASTEXITCODE
+# Written only when every job got its turn, so a dropped connection or timeout is retried
+if (Test-Path $results) { Set-Content -Path (Join-Path $results 'finished') -Value $code -Encoding ascii }
 
 # The job logs come back as base64 text between two markers: text survives the PowerShell of the SSH session
 if (Test-Path $results) {
@@ -188,6 +194,8 @@ run_macos_jobs() { # sha run_id results_dir
         build/ci/jobs.sh "$job" > "$METHODCACHE_CI_RESULTS/$job.log" 2>&1
         echo $? > "$METHODCACHE_CI_RESULTS/$job.exit"
       done
+      # Written only when every job got its turn, so a timeout is retried
+      touch "$METHODCACHE_CI_RESULTS/finished"
       ! grep -qvx 0 "$METHODCACHE_CI_RESULTS"/*.exit'
   ) > "$3/console.log" 2>&1
 }
@@ -211,6 +219,11 @@ excerpt_of() { # log_file
   local errors
   errors=$(grep -E ': error |\[FAIL\]|^ +Failed |^Failed!|Error Message:|Assert\.' "$1" 2> /dev/null | grep -v '^\s*at ' | sort -u | head -n 40)
   if [ -n "$errors" ]; then echo "$errors"; else grep -v '^\s*$' "$1" 2> /dev/null | tail -n 40; fi | cut -c1-300
+}
+
+# The platform script returned, with at least one job result (not killed, disconnected or stopped before any job)
+finished() { # results_dir
+  [ -e "$1/finished" ] && ls "$1"/*.exit > /dev/null 2>&1
 }
 
 failed_jobs_of() { # results_dir
@@ -257,11 +270,11 @@ run_commit() { # sha pr(optional)
   else
     post_status "$sha" "$aggregate" failure "A platform failed, see the PR comment ($minutes min)"
   fi
-  # A platform that produced no job result (a server was unreachable), or a result GitHub did not accept, is
-  # retried after 30 minutes
+  # A platform that did not finish all its jobs (a server was unreachable, the connection dropped, a timeout), or
+  # a result GitHub did not accept, is retried after 30 minutes
   if [ "$status_failed" -eq 1 ]; then
     echo retry > "$state/done/$sha"
-  elif [ "$all_ok" -eq 0 ] && { ! ls "$run_dir/linux"/*.exit || ! ls "$run_dir/windows"/*.exit || ! ls "$run_dir/macos"/*.exit; } > /dev/null 2>&1; then
+  elif ! finished "$run_dir/linux" || ! finished "$run_dir/windows" || ! finished "$run_dir/macos"; then
     echo retry > "$state/done/$sha"
   else
     echo done > "$state/done/$sha"
