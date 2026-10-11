@@ -1,6 +1,3 @@
-using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
-using MethodCache.Abstractions.Registry;
 using MethodCache.Core.Runtime.KeyGeneration;
 
 namespace MethodCache.Core.Runtime.Core
@@ -12,8 +9,6 @@ namespace MethodCache.Core.Runtime.Core
     /// </summary>
     public sealed class CachedMethod
     {
-        private static readonly ConditionalWeakTable<IPolicyRegistry, ConcurrentDictionary<Type, object>> SitesByRegistry = new();
-
         private readonly PolicyHandle _handle;
         private readonly Type _serviceType;
         private readonly string _keyMethodName;
@@ -62,26 +57,6 @@ namespace MethodCache.Core.Runtime.Core
                 Volatile.Write(ref _snapshot, snapshot);
                 return snapshot;
             }
-        }
-
-        /// <summary>
-        /// Returns the decorator's methods for <paramref name="registry"/>, creating them on first use. Decorators
-        /// with a scoped or transient lifetime are created per resolve, so they share their methods per registry
-        /// instead of resolving policies and building key prefixes each time.
-        /// </summary>
-        public static TSites GetSites<TSites>(IPolicyRegistry registry, Func<IPolicyRegistry, TSites> factory)
-            where TSites : class
-        {
-            if (registry == null) throw new ArgumentNullException(nameof(registry));
-            if (factory == null) throw new ArgumentNullException(nameof(factory));
-
-            var sites = SitesByRegistry.GetValue(registry, static _ => new ConcurrentDictionary<Type, object>());
-            if (sites.TryGetValue(typeof(TSites), out var existing))
-            {
-                return (TSites)existing;
-            }
-
-            return (TSites)sites.GetOrAdd(typeof(TSites), static (_, state) => state.factory(state.registry), (factory, registry));
         }
 
         private Snapshot CreateSnapshot(CacheRuntimePolicy policy)

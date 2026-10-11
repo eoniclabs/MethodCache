@@ -384,6 +384,13 @@ MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Tags.init -> void
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Version.get -> int?
 MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Version.init -> void
 MethodCache.Core.Runtime.Core.CacheTagTemplates
+MethodCache.Core.Runtime.Core.DecoratorServices
+MethodCache.Core.Runtime.Core.DecoratorServices.CacheManager.get -> MethodCache.Core.Runtime.ICacheManager!
+MethodCache.Core.Runtime.Core.DecoratorServices.DecoratorServices(MethodCache.Core.Runtime.ICacheManager! cacheManager, MethodCache.Abstractions.Registry.IPolicyRegistry! policyRegistry, MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator! keyGenerator, MethodCache.Core.Infrastructure.ICacheMetricsProvider? metricsProvider = null) -> void
+MethodCache.Core.Runtime.Core.DecoratorServices.GetSites<TSites>(System.Func<MethodCache.Abstractions.Registry.IPolicyRegistry!, TSites!>! factory) -> TSites!
+MethodCache.Core.Runtime.Core.DecoratorServices.KeyGenerator.get -> MethodCache.Core.Runtime.KeyGeneration.ICacheKeyGenerator!
+MethodCache.Core.Runtime.Core.DecoratorServices.MetricsProvider.get -> MethodCache.Core.Infrastructure.ICacheMetricsProvider?
+MethodCache.Core.Runtime.Core.DecoratorServices.PolicyRegistry.get -> MethodCache.Abstractions.Registry.IPolicyRegistry!
 MethodCache.Core.Runtime.Core.PolicyHandle
 MethodCache.Core.Runtime.Core.PolicyHandle.Current.get -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
 MethodCache.Core.Runtime.Core.PolicyHandle.MethodId.get -> string!
@@ -522,11 +529,11 @@ static MethodCache.Core.Options.CacheLookupResult<T>.Miss.get -> MethodCache.Cor
 static MethodCache.Core.PolicyPipeline.Model.CachePolicyMapper.AttachContribution(MethodCache.Abstractions.Policies.CachePolicy! policy, string! sourceId, MethodCache.Abstractions.Policies.CachePolicyFields fields, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null, string? notes = null) -> MethodCache.Abstractions.Policies.CachePolicy!
 static MethodCache.Core.PolicyPipeline.Model.CachePolicyMapper.DetectFields(MethodCache.Abstractions.Policies.CachePolicy! policy) -> MethodCache.Abstractions.Policies.CachePolicyFields
 static MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistrationExtensions.EnsurePolicyServices(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
-static MethodCache.Core.Runtime.Core.CachedMethod.GetSites<TSites>(MethodCache.Abstractions.Registry.IPolicyRegistry! registry, System.Func<MethodCache.Abstractions.Registry.IPolicyRegistry!, TSites!>! factory) -> TSites!
 static MethodCache.Core.Runtime.Core.CacheRuntimePolicy.Empty(string! methodId) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
 static MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FromPolicy(string! methodId, MethodCache.Abstractions.Policies.CachePolicy! policy, MethodCache.Abstractions.Policies.CachePolicyFields fields, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
 static MethodCache.Core.Runtime.Core.CacheRuntimePolicy.FromResolverResult(MethodCache.Abstractions.Resolution.PolicyResolutionResult! result) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
 static MethodCache.Core.Runtime.Core.CacheTagTemplates.Expand(MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy, string![]! parameterNames, string![]! values) -> MethodCache.Core.Runtime.Core.CacheRuntimePolicy!
+static MethodCache.Core.Runtime.Core.DecoratorServices.From(System.IServiceProvider! provider) -> MethodCache.Core.Runtime.Core.DecoratorServices!
 static MethodCache.Core.Runtime.Core.PolicyHandle.Fixed(MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> MethodCache.Core.Runtime.Core.PolicyHandle!
 static MethodCache.Core.Runtime.Core.PolicyHandle.For(MethodCache.Abstractions.Registry.IPolicyRegistry! registry, string! methodId) -> MethodCache.Core.Runtime.Core.PolicyHandle!
 static MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys.For(System.Type! serviceType, string! methodName, params string![]! parts) -> string!

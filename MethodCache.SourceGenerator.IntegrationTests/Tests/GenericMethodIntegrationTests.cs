@@ -1,3 +1,4 @@
+using MethodCache.Core.Runtime.Core;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -226,10 +227,7 @@ namespace TestNamespace
                 var userRepoImpl = Activator.CreateInstance(userRepoImplType)!;
                 return Activator.CreateInstance(userRepoDecoratorType,
                     userRepoImpl,
-                    sp.GetRequiredService<ICacheManager>(),
-                    sp.GetRequiredService<IPolicyRegistry>(),
-                    sp.GetRequiredService<ICacheKeyGenerator>(),
-                    sp.GetService<ICacheMetricsProvider>())!;
+                    DecoratorServices.From(sp))!;
             });
 
             services.AddSingleton(productRepoInterfaceType, sp =>
@@ -239,10 +237,7 @@ namespace TestNamespace
                 var productRepoImpl = Activator.CreateInstance(productRepoImplType)!;
                 return Activator.CreateInstance(productRepoDecoratorType,
                     productRepoImpl,
-                    sp.GetRequiredService<ICacheManager>(),
-                    sp.GetRequiredService<IPolicyRegistry>(),
-                    sp.GetRequiredService<ICacheKeyGenerator>(),
-                    sp.GetService<ICacheMetricsProvider>())!;
+                    DecoratorServices.From(sp))!;
             });
         });
 
