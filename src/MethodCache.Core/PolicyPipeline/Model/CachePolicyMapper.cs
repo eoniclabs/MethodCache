@@ -50,6 +50,11 @@ public static class CachePolicyMapper
             fields |= CachePolicyFields.RefreshAhead;
         }
 
+        if (policy.CacheWhen != null)
+        {
+            fields |= CachePolicyFields.CacheWhen;
+        }
+
         if (policy.Metadata.Count > 0)
         {
             fields |= CachePolicyFields.Metadata;
