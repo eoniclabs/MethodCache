@@ -1,11 +1,11 @@
 # Benchmarks
 
-The numbers in the README come from [`ReadmeComparisonBenchmarks`](../MethodCache.Benchmarks/Comparison/ReadmeComparisonBenchmarks.cs):
+The numbers in the README come from [`ReadmeComparisonBenchmarks`](../benchmarks/MethodCache.Benchmarks/Comparison/ReadmeComparisonBenchmarks.cs):
 a cache hit on `Task<User> GetUserAsync(int id)`, written the way each library documents it, with every library on its
 default settings (MethodCache with statistics on) and workstation GC.
 
 ```bash
-dotnet run -c Release --project MethodCache.Benchmarks -- readme --filter '*Hit'
+dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
 ```
 
 ## Cache hit (2026-10-11)
@@ -39,7 +39,7 @@ they measure the GC more than the libraries and are not quoted here.
 `MethodCache.Benchmarks` takes a category as its first argument:
 
 ```bash
-dotnet run -c Release --project MethodCache.Benchmarks -- <category> [--quick]
+dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> [--quick]
 ```
 
 | Category | What it measures |
@@ -60,4 +60,4 @@ dotnet run -c Release --project MethodCache.Benchmarks -- <category> [--quick]
 | `all` | Everything |
 
 `--quick` (or `BENCHMARK_QUICK=true`) uses fewer iterations: good while developing, not for numbers you publish.
-Results land in `BenchmarkDotNet.Artifacts/results/`. `MethodCache.Benchmarks/README.md` has more detail.
+Results land in `BenchmarkDotNet.Artifacts/results/`. `benchmarks/MethodCache.Benchmarks/README.md` has more detail.
