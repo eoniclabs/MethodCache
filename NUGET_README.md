@@ -41,4 +41,7 @@ remove a renewed override. See [configuration](https://github.com/eoniclabs/Meth
 Bulk reads return the value selected by the cache, including a distributed hit or a concurrent writer, so they
 agree with individual reads.
 
+Memory statistics estimate cached payloads, including current string and array lengths. A configured weigher
+reports its total weight instead of that estimate.
+
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache

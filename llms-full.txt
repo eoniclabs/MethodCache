@@ -1213,6 +1213,16 @@ builder.Services.Configure<MethodCacheMemoryOptions>(o =>
 
 The weigher must be fast, thread-safe and return a non-negative value. Without one, `MaxMemoryBytes` is ignored.
 
+## Memory statistics
+
+Without a weigher, `GetStatsAsync().MemoryUsage` is a rough estimate. Fast mode samples cached payloads, including
+current string, array and collection lengths; replacing a small byte array with a large one changes the estimate.
+It does not measure complete object graphs, shared references or the GC heap. Accurate mode uses serialized size
+as a proxy, and its intermediate fast estimates also sample payloads. Sampling uses a subset of entries.
+
+With a configured weigher, `MemoryUsage` reports the engine's total weight. This is the value used for the
+`MaxMemoryBytes` bound; the statistical estimate is not used to enforce that bound.
+
 ## How strict the bound is
 
 Cache hits never wait for eviction. It runs in batches off the read path, so a new entry is stored at once and counted

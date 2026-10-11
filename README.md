@@ -279,6 +279,9 @@ every OpenTelemetry instrumentation. The admin endpoints show hits, misses, live
 policy, and can invalidate by tag.
 The same operations are available in code through `ICacheAdministrator`.
 
+Memory statistics estimate cached payloads, including current string and array lengths. A configured weigher
+reports its total weight instead of that estimate.
+
 ### Native AOT
 
 Registration and keys use no reflection. Under Native AOT, register the JSON serializer with your
