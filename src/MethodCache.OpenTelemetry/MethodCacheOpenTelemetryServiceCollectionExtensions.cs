@@ -40,6 +40,7 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
             opt.EnableMetrics = options.EnableMetrics;
             opt.RecordCacheKeys = options.RecordCacheKeys;
             opt.HashCacheKeys = options.HashCacheKeys;
+            opt.RecordCacheTags = options.RecordCacheTags;
             opt.ExportSensitiveData = options.ExportSensitiveData;
             opt.EnableHttpCorrelation = options.EnableHttpCorrelation;
             opt.EnableBaggagePropagation = options.EnableBaggagePropagation;

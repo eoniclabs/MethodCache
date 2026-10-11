@@ -14,6 +14,7 @@ internal interface ICacheActivitySource
     void SetCacheHit(Activity? activity, bool hit);
     void SetCacheKey(Activity? activity, string key, bool recordFullKey = false);
     void SetCacheTags(Activity? activity, string[]? tags);
+    void SetCacheTagPattern(Activity? activity, string pattern);
     void SetCacheError(Activity? activity, Exception exception);
     void SetHttpCorrelation(Activity? activity);
     void RecordException(Activity? activity, Exception exception);
@@ -82,9 +83,17 @@ internal class CacheActivitySource : ICacheActivitySource
 
     public void SetCacheTags(Activity? activity, string[]? tags)
     {
-        if (activity == null || tags == null || tags.Length == 0) return;
+        // Tags expanded from templates such as user:{userId} carry argument values
+        if (activity == null || tags == null || tags.Length == 0 || !_options.RecordCacheTags) return;
 
         activity.SetTag(TracingConstants.AttributeNames.CacheTags, string.Join(",", tags));
+    }
+
+    public void SetCacheTagPattern(Activity? activity, string pattern)
+    {
+        if (activity == null || !_options.RecordCacheTags) return;
+
+        activity.SetTag("cache.pattern", pattern);
     }
 
     public void SetCacheError(Activity? activity, Exception exception)

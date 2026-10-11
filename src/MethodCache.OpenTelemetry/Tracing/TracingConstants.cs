@@ -64,7 +64,7 @@ public static class TracingConstants
         public const string CacheTtl = "cache.ttl_seconds";
 
         /// <summary>
-        /// The entry's tags.
+        /// The entry's tags, or the invalidated tags, only when <c>RecordCacheTags</c> is on.
         /// </summary>
         public const string CacheTags = "cache.tags";
 

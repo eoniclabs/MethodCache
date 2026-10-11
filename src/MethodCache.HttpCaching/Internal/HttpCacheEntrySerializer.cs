@@ -40,8 +40,23 @@ internal static class HttpCacheEntrySerializer
         return stream.ToArray();
     }
 
-    /// <summary>Returns <c>null</c> for data written by another format version.</summary>
+    /// <summary>
+    /// Returns <c>null</c> for data written by another format version, and for data that is not a valid entry: the
+    /// distributed cache is outside this process, so a length is never trusted beyond the bytes that are there.
+    /// </summary>
     public static (HttpCacheEntry Entry, DateTimeOffset ExpiresAt)? Deserialize(byte[] data)
+    {
+        try
+        {
+            return Read(data);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or FormatException or ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    private static (HttpCacheEntry Entry, DateTimeOffset ExpiresAt)? Read(byte[] data)
     {
         using var reader = new BinaryReader(new MemoryStream(data, writable: false), Encoding.UTF8);
         if (data.Length == 0 || reader.ReadByte() != FormatVersion)
@@ -55,7 +70,7 @@ internal static class HttpCacheEntrySerializer
             RequestUri = reader.ReadString(),
             Method = reader.ReadString(),
             StatusCode = (HttpStatusCode)reader.ReadInt32(),
-            Content = reader.ReadBytes(reader.ReadInt32()),
+            Content = reader.ReadBytes(ReadCount(reader, bytesPerItem: 1)),
             Headers = ReadHeaders(reader),
             ContentHeaders = ReadHeaders(reader),
             ETag = ReadNullableString(reader),
@@ -84,7 +99,7 @@ internal static class HttpCacheEntrySerializer
 
     private static Dictionary<string, string[]> ReadHeaders(BinaryReader reader)
     {
-        var count = reader.ReadInt32();
+        var count = ReadCount(reader, bytesPerItem: 2); // a name and a value count, at least one byte each
         var headers = new Dictionary<string, string[]>(count, StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < count; i++)
         {
@@ -105,7 +120,7 @@ internal static class HttpCacheEntrySerializer
 
     private static string[] ReadArray(BinaryReader reader)
     {
-        var values = new string[reader.ReadInt32()];
+        var values = new string[ReadCount(reader, bytesPerItem: 1)];
         for (var i = 0; i < values.Length; i++)
         {
             values[i] = reader.ReadString();
@@ -139,6 +154,22 @@ internal static class HttpCacheEntrySerializer
         {
             WriteArray(writer, values);
         }
+    }
+
+    /// <summary>
+    /// Reads a count of items that take at least <paramref name="bytesPerItem"/> bytes each, and refuses one the rest
+    /// of the data cannot hold, so a crafted entry can't make the reader allocate gigabytes.
+    /// </summary>
+    private static int ReadCount(BinaryReader reader, int bytesPerItem)
+    {
+        var count = reader.ReadInt32();
+        var remaining = reader.BaseStream.Length - reader.BaseStream.Position;
+        if (count < 0 || (long)count * bytesPerItem > remaining)
+        {
+            throw new InvalidDataException("The cached HTTP entry is not valid.");
+        }
+
+        return count;
     }
 
     private static string? ReadNullableString(BinaryReader reader) => reader.ReadBoolean() ? reader.ReadString() : null;

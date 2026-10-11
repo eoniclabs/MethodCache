@@ -29,7 +29,10 @@ namespace MethodCache.Core.Runtime.Distributed
     /// </remarks>
     internal sealed class DistributedCacheLayer : IDisposable
     {
-        /// <summary>Reserved tag that every entry implicitly carries; invalidating it clears the whole cache.</summary>
+        /// <summary>
+        /// Reserved tag that every entry implicitly carries; invalidating it clears the whole cache. Application tags
+        /// are stored through <see cref="StoredTag"/>, so no tag text, however it was built, can name this one.
+        /// </summary>
         internal const string ClearTag = "\u0000clear";
 
         /// <summary>How long a key's removal stamp keeps values loaded before the removal out of the cache.</summary>
@@ -210,7 +213,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             // No write asks for more than the tag retention; a damaged expiry far in the future must not overflow
             var remaining = Math.Min(header.ExpiresAt - now, (long)_tagRetention.TotalMilliseconds);
-            return new DistributedEntry<T>(value, header.Tags, TimeSpan.FromMilliseconds(remaining));
+            return new DistributedEntry<T>(value, Convert(header.Tags, ApplicationTag), TimeSpan.FromMilliseconds(remaining));
         }
 
         /// <summary>
@@ -254,7 +257,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var buffer = new ArrayBufferWriter<byte>(256);
-            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, Now + lifetimeMilliseconds, tags);
+            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, Now + lifetimeMilliseconds, Convert(tags, StoredTag));
             if (value is not null)
             {
                 try
@@ -334,7 +337,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Records that the tags were invalidated now, so every entry created before carrying them counts as missing.
         /// Never throws: tags the distributed cache didn't accept are retried in the background.
         /// </summary>
-        public Task InvalidateTagsAsync(IReadOnlyCollection<string> tags) => InvalidateAsync(Array.Empty<string>(), tags);
+        public Task InvalidateTagsAsync(IReadOnlyCollection<string> tags) => InvalidateAsync(Array.Empty<string>(), tags.Select(StoredTag).ToArray());
 
         private async Task InvalidateAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags)
         {
@@ -394,7 +397,20 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Makes every entry written so far count as missing. The distributed cache cannot enumerate keys, so this
         /// invalidates a tag that every entry implicitly carries.
         /// </summary>
-        public Task ClearAsync() => InvalidateTagsAsync(new[] { ClearTag });
+        public Task ClearAsync() => InvalidateAsync(Array.Empty<string>(), new[] { ClearTag });
+
+        /// <summary>
+        /// The form an application tag takes in entries, stamps and backplane messages: a leading NUL is doubled, so
+        /// a tag such as <c>"\0clear"</c> stays apart from <see cref="ClearTag"/>.
+        /// </summary>
+        internal static string StoredTag(string tag) => tag.StartsWith('\0') ? "\0" + tag : tag;
+
+        /// <summary>The application tag for a <see cref="StoredTag"/>.</summary>
+        internal static string ApplicationTag(string storedTag) => storedTag.StartsWith('\0') ? storedTag.Substring(1) : storedTag;
+
+        /// <summary>Converts each tag; the array itself when no tag starts with NUL, as almost none do.</summary>
+        private static string[]? Convert(string[]? tags, Func<string, string> convert)
+            => tags == null || !Array.Exists(tags, static tag => tag.StartsWith('\0')) ? tags : Array.ConvertAll(tags, tag => convert(tag));
 
         public void Dispose()
         {
@@ -761,7 +777,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     case BackplaneMessageType.TagInvalidation when message.Tag != null:
                         // Re-read the stamp the other node wrote rather than trusting this node's clock
                         _tagStamps.TryRemove(message.Tag, out _);
-                        _onRemoteTagInvalidated?.Invoke(message.Tag);
+                        _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
                         break;
                 }
             }

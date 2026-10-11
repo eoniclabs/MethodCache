@@ -72,6 +72,8 @@ MethodCache.OpenTelemetry.OpenTelemetryOptions.HashCacheKeys.set -> void
 MethodCache.OpenTelemetry.OpenTelemetryOptions.OpenTelemetryOptions() -> void
 MethodCache.OpenTelemetry.OpenTelemetryOptions.RecordCacheKeys.get -> bool
 MethodCache.OpenTelemetry.OpenTelemetryOptions.RecordCacheKeys.set -> void
+MethodCache.OpenTelemetry.OpenTelemetryOptions.RecordCacheTags.get -> bool
+MethodCache.OpenTelemetry.OpenTelemetryOptions.RecordCacheTags.set -> void
 MethodCache.OpenTelemetry.TracingConstants
 MethodCache.OpenTelemetry.TracingConstants.AttributeNames
 MethodCache.OpenTelemetry.TracingConstants.BaggageKeys

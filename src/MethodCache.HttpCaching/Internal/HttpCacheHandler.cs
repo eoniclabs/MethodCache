@@ -149,8 +149,16 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow());
             await StoreAsync(request, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
 
+            var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
+
+            // Not stored, but this caller's own: the origin set it on this response
+            if (upstreamResponse.Headers.TryGetValues("Set-Cookie", out var setCookie))
+            {
+                revalidated.Headers.TryAddWithoutValidation("Set-Cookie", setCookie);
+            }
+
             upstreamResponse.Dispose();
-            return Record(Outcome.Revalidated, request, CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness), startedAt);
+            return Record(Outcome.Revalidated, request, revalidated, startedAt);
         }
 
         await TryStoreResponseAsync(request, upstreamResponse, cacheKey, options, freshness, cancellationToken).ConfigureAwait(false);
@@ -364,7 +372,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return false;
         }
 
-        if (options.IsSharedCache && (cacheControl?.Private == true || (request.Headers.Authorization != null && !AllowsSharedAuthorized(cacheControl))))
+        // Contains, not Headers.Authorization: that is null for a value that doesn't parse, such as a bare API key
+        if (options.IsSharedCache && (cacheControl?.Private == true || (request.Headers.Contains("Authorization") && !AllowsSharedAuthorized(cacheControl))))
         {
             return false;
         }

@@ -21,6 +21,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Memory cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/native-aot.md): what to register when you publish with Native AOT.
 - [Testing](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/testing.md): test with caching on, or turn it off.
+- [Security](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/security.md): what each package protects against, and what it leaves to you.
 - [MethodCache: instructions for coding agents](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/ai/methodcache.md): rules to copy into Copilot, Cursor or Claude Code instructions.
 - [Troubleshooting](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/troubleshooting.md): a method that isn't cached, stale data, keys you didn't expect.
 - [Build Diagnostics](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/user-guide/DIAGNOSTICS.md): every `MC` and `MCG` warning and error.
