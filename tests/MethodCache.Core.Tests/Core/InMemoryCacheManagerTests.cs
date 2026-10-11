@@ -83,7 +83,7 @@ public class InMemoryCacheManagerTests
     {
         var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
         var policy = CacheRuntimePolicy.Empty("MethodA") with { Duration = TimeSpan.FromMinutes(1) };
-        var keyGenerator = new DefaultCacheKeyGenerator();
+        var keyGenerator = new FastHashKeyGenerator();
         var calls = 0;
 
         Task<int> Factory()
@@ -108,7 +108,7 @@ public class InMemoryCacheManagerTests
         {
             Duration = TimeSpan.FromMinutes(1)
         };
-        var keyGenerator = new DefaultCacheKeyGenerator();
+        var keyGenerator = new FastHashKeyGenerator();
         var calls = 0;
 
         Task<string> Factory() => Task.FromResult($"value{++calls}");

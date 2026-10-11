@@ -1,9 +1,7 @@
 using System.Buffers;
-using System.Buffers.Text;
-using System.IO.Hashing;
+using System.Buffers.Binary;
 using System.Globalization;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using System.IO.Hashing;
 using System.Text;
 using System.Text.Json;
 using MethodCache.Core.Runtime.Core;
@@ -16,9 +14,12 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </summary>
 /// <remarks>
 /// Keys have the form <c>{methodName}[:v{version}]:{hash}</c>, so all entries of one method share a readable
-/// prefix that pattern invalidation can match (see <see cref="MethodCacheKeys"/>). Arguments of other types than
-/// the built-in primitives are serialized with System.Text.Json, public fields included; implement
-/// <see cref="ICacheKeyProvider"/> on types that cannot be serialized, or under Native AOT.
+/// prefix that pattern invalidation can match (see <see cref="MethodCacheKeys"/>). Every argument is written as a
+/// type tag followed by its value, and variable-length values by their length first, so two different argument
+/// lists never produce the same input to the hash. Built-in value types are written in binary, enums by their
+/// numeric value, dates with full precision. Other types are serialized with System.Text.Json, public fields
+/// included; a type whose state is all non-public is refused, since every value of it would share one key.
+/// Implement <see cref="ICacheKeyProvider"/> on such types, on types that cannot be serialized, or under Native AOT.
 /// </remarks>
 /// <example>
 /// <code>
@@ -28,14 +29,34 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </example>
 public class FastHashKeyGenerator : ICacheKeyGenerator
 {
-    // Fields count too, so two values that differ only in a public field don't share a key.
-    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerOptions.Default) { IncludeFields = true };
-
     [ThreadStatic]
     private static ArrayBufferWriter<byte>? t_writer;
 
-    // Hex lookup table for fast conversion
-    private static ReadOnlySpan<byte> HexChars => "0123456789abcdef"u8;
+    private enum Tag : byte
+    {
+        Null = 1,
+        KeyProvider,
+        String,
+        Boolean,
+        Char,
+        Byte,
+        SByte,
+        Int16,
+        UInt16,
+        Int32,
+        UInt32,
+        Int64,
+        UInt64,
+        Single,
+        Double,
+        Decimal,
+        DateTime,
+        DateTimeOffset,
+        TimeSpan,
+        Guid,
+        Enum,
+        Object,
+    }
 
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         => GenerateKey(methodName, args, policy.Version);
@@ -45,17 +66,12 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         var writer = t_writer ??= new ArrayBufferWriter<byte>(256);
         writer.ResetWrittenCount();
 
-        WriteUtf8String(ref writer, methodName);
-
-        if (version.HasValue)
-        {
-            WriteUtf8Literal(ref writer, "_v"u8);
-            WriteInt32(ref writer, version.Value);
-        }
-
+        WriteString(writer, methodName);
+        WriteInt32(writer, version ?? -1);
+        WriteInt32(writer, args.Length);
         foreach (var arg in args)
         {
-            WriteArgument(ref writer, arg);
+            WriteArgument(writer, arg);
         }
 
         var hash = XxHash128.HashToUInt128(writer.WrittenSpan);
@@ -71,248 +87,153 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         return string.Concat(prefix, ":", ToHexString(hash));
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void WriteArgument(ref ArrayBufferWriter<byte> writer, object? arg)
+    private static void WriteArgument(ArrayBufferWriter<byte> writer, object? arg)
     {
-        if (arg is null)
-        {
-            WriteUtf8Literal(ref writer, "_NULL"u8);
-            return;
-        }
-
         switch (arg)
         {
+            case null:
+                WriteTag(writer, Tag.Null);
+                break;
             case ICacheKeyProvider keyProvider:
-                WriteUtf8String(ref writer, "_" + keyProvider.CacheKeyPart);
+                WriteTag(writer, Tag.KeyProvider);
+                WriteString(writer, keyProvider.CacheKeyPart ?? string.Empty);
                 break;
             case string s:
-                WriteString(ref writer, s);
-                break;
-            case int i:
-                WriteInt32WithPrefix(ref writer, i, "_INT:"u8);
-                break;
-            case long l:
-                WriteInt64WithPrefix(ref writer, l, "_LONG:"u8);
+                WriteTag(writer, Tag.String);
+                WriteString(writer, s);
                 break;
             case bool b:
-                WriteUtf8Literal(ref writer, b ? "_BOOL:True"u8 : "_BOOL:False"u8);
+                WriteTag(writer, Tag.Boolean);
+                WriteByte(writer, b ? (byte)1 : (byte)0);
                 break;
-            case double d:
-                WriteDouble(ref writer, d);
+            case char c:
+                WriteTag(writer, Tag.Char);
+                WriteUInt64(writer, c);
+                break;
+            case byte b:
+                WriteTag(writer, Tag.Byte);
+                WriteByte(writer, b);
+                break;
+            case sbyte sb:
+                WriteTag(writer, Tag.SByte);
+                WriteInt64(writer, sb);
+                break;
+            case short sh:
+                WriteTag(writer, Tag.Int16);
+                WriteInt64(writer, sh);
+                break;
+            case ushort us:
+                WriteTag(writer, Tag.UInt16);
+                WriteUInt64(writer, us);
+                break;
+            case int i:
+                WriteTag(writer, Tag.Int32);
+                WriteInt32(writer, i);
+                break;
+            case uint ui:
+                WriteTag(writer, Tag.UInt32);
+                WriteUInt64(writer, ui);
+                break;
+            case long l:
+                WriteTag(writer, Tag.Int64);
+                WriteInt64(writer, l);
+                break;
+            case ulong ul:
+                WriteTag(writer, Tag.UInt64);
+                WriteUInt64(writer, ul);
                 break;
             case float f:
-                WriteFloat(ref writer, f);
+                WriteTag(writer, Tag.Single);
+                WriteInt32(writer, BitConverter.SingleToInt32Bits(f == 0 ? 0f : f)); // -0 and 0 are one key
+                break;
+            case double d:
+                WriteTag(writer, Tag.Double);
+                WriteInt64(writer, BitConverter.DoubleToInt64Bits(d == 0 ? 0d : d));
                 break;
             case decimal dec:
-                WriteDecimal(ref writer, dec);
+                // The string keeps the scale, so 1.0m and 1.00m are different keys, as decimal.ToString shows them
+                WriteTag(writer, Tag.Decimal);
+                WriteString(writer, dec.ToString(CultureInfo.InvariantCulture));
                 break;
             case DateTime dt:
-                WriteDateTime(ref writer, dt);
+                // ToBinary() would embed the server's local offset; normalize so every server agrees.
+                WriteTag(writer, Tag.DateTime);
+                var normalized = dt.Kind == DateTimeKind.Local ? dt.ToUniversalTime() : dt;
+                WriteInt64(writer, normalized.Ticks);
+                WriteByte(writer, (byte)normalized.Kind);
                 break;
             case DateTimeOffset dto:
-                WriteDateTimeOffset(ref writer, dto);
+                WriteTag(writer, Tag.DateTimeOffset);
+                WriteInt64(writer, dto.UtcTicks);
+                WriteInt64(writer, dto.Offset.Ticks);
+                break;
+            case TimeSpan ts:
+                WriteTag(writer, Tag.TimeSpan);
+                WriteInt64(writer, ts.Ticks);
                 break;
             case Guid guid:
-                WriteGuid(ref writer, guid);
+                WriteTag(writer, Tag.Guid);
+                guid.TryWriteBytes(writer.GetSpan(16));
+                writer.Advance(16);
                 break;
             case Enum enumValue:
-                WriteEnum(ref writer, enumValue);
+                // By number, like generated keys, so renaming a member keeps existing keys
+                WriteTag(writer, Tag.Enum);
+                WriteString(writer, TypeName(enumValue.GetType()));
+                WriteString(writer, enumValue.ToString("D"));
                 break;
             default:
-                WriteComplexObject(ref writer, arg);
+                WriteTag(writer, Tag.Object);
+                WriteString(writer, TypeName(arg.GetType()));
+                WriteBytes(writer, KeyArguments.Serialize(arg));
                 break;
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void WriteUtf8Literal(ref ArrayBufferWriter<byte> writer, ReadOnlySpan<byte> literal)
+    private static string TypeName(Type type) => type.FullName ?? type.Name;
+
+    private static void WriteTag(ArrayBufferWriter<byte> writer, Tag tag) => WriteByte(writer, (byte)tag);
+
+    private static void WriteByte(ArrayBufferWriter<byte> writer, byte value)
     {
-        var span = writer.GetSpan(literal.Length);
-        literal.CopyTo(span);
-        writer.Advance(literal.Length);
+        writer.GetSpan(1)[0] = value;
+        writer.Advance(1);
     }
 
-    private static void WriteUtf8String(ref ArrayBufferWriter<byte> writer, string value)
+    private static void WriteInt32(ArrayBufferWriter<byte> writer, int value)
     {
-        if (string.IsNullOrEmpty(value))
-        {
-            return;
-        }
+        BinaryPrimitives.WriteInt32LittleEndian(writer.GetSpan(4), value);
+        writer.Advance(4);
+    }
 
-#if NETSTANDARD2_0
+    private static void WriteInt64(ArrayBufferWriter<byte> writer, long value)
+    {
+        BinaryPrimitives.WriteInt64LittleEndian(writer.GetSpan(8), value);
+        writer.Advance(8);
+    }
+
+    private static void WriteUInt64(ArrayBufferWriter<byte> writer, ulong value)
+    {
+        BinaryPrimitives.WriteUInt64LittleEndian(writer.GetSpan(8), value);
+        writer.Advance(8);
+    }
+
+    /// <summary>Writes the UTF-8 length, then the UTF-8 bytes, so no string can run into the next value.</summary>
+    private static void WriteString(ArrayBufferWriter<byte> writer, string value)
+    {
         var byteCount = Encoding.UTF8.GetByteCount(value);
-        var span = writer.GetSpan(byteCount);
-        var rented = ArrayPool<byte>.Shared.Rent(byteCount);
-        try
-        {
-            var written = Encoding.UTF8.GetBytes(value, 0, value.Length, rented, 0);
-            rented.AsSpan(0, written).CopyTo(span);
-            writer.Advance(written);
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(rented);
-        }
-#else
-        var byteCount = Encoding.UTF8.GetByteCount(value);
-        var span = writer.GetSpan(byteCount);
-        var written = Encoding.UTF8.GetBytes(value.AsSpan(), span);
-        writer.Advance(written);
-#endif
-    }
-
-    private static void WriteString(ref ArrayBufferWriter<byte> writer, string value)
-    {
-        WriteUtf8Literal(ref writer, "_STR:"u8);
-        var escaped = value.Replace("_", "__");
-        WriteUtf8String(ref writer, escaped);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void WriteInt32WithPrefix(ref ArrayBufferWriter<byte> writer, int value, ReadOnlySpan<byte> prefix)
-    {
-        WriteUtf8Literal(ref writer, prefix);
-        WriteInt32(ref writer, value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void WriteInt64WithPrefix(ref ArrayBufferWriter<byte> writer, long value, ReadOnlySpan<byte> prefix)
-    {
-        WriteUtf8Literal(ref writer, prefix);
-        WriteInt64(ref writer, value);
-    }
-
-    private static void WriteInt32(ref ArrayBufferWriter<byte> writer, int value)
-    {
-        var span = writer.GetSpan(16);
-        if (!Utf8Formatter.TryFormat(value, span, out var written))
-        {
-            throw new InvalidOperationException("Failed to format int32 value.");
-        }
-
+        WriteInt32(writer, byteCount);
+        var written = Encoding.UTF8.GetBytes(value, writer.GetSpan(byteCount));
         writer.Advance(written);
     }
 
-    private static void WriteInt64(ref ArrayBufferWriter<byte> writer, long value)
+    private static void WriteBytes(ArrayBufferWriter<byte> writer, ReadOnlySpan<byte> value)
     {
-        var span = writer.GetSpan(24);
-        if (!Utf8Formatter.TryFormat(value, span, out var written))
-        {
-            throw new InvalidOperationException("Failed to format int64 value.");
-        }
-
-        writer.Advance(written);
+        WriteInt32(writer, value.Length);
+        value.CopyTo(writer.GetSpan(value.Length));
+        writer.Advance(value.Length);
     }
 
-    private static void WriteDouble(ref ArrayBufferWriter<byte> writer, double value)
-    {
-        WriteUtf8Literal(ref writer, "_DBL:"u8);
-        var span = writer.GetSpan(32);
-        if (!Utf8Formatter.TryFormat(value, span, out var written, new StandardFormat('G', 17)))
-        {
-            throw new InvalidOperationException("Failed to format double value.");
-        }
-
-        writer.Advance(written);
-    }
-
-    private static void WriteFloat(ref ArrayBufferWriter<byte> writer, float value)
-    {
-        WriteUtf8Literal(ref writer, "_FLT:"u8);
-        var span = writer.GetSpan(24);
-        if (!Utf8Formatter.TryFormat(value, span, out var written, new StandardFormat('G', 9)))
-        {
-            throw new InvalidOperationException("Failed to format float value.");
-        }
-
-        writer.Advance(written);
-    }
-
-    private static void WriteDecimal(ref ArrayBufferWriter<byte> writer, decimal value)
-    {
-        WriteUtf8Literal(ref writer, "_DEC:"u8);
-        var span = writer.GetSpan(64);
-        if (!Utf8Formatter.TryFormat(value, span, out var written))
-        {
-            throw new InvalidOperationException("Failed to format decimal value.");
-        }
-
-        writer.Advance(written);
-    }
-
-    private static void WriteDateTime(ref ArrayBufferWriter<byte> writer, DateTime value)
-    {
-        // ToBinary() would embed the server's local offset; normalize so every server agrees.
-        WriteUtf8Literal(ref writer, "_DT:"u8);
-        var normalized = value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value;
-        WriteInt64(ref writer, normalized.Ticks);
-        WriteUtf8Literal(ref writer, ":"u8);
-        WriteInt32(ref writer, (int)normalized.Kind);
-    }
-
-    private static void WriteDateTimeOffset(ref ArrayBufferWriter<byte> writer, DateTimeOffset value)
-    {
-        WriteUtf8Literal(ref writer, "_DTO:"u8);
-        WriteInt64(ref writer, value.ToUnixTimeMilliseconds());
-        WriteUtf8Literal(ref writer, ":"u8);
-        WriteUtf8String(ref writer, value.Offset.TotalMinutes.ToString(CultureInfo.InvariantCulture));
-    }
-
-    private static void WriteGuid(ref ArrayBufferWriter<byte> writer, Guid value)
-    {
-        WriteUtf8Literal(ref writer, "_GUID:"u8);
-        var span = writer.GetSpan(32);
-        if (!Utf8Formatter.TryFormat(value, span, out var written, new StandardFormat('N')))
-        {
-            throw new InvalidOperationException("Failed to format guid value.");
-        }
-
-        writer.Advance(written);
-    }
-
-    private static void WriteEnum(ref ArrayBufferWriter<byte> writer, Enum value)
-    {
-        WriteUtf8Literal(ref writer, "_ENUM:"u8);
-        WriteUtf8String(ref writer, value.GetType().FullName ?? value.GetType().Name);
-        WriteUtf8Literal(ref writer, ":"u8);
-        WriteUtf8String(ref writer, value.ToString());
-    }
-
-    private static void WriteComplexObject(ref ArrayBufferWriter<byte> writer, object arg)
-    {
-        byte[] serializedArg;
-        try
-        {
-            serializedArg = JsonSerializer.SerializeToUtf8Bytes(arg, _jsonOptions.GetTypeInfo(arg.GetType()));
-        }
-        catch (Exception ex)
-        {
-            // Falling back to ToString() would give different values the same key and return the wrong data.
-            throw new InvalidOperationException(
-                $"MethodCache cannot build a cache key from an argument of type '{arg.GetType().FullName}'. " +
-                $"Implement {nameof(ICacheKeyProvider)} on the type, or use a serializable type.", ex);
-        }
-
-        WriteUtf8Literal(ref writer, "_OBJ:"u8);
-        WriteUtf8String(ref writer, arg.GetType().FullName ?? arg.GetType().Name);
-        WriteUtf8Literal(ref writer, ":"u8);
-        WriteHex(ref writer, serializedArg);
-    }
-
-    private static void WriteHex(ref ArrayBufferWriter<byte> writer, ReadOnlySpan<byte> data)
-    {
-        var span = writer.GetSpan(data.Length * 2);
-
-        for (int i = 0; i < data.Length; i++)
-        {
-            var b = data[i];
-            span[i * 2] = HexChars[b >> 4];
-            span[i * 2 + 1] = HexChars[b & 0xF];
-        }
-
-        writer.Advance(data.Length * 2);
-    }
-    
     private static string ToHexString(UInt128 hash)
     {
         Span<char> chars = stackalloc char[32];

@@ -438,8 +438,6 @@ MethodCache.Core.Runtime.ICacheManager.TryGetAsync<T>(string! methodName, object
 MethodCache.Core.Runtime.ICacheManager.TryGetFast<T>(string! cacheKey, out T? value) -> bool
 MethodCache.Core.Runtime.ICacheManager.TryGetFastAsync<T>(string! cacheKey) -> System.Threading.Tasks.ValueTask<T?>
 MethodCache.Core.Runtime.ICacheManager.TryGetFastTask<T>(string! cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
-MethodCache.Core.Runtime.KeyGeneration.DefaultCacheKeyGenerator
-MethodCache.Core.Runtime.KeyGeneration.DefaultCacheKeyGenerator.DefaultCacheKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator.FastHashKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.FastHashKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
@@ -449,10 +447,6 @@ MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator
 MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
 MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.JsonKeyGenerator() -> void
 MethodCache.Core.Runtime.KeyGeneration.MethodCacheKeys
-MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator
-MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Core.Runtime.Core.CacheRuntimePolicy! policy) -> string!
-MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.SmartKeyGenerator() -> void
-MethodCache.Core.Runtime.KeyGeneration.SmartKeyGenerator.SmartKeyGenerator(System.Delegate? factory) -> void
 MethodCache.Core.Storage.Abstractions.BackplaneMessage
 MethodCache.Core.Storage.Abstractions.BackplaneMessage.BackplaneMessage() -> void
 MethodCache.Core.Storage.Abstractions.BackplaneMessage.InstanceId.get -> string!
@@ -693,3 +687,5 @@ MethodCache.Core.Runtime.Core.CacheRuntimePolicy.CacheWhen.init -> void
 MethodCache.Abstractions.Policies.CachePolicy.CacheWhen.get -> System.Func<object?, bool>?
 MethodCache.Abstractions.Policies.CachePolicy.CacheWhen.init -> void
 MethodCache.Abstractions.Policies.CachePolicyFields.CacheWhen = 64 -> MethodCache.Abstractions.Policies.CachePolicyFields
+
+const MethodCache.Core.Runtime.KeyGeneration.JsonKeyGenerator.MaxReadableLength = 200 -> int
