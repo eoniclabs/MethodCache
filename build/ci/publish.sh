@@ -3,6 +3,7 @@
 # Never publishes to nuget.org.
 #
 #   build/ci/publish.sh v1.2.0
+#   build/ci/publish.sh v1.3.0-beta
 #
 # Run it on Megatron (or any machine with the .NET 8, 9 and 10 SDKs and gh logged in with the write:packages
 # scope: `gh auth refresh -s write:packages`). It packs the 7 packages from a fresh clone of the tag, so the
@@ -12,9 +13,9 @@ set -euo pipefail
 # launchd and non-login SSH sessions on macOS do not see Homebrew (gh) or the .NET SDKs
 export PATH="/opt/homebrew/bin:/usr/local/share/dotnet:/usr/local/bin:$PATH"
 
-tag=${1:?usage: build/ci/publish.sh v<major>.<minor>.<patch>}
-if ! [[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-  echo "Not a release tag: $tag (expected v<major>.<minor>.<patch>)" >&2
+tag=${1:?usage: build/ci/publish.sh v<major>.<minor>.<patch>[-<prerelease>]}
+if ! [[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+  echo "Not a release tag: $tag (expected v<major>.<minor>.<patch>, optionally with -<prerelease>)" >&2
   exit 2
 fi
 version=${BASH_REMATCH[1]}
