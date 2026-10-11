@@ -31,7 +31,7 @@ namespace MethodCache.Analyzers
 
         private static readonly LocalizableString InvalidTimeSpanTitle = "Invalid time span";
         private static readonly LocalizableString InvalidTimeSpanMessageFormat = "{0} = \"{1}\" is not a positive time span; use a value such as \"00:05:00\"";
-        private static readonly LocalizableString InvalidTimeSpanDescription = "Duration, SlidingExpiration and RefreshAhead on [Cache] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\".";
+        private static readonly LocalizableString InvalidTimeSpanDescription = "Duration, SlidingExpiration and RefreshAhead on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\".";
 
         private const string Category = "Usage";
 
@@ -51,6 +51,39 @@ namespace MethodCache.Analyzers
 
             context.RegisterSymbolAction(AnalyzeSymbol, SymbolKind.Method);
             context.RegisterCompilationStartAction(OnCompilationStarted);
+            context.RegisterCompilationAction(AnalyzeCacheInterfaceAttributes);
+        }
+
+        private static void AnalyzeCacheInterfaceAttributes(CompilationAnalysisContext context)
+        {
+            // [assembly: CacheInterface] carries the same time spans as [Cache], on the assembly instead of a method
+            foreach (var attribute in context.Compilation.Assembly.GetAttributes())
+            {
+                if (attribute.AttributeClass?.Name != "CacheInterfaceAttribute" ||
+                    attribute.AttributeClass.ContainingNamespace?.ToDisplayString() != "MethodCache.Core")
+                {
+                    continue;
+                }
+
+                var location = attribute.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation();
+                foreach (var (property, text) in InvalidTimeSpans(attribute))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(InvalidTimeSpanRule, location, property, text));
+                }
+            }
+        }
+
+        private static System.Collections.Generic.IEnumerable<(string Property, string Text)> InvalidTimeSpans(AttributeData attribute)
+        {
+            foreach (var property in TimeSpanProperties)
+            {
+                if (TryGetNamedArgument(attribute, property, out var argument) &&
+                    argument.Value is string text &&
+                    (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero))
+                {
+                    yield return (property, text);
+                }
+            }
         }
         
         private static void OnCompilationStarted(CompilationStartAnalysisContext context)
@@ -83,14 +116,9 @@ namespace MethodCache.Analyzers
                     }
                 }
 
-                foreach (var property in TimeSpanProperties)
+                foreach (var (property, text) in InvalidTimeSpans(cacheAttribute))
                 {
-                    if (TryGetNamedArgument(cacheAttribute, property, out var argument) &&
-                        argument.Value is string text &&
-                        (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero))
-                    {
-                        ReportDiagnostic(context, cacheAttribute, InvalidTimeSpanRule, property, text);
-                    }
+                    ReportDiagnostic(context, cacheAttribute, InvalidTimeSpanRule, property, text);
                 }
             }
 

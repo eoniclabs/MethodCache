@@ -50,16 +50,26 @@ namespace MethodCache.SourceGenerator
                 .Where(static symbol => symbol is { TypeKind: TypeKind.Class, IsAbstract: false, IsStatic: false, IsGenericType: false })
                 .Collect();
 
-            context.RegisterSourceOutput(combinedProvider.Combine(classProvider), static (ctx, pair) => Execute(ctx, pair.Left, pair.Right));
+            // Interfaces from other assemblies, named by [assembly: CacheInterface(typeof(IClient), "Method", ...)]
+            var externalProvider = context.SyntaxProvider
+                .ForAttributeWithMetadataName(
+                    fullyQualifiedMetadataName: "MethodCache.Core.CacheInterfaceAttribute",
+                    predicate: static (node, _) => node is CompilationUnitSyntax,
+                    transform: static (ctx, ct) => GetExternalInterfaces(ctx, ct))
+                .SelectMany(static (items, _) => items)
+                .Collect();
+
+            context.RegisterSourceOutput(
+                combinedProvider.Combine(externalProvider).Combine(classProvider),
+                static (ctx, input) => Execute(ctx, input.Left.Left, input.Left.Right, input.Right));
         }
 
-        private static void Execute(SourceProductionContext context, ImmutableArray<InterfaceInfo?> interfaces, ImmutableArray<INamedTypeSymbol?> classes)
+        private static void Execute(SourceProductionContext context, ImmutableArray<InterfaceInfo?> interfaces, ImmutableArray<ExternalInterface> externals, ImmutableArray<INamedTypeSymbol?> classes)
         {
-            if (interfaces.IsDefaultOrEmpty) return;
-
             var validInterfaces = interfaces
                 .Where(i => i != null)
                 .Cast<InterfaceInfo>()
+                .Concat(ResolveExternalInterfaces(context, externals).ToList())
                 .ToList();
 
             if (validInterfaces.Count == 0) return;
@@ -77,7 +87,11 @@ namespace MethodCache.SourceGenerator
             foreach (var info in validInterfaces)
             {
                 var decoratorCode = DecoratorEmitter.Emit(info);
-                context.AddSource($"{info.Symbol.Name}Decorator.g.cs", decoratorCode);
+                // Another assembly's interface may share its name with one of this project's
+                var hintName = Utils.IsFromReferencedAssembly(info.Symbol)
+                    ? $"{Utils.GetDecoratorNamespace(info.Symbol)}.{info.Symbol.Name}Decorator.g.cs"
+                    : $"{info.Symbol.Name}Decorator.g.cs";
+                context.AddSource(hintName, decoratorCode);
             }
 
             // Generate shared components

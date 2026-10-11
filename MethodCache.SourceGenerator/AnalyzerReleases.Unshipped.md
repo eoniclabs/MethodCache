@@ -9,3 +9,6 @@ MCG005 | MethodCacheGenerator | Warning | Reports missing tags for [CacheInvalid
 MCG006 | MethodCacheGenerator | Error | Reports [Cache] usage with pointer types.
 MCG007 | MethodCacheGenerator | Error | Reports [Cache] usage with ref struct parameters.
 MCG009 | MethodCacheGenerator | Warning | Reports dynamic tags referencing unknown parameters.
+MCG010 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] on a type it cannot cache.
+MCG011 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] listing a method it cannot cache.
+MCG012 | MethodCacheGenerator | Error | Reports an interface listed in more than one [assembly: CacheInterface].

@@ -112,7 +112,7 @@ namespace MethodCache.SourceGenerator
 
                 sb.AppendLine("    [System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
                 sb.AppendLine("    [System.Diagnostics.DebuggerNonUserCode]");
-                sb.AppendLine($"    public class {className}{genericParams} : {GetSimpleInterfaceName(info.Symbol)}");
+                sb.AppendLine($"    public class {className}{genericParams} : global::{GetSimpleInterfaceName(info.Symbol)}");
 
                 // Add generic constraints after class declaration
                 EmitGenericConstraints(sb, info.Symbol, "        ");
@@ -144,7 +144,7 @@ namespace MethodCache.SourceGenerator
                     .Concat(info.Symbol.AllInterfaces.SelectMany(i => i.GetMembers().OfType<IMethodSymbol>()))
                     .Distinct(SymbolEqualityComparer.Default)
                     .Cast<IMethodSymbol>()
-                    .Where(m => m.MethodKind == MethodKind.Ordinary);
+                    .Where(m => m.MethodKind == MethodKind.Ordinary && !m.IsStatic);
 
                 foreach (var method in allMethods)
                 {
@@ -157,6 +157,18 @@ namespace MethodCache.SourceGenerator
                         EmitInvalidateMethod(sb, invalidate);
                     else
                         EmitPassthroughMethod(sb, method);
+                }
+
+                // Properties, indexers and events always call the decorated instance
+                var otherMembers = info.Symbol.GetMembers()
+                    .Concat(info.Symbol.AllInterfaces.SelectMany(i => i.GetMembers()))
+                    .Where(m => !m.IsStatic && m is IPropertySymbol or IEventSymbol);
+                foreach (var member in otherMembers)
+                {
+                    if (member is IPropertySymbol property)
+                        EmitPassthroughProperty(sb, property);
+                    else if (member is IEventSymbol @event)
+                        EmitPassthroughEvent(sb, @event);
                 }
 
                 sb.AppendLine("    }");
@@ -933,6 +945,60 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
             }
 
+
+            private static void EmitPassthroughProperty(StringBuilder sb, IPropertySymbol property)
+            {
+                // Explicit implementation, so a property declared by a base interface or hidden by a derived one
+                // still reaches the matching member of the decorated instance
+                var declaring = Utils.GetReturnTypeForSignature(property.ContainingType);
+                var target = $"(({declaring})_decorated)";
+                var byRef = property.ReturnsByRefReadonly ? "ref readonly " : property.ReturnsByRef ? "ref " : string.Empty;
+                var type = Utils.GetReturnTypeForSignature(property.Type);
+
+                string name;
+                string access;
+                if (property.IsIndexer)
+                {
+                    var parameters = string.Join(", ", property.Parameters.Select(p =>
+                    {
+                        var modifier = p.RefKind == RefKind.In ? "in " : string.Empty;
+                        return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {p.Name}";
+                    }));
+                    name = $"this[{parameters}]";
+                    access = $"{target}[{string.Join(", ", property.Parameters.Select(p => p.Name))}]";
+                }
+                else
+                {
+                    name = property.Name;
+                    access = $"{target}.{property.Name}";
+                }
+
+                sb.AppendLine($"        {byRef}{type} {declaring}.{name}");
+                sb.AppendLine("        {");
+                if (property.GetMethod != null)
+                    sb.AppendLine(byRef.Length > 0 ? $"            get => ref {access};" : $"            get => {access};");
+                if (property.SetMethod != null)
+                {
+                    sb.AppendLine(property.SetMethod.IsInitOnly
+                        ? "            init => throw new global::System.NotSupportedException(\"An init-only property can't be set through the cached decorator.\");"
+                        : $"            set => {access} = value;");
+                }
+
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
+
+            private static void EmitPassthroughEvent(StringBuilder sb, IEventSymbol @event)
+            {
+                var declaring = Utils.GetReturnTypeForSignature(@event.ContainingType);
+                var target = $"(({declaring})_decorated).{@event.Name}";
+                sb.AppendLine($"        event {Utils.GetReturnTypeForSignature(@event.Type)} {declaring}.{@event.Name}");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            add => {target} += value;");
+                sb.AppendLine($"            remove => {target} -= value;");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+            }
 
             private static void EmitMethodSignature(StringBuilder sb, IMethodSymbol method)
             {

@@ -64,6 +64,23 @@ namespace TestApp
             Assert.DoesNotContain(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId);
         }
 
+        [Theory]
+        [InlineData("Duration", "5 minutes")]
+        [InlineData("RefreshAhead", "00:00:00")]
+        public async Task CacheInterfaceAttribute_WithInvalidTimeSpan_ShouldReportDiagnostic(string property, string value)
+        {
+            var source = $@"
+using MethodCache.Core;
+
+[assembly: CacheInterface(typeof(System.IFormatProvider), ""GetFormat"", {property} = ""{value}"")]";
+
+            var result = await AnalyzeAsync(source);
+            LogDiagnostics(result);
+
+            var diagnostic = Assert.Single(result.AnalyzerDiagnostics, d => d.Id == MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId);
+            Assert.Contains(property, diagnostic.GetMessage());
+        }
+
         private static async Task<AnalysisResult> AnalyzeAsync(string source)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(source);
