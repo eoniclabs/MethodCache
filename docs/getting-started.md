@@ -79,6 +79,10 @@ lifetime you chose. Call it after your own registrations: a service registered l
 register an implementation at all, `AddMethodCache()` registers it as a singleton when it lives in the same project as
 the interface.
 
+Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
+implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
+`AddScoped(typeof(IRepository<>), typeof(Repository<>))` is not cached; register the closed types instead.
+
 ## What can be cached
 
 <!-- snippet: getting-started-shapes -->

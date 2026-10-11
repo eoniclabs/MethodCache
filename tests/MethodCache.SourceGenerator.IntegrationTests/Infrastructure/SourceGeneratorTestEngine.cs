@@ -29,10 +29,12 @@ public class SourceGeneratorTestEngine
     /// </summary>
     public Task<GeneratedTestAssembly> CompileWithSourceGeneratorAsync(
         string sourceCode, 
-        string assemblyName = "TestAssembly")
+        string assemblyName = "TestAssembly",
+        LanguageVersion languageVersion = LanguageVersion.Latest)
     {
-        // Parse the source code
-        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+        // Parse the source code; the generated code is parsed with the same language version
+        var parseOptions = new CSharpParseOptions(languageVersion);
+        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode, parseOptions);
 
         // Create compilation
         var compilation = CSharpCompilation.Create(
@@ -45,7 +47,7 @@ public class SourceGeneratorTestEngine
 
         // Apply source generator
         var generator = new MethodCacheGenerator();
-        var driver = CSharpGeneratorDriver.Create(generator);
+        var driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() }, parseOptions: parseOptions);
         
         driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
             compilation, 
@@ -274,6 +276,7 @@ namespace {namespaceName}
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(System.Collections.Concurrent.ConcurrentDictionary<,>).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(ServiceCollectionContainerBuilderExtensions).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(MethodCache.Policies.CachePolicy).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(MethodCache.Extensibility.ICacheKeyGenerator).Assembly.Location), // Include Core assembly for Runtime types
