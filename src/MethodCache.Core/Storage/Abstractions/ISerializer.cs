@@ -8,7 +8,8 @@ namespace MethodCache.Extensibility;
 public interface ISerializer
 {
     /// <summary>
-    /// Writes <paramref name="value"/> to <paramref name="destination"/>.
+    /// Writes <paramref name="value"/> to <paramref name="destination"/>. Write at least one byte: an entry with an
+    /// empty value is read as cut short, so it is a miss and is never shared between instances.
     /// </summary>
     void Serialize<T>(T value, IBufferWriter<byte> destination);
 
