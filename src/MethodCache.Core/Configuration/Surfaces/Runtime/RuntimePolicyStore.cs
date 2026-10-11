@@ -8,9 +8,31 @@ using MethodCache.Core.PolicyPipeline.Model;
 
 namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 
-internal sealed class RuntimePolicyStore
+internal sealed class RuntimePolicyStore : IDisposable
 {
+    // Timers can't wait longer than about 49 days; a later expiry is checked again after this
+    private static readonly TimeSpan MaxTimerDelay = TimeSpan.FromDays(1);
+
     private readonly ConcurrentDictionary<string, StoredPolicy> _policies = new(StringComparer.Ordinal);
+    private readonly TimeProvider _time;
+    private readonly object _timerSync = new();
+    private ITimer? _expiryTimer;
+    private bool _disposed;
+
+    public RuntimePolicyStore(TimeProvider? timeProvider = null)
+    {
+        _time = timeProvider ?? TimeProvider.System;
+    }
+
+    public void Dispose()
+    {
+        lock (_timerSync)
+        {
+            _disposed = true;
+            _expiryTimer?.Dispose();
+            _expiryTimer = null;
+        }
+    }
 
     /// <summary>
     /// Raised synchronously, on the thread that made the change, before the call that made it returns. The policy
@@ -90,7 +112,7 @@ internal sealed class RuntimePolicyStore
 
         RemoveExpiredPolicies();
 
-        var timestamp = DateTimeOffset.UtcNow;
+        var timestamp = _time.GetUtcNow();
         var policyWithMetadata = ApplyRuntimeMetadata(policy, metadata);
         var contributionMetadata = BuildContributionMetadata(metadata);
         var enriched = CachePolicyMapper.AttachContribution(policyWithMetadata, PolicySourceIds.RuntimeOverrides, fields, timestamp, contributionMetadata);
@@ -114,6 +136,11 @@ internal sealed class RuntimePolicyStore
                 reason,
                 timestamp,
                 contributionMetadata));
+
+        if (metadata?.ExpiresAt != null)
+        {
+            ScheduleExpiry();
+        }
 
         return Task.CompletedTask;
     }
@@ -181,9 +208,48 @@ internal sealed class RuntimePolicyStore
         Changed?.Invoke(change);
     }
 
+    /// <summary>
+    /// Sets the timer for the next override to expire, so it stops applying on time rather than at the next change.
+    /// </summary>
+    private void ScheduleExpiry()
+    {
+        lock (_timerSync)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            DateTimeOffset? next = null;
+            foreach (var stored in _policies.Values)
+            {
+                if (stored.Metadata?.ExpiresAt is { } expiresAt && (next == null || expiresAt < next))
+                {
+                    next = expiresAt;
+                }
+            }
+
+            _expiryTimer?.Dispose();
+            _expiryTimer = null;
+            if (next == null)
+            {
+                return;
+            }
+
+            var delay = next.Value - _time.GetUtcNow();
+            delay = delay < TimeSpan.Zero ? TimeSpan.Zero : delay > MaxTimerDelay ? MaxTimerDelay : delay;
+            _expiryTimer = _time.CreateTimer(static state =>
+            {
+                var store = (RuntimePolicyStore)state!;
+                store.RemoveExpiredPolicies();
+                store.ScheduleExpiry();
+            }, this, delay, Timeout.InfiniteTimeSpan);
+        }
+    }
+
     private void RemoveExpiredPolicies()
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _time.GetUtcNow();
 
         foreach (var (methodId, stored) in _policies)
         {
@@ -203,7 +269,7 @@ internal sealed class RuntimePolicyStore
 
     private void EnqueueRemovedChange(string methodId, string notes, IReadOnlyDictionary<string, string?>? metadata = null)
     {
-        var timestamp = DateTimeOffset.UtcNow;
+        var timestamp = _time.GetUtcNow();
         var policy = CachePolicyMapper.AttachContribution(
             CachePolicy.Empty,
             PolicySourceIds.RuntimeOverrides,

@@ -130,13 +130,10 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
+            // The store and its source are registered together, once, however many Add* methods are called
             if (!services.Any(sd => sd.ServiceType == typeof(RuntimePolicyStore)))
             {
                 services.AddSingleton<RuntimePolicyStore>();
-            }
-
-            if (!services.Any(sd => sd.ImplementationType == typeof(RuntimePolicySource)))
-            {
                 services.AddSingleton<PolicySourceRegistration>(sp =>
                     new PolicySourceRegistration(
                         new RuntimePolicySource(sp.GetRequiredService<RuntimePolicyStore>()),
@@ -302,7 +299,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
                 var implementationType = registration.ImplementationType;
                 if (implementationType == null)
                 {
-                    Console.WriteLine($"Warning: No concrete implementation found for interface {registration.ServiceType.FullName} with cache attributes.");
+                    // Nothing to register; resolving the interface fails with the usual DI error naming it
                     continue;
                 }
 

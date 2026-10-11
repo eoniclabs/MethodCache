@@ -34,7 +34,7 @@ await configurator.UpsertAsync<IUserService, UserProfile>(
 await configurator.RemoveAsync<IUserService, UserProfile>(s => s.GetUserProfileAsync(default));
 ```
 
-Overrides are not persisted and not shared between instances. `RuntimeOverrideMetadata` is stored as `runtime.*` metadata on the policy; an override whose `ExpiresAt` has passed is removed lazily, the next time `RuntimePolicyStore` is used (no timer).
+Overrides are not persisted and not shared between instances. `RuntimeOverrideMetadata` is stored as `runtime.*` metadata on the policy; a timer in `RuntimePolicyStore` removes an override when its `ExpiresAt` passes.
 
 ## Configuration Files
 

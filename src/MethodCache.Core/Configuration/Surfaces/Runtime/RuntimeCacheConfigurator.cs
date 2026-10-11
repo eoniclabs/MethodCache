@@ -29,19 +29,6 @@ internal sealed class RuntimeCacheConfigurator : IRuntimeCacheConfigurator
         return _store.UpsertAsync(methodId, draft.Policy, draft.Fields, metadata);
     }
 
-    public Task UpsertAsync(string methodId, Action<CachePolicyBuilder> configure, RuntimeOverrideMetadata? metadata = null)
-    {
-        if (configure == null)
-        {
-            throw new ArgumentNullException(nameof(configure));
-        }
-
-        var builder = new CachePolicyBuilder();
-        configure(builder);
-        var draft = builder.Build(methodId);
-        return _store.UpsertAsync(methodId, draft.Policy, draft.Fields, metadata);
-    }
-
     public Task UpsertAsync(string methodId, CachePolicy policy, CachePolicyFields fields = CachePolicyFields.None, RuntimeOverrideMetadata? metadata = null)
         => _store.UpsertAsync(methodId, policy, fields, metadata);
 
