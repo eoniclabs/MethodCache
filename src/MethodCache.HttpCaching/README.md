@@ -28,7 +28,8 @@ That is all. Your typed client keeps calling `GetAsync` as before.
   after a write.
 - Cached responses carry an `Age` header, as the standard requires.
 - Each HttpClient has its own settings and its own entries.
-- Request directives are honored: `no-cache`, `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
+- Request directives are honored: `no-cache` (revalidates and stores the answer), `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
+- `Range` requests go to the origin, and `206 Partial Content` is never stored.
 
 ## Settings
 
@@ -46,13 +47,13 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 
 | Option | Default | |
 |---|---|---|
-| `IsSharedCache` | `false` | `false`: a private cache; `Authorization` is part of the key so callers never see each other's responses. `true`: a shared cache; `private` and authorized responses are not stored, `s-maxage` applies |
+| `IsSharedCache` | `false` | `false`: a private cache; `Authorization` and `Cookie` are part of the key so callers never see each other's responses. `true`: a shared cache; `private` and authorized responses are not stored, `s-maxage` applies |
 | `DefaultMaxAge` | `null` | Freshness for a response with only an `ETag`/`Last-Modified`. `null` revalidates every time |
 | `AllowHeuristicFreshness` | `true` | 10% of the time since `Last-Modified`, at most `MaxHeuristicFreshness` (1 hour) |
 | `StaleRetention` | 24 hours | How long a stale entry is kept for revalidation and the stale options below |
 | `EnableStaleWhileRevalidate` | `false` | Serve stale at once and refresh in the background, within the server's `stale-while-revalidate` |
 | `EnableStaleIfError` | `false` | Serve stale when the request fails or returns 5xx, within `stale-if-error` or `MaxStaleIfError` (24 hours) |
-| `MaxResponseSize` | 10 MB | Larger responses are not cached |
+| `MaxResponseSize` | 10 MB | Larger responses are not cached. A body without `Content-Length` is read up to this size, then streamed to the caller uncached |
 | `KeyHeaders` | empty | Request headers that are always part of the key, for APIs that vary on a header without sending `Vary` |
 | `CacheableMethods` | GET, HEAD | POST, PUT, PATCH and DELETE are never cached, even if added. |
 | `AddDiagnosticHeaders` | `false` | Adds `X-Cache`, `X-Cache-Age` and `X-Cache-TTL` |
