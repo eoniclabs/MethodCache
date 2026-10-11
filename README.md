@@ -140,6 +140,8 @@ dotnet add package MethodCache
 
 A service registered after `AddMethodCache()` is not cached. If you don't register an implementation at all,
 `AddMethodCache()` registers it as a singleton when it lives in the same project as the interface.
+Generic interfaces such as `IRepository<T>` are cached for each closed type your project implements
+(`UserRepository : IRepository<User>`); an open generic registration (`typeof(IRepository<>)`) is not.
 
 ## Features
 

@@ -63,3 +63,6 @@ artifacts/
 
 # Other generated files
 *.Generated.cs
+
+# Verify snapshot mismatches
+*.received.*
