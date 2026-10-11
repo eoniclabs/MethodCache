@@ -1,8 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using MethodCache.Core.Options;
 using MethodCache.Core.PolicyPipeline.Model;
-using MethodCache.Core.Runtime.Core;
 
 namespace MethodCache.Core.Configuration.Surfaces.Fluent
 {

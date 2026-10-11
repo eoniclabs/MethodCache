@@ -4,10 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.Extensions.Options;
-using MethodCache.OpenTelemetry.Configuration;
-using MethodCache.OpenTelemetry.Tracing;
 
-namespace MethodCache.OpenTelemetry.Propagators;
+namespace MethodCache.OpenTelemetry;
 
 public interface IBaggagePropagator
 {

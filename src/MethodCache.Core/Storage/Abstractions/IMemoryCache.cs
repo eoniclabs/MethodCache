@@ -1,11 +1,9 @@
-using MethodCache.Core.Infrastructure;
-
 namespace MethodCache.Core.Storage.Abstractions
 {
     /// <summary>
     /// Defines a memory cache interface for in-process caching operations.
     /// </summary>
-    public interface IMemoryCache : IDisposable
+    internal interface IMemoryCache : IDisposable
     {
         /// <summary>
         /// Gets a value from the memory cache.

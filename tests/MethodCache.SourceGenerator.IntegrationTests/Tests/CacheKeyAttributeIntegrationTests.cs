@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Core.Runtime;
+using MethodCache;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -24,7 +24,7 @@ public class CacheKeyAttributeIntegrationTests
         var sourceCode = @"
 using System;
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 namespace TestNamespace
 {

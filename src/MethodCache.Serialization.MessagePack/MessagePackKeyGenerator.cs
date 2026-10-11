@@ -3,9 +3,8 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using MessagePack;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 
 namespace MethodCache.Serialization.MessagePack;
 

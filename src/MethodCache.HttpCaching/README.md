@@ -5,8 +5,6 @@ revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back t
 response. It follows RFC 9111.
 
 ```csharp
-using MethodCache.HttpCaching;
-
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
     .AddHttpCaching();
 ```

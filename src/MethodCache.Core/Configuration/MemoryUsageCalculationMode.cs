@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Configuration
+namespace MethodCache
 {
     /// <summary>
     /// Defines how memory usage is calculated for cache statistics.

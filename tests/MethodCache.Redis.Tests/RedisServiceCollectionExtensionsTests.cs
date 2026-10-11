@@ -1,5 +1,5 @@
 using FluentAssertions;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.DependencyInjection;
@@ -98,7 +98,7 @@ public class RedisServiceCollectionExtensionsTests
         services.AddMethodCacheRedis(options => options.KeyPrefix = "app:");
         using var provider = services.BuildServiceProvider();
 
-        provider.GetRequiredService<IOptions<MethodCache.Core.Configuration.DistributedCacheOptions>>().Value.KeyPrefix.Should().Be("app:");
+        provider.GetRequiredService<IOptions<MethodCache.DistributedCacheOptions>>().Value.KeyPrefix.Should().Be("app:");
     }
 
     [Fact]

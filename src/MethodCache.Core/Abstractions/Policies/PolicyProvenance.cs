@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace MethodCache.Abstractions.Policies;
+namespace MethodCache.Policies;
 
 public sealed class PolicyProvenance : IReadOnlyCollection<PolicyContribution>
 {

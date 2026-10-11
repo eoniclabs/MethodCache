@@ -1,13 +1,11 @@
-using Microsoft.Extensions.Logging;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.PolicyPipeline.Diagnostics;
+using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace MethodCache.Core.PolicyPipeline.Resolution;
 
-public static class PolicyRegistrationExtensions
+internal static class PolicyRegistrationExtensions
 {
     public static void EnsurePolicyServices(this IServiceCollection services)
     {

@@ -4,13 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
-using MethodCache.Abstractions.Sources;
-using MethodCache.Core.PolicyPipeline.Diagnostics;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
-using MethodCache.Core.Runtime;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;

@@ -1,11 +1,11 @@
-namespace MethodCache.Core.Infrastructure
+namespace MethodCache.Extensibility
 {
     /// <summary>
     /// Receives cache events for monitoring. Each cached call is reported exactly once, as either a hit or a miss.
     /// </summary>
     /// <remarks>
     /// Generated decorators report hits they serve directly from the in-memory fast path. Every other hit and
-    /// miss is reported by the <see cref="Runtime.ICacheManager"/> that handles the call, so a custom cache
+    /// miss is reported by the <see cref="ICacheManager"/> that handles the call, so a custom cache
     /// manager must report its own hits and misses.
     /// </remarks>
     public interface ICacheMetricsProvider

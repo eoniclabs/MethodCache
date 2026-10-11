@@ -1,20 +1,14 @@
 using FluentAssertions;
-using MethodCache.Core.Configuration;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Infrastructure.Serialization;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.Distributed;
-using MethodCache.Core.Runtime.Execution;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using MethodCache.Serialization.MessagePack;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
-using MemoryCacheOptions = MethodCache.Core.Configuration.MemoryCacheOptions;
+
 using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace MethodCache.Core.Tests.Core;
@@ -46,7 +40,7 @@ public class DistributedCacheTests
 
         return new InMemoryCacheManager(
             new NullCacheMetricsProvider(),
-            MsOptions.Create(new MemoryCacheOptions { EnableBackgroundCleanup = false }),
+            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             time ?? _time,
             layer);
     }
@@ -491,7 +485,7 @@ public class DistributedCacheTests
         var layer = new DistributedCacheLayer(_shared, new JsonCacheSerializer(), new DistributedCacheOptions(), new HangingBackplane(), _time);
         var node = new InMemoryCacheManager(
             new NullCacheMetricsProvider(),
-            MsOptions.Create(new MemoryCacheOptions { EnableBackgroundCleanup = false }),
+            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             _time,
             layer);
 

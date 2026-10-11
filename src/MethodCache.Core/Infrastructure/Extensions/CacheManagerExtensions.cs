@@ -1,11 +1,9 @@
 using System.Diagnostics;
 using System.Globalization;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
-using MethodCache.Core.Options;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.Core.Infrastructure.Extensions
+namespace MethodCache
 {
     /// <summary>
     /// Fluent helpers for consuming <see cref="ICacheManager"/> outside of source-generated proxies.

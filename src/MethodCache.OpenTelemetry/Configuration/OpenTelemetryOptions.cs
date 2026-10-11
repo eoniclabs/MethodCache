@@ -1,4 +1,4 @@
-namespace MethodCache.OpenTelemetry.Configuration;
+namespace MethodCache.OpenTelemetry;
 
 /// <summary>Options for <c>AddMethodCacheOpenTelemetry</c>.</summary>
 public class OpenTelemetryOptions
@@ -18,7 +18,7 @@ public class OpenTelemetryOptions
     public bool HashCacheKeys { get; set; } = true;
 
     /// <summary>
-    /// Puts the user and tenant ids set through <see cref="Propagators.IBaggagePropagator"/> into span baggage,
+    /// Puts the user and tenant ids set through <see cref="IBaggagePropagator"/> into span baggage,
     /// which travels to downstream services. Default: false.
     /// </summary>
     public bool ExportSensitiveData { get; set; } = false;

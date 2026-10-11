@@ -1,5 +1,5 @@
 using FluentAssertions;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 using StackExchange.Redis;
 using Xunit;
 

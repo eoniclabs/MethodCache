@@ -1,6 +1,6 @@
-using System.Globalization;
+﻿using System.Globalization;
 
-namespace MethodCache.Core.Runtime.KeyGeneration;
+namespace MethodCache;
 
 /// <summary>
 /// Builds the cache keys that generated decorators use, so application code can compute the same key
@@ -13,7 +13,7 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// A record, class or struct argument whose public properties and fields are simple values is written as
 /// <c>({member1}:{member2}...)</c> in declaration order, and an <see cref="ICacheKeyProvider"/> as its
 /// <see cref="ICacheKeyProvider.CacheKeyPart"/>. Methods with other arguments, or a subclass of a declared record
-/// or class, use the registered <see cref="ICacheKeyGenerator"/>, which
+/// or class, use the registered <see cref="MethodCache.Extensibility.ICacheKeyGenerator"/>, which
 /// produces <c>{Service}.{Method}[:v{Version}]:{hash}</c>; <see cref="Pattern"/> matches both forms.
 /// </remarks>
 /// <example>

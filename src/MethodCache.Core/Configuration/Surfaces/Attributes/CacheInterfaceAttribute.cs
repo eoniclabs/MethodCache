@@ -1,5 +1,5 @@
 
-namespace MethodCache.Core
+namespace MethodCache
 {
     /// <summary>
     /// Caches methods of an interface you don't own, such as a client from a NuGet package, without writing a

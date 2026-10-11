@@ -1,14 +1,14 @@
-using MethodCache.HttpCaching.Internal;
 using System.Diagnostics.Metrics;
+using MethodCache.HttpCaching;
+using MethodCache.HttpCaching.Internal;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.HttpCaching;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static class HttpClientBuilderExtensions
+public static class MethodCacheHttpClientBuilderExtensions
 {
     /// <summary>
     /// Caches this HttpClient's responses the way a browser does: it follows <c>Cache-Control</c> and <c>Vary</c>,

@@ -17,8 +17,8 @@ public class CacheWhenIntegrationTests
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CacheWhen

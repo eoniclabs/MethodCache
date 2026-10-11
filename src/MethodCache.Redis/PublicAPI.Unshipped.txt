@@ -11,6 +11,6 @@ MethodCache.Redis.RedisOptions.EnableBackplane.set -> void
 MethodCache.Redis.RedisOptions.KeyPrefix.get -> string!
 MethodCache.Redis.RedisOptions.KeyPrefix.set -> void
 MethodCache.Redis.RedisOptions.RedisOptions() -> void
-MethodCache.Redis.RedisServiceCollectionExtensions
-static MethodCache.Redis.RedisServiceCollectionExtensions.AddMethodCacheRedis(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static MethodCache.Redis.RedisServiceCollectionExtensions.AddMethodCacheRedis(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Redis.RedisOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Microsoft.Extensions.DependencyInjection.MethodCacheRedisServiceCollectionExtensions
+static Microsoft.Extensions.DependencyInjection.MethodCacheRedisServiceCollectionExtensions.AddMethodCacheRedis(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.MethodCacheRedisServiceCollectionExtensions.AddMethodCacheRedis(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.Redis.RedisOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

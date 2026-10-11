@@ -32,8 +32,10 @@ You always pass the cache key yourself. MethodCache does not derive keys from la
 
 The fluent API is exposed through extension methods and builders:
 
-1. `MethodCache.Core.Infrastructure.Extensions`: `ICacheManager` extensions for get/create flows.
-2. `MethodCache.Core.Configuration.Surfaces.Fluent`: builder APIs used during `AddMethodCache` setup.
+1. `ICacheManager` extensions for get/create flows.
+2. Builder APIs used during `AddMethodCache` setup.
+
+Both are in the `MethodCache` namespace.
 3. Supporting types: option builders and contexts.
 
 The configuration builders feed the same policy pipeline as attributes, appsettings.json and runtime overrides.
@@ -41,7 +43,7 @@ The configuration builders feed the same policy pipeline as attributes, appsetti
 ## API Surface Details
 
 ### ICacheManager Extensions
-Namespace: `MethodCache.Core.Infrastructure.Extensions`.
+Namespace: `MethodCache`.
 
 ```csharp
 public static class CacheManagerExtensions
@@ -80,7 +82,7 @@ public static class CacheManagerExtensions
 - Distributed cache caveat: pattern invalidation works on the in-memory cache only. With a distributed cache configured it throws `NotSupportedException`, because the distributed cache cannot list its tags.
 
 ### Fluent Configuration API
-Namespace: `MethodCache.Core.Configuration.Surfaces.Fluent`. Use it inside `AddMethodCache` to configure `[Cache]` methods without changing the attributes.
+Namespace: `MethodCache`. Use it inside `AddMethodCache` to configure `[Cache]` methods without changing the attributes.
 
 ```csharp
 public interface IFluentMethodCacheConfiguration
@@ -126,7 +128,7 @@ public interface IFluentGroupConfiguration
 ### Supporting Types
 
 #### CacheEntryOptions
-Namespace: `MethodCache.Core.Options`.
+Namespace: `MethodCache`.
 
 ```csharp
 public sealed class CacheEntryOptions
@@ -162,7 +164,7 @@ public sealed class CacheEntryOptions
 - `When` skips the cache for a call when the predicate returns false.
 
 #### CacheContext
-Namespace: `MethodCache.Core.Runtime.Core`.
+Namespace: `MethodCache`.
 
 ```csharp
 public sealed class CacheContext
@@ -178,7 +180,7 @@ public sealed class CacheContext
 - `Items` is scoped per call, so callbacks such as `OnHit`, `OnMiss` and `When` can share data without leaking state.
 
 #### Observability Interfaces
-Namespace: `MethodCache.Core.Infrastructure.Metrics`.
+Namespace: `MethodCache.Extensibility`.
 
 ```csharp
 public interface ICacheMetrics
@@ -257,4 +259,4 @@ ICacheManager cacheManager = new NoOpCacheManager(); // never caches: the factor
 var service = new OrderService(repository, cacheManager);
 ```
 
-`NoOpCacheManager` is in `MethodCache.Core.Runtime.Execution`.
+`NoOpCacheManager` is in `MethodCache.Extensibility`.

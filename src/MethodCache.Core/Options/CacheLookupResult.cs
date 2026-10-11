@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Options
+namespace MethodCache
 {
     /// <summary>
     /// Represents the outcome of a cache lookup without materialising allocations.

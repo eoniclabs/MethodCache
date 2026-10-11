@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 
-namespace MethodCache.Core.Configuration
+namespace MethodCache
 {
     /// <summary>
     /// Configuration options for the in-memory cache.
     /// </summary>
-    public class MemoryCacheOptions
+    public class MethodCacheMemoryOptions
     {
         private long _maxItems = 10000;
         
@@ -188,23 +188,6 @@ namespace MethodCache.Core.Configuration
                 _accurateModeRecalculationInterval = value;
             }
         }
-        
-        private double _evictionSamplePercentage = 0.1; // 10%
-
-        /// <summary>
-        /// No longer used: eviction is O(1) and does not sample.
-        /// </summary>
-        [Obsolete("Eviction no longer samples; this setting has no effect.")]
-        public double EvictionSamplePercentage
-        {
-            get => _evictionSamplePercentage;
-            set
-            {
-                if (value <= 0 || value > 1)
-                    throw new ArgumentOutOfRangeException(nameof(EvictionSamplePercentage), value, "EvictionSamplePercentage must be between 0 (exclusive) and 1 (inclusive).");
-                _evictionSamplePercentage = value;
-            }
-        }
     }
 
     /// <summary>
@@ -213,44 +196,20 @@ namespace MethodCache.Core.Configuration
     public enum MemoryCacheEvictionPolicy
     {
         /// <summary>
-        /// Least Recently Used - evicts the least recently accessed items first.
-        /// </summary>
-        LRU,
-
-        /// <summary>
-        /// Superseded by <see cref="TinyLfu"/>, which tracks frequency with far better hit rates and O(1) eviction.
-        /// </summary>
-        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
-        LFU,
-
-        /// <summary>
-        /// Superseded by <see cref="TinyLfu"/>.
-        /// </summary>
-        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
-        LFU_Precise,
-
-        /// <summary>
-        /// First In First Out - evicts the oldest items first; reads do not change the order.
-        /// </summary>
-        FIFO,
-
-        /// <summary>
-        /// Superseded by <see cref="TinyLfu"/>. Expired entries are always removed first by the timer wheel.
-        /// </summary>
-        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
-        TTL,
-
-        /// <summary>
-        /// Superseded by <see cref="TinyLfu"/>.
-        /// </summary>
-        [Obsolete("Use TinyLfu. This value now selects TinyLfu.")]
-        TTL_Precise,
-
-        /// <summary>
         /// W-TinyLFU (the default): a small LRU admission window in front of a segmented LRU, where a
         /// frequency sketch decides whether a new entry may displace an existing one. Gives near-optimal
         /// hit rates, resists one-off scans and evicts in O(1). Same algorithm as Caffeine.
         /// </summary>
-        TinyLfu
+        TinyLfu,
+
+        /// <summary>
+        /// Least recently used: evicts the least recently accessed items first.
+        /// </summary>
+        Lru,
+
+        /// <summary>
+        /// First in, first out: evicts the oldest items first; reads do not change the order.
+        /// </summary>
+        Fifo
     }
 }

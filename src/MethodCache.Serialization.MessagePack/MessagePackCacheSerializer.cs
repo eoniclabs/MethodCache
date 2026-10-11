@@ -1,7 +1,7 @@
 using System.Buffers;
 using MessagePack;
 using MessagePack.Resolvers;
-using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
 
 namespace MethodCache.Serialization.MessagePack;
 
@@ -11,7 +11,7 @@ namespace MethodCache.Serialization.MessagePack;
 /// <remarks>
 /// The default options use the contractless resolver, so types need no attributes, keep <see cref="DateTime.Kind"/>,
 /// use LZ4 compression and treat stored data as untrusted.
-/// Register it with <see cref="MessagePackServiceCollectionExtensions.AddMethodCacheMessagePack"/>.
+/// Register it with <see cref="Microsoft.Extensions.DependencyInjection.MethodCacheMessagePackServiceCollectionExtensions.AddMethodCacheMessagePack"/>.
 /// </remarks>
 public sealed class MessagePackCacheSerializer : ISerializer
 {

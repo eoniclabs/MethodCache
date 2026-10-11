@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using MethodCache.Core.Infrastructure.Metrics;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
+using MethodCache.Extensibility;
 
-namespace MethodCache.Core.Options
+namespace MethodCache
 {
     /// <summary>
     /// Immutable options describing how a fluent cache entry should behave.

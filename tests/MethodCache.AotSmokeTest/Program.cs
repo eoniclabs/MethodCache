@@ -1,5 +1,4 @@
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
 using Microsoft.Extensions.DependencyInjection;
 using Vendor.Rates;
 

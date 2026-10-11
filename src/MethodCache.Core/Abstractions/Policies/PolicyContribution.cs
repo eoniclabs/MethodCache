@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace MethodCache.Abstractions.Policies;
+namespace MethodCache.Policies;
 
 public sealed record PolicyContribution(
     string SourceId,

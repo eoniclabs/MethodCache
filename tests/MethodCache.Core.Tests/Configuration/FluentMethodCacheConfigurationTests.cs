@@ -1,11 +1,10 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using MethodCache.Abstractions.Policies;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
-using MethodCache.Core.Infrastructure.Metrics;
-using MethodCache.Core.Options;
 using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Extensibility;
+using MethodCache.Policies;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;

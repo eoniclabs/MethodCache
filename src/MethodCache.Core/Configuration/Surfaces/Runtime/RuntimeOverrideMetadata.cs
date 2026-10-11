@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Configuration.Surfaces.Runtime;
+namespace MethodCache;
 
 /// <summary>
 /// Metadata associated with a runtime override.

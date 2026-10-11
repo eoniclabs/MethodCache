@@ -1,8 +1,8 @@
-using MethodCache.Abstractions.Policies;
+using MethodCache.Policies;
 
 namespace MethodCache.Core.PolicyPipeline.Model;
 
-public sealed class CachePolicyBuilder
+internal sealed class CachePolicyBuilder
 {
     private TimeSpan? _duration;
     private bool _durationSet;

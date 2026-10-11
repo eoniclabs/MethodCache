@@ -1,10 +1,8 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Execution;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache;
+using MethodCache.Extensibility;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -21,7 +19,7 @@ public class SingleCachePathIntegrationTests
     private const string Source = @"
 using System;
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 
 namespace SinglePath
 {

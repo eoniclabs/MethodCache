@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.Core.Runtime.Execution
+namespace MethodCache.Core.Tests.Core.Extensions
 {
-    public class MockCacheManager : ICacheManager
+    internal sealed class MockCacheManager : ICacheManager
     {
         private readonly ConcurrentDictionary<string, object> _cache = new ConcurrentDictionary<string, object>();
         public bool ForceCacheHit { get; set; }

@@ -7,7 +7,7 @@ namespace MethodCache.Core.Infrastructure.Utilities
     /// Uses a fixed number of SemaphoreSlim instances mapped by key hash to provide per-key locking semantics
     /// without the overhead of creating/disposing locks or ConcurrentDictionary operations.
     /// </summary>
-    public sealed class StripedLockPool : IDisposable
+    internal sealed class StripedLockPool : IDisposable
     {
         private readonly SemaphoreSlim[] _locks;
         private readonly int _stripeMask;
@@ -143,7 +143,7 @@ namespace MethodCache.Core.Infrastructure.Utilities
     /// <summary>
     /// Disposable handle for a striped lock that automatically releases when disposed.
     /// </summary>
-    public readonly struct StripedLockHandle : IDisposable
+    internal readonly struct StripedLockHandle : IDisposable
     {
         private readonly SemaphoreSlim _semaphore;
 

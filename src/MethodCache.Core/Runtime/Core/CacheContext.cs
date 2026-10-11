@@ -1,4 +1,4 @@
-namespace MethodCache.Core.Runtime.Core
+namespace MethodCache
 {
     /// <summary>
     /// Context passed to fluent cache factories, exposing the cache key and optional services.

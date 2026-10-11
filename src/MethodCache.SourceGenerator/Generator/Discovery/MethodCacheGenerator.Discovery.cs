@@ -126,10 +126,10 @@ namespace MethodCache.SourceGenerator
 
         private static bool IsCacheAttribute(INamedTypeSymbol? attr)
             => attr?.Name == "CacheAttribute" &&
-               attr.ContainingNamespace?.ToDisplayString() == "MethodCache.Core";
+               attr.ContainingNamespace?.ToDisplayString() == "MethodCache";
 
         private static bool IsCacheInvalidateAttribute(INamedTypeSymbol? attr)
             => attr?.Name == "CacheInvalidateAttribute" &&
-               attr.ContainingNamespace?.ToDisplayString() == "MethodCache.Core";
+               attr.ContainingNamespace?.ToDisplayString() == "MethodCache";
     }
 }

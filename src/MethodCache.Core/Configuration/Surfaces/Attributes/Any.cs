@@ -1,4 +1,4 @@
-namespace MethodCache.Core
+namespace MethodCache
 {
     public static class Any<T>
     {

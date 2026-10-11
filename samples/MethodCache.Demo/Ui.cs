@@ -88,7 +88,7 @@ internal static class Ui
         WriteLine();
     }
 
-    public static void WriteEntries(IReadOnlyList<MethodCache.Core.Management.CacheEntryInfo> entries) =>
+    public static void WriteEntries(IReadOnlyList<MethodCache.CacheEntryInfo> entries) =>
         Table(
             ["Key", "Expires in", "Tags"],
             entries.Select(e => (IReadOnlyList<string>)[e.Key, Duration(e.TimeToLive), string.Join(", ", e.Tags)]));

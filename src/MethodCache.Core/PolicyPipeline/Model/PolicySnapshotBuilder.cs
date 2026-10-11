@@ -1,5 +1,5 @@
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 
 namespace MethodCache.Core.PolicyPipeline.Model;
 

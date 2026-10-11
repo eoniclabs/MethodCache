@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using FluentAssertions;
-using MethodCache.Core.Infrastructure;
-using MethodCache.OpenTelemetry.Configuration;
-using MethodCache.OpenTelemetry.Metrics;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.Options;
 using Xunit;
 

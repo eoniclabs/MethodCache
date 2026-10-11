@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Sources;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -1,8 +1,4 @@
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Abstractions.Resolution;
-
-namespace MethodCache.Core.PolicyPipeline.Diagnostics;
+namespace MethodCache.Policies;
 
 public sealed class PolicyDiagnosticsService
 {

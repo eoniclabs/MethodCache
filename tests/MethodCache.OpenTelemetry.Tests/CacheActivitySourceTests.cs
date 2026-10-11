@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using FluentAssertions;
-using MethodCache.OpenTelemetry.Configuration;
-using MethodCache.OpenTelemetry.Tracing;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Trace;

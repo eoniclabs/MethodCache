@@ -1,8 +1,6 @@
 using System;
 
-using MethodCache.Abstractions.Policies;
-
-namespace MethodCache.Abstractions.Resolution;
+namespace MethodCache.Policies;
 
 public sealed class CachePolicyDelta
 {

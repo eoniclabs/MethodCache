@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Abstractions.Resolution;
-using MethodCache.Core.Runtime.Core;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 
 namespace MethodCache.Core.PolicyPipeline.Resolution;
 

@@ -5,15 +5,9 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Core.Infrastructure.Extensions;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.Execution;
-using MethodCache.Core.Storage.Abstractions;
-using MethodCache.OpenTelemetry.Extensions;
-using MethodCache.OpenTelemetry.Instrumentation;
-using MethodCache.OpenTelemetry.Metrics;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -75,12 +69,11 @@ public class MonitoringRegistrationTests
 
         await using var provider = services.BuildServiceProvider();
         var manager = provider.GetRequiredService<ICacheManager>();
-        var cache = provider.GetRequiredService<IMemoryCache>();
+        var cache = provider.GetRequiredService<ICacheAdministrator>();
 
         await manager.GetOrCreateFastAsync("stats:1", "Stats", () => Task.FromResult("value"), Policy);
         var stats = await cache.GetStatsAsync();
 
-        cache.Should().BeOfType<InMemoryCacheManager>();
         stats.Entries.Should().Be(1);
         stats.Misses.Should().Be(1);
     }

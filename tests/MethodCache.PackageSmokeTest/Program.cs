@@ -1,5 +1,4 @@
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
 using Microsoft.Extensions.DependencyInjection;
 
 // The README Quick Start against the installed package. Exits with 1 when the second call reaches the

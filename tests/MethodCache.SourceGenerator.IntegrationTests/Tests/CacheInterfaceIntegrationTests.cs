@@ -1,7 +1,6 @@
 using System.Reflection;
-using MethodCache.Core.Management;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache;
+using MethodCache.Extensibility;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,8 +16,8 @@ public class CacheInterfaceIntegrationTests
 {
     private const string Source = @"
 using System;
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -115,8 +114,8 @@ namespace VendorApp
     public async Task PropertiesIndexersAndEvents_ReachTheClient_AndNestedNamesDontCollide()
     {
         const string source = @"
-using MethodCache.Core;
-using MethodCache.Core.Infrastructure.Extensions;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -175,7 +174,7 @@ namespace VendorApp
     public async Task ListingAMethodItCannotCache_IsAnError(string method, string id, string expected)
     {
         var source = $@"
-using MethodCache.Core;
+using MethodCache;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 
 [assembly: CacheInterface(typeof(IFxVendorClient), {method.Replace("nameof(IFxVendorClient.GetMissingAsync)", "\"GetMissingAsync\"")})]
@@ -196,7 +195,7 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
     {
         var source = $@"
 using System.Threading.Tasks;
-using MethodCache.Core;
+using MethodCache;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 
 [assembly: CacheInterface({arguments})]
@@ -219,7 +218,7 @@ namespace VendorApp
     public async Task ListingTheSameInterfaceTwice_IsAnError()
     {
         const string source = @"
-using MethodCache.Core;
+using MethodCache;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 
 [assembly: CacheInterface(typeof(IFxVendorClient), nameof(IFxVendorClient.GetRateAsync))]

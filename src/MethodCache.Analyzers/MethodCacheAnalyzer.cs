@@ -19,7 +19,7 @@ namespace MethodCache.Analyzers
         public const string InvalidTimeSpanDiagnosticId = "MC0004";
 
         private const string Category = "Usage";
-        private const string AttributeNamespace = "MethodCache.Core";
+        private const string AttributeNamespace = "MethodCache";
 
         // Each id has its own heading in the diagnostics guide, so IDEs and build output link straight to the fix
         private static string HelpLink(string id) => "https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#" + id.ToLowerInvariant();

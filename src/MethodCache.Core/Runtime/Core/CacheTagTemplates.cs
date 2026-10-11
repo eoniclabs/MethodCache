@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace MethodCache.Core.Runtime.Core
+namespace MethodCache.Infrastructure
 {
     /// <summary>
     /// Expands parameter templates such as <c>"user:{userId}"</c> in a policy's tags, so a cached entry carries

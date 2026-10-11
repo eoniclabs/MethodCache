@@ -1,11 +1,9 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Diagnosers;
-using MethodCache.Benchmarks.Comparison.Services;
+using BenchmarkDotNet.Jobs;
 using MethodCache.Benchmarks.Comparison;
-using MethodCache.Core.Runtime;
+using MethodCache.Benchmarks.Comparison.Services;
 using Microsoft.Extensions.DependencyInjection;
-using MethodCache.Core.Infrastructure.Extensions;
 
 namespace MethodCache.Benchmarks.Microbenchmarks;
 
@@ -34,10 +32,10 @@ public class SourceGenSyncPathProfiler
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         });
 
-        services.Configure<MethodCache.Core.Configuration.MemoryCacheOptions>(opts =>
+        services.Configure<MethodCache.MethodCacheMemoryOptions>(opts =>
         {
             opts.EnableStatistics = false;
-            opts.EvictionPolicy = MethodCache.Core.Configuration.MemoryCacheEvictionPolicy.LRU;
+            opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;
         });
 
 

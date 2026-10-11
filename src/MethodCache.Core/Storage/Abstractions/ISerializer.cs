@@ -1,6 +1,6 @@
 using System.Buffers;
 
-namespace MethodCache.Core.Storage.Abstractions;
+namespace MethodCache.Extensibility;
 
 /// <summary>
 /// Turns cached values into bytes for the distributed cache and back.

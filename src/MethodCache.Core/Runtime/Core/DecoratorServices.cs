@@ -1,15 +1,16 @@
 using System.Collections.Concurrent;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime.KeyGeneration;
+using System.ComponentModel;
+using MethodCache.Extensibility;
+using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Runtime.Core
+namespace MethodCache.Infrastructure
 {
     /// <summary>
     /// What every generated decorator needs, resolved once per container. Scoped and transient decorators are
     /// created per resolve, so this keeps that to one lookup instead of one per service.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class DecoratorServices
     {
         private readonly ConcurrentDictionary<Type, object> _sites = new();

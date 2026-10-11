@@ -4,9 +4,10 @@ using System.Globalization;
 using System.IO.Hashing;
 using System.Text;
 using System.Text.Json;
-using MethodCache.Core.Runtime.Core;
+using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.Core.Runtime.KeyGeneration;
+namespace MethodCache.Extensibility;
 
 /// <summary>
 /// Default cache key generator. Writes the method name, version and arguments into a canonical binary form and

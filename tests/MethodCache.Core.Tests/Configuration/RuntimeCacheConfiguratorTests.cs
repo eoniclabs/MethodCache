@@ -1,10 +1,8 @@
-using System.Threading.Tasks;
 using System.Threading;
-using MethodCache.Abstractions.Policies;
-using MethodCache.Abstractions.Resolution;
+using System.Threading.Tasks;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
-using MethodCache.Core.Options;
-using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;

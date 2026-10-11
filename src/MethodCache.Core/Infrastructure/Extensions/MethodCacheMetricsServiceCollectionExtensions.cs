@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MethodCache.Core.Infrastructure.Extensions
+using MethodCache.Core.Infrastructure;
+using MethodCache.Extensibility;
+namespace Microsoft.Extensions.DependencyInjection
 {
     /// <summary>
     /// Convenience helpers for configuring cache metrics providers.

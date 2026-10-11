@@ -1,9 +1,7 @@
 using System.Diagnostics;
-using MethodCache.Core.Infrastructure;
-using MethodCache.Core.Runtime.Core;
-using MethodCache.Core.Runtime.KeyGeneration;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.Core.Runtime.Execution
+namespace MethodCache.Extensibility
 {
     public class NoOpCacheManager : ICacheManager
     {

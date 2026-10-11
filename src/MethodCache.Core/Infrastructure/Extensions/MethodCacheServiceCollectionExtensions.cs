@@ -1,30 +1,24 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using MethodCache.Abstractions.Registry;
-using MethodCache.Core.Configuration;
+using MethodCache;
 using MethodCache.Core.Configuration.Surfaces.ConfigFile;
-using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
-using MethodCache.Core.Infrastructure.Registration;
-using MethodCache.Core.Infrastructure.Serialization;
 using MethodCache.Core.Management;
-using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Core.PolicyPipeline.Sources;
-using MethodCache.Core.Runtime;
-using MethodCache.Core.Runtime.Core;
 using MethodCache.Core.Runtime.Distributed;
-using MethodCache.Core.Runtime.Execution;
-using MethodCache.Core.Runtime.KeyGeneration;
 using MethodCache.Core.Storage.Abstractions;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Policies;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MethodCache.Core.Infrastructure.Extensions
+namespace Microsoft.Extensions.DependencyInjection
 {
     public static class MethodCacheServiceCollectionExtensions
     {
@@ -158,7 +152,7 @@ namespace MethodCache.Core.Infrastructure.Extensions
 
             services.TryAddSingleton(static sp => new InMemoryCacheManager(
                 sp.GetRequiredService<ICacheMetricsProvider>(),
-                sp.GetService<IOptions<MemoryCacheOptions>>(),
+                sp.GetService<IOptions<MethodCacheMemoryOptions>>(),
                 sp.GetService<TimeProvider>(),
                 sp.GetService<DistributedCacheLayer>()));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());

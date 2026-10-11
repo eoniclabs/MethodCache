@@ -1,6 +1,6 @@
-using MethodCache.Core.Runtime.Core;
+using MethodCache.Infrastructure;
 
-namespace MethodCache.Core.Runtime.KeyGeneration
+namespace MethodCache.Extensibility
 {
     /// <summary>
     /// Defines the contract for generating cache keys from method signatures and arguments.
