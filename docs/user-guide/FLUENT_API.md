@@ -117,7 +117,7 @@ public interface IFluentGroupConfiguration
 }
 ```
 
-- Settings are applied in order: the default policy, then the method's group (set with `WithGroup`), then the method itself. `DefaultPolicy` and `ForGroup` only apply to methods listed with `ForService<T>().Method(...)`.
+- Each setting comes from the most specific place that sets it: the method itself (its `[Cache]` attribute or `ForService<T>().Method(...)`), then its group, then `DefaultPolicy`. `DefaultPolicy` applies to every cached method, also ones that only have `[Cache]`. A method joins a group with `[Cache("name")]` or `WithGroup("name")`.
 - Cached methods take duration, tags, sliding expiration, refresh-ahead and version from here. `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to `GetOrCreateAsync`; configuring them for a cached method throws `InvalidOperationException` at startup instead of being ignored.
 
 ### Supporting Types

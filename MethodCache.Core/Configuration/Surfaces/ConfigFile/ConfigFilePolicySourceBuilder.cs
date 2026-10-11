@@ -24,17 +24,21 @@ internal static class ConfigFilePolicySourceBuilder
     public static IReadOnlyList<PolicyDraft> Parse(IConfiguration configuration, string sectionName)
     {
         var root = configuration.GetSection(sectionName);
-        var servicesSection = root.GetSection("Services");
-
-        if (!root.Exists() || !servicesSection.Exists())
+        if (!root.Exists())
         {
             return Array.Empty<PolicyDraft>();
         }
 
-        var defaults = ParseSection(root.GetSection("Defaults"));
         var descriptors = new List<PolicyDraft>();
 
-        foreach (var methodSection in servicesSection.GetChildren())
+        // Defaults reach every cached method, including ones configured only with [Cache], whose own values win
+        var defaults = ParseSection(root.GetSection("Defaults"));
+        if (defaults.HasChanges)
+        {
+            descriptors.Add(defaults.Build(MethodIds.AllMethods));
+        }
+
+        foreach (var methodSection in root.GetSection("Services").GetChildren())
         {
             var methodId = methodSection["MethodId"];
             if (string.IsNullOrWhiteSpace(methodId))
@@ -48,20 +52,7 @@ internal static class ConfigFilePolicySourceBuilder
             }
 
             var notes = methodSection["Notes"] ?? methodSection["notes"];
-            var baseBuilder = new CachePolicyBuilder();
-
-            if (defaults.HasChanges)
-            {
-                baseBuilder.Apply(defaults, overwriteExisting: false);
-            }
-
-            var specific = ParseSection(methodSection);
-            if (specific.HasChanges)
-            {
-                baseBuilder.Apply(specific, overwriteExisting: true);
-            }
-
-            descriptors.Add(baseBuilder.Build(methodId, notes));
+            descriptors.Add(ParseSection(methodSection).Build(methodId, notes));
         }
 
         return descriptors;

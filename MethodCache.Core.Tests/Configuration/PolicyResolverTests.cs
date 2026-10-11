@@ -7,9 +7,12 @@ using System.Threading.Tasks;
 using MethodCache.Abstractions.Policies;
 using MethodCache.Abstractions.Resolution;
 using MethodCache.Abstractions.Sources;
+using MethodCache.Core.Configuration.Surfaces.ConfigFile;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.PolicyPipeline.Resolution;
+using MethodCache.Core.PolicyPipeline.Sources;
 using MethodCache.Core.Runtime;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;
@@ -81,6 +84,76 @@ public class PolicyResolverTests
 
         await watcher.DisposeAsync();
         await resolver.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task FluentDefaults_ReachAttributeOnlyMethods_AndAttributeValuesWin()
+    {
+        var fluent = new FluentPolicySource(config =>
+        {
+            config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1)).WithSlidingExpiration(TimeSpan.FromSeconds(30)));
+            config.ForGroup("orders").Configure(o => o.RefreshAhead(TimeSpan.FromSeconds(10)).WithSlidingExpiration(TimeSpan.FromSeconds(20)));
+            config.ForGroup("users").Configure(o => o.WithVersion(3));
+        });
+
+        var resolver = new PolicyResolver(new[]
+        {
+            new PolicySourceRegistration(CreateAttributeSource(TimeSpan.FromMinutes(5), group: "orders"), PolicySourcePriority.Attributes),
+            new PolicySourceRegistration(fluent, PolicySourcePriority.StartupFluent)
+        });
+
+        var policy = (await resolver.ResolveAsync(MethodId)).Policy;
+
+        Assert.Equal(TimeSpan.FromMinutes(5), policy.Duration);
+        Assert.Equal(TimeSpan.FromSeconds(20), policy.SlidingExpiration);
+        Assert.Equal(TimeSpan.FromSeconds(10), policy.RefreshAhead);
+        Assert.Null(policy.Version);
+        Assert.DoesNotContain(await resolver.GetAllAsync(), r => MethodIds.IsDefaults(r.MethodId));
+
+        await resolver.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task ConfigurationDefaults_ReachAttributeOnlyMethods_AndFollowReloads()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["MethodCache:Defaults:SlidingExpiration"] = "00:00:30" })
+            .Build();
+
+        var resolver = new PolicyResolver(new[]
+        {
+            new PolicySourceRegistration(CreateAttributeSource(TimeSpan.FromMinutes(5)), PolicySourcePriority.Attributes),
+            new PolicySourceRegistration(ConfigFilePolicySourceBuilder.FromConfiguration(configuration), PolicySourcePriority.ConfigurationFiles)
+        });
+
+        var initial = (await resolver.ResolveAsync(MethodId)).Policy;
+        Assert.Equal(TimeSpan.FromMinutes(5), initial.Duration);
+        Assert.Equal(TimeSpan.FromSeconds(30), initial.SlidingExpiration);
+
+        using var watchCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var watcher = resolver.WatchAsync(MethodId, watchCts.Token).GetAsyncEnumerator(watchCts.Token);
+        var nextChange = watcher.MoveNextAsync();
+
+        configuration["MethodCache:Defaults:SlidingExpiration"] = "00:01:00";
+        configuration.Reload();
+
+        Assert.True(await nextChange);
+        Assert.Equal(TimeSpan.FromMinutes(1), watcher.Current.Policy.SlidingExpiration);
+        Assert.Equal(TimeSpan.FromMinutes(5), watcher.Current.Policy.Duration);
+
+        await watcher.DisposeAsync();
+        await resolver.DisposeAsync();
+    }
+
+    private static TestPolicySource CreateAttributeSource(TimeSpan duration, string? group = null)
+    {
+        var metadata = group == null
+            ? new Dictionary<string, string?>()
+            : new Dictionary<string, string?> { ["group"] = group };
+        var policy = CachePolicy.Empty with { Duration = duration, Metadata = metadata };
+        var fields = CachePolicyFields.Duration | (group == null ? CachePolicyFields.None : CachePolicyFields.Metadata);
+        var snapshot = PolicySnapshotBuilder.FromPolicy(PolicySourceIds.Attributes, MethodId, policy, fields, DateTimeOffset.UtcNow, metadata);
+        return new TestPolicySource(PolicySourceIds.Attributes, new[] { snapshot });
     }
 
     private static TestPolicySource CreateSource(string sourceId, TimeSpan duration, IEnumerable<string>? tags = null)

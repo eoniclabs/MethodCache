@@ -9,6 +9,18 @@ namespace MethodCache.Core.PolicyPipeline.Model;
 /// </summary>
 internal static class MethodIds
 {
+    /// <summary>Policies under this id are defaults for every cached method.</summary>
+    public const string AllMethods = "*";
+
+    private const string GroupPrefix = "group:";
+
+    /// <summary>Policies under this id are defaults for the methods in group <paramref name="name"/>.</summary>
+    public static string Group(string name) => GroupPrefix + name;
+
+    /// <summary>Whether <paramref name="id"/> holds defaults rather than one method's policy.</summary>
+    public static bool IsDefaults(string id)
+        => id == AllMethods || id.StartsWith(GroupPrefix, StringComparison.Ordinal);
+
     public static string For(Type serviceType, string methodName)
     {
         ArgumentNullException.ThrowIfNull(serviceType);

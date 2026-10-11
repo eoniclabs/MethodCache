@@ -181,6 +181,10 @@ namespace MethodCache.SourceGenerator
                     if (ctorArg.Value is string groupName && !string.IsNullOrWhiteSpace(groupName))
                     {
                         definition.MetadataStatements.Add($"metadata[\"{GroupMetadataKey}\"] = {ToLiteral(groupName)};");
+
+                        // In the policy too, so the group's ForGroup(...) defaults reach this method
+                        definition.PolicyStatements.Add($"policy = policy with {{ Metadata = new Dictionary<string, string?>(StringComparer.Ordinal) {{ [\"{GroupMetadataKey}\"] = {ToLiteral(groupName)} }} }};");
+                        definition.PolicyStatements.Add("fields |= CachePolicyFields.Metadata;");
                     }
                 }
 
