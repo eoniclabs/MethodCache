@@ -25,7 +25,7 @@ builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
 
-- **One attribute, zero boilerplate.** Keys are built from the method and its arguments.
+- **One attribute, zero boilerplate.** Keys are built from the method and its arguments. Generic interfaces such as `IRepository<User>` work too.
 - **Fast.** A hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and takes 4 to 6 times less time than HybridCache or FusionCache.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`.
 - **Tune it without redeploying.** Attributes, global defaults, `appsettings.json` (reloaded live) and runtime overrides.
