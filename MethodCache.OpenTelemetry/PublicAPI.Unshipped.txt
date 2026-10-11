@@ -119,5 +119,4 @@ MethodCache.OpenTelemetry.Tracing.TracingConstants.Operations
 static MethodCache.OpenTelemetry.Extensions.ServiceCollectionExtensions.AddMethodCacheInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
 static MethodCache.OpenTelemetry.Extensions.ServiceCollectionExtensions.AddMethodCacheInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!
 static MethodCache.OpenTelemetry.Extensions.ServiceCollectionExtensions.AddMethodCacheOpenTelemetry(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.OpenTelemetry.Configuration.OpenTelemetryOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static MethodCache.OpenTelemetry.Extensions.ServiceCollectionExtensions.UseMethodCacheHttpCorrelation(this Microsoft.AspNetCore.Builder.IApplicationBuilder! app) -> Microsoft.AspNetCore.Builder.IApplicationBuilder!
 static readonly MethodCache.OpenTelemetry.Tracing.TracingConstants.ActivitySource -> System.Diagnostics.ActivitySource!

@@ -1,7 +1,5 @@
 using System;
 using System.Linq;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry.Metrics;
@@ -70,12 +68,6 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<ICacheMeterProvider>() as CacheMeterProvider
             ?? throw new InvalidOperationException("CacheMeterProvider must implement ICacheMetricsProvider"));
 
-        if (options.EnableHttpCorrelation)
-        {
-            services.AddHttpContextAccessor();
-            services.TryAddSingleton<IHttpCorrelationEnricher, HttpCorrelationEnricher>();
-        }
-
         if (alreadyInstrumented)
         {
             // The options above still apply; wrapping the cache manager again would duplicate every span.
@@ -114,13 +106,6 @@ public static class ServiceCollectionExtensions
     {
         builder.AddMeter(MetricInstruments.MeterName);
         return builder;
-    }
-
-    public static IApplicationBuilder UseMethodCacheHttpCorrelation(
-        this IApplicationBuilder app)
-    {
-        app.UseMiddleware<HttpCorrelationMiddleware>();
-        return app;
     }
 
     /// <summary>Marks that the cache manager is already wrapped for telemetry.</summary>

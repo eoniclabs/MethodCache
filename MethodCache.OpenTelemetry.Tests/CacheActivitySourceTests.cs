@@ -218,6 +218,22 @@ public class CacheActivitySourceTests : IDisposable
     }
 
     [Fact]
+    public void StartCacheOperation_UnderRequestSpan_CopiesTheRequestsHttpTags()
+    {
+        // Sampled, like an ASP.NET Core request span, so the parent-based sampler records the child
+        using var requestActivity = new Activity("request") { ActivityTraceFlags = ActivityTraceFlags.Recorded }.Start();
+        requestActivity.SetTag("http.method", "GET");
+        requestActivity.SetTag("url.full", "https://example.com/api/users");
+
+        using var cacheActivity = _activitySource.StartCacheOperation("GetUser");
+
+        cacheActivity.Should().NotBeNull();
+        cacheActivity!.Parent.Should().BeSameAs(requestActivity);
+        cacheActivity.GetTagItem("http.method").Should().Be("GET");
+        cacheActivity.GetTagItem("url.full").Should().Be("https://example.com/api/users");
+    }
+
+    [Fact]
     public void SetHttpCorrelation_DisabledInOptions_DoesNotCopyTags()
     {
         // Arrange
