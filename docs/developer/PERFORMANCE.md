@@ -50,4 +50,4 @@ Each benchmark runs with:
 - Different model complexities (Small, Medium, Large)
 
 ---
-*Performance data automatically collected via GitHub Actions. See [.performance-data/](.performance-data/) for raw benchmark results.*
+*Performance data automatically collected via GitHub Actions. See [.performance-data/](../../.performance-data/) for raw benchmark results.*
