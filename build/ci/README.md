@@ -30,7 +30,7 @@ Each job writes `artifacts/ci/<job>.log` and `artifacts/ci/<job>.exit`. A new CI
 when Docker is there) and fails when less than 80% of the lines added or changed under `src/` since the merge
 base with `origin/main` ran. It prints each uncovered changed line. `DIFF_COVERAGE_MIN` changes the threshold and
 `DIFF_COVERAGE_BASE` the commit to compare with. It is in the default `linux.sh` job list, after `tests`, and
-needs the full history (the build servers clone it; GitHub's checkout uses `fetch-depth: 0`). It takes about 1.5 min
+needs the full history and `origin/main` (the build servers clone both). It takes about 1.5 min
 (the net10.0 test run with coverage).
 
 ## Randomized, soak and mutation checks
