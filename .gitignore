@@ -63,4 +63,3 @@ artifacts/
 
 # Other generated files
 *.Generated.cs
-test-config/.machine-key

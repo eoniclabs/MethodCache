@@ -175,7 +175,7 @@ This is abstraction tax that real usage avoids entirely.
 
 ### Q: Why not optimize the adapter?
 
-**A**: We tried! Created `SimpleFixedMethodCacheAdapter` and `ProperlyOptimizedMethodCacheAdapter`, but the fundamental issue remains: calling `ICacheKeyGenerator.GenerateKey()` adds unavoidable overhead. The only solution is to avoid the adapter entirely (real usage).
+**A**: We tried several optimized adapters, but the fundamental issue remains: calling `ICacheKeyGenerator.GenerateKey()` adds unavoidable overhead. The only solution is to avoid the adapter entirely (real usage).
 
 ### Q: Isn't this unfair to other frameworks?
 
