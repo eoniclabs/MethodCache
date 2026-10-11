@@ -70,6 +70,8 @@ public class HttpCacheIntegrationTests
 
     private sealed class FakeHttpCacheStorage : IHttpCacheStorage
     {
+        public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default) => ValueTask.FromResult(string.Empty);
+        public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
         public ValueTask ClearAsync(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
         public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) => ValueTask.FromResult<HttpCacheEntry?>(null);
         public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;

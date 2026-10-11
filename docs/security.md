@@ -44,7 +44,7 @@ authorization too.
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
 | A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
 | Responses that vary by a header (tenant, language) get mixed | `Vary` and `KeyHeaders` keep one response per value. `Vary: *` is never served from the cache. |
-| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A successful `POST`, `PUT`, `PATCH` or `DELETE` removes the URL's responses for every caller; responses cached before it are never served again. |
+| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A successful `POST`, `PUT`, `PATCH` or `DELETE` changes the publication generation for every caller. Older in-flight responses write into an obsolete namespace. Shared generation records must be retained and protected from eviction; invalidation failures propagate to the caller. |
 | Two URLs share an entry | The key is the method and the full URL, with reserved characters kept escaped (`%2F`, `%3F` and `/`, `?` are different URLs). |
 | Crafted entries in the distributed HTTP cache | Read as a miss, with every length checked against the data. As above, whoever can write that cache can store any response. |
 

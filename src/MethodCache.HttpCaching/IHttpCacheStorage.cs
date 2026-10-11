@@ -6,6 +6,30 @@ namespace MethodCache.HttpCaching;
 public interface IHttpCacheStorage
 {
     /// <summary>
+    /// Reads the current publication generation for a URL key. Requests publish only within this generation.
+    /// </summary>
+    /// <param name="key">The URL cache key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The current opaque generation, or an empty string before the first invalidation.</returns>
+    /// <remarks>
+    /// Generations must be shared by every instance that shares entries. Do not expire, evict or reuse a generation
+    /// while entries or in-flight publishers from an older generation can exist. A failed read must return a unique
+    /// non-reusable generation or throw, so it cannot make an older namespace visible.
+    /// </remarks>
+    ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Changes a URL's publication generation to a unique value, making previously published responses unreachable.
+    /// </summary>
+    /// <param name="key">The URL cache key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// Only invalidations may change a generation. Each change must publish a fresh value, including after a retry;
+    /// ordinary response writers must never replace it. Implementations may group keys to bound generation storage.
+    /// </remarks>
+    ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Retrieves a cache entry by its key.
     /// </summary>
     /// <param name="key">The cache key.</param>

@@ -13,6 +13,10 @@ namespace MethodCache.HttpCaching.Internal;
 /// </summary>
 internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
 {
+    // A fixed number of non-expiring epoch slots bounds metadata without allowing an expired tombstone to
+    // resurrect an old response. A collision only causes an additional cache miss for an unrelated URL.
+    private const int GenerationSlots = 4096;
+    private readonly string?[] _generations = new string?[GenerationSlots];
     private readonly MemoryCache _memory;
     private readonly IDistributedCache? _distributed;
     private readonly TimeProvider _timeProvider;
@@ -37,6 +41,66 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
             // Entries expire on the same clock the handler judges freshness by
             Clock = ReferenceEquals(_timeProvider, TimeProvider.System) ? null : new TimeProviderClock(_timeProvider)
         });
+    }
+
+    public async ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var slot = GenerationSlot(key);
+        if (_distributed == null)
+        {
+            return Volatile.Read(ref _generations[slot]) ?? string.Empty;
+        }
+
+        try
+        {
+            var bytes = await _distributed.GetAsync(GenerationKey(slot), cancellationToken).ConfigureAwait(false);
+            return bytes == null ? string.Empty : bytes.Length == 16 ? new Guid(bytes).ToString("N") : Guid.NewGuid().ToString("N");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Reading an HTTP cache generation failed");
+            return Guid.NewGuid().ToString("N"); // Fail open to the origin, never to an old cache namespace.
+        }
+    }
+
+    public async ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var slot = GenerationSlot(key);
+        if (_distributed == null)
+        {
+            Volatile.Write(ref _generations[slot], Guid.NewGuid().ToString("N"));
+            return;
+        }
+
+        var generationKey = GenerationKey(slot);
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var generation = Guid.NewGuid().ToByteArray();
+            // Maximum absolute expiry also overrides providers' default sliding expiry (such as SQL Server).
+            await _distributed.SetAsync(generationKey, generation, new DistributedCacheEntryOptions { AbsoluteExpiration = DateTimeOffset.MaxValue }, cancellationToken).ConfigureAwait(false);
+            var stored = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
+            if (stored != null && generation.AsSpan().SequenceEqual(stored))
+            {
+                return;
+            }
+            // Some providers ignore an insert lost to a concurrent first insert. Retry with a fresh generation;
+            // never retry a previously observed value, which could make old response data reachable again.
+        }
+        throw new InvalidOperationException("The distributed HTTP cache could not confirm the invalidation generation.");
+    }
+
+    private string GenerationKey(int slot) => _keyPrefix + "$generation:" + slot.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static int GenerationSlot(string key)
+    {
+        var hash = 2166136261u;
+        foreach (var character in key)
+        {
+            hash = unchecked((hash ^ character) * 16777619u);
+        }
+        return (int)(hash & (GenerationSlots - 1));
     }
 
     public async ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
@@ -118,6 +182,10 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
             return ValueTask.CompletedTask;
         }
 
+        for (var slot = 0; slot < GenerationSlots; slot++)
+        {
+            Volatile.Write(ref _generations[slot], Guid.NewGuid().ToString("N"));
+        }
         _memory.Clear();
         _logger.LogInformation("HTTP cache cleared");
         return ValueTask.CompletedTask;

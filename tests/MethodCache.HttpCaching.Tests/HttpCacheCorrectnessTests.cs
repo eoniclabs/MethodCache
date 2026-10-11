@@ -407,6 +407,14 @@ public class HttpCacheCorrectnessTests
     private sealed class RecordingStorage : IHttpCacheStorage
     {
         private readonly Dictionary<string, HttpCacheEntry> _entries = new();
+        private readonly Dictionary<string, string> _generations = new();
+        public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(_generations.GetValueOrDefault(key, string.Empty));
+        public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _generations[key] = Guid.NewGuid().ToString("N");
+            return ValueTask.CompletedTask;
+        }
 
         public List<TimeSpan> TimeToLives { get; } = new();
 

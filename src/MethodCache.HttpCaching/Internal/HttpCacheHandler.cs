@@ -76,14 +76,24 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
             if (isUnsafe && (int)bypassResponse.StatusCode is >= 200 and < 400)
             {
-                await InvalidateAfterUnsafeRequestAsync(request, bypassResponse, options, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await InvalidateAfterUnsafeRequestAsync(request, bypassResponse, options, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    bypassResponse.Dispose();
+                    throw;
+                }
             }
 
             return Record(Outcome.Bypass, request, bypassResponse, startedAt);
         }
 
         var freshness = new FreshnessCalculator(options, _timeProvider);
-        var cacheKey = HttpCacheKeys.ForRequest(_state.Name, request);
+        var urlKey = HttpCacheKeys.ForRequest(_state.Name, request);
+        var generation = await _storage.GetGenerationAsync(urlKey, cancellationToken).ConfigureAwait(false);
+        var cacheKey = HttpCacheKeys.ForGeneration(urlKey, generation);
         var cachedEntry = await GetCacheEntryAsync(request, cacheKey, cancellationToken).ConfigureAwait(false);
 
         if (cachedEntry != null && freshness.GetFreshnessLifetime(cachedEntry) is { } freshnessLifetime)
@@ -190,12 +200,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         AddSameOrigin(uris, target, response.Headers.Location);
         AddSameOrigin(uris, target, response.Content?.Headers.ContentLocation);
 
-        // Removing the URL entry orphans all of its variants (every caller, key header and Vary value) at once
+        // Rotate the publication namespace. Older requests can finish writing only to their orphaned namespace.
         foreach (var uri in uris)
         {
             foreach (var method in options.CacheableMethods)
             {
-                await _storage.RemoveAsync(HttpCacheKeys.ForUri(_state.Name, method, uri), cancellationToken).ConfigureAwait(false);
+                await _storage.InvalidateAsync(HttpCacheKeys.ForUri(_state.Name, method, uri), cancellationToken).ConfigureAwait(false);
             }
         }
 
