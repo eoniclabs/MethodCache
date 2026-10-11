@@ -161,6 +161,12 @@ namespace MethodCache.Core.Tests.Core
             public override string ToString() => _amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
+        private sealed record Meters(int Value);
+
+        private sealed record Feet(int Value);
+
+        private sealed record OtherId(string CacheKeyPart) : ICacheKeyProvider;
+
         private sealed class Marker
         {
         }
@@ -227,8 +233,39 @@ namespace MethodCache.Core.Tests.Core
 
             var key = generator.GenerateKey(prefix, new object?[] { 42, "alice", null, Status.Closed, new Id("tenant-1"), new[] { 1, 2 } }, NoVersion);
 
-            Assert.Equal(prefix + ":[42,\"alice\",null,2,\"tenant-1\",[1,2]]", key);
+            Assert.StartsWith(prefix + ":[42,\"alice\",null,2,\"tenant-1\",[1,2]]:", key);
         }
+
+        [Fact]
+        public void JsonKeyGenerator_GivesArgumentsOfDifferentTypesDifferentKeys()
+        {
+            var generator = new JsonKeyGenerator();
+            string Key(params object?[] args) => generator.GenerateKey("M", args, NoVersion);
+
+            // Each pair writes the same JSON, so only the argument types tell them apart
+            Assert.NotEqual(Key(1), Key(1L));
+            Assert.NotEqual(Key(1), Key(1.0));
+            Assert.NotEqual(Key(new Meters(3)), Key(new Feet(3)));
+            Assert.NotEqual(Key(new Id("a")), Key(new OtherId("a")));
+            Assert.NotEqual(Key(1, "a"), Key(1L, "a"));
+            Assert.NotEqual(Key(new List<int> { 1 }), Key(new[] { 1 }));
+        }
+
+        [Fact]
+        public void JsonKeyGenerator_GivesArgumentsOfTheSameTypesTheSameKey()
+        {
+            var generator = new JsonKeyGenerator();
+            string Key(params object?[] args) => generator.GenerateKey("M", args, NoVersion);
+
+            Assert.Equal(Key(1, "a", null, new Meters(3)), Key(1, "a", null, new Meters(3)));
+            Assert.Equal(Key(new List<int> { 1, 2 }), Key(new List<int> { 1, 2 }));
+            Assert.NotEqual(Key(1, "a"), Key(2, "a"));
+            // Fixed, so keys already in a distributed cache stay valid across processes and releases
+            Assert.Equal("M:[1,\"a\"]:" + JsonTypeSuffix("System.Int32", "System.String"), Key(1, "a"));
+        }
+
+        private static string JsonTypeSuffix(params string[] typeNames)
+            => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join("\n", typeNames))), 0, 8).ToLowerInvariant();
 
         [Fact]
         public void JsonKeyGenerator_HashesLongArgumentLists()
@@ -239,7 +276,8 @@ namespace MethodCache.Core.Tests.Core
             var key = generator.GenerateKey("M", new object[] { longText }, NoVersion);
             var other = generator.GenerateKey("M", new object[] { longText + "y" }, NoVersion);
 
-            Assert.Equal("M:".Length + 64, key.Length);
+            // The arguments' SHA-256, then the 16-character type hash
+            Assert.Equal("M:".Length + 64 + ":".Length + 16, key.Length);
             Assert.NotEqual(key, other);
         }
 

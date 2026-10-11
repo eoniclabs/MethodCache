@@ -18,7 +18,8 @@ namespace MethodCache.SourceGenerator
             // Add static tags
             if (staticTags.Any())
             {
-                var staticTagsWithoutDynamic = staticTags.Where(t => !DynamicTagParameterRegex.IsMatch(t)).ToList();
+                // A placeholder that names no parameter stays literal text (MCG009), as it does on cached entries
+                var staticTagsWithoutDynamic = staticTags.Where(t => !NamesParameter(method, t)).ToList();
                 if (staticTagsWithoutDynamic.Any())
                 {
                     sb.Append($"{indent}__mcTags.AddRange(new[] {{ ");
@@ -37,6 +38,19 @@ namespace MethodCache.SourceGenerator
                 }
                 sb.AppendLine("));");
             }
+        }
+
+        private static bool NamesParameter(IMethodSymbol method, string tag)
+        {
+            foreach (System.Text.RegularExpressions.Match match in DynamicTagParameterRegex.Matches(tag))
+            {
+                if (method.Parameters.Any(p => string.Equals(p.Name, match.Groups[1].Value, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -705,11 +719,52 @@ namespace MethodCache.SourceGenerator
                     return $"{name} ?? \"null\"";
                 }
 
-                var isNullableValueType = param.Type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T };
-                return param.Type.IsValueType && !isNullableValueType
-                    ? $"{name}.ToString()"
-                    : $"{name}?.ToString() ?? \"null\"";
+                // Invariant, so 1.5 is "1.5" and -1 is "-1" on every machine, whatever its culture
+                const string invariant = "global::System.Globalization.CultureInfo.InvariantCulture";
+                if (param.Type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable)
+                {
+                    var underlying = nullable.TypeArguments[0];
+                    return underlying.TypeKind == TypeKind.Enum
+                        ? $"({name} is null ? \"null\" : {GetRawEnumExpression($"{name}.Value")})"
+                        : $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
+                }
+
+                if (param.Type.TypeKind == TypeKind.Enum)
+                {
+                    return GetRawEnumExpression(name);
+                }
+
+                if (param.Type.IsValueType)
+                {
+                    if (!IsFormattable(param.Type))
+                    {
+                        return $"{name}.ToString()";
+                    }
+
+                    // A struct that implements IFormattable explicitly has no public ToString(format, provider)
+                    return HasPublicFormattableToString(param.Type)
+                        ? $"{name}.ToString(null, {invariant})"
+                        : $"((global::System.IFormattable){name}).ToString(null, {invariant})";
+                }
+
+                return $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
             }
+
+            /// <summary>
+            /// A named enum value keeps its name; a value without one is written as its number in the invariant culture,
+            /// since the enum's own formatting would write a negative number with the culture's minus sign.
+            /// </summary>
+            private static string GetRawEnumExpression(string value)
+                => $"({value}.ToString() is var __rawEnumName && (char.IsLetter(__rawEnumName[0]) || __rawEnumName[0] == '_') ? __rawEnumName : global::MethodCache.MethodCacheKeys.Part({value}))";
+
+            private static bool IsFormattable(ITypeSymbol type)
+                => type.AllInterfaces.Any(i => i.ToDisplayString() == "System.IFormattable");
+
+            private static bool HasPublicFormattableToString(ITypeSymbol type)
+                => type.GetMembers("ToString").OfType<IMethodSymbol>().Any(m =>
+                    m.DeclaredAccessibility == Accessibility.Public && !m.IsStatic && m.Parameters.Length == 2 &&
+                    m.Parameters[0].Type.SpecialType == SpecialType.System_String &&
+                    m.Parameters[1].Type.ToDisplayString() == "System.IFormatProvider");
 
             private static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
             {
