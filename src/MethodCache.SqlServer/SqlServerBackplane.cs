@@ -1,5 +1,7 @@
+using System.Buffers.Binary;
 using System.Data;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using MethodCache.Extensibility;
 using Microsoft.Data.SqlClient;
@@ -33,6 +35,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
     private readonly SqlServerOptions _options;
     private readonly ILogger _logger;
+    private readonly byte[] _scope;
     private readonly List<GapRange> _gaps = new();
     private CancellationTokenSource? _polling;
     private Task? _loop;
@@ -46,6 +49,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = (ILogger?)logger ?? NullLogger.Instance;
+        _scope = GetScope(options.KeyPrefix);
     }
 
     /// <inheritdoc />
@@ -116,13 +120,14 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
     private async Task PublishAsync(BackplaneMessageType type, string target, CancellationToken cancellationToken)
     {
-        var sql = $"INSERT INTO {_options.QualifiedInvalidationsTableName} ([InstanceId], [MessageType], [Target]) VALUES (@instanceId, @type, @target);";
+        var sql = $"INSERT INTO {_options.QualifiedInvalidationsTableName} ([Scope], [InstanceId], [MessageType], [Target]) VALUES (@scope, @instanceId, @type, @target);";
 
         var connection = new SqlConnection(_options.ConnectionString);
         await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         var command = new SqlCommand(sql, connection);
         await using var commandScope = command.ConfigureAwait(false);
+        AddScope(command);
         command.Parameters.Add(new SqlParameter("@instanceId", SqlDbType.VarChar, 32) { Value = InstanceId });
         command.Parameters.Add(new SqlParameter("@type", SqlDbType.TinyInt) { Value = (byte)type });
         command.Parameters.Add(new SqlParameter("@target", SqlDbType.NVarChar, -1) { Value = target });
@@ -132,13 +137,14 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     /// <summary>The last id written more than <paramref name="age"/> ago, by the database's clock.</summary>
     private async Task<long> ReadLastIdAsync(TimeSpan age, CancellationToken cancellationToken)
     {
-        var sql = $"SELECT ISNULL(MAX([Id]), 0) FROM {_options.QualifiedInvalidationsTableName} WHERE [CreatedAt] < DATEADD(millisecond, -@age, SYSUTCDATETIME());";
+        var sql = $"SELECT ISNULL(MAX([Id]), 0) FROM {_options.QualifiedInvalidationsTableName} WHERE [Scope] = @scope AND [CreatedAt] < DATEADD(millisecond, -@age, SYSUTCDATETIME());";
 
         var connection = new SqlConnection(_options.ConnectionString);
         await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         var command = new SqlCommand(sql, connection);
         await using var commandScope = command.ConfigureAwait(false);
+        AddScope(command);
         command.Parameters.Add(new SqlParameter("@age", SqlDbType.Int) { Value = (int)Math.Min(int.MaxValue, age.TotalMilliseconds) });
         return (long)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))!;
     }
@@ -217,7 +223,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         var sql = new StringBuilder($"""
             SELECT TOP (@batch) [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
             FROM {_options.QualifiedInvalidationsTableName}
-            WHERE [Id] > @lastId
+            WHERE [Scope] = @scope AND [Id] > @lastId
             ORDER BY [Id];
             """);
         if (gaps.Count > 0)
@@ -226,7 +232,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
                 SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
                 FROM {_options.QualifiedInvalidationsTableName}
-                WHERE {string.Join(" OR ", gaps.Select((_, i) => $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"))};
+                WHERE [Scope] = @scope AND ({string.Join(" OR ", gaps.Select((_, i) => $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"))});
                 """);
         }
 
@@ -239,6 +245,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             var command = new SqlCommand(sql.ToString(), connection);
             await using var commandScope = command.ConfigureAwait(false);
+            AddScope(command);
             command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
             command.Parameters.Add(new SqlParameter("@lastId", SqlDbType.BigInt) { Value = lastId });
             for (var i = 0; i < gaps.Count; i++)
@@ -337,7 +344,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         }
 
         _nextCleanup = now + CleanupInterval;
-        var sql = $"DELETE TOP (@batch) FROM {_options.QualifiedInvalidationsTableName} WHERE [CreatedAt] < DATEADD(second, -@retention, SYSUTCDATETIME());";
+        var sql = $"DELETE TOP (@batch) FROM {_options.QualifiedInvalidationsTableName} WHERE [Scope] = @scope AND [CreatedAt] < DATEADD(second, -@retention, SYSUTCDATETIME());";
 
         var connection = new SqlConnection(_options.ConnectionString);
         await using var connectionScope = connection.ConfigureAwait(false);
@@ -348,6 +355,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         {
             var command = new SqlCommand(sql, connection);
             await using var commandScope = command.ConfigureAwait(false);
+            AddScope(command);
             command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = CleanupBatchSize });
             command.Parameters.Add(new SqlParameter("@retention", SqlDbType.Int) { Value = (int)Math.Min(int.MaxValue, _options.BackplaneRetention.TotalSeconds) });
             if (await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) < CleanupBatchSize)
@@ -355,5 +363,17 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
                 return;
             }
         }
+    }
+
+    private void AddScope(SqlCommand command) => command.Parameters.Add(new SqlParameter("@scope", SqlDbType.Binary, 32) { Value = _scope });
+
+    internal static byte[] GetScope(string prefix)
+    {
+        // Hash exact UTF-16 code units in a fixed byte order: casing, normalization and even unpaired
+        // surrogates stay distinct, independently of SQL collation and text encoder fallback.
+        var bytes = new byte[checked(prefix.Length * 2)];
+        for (var i = 0; i < prefix.Length; i++)
+            BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * 2, 2), prefix[i]);
+        return SHA256.HashData(bytes);
     }
 }

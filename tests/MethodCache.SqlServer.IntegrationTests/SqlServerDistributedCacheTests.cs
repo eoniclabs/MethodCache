@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MethodCache.SqlServer;
 
 namespace MethodCache.SqlServer.IntegrationTests;
 
@@ -118,8 +119,8 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
 
         // More rows than one read returns, all recent, from another instance
         await ExecuteAsync($"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
-            SELECT TOP (3000) 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
+            SELECT TOP (3000) @scope, 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await first.InvalidateByKeysAsync("key");
@@ -148,20 +149,21 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await using var transaction = connection.BeginTransaction();
         await using (var insert = new SqlCommand(
             $"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target]) VALUES ('other', 0, 'key');
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
-            SELECT TOP (200) 'other', 0, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target]) VALUES (@scope, 'other', 0, 'key');
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
+            SELECT TOP (200) @scope, 'other', 0, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """,
             connection,
             transaction))
         {
+            insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
             await insert.ExecuteNonQueryAsync();
         }
 
         await ExecuteAsync($"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
-            SELECT TOP (500) 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
+            SELECT TOP (500) @scope, 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await Task.Delay(500);
@@ -177,8 +179,8 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     {
         await CreateNodeAsync();
         await ExecuteAsync($"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target], [CreatedAt])
-            SELECT TOP (12000) 'other', 0, 'old', DATEADD(hour, -2, SYSUTCDATETIME())
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target], [CreatedAt])
+            SELECT TOP (12000) @scope, 'other', 0, 'old', DATEADD(hour, -2, SYSUTCDATETIME())
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await CreateNodeAsync();
@@ -191,6 +193,7 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await using var connection = new SqlConnection(_sqlServer.ConnectionString);
         await connection.OpenAsync();
         await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
         await command.ExecuteNonQueryAsync();
     }
 

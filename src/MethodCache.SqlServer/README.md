@@ -29,9 +29,18 @@ builder.Services.AddMethodCacheSqlServer(options =>
 By default the schema and two tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if SQL Server is down, creation is retried in the background and methods run uncached until it succeeds.
 
 - `MethodCache` holds the entries, in the layout `Microsoft.Extensions.Caching.SqlServer` uses (the same as `dotnet sql-cache create`).
-- `MethodCacheInvalidations` holds recent invalidations for the backplane.
+- `MethodCacheInvalidations` holds recent invalidations for the backplane. Its `Scope` is a 32-byte SHA-256 hash
+  of the exact UTF-16 little-endian `KeyPrefix`; publishing, polling and retention cleanup all use that scope.
+  Prefixes that differ by casing or Unicode normalization stay distinct regardless of SQL collation.
 
 If the application's login may not create tables, set `CreateTablesIfMissing = false` and create them in a migration instead.
+
+Upgrading a table from an earlier build adds a nullable `Scope binary(32)` column and the indexes
+`Index_Scope_Id (Scope, Id)` and `Index_Scope_CreatedAt (Scope, CreatedAt)`. With
+`CreateTablesIfMissing = false`, add these in your migration before deploying. Existing unscoped rows are
+ignored and can be removed after all instances have stopped using the old schema. Upgrade every instance
+sharing the table together and restart them with empty in-memory caches; mixed old and new backplanes do
+not share the same isolation contract. New tables require a non-null scope.
 
 ## How it works
 
@@ -72,7 +81,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `SchemaName` | `dbo` | Schema of both tables |
 | `TableName` | `MethodCache` | Table for cache entries |
 | `InvalidationsTableName` | `MethodCacheInvalidations` | Table the backplane uses |
-| `KeyPrefix` | `methodcache:` | Prefix for every key MethodCache writes |
+| `KeyPrefix` | `methodcache:` | Prefix for cache keys and the isolated backplane scope |
 | `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |

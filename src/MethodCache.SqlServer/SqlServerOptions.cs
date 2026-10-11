@@ -26,7 +26,8 @@ public class SqlServerOptions
     public string InvalidationsTableName { get; set; } = "MethodCacheInvalidations";
 
     /// <summary>
-    /// Prefix for every key MethodCache writes, so several applications can share one table.
+    /// Prefix for every key MethodCache writes and the scope of backplane messages, so several applications can
+    /// share the tables. Prefixes are compared by their exact UTF-16 code units, independently of SQL collation.
     /// </summary>
     public string KeyPrefix { get; set; } = "methodcache:";
 
