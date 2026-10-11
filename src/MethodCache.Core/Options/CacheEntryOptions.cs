@@ -127,7 +127,7 @@ namespace MethodCache
                         $"Cache duration must be positive. Provided: {duration}. " +
                         "For no expiration, omit the Duration property or use TimeSpan.MaxValue. " +
                         "Common durations: TimeSpan.FromMinutes(5), TimeSpan.FromHours(1). " +
-                        "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#duration");
+                        "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#duration");
                 }
 
                 _duration = duration;
@@ -167,7 +167,7 @@ namespace MethodCache
                         $"Sliding expiration must be positive. Provided: {slidingExpiration}. " +
                         "Sliding expiration resets the timer on each cache access. " +
                         "Example: TimeSpan.FromMinutes(10) keeps frequently-accessed items cached. " +
-                        "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/CONFIGURATION_GUIDE.md#sliding-expiration");
+                        "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration");
                 }
 
                 _slidingExpiration = slidingExpiration;
