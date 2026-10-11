@@ -43,6 +43,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         Bypass
     }
 
+    private static readonly string[] OutcomeNames = ["hit", "miss", "stale", "revalidated", "bypass"];
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.Get(_state.Name);
@@ -451,33 +453,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     private HttpResponseMessage Record(Outcome outcome, HttpRequestMessage request, HttpResponseMessage response, long startedAt)
     {
-        if (_metrics == null)
-        {
-            return response;
-        }
-
-        var elapsedMs = (long)Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
-        switch (outcome)
-        {
-            case Outcome.Hit:
-                _metrics.RecordHit(elapsedMs);
-                break;
-            case Outcome.Miss:
-                _metrics.RecordMiss(elapsedMs);
-                break;
-            case Outcome.Stale:
-                _metrics.RecordStaleServed(elapsedMs);
-                break;
-            case Outcome.Revalidated:
-                _metrics.RecordValidation(elapsedMs);
-                break;
-            case Outcome.Bypass:
-                _metrics.RecordBypass(elapsedMs);
-                break;
-        }
-
-        _metrics.RecordStatusCode((int)response.StatusCode);
-        _metrics.RecordMethod(request.Method.Method);
+        _metrics?.Record(_state.Name, OutcomeNames[(int)outcome], Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
         return response;
     }
 }

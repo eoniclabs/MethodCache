@@ -62,6 +62,8 @@ MethodCache.HttpCaching.HttpCacheStorageOptions
 MethodCache.HttpCaching.HttpCacheStorageOptions.HttpCacheStorageOptions() -> void
 MethodCache.HttpCaching.HttpCacheStorageOptions.MaxCacheSize.get -> long
 MethodCache.HttpCaching.HttpCacheStorageOptions.MaxCacheSize.set -> void
+MethodCache.HttpCaching.HttpCacheStorageOptions.UseDistributedCache.get -> bool
+MethodCache.HttpCaching.HttpCacheStorageOptions.UseDistributedCache.set -> void
 MethodCache.HttpCaching.HttpClientBuilderExtensions
 MethodCache.HttpCaching.IHttpCacheStorage
 MethodCache.HttpCaching.IHttpCacheStorage.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask

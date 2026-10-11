@@ -69,4 +69,28 @@ is shared by all clients:
 builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1024 * 1024); // default 100 MB
 ```
 
-To store responses elsewhere, register your own `IHttpCacheStorage` before `AddHttpCaching()`.
+### Sharing responses between instances
+
+With several instances of your app, each one would otherwise fetch and revalidate on its own. Turn on
+`UseDistributedCache` and responses are also kept in the registered `IDistributedCache`, the same Redis or SQL
+Server that MethodCache uses:
+
+```csharp
+builder.Services.AddMethodCacheRedis("localhost:6379");
+builder.Services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
+```
+
+Now an ETag fetched by one instance is revalidated (and usually answered with a 304) by all of them. If the
+distributed cache is down, requests keep working from memory and the origin.
+
+To store responses somewhere else entirely, register your own `IHttpCacheStorage` before `AddHttpCaching()`.
+
+## Metrics
+
+Every request is counted on the `MethodCache` meter, so `AddMethodCacheInstrumentation()` from
+MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
+
+| Instrument | Tags |
+|---|---|
+| `methodcache.http.requests_total` | `client`, `outcome` (`hit`, `miss`, `revalidated`, `stale`, `bypass`) |
+| `methodcache.http.request_duration` (ms) | `client`, `outcome` |

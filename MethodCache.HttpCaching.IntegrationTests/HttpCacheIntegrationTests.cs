@@ -25,7 +25,7 @@ public class HttpCacheIntegrationTests
         Assert.NotNull(httpClient);
 
         var storage = provider.GetRequiredService<IHttpCacheStorage>();
-        Assert.IsType<MethodCache.HttpCaching.Internal.InMemoryHttpCacheStorage>(storage);
+        Assert.IsType<MethodCache.HttpCaching.Internal.HttpCacheStore>(storage);
     }
 
     [Fact]

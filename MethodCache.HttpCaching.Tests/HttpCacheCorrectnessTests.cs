@@ -164,9 +164,9 @@ public class HttpCacheCorrectnessTests
     {
         using var appCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
         Microsoft.Extensions.Caching.Memory.CacheExtensions.Set(appCache, "app", 42);
-        using var storage = new InMemoryHttpCacheStorage(
+        using var storage = new HttpCacheStore(
             Microsoft.Extensions.Options.Options.Create(new HttpCacheStorageOptions()),
-            NullLogger<InMemoryHttpCacheStorage>.Instance);
+            NullLogger<HttpCacheStore>.Instance);
 
         await storage.ClearAsync();
 
