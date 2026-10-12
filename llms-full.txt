@@ -215,7 +215,7 @@ interfaces and generic methods. Generic constraints, including `unmanaged`, are 
 include namespace-qualified parameter types in their identities so equally named types remain separate.
 
 Other interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
-Names that are C# keywords are escaped in the generated code, including generic type parameters, constraints, property/event names and indexer
+Names that are C# keywords are escaped in the generated code, including namespaces, generic type parameters, constraints, property/event names and indexer
 parameters. Property getters/setters and event add/remove accessors reach the original implementation.
 
 Unsupported cached method shapes receive a [generator diagnostic](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md), with a code fix
