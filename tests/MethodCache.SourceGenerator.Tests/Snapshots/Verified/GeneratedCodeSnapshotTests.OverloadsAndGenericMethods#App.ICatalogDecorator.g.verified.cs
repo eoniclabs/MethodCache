@@ -20,6 +20,7 @@ namespace App
     internal sealed class ICatalogDecorator : global::App.ICatalog
     {
         private readonly global::App.ICatalog _decorated;
+        private readonly bool _ownsDecorated;
         private readonly ICacheManager _cacheManager;
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider? _metricsProvider;
@@ -28,9 +29,10 @@ namespace App
         private readonly CachedMethod _method_Get_1;
         private readonly CachedMethod _method_Load;
 
-        public ICatalogDecorator(global::App.ICatalog decorated, global::MethodCache.Infrastructure.DecoratorServices services)
+        public ICatalogDecorator(global::App.ICatalog decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
             _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));
+            _ownsDecorated = ownsDecorated;
             if (services == null) throw new ArgumentNullException(nameof(services));
             _cacheManager = services.CacheManager;
             _keyGenerator = services.KeyGenerator;

@@ -19,7 +19,7 @@ namespace MethodCache.Generated
                 typeof(global::App.IPricing),
                 static (provider, inner) => new global::App.IPricingDecorator(
                     (global::App.IPricing)inner,
-                    global::MethodCache.Infrastructure.DecoratorServices.From(provider)),
+                    global::MethodCache.Infrastructure.DecoratorServices.From(provider), ownsDecorated: false),
                 GeneratedPolicyRegistrations.AddPolicies,
                 typeof(global::App.Pricing)));
         }

@@ -20,6 +20,7 @@ namespace App
     internal sealed class IPricingDecorator : global::App.IPricing
     {
         private readonly global::App.IPricing _decorated;
+        private readonly bool _ownsDecorated;
         private readonly ICacheManager _cacheManager;
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider? _metricsProvider;
@@ -27,9 +28,10 @@ namespace App
         private readonly CachedMethod _method_Price;
         private readonly CachedMethod _method_FindAsync;
 
-        public IPricingDecorator(global::App.IPricing decorated, global::MethodCache.Infrastructure.DecoratorServices services)
+        public IPricingDecorator(global::App.IPricing decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
             _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));
+            _ownsDecorated = ownsDecorated;
             if (services == null) throw new ArgumentNullException(nameof(services));
             _cacheManager = services.CacheManager;
             _keyGenerator = services.KeyGenerator;

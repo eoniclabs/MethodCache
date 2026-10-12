@@ -1,5 +1,7 @@
 # Generated decorators
 
+Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated `Add...WithCaching` factory helpers own the instances their factories return; create a new instance in those factories.
+
 Put cache attributes on interface methods. The generator builds a decorator around the registered implementation
 and routes cached calls through MethodCache. Your implementation stays ordinary application code.
 

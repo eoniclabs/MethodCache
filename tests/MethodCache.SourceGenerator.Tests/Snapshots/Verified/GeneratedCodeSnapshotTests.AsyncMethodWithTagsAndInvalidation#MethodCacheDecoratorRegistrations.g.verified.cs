@@ -19,7 +19,7 @@ namespace MethodCache.Generated
                 typeof(global::App.IUserService),
                 static (provider, inner) => new global::App.IUserServiceDecorator(
                     (global::App.IUserService)inner,
-                    global::MethodCache.Infrastructure.DecoratorServices.From(provider)),
+                    global::MethodCache.Infrastructure.DecoratorServices.From(provider), ownsDecorated: false),
                 GeneratedPolicyRegistrations.AddPolicies,
                 typeof(global::App.UserService)));
         }
