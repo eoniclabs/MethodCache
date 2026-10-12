@@ -176,7 +176,7 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await using var transaction = connection.BeginTransaction();
         await using (var insert = new SqlCommand(
             $"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target]) VALUES (@scope, 'other', 0, 'key');
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target]) VALUES (@scope, 'other', 0, '4:awBlAHkA');
             INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
             SELECT TOP (200) @scope, 'other', 0, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;

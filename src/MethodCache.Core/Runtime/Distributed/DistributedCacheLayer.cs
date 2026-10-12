@@ -38,7 +38,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>How long a key's removal stamp keeps values loaded before the removal out of the cache.</summary>
         internal static readonly TimeSpan RemovalLifetime = TimeSpan.FromMinutes(5);
 
-        private const byte FormatVersion = 3;
+        private const byte FormatVersion = 4;
         private const byte KindNull = 0;
         private const byte KindValue = 1;
         private const int HeaderSize = 1 + 1 + 8 + 8 + 4;
@@ -878,10 +878,11 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 foreach (var tag in tags)
                 {
-                    var length = Encoding.UTF8.GetByteCount(tag);
+                    var length = checked(tag.Length * sizeof(char));
                     span = writer.GetSpan(sizeof(int) + length);
                     BinaryPrimitives.WriteInt32LittleEndian(span, length);
-                    Encoding.UTF8.GetBytes(tag, span.Slice(sizeof(int)));
+                    for (var i = 0; i < tag.Length; i++)
+                        BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(sizeof(int) + i * sizeof(char)), tag[i]);
                     writer.Advance(sizeof(int) + length);
                 }
             }
@@ -914,13 +915,18 @@ namespace MethodCache.Core.Runtime.Distributed
                 tags = new string[tagCount];
                 for (var i = 0; i < tagCount; i++)
                 {
-                    if (!reader.TryReadLittleEndian(out int length) || length < 0 || length > reader.Remaining)
+                    if (!reader.TryReadLittleEndian(out int length) || length < 0 || (length & 1) != 0 || length > reader.Remaining)
                     {
                         return false;
                     }
 
-                    tags[i] = Encoding.UTF8.GetString(reader.UnreadSequence.Slice(0, length));
-                    reader.Advance(length);
+                    var chars = new char[length / sizeof(char)];
+                    for (var c = 0; c < chars.Length; c++)
+                    {
+                        if (!reader.TryReadLittleEndian(out short codeUnit)) return false;
+                        chars[c] = (char)codeUnit;
+                    }
+                    tags[i] = new string(chars);
                 }
             }
 

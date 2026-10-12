@@ -159,7 +159,7 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
             """, connection);
         command.Parameters.AddWithValue("@id", id);
         command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
-        command.Parameters.AddWithValue("@key", key);
+        command.Parameters.AddWithValue("@key", "4:" + Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(key)));
         await command.ExecuteNonQueryAsync();
     }
 
@@ -184,12 +184,12 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
             {
                 await connection.OpenAsync();
                 await using var command = new SqlCommand($"""
-                    WITH Numbers AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM Numbers WHERE n < 1005)
                     INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target)
-                    SELECT @scope, 'other', 0, CONVERT(nvarchar(10), n) FROM Numbers ORDER BY n
-                    OPTION (MAXRECURSION 0);
+                    SELECT @scope, 'other', 0, [value] FROM OPENJSON(@targets) ORDER BY CONVERT(int, [key]);
                     """, connection);
                 command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
+                command.Parameters.AddWithValue("@targets", System.Text.Json.JsonSerializer.Serialize(Enumerable.Range(1, 1005)
+                    .Select(i => "4:" + Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(i.ToString(System.Globalization.CultureInfo.InvariantCulture))))));
                 await command.ExecuteNonQueryAsync();
             }
             await Assert.ThrowsAsync<InvalidOperationException>(() => receiver.PollOnceAsync(Handle, CancellationToken.None));

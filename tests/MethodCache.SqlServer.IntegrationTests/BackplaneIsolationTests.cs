@@ -44,6 +44,26 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
     }
 
     [SkippableFact]
+    public async Task Backplane_PreservesLoneSurrogatesThroughSqlTransport()
+    {
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "wire_" + Guid.NewGuid().ToString("N") };
+        try
+        {
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
+            await using var receiver = new SqlServerBackplane(options);
+            await using var publisher = new SqlServerBackplane(options);
+            var delivered = new List<string>();
+            Task Handle(BackplaneMessage message) { delivered.Add(message.Tag!); return Task.CompletedTask; }
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+            var tags = new[] { "tag:\ud800", "tag:\ud801", "tag:\udfff", "tag:\0", "tag:\ufffd" };
+            foreach (var tag in tags) await publisher.PublishTagInvalidationAsync(tag);
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+            Assert.Equal(tags, delivered);
+        }
+        finally { await DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task SharedTable_OtherPrefixesRows_AreNotTrackedAsGaps_AndALateOwnRowStillArrives()
     {
         var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = "app-b:" };
@@ -76,7 +96,7 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
             await using var transaction = connection.BeginTransaction();
-            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 0, 'late');", connection, transaction))
+            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 0, '4:bABhAHQAZQA=');", connection, transaction))
             {
                 insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
                 await insert.ExecuteNonQueryAsync();
@@ -131,7 +151,7 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using var remaining = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);
             await using var reader = await remaining.ExecuteReaderAsync();
             Assert.True(await reader.ReadAsync());
-            Assert.Equal("other", reader.GetString(0));
+            Assert.Equal("4:bwB0AGgAZQByAA==", reader.GetString(0));
             Assert.False(await reader.ReadAsync());
         }
         finally { await DropSchemaAsync(options); }

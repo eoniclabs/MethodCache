@@ -37,6 +37,23 @@ public class DistributedCacheSecurityTests
     private static CacheRuntimePolicy Policy(params string[] tags) =>
         CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1), Tags = tags };
 
+    [Theory]
+    [InlineData(3, 0)]
+    [InlineData(4, 1)]
+    [InlineData(4, -1)]
+    [InlineData(4, int.MaxValue)]
+    public async Task ObsoleteVersionOrInvalidUtf16Length_IsAMiss(int version, int length)
+    {
+        var writer = CreateNode();
+        await writer.GetOrCreateFastAsync("k", "M", () => Task.FromResult("stored"), Policy("users"));
+        var stored = (await _shared.GetAsync(EntryPrefix + "k"))!;
+        stored[0] = (byte)version;
+        BinaryPrimitives.WriteInt32LittleEndian(stored.AsSpan(22), length);
+        await _shared.SetAsync(EntryPrefix + "k", stored);
+        var reader = CreateNode();
+        Assert.Equal("loaded", await reader.GetOrCreateFastAsync("k", "M", () => Task.FromResult("loaded"), Policy("users")));
+    }
+
     [Fact]
     public async Task RandomBytesInTheDistributedCache_AreMisses()
     {
@@ -49,7 +66,7 @@ public class DistributedCacheSecurityTests
             random.NextBytes(garbage);
             if (garbage.Length > 0 && random.Next(2) == 0)
             {
-                garbage[0] = 3; // the current format version, so the header is parsed further
+                garbage[0] = 4; // the current format version, so the header is parsed further
             }
 
             await _shared.SetAsync(EntryPrefix + "k" + i, garbage);
@@ -77,7 +94,7 @@ public class DistributedCacheSecurityTests
     public async Task AHugeTagCount_IsAMiss_WithoutAllocatingIt()
     {
         var header = new byte[1 + 1 + 8 + 8 + 4];
-        header[0] = 3;                                                       // format version
+        header[0] = 4;                                                       // format version
         header[1] = 1;                                                       // a value
         BinaryPrimitives.WriteInt64LittleEndian(header.AsSpan(2), _time.GetUtcNow().ToUnixTimeMilliseconds());
         BinaryPrimitives.WriteInt64LittleEndian(header.AsSpan(10), _time.GetUtcNow().AddHours(1).ToUnixTimeMilliseconds());

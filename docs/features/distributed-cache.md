@@ -134,3 +134,5 @@ SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF
 trailing spaces, NULs and different Unicode representations distinct despite SQL collation, and
 gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
 and expire normally; upgrade all instances sharing a prefix together.
+
+Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.

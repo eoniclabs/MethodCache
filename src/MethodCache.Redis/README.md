@@ -77,3 +77,5 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `KeyPrefix` | `methodcache:` | Prefix for every key MethodCache writes |
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
 | `BackplaneChannel` | `KeyPrefix` + `invalidations` | Pub/sub channel; applications with different key prefixes get different channels |
+
+Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
