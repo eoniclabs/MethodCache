@@ -16,6 +16,7 @@ namespace MethodCache.SqlServer;
 /// <remarks>
 /// Identity values are handed out before transactions commit, so a row can become visible after a row with a
 /// higher id was already read. Ids skipped that way are remembered as gaps and looked up again for a few seconds.
+/// Ids taken by rows of other prefixes sharing the table are committed, so they are not kept as gaps.
 /// When this instance could not poll for longer than the table keeps rows, it may have missed invalidations, so it
 /// clears its in-memory cache.
 /// </remarks>
@@ -59,6 +60,12 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         _timeProvider = timeProvider ?? TimeProvider.System;
         _subscribedAt = _timeProvider.GetTimestamp();
     }
+
+    /// <summary>Identity ranges this instance currently watches for rows that may still commit.</summary>
+    internal int GapRangeCount => _gaps.Count;
+
+    /// <summary>Identity values in <see cref="GapRangeCount"/> ranges.</summary>
+    internal long GapIdCount => _gaps.Sum(gap => gap.To - gap.From + 1);
 
     /// <inheritdoc />
     public string InstanceId { get; } = Guid.NewGuid().ToString("N");
@@ -266,22 +273,12 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         // All discovery state is staged. A query or callback failure cannot consume a cursor or a gap id.
         var gaps = _gaps.Where(gap => now - gap.SeenAt <= GapLifetime)
             .Select(gap => gap with { Delivered = new HashSet<long>(gap.Delivered) }).ToList();
-        var nextGaps = new List<GapRange>(gaps);
-        var sql = new StringBuilder($"""
+        var sql = $"""
             SELECT TOP (@batch) [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
             FROM {_options.QualifiedInvalidationsTableName}
             WHERE [Scope] = @scope AND [Id] > @lastId
             ORDER BY [Id];
-            """);
-        if (gaps.Count > 0)
-        {
-            sql.Append($"""
-
-                SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
-                FROM {_options.QualifiedInvalidationsTableName}
-                WHERE [Scope] = @scope AND ({string.Join(" OR ", gaps.Select((_, i) => $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"))});
-                """);
-        }
+            """;
 
         var messages = new List<BackplaneMessage>();
         var newRows = 0;
@@ -290,50 +287,148 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         await using (connection.ConfigureAwait(false))
         {
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            var command = new SqlCommand(sql.ToString(), connection);
-            await using var commandScope = command.ConfigureAwait(false);
-            AddScope(command);
-            command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
-            command.Parameters.Add(new SqlParameter("@lastId", SqlDbType.BigInt) { Value = lastId });
-            for (var i = 0; i < gaps.Count; i++)
+            var command = new SqlCommand(sql, connection);
+            await using (command.ConfigureAwait(false))
             {
-                var index = i.ToString(CultureInfo.InvariantCulture);
-                command.Parameters.Add(new SqlParameter("@gapFrom" + index, SqlDbType.BigInt) { Value = gaps[i].From });
-                command.Parameters.Add(new SqlParameter("@gapTo" + index, SqlDbType.BigInt) { Value = gaps[i].To });
-            }
+                AddScope(command);
+                command.Parameters.Add(new SqlParameter("@batch", SqlDbType.Int) { Value = BatchSize });
+                command.Parameters.Add(new SqlParameter("@lastId", SqlDbType.BigInt) { Value = lastId });
+                var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                await using var readerScope = reader.ConfigureAwait(false);
 
-            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            await using var readerScope = reader.ConfigureAwait(false);
-
-            var expected = lastId + 1;
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                var id = reader.GetInt64(0);
-                newRows++;
-                if (id > expected)
-                {
-                    AddGap(nextGaps, expected, id - 1, now);
-                }
-
-                expected = id + 1;
-                lastId = id;
-                AddMessage(reader, messages);
-            }
-
-            if (await reader.NextResultAsync(cancellationToken).ConfigureAwait(false))
-            {
+                var expected = lastId + 1;
                 while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                 {
                     var id = reader.GetInt64(0);
-                    if (gaps.Find(gap => gap.From <= id && id <= gap.To) is { } gap && gap.Delivered.Add(id))
+                    newRows++;
+                    if (id > expected)
                     {
-                        AddMessage(reader, messages);
+                        AddGap(gaps, expected, id - 1, now);
                     }
+
+                    expected = id + 1;
+                    lastId = id;
+                    AddMessage(reader, messages);
+                }
+            }
+
+            if (gaps.Count > 0)
+            {
+                gaps = await ReadGapsAsync(connection, gaps, messages, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return new PendingBatch(messages, newRows, lastId, gaps);
+    }
+
+    /// <summary>
+    /// Adds this scope's rows that appeared in <paramref name="gaps"/> to <paramref name="messages"/>, and returns
+    /// the gaps without the ids that are taken.
+    /// </summary>
+    /// <remarks>
+    /// Applications with other prefixes share the identity column, so most skipped ids belong to their rows. Any
+    /// committed row, whatever its scope, proves its id is no longer pending, so only ids absent from the table stay
+    /// watched. The ids are read first: a row they show is committed, so the second query returns it if it is ours.
+    /// Locked rows are skipped, so another application's open transaction neither blocks this read nor hides a
+    /// pending id. Only ids leave the query for other scopes, never their content.
+    /// </remarks>
+    private async Task<List<GapRange>> ReadGapsAsync(SqlConnection connection, List<GapRange> gaps, List<BackplaneMessage> messages, CancellationToken cancellationToken)
+    {
+        var ranges = string.Join(" OR ", gaps.Select((_, i) => $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"));
+        var sql = $"""
+            SELECT MIN([Id]), MAX([Id])
+            FROM (
+                SELECT [Id], [Id] - ROW_NUMBER() OVER (ORDER BY [Id]) AS [Island]
+                FROM {_options.QualifiedInvalidationsTableName} WITH (READPAST)
+                WHERE {ranges}) AS [Taken]
+            GROUP BY [Island]
+            ORDER BY MIN([Id]);
+
+            SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
+            FROM {_options.QualifiedInvalidationsTableName}
+            WHERE [Scope] = @scope AND ({ranges});
+            """;
+
+        var taken = new List<(long From, long To)>();
+        var command = new SqlCommand(sql, connection);
+        await using var commandScope = command.ConfigureAwait(false);
+        AddScope(command);
+        for (var i = 0; i < gaps.Count; i++)
+        {
+            var index = i.ToString(CultureInfo.InvariantCulture);
+            command.Parameters.Add(new SqlParameter("@gapFrom" + index, SqlDbType.BigInt) { Value = gaps[i].From });
+            command.Parameters.Add(new SqlParameter("@gapTo" + index, SqlDbType.BigInt) { Value = gaps[i].To });
+        }
+
+        var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using (reader.ConfigureAwait(false))
+        {
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                taken.Add((reader.GetInt64(0), reader.GetInt64(1)));
+            }
+
+            await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                var id = reader.GetInt64(0);
+                if (gaps.Find(gap => gap.From <= id && id <= gap.To) is { } gap && gap.Delivered.Add(id))
+                {
+                    AddMessage(reader, messages);
                 }
             }
         }
 
-        return new PendingBatch(messages, newRows, lastId, nextGaps);
+        return RemoveTaken(gaps, taken);
+    }
+
+    /// <summary>Splits <paramref name="gaps"/> around the sorted, disjoint <paramref name="taken"/> ranges.</summary>
+    internal static List<GapRange> RemoveTaken(List<GapRange> gaps, List<(long From, long To)> taken)
+    {
+        var holes = new List<GapRange>();
+        var next = 0;
+        foreach (var gap in gaps)
+        {
+            var from = gap.From;
+            while (next < taken.Count && taken[next].To < from)
+            {
+                next++;
+            }
+
+            for (var i = next; i < taken.Count && taken[i].From <= gap.To && from <= gap.To; i++)
+            {
+                if (taken[i].From > from)
+                {
+                    holes.Add(Piece(gap, from, taken[i].From - 1));
+                }
+
+                from = Math.Max(from, taken[i].To + 1);
+            }
+
+            if (from <= gap.To)
+            {
+                holes.Add(Piece(gap, from, gap.To));
+            }
+        }
+
+        // Many separate holes: widen the newest range over the one before it, as AddGap does
+        while (holes.Count > MaxGapRanges)
+        {
+            var last = holes[^1];
+            var previous = holes[^2];
+            holes.RemoveAt(holes.Count - 1);
+            holes[^1] = new GapRange(previous.From, last.To, previous.SeenAt > last.SeenAt ? previous.SeenAt : last.SeenAt)
+            {
+                Delivered = new HashSet<long>(previous.Delivered.Concat(last.Delivered))
+            };
+        }
+
+        return holes;
+
+        static GapRange Piece(GapRange gap, long from, long to) => new(from, to, gap.SeenAt)
+        {
+            Delivered = new HashSet<long>(gap.Delivered.Where(id => from <= id && id <= to))
+        };
     }
 
     private static void AddGap(List<GapRange> gaps, long from, long to, DateTime now)
@@ -359,7 +454,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     }
 
     /// <summary>Identity values <see cref="From"/> to <see cref="To"/> skipped by rows that may still commit.</summary>
-    private sealed record GapRange(long From, long To, DateTime SeenAt)
+    internal sealed record GapRange(long From, long To, DateTime SeenAt)
     {
         public HashSet<long> Delivered { get; init; } = new();
     }
@@ -398,7 +493,10 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         }
 
         _nextCleanup = now + CleanupInterval;
-        var sql = $"DELETE TOP (@batch) FROM {_options.QualifiedInvalidationsTableName} WHERE [Scope] = @scope AND [CreatedAt] < DATEADD(second, -@retention, SYSUTCDATETIME());";
+        // Rows without a scope come from an earlier build and no instance of this one reads them. That build deleted
+        // every row older than its own retention, so removing them after this instance's retention changes nothing
+        // for anyone. Other prefixes may keep their rows longer, so their rows are left to them.
+        var sql = $"DELETE TOP (@batch) FROM {_options.QualifiedInvalidationsTableName} WHERE ([Scope] = @scope OR [Scope] IS NULL) AND [CreatedAt] < DATEADD(second, -@retention, SYSUTCDATETIME());";
 
         var connection = new SqlConnection(_options.ConnectionString);
         await using var connectionScope = connection.ConfigureAwait(false);
