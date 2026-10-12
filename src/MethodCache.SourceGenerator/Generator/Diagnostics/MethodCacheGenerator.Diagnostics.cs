@@ -59,7 +59,7 @@ namespace MethodCache.SourceGenerator
             internal static readonly DiagnosticDescriptor UnsupportedPointerType = new(
                 id: "MCG006",
                 title: "Caching not supported with pointer types",
-                messageFormat: "[Cache] on '{0}' is not supported: pointer and function pointer parameters or returns cannot be cached. Use a value or an array, or remove [Cache].",
+                messageFormat: "[Cache] on '{0}' is not supported: pointer and function pointer parameters or returns, including arrays of them, cannot be cached. Use a value or an array of values, or remove [Cache].",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true,

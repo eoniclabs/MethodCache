@@ -13,7 +13,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG003](#mcg003) | Error | `[Cache]` with reference parameters or returns | Remove `[Cache]` |
 | [MCG004](#mcg004) | Error | `[Cache]` and `[CacheInvalidate]` on the same method | |
 | [MCG005](#mcg005) | Warning | `[CacheInvalidate]` without tags | |
-| [MCG006](#mcg006) | Error | `[Cache]` with pointer or function pointer parameters or returns | Remove `[Cache]` |
+| [MCG006](#mcg006) | Error | `[Cache]` with pointer or function pointer parameters or returns, including arrays of them | Remove `[Cache]` |
 | [MCG007](#mcg007) | Error | `[Cache]` with ref struct parameters or returns | Remove `[Cache]` |
 | [MCG009](#mcg009) | Warning | A tag names a parameter the method does not have | Use the closest parameter |
 | [MCG010](#mcg010) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
@@ -85,8 +85,9 @@ Task UpdateAsync(int id, User user);
 
 ## MCG006
 
-`[Cache]` on a method with pointer or function pointer parameters or returns. These cannot be stored as cached
-values or keys; use a value or an array. Unsupported methods are still forwarded through an unsafe implementation.
+`[Cache]` on a method with pointer or function pointer parameters or returns, including arrays of them such as
+`int*[]`. These cannot be stored as cached values or keys; use a value or an array of values. Unsupported methods, and
+any other member of the interface that uses a pointer, are still forwarded through an unsafe implementation.
 
 ## MCG007
 

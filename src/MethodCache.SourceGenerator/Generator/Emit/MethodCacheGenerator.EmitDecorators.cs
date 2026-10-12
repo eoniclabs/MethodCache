@@ -976,7 +976,8 @@ namespace MethodCache.SourceGenerator
                     access = $"{target}.{name}";
                 }
 
-                sb.AppendLine($"        {byRef}{type} {declaring}.{name}");
+                var unsafeModifier = IsPointerType(property.Type) || property.Parameters.Any(p => IsPointerType(p.Type)) ? "unsafe " : "";
+                sb.AppendLine($"        {unsafeModifier}{byRef}{type} {declaring}.{name}");
                 sb.AppendLine("        {");
                 if (property.GetMethod != null)
                     sb.AppendLine(byRef.Length > 0 ? $"            get => ref {access};" : $"            get => {access};");

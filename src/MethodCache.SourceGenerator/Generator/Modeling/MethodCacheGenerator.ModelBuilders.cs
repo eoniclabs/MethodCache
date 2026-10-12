@@ -100,8 +100,18 @@ namespace MethodCache.SourceGenerator
             return Kind(returnType, viaTask: false);
         }
 
+        /// <summary>
+        /// Whether the type is or contains a pointer or function pointer, such as <c>int*</c>, <c>int*[]</c> or
+        /// <c>delegate*&lt;int&gt;[]</c>: code that names it must be in an unsafe context. C# allows no pointer as a
+        /// type argument, so arrays are the only types that can hold one.
+        /// </summary>
         private static bool IsPointerType(ITypeSymbol type)
-            => type.TypeKind is TypeKind.Pointer or TypeKind.FunctionPointer;
+            => type switch
+            {
+                { TypeKind: TypeKind.Pointer or TypeKind.FunctionPointer } => true,
+                IArrayTypeSymbol array => IsPointerType(array.ElementType),
+                _ => false,
+            };
 
         private static bool IsRefLikeType(ITypeSymbol type)
         {

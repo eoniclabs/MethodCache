@@ -135,6 +135,10 @@ public class SignatureCorpusTests
         ["ref readonly result"] = ("ref readonly int Get(int id)", "ref readonly int Get(int id) => ref _value; private int _value;", "MCG003"),
         ["pointer result"] = ("unsafe int* Get(int id)", "unsafe int* Get(int id) => null;", "MCG006"),
         ["function pointer result"] = ("unsafe delegate*<int> Get(int id)", "unsafe delegate*<int> Get(int id) => null;", "MCG006"),
+        ["pointer array parameter"] = ("unsafe string Get(int*[] ids)", "unsafe string Get(int*[] ids) => \"v\";", "MCG006"),
+        ["pointer array result"] = ("unsafe int*[] Get(int id)", "unsafe int*[] Get(int id) => new int*[1];", "MCG006"),
+        ["function pointer array parameter"] = ("unsafe string Get(delegate*<int>[] f)", "unsafe string Get(delegate*<int>[] f) => \"v\";", "MCG006"),
+        ["pointer to pointer parameter"] = ("unsafe string Get(int** p)", "unsafe string Get(int** p) => \"v\";", "MCG006"),
         ["IEnumerable result"] = ("IEnumerable<int> Get(int id)", "IEnumerable<int> Get(int id) { yield return id; }", "MCG014"),
         ["IAsyncEnumerable result"] = ("IAsyncEnumerable<int> Get(int id)", "async IAsyncEnumerable<int> Get(int id) { await Task.Yield(); yield return id; }", "MCG014"),
     };
@@ -251,6 +255,28 @@ public class SignatureCorpusTests
 
         // Parameter names that are keywords or collide with names in generated code
         ["keyword parameter names"] = Member("Task<string> Get(int @class, string @event)", "Task<string> Get(int @class, string @event) { Counter.Hit(); return Task.FromResult(@event); }", "await s.Get(1, \"a\")", "await s.Get(1, \"b\")"),
+        ["unsafe members next to a cached method"] = new("""
+                public unsafe interface ISvc
+                {
+                    [Cache] Task<string> Get(int id);
+                    int*[] GetPointers(int id);
+                    void Take(delegate*<int>[] functions);
+                    int** Deep(int id);
+                    int* Pointer { get; }
+                    int*[] Pointers { get; set; }
+                    int* this[int i] { get; }
+                }
+                public unsafe class Svc : ISvc
+                {
+                    public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(id.ToString()); }
+                    public int*[] GetPointers(int id) => new int*[id];
+                    public void Take(delegate*<int>[] functions) { }
+                    public int** Deep(int id) => null;
+                    public int* Pointer => null;
+                    public int*[] Pointers { get; set; } = new int*[0];
+                    public int* this[int i] => null;
+                }
+            """, "ISvc", "await s.Get(1)", "await s.Get(2)"),
         ["keyword property and event names"] = new("""
                 public interface ISvc
                 {
