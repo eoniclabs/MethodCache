@@ -496,6 +496,8 @@ await cache.InvalidateByTagPatternAsync("customer:7:*");   // in-memory cache on
 With [Redis or SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
 tells every instance to drop its in-memory copy. You don't need to do anything else.
 
+Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. Cached tags and invalidation use the same rule.
+
 
 ---
 
@@ -1696,6 +1698,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG013](#mcg013) | Error | An interface with static or non-public abstract members | |
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
 | [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
+| [MCG016](#mcg016) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
 
 ## MC0001
 
@@ -1812,6 +1815,10 @@ parameter name only, so the braces stay literal text and every call shares the s
 add the value as its own parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md). For `[assembly: CacheInterface]` both MCG009 and MCG015 are reported on the
 attribute.
+
+## MCG016
+
+The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for parameters `name` and `Name`. Use the intended parameter’s exact spelling. Until corrected, the placeholder remains literal in both cached tags and invalidation.
 
 
 ---

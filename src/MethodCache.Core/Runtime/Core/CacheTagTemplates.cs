@@ -13,7 +13,8 @@ namespace MethodCache.Infrastructure
     {
         /// <summary>
         /// Returns <paramref name="policy"/> with every <c>{name}</c> in its tags replaced by the matching value.
-        /// Parameter names match case-insensitively; placeholders without a matching name are left as they are.
+        /// Parameter names match exactly first, then case-insensitively when only one name matches.
+        /// Unknown or ambiguous placeholders are left as they are.
         /// </summary>
         /// <param name="policy">The method's policy.</param>
         /// <param name="parameterNames">The method's parameter names.</param>
@@ -82,13 +83,16 @@ namespace MethodCache.Infrastructure
         {
             for (var i = 0; i < parameterNames.Length; i++)
             {
-                if (name.Equals(parameterNames[i], StringComparison.OrdinalIgnoreCase))
-                {
-                    return i;
-                }
+                if (name.Equals(parameterNames[i], StringComparison.Ordinal)) return i;
             }
-
-            return -1;
+            var match = -1;
+            for (var i = 0; i < parameterNames.Length; i++)
+            {
+                if (!name.Equals(parameterNames[i], StringComparison.OrdinalIgnoreCase)) continue;
+                if (match >= 0) return -1;
+                match = i;
+            }
+            return match;
         }
     }
 }
