@@ -69,8 +69,8 @@ namespace MethodCache.SourceGenerator
                     Utils.GetFullyQualifiedName(i),
                     Utils.GetFullyQualifiedName(i.OriginalDefinition),
                     i.ToDisplayString(),
-                    new EquatableArray<string>(i.TypeArguments.Select(Utils.GetFullyQualifiedName)),
-                    i.TypeArguments.All(t => DecoratorRegistrationsEmitter.IsNameableFrom(t, symbol.ContainingAssembly))));
+                    new EquatableArray<string>(Utils.AllTypeArguments(i).Select(Utils.GetFullyQualifiedName)),
+                    Utils.AllTypeArguments(i).All(t => DecoratorRegistrationsEmitter.IsNameableFrom(t, symbol.ContainingAssembly))));
 
             return new ClassInfo(
                 Utils.GetFullyQualifiedName(symbol),

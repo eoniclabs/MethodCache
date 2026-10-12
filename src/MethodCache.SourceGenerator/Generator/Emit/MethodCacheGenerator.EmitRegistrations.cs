@@ -136,7 +136,7 @@ namespace MethodCache.SourceGenerator
                 INamedTypeSymbol named => (SymbolEqualityComparer.Default.Equals(named.ContainingAssembly, assembly)
                                               ? IsAccessibleFromAssembly(named)
                                               : IsPublic(named))
-                                          && named.TypeArguments.All(t => IsNameableFrom(t, assembly)),
+                                          && Utils.AllTypeArguments(named).All(t => IsNameableFrom(t, assembly)),
                 _ => false,
             };
 
