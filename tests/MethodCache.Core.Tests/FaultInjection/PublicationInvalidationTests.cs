@@ -36,21 +36,21 @@ public class PublicationInvalidationTests
         var old = Task.Run(() => cache.GetOrCreateFastAsync("key", "publication", () => Task.FromResult("old"), policy));
         try
         {
-            await weighing.Task;
+            await weighing.Task.WaitAsync(TimeSpan.FromSeconds(30));
             if (invalidation == "key") await cache.InvalidateByKeysAsync("key");
             else if (invalidation == "tag") await cache.InvalidateByTagsAsync("tag");
             else await cache.ClearAsync();
             if (explicitWrite) await cache.SetAsync("key", "new", TimeSpan.FromMinutes(1));
             else Assert.Equal("new", await cache.GetOrCreateFastAsync("key", "publication", () => Task.FromResult("new"), policy));
             finishWeight.Set();
-            Assert.Equal("old", await old);
+            Assert.Equal("old", await old.WaitAsync(TimeSpan.FromSeconds(30)));
             Assert.True(cache.TryGetFast<string>("key", out var stored));
             Assert.Equal("new", stored);
         }
         finally
         {
             finishWeight.Set();
-            await old;
+            await old.WaitAsync(TimeSpan.FromSeconds(30));
         }
     }
 }
