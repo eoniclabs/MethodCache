@@ -16,7 +16,7 @@ namespace MethodCache.SourceGenerator
             private const string PriorityMetadataKey = "priority";
             private const string GroupMetadataKey = "group";
 
-            internal static string Emit(List<InterfaceInfo> interfaces)
+            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces)
             {
                 var definitions = BuildDefinitions(interfaces);
                 if (definitions.Count == 0)
@@ -134,34 +134,48 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("}");
             }
 
-            private static List<PolicyDefinition> BuildDefinitions(List<InterfaceInfo> interfaces)
+            private static List<PolicyDefinition> BuildDefinitions(IReadOnlyList<InterfaceSummary> interfaces)
             {
                 var definitions = new List<PolicyDefinition>();
                 var seen = new HashSet<string>(StringComparer.Ordinal);
                 var index = 0;
 
-                foreach (var info in interfaces)
+                foreach (var entry in interfaces.SelectMany(i => i.Policies))
                 {
-                    foreach (var method in info.CachedMethods)
+                    if (!seen.Add(entry.MethodId))
                     {
-                        if (method.CacheAttr is null)
-                        {
-                            continue;
-                        }
-
-                        var methodId = Utils.GetMethodId(method.Method);
-                        if (!seen.Add(methodId))
-                        {
-                            continue;
-                        }
-
-                        var definition = new PolicyDefinition(methodId, $"BuildSnapshot_{index++}");
-                        PopulateFromCacheAttribute(definition, method.CacheAttr);
-                        definitions.Add(definition);
+                        continue;
                     }
+
+                    var definition = new PolicyDefinition(entry.MethodId, $"BuildSnapshot_{index++}");
+                    definition.PolicyStatements.AddRange(entry.PolicyStatements);
+                    definition.MetadataStatements.AddRange(entry.MetadataStatements);
+                    definitions.Add(definition);
                 }
 
                 return definitions;
+            }
+
+            /// <summary>The attribute policy of each of the interface's cached methods.</summary>
+            internal static EquatableArray<PolicyEntry> BuildEntries(InterfaceInfo info)
+            {
+                var entries = new List<PolicyEntry>();
+                foreach (var method in info.CachedMethods)
+                {
+                    if (method.CacheAttr is null)
+                    {
+                        continue;
+                    }
+
+                    var definition = new PolicyDefinition(Utils.GetMethodId(method.Method), string.Empty);
+                    PopulateFromCacheAttribute(definition, method.CacheAttr);
+                    entries.Add(new PolicyEntry(
+                        definition.MethodId,
+                        new EquatableArray<string>(definition.PolicyStatements),
+                        new EquatableArray<string>(definition.MetadataStatements)));
+                }
+
+                return new EquatableArray<PolicyEntry>(entries);
             }
 
             private static void PopulateFromCacheAttribute(PolicyDefinition definition, AttributeData cacheAttr)

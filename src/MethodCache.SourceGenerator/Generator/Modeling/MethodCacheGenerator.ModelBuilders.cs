@@ -10,7 +10,7 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Modeling Helpers ========================
-        private static (Diagnostic? diagnostic, bool canProceed) ValidateCacheMethod(IMethodSymbol method, Location? reportAt = null)
+        private static (DiagnosticInfo? diagnostic, bool canProceed) ValidateCacheMethod(IMethodSymbol method, Location? reportAt = null)
         {
             var location = reportAt ?? method.Locations.FirstOrDefault();
             var methodName = method.ToDisplayString();
@@ -18,7 +18,7 @@ namespace MethodCache.SourceGenerator
             // Check for void return
             if (method.ReturnsVoid)
             {
-                return (Diagnostic.Create(Diagnostics.UnsupportedVoidCache, location, methodName), false);
+                return (DiagnosticInfo.Create(Diagnostics.UnsupportedVoidCache, location, methodName), false);
             }
 
             // Check for non-generic Task/ValueTask
@@ -29,7 +29,7 @@ namespace MethodCache.SourceGenerator
                 {
                     if (namedType.Name == "Task" || namedType.Name == "ValueTask")
                     {
-                        return (Diagnostic.Create(Diagnostics.UnsupportedTaskCache, location, methodName), false);
+                        return (DiagnosticInfo.Create(Diagnostics.UnsupportedTaskCache, location, methodName), false);
                     }
                 }
             }
@@ -37,25 +37,25 @@ namespace MethodCache.SourceGenerator
             // A lazy sequence would be cached as the iterator or query, which runs again on every enumeration
             if (GetLazySequenceKind(method.ReturnType) is { } sequence)
             {
-                return (Diagnostic.Create(Diagnostics.UnsupportedLazySequence, location, methodName, sequence), false);
+                return (DiagnosticInfo.Create(Diagnostics.UnsupportedLazySequence, location, methodName, sequence), false);
             }
 
             // References cannot be represented by a cached value or key.
             if (method.ReturnsByRef || method.ReturnsByRefReadonly || method.Parameters.Any(p => p.RefKind != RefKind.None))
             {
-                return (Diagnostic.Create(Diagnostics.UnsupportedRefParams, location, methodName), false);
+                return (DiagnosticInfo.Create(Diagnostics.UnsupportedRefParams, location, methodName), false);
             }
 
             // Check for pointer types
             if (IsPointerType(method.ReturnType) || method.Parameters.Any(p => IsPointerType(p.Type)))
             {
-                return (Diagnostic.Create(Diagnostics.UnsupportedPointerType, location, methodName), false);
+                return (DiagnosticInfo.Create(Diagnostics.UnsupportedPointerType, location, methodName), false);
             }
 
             // Check for ref struct types
             if (IsRefLikeType(method.ReturnType) || method.Parameters.Any(p => IsRefLikeType(p.Type)))
             {
-                return (Diagnostic.Create(Diagnostics.UnsupportedRefLikeType, location, methodName), false);
+                return (DiagnosticInfo.Create(Diagnostics.UnsupportedRefLikeType, location, methodName), false);
             }
 
             return (null, true);
@@ -183,9 +183,9 @@ namespace MethodCache.SourceGenerator
             return dynamicTags;
         }
 
-        private static List<Diagnostic> ValidateDynamicTags(List<string> tags, IMethodSymbol method, Location? location = null)
+        private static List<DiagnosticInfo> ValidateDynamicTags(List<string> tags, IMethodSymbol method, Location? location = null)
         {
-            var diagnostics = new List<Diagnostic>();
+            var diagnostics = new List<DiagnosticInfo>();
             var parameterNames = new HashSet<string>(method.Parameters.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
             location ??= method.Locations.FirstOrDefault();
 
@@ -197,11 +197,11 @@ namespace MethodCache.SourceGenerator
                     var paramName = match.Groups[1].Value;
                     if (!parameterNames.Contains(paramName))
                     {
-                        diagnostics.Add(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.CreateWithParameter(
                             Diagnostics.DynamicTagParameterNotFound,
                             location,
                             // The code fix reads the unknown name from here to offer the closest parameter
-                            System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("Parameter", paramName),
+                            paramName,
                             tag, paramName, method.ToDisplayString()));
                     }
                 }
@@ -212,7 +212,7 @@ namespace MethodCache.SourceGenerator
                 {
                     if (!DynamicTagParameterRegex.IsMatch(match.Value))
                     {
-                        diagnostics.Add(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.MalformedTagPlaceholder,
                             location,
                             tag, method.ToDisplayString(), match.Groups[1].Value));

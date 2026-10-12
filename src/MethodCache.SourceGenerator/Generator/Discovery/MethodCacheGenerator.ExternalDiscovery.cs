@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -11,29 +12,6 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== [assembly: CacheInterface] ========================
-
-        /// <summary>
-        /// One <c>[assembly: CacheInterface(typeof(IClient), "Method", ...)]</c>: the interface it names (when valid),
-        /// the model for its listed methods, and where the attribute is so diagnostics point at it.
-        /// </summary>
-        private sealed class ExternalInterface
-        {
-            public ExternalInterface(INamedTypeSymbol? symbol, InterfaceInfo? info, Location? location, ImmutableArray<Diagnostic> diagnostics)
-            {
-                Symbol = symbol;
-                Info = info;
-                Location = location;
-                Diagnostics = diagnostics;
-            }
-
-            public INamedTypeSymbol? Symbol { get; }
-
-            public InterfaceInfo? Info { get; }
-
-            public Location? Location { get; }
-
-            public ImmutableArray<Diagnostic> Diagnostics { get; }
-        }
 
         private static ImmutableArray<ExternalInterface> GetExternalInterfaces(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
         {
@@ -54,7 +32,7 @@ namespace MethodCache.SourceGenerator
                 attribute.ConstructorArguments[0].Value is not INamedTypeSymbol type)
             {
                 // The compiler already reports an attribute it cannot bind
-                return new ExternalInterface(null, null, location, ImmutableArray<Diagnostic>.Empty);
+                return new ExternalInterface(null, null, LocationInfo.From(location), null, EquatableArray<DiagnosticInfo>.Empty);
             }
 
             string? problem = null;
@@ -90,22 +68,24 @@ namespace MethodCache.SourceGenerator
             var typeName = type.ToDisplayString();
             if (problem != null)
             {
-                return new ExternalInterface(null, null, location, ImmutableArray.Create(
-                    Diagnostic.Create(Diagnostics.CacheInterfaceUnsupportedType, location, typeName, problem)));
+                return new ExternalInterface(null, null, LocationInfo.From(location), null, new EquatableArray<DiagnosticInfo>(new[]
+                {
+                    DiagnosticInfo.Create(Diagnostics.CacheInterfaceUnsupportedType, location, typeName, problem),
+                }));
             }
 
             var allMethods = GetAllInterfaceMethods(type)
                 .Where(m => m.MethodKind == MethodKind.Ordinary)
                 .ToList();
             var cachedMethods = new List<MethodModel>();
-            var diagnostics = new List<Diagnostic>();
+            var diagnostics = new List<DiagnosticInfo>();
 
             foreach (var name in methodNames)
             {
                 var candidates = allMethods.Where(m => m.Name == name).ToList();
                 if (candidates.Count != 1)
                 {
-                    diagnostics.Add(Diagnostic.Create(Diagnostics.CacheInterfaceMethodNotUsable, location, typeName, name,
+                    diagnostics.Add(DiagnosticInfo.Create(Diagnostics.CacheInterfaceMethodNotUsable, location, typeName, name,
                         candidates.Count == 0
                             ? "the interface has no method with that name"
                             : "the interface has several overloads with that name, which can't be told apart"));
@@ -115,7 +95,7 @@ namespace MethodCache.SourceGenerator
                 var method = candidates[0];
                 if (method.IsStatic)
                 {
-                    diagnostics.Add(Diagnostic.Create(Diagnostics.CacheInterfaceMethodNotUsable, location, typeName, name, "static members are not called through the instance"));
+                    diagnostics.Add(DiagnosticInfo.Create(Diagnostics.CacheInterfaceMethodNotUsable, location, typeName, name, "static members are not called through the instance"));
                     continue;
                 }
 
@@ -124,7 +104,7 @@ namespace MethodCache.SourceGenerator
                 {
                     if (!validation.canProceed)
                     {
-                        diagnostics.Add(Diagnostic.Create(Diagnostics.CacheInterfaceMethodNotUsable, location, typeName, name,
+                        diagnostics.Add(DiagnosticInfo.Create(Diagnostics.CacheInterfaceMethodNotUsable, location, typeName, name,
                             UncacheableReason(validation.diagnostic)));
                         continue;
                     }
@@ -139,46 +119,49 @@ namespace MethodCache.SourceGenerator
                 cachedMethods.Add(new MethodModel(method, attribute, null));
             }
 
-            var info = cachedMethods.Count == 0
+            var generated = cachedMethods.Count == 0
                 ? null
-                : new InterfaceInfo(type, cachedMethods.ToImmutableArray(), ImmutableArray<MethodModel>.Empty, ImmutableArray<Diagnostic>.Empty);
-            return new ExternalInterface(type, info, location, diagnostics.ToImmutableArray());
+                : ToGeneratedInterface(new InterfaceInfo(type, cachedMethods.ToImmutableArray(), ImmutableArray<MethodModel>.Empty, ImmutableArray<DiagnosticInfo>.Empty));
+            return new ExternalInterface(
+                Utils.GetFullyQualifiedName(type), typeName, LocationInfo.From(location), generated, new EquatableArray<DiagnosticInfo>(diagnostics));
         }
 
         /// <summary>
-        /// Reports the external interfaces' diagnostics, and an interface listed by more than one attribute, and
-        /// returns the models to generate decorators for.
+        /// Collects the external interfaces' diagnostics, and one for an interface listed by more than one attribute,
+        /// and returns the interfaces to generate decorators for.
         /// </summary>
-        private static IEnumerable<InterfaceInfo> ResolveExternalInterfaces(SourceProductionContext context, ImmutableArray<ExternalInterface> externals)
+        private static (EquatableArray<GeneratedInterface> Interfaces, EquatableArray<DiagnosticInfo> Diagnostics) ResolveExternalInterfaces(ImmutableArray<ExternalInterface> externals)
         {
-            var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            var interfaces = new List<GeneratedInterface>();
+            var diagnostics = new List<DiagnosticInfo>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var external in externals)
             {
-                foreach (var diagnostic in external.Diagnostics)
-                {
-                    context.ReportDiagnostic(diagnostic);
-                }
+                diagnostics.AddRange(external.Diagnostics);
 
-                if (external.Symbol is null)
+                if (external.Key is null)
                 {
                     continue;
                 }
 
-                if (!seen.Add(external.Symbol))
+                if (!seen.Add(external.Key))
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(Diagnostics.CacheInterfaceDuplicate, external.Location, external.Symbol.ToDisplayString()));
+                    diagnostics.Add(new DiagnosticInfo(
+                        Diagnostics.CacheInterfaceDuplicate, external.Location, new EquatableArray<string?>(new[] { external.DisplayName }), null));
                     continue;
                 }
 
-                if (external.Info != null)
+                if (external.Interface != null)
                 {
-                    yield return external.Info;
+                    interfaces.Add(external.Interface);
                 }
             }
+
+            return (new EquatableArray<GeneratedInterface>(interfaces), new EquatableArray<DiagnosticInfo>(diagnostics));
         }
 
         // The [Cache] diagnostics end with "or remove [Cache]", which makes no sense for a method listed by name
-        private static string UncacheableReason(Diagnostic diagnostic) => diagnostic.Id switch
+        private static string UncacheableReason(DiagnosticInfo diagnostic) => diagnostic.Id switch
         {
             "MCG001" => "it returns void, so there is nothing to cache",
             "MCG002" => "it returns a Task or ValueTask without a result, so there is nothing to cache",
@@ -186,7 +169,7 @@ namespace MethodCache.SourceGenerator
             "MCG006" => "pointer parameters can't be part of a cache key",
             "MCG007" => "ref struct parameters such as Span<T> can't be part of a cache key",
             "MCG014" => "it returns a lazy sequence, which would run again on every enumeration",
-            _ => diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture),
+            _ => diagnostic.ToDiagnostic().GetMessage(System.Globalization.CultureInfo.InvariantCulture),
         };
     }
 }

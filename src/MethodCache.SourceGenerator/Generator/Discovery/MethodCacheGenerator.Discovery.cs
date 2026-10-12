@@ -11,7 +11,7 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Discovery & Analysis ========================
-        private static InterfaceInfo? GetInterfaceInfoFromMethod(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
+        private static GeneratedInterface? GetInterfaceFromMethod(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
         {
             // The target symbol is the method, we need to get the containing interface
             if (ctx.TargetSymbol is not IMethodSymbol methodSymbol)
@@ -21,7 +21,64 @@ namespace MethodCache.SourceGenerator
             if (interfaceSymbol?.TypeKind != TypeKind.Interface)
                 return null;
 
-            return GetInterfaceInfo(interfaceSymbol);
+            return GetGeneratedInterface(interfaceSymbol);
+        }
+
+        private static GeneratedInterface? GetGeneratedInterface(INamedTypeSymbol interfaceSymbol)
+            => GetInterfaceInfo(interfaceSymbol) is { } info ? ToGeneratedInterface(info) : null;
+
+        /// <summary>
+        /// Generates the interface's decorator and keeps only values from its symbols, so the pipeline can tell
+        /// when nothing changed.
+        /// </summary>
+        private static GeneratedInterface ToGeneratedInterface(InterfaceInfo info)
+        {
+            var symbol = info.Symbol;
+            var summary = new InterfaceSummary(
+                symbol.Name,
+                GetAssemblyIdentity(symbol),
+                Utils.GetFullyQualifiedName(symbol),
+                Utils.GetFullyQualifiedName(symbol.OriginalDefinition),
+                Utils.GetDecoratorFullName(symbol),
+                symbol.IsGenericType,
+                info.CachedMethods.Length > 0,
+                info.InvalidateMethods.Length > 0,
+                PolicyRegistrationsEmitter.BuildEntries(info));
+
+            return new GeneratedInterface(
+                symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                summary,
+                Utils.GetDecoratorHintName(symbol),
+                summary.Generates ? DecoratorEmitter.Emit(info) : string.Empty,
+                new EquatableArray<DiagnosticInfo>(info.Diagnostics));
+        }
+
+        private static string GetAssemblyIdentity(INamedTypeSymbol type) => type.ContainingAssembly?.Identity.ToString() ?? string.Empty;
+
+        /// <summary>A class that implements interfaces, as the decorator registrations need it.</summary>
+        private static ClassInfo? GetClassInfo(INamedTypeSymbol? symbol)
+        {
+            if (symbol is not { TypeKind: TypeKind.Class, IsAbstract: false, IsStatic: false, IsGenericType: false } || symbol.AllInterfaces.Length == 0)
+            {
+                return null;
+            }
+
+            var interfaces = symbol.AllInterfaces
+                .Select(i => new ImplementedInterface(
+                    GetAssemblyIdentity(i),
+                    Utils.GetFullyQualifiedName(i),
+                    Utils.GetFullyQualifiedName(i.OriginalDefinition),
+                    i.ToDisplayString(),
+                    new EquatableArray<string>(i.TypeArguments.Select(Utils.GetFullyQualifiedName)),
+                    i.TypeArguments.All(t => DecoratorRegistrationsEmitter.IsNameableFrom(t, symbol.ContainingAssembly))));
+
+            return new ClassInfo(
+                Utils.GetFullyQualifiedName(symbol),
+                symbol.Name,
+                symbol.ToDisplayString(),
+                DecoratorRegistrationsEmitter.IsAccessibleFromAssembly(symbol),
+                symbol.InstanceConstructors.Any(ctor => ctor.DeclaredAccessibility == Accessibility.Public),
+                new EquatableArray<ImplementedInterface>(interfaces));
         }
 
         private static InterfaceInfo? GetInterfaceInfo(INamedTypeSymbol interfaceSymbol)
@@ -33,7 +90,7 @@ namespace MethodCache.SourceGenerator
                     interfaceSymbol,
                     ImmutableArray<MethodModel>.Empty,
                     ImmutableArray<MethodModel>.Empty,
-                    ImmutableArray.Create(Diagnostic.Create(
+                    ImmutableArray.Create(DiagnosticInfo.Create(
                         Diagnostics.UnsupportedInterface,
                         interfaceSymbol.Locations.FirstOrDefault(),
                         interfaceSymbol.ToDisplayString(),
@@ -46,7 +103,7 @@ namespace MethodCache.SourceGenerator
 
             var cachedMethods = new List<MethodModel>();
             var invalidateMethods = new List<MethodModel>();
-            var diagnostics = new List<Diagnostic>();
+            var diagnostics = new List<DiagnosticInfo>();
 
             foreach (var method in allMethods)
             {
@@ -63,7 +120,7 @@ namespace MethodCache.SourceGenerator
                 // Check for conflicts
                 if (cacheAttr != null && invalidateAttr != null)
                 {
-                    diagnostics.Add(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.AttributeConflict,
                         method.Locations.FirstOrDefault(),
                         method.ToDisplayString()));
@@ -89,7 +146,7 @@ namespace MethodCache.SourceGenerator
                     var tags = ExtractTags(invalidateAttr);
                     if (!tags.Any())
                     {
-                        diagnostics.Add(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.NoInvalidateTags,
                             method.Locations.FirstOrDefault(),
                             method.ToDisplayString()));

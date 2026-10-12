@@ -10,6 +10,10 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Core Generator ========================
+        // Every step after the syntax providers carries only equatable values (see Pipeline Models), so an edit
+        // that leaves the cached interfaces and the classes implementing them alone regenerates nothing, and an
+        // edit to one interface regenerates only its decorator.
+
         /// <inheritdoc />
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -18,7 +22,7 @@ namespace MethodCache.SourceGenerator
                 .ForAttributeWithMetadataName(
                     fullyQualifiedMetadataName: "MethodCache.CacheAttribute",
                     predicate: static (node, _) => node.Parent is InterfaceDeclarationSyntax,
-                    transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
+                    transform: static (ctx, ct) => GetInterfaceFromMethod(ctx, ct))
                 .Where(static info => info != null)
                 .Collect();
 
@@ -27,7 +31,7 @@ namespace MethodCache.SourceGenerator
                 .ForAttributeWithMetadataName(
                     fullyQualifiedMetadataName: "MethodCache.CacheInvalidateAttribute",
                     predicate: static (node, _) => node.Parent is InterfaceDeclarationSyntax,
-                    transform: static (ctx, ct) => GetInterfaceInfoFromMethod(ctx, ct))
+                    transform: static (ctx, ct) => GetInterfaceFromMethod(ctx, ct))
                 .Where(static info => info != null)
                 .Collect();
 
@@ -36,30 +40,9 @@ namespace MethodCache.SourceGenerator
                 .CreateSyntaxProvider(
                     predicate: static (node, _) => node is InterfaceDeclarationSyntax { BaseList: not null },
                     transform: static (ctx, ct) => ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, ct) is INamedTypeSymbol symbol
-                        ? GetInterfaceInfo(symbol)
+                        ? GetGeneratedInterface(symbol)
                         : null)
                 .Where(static info => info != null)
-                .Collect();
-
-            // Combine the providers
-            var combinedProvider = interfaceProvider.Combine(invalidateProvider).Combine(derivedProvider)
-                .Select(static (input, _) =>
-                {
-                    var pair = input.Left;
-                    var combined = pair.Left.Concat(pair.Right).Concat(input.Right)
-                        .Where(i => i != null)
-                        .GroupBy(i => i!.Symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
-                        .Select(g => g.First())
-                        .ToImmutableArray();
-                    return combined;
-                });
-
-            // Concrete classes, so AddMethodCache() can register an implementation the application did not register
-            var classProvider = context.SyntaxProvider
-                .CreateSyntaxProvider(
-                    predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList: not null } or RecordDeclarationSyntax { BaseList: not null },
-                    transform: static (ctx, ct) => ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, ct) as INamedTypeSymbol)
-                .Where(static symbol => symbol is { TypeKind: TypeKind.Class, IsAbstract: false, IsStatic: false, IsGenericType: false })
                 .Collect();
 
             // Interfaces from other assemblies, named by [assembly: CacheInterface(typeof(IClient), "Method", ...)]
@@ -69,58 +52,84 @@ namespace MethodCache.SourceGenerator
                     predicate: static (node, _) => node is CompilationUnitSyntax,
                     transform: static (ctx, ct) => GetExternalInterfaces(ctx, ct))
                 .SelectMany(static (items, _) => items)
-                .Collect();
+                .Collect()
+                .Select(static (externals, _) => ResolveExternalInterfaces(externals))
+                .WithTrackingName(TrackingNames.ExternalInterfaces);
 
-            context.RegisterSourceOutput(
-                combinedProvider.Combine(externalProvider).Combine(classProvider),
-                static (ctx, input) => Execute(ctx, input.Left.Left, input.Left.Right, input.Right));
+            // One interface can be found by several providers; the external ones follow the project's own
+            var interfaces = interfaceProvider.Combine(invalidateProvider).Combine(derivedProvider).Combine(externalProvider)
+                .Select(static (input, _) => new EquatableArray<GeneratedInterface>(
+                    input.Left.Left.Left.Concat(input.Left.Left.Right).Concat(input.Left.Right)
+                        .GroupBy(i => i!.Key, System.StringComparer.Ordinal)
+                        .Select(g => g.First()!)
+                        .Concat(input.Right.Interfaces)))
+                .WithTrackingName(TrackingNames.Interfaces);
+
+            // Concrete classes, so AddMethodCache() can register an implementation the application did not register
+            var classProvider = context.SyntaxProvider
+                .CreateSyntaxProvider(
+                    predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList: not null } or RecordDeclarationSyntax { BaseList: not null },
+                    transform: static (ctx, ct) => GetClassInfo(ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, ct) as INamedTypeSymbol))
+                .Where(static info => info != null)
+                .Collect()
+                .Select(static (classes, _) => new EquatableArray<ClassInfo>(classes!))
+                .WithTrackingName(TrackingNames.Classes);
+
+            var diagnostics = interfaces.Combine(externalProvider)
+                .Select(static (input, _) => new EquatableArray<DiagnosticInfo>(
+                    input.Right.Diagnostics.Concat(input.Left.SelectMany(i => i.Diagnostics))));
+            context.RegisterSourceOutput(diagnostics, static (ctx, items) =>
+            {
+                foreach (var diagnostic in items)
+                {
+                    ctx.ReportDiagnostic(diagnostic.ToDiagnostic());
+                }
+            });
+
+            var decorators = interfaces
+                .SelectMany(static (items, _) => items.Where(i => i.Summary.Generates).Select(i => (i.HintName, i.Source)))
+                .WithTrackingName(TrackingNames.Decorators);
+            context.RegisterSourceOutput(decorators, static (ctx, decorator) => ctx.AddSource(decorator.HintName, decorator.Source));
+
+            var summaries = interfaces
+                .Select(static (items, _) => new EquatableArray<InterfaceSummary>(items.Select(i => i.Summary).Where(s => s.Generates)))
+                .WithTrackingName(TrackingNames.Summaries);
+            context.RegisterSourceOutput(summaries, static (ctx, items) => EmitSharedSources(ctx, items));
+            context.RegisterSourceOutput(summaries.Combine(classProvider), static (ctx, input) => EmitRegistrations(ctx, input.Left, input.Right));
         }
 
-        private static void Execute(SourceProductionContext context, ImmutableArray<InterfaceInfo?> interfaces, ImmutableArray<ExternalInterface> externals, ImmutableArray<INamedTypeSymbol?> classes)
+        private static void EmitSharedSources(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces)
         {
-            var validInterfaces = interfaces
-                .Where(i => i != null)
-                .Cast<InterfaceInfo>()
-                .Concat(ResolveExternalInterfaces(context, externals).ToList())
-                .ToList();
+            if (interfaces.Count == 0) return;
 
-            if (validInterfaces.Count == 0) return;
-
-            // Report diagnostics
-            foreach (var info in validInterfaces)
-            {
-                foreach (var diagnostic in info.Diagnostics)
-                {
-                    context.ReportDiagnostic(diagnostic);
-                }
-            }
-
-            // An interface whose every method was rejected only reports its diagnostics
-            validInterfaces = validInterfaces.Where(i => i.CachedMethods.Length > 0 || i.InvalidateMethods.Length > 0).ToList();
-            if (validInterfaces.Count == 0) return;
-
-            // Generate sources
-            foreach (var info in validInterfaces)
-            {
-                var decoratorCode = DecoratorEmitter.Emit(info);
-                context.AddSource(Utils.GetDecoratorHintName(info.Symbol), decoratorCode);
-            }
-
-            // Generate shared components
-            var policyRegistrationsCode = PolicyRegistrationsEmitter.Emit(validInterfaces);
+            var policyRegistrationsCode = PolicyRegistrationsEmitter.Emit(interfaces);
             if (!string.IsNullOrEmpty(policyRegistrationsCode))
             {
                 context.AddSource("GeneratedPolicyRegistrations.g.cs", policyRegistrationsCode);
             }
 
-            var extensionsCode = DIExtensionsEmitter.Emit(validInterfaces);
-            context.AddSource("GeneratedCachingServiceCollectionExtensions.g.cs", extensionsCode);
+            context.AddSource("GeneratedCachingServiceCollectionExtensions.g.cs", DIExtensionsEmitter.Emit(interfaces));
+        }
 
-            var registrationsCode = DecoratorRegistrationsEmitter.Emit(validInterfaces, classes);
+        private static void EmitRegistrations(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes)
+        {
+            if (interfaces.Count == 0) return;
+
+            var registrationsCode = DecoratorRegistrationsEmitter.Emit(interfaces, classes);
             if (!string.IsNullOrEmpty(registrationsCode))
             {
                 context.AddSource("MethodCacheDecoratorRegistrations.g.cs", registrationsCode);
             }
+        }
+
+        /// <summary>Names of pipeline steps, so tests can check that an unrelated edit leaves them cached.</summary>
+        internal static class TrackingNames
+        {
+            public const string ExternalInterfaces = nameof(ExternalInterfaces);
+            public const string Interfaces = nameof(Interfaces);
+            public const string Classes = nameof(Classes);
+            public const string Decorators = nameof(Decorators);
+            public const string Summaries = nameof(Summaries);
         }
     }
 }
