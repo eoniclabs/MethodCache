@@ -32,6 +32,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [MethodCache.AspNetCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.AspNetCore/README.md): Admin endpoints and a health check for MethodCache's in-memory cache.
 - [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): Tracing counts cached `null` values as hits, including nullable value types.
 - [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): Automatic transport cookies bypass caching because the cookie jar can change below the cache handler.
+- [Release compatibility notes](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/developer/RELEASE_NOTES.md): cache key and distributed invalidation formats.
 
 ## Optional
 
