@@ -105,6 +105,28 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
     }
 
     [Fact]
+    public async Task BulkRead_KeyOnlyInTheDistributedCache_IsNotPassedToTheFactory()
+    {
+        var (a, b, _, _) = CreateNodes();
+        (await Get(a, "stored", "A")).Should().Be("A");
+
+        var requested = new List<string>();
+        var result = await b.GetOrCreateManyAsync<string>(
+            new[] { "stored", "missing" },
+            (keys, _, _) =>
+            {
+                requested.AddRange(keys);
+                return ValueTask.FromResult<IDictionary<string, string>>(keys.ToDictionary(key => key, key => "from factory"));
+            },
+            options => options.WithDuration(Duration));
+
+        requested.Should().Equal("missing");
+        result.Should().Equal(new Dictionary<string, string> { ["stored"] = "A", ["missing"] = "from factory" });
+        (await b.TryGetAsync<string>("stored")).Value.Should().Be("A", "the distributed hit is now in B's memory");
+        (await Get(a, "missing", "unused")).Should().Be("from factory");
+    }
+
+    [Fact]
     public async Task Set_OnOneNode_IsObservedOnTheOther()
     {
         var (a, b, _, _) = CreateNodes();

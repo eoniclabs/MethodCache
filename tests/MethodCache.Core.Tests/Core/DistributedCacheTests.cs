@@ -51,19 +51,13 @@ public class DistributedCacheTests
     private static Task<string> Get(ICacheManager node, string key, Func<string> value, params string[] tags) =>
         node.GetOrCreateFastAsync(key, "M", () => Task.FromResult(value()), Policy(tags));
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task BulkRead_CacheWinsOverFactory_ReturnsTheSameValueAsASingleRead(bool distributedHit)
+    [Fact]
+    public async Task BulkRead_ConcurrentWriterWinsOverFactory_ReturnsTheSameValueAsASingleRead()
     {
         using var first = CreateNode(backplane: false);
         using var second = CreateNode(backplane: false);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (distributedHit)
-        {
-            await Get(first, "key", () => "A");
-        }
         var batch = second.GetOrCreateManyAsync<string>(["key"], async (_, _, token) =>
         {
             started.TrySetResult();
@@ -71,12 +65,21 @@ public class DistributedCacheTests
             return new Dictionary<string, string> { ["key"] = "B" };
         }).AsTask();
         await started.Task;
-        if (!distributedHit)
-        {
-            await Get(second, "key", () => "A");
-        }
+        await Get(second, "key", () => "A");
         release.TrySetResult();
         var values = await batch;
+        Assert.Equal("A", values["key"]);
+        Assert.Equal(values["key"], await Get(second, "key", () => "C"));
+    }
+
+    [Fact]
+    public async Task BulkRead_DistributedHit_IsReturnedWithoutCallingTheFactory()
+    {
+        using var first = CreateNode(backplane: false);
+        using var second = CreateNode(backplane: false);
+        await Get(first, "key", () => "A");
+        var values = await second.GetOrCreateManyAsync<string>(["key", "key"], (keys, _, _) =>
+            throw new InvalidOperationException($"factory called for {string.Join(", ", keys)}"));
         Assert.Equal("A", values["key"]);
         Assert.Equal(values["key"], await Get(second, "key", () => "C"));
     }
