@@ -56,3 +56,5 @@ Fail-safe retry throttling is capped at physical expiration. Administration list
 Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
 
 Factory registration helpers dispose owned implementations even when their service interface does not declare disposal. Asynchronous disposal prefers `IAsyncDisposable`, then falls back to `IDisposable`. Automatically discovered DI services retain container ownership.
+
+Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.

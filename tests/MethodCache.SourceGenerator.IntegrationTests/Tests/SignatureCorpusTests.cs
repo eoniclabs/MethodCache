@@ -280,6 +280,16 @@ public class SignatureCorpusTests
 
     private static readonly Dictionary<string, Shape> Cases = new()
     {
+        ["sealed default helper members"] = new("""
+            public interface ISvc {
+                [Cache] int Get(int id);
+                public sealed int Helper() => 7;
+                public sealed int Value => 8;
+                public sealed event Action Changed { add { } remove { } }
+            }
+            public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }
+            """, "ISvc", "s.Get(s.Helper())", "s.Get(s.Value)"),
+
         ["keyword generic method parameter"] = Member("T Get<@class, T>(T id) where @class : class", "T Get<@class, T>(T id) where @class : class { Counter.Hit(); return id; }", "s.Get<object, int>(1)", "s.Get<object, int>(2)"),
         ["keyword generic interface parameter"] = new("public interface ISvc<@class> where @class : class { [Cache] int Get(int id); } public class Svc : ISvc<string> { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc<string>", "s.Get(1)", "s.Get(2)"),
         ["keyword namespace"] = new("namespace @class { public interface ISvc { [Cache] int Get(int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } } }", "@class.ISvc", "s.Get(1)", "s.Get(2)"),
