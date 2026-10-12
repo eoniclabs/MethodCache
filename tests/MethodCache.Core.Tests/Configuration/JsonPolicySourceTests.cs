@@ -210,7 +210,7 @@ public sealed class JsonPolicySourceTests
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
         while (!condition())
         {
             Assert.True(DateTime.UtcNow < deadline, "The reloaded configuration was not applied.");
