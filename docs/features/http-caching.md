@@ -1,5 +1,7 @@
 # HTTP response caching
 
+An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
+
 Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses according to their response
 headers. Freshness comes from `Cache-Control` and expiry headers; ETag and Last-Modified enable conditional
 validation. A successful 304 is returned to the caller as the full response.

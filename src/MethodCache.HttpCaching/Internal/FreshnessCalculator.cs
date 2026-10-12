@@ -38,9 +38,9 @@ internal sealed class FreshnessCalculator
             return maxAge;
         }
 
-        if (entry.Expires is { } expires && entry.Date is { } date && expires > date)
+        if (entry.Expires is { } expires && entry.Date is { } date)
         {
-            return expires - date;
+            return expires > date ? expires - date : TimeSpan.Zero;
         }
 
         if (_options.AllowHeuristicFreshness && entry.LastModified is { } lastModified && entry.Date is { } responseDate)

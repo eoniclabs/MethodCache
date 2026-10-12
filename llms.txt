@@ -31,7 +31,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [MethodCache.SqlServer](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.SqlServer/README.md): SQL Server as MethodCache's distributed cache.
 - [MethodCache.AspNetCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.AspNetCore/README.md): Admin endpoints and a health check for MethodCache's in-memory cache.
 - [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): OpenTelemetry metrics and traces for MethodCache.
-- [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`, revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached response.
+- [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 ## Optional
 
