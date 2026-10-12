@@ -87,3 +87,5 @@ resolved. Redis and SQL Server supply this contract.
 `AddHttpCaching()` disables automatic cookies on the named client’s `SocketsHttpHandler` or `HttpClientHandler` after handler configuration. Send caller cookies explicitly before the cache handler. Unknown transports bypass caching with a warning unless `AllowUnverifiedTransport` is enabled after verifying that the entire transport has no automatic cookies or hidden caller identity.
 
 For direct invalidation or administration of versioned fluent entries, use `CacheManagerExtensions.GetCacheKey(logicalKey, version)`. Treat the returned identity as opaque; callback `CacheContext.Key` remains the logical key.
+
+`AddHttpCaching()` runs the cache after all additional handlers, so injected caller identity and rewritten requests are visible before lookup. Delegating handlers inside the primary transport, or below a directly constructed cache handler, are unverified and bypass caching unless the entire chain is explicitly trusted.

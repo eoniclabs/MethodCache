@@ -92,7 +92,7 @@ public class TransportCookieIsolationTests
             return order == "wrapped" ? new ForwardHandler(transport) : transport;
         }
         if (order == "before") builder.ConfigurePrimaryHttpMessageHandler(CreateTransport);
-        builder.AddHttpCaching();
+        builder.AddHttpCaching(o => o.AllowUnverifiedTransport = order == "wrapped");
         if (order is "after" or "wrapped") builder.ConfigurePrimaryHttpMessageHandler(CreateTransport);
         var unrelated = new SocketsHttpHandler { UseCookies = true };
         services.AddHttpClient("uncached").ConfigurePrimaryHttpMessageHandler(() => unrelated);
@@ -105,6 +105,59 @@ public class TransportCookieIsolationTests
         Assert.Equal(1, origin.Requests);
         if (transport != null) Assert.False(transport.UseCookies);
         Assert.True(unrelated.UseCookies);
+    }
+
+    [Theory]
+    [InlineData("before", "Cookie")]
+    [InlineData("after", "Cookie")]
+    [InlineData("primary", "Cookie")]
+    [InlineData("direct", "Cookie")]
+    [InlineData("before", "Authorization")]
+    [InlineData("after", "Authorization")]
+    [InlineData("primary", "Authorization")]
+    [InlineData("direct", "Authorization")]
+    public async Task IdentityDelegatingHandler_ChangingCaller_NeverReusesAnotherCallersResponse(string placement, string header)
+    {
+        await using var origin = new CookieOrigin();
+        var identity = new IdentityHandler(header) { Identity = "A" };
+        var services = new ServiceCollection();
+        var builder = services.AddHttpClient("identity");
+        if (placement == "before") builder.AddHttpMessageHandler(() => identity);
+        builder.AddHttpCaching();
+        if (placement == "after") builder.AddHttpMessageHandler(() => identity);
+        if (placement == "primary")
+            builder.ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                identity.InnerHandler = new SocketsHttpHandler { UseCookies = false };
+                return identity;
+            });
+        await using var provider = services.BuildServiceProvider();
+        using var client = placement == "direct"
+            ? new HttpClient(new MethodCache.HttpCaching.Internal.HttpCacheHandler(
+                new MethodCache.HttpCaching.Internal.HttpCacheClientState("direct"),
+                HttpCacheTestFactory.CreateInMemoryStorage(), new TestOptionsMonitor<HttpCacheOptions>(new()),
+                TimeProvider.System, Microsoft.Extensions.Logging.Abstractions.NullLogger<MethodCache.HttpCaching.Internal.HttpCacheHandler>.Instance)
+            { InnerHandler = identity })
+            : provider.GetRequiredService<IHttpClientFactory>().CreateClient("identity");
+        if (placement == "direct") identity.InnerHandler = new SocketsHttpHandler { UseCookies = false };
+
+        client.DefaultRequestHeaders.TryAddWithoutValidation(header, "A");
+        Assert.Equal("A", await client.GetStringAsync(origin.Uri));
+        identity.Identity = "B";
+        Assert.Equal("B", await client.GetStringAsync(origin.Uri));
+        Assert.Equal("B", await client.GetStringAsync(origin.Uri));
+        Assert.Equal(placement is "primary" or "direct" ? 3 : 2, origin.Requests);
+    }
+
+    private sealed class IdentityHandler(string header) : DelegatingHandler
+    {
+        public string Identity { get; set; } = "";
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            request.Headers.Remove(header);
+            request.Headers.TryAddWithoutValidation(header, Identity);
+            return base.SendAsync(request, cancellationToken);
+        }
     }
 
     private sealed class HiddenHandler(HttpMessageHandler inner) : HttpMessageHandler
@@ -148,6 +201,7 @@ public class TransportCookieIsolationTests
                     while (!string.IsNullOrEmpty(line = await reader.ReadLineAsync(_stop.Token)))
                     {
                         if (line.StartsWith("Cookie:", StringComparison.OrdinalIgnoreCase)) identity = line[7..].Trim();
+                        if (line.StartsWith("Authorization:", StringComparison.OrdinalIgnoreCase)) identity = line[14..].Trim();
                     }
                     Interlocked.Increment(ref _requests);
                     var body = Encoding.ASCII.GetBytes(identity);

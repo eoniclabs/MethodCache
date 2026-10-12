@@ -9,6 +9,12 @@ internal sealed class HttpCacheTransportFilter : IHttpMessageHandlerBuilderFilte
     {
         next(builder);
         if (!builder.AdditionalHandlers.Any(handler => handler is HttpCacheHandler)) return;
+        // Run the cache after every additional handler, so caller identity and request transforms are visible.
+        foreach (var cache in builder.AdditionalHandlers.OfType<HttpCacheHandler>().ToArray())
+        {
+            builder.AdditionalHandlers.Remove(cache);
+            builder.AdditionalHandlers.Add(cache);
+        }
         HttpMessageHandler? transport = builder.PrimaryHandler;
         while (transport is DelegatingHandler delegating) transport = delegating.InnerHandler;
         if (transport is SocketsHttpHandler sockets) sockets.UseCookies = false;
