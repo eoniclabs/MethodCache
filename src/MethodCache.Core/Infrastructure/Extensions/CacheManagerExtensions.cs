@@ -270,9 +270,11 @@ namespace MethodCache
             return cacheManager as InMemoryCacheManager;
         }
 
-        /// <summary>The key a fluent entry is stored under: the caller's key, plus its version when it has one.</summary>
+        /// <summary>Separates versioned keys from unversioned user keys, escaping the reserved leading NUL.</summary>
         private static string VersionedKey(string key, int? version)
-            => version.HasValue ? string.Concat(key, "::v", version.Value.ToString(CultureInfo.InvariantCulture)) : key;
+            => version.HasValue
+                ? string.Concat("\0v", version.Value.ToString(CultureInfo.InvariantCulture), ":", key)
+                : key[0] == '\0' ? "\0" + key : key;
 
         private static void ValidateKey(string key)
         {

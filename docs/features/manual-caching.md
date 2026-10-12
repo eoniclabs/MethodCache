@@ -1,5 +1,7 @@
 # Manual caching
 
+Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
+
 `CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
 
 When an attribute doesn't fit, such as a call in the middle of a method or a client without an interface, use the same
