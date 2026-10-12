@@ -51,7 +51,7 @@ together, and restart them with empty in-memory caches.
 - Keys are stored hashed, so keys that SQL collation would treat as equal (casing, trailing spaces, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
-- A message that fails to apply is retried on the next poll.
+- A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - Rows older than `BackplaneRetention` are deleted from the invalidations table.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.

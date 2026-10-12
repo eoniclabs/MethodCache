@@ -26,6 +26,10 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     private const int CleanupBatchSize = 5000;
     private const int MaxCleanupBatches = 20;
 
+    // Polls a message whose handler keeps failing is retried before it is replaced by a clear, so it can't hold back
+    // every later invalidation until the outage clear after half the retention
+    internal const int MaxDeliveryAttempts = 5;
+
     // Identity values skipped by rows that may still commit, watched for a few seconds. Ranges, so a large jump
     // (many concurrent inserts, or the identity cache after a restart) costs one range query, not one id each.
     private const int MaxGapRanges = 100;
@@ -209,8 +213,9 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             while (pending.DeliveredCount < pending.Messages.Count)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await onMessage(pending.Messages[pending.DeliveredCount]).ConfigureAwait(false);
+                await DeliverAsync(onMessage, pending, cancellationToken).ConfigureAwait(false);
                 pending.DeliveredCount++;
+                pending.FailedAttempts = 0;
             }
 
             _lastId = pending.LastId;
@@ -225,6 +230,34 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
         _lastPolled = now;
         await CleanupAsync(now, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Delivers the next message of <paramref name="pending"/>. After <see cref="MaxDeliveryAttempts"/> failed polls
+    /// it gives up on that message and clears the subscriber's memory instead, since skipping an invalidation would
+    /// leave the value it removes behind. A failed clear throws, so it is tried again on the next poll.
+    /// </summary>
+    private async Task DeliverAsync(Func<BackplaneMessage, Task> onMessage, PendingBatch pending, CancellationToken cancellationToken)
+    {
+        var message = pending.Messages[pending.DeliveredCount];
+        if (pending.FailedAttempts < MaxDeliveryAttempts)
+        {
+            try
+            {
+                await onMessage(message).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested && ++pending.FailedAttempts < MaxDeliveryAttempts)
+            {
+                throw;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "The MethodCache backplane could not apply a {Type} invalidation after {Attempts} attempts; it clears this instance's in-memory cache instead.", message.Type, MaxDeliveryAttempts);
+            }
+        }
+
+        await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
     }
 
     /// <summary>Reads rows after the last id, and rows that filled earlier gaps. Returns how many new rows came.</summary>
@@ -320,6 +353,9 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     private sealed record PendingBatch(List<BackplaneMessage> Messages, int NewRows, long LastId, List<GapRange> Gaps)
     {
         public int DeliveredCount { get; set; }
+
+        /// <summary>Polls in which the message at <see cref="DeliveredCount"/> failed.</summary>
+        public int FailedAttempts { get; set; }
     }
 
     /// <summary>Identity values <see cref="From"/> to <see cref="To"/> skipped by rows that may still commit.</summary>

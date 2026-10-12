@@ -46,6 +46,47 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
     }
 
     [SkippableFact]
+    public async Task PoisonMessage_IsReplacedByAClearAfterAFewPolls_AndLaterMessagesArrive()
+    {
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "ack_" + Guid.NewGuid().ToString("N") };
+        try
+        {
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
+            await using var receiver = new SqlServerBackplane(options);
+            await using var publisher = new SqlServerBackplane(options);
+            var delivered = new List<string>();
+            var poisonAttempts = 0;
+            Task Handle(BackplaneMessage message)
+            {
+                if (message.Key == "poison")
+                {
+                    poisonAttempts++;
+                    throw new InvalidOperationException("this message always fails");
+                }
+                delivered.Add(message.Type == BackplaneMessageType.ClearAll ? "clear" : message.Key!);
+                return Task.CompletedTask;
+            }
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+            await publisher.PublishInvalidationAsync("poison");
+            await publisher.PublishInvalidationAsync("good");
+
+            // A handful of polls, far fewer than the retention-based outage clear would need
+            for (var poll = 0; poll < 5 && !delivered.Contains("good"); poll++)
+            {
+                try { await receiver.PollOnceAsync(Handle, CancellationToken.None); }
+                catch (InvalidOperationException) { }
+            }
+
+            // The skipped invalidation is replaced by a clear of this node's memory, so nothing stale stays behind
+            Assert.Equal(new[] { "clear", "good" }, delivered);
+            Assert.Equal(5, poisonAttempts);
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+            Assert.Equal(5, poisonAttempts);
+        }
+        finally { await BackplaneIsolationTests.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task FailedGapMessage_RemainsPendingAfterGapDiscoveryWindowExpires()
     {
         var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "ack_" + Guid.NewGuid().ToString("N") };
