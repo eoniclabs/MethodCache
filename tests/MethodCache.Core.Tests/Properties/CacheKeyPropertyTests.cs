@@ -27,8 +27,8 @@ namespace MethodCache.Core.Tests.Properties;
 /// <item><c>0.00m</c> and <c>-0.00m</c> (decimal prints both as "0.00"). Decimals otherwise keep their scale:
 /// <c>1.0m</c> and <c>1.00m</c> are two keys, as <see cref="decimal.ToString()"/> shows them.</item>
 /// </list>
-/// <para>Everything else is kept apart: the argument's type (<c>1</c>, <c>1L</c>, <c>"1"</c> and an enum with value 1
-/// are four keys, also as elements of an <c>object[]</c> or <c>List&lt;object&gt;</c> or in an <c>object</c>
+/// <para>Everything else is kept apart: the argument's type (<c>1</c>, <c>1L</c>, <c>(nint)1</c>, <c>"1"</c> and an enum
+/// with value 1 are five keys, also as elements of an <c>object[]</c> or <c>List&lt;object&gt;</c> or in an <c>object</c>
 /// property), the enum type, position and count of arguments, the method name and the version, a
 /// <see cref="DateTimeOffset"/>'s offset, and string content compared ordinally.</para>
 /// <para>Seeds and replay: see <see cref="PropertySettings"/>.</para>
@@ -98,6 +98,8 @@ public class CacheKeyPropertyTests
         GenSmallInt.Select(i => (object?)i),
         GenSmallInt.Select(i => (object?)(long)i),
         GenSmallInt.Select(i => (object?)(short)i),
+        GenSmallInt.Select(i => (object?)(nint)i),
+        Gen.Int[0, 2].Select(i => (object?)(nuint)i),
         Gen.OneOfConst(1.0, -1.0, 0.1).Select(d => (object?)d),
         Gen.OneOfConst(1m, 1.0m, -1m).Select(d => (object?)d),
         Gen.Bool.Select(b => (object?)b),
@@ -119,6 +121,8 @@ public class CacheKeyPropertyTests
         GenSmallInt.Select(i => (object?)(long)i),
         GenSmallInt.Select(i => (object?)(short)i),
         Gen.Int[0, 2].Select(i => (object?)(uint)i),
+        GenSmallInt.Select(i => (object?)(nint)i),
+        Gen.Int[0, 2].Select(i => (object?)(nuint)i),
         Gen.Bool.Select(b => (object?)b),
         Gen.Char["a:1"].Select(c => (object?)c),
         GenDouble.Select(d => (object?)d),

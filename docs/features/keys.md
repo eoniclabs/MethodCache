@@ -24,6 +24,9 @@ public interface IUserService
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
 - **Everything else**, such as arrays and collections, goes through the key generator. The default,
   `FastHashKeyGenerator`, hashes the arguments into a key such as `ByIdsAsync:11b474c4…`.
+- **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
+  key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
+  `object[]` or an `object` property.
 - **Values inside hashed arguments keep their runtime type.** Where a value's type differs from the type it is declared
   as (an element of `object[]` or `List<object>`, an `object` property, a property typed as a base class or interface),
   the key records the value's type and all of its members: `new object[] { 1 }` and `new object[] { 1L }` get

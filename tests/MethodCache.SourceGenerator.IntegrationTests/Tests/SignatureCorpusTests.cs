@@ -253,6 +253,12 @@ public class SignatureCorpusTests
         ["struct default"] = Member("Task<string> Get(DateTime since = default)", "Task<string> Get(DateTime since = default) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get()", "await s.Get(new DateTime(2020, 1, 1))"),
         ["several defaults"] = Member("Task<string> Get(int id, string? q = null, int page = 1, bool desc = false, CancellationToken ct = default)", "Task<string> Get(int id, string? q = null, int page = 1, bool desc = false, CancellationToken ct = default) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1)", "await s.Get(1, desc: true)"),
 
+        // Native-sized integers, which System.Text.Json can't write on its own
+        ["nint parameter"] = Member("Task<string> Get(nint handle)", "Task<string> Get(nint handle) { Counter.Hit(); return Task.FromResult(\"v\" + handle); }", "await s.Get(1)", "await s.Get(-1)"),
+        ["nuint parameter"] = Member("string Get(nuint size)", "string Get(nuint size) { Counter.Hit(); return \"v\" + size; }", "s.Get(1)", "s.Get(nuint.MaxValue)"),
+        ["record with an nint member"] = Member("Task<string> Get(Handle handle)", "Task<string> Get(Handle handle) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new Handle(1, \"a\"))", "await s.Get(new Handle(2, \"a\"))",
+            "public sealed record Handle(nint Value, string Name);"),
+
         // Parameter names that are keywords or collide with names in generated code
         ["keyword parameter names"] = Member("Task<string> Get(int @class, string @event)", "Task<string> Get(int @class, string @event) { Counter.Hit(); return Task.FromResult(@event); }", "await s.Get(1, \"a\")", "await s.Get(1, \"b\")"),
         ["unsafe members next to a cached method"] = new("""
