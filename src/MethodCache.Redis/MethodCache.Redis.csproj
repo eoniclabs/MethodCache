@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.Redis.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
     <InternalsVisibleTo Include="MethodCache.Redis.IntegrationTests" />
   </ItemGroup>
 
