@@ -14,6 +14,9 @@ namespace MethodCache
         private TimeSpan _circuitBreakerDuration = TimeSpan.FromSeconds(10);
         private TimeSpan _clockSkewTolerance = TimeSpan.FromSeconds(2);
 
+        internal bool HasEffectiveTagRetention => TagRetention.Ticks / TimeSpan.TicksPerMillisecond
+            > ClockSkewTolerance.Ticks / TimeSpan.TicksPerMillisecond;
+
         /// <summary>
         /// Prefix for every key MethodCache writes to the distributed cache, so several applications can share it.
         /// </summary>
@@ -42,7 +45,7 @@ namespace MethodCache
         /// <summary>
         /// How long tag invalidations are kept in the distributed cache. Entries never live longer than this in
         /// the distributed cache minus ClockSkewTolerance, so an invalidation always outlives the entries it applies to.
-        /// Must be greater than ClockSkewTolerance; registration validates the relationship at startup.
+        /// Must exceed ClockSkewTolerance after both are truncated to whole milliseconds; registration validates this at startup.
         /// </summary>
         public TimeSpan TagRetention
         {

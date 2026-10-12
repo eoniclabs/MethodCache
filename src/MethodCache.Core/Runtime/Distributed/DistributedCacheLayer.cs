@@ -112,8 +112,8 @@ namespace MethodCache.Core.Runtime.Distributed
                 throw new ArgumentException($"The serializer's content type must be at most {byte.MaxValue} bytes.", nameof(serializer));
             }
             ArgumentNullException.ThrowIfNull(options);
-            if (options.TagRetention <= options.ClockSkewTolerance)
-                throw new ArgumentException("TagRetention must be greater than ClockSkewTolerance.", nameof(options));
+            if (!options.HasEffectiveTagRetention)
+                throw new ArgumentException("TagRetention must exceed ClockSkewTolerance after truncation to whole milliseconds.", nameof(options));
 
             _backplane = backplane;
             _time = timeProvider ?? TimeProvider.System;
@@ -122,7 +122,7 @@ namespace MethodCache.Core.Runtime.Distributed
             _tagPrefix = options.KeyPrefix + "t:";
             _removalPrefix = options.KeyPrefix + "r:";
             _tagCheckMilliseconds = (long)options.TagCheckInterval.TotalMilliseconds;
-            _clockSkewMilliseconds = (long)options.ClockSkewTolerance.TotalMilliseconds;
+            _clockSkewMilliseconds = options.ClockSkewTolerance.Ticks / TimeSpan.TicksPerMillisecond;
             _tagRetention = options.TagRetention;
             _timeout = options.OperationTimeout;
             _breakDuration = options.CircuitBreakerDuration;
@@ -228,7 +228,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             // No write asks for more than the tag retention; a damaged expiry far in the future must not overflow
-            var remaining = Math.Min(header.ExpiresAt - now, (long)_tagRetention.TotalMilliseconds);
+            var remaining = Math.Min(header.ExpiresAt - now, _tagRetention.Ticks / TimeSpan.TicksPerMillisecond);
             return new DistributedEntry<T>(value, Convert(header.Tags, ApplicationTag), TimeSpan.FromMilliseconds(remaining));
         }
 
@@ -246,7 +246,7 @@ namespace MethodCache.Core.Runtime.Distributed
             // writing it. Anchor its logical expiry to the source read, not the later publication time.
             var now = Now;
             var expiresAt = Math.Min(now + (long)lifetime.TotalMilliseconds,
-                createdAt + (long)_tagRetention.TotalMilliseconds - _clockSkewMilliseconds);
+                createdAt + _tagRetention.Ticks / TimeSpan.TicksPerMillisecond - _clockSkewMilliseconds);
             var lifetimeMilliseconds = expiresAt - now;
             if (lifetimeMilliseconds <= 0)
             {
