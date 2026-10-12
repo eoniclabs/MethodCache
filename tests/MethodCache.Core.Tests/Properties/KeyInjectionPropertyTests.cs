@@ -49,6 +49,8 @@ public class KeyInjectionPropertyTests
             var bk = "key:" + b;
             var left = await StoredKey(manager, ak, av);
             var right = await StoredKey(manager, bk, bv);
+            Assert.Equal(left, CacheManagerExtensions.GetCacheKey(ak, av));
+            Assert.Equal(right, CacheManagerExtensions.GetCacheKey(bk, bv));
             Assert.Equal(ak == bk && av == bv, left == right);
             if (av.HasValue) Assert.NotEqual(left, await StoredKey(manager, left, null));
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);

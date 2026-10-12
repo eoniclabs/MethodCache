@@ -109,3 +109,5 @@ argument members have the same values. Configuration and runtime policy updates 
 
 An `ICacheKeyProvider.CacheKeyPart` getter may generate another key: hash buffers are owned by one
 invocation at a time, including when JSON property getters generate keys or a nested call throws.
+
+Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.

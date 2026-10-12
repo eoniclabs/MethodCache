@@ -615,3 +615,5 @@ MethodCache.ICacheManagerDecorator.InnerManager.get -> MethodCache.ICacheManager
 MethodCache.Extensibility.InMemoryCacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 MethodCache.Extensibility.NoOpCacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 MethodCache.ICacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
+
+static MethodCache.CacheManagerExtensions.GetCacheKey(string! key, int? version = null) -> string!
