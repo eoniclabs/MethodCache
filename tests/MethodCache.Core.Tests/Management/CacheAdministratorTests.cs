@@ -30,6 +30,34 @@ public class CacheAdministratorTests
                 .Configure(options => options.WithDuration(TimeSpan.FromSeconds(30)).WithTags("docs")))
             .BuildServiceProvider();
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailSafeThrottle_PhysicalExpiry_HidesEntryAndReportsRemovalAsNotLive(bool sliding)
+    {
+        var time = new FakeTimeProvider();
+        await using var provider = BuildProvider(time);
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var admin = provider.GetRequiredService<ICacheAdministrator>();
+        var policy = TaggedPolicy with
+        {
+            Duration = TimeSpan.FromSeconds(1),
+            FailSafe = TimeSpan.FromSeconds(1),
+            FailSafeRetryAfter = TimeSpan.FromSeconds(5),
+            SlidingExpiration = sliding ? TimeSpan.FromSeconds(1) : null
+        };
+        await cache.GetOrCreateFastAsync("key", "Docs", () => Task.FromResult(1), policy);
+        time.Advance(TimeSpan.FromSeconds(1));
+        await cache.GetOrCreateFastAsync<int>("key", "Docs", () => Task.FromException<int>(new InvalidOperationException()), policy);
+        time.Advance(TimeSpan.FromSeconds(1) - TimeSpan.FromTicks(1));
+        Assert.NotNull(admin.GetEntry("key"));
+        Assert.InRange(admin.GetEntry("key")!.TimeToLive!.Value, TimeSpan.Zero, TimeSpan.FromTicks(1));
+        time.Advance(TimeSpan.FromTicks(1));
+        Assert.Null(admin.GetEntry("key"));
+        Assert.Empty(admin.ListEntries());
+        Assert.False(await admin.RemoveEntryAsync("key"));
+    }
+
     [Fact]
     public async Task ListEntries_ReturnsLiveEntriesOrderedByKey_UpToTheLimit()
     {

@@ -125,7 +125,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             .ToArray();
     }
 
-    private static bool IsLive(Node node, long now) => node.IsAlive && !node.IsLogicallyExpired(now);
+    private static bool IsLive(Node node, long now) => node.IsAlive && !node.IsLogicallyExpired(now) && !node.IsPhysicallyExpired(now);
 
     private static bool HasTag(Node node, string tag)
     {

@@ -63,3 +63,5 @@ The fallback lives in each instance's memory, so right after a restart there is 
 once.
 
 `ExistsAsync` reports an entry only while it is both logically fresh and physically retained. A fail-safe retry window never makes existence extend beyond the physical fail-safe lifetime.
+
+Fail-safe retry throttling is capped at physical expiration. Administration lists, entry details and removal results never report physically expired entries as live.
