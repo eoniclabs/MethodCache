@@ -386,7 +386,8 @@ namespace MethodCache.Extensibility
         /// <inheritdoc />
         public ValueTask<bool> ExistsAsync(string key)
         {
-            var exists = _engine.TryPeek(key, out var node) && !node.IsLogicallyExpired(_engine.Now);
+            var now = _engine.Now;
+            var exists = _engine.TryPeek(key, out var node) && !node.IsLogicallyExpired(now) && !node.IsPhysicallyExpired(now);
             return new ValueTask<bool>(exists);
         }
 
