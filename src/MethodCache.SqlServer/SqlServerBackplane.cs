@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Data;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -533,9 +532,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     {
         // Hash exact UTF-16 code units in a fixed byte order: casing, normalization and even unpaired
         // surrogates stay distinct, independently of SQL collation and text encoder fallback.
-        var bytes = new byte[checked(prefix.Length * 2)];
-        for (var i = 0; i < prefix.Length; i++)
-            BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * 2, 2), prefix[i]);
+        var bytes = MethodCache.Infrastructure.LosslessUtf16.GetBytes(prefix);
         return SHA256.HashData(bytes);
     }
 }

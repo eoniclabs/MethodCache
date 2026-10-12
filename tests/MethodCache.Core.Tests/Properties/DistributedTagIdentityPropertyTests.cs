@@ -11,6 +11,20 @@ namespace MethodCache.Core.Tests.Properties;
 [Collection(nameof(CpuIntensiveCollection))]
 public class DistributedTagIdentityPropertyTests
 {
+    [Fact]
+    public void TransportDecode_AvoidsSubstringAndIntermediateCharacterArrayAllocations()
+    {
+        var value = new string('\ud800', 8192);
+        var wire = LosslessWireText.Encode(value);
+        Assert.True(LosslessWireText.TryDecode(wire, out _));
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var correct = true;
+        for (var i = 0; i < 10; i++) correct &= LosslessWireText.TryDecode(wire, out var decoded) && decoded == value;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(correct);
+        Assert.True(allocated < value.Length * sizeof(char) * 3L * 10, $"Allocated {allocated} bytes while decoding ten frames.");
+    }
+
     [Theory]
     [InlineData("old")]
     [InlineData("4:not-base64")]
