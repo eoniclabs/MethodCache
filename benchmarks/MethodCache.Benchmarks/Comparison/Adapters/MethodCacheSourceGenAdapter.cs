@@ -14,6 +14,9 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
     private readonly ICacheManager _cacheManager;
     private readonly IMemoryCache _memoryCache;
 
+    // The [Cache(Duration = "00:10:00")] on IMethodCacheBenchmarkService.GetOrCreateValueAsync
+    private static readonly TimeSpan GeneratedDuration = TimeSpan.FromMinutes(10);
+
     public MethodCacheSourceGenAdapter(IMethodCacheBenchmarkService service, ICacheManager cacheManager)
     {
         _service = service;
@@ -50,9 +53,10 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
             _stats.FactoryCalls++;
             return await factory();
         });
-        // The generated benchmark policy is ten minutes; apply the adapter's requested duration on a miss.
-        if (loaded) await _memoryCache.SetAsync(key, result, duration);
-        else _stats.Hits++;
+        // The generated decorator already stored the value with its ten-minute policy. Store it again only when
+        // the caller asked for another duration, so the benchmarks' ten-minute misses write once.
+        if (!loaded) _stats.Hits++;
+        else if (duration != GeneratedDuration) await _memoryCache.SetAsync(key, result, duration);
         return result;
     }
 
