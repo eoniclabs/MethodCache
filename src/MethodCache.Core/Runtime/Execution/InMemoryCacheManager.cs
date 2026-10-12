@@ -940,8 +940,9 @@ namespace MethodCache.Extensibility
             {
                 // Serve the stale value for a short while before trying the factory again. Reads must not extend it
                 // with sliding expiration, or the factory would never be tried again.
-                Volatile.Write(ref node.AbsoluteExpiresAt, now + policy.FailSafeRetryAfter);
-                Volatile.Write(ref node.LogicalExpiresAt, now + policy.FailSafeRetryAfter);
+                var retryUntil = Math.Min(now + policy.FailSafeRetryAfter, Volatile.Read(ref node.PhysicalExpiresAt));
+                Volatile.Write(ref node.AbsoluteExpiresAt, retryUntil);
+                Volatile.Write(ref node.LogicalExpiresAt, retryUntil);
                 Interlocked.Exchange(ref node.RefreshState, 0);
                 return true;
             }
