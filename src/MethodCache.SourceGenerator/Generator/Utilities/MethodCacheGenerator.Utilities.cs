@@ -18,7 +18,8 @@ namespace MethodCache.SourceGenerator
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
                 memberOptions: SymbolDisplayMemberOptions.IncludeParameters | SymbolDisplayMemberOptions.IncludeContainingType,
                 parameterOptions: SymbolDisplayParameterOptions.IncludeType,
-                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included);
+                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
             internal static string GetFullyQualifiedName(ITypeSymbol type)
                 => type.ToDisplayString(FullyQualifiedFormat);
