@@ -17,7 +17,6 @@ response. It follows RFC 9111.
 <!-- snippet: http-basic -->
 ```cs
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching();
 ```
 <!-- endSnippet -->
@@ -52,7 +51,6 @@ Settings are per HttpClient:
 <!-- snippet: http-settings -->
 ```cs
 builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching(options =>
     {
         options.EnableStaleIfError = true;           // serve the last response when the API is down
@@ -133,7 +131,6 @@ To store responses somewhere else entirely, register your own `IHttpCacheStorage
 ```cs
 builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching();
 ```
 <!-- endSnippet -->
@@ -206,3 +203,5 @@ An invalid `Expires` date (including `Expires: 0`) is immediately stale, even wh
 
 
 Unknown HTTP transports (including opaque wrappers and native platform handlers) bypass caching by default and emit one warning per named client. Set `AllowUnverifiedTransport` only when you have verified that the whole transport sends no automatic cookies or hidden caller identity. Recognized transports with automatic cookies always bypass.
+
+`AddHttpCaching()` disables automatic cookies on the named client’s `SocketsHttpHandler` or `HttpClientHandler`, after all primary-handler configuration. The default registration therefore caches immediately. Send caller cookies explicitly; a handler that manages a hidden cookie jar belongs on a client without HTTP caching. Other named clients are unaffected.

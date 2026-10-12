@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace MethodCache.HttpCaching.Tests;
@@ -65,12 +66,45 @@ public class TransportCookieIsolationTests
         var state = new MethodCache.HttpCaching.Internal.HttpCacheClientState("hidden");
         using var handler = new MethodCache.HttpCaching.Internal.HttpCacheHandler(state,
             HttpCacheTestFactory.CreateInMemoryStorage(), new TestOptionsMonitor<HttpCacheOptions>(new()), TimeProvider.System,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<MethodCache.HttpCaching.Internal.HttpCacheHandler>.Instance) { InnerHandler = transport };
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<MethodCache.HttpCaching.Internal.HttpCacheHandler>.Instance)
+        { InnerHandler = transport };
         using var client = new HttpClient(handler);
         Assert.Equal("session=A", await client.GetStringAsync(origin.Uri));
         jar.Add(origin.Uri, new Cookie("session", "B"));
         Assert.Equal("session=B", await client.GetStringAsync(origin.Uri));
         Assert.Equal(2, origin.Requests);
+    }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("before")]
+    [InlineData("after")]
+    [InlineData("wrapped")]
+    public async Task HttpClientFactory_CachingRegistration_DisablesCookiesAfterAllConfiguration(string order)
+    {
+        await using var origin = new CookieOrigin();
+        var services = new ServiceCollection();
+        var builder = services.AddHttpClient("cached");
+        SocketsHttpHandler? transport = null;
+        HttpMessageHandler CreateTransport()
+        {
+            transport = new SocketsHttpHandler { UseCookies = true };
+            return order == "wrapped" ? new ForwardHandler(transport) : transport;
+        }
+        if (order == "before") builder.ConfigurePrimaryHttpMessageHandler(CreateTransport);
+        builder.AddHttpCaching();
+        if (order is "after" or "wrapped") builder.ConfigurePrimaryHttpMessageHandler(CreateTransport);
+        var unrelated = new SocketsHttpHandler { UseCookies = true };
+        services.AddHttpClient("uncached").ConfigurePrimaryHttpMessageHandler(() => unrelated);
+        await using var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IHttpClientFactory>();
+        using var client = factory.CreateClient("cached");
+        using var other = factory.CreateClient("uncached");
+        Assert.Equal("anonymous", await client.GetStringAsync(origin.Uri));
+        Assert.Equal("anonymous", await client.GetStringAsync(origin.Uri));
+        Assert.Equal(1, origin.Requests);
+        if (transport != null) Assert.False(transport.UseCookies);
+        Assert.True(unrelated.UseCookies);
     }
 
     private sealed class HiddenHandler(HttpMessageHandler inner) : HttpMessageHandler
