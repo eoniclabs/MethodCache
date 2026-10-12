@@ -77,7 +77,9 @@ namespace App
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            var __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcSnapshot.Policy, new[] { "userId" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
+            var __mcPolicy = __mcSnapshot.Policy;
+            if (__mcPolicy.Tags.Count > 0)
+                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "userId", "cancellationToken" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null"), (global::System.Convert.ToString((object?)__mcArgument1, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
             return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0, __mcArgument1);
         }
 

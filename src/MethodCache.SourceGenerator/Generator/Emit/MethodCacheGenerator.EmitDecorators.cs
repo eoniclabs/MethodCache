@@ -373,7 +373,7 @@ namespace MethodCache.SourceGenerator
                     sb.Replace($"this._method_{safeFieldName}.KeyMethod", $"string.Concat(this._method_{safeFieldName}.KeyMethod, __mcTypeArguments)", keyStart, sb.Length - keyStart);
                 }
 
-                EmitMiss(sb, method, kind, valueType, safeFieldName, GetTagParameters(model, method));
+                EmitMiss(sb, method, kind, valueType, safeFieldName, GetTagParameters(method));
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
@@ -415,10 +415,8 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#endif");
             }
 
-            private static List<string> GetTagParameters(MethodModel model, IMethodSymbol method)
-                => model.CacheAttr is null
-                    ? new List<string>()
-                    : ParseDynamicTags(ExtractTags(model.CacheAttr), method).SelectMany(t => t.paramNames).Distinct().ToList();
+            private static List<string> GetTagParameters(IMethodSymbol method)
+                => method.Parameters.Select(parameter => parameter.Name).ToList();
 
             /// <summary>
             /// Emits the lookup shared by every cached method: one synchronous probe whose result says whether an
@@ -463,7 +461,9 @@ namespace MethodCache.SourceGenerator
                     // Tags such as "user:{userId}" get this call's arguments, matching what [CacheInvalidate] removes
                     var names = string.Join(", ", tagParameters.Select(p => $"\"{p}\""));
                     var values = string.Join(", ", tagParameters.Select(p => FormatTagArgument(method, p)));
-                    sb.AppendLine($"            var __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand({policy}, new[] {{ {names} }}, new[] {{ {values} }});");
+                    sb.AppendLine($"            var __mcPolicy = {policy};");
+                    sb.AppendLine("            if (__mcPolicy.Tags.Count > 0)");
+                    sb.AppendLine($"                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] {{ {names} }}, new[] {{ {values} }});");
                     policy = "__mcPolicy";
                 }
 

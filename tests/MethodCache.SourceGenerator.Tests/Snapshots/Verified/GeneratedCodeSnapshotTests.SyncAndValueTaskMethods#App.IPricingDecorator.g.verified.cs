@@ -85,7 +85,10 @@ namespace App
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            return __Load_Method0(__mcKey, __mcSnapshot.Policy, __mcArgument0!, __mcArgument1).ConfigureAwait(false).GetAwaiter().GetResult();
+            var __mcPolicy = __mcSnapshot.Policy;
+            if (__mcPolicy.Tags.Count > 0)
+                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku", "quantity" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null"), (global::System.Convert.ToString((object?)__mcArgument1, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
+            return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0!, __mcArgument1).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         private global::System.Threading.Tasks.Task<decimal> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string __mcArgument0, int __mcArgument1)
@@ -117,7 +120,10 @@ namespace App
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            return new global::System.Threading.Tasks.ValueTask<string?>(__Load_Method1(__mcKey, __mcSnapshot.Policy, __mcArgument0!));
+            var __mcPolicy = __mcSnapshot.Policy;
+            if (__mcPolicy.Tags.Count > 0)
+                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
+            return new global::System.Threading.Tasks.ValueTask<string?>(__Load_Method1(__mcKey, __mcPolicy, __mcArgument0!));
         }
 
         private global::System.Threading.Tasks.Task<string?> __Load_Method1(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string? __mcArgument0)
