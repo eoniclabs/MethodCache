@@ -145,6 +145,8 @@ Automatic decoration preserves normal DI disposal ownership, including applicati
 
 ## Features
 
+Non-public default interface helpers are supported. Interfaces with non-public abstract members report `MCG013`.
+
 ### Invalidation
 
 Invalidate by tag with `[CacheInvalidate]`, or from code by tag, key or pattern:

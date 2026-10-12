@@ -19,7 +19,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG010](#mcg010) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
 | [MCG011](#mcg011) | Error | `[assembly: CacheInterface]` lists a method it can't cache | |
 | [MCG012](#mcg012) | Error | The same interface in more than one `[assembly: CacheInterface]` | |
-| [MCG013](#mcg013) | Error | An interface with static abstract members | |
+| [MCG013](#mcg013) | Error | An interface with static or non-public abstract members | |
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
 | [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
 
@@ -122,8 +122,7 @@ methods in the same attribute.
 
 ## MCG013
 
-The interface has static abstract members, so no class can implement it as a decorator. Move the cached methods to an
-interface without them.
+The interface has static abstract members, or non-public abstract members that cannot be forwarded to the decorated instance. Move the cached methods to an interface without them. Non-public default helpers are supported because they remain on the interface.
 
 ## MCG014
 
