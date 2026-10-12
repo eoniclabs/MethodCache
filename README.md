@@ -422,3 +422,5 @@ An invalidation attribute without tags forwards the operation without issuing an
 Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.
 
 HTTP key framing changes all response cache keys, including requests without `Vary`; old entries become cold misses. See the [release compatibility notes](docs/developer/RELEASE_NOTES.md).
+
+`AddHttpCaching()` runs the cache after all additional handlers, so injected caller identity and rewritten requests are visible before lookup. Delegating handlers inside the primary transport, or below a directly constructed cache handler, are unverified and bypass caching unless the entire chain is explicitly trusted.

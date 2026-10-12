@@ -64,11 +64,13 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private bool HasUnsafeTransport(HttpCacheOptions options)
     {
         HttpMessageHandler? transport = InnerHandler;
+        var hasUnverifiedHandler = false;
         while (transport is DelegatingHandler delegating)
         {
+            hasUnverifiedHandler = true;
             transport = delegating.InnerHandler;
         }
-        var unsafeTransport = transport switch
+        var unsafeTransport = (hasUnverifiedHandler && !options.AllowUnverifiedTransport) || transport switch
         {
             SocketsHttpHandler sockets => sockets.UseCookies,
             HttpClientHandler client => client.UseCookies,
