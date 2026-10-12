@@ -215,7 +215,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
             }
 
-            var options = services.AddOptions<DistributedCacheOptions>();
+            var options = services.AddOptions<DistributedCacheOptions>()
+                .Validate(o => o.TagRetention > o.ClockSkewTolerance, "TagRetention must be greater than ClockSkewTolerance.")
+                .ValidateOnStart();
             if (configure != null)
             {
                 options.Configure(configure);

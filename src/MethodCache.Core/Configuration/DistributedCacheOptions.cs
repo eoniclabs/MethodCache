@@ -41,7 +41,8 @@ namespace MethodCache
 
         /// <summary>
         /// How long tag invalidations are kept in the distributed cache. Entries never live longer than this in
-        /// the distributed cache, so an invalidation always outlives the entries it applies to.
+        /// the distributed cache minus ClockSkewTolerance, so an invalidation always outlives the entries it applies to.
+        /// Must be greater than ClockSkewTolerance; registration validates the relationship at startup.
         /// </summary>
         public TimeSpan TagRetention
         {

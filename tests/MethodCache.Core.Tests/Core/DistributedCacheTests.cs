@@ -52,6 +52,28 @@ public class DistributedCacheTests
         node.GetOrCreateFastAsync(key, "M", () => Task.FromResult(value()), Policy(tags));
 
     [Fact]
+    public void RetentionNotGreaterThanClockSkew_RejectsOptionsAtResolution()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCacheDistributedCache(_ => _shared, o => { o.TagRetention = TimeSpan.FromSeconds(2); o.ClockSkewTolerance = TimeSpan.FromSeconds(2); });
+        using var provider = services.BuildServiceProvider();
+        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() =>
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DistributedCacheOptions>>().Value);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void RetentionNotGreaterThanClockSkew_RejectsMisconfiguration(int retentionSeconds)
+    {
+        Assert.Throws<ArgumentException>(() => CreateNode(backplane: false, configure: o =>
+        {
+            o.TagRetention = TimeSpan.FromSeconds(retentionSeconds);
+            o.ClockSkewTolerance = TimeSpan.FromSeconds(2);
+        }));
+    }
+
+    [Fact]
     public async Task BulkRead_ConcurrentWriterWinsOverFactory_ReturnsTheSameValueAsASingleRead()
     {
         using var first = CreateNode(backplane: false);
