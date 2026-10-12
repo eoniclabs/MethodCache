@@ -1,7 +1,5 @@
 # Distributed cache
 
-L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is `TagRetention` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
-
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
 instances and keep them across restarts:
 
@@ -134,6 +132,10 @@ SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF
 trailing spaces, NULs and different Unicode representations distinct despite SQL collation, and
 gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
 and expire normally; upgrade all instances sharing a prefix together.
+
+## Behavior and compatibility
+
+L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is `TagRetention` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
 
 Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
 

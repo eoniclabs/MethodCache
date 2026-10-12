@@ -376,6 +376,8 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
 - [Demo](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
 - Using a coding agent? Give it [docs/ai/methodcache.md](docs/ai/methodcache.md). [llms.txt](llms.txt) and [llms-full.txt](llms-full.txt) have the docs for language models, and `context7.json` lets Context7 index them.
 
+## Behavior and compatibility
+
 Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
 
 Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. This rule applies to both cached entries and invalidation.

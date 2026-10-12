@@ -89,7 +89,9 @@ including backend-atomic maximum timestamps and retention preservation. A plain 
 rejected when the host starts (`ValidateOnStart`), or without a generic host when the method cache manager is
 resolved. Redis and SQL Server supply this contract.
 
-HTTP caching bypasses transports with automatic cookies enabled. Configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` for cacheable clients, and send explicit cookie headers before the cache handler.
+`AddHttpCaching()` disables automatic cookies on the named client’s `SocketsHttpHandler` or `HttpClientHandler` after handler configuration. Send caller cookies explicitly before the cache handler. Unknown transports bypass caching with a warning unless `AllowUnverifiedTransport` is enabled after verifying that the entire transport has no automatic cookies or hidden caller identity.
+
+For direct invalidation or administration of versioned fluent entries, use `CacheManagerExtensions.GetCacheKey(logicalKey, version)`. Treat the returned identity as opaque; callback `CacheContext.Key` remains the logical key.
 
 
 ---
@@ -209,8 +211,6 @@ implements, such as `UserRepository : IRepository<User>`. An open generic regist
 
 # Generated decorators
 
-Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated `Add...WithCaching` factory helpers own the instances their factories return; create a new instance in those factories.
-
 Put cache attributes on interface methods. The generator builds a decorator around the registered implementation
 and routes cached calls through MethodCache. Your implementation stays ordinary application code.
 
@@ -234,6 +234,10 @@ interface is cacheable. See [keys](https://github.com/eoniclabs/MethodCache/blob
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
 
+## Behavior and compatibility
+
+Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated `Add...WithCaching` factory helpers own the instances their factories return; create a new instance in those factories.
+
 Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
 
 Factory registration helpers dispose owned implementations even when their service interface does not declare disposal. Asynchronous disposal prefers `IAsyncDisposable`, then falls back to `IDisposable`. Automatically discovered DI services retain container ownership.
@@ -250,10 +254,6 @@ Cached interfaces may declare nested helper interfaces and abstract types. These
 <!-- source: docs/features/keys.md -->
 
 # Cache keys
-
-All built-in key generators preserve exact UTF-16 string identity, including lone surrogates in `ICacheKeyProvider.CacheKeyPart` and nested arguments. MessagePack key strings use a dedicated lossless representation.
-
-Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
 
 You never write keys for `[Cache]` methods. The generated decorator builds each key from the interface, the method
 and the arguments, so two calls share an entry exactly when they call the same method with equal arguments.
@@ -352,6 +352,12 @@ argument members have the same values. Configuration and runtime policy updates 
 
 An `ICacheKeyProvider.CacheKeyPart` getter may generate another key: hash buffers are owned by one
 invocation at a time, including when JSON property getters generate keys or a nested call throws.
+
+## Behavior and compatibility
+
+All built-in key generators preserve exact UTF-16 string identity, including lone surrogates in `ICacheKeyProvider.CacheKeyPart` and nested arguments. MessagePack key strings use a dedicated lossless representation.
+
+Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
 
 Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.
 
@@ -506,6 +512,8 @@ await cache.InvalidateByTagPatternAsync("customer:7:*");   // in-memory cache on
 With [Redis or SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
 tells every instance to drop its in-memory copy. You don't need to do anything else.
 
+## Behavior and compatibility
+
 Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. Cached tags and invalidation use the same rule.
 
 An invalidated in-flight memory load cannot publish over a newer load or explicit write. Publication and invalidation are coordinated per load; application weighers run outside that coordination so they may call the cache safely.
@@ -578,6 +586,8 @@ turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `
 
 The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
 once.
+
+## Behavior and compatibility
 
 `ExistsAsync` reports an entry only while it is both logically fresh and physically retained. A fail-safe retry window never makes existence extend beyond the physical fail-safe lifetime.
 
@@ -811,10 +821,6 @@ Generated decorators preserve generic constraints, including `unmanaged`, on cac
 
 # Manual caching
 
-Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
-
-`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
-
 When an attribute doesn't fit, such as a call in the middle of a method or a client without an interface, use the same
 cache through `ICacheManager` with a key you choose:
 
@@ -904,6 +910,12 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
 - `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
   `NoOpCacheManager` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
+
+## Behavior and compatibility
+
+Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
+
+`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
 
 Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.
 
@@ -1011,16 +1023,6 @@ See [Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/fea
 <!-- source: docs/features/http-caching.md -->
 
 # HTTP response caching
-
-Automatic transport cookies bypass caching because the cookie jar can change below the cache handler. For cached clients, configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` and send any required `Cookie` header explicitly before the cache handler. The default private cache isolates those explicit cookie headers.
-
-A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
-
-`only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
-
-HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
-
-An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses according to their response
 headers. Freshness comes from `Cache-Control` and expiry headers; ETag and Last-Modified enable conditional
@@ -1133,6 +1135,16 @@ In short:
 See the [HTTP package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md) for the threat model.
 
+## Behavior and compatibility
+
+A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
+
+`only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
+
+HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
+
+An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
+
 An invalid `Expires` date (including `Expires: 0`) is immediately stale, even when heuristic freshness or a default lifetime is enabled. Explicit `max-age` and `s-maxage` take precedence.
 
 
@@ -1150,8 +1162,6 @@ HTTP key framing changes all response cache keys, including requests without `Va
 <!-- source: docs/features/distributed-cache.md -->
 
 # Distributed cache
-
-L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is `TagRetention` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
 
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
 instances and keep them across restarts:
@@ -1278,6 +1288,10 @@ trailing spaces, NULs and different Unicode representations distinct despite SQL
 gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
 and expire normally; upgrade all instances sharing a prefix together.
 
+## Behavior and compatibility
+
+L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is `TagRetention` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
+
 Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
 
 Redis escapes unpaired UTF-16 surrogates and backslashes in physical keys, keeping distinct logical keys separate in every data and invalidation operation. Ordinary keys and their prefixes stay unchanged.
@@ -1292,8 +1306,6 @@ Backplane invalidations do not cross wire versions in either direction. Deploy t
 <!-- source: docs/features/monitoring.md -->
 
 # Monitoring
-
-Tracing counts cached `null` values as hits, including nullable value types.
 
 MethodCache shows what it is doing in code, over HTTP, in health checks and through OpenTelemetry.
 
@@ -1378,6 +1390,10 @@ tags also stay within the producer's inline storage; larger lists can allocate. 
 have their own costs. Hits are still counted. Cache keys and tags are left off spans unless
 you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
 [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.OpenTelemetry/README.md) and [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
+
+## Behavior and compatibility
+
+Tracing counts cached `null` values as hits, including nullable value types.
 
 Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
 
@@ -1510,8 +1526,6 @@ through the key generator, such as collections, are hashed by `FastHashKeyGenera
 
 # Testing
 
-## Testing your service
-
 The implementation of a cached interface is a plain class: create it directly in unit tests and no caching is
 involved.
 
@@ -1562,6 +1576,10 @@ The cache reads the time from the `TimeProvider` registered in the container, if
 This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
 eviction and the background revalidation timeout.
 
+## Behavior and compatibility
+
+## Testing your service
+
 
 ---
 
@@ -1608,7 +1626,7 @@ authorization too.
 
 | Threat | What MethodCache does |
 |---|---|
-| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. Transports with automatic cookies enabled bypass caching; disable automatic cookies and send explicit headers for cacheable requests. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
+| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports; explicitly supplied cookie headers isolate callers. Unknown transports bypass caching unless explicitly verified and opted in. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
 | A 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` keeps its previous value. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
@@ -2031,6 +2049,8 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
 | `BackplaneChannel` | `KeyPrefix` + `invalidations` | Pub/sub channel; applications with different key prefixes get different channels |
 
+## Behavior and compatibility
+
 Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
 
 Redis escapes unpaired UTF-16 surrogates and backslashes in physical keys, keeping distinct logical keys separate in every data and invalidation operation. Ordinary keys and their prefixes stay unchanged.
@@ -2130,6 +2150,8 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
 | `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute |
 
+## Behavior and compatibility
+
 Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
 
 Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
@@ -2196,8 +2218,6 @@ Each check asks the distributed cache once, waiting at most its operation timeou
 <!-- source: src/MethodCache.OpenTelemetry/README.md -->
 
 # MethodCache.OpenTelemetry
-
-Tracing counts cached `null` values as hits, including nullable value types.
 
 [![NuGet Version](https://img.shields.io/nuget/v/MethodCache.OpenTelemetry)](https://www.nuget.org/packages/MethodCache.OpenTelemetry)
 
@@ -2310,6 +2330,10 @@ instrumentation: `.WithTracing(t => t.AddAspNetCoreInstrumentation().AddMethodCa
 
 MIT License - see LICENSE file for details.
 
+## Behavior and compatibility
+
+Tracing counts cached `null` values as hits, including nullable value types.
+
 Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
 
 
@@ -2318,16 +2342,6 @@ Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a mis
 <!-- source: src/MethodCache.HttpCaching/README.md -->
 
 # MethodCache.HttpCaching
-
-Automatic transport cookies bypass caching because the cookie jar can change below the cache handler. For cached clients, configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` and send any required `Cookie` header explicitly before the cache handler. The default private cache isolates those explicit cookie headers.
-
-A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
-
-`only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
-
-HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
-
-An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
@@ -2505,6 +2519,16 @@ MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
 |---|---|
 | `methodcache.http.requests_total` | `client`, `outcome` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error` when the request threw) |
 | `methodcache.http.request_duration` (ms) | `client`, `outcome` |
+
+## Behavior and compatibility
+
+A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
+
+`only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
+
+HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
+
+An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 An invalid `Expires` date (including `Expires: 0`) is immediately stale, even when heuristic freshness or a default lifetime is enabled. Explicit `max-age` and `s-maxage` take precedence.
 

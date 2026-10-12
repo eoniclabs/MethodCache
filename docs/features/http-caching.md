@@ -1,15 +1,5 @@
 # HTTP response caching
 
-Automatic transport cookies bypass caching because the cookie jar can change below the cache handler. For cached clients, configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` and send any required `Cookie` header explicitly before the cache handler. The default private cache isolates those explicit cookie headers.
-
-A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
-
-`only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
-
-HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
-
-An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
-
 Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses according to their response
 headers. Freshness comes from `Cache-Control` and expiry headers; ETag and Last-Modified enable conditional
 validation. A successful 304 is returned to the caller as the full response.
@@ -124,6 +114,16 @@ In short:
 
 See the [HTTP package guide](../../src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](../security.md) for the threat model.
+
+## Behavior and compatibility
+
+A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
+
+`only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
+
+HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
+
+An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 An invalid `Expires` date (including `Expires: 0`) is immediately stale, even when heuristic freshness or a default lifetime is enabled. Explicit `max-age` and `s-maxage` take precedence.
 

@@ -39,6 +39,8 @@ Non-public default interface helpers are supported. Interfaces with non-public a
 
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache
 
+## Behavior and compatibility
+
 Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
 
 Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. This rule applies to both cached entries and invalidation.
