@@ -86,7 +86,8 @@ builder.Services.AddMethodCache();                               // after your r
 
 Custom distributed method-result caches must implement `MethodCache.Extensibility.IAtomicInvalidationStore`,
 including backend-atomic maximum timestamps and retention preservation. A plain `IDistributedCache` is
-rejected when the method cache manager is resolved. Redis and SQL Server supply this contract.
+rejected when the host starts (`ValidateOnStart`), or without a generic host when the method cache manager is
+resolved. Redis and SQL Server supply this contract.
 
 
 ---
@@ -255,6 +256,9 @@ public interface IUserService
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
 - **Everything else**, such as arrays and collections, goes through the key generator. The default,
   `FastHashKeyGenerator`, hashes the arguments into a key such as `ByIdsAsync:11b474c4…`.
+- **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
+  key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
+  `object[]` or an `object` property.
 - **Values inside hashed arguments keep their runtime type.** Where a value's type differs from the type it is declared
   as (an element of `object[]` or `List<object>`, an `object` property, a property typed as a base class or interface),
   the key records the value's type and all of its members: `new object[] { 1 }` and `new object[] { 1L }` get
@@ -1165,8 +1169,11 @@ builder.Services.AddMethodCacheDistributedCache(
 ```
 
 `customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
-`IDistributedCache`. MethodCache rejects a provider without this capability when the cache manager is
-resolved. Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
+`IDistributedCache`. MethodCache rejects a provider without this capability, such as Microsoft's
+`MemoryDistributedCache` (`AddDistributedMemoryCache()`), `RedisCache` or `SqlServerCache`: with a generic host,
+`host.StartAsync()` throws an `OptionsValidationException` naming `IAtomicInvalidationStore`, so the app fails at
+startup rather than on its first request; without a host, resolving the cache manager throws an `ArgumentException`.
+Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
 signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
 stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
 insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
@@ -1189,6 +1196,10 @@ Without a backplane, other instances keep their in-memory copy of an invalidated
 
 SQL Server backplane publication, polling and retention cleanup are isolated by `KeyPrefix` even when
 applications share the same tables. Scope matching is case-sensitive and independent of SQL collation.
+Rows of other prefixes don't cost a poll extra queries: identity values they take are known to be committed,
+so only values no row holds are watched for a late commit. Cleanup also removes unscoped rows from an earlier
+build once they are older than `BackplaneRetention`; rows of a prefix no application uses any more are left
+for you to delete.
 Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
 messages and recovery clears; one that still fails after five polls is replaced by a clear of that instance's
 memory, so later messages aren't held back. See the SQL Server guide for the schema migration required by an existing
@@ -1970,7 +1981,8 @@ If the application's login may not create tables, set `CreateTablesIfMissing = f
 
 The invalidations table gets a nullable `Scope binary(32)` column and the indexes `Index_Scope_Id (Scope, Id)` and
 `Index_Scope_CreatedAt (Scope, CreatedAt)`; with `CreateTablesIfMissing = false`, add them in your migration before
-deploying. Rows without a scope are ignored and can be deleted once no instance runs the old build. Cache entries
+deploying. Rows without a scope are ignored, and each instance deletes them once they are older than its
+`BackplaneRetention`, as the old build did. Cache entries
 written by an earlier build become misses and expire normally. Upgrade every instance that shares the tables
 together, and restart them with empty in-memory caches.
 
@@ -1984,7 +1996,8 @@ together, and restart them with empty in-memory caches.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- Rows older than `BackplaneRetention` are deleted from the invalidations table.
+- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table, along with rows an earlier build wrote without a prefix. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
+- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again for a few seconds; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
 

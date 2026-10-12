@@ -177,7 +177,7 @@ namespace MethodCache
                 missingKeys.Add(key);
             }
 
-            if (missingKeys.Count > 0 && cacheManager is InMemoryCacheManager manager)
+            if (missingKeys.Count > 0 && FindMemoryManager(cacheManager) is { } manager)
             {
                 missingKeys = await TakeDistributedHitsAsync(manager, missingKeys, skipCacheKeys, results, options, services, cancellationToken).ConfigureAwait(false);
             }
@@ -254,6 +254,20 @@ namespace MethodCache
             }
 
             return found == null ? missingKeys : missingKeys.Where(key => !found.Contains(key)).ToList();
+        }
+
+        /// <summary>
+        /// The in-memory manager behind <paramref name="cacheManager"/>, looking through decorators such as the
+        /// telemetry one, or <see langword="null"/> when there is none.
+        /// </summary>
+        private static InMemoryCacheManager? FindMemoryManager(ICacheManager cacheManager)
+        {
+            while (cacheManager is ICacheManagerDecorator decorator)
+            {
+                cacheManager = decorator.InnerManager;
+            }
+
+            return cacheManager as InMemoryCacheManager;
         }
 
         /// <summary>The key a fluent entry is stored under: the caller's key, plus its version when it has one.</summary>

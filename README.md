@@ -194,7 +194,7 @@ builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCac
 <!-- endSnippet -->
 
 Results live in memory and in Redis (or SQL Server, or your own cache via `AddMethodCacheDistributedCache()`, which
-must implement `IAtomicInvalidationStore` as well as `IDistributedCache`).
+must implement `IAtomicInvalidationStore` as well as `IDistributedCache`; if it doesn't, the host fails at startup).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
 Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
 If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips

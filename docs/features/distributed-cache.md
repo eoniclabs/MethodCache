@@ -89,8 +89,11 @@ builder.Services.AddMethodCacheDistributedCache(
 <!-- endSnippet -->
 
 `customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
-`IDistributedCache`. MethodCache rejects a provider without this capability when the cache manager is
-resolved. Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
+`IDistributedCache`. MethodCache rejects a provider without this capability, such as Microsoft's
+`MemoryDistributedCache` (`AddDistributedMemoryCache()`), `RedisCache` or `SqlServerCache`: with a generic host,
+`host.StartAsync()` throws an `OptionsValidationException` naming `IAtomicInvalidationStore`, so the app fails at
+startup rather than on its first request; without a host, resolving the cache manager throws an `ArgumentException`.
+Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
 signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
 stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
 insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
@@ -113,6 +116,10 @@ Without a backplane, other instances keep their in-memory copy of an invalidated
 
 SQL Server backplane publication, polling and retention cleanup are isolated by `KeyPrefix` even when
 applications share the same tables. Scope matching is case-sensitive and independent of SQL collation.
+Rows of other prefixes don't cost a poll extra queries: identity values they take are known to be committed,
+so only values no row holds are watched for a late commit. Cleanup also removes unscoped rows from an earlier
+build once they are older than `BackplaneRetention`; rows of a prefix no application uses any more are left
+for you to delete.
 Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
 messages and recovery clears; one that still fails after five polls is replaced by a clear of that instance's
 memory, so later messages aren't held back. See the SQL Server guide for the schema migration required by an existing

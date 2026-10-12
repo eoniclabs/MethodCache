@@ -1,6 +1,7 @@
 using MethodCache.Extensibility;
 using MethodCache.SqlServer;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Time.Testing;
 
 namespace MethodCache.SqlServer.IntegrationTests;
 
@@ -42,6 +43,63 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
         finally { await DropSchemaAsync(options); }
     }
 
+    [SkippableFact]
+    public async Task SharedTable_OtherPrefixesRows_AreNotTrackedAsGaps_AndALateOwnRowStillArrives()
+    {
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = "app-b:" };
+        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, KeyPrefix = "app-a:" };
+        var clock = new FakeTimeProvider();
+        try
+        {
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
+            await using var receiver = new SqlServerBackplane(options, timeProvider: clock);
+            await using var publisher = new SqlServerBackplane(options);
+            await using var otherApp = new SqlServerBackplane(otherOptions);
+            var delivered = new List<string>();
+            Task Handle(BackplaneMessage message) { delivered.Add(message.Key!); return Task.CompletedTask; }
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+
+            // The other application's rows take the identity values between this application's rows
+            for (var i = 0; i < 10; i++)
+            {
+                await otherApp.PublishInvalidationAsync("other-" + i);
+                await otherApp.PublishInvalidationAsync("other-again-" + i);
+                await publisher.PublishInvalidationAsync("own-" + i);
+            }
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+
+            Assert.Equal(Enumerable.Range(0, 10).Select(i => "own-" + i), delivered);
+            Assert.Equal(0, receiver.GapRangeCount);
+            Assert.Equal(0, receiver.GapIdCount);
+
+            // A row of this application that commits after later rows were read is a real gap, and arrives
+            await using var connection = new SqlConnection(options.ConnectionString);
+            await connection.OpenAsync();
+            await using var transaction = connection.BeginTransaction();
+            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 0, 'late');", connection, transaction))
+            {
+                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
+                await insert.ExecuteNonQueryAsync();
+            }
+            for (var i = 0; i < 5; i++)
+                await otherApp.PublishInvalidationAsync("later-other-" + i);
+            await publisher.PublishInvalidationAsync("after");
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+
+            Assert.Equal("after", delivered[^1]);
+            Assert.Equal(1, receiver.GapRangeCount);
+            Assert.Equal(1, receiver.GapIdCount);
+
+            await transaction.CommitAsync();
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+
+            Assert.Equal(new[] { "after", "late" }, delivered.Skip(10));
+            Assert.Equal(0, receiver.GapRangeCount);
+        }
+        finally { await DropSchemaAsync(options); }
+    }
+
     internal static async Task DropSchemaAsync(SqlServerOptions options)
     {
         await using var connection = new SqlConnection(options.ConnectionString);
@@ -75,6 +133,39 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             Assert.True(await reader.ReadAsync());
             Assert.Equal("other", reader.GetString(0));
             Assert.False(await reader.ReadAsync());
+        }
+        finally { await DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task Cleanup_RemovesExpiredLegacyRowsWithoutAScope()
+    {
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N") };
+        try
+        {
+            await using var connection = new SqlConnection(options.ConnectionString);
+            await connection.OpenAsync();
+            await using (var legacy = new SqlCommand($"CREATE SCHEMA {SqlServerOptions.Quote(options.SchemaName)};", connection))
+            {
+                await legacy.ExecuteNonQueryAsync();
+                legacy.CommandText = $"""
+                    CREATE TABLE {options.QualifiedInvalidationsTableName} (
+                        Id bigint IDENTITY PRIMARY KEY, InstanceId varchar(32) NOT NULL,
+                        MessageType tinyint NOT NULL, Target nvarchar(max) NOT NULL,
+                        CreatedAt datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
+                    INSERT INTO {options.QualifiedInvalidationsTableName} (InstanceId, MessageType, Target, CreatedAt)
+                    VALUES ('legacy', 0, 'expired', DATEADD(hour, -2, SYSUTCDATETIME())), ('legacy', 0, 'recent', SYSUTCDATETIME());
+                    """;
+                await legacy.ExecuteNonQueryAsync();
+            }
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
+            await using var backplane = new SqlServerBackplane(options);
+
+            await backplane.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            await backplane.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+            await using var remaining = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);
+            Assert.Equal("recent", await remaining.ExecuteScalarAsync());
         }
         finally { await DropSchemaAsync(options); }
     }

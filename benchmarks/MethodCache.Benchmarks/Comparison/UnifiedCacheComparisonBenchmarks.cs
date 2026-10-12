@@ -17,7 +17,6 @@ namespace MethodCache.Benchmarks.Comparison;
 /// - Uses the default in-memory engine (with tags, stats, eviction)
 /// - Direct storage-to-storage comparison
 /// - Shows MethodCache storage performance vs other frameworks
-/// - Expected performance: ~100-200ns (full-featured storage)
 ///
 /// MethodCache_ManualKey_** benchmarks:
 /// - Direct API calls (no source generation)
@@ -136,14 +135,14 @@ public class UnifiedCacheComparisonBenchmarks
 
     // ==================== CACHE HIT TESTS ====================
     // MethodCache has 3 usage modes:
-    // 1. MethodCache_SourceGen_*Hit - default in-memory engine (full-featured: ~100-200ns)
+    // 1. MethodCache_SourceGen_*Hit - default in-memory engine (full-featured)
     // 2. MethodCache_ManualKey_*Hit - Direct API with manual keys (storage-only comparison)
-    // 3. MethodCache_Legacy_*Hit - Runtime key generation research (~9,500ns)
+    // 3. MethodCache_Legacy_*Hit - Runtime key generation research
     //
     // COMPARE: MethodCache_SourceGen vs other frameworks for storage comparison
     //
     // NOTE: Synchronous benchmark methods (MethodCache_SourceGen_*Hit) suffer from sync-over-async
-    // overhead (~50-100µs on Windows). Use MethodCache_SourceGen_*HitAsync for true performance.
+    // overhead. Use MethodCache_SourceGen_*HitAsync for true performance.
 
     [BenchmarkCategory("CacheHit"), Benchmark]
     public bool MethodCache_Legacy_Hit()

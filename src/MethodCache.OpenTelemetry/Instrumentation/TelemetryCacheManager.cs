@@ -23,8 +23,13 @@ namespace MethodCache.OpenTelemetry;
 /// <see cref="MethodCache.Extensibility.ICacheMetricsProvider"/>, which <see cref="CacheMeterProvider"/>
 /// implements. Recording them here as well would count every call twice.
 /// </para>
+/// <para>
+/// A bulk read (<c>GetOrCreateManyAsync</c>) reaches the inner manager through <see cref="ICacheManagerDecorator"/>
+/// to read the distributed cache for its memory misses; those lookups have no span of their own, and the inner
+/// manager counts their hits as usual.
+/// </para>
 /// </remarks>
-internal class TelemetryCacheManager : ICacheManager
+internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
 {
     private readonly ICacheManager _innerManager;
     private readonly ICacheActivitySource _activitySource;
@@ -42,6 +47,9 @@ internal class TelemetryCacheManager : ICacheManager
         _meterProvider = meterProvider ?? throw new ArgumentNullException(nameof(meterProvider));
         _baggagePropagator = baggagePropagator ?? throw new ArgumentNullException(nameof(baggagePropagator));
     }
+
+    /// <inheritdoc />
+    public ICacheManager InnerManager => _innerManager;
 
     // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
@@ -342,22 +350,23 @@ internal class TelemetryCacheManager : ICacheManager
 
     /// <summary>
     /// Metric dimensions must have few distinct values, so a method's cache tags (which can carry argument values,
-    /// such as <c>user:42</c>) and key counts stay on spans only.
+    /// such as <c>user:42</c>) and key counts stay on spans only. A policy without a group or version allocates
+    /// nothing, since this runs on every instrumented call.
     /// </summary>
     private static Dictionary<string, object?>? CreateMetricTagsFromPolicy(CacheRuntimePolicy policy)
     {
-        var tags = new Dictionary<string, object?>();
+        Dictionary<string, object?>? tags = null;
 
         if (policy.Metadata.TryGetValue("group", out var group))
         {
-            tags["group"] = group;
+            (tags ??= new Dictionary<string, object?>())["group"] = group;
         }
 
         if (policy.Version.HasValue)
         {
-            tags["version"] = policy.Version.Value;
+            (tags ??= new Dictionary<string, object?>())["version"] = policy.Version.Value;
         }
 
-        return tags.Count > 0 ? tags : null;
+        return tags;
     }
 }

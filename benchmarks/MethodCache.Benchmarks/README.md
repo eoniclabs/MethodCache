@@ -18,7 +18,7 @@ The benchmark suite includes:
 
 ### Prerequisites
 
-- .NET 9.0 or later
+- The .NET 10 SDK (the project targets `net10.0`)
 
 ### Running Benchmarks
 
@@ -53,15 +53,6 @@ Tests fundamental caching operations with different data sizes:
 **Parameters:**
 - `DataSize`: 1, 10, 100, 1000 items
 - `ModelType`: Small, Medium, Large objects
-
-**Example Results:**
-```
-| Method              | DataSize | ModelType | Mean      | Error     | StdDev    | Ratio | Allocated |
-|-------------------- |--------- |---------- |----------:|----------:|----------:|------:|----------:|
-| NoCaching           | 100      | Small     | 1.234 ms  | 0.021 ms  | 0.018 ms  | 1.00  |   1.2 KB  |
-| CacheMiss           | 100      | Small     | 1.456 ms  | 0.028 ms  | 0.025 ms  | 1.18  |   2.1 KB  |
-| CacheHit            | 100      | Small     | 0.089 ms  | 0.002 ms  | 0.002 ms  | 0.07  |   0.8 KB  |
-```
 
 #### 2. Cache Provider Comparison (`providers`)
 
@@ -146,13 +137,15 @@ Compares different cache key generation strategies:
 
 ### Benchmark Configuration
 
-The benchmarks use BenchmarkDotNet with the following configuration:
+Most categories use one BenchmarkDotNet job, defined in `Program.cs`:
 
-- **Runtime**: .NET 9.0
-- **Platform**: x64
+- **Runtime**: .NET 10 (`net10.0`)
+- **Platform**: AnyCpu, so the machine's own architecture
 - **GC**: Server GC with concurrent collection
-- **Toolchain**: In-process emission for faster execution
-- **Memory Diagnostics**: Enabled for memory analysis
+- **Exporters**: JSON and GitHub Markdown
+
+`readme` uses workstation GC instead, and `engine` uses BenchmarkDotNet's short run. Classes marked
+`[MemoryDiagnoser]` also report allocations. Measured results are in [docs/benchmarks.md](../../docs/benchmarks.md).
 
 ## Interpreting Results
 
