@@ -111,6 +111,8 @@ namespace MethodCache.Core.Runtime.Distributed
                 throw new ArgumentException($"The serializer's content type must be at most {byte.MaxValue} bytes.", nameof(serializer));
             }
             ArgumentNullException.ThrowIfNull(options);
+            if (options.TagRetention <= options.ClockSkewTolerance)
+                throw new ArgumentException("TagRetention must be greater than ClockSkewTolerance.", nameof(options));
 
             _backplane = backplane;
             _time = timeProvider ?? TimeProvider.System;
