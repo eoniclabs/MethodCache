@@ -280,6 +280,17 @@ public class SignatureCorpusTests
 
     private static readonly Dictionary<string, Shape> Cases = new()
     {
+        ["runtime tags see every case-distinct argument"] = new("""
+            public interface ISvc { [Cache(Tags = new[] { "attribute:{a}" })] Task<int> Get(int a, int A); }
+            public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }
+            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:2\"); await s.Get(1, 2)",
+            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
+        ["runtime tags retain ambiguous placeholders"] = new("""
+            public interface ISvc { [Cache(Tags = new[] { "attribute:{name}" })] Task<int> Get(int name, int Name); }
+            public class Svc : ISvc { public Task<int> Get(int name, int Name) { Counter.Hit(); return Task.FromResult(name + Name); } }
+            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
+            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
+
         ["application types shadow framework and cache infrastructure"] = new("""
             public class Task { }
             public class ValueTask { }

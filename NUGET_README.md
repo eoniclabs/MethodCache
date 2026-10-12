@@ -64,3 +64,5 @@ Backplane invalidations do not cross wire versions in either direction. Deploy t
 `TagRetention` must exceed `ClockSkewTolerance`; invalid settings fail startup or direct layer construction. L2 entries live at most `TagRetention - ClockSkewTolerance` from their source read, capped further by their policy duration.
 
 Generated decorators qualify framework and cache infrastructure type names globally, so application types such as `Task`, `List` or `CachedMethod` cannot shadow them.
+
+Runtime tag templates match against every method parameter, even when the attributes use only a subset. Exact names take precedence; an ambiguous case-insensitive placeholder remains literal. Untagged policies do not format argument values.

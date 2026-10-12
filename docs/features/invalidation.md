@@ -81,3 +81,5 @@ tells every instance to drop its in-memory copy. You don't need to do anything e
 Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. Cached tags and invalidation use the same rule.
 
 An invalidated in-flight memory load cannot publish over a newer load or explicit write. Publication and invalidation are coordinated per load; application weighers run outside that coordination so they may call the cache safely.
+
+Runtime tag templates match against every method parameter, even when the attributes use only a subset. Exact names take precedence; an ambiguous case-insensitive placeholder remains literal. Untagged policies do not format argument values.

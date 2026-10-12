@@ -410,3 +410,5 @@ Backplane invalidations do not cross wire versions in either direction. Deploy t
 Generated decorators qualify framework and cache infrastructure type names globally, so application types such as `Task`, `List` or `CachedMethod` cannot shadow them.
 
 Oversized HTTP responses remain streamed; disposing them closes both stream segments and the original content owner, even if a custom owner does not close its stream.
+
+Runtime tag templates match against every method parameter, even when the attributes use only a subset. Exact names take precedence; an ambiguous case-insensitive placeholder remains literal. Untagged policies do not format argument values.
