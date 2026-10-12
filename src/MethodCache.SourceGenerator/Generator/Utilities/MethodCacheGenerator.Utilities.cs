@@ -43,7 +43,7 @@ namespace MethodCache.SourceGenerator
                     var containingTypes = new List<string>();
                     for (var type = interfaceSymbol.ContainingType; type != null; type = type.ContainingType)
                     {
-                        containingTypes.Insert(0, Identifier(type.Name) + (type.Arity > 0 ? "_Arity" + type.Arity : string.Empty));
+                        containingTypes.Insert(0, Identifier(type.Name.Replace("_", "__") + "_Arity" + type.Arity));
                     }
 
                     return containingTypes.Count == 0 ? result : result + "." + string.Join(".", containingTypes);

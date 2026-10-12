@@ -185,6 +185,28 @@ public class SignatureCorpusTests
         Assert.Equal(1, await (Task<int>)run.Invoke(null, null)!);
     }
 
+    [Fact]
+    public void ReferencedNestedInterfaces_ArityLookingNames_HaveDistinctDecoratorNamespaces()
+    {
+        var refs = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+            .Select(path => MetadataReference.CreateFromFile(path)).ToArray();
+        var library = CSharpCompilation.Create("ExternalNaming", new[] { CSharpSyntaxTree.ParseText("""
+            namespace External {
+                public class Outer_Arity1 { public interface IInner { int Get(int id); } }
+                public class Outer<T> { public interface IInner { int Get(int id); } }
+            }
+            """) }, refs, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var image = new MemoryStream();
+        var emitted = library.Emit(image);
+        Assert.True(emitted.Success, string.Join("; ", emitted.Diagnostics));
+        var consumer = CSharpCompilation.Create("NamingConsumer", references: refs.Append(MetadataReference.CreateFromImage(image.ToArray())));
+        var a = consumer.GetTypeByMetadataName("External.Outer_Arity1+IInner")!;
+        var b = consumer.GetTypeByMetadataName("External.Outer`1+IInner")!;
+        var utilities = typeof(MethodCacheGenerator).GetNestedType("Utils", BindingFlags.NonPublic)!;
+        var name = utilities.GetMethod("GetDecoratorNamespace", BindingFlags.NonPublic | BindingFlags.Static)!;
+        Assert.NotEqual(name.Invoke(null, new object[] { a }), name.Invoke(null, new object[] { b }));
+    }
+
     private static readonly Dictionary<string, (string Member, string Implementation, string ExpectedId)> Unsupported = new()
     {
         ["void"] = ("void Touch(int id)", "void Touch(int id) { }", "MCG001"),
