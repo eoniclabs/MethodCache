@@ -34,7 +34,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 
 ## Why MethodCache
 
-- **One attribute, zero boilerplate.** Keys are built from the method and its arguments (values of different types never share a key, nested ones included); your service stays plain code. Overloaded methods include namespace-qualified parameter types in their identities. Arguments with only private state, including inherited fields and values nested inside an argument, are refused. Custom key providers can safely compose other keys. Generic interfaces and methods preserve their `unmanaged` constraints.
+- **One attribute, zero boilerplate.** Keys are built from the method and its arguments (values of different types never share a key, nested ones included); your service stays plain code.
 - **Fast.** A cache hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache ([numbers](#performance)).
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
@@ -184,9 +184,6 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
 policy in code, and the change applies to the next call. See [Configuration](docs/features/configuration.md).
 
-Concurrent runtime overrides preserve mutation order: delayed notifications cannot replace a newer policy or
-remove a renewed override. See [configuration](docs/features/configuration.md).
-
 ### Distributed cache
 
 <!-- snippet: readme-distributed -->
@@ -196,24 +193,14 @@ builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCac
 ```
 <!-- endSnippet -->
 
-Results live in memory and in Redis (or SQL Server, or a custom `IAtomicInvalidationStore` via `AddMethodCacheDistributedCache()`).
-Redis and SQL Server write invalidation timestamps atomically and never shorten a newer stamp’s retention.
-SQL Server hashes exact cache keys to prevent collation from merging distinct data or invalidation metadata.
-A custom method-result cache must implement `IAtomicInvalidationStore` as well as `IDistributedCache`; a plain
-read followed by a write is insufficient, and an unsupported provider is rejected when the cache manager is resolved.
-
+Results live in memory and in Redis (or SQL Server, or your own cache via `AddMethodCacheDistributedCache()`, which
+must implement `IAtomicInvalidationStore` as well as `IDistributedCache`).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
-
-SQL Server backplane messages and retention cleanup are isolated by `KeyPrefix` when applications share
-the same tables. Failed subscriber callbacks are retried before their messages are acknowledged.
-Existing tables need the schema upgrade described in the [SQL Server guide](src/MethodCache.SqlServer/README.md).
 Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
 If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips
 Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly
 during the outage stays in that instance's memory, and the value it replaced is removed everywhere once Redis is back.
-
-Bulk reads return the value selected by the cache, including a distributed hit or a concurrent writer, so they
-agree with individual reads.
+SQL Server tables created by an earlier build need the schema upgrade in the [SQL Server guide](src/MethodCache.SqlServer/README.md).
 
 ### Caching code you don't own
 
@@ -261,12 +248,9 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
-that URL. Older in-flight GETs publish only into an obsolete cache generation. With `UseDistributedCache`, all instances share the responses through MethodCache's own Redis or SQL Server
-cache, falling back to the app's `IDistributedCache` when no owned cache is registered.
-`no-cache` requires successful validation even when the stale options are enabled. A 304 that forbids storage
-removes the previous response.
+that URL. With `UseDistributedCache`, all instances share the responses through MethodCache's Redis or SQL Server
+cache (or the app's `IDistributedCache` when neither is registered).
 See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
-
 
 ### Monitoring
 
@@ -286,12 +270,7 @@ app.MapMethodCacheAdmin("CacheAdmins");                       // an authorizatio
 The tracing and metrics extensions live in the `OpenTelemetry.Trace` and `OpenTelemetry.Metrics` namespaces, like
 every OpenTelemetry instrumentation. The admin endpoints show hits, misses, live entries and every method's effective
 policy, and can invalidate by tag.
-The same operations are available in code through `ICacheAdministrator`. Entry listing keeps at most the
-requested `limit` candidates in memory while scanning for the first keys in ordinal order.
-
-Memory statistics estimate cached payloads, including current string and array lengths. A configured weigher
-reports its total weight instead of that estimate. Sampling bounds serialization with `SamplingMaxEntries` and
-reuses estimates according to `SamplingRecalculationInterval`.
+The same operations are available in code through `ICacheAdministrator`.
 
 ### Native AOT
 
@@ -346,12 +325,6 @@ auto-recovery. MethodCache is for when you want caching to be a line of metadata
 
 ## Packages
 
-Distributed-cache backplane callbacks stop when the cache manager is disposed. Use asynchronous service-provider
-disposal to await cleanup; a Redis connection supplied by the application remains available to its other users.
-Buffer-capable L2 reads deserialize directly from the owned entry buffer without making another full entry copy.
-The OpenTelemetry metric producer records normal hit tags without allocations and skips tag construction when
-an instrument has no listeners; SDK processors and exporters have their own costs.
-
 Supported frameworks: .NET 8, 9 and 10.
 
 | Package | What it adds | Status |
@@ -362,7 +335,7 @@ Supported frameworks: .NET 8, 9 and 10.
 | [`MethodCache.AspNetCore`](src/MethodCache.AspNetCore/README.md) | Admin endpoints and a health check | Experimental |
 | [`MethodCache.OpenTelemetry`](src/MethodCache.OpenTelemetry/README.md) | Tracing and metrics | Beta |
 | `MethodCache.Serialization.MessagePack` | MessagePack instead of JSON in the distributed cache | Experimental |
-| [`MethodCache.HttpCaching`](src/MethodCache.HttpCaching/README.md) | HTTP caching for `HttpClient`: Cache-Control, ETag revalidation, Vary, body buffering with bounded reads and pooled temporary storage, optionally shared through the distributed cache | Experimental |
+| [`MethodCache.HttpCaching`](src/MethodCache.HttpCaching/README.md) | HTTP caching for `HttpClient`: Cache-Control, ETag revalidation, Vary, optionally shared through the distributed cache | Experimental |
 
 ## Documentation
 

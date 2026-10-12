@@ -23,10 +23,6 @@ builder.Services.AddMethodCacheRedis(options =>
 ```
 <!-- endSnippet -->
 
-Invalidation stamps use a Lua operation that keeps the highest signed timestamp and preserves the longest
-retention. An older write that arrives later cannot undo a newer invalidation. Upgrade all instances sharing
-a prefix together so no older build still writes stamps unconditionally.
-
 MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
 
 To share a connection your app already has instead:
@@ -38,9 +34,8 @@ builder.Services.AddMethodCacheRedis(options =>
 ```
 <!-- endSnippet -->
 
-MethodCache doesn't dispose a shared connection. It does remove its own pub/sub handler and connection-restored
-handler when the service provider is disposed, leaving the connection and other subscribers available to the app.
-Use asynchronous service-provider disposal to wait for subscription cleanup.
+MethodCache doesn't dispose a shared connection; disposing the service provider only removes MethodCache's own
+subscriptions (`DisposeAsync` waits for that).
 
 ## How it works
 
@@ -48,6 +43,7 @@ Use asynchronous service-provider disposal to wait for subscription cleanup.
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack. Each entry records its format, so after a switch older entries count as misses.
 - MethodCache reads Redis on an in-memory miss and writes new results to both.
 - Invalidating a key removes it from Redis. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
+- Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one. Upgrade every instance that shares a `KeyPrefix` together, since earlier builds don't.
 - Both also publish a message, so every instance drops its in-memory copies at once.
 - Pub/sub delivers nothing while a connection is down. When the connection comes back, the instance clears its in-memory cache and reads entries from Redis again.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
