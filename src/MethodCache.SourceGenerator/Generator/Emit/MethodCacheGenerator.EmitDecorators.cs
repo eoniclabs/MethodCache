@@ -118,7 +118,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("    [System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
                 sb.AppendLine("    [System.Diagnostics.DebuggerNonUserCode]");
                 // Internal: generated code in the application's assembly, never part of its public API
-                sb.AppendLine($"    internal sealed class {className}{genericParams} : {interfaceFqn}");
+                sb.AppendLine($"    internal sealed class {className}{genericParams} : {interfaceFqn}, global::System.IDisposable, global::System.IAsyncDisposable");
 
                 // Add generic constraints after class declaration
                 foreach (var typeParam in Utils.AllTypeParameters(info.Symbol))
@@ -161,6 +161,7 @@ namespace MethodCache.SourceGenerator
 
                 foreach (var method in allMethods)
                 {
+                    if (method.Parameters.Length == 0 && method.ContainingType.ToDisplayString() is "System.IDisposable" or "System.IAsyncDisposable") continue;
                     var cached = info.CachedMethods.FirstOrDefault(m => SymbolEqualityComparer.Default.Equals(m.Method, method));
                     var invalidate = info.InvalidateMethods.FirstOrDefault(m => SymbolEqualityComparer.Default.Equals(m.Method, method));
 
@@ -171,6 +172,20 @@ namespace MethodCache.SourceGenerator
                     else
                         EmitPassthroughMethod(sb, method);
                 }
+
+                sb.AppendLine("        void global::System.IDisposable.Dispose()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            if (!this._ownsDecorated) return;");
+                sb.AppendLine("            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();");
+                sb.AppendLine("            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException(\"This owned implementation requires asynchronous disposal. Use DisposeAsync.\");");
+                sb.AppendLine("        }");
+                sb.AppendLine("        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            if (!this._ownsDecorated) return default;");
+                sb.AppendLine("            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();");
+                sb.AppendLine("            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();");
+                sb.AppendLine("            return default;");
+                sb.AppendLine("        }");
 
                 // Properties, indexers and events always call the decorated instance
                 var otherMembers = info.Symbol.GetMembers()

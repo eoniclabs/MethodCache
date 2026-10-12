@@ -17,7 +17,7 @@ namespace App
 {
     [System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
     [System.Diagnostics.DebuggerNonUserCode]
-    internal sealed class IUserServiceDecorator : global::App.IUserService
+    internal sealed class IUserServiceDecorator : global::App.IUserService, global::System.IDisposable, global::System.IAsyncDisposable
     {
         private readonly global::App.IUserService _decorated;
         private readonly bool _ownsDecorated;
@@ -106,6 +106,19 @@ namespace App
             return ((global::App.IUserService)this._decorated).CountAsync();
         }
 
+        void global::System.IDisposable.Dispose()
+        {
+            if (!this._ownsDecorated) return;
+            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
+            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException("This owned implementation requires asynchronous disposal. Use DisposeAsync.");
+        }
+        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()
+        {
+            if (!this._ownsDecorated) return default;
+            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();
+            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
+            return default;
+        }
     }
 }
 #pragma warning restore CS8019
