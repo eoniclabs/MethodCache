@@ -30,10 +30,11 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
 
     public string Name => "MethodCache (Manual Key)";
 
-    public DirectApiMethodCacheAdapter()
+    public DirectApiMethodCacheAdapter(TimeProvider? timeProvider = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        if (timeProvider != null) services.AddSingleton(timeProvider);
 
         // Add MethodCache infrastructure (just the storage, no source generation)
         services.AddMethodCache(config =>
@@ -54,16 +55,10 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
         Func<Task<TValue>> factory,
         TimeSpan duration)
     {
-        // Try the optimized fast-path lookup first (no key generation, no extra allocations)
-        var cachedTask = _cacheManager.TryGetFastAsync<TValue>(key);
-        var cached = cachedTask.IsCompletedSuccessfully
-            ? cachedTask.Result
-            : await cachedTask.ConfigureAwait(false);
-
-        if (cached != null && !EqualityComparer<TValue>.Default.Equals(cached, default))
+        if (_cacheManager.TryGetFast<TValue>(key, out var cached))
         {
             _stats.Hits++;
-            return cached;
+            return cached!;
         }
 
         // Cache miss - execute factory
@@ -96,12 +91,7 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGet<TValue>(string key, out TValue? value)
     {
-        var valueTask = _cacheManager.TryGetFastAsync<TValue>(key);
-        value = valueTask.IsCompletedSuccessfully
-            ? valueTask.Result
-            : valueTask.GetAwaiter().GetResult();
-
-        var found = value != null && !EqualityComparer<TValue>.Default.Equals(value, default);
+        var found = _cacheManager.TryGetFast(key, out value);
 
         if (found)
             _stats.Hits++;
@@ -144,7 +134,6 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
 
     public void Dispose()
     {
-        _cache?.Dispose();
         (_serviceProvider as IDisposable)?.Dispose();
     }
 }

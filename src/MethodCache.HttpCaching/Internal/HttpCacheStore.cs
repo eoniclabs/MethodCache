@@ -13,6 +13,12 @@ namespace MethodCache.HttpCaching.Internal;
 /// </summary>
 internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
 {
+    // A fixed number of non-expiring epoch slots bounds metadata without allowing an expired tombstone to
+    // resurrect an old response. A collision only causes an additional cache miss for an unrelated URL.
+    private const int GenerationSlots = 4096;
+    // Maximum absolute expiry also overrides providers' default sliding expiry (such as SQL Server).
+    private static DistributedCacheEntryOptions PermanentEntry => new() { AbsoluteExpiration = DateTimeOffset.MaxValue };
+    private readonly string?[] _generations = new string?[GenerationSlots];
     private readonly MemoryCache _memory;
     private readonly IDistributedCache? _distributed;
     private readonly TimeProvider _timeProvider;
@@ -37,6 +43,82 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
             // Entries expire on the same clock the handler judges freshness by
             Clock = ReferenceEquals(_timeProvider, TimeProvider.System) ? null : new TimeProviderClock(_timeProvider)
         });
+    }
+
+    public async ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var slot = GenerationSlot(key);
+        if (_distributed == null)
+        {
+            // Process-local slots are never evicted and live exactly as long as the entries they guard, so the
+            // empty initial namespace cannot come back after an invalidation.
+            return Volatile.Read(ref _generations[slot]) ?? string.Empty;
+        }
+
+        try
+        {
+            var generationKey = GenerationKey(slot);
+            var bytes = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
+            if (bytes == null)
+            {
+                // A missing record (never written, or evicted by the backend) must never map to a namespace that
+                // was used before: start a fresh one. Entries of the lost generation become unreachable, so a lost
+                // record can only cause misses. The new value is unique, so even if this write lands after a
+                // concurrent invalidation it cannot make a previously observed namespace current again.
+                var fresh = Guid.NewGuid();
+                await _distributed.SetAsync(generationKey, fresh.ToByteArray(), PermanentEntry, cancellationToken).ConfigureAwait(false);
+                return fresh.ToString("N");
+            }
+            return bytes.Length == 16 ? new Guid(bytes).ToString("N") : Guid.NewGuid().ToString("N");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Reading an HTTP cache generation failed");
+            return Guid.NewGuid().ToString("N"); // Fail open to the origin, never to an old cache namespace.
+        }
+    }
+
+    public async ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var slot = GenerationSlot(key);
+        if (_distributed == null)
+        {
+            Volatile.Write(ref _generations[slot], Guid.NewGuid().ToString("N"));
+            return;
+        }
+
+        var generationKey = GenerationKey(slot);
+        // The namespace to retire is the one current now, after the origin write. Every generation value is
+        // unique and written once, so any stored value different from it was written after this read: ours, or a
+        // concurrent invalidator's (another instance, or a URL sharing the slot). Either retires the old namespace.
+        var previous = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var generation = Guid.NewGuid().ToByteArray();
+            await _distributed.SetAsync(generationKey, generation, PermanentEntry, cancellationToken).ConfigureAwait(false);
+            var stored = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
+            if (stored != null && (previous == null || !previous.AsSpan().SequenceEqual(stored)))
+            {
+                return;
+            }
+            // Some providers ignore an insert lost to a concurrent first insert. Retry with a fresh generation;
+            // never retry a previously observed value, which could make old response data reachable again.
+        }
+        throw new InvalidOperationException("The distributed HTTP cache could not confirm the invalidation generation.");
+    }
+
+    private string GenerationKey(int slot) => _keyPrefix + "$generation:" + slot.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static int GenerationSlot(string key)
+    {
+        var hash = 2166136261u;
+        foreach (var character in key)
+        {
+            hash = unchecked((hash ^ character) * 16777619u);
+        }
+        return (int)(hash & (GenerationSlots - 1));
     }
 
     public async ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
@@ -118,6 +200,10 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
             return ValueTask.CompletedTask;
         }
 
+        for (var slot = 0; slot < GenerationSlots; slot++)
+        {
+            Volatile.Write(ref _generations[slot], Guid.NewGuid().ToString("N"));
+        }
         _memory.Clear();
         _logger.LogInformation("HTTP cache cleared");
         return ValueTask.CompletedTask;

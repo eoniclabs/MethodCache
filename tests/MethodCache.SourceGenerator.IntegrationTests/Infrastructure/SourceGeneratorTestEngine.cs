@@ -28,7 +28,7 @@ public class SourceGeneratorTestEngine
     /// Compiles source code with the MethodCache source generator and returns a test assembly
     /// </summary>
     public Task<GeneratedTestAssembly> CompileWithSourceGeneratorAsync(
-        string sourceCode, 
+        string sourceCode,
         string assemblyName = "TestAssembly",
         LanguageVersion languageVersion = LanguageVersion.Latest)
     {
@@ -43,15 +43,16 @@ public class SourceGeneratorTestEngine
             _references,
             new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
-                optimizationLevel: OptimizationLevel.Debug));
+                optimizationLevel: OptimizationLevel.Debug,
+                allowUnsafe: true));
 
         // Apply source generator
         var generator = new MethodCacheGenerator();
         var driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() }, parseOptions: parseOptions);
-        
+
         driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
-            compilation, 
-            out var outputCompilation, 
+            compilation,
+            out var outputCompilation,
             out var diagnostics);
 
         // Check for compilation errors
@@ -84,7 +85,7 @@ public class SourceGeneratorTestEngine
         // Get generated sources for debugging
         var generatedSources = new Dictionary<string, string>();
         var runResult = driver.GetRunResult();
-        
+
         foreach (var result in runResult.Results)
         {
             foreach (var generated in result.GeneratedSources)
@@ -141,7 +142,7 @@ public class SourceGeneratorTestEngine
                 .ToList();
 
             logger?.Invoke($"Found {methods.Count} registration methods in {extensionType.Name}: {string.Join(", ", methods.Select(m => m.Name))}");
-            
+
             foreach (var method in methods)
             {
                 logger?.Invoke($"Method: {method.Name}, Parameters: {string.Join(", ", method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))}");
@@ -154,7 +155,7 @@ public class SourceGeneratorTestEngine
                     // Call the generated AddXWithCaching method
                     // These methods typically take (IServiceCollection, Func<IServiceProvider, object>)
                     var parameters = method.GetParameters();
-                    if (parameters.Length == 2 && 
+                    if (parameters.Length == 2 &&
                         parameters[0].ParameterType == typeof(IServiceCollection))
                     {
                         // Create a factory that returns a mock implementation
@@ -163,13 +164,13 @@ public class SourceGeneratorTestEngine
                         {
                             var mockImplementation = CreateMockImplementation(assembly, serviceType);
                             logger?.Invoke($"Created mock implementation for {serviceType.Name}");
-                            
+
                             // Create factory delegate using reflection to avoid type coercion issues
                             var factoryType = parameters[1].ParameterType; // Should be Func<IServiceProvider, ServiceType>
                             var createFactoryMethod = typeof(SourceGeneratorTestEngine)
                                 .GetMethod(nameof(CreateTypedFactory), BindingFlags.NonPublic | BindingFlags.Instance)!
                                 .MakeGenericMethod(serviceType);
-                            
+
                             var factoryDelegate = createFactoryMethod.Invoke(this, new object[] { mockImplementation });
 
                             if (factoryDelegate != null)
@@ -223,14 +224,14 @@ namespace {namespaceName}
         // Extract interface type from method name like AddIUserServiceWithCaching
         var serviceName = method.Name.Substring(3); // Remove "Add"
         serviceName = serviceName.Substring(0, serviceName.Length - 12); // Remove "WithCaching"
-        
+
         // The service type should be in the test assembly, not the extension assembly
         // Look at the method's parameter types to find the correct type
         var parameters = method.GetParameters();
         if (parameters.Length >= 2)
         {
             var factoryParam = parameters[1];
-            if (factoryParam.ParameterType.IsGenericType && 
+            if (factoryParam.ParameterType.IsGenericType &&
                 factoryParam.ParameterType.GetGenericTypeDefinition() == typeof(Func<,>))
             {
                 // Get the return type of the Func<IServiceProvider, ServiceType>
@@ -241,7 +242,7 @@ namespace {namespaceName}
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -253,7 +254,7 @@ namespace {namespaceName}
 
         if (implementation != null)
         {
-            return Activator.CreateInstance(implementation) ?? 
+            return Activator.CreateInstance(implementation) ??
                    throw new InvalidOperationException($"Could not create instance of {implementation.Name}");
         }
 
@@ -322,7 +323,7 @@ public class GeneratedTestAssembly
     public IReadOnlyList<Diagnostic> Diagnostics { get; }
 
     public GeneratedTestAssembly(
-        Assembly assembly, 
+        Assembly assembly,
         IReadOnlyDictionary<string, string> generatedSources,
         IReadOnlyList<Diagnostic> diagnostics)
     {
@@ -339,7 +340,7 @@ public class GeneratedTestAssembly
             writer.WriteLine($"\n--- {fileName} ---");
             writer.WriteLine(source);
         }
-        
+
         if (Diagnostics.Any())
         {
             writer.WriteLine("\n=== DIAGNOSTICS ===");

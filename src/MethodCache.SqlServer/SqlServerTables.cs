@@ -104,12 +104,23 @@ internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServe
             BEGIN
                 CREATE TABLE {options.QualifiedInvalidationsTableName} (
                     [Id] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [Scope] binary(32) NOT NULL,
                     [InstanceId] varchar(32) NOT NULL,
                     [MessageType] tinyint NOT NULL,
                     [Target] nvarchar(max) NOT NULL,
                     [CreatedAt] datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
-                CREATE NONCLUSTERED INDEX [Index_CreatedAt] ON {options.QualifiedInvalidationsTableName} ([CreatedAt]);
             END
+
+            -- Earlier versions did not isolate messages by prefix. Preserve those rows, but leave their
+            -- scope NULL so no application treats an ambiguous legacy message as its own invalidation.
+            IF COL_LENGTH(@invalidations, 'Scope') IS NULL
+                ALTER TABLE {options.QualifiedInvalidationsTableName} ADD [Scope] binary(32) NULL;
+
+            -- Dynamic SQL compiles after the optional ALTER, including on an existing old table.
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(@invalidations) AND name = 'Index_Scope_Id')
+                EXEC(N'CREATE NONCLUSTERED INDEX [Index_Scope_Id] ON {options.QualifiedInvalidationsTableName.Replace("'", "''", StringComparison.Ordinal)} ([Scope], [Id]);');
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(@invalidations) AND name = 'Index_Scope_CreatedAt')
+                EXEC(N'CREATE NONCLUSTERED INDEX [Index_Scope_CreatedAt] ON {options.QualifiedInvalidationsTableName.Replace("'", "''", StringComparison.Ordinal)} ([Scope], [CreatedAt]);');
             """;
 
         var connection = new SqlConnection(options.ConnectionString);

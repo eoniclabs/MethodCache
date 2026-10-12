@@ -1,5 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Testcontainers.MsSql;
+using MethodCache.SqlServer;
+using Microsoft.Extensions.Hosting;
 
 namespace MethodCache.SqlServer.IntegrationTests;
 
@@ -9,6 +11,12 @@ namespace MethodCache.SqlServer.IntegrationTests;
 /// </summary>
 public sealed class SqlServerFixture : IAsyncLifetime
 {
+    internal static async Task WaitForTablesAsync(IEnumerable<IHostedService> hostedServices, CancellationToken cancellationToken = default)
+    {
+        foreach (var tables in hostedServices.OfType<SqlServerTables>())
+            if (tables.Creating is { } creation) await creation.WaitAsync(cancellationToken);
+    }
+
     private MsSqlContainer? _container;
 
     public string? ConnectionString { get; private set; }
@@ -20,14 +28,16 @@ public sealed class SqlServerFixture : IAsyncLifetime
         ConnectionString = Environment.GetEnvironmentVariable("METHODCACHE_SQLSERVER_CONNECTION");
         if (!string.IsNullOrEmpty(ConnectionString))
         {
+            await WarmConnectionAsync(ConnectionString);
             return;
         }
 
         try
         {
-            _container = new MsSqlBuilder().WithImage("mcr.microsoft.com/mssql/server:2022-latest").Build();
+            _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
             await _container.StartAsync();
             ConnectionString = await CreateDatabaseAsync(_container.GetConnectionString());
+            await WarmConnectionAsync(ConnectionString);
         }
         catch (Exception ex) when (!InfrastructureRequired)
         {
@@ -51,6 +61,16 @@ public sealed class SqlServerFixture : IAsyncLifetime
         }
 
         return new SqlConnectionStringBuilder(serverConnectionString) { InitialCatalog = "MethodCacheTests" }.ConnectionString;
+    }
+
+    private static async Task WarmConnectionAsync(string connectionString)
+    {
+        // Open/login/TDS initialization happens before the cache's operation deadline is involved.
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(deadline.Token);
+        await using var command = new SqlCommand("SELECT 1;", connection);
+        await command.ExecuteScalarAsync(deadline.Token);
     }
 
     public async Task DisposeAsync()

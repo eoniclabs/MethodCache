@@ -10,8 +10,9 @@ public sealed class HttpCacheStorageOptions
     public long MaxCacheSize { get; set; } = 100 * 1024 * 1024;
 
     /// <summary>
-    /// Keep responses in the registered <c>IDistributedCache</c> instead of memory, for example the Redis or SQL Server
-    /// cache that <c>AddMethodCacheRedis()</c> / <c>AddMethodCacheSqlServer()</c> register, so every instance of the app
+    /// Keep responses in MethodCache's own distributed cache (registered by <c>AddMethodCacheRedis()</c> or
+    /// <c>AddMethodCacheSqlServer()</c>), or fall back to the app's <c>IDistributedCache</c> when no owned cache is
+    /// registered. The app's cache registration is left unchanged, so every instance of the app
     /// shares them, an ETag fetched by one instance is revalidated by all, and a POST on one instance invalidates for
     /// all. Default <c>false</c>.
     /// </summary>

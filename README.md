@@ -193,12 +193,14 @@ builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCac
 ```
 <!-- endSnippet -->
 
-Results live in memory and in Redis (or SQL Server, or any `IDistributedCache` via `AddMethodCacheDistributedCache()`).
+Results live in memory and in Redis (or SQL Server, or your own cache via `AddMethodCacheDistributedCache()`, which
+must implement `IAtomicInvalidationStore` as well as `IDistributedCache`).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
 Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
 If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips
 Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly
 during the outage stays in that instance's memory, and the value it replaced is removed everywhere once Redis is back.
+SQL Server tables created by an earlier build need the schema upgrade in the [SQL Server guide](src/MethodCache.SqlServer/README.md).
 
 ### Caching code you don't own
 
@@ -246,8 +248,9 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
-that URL. With `UseDistributedCache`, all instances share the responses through the same Redis or SQL Server.
-See the [package README](src/MethodCache.HttpCaching/README.md).
+that URL. With `UseDistributedCache`, all instances share the responses through MethodCache's Redis or SQL Server
+cache (or the app's `IDistributedCache` when neither is registered).
+See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
 
 ### Monitoring
 
@@ -339,7 +342,7 @@ Supported frameworks: .NET 8, 9 and 10.
 The [documentation](docs/README.md) has a page per feature, and every C# example in it is compiled and tested in CI:
 
 - [Getting started](docs/getting-started.md)
-- Caching methods: [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
+- Caching methods: [generated decorators](docs/features/source-generator.md), [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
   [invalidation](docs/features/invalidation.md), [fail-safe](docs/features/fail-safe.md),
   [conditional caching](docs/features/conditional-caching.md), [configuration](docs/features/configuration.md)
 - [Manual caching](docs/features/manual-caching.md) and [third-party code](docs/features/third-party.md)

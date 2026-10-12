@@ -6,6 +6,34 @@ namespace MethodCache.HttpCaching;
 public interface IHttpCacheStorage
 {
     /// <summary>
+    /// Reads the current publication generation for a URL key. Requests publish only within this generation.
+    /// </summary>
+    /// <param name="key">The URL cache key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The current opaque generation. Storage that cannot lose its generations may return an empty string before the first invalidation.</returns>
+    /// <remarks>
+    /// Generations must be shared by every instance that shares entries, and a generation value must never be reused.
+    /// When the generation record is missing and may have been lost (for example evicted by a distributed backend),
+    /// do not return a value used before, such as the empty string: store and return a new unique generation, so a
+    /// lost record only causes cache misses. A failed read must return a unique non-reusable generation or throw, so
+    /// it cannot make an older namespace visible.
+    /// </remarks>
+    ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Changes a URL's publication generation to a unique value, making previously published responses unreachable.
+    /// </summary>
+    /// <param name="key">The URL cache key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// Only invalidations may change a generation. Each change must publish a fresh value, including after a retry;
+    /// ordinary response writers must never replace it. Implementations may group keys to bound generation storage.
+    /// The call has done its job once the generation differs from the one current when it started: a fresh value
+    /// stored by a concurrent invalidation of the same key or group is as good as its own.
+    /// </remarks>
+    ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Retrieves a cache entry by its key.
     /// </summary>
     /// <param name="key">The cache key.</param>

@@ -30,6 +30,8 @@ export DOTNET_NOLOGO=1
 export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 # Deterministic paths in the shipped DLLs and PDBs (see Directory.Build.props)
 export CI=true
+# High and critical NuGet advisories fail restore (see Directory.Build.props and README.md)
+export MethodCacheEnforceAudit=true
 
 solution=MethodCache.sln
 without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"

@@ -25,7 +25,7 @@ public sealed class RedisFixture : IAsyncLifetime
 
         try
         {
-            _container = new RedisBuilder().WithImage("redis:7-alpine").Build();
+            _container = new RedisBuilder("redis:7-alpine").Build();
             await _container.StartAsync();
             Configuration = _container.GetConnectionString();
         }

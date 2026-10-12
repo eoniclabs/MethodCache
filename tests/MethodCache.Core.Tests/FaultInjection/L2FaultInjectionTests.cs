@@ -29,7 +29,7 @@ public class L2FaultInjectionTests
     private const string EntryKey = "methodcache:e:key";
 
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
-    private readonly IDistributedCache _shared = new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
+    private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
     private readonly ChaosBackplaneHub _hub;
 
     public L2FaultInjectionTests()

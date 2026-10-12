@@ -29,7 +29,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     public async Task RuntimeSource_IsRegisteredOnce_EvenWhenSeveralAddMethodsAreCalled()
     {
         var services = new ServiceCollection();
-        services.AddDistributedMemoryCache();
+        services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache();
         services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().Build());
         services.AddMethodCacheDistributedCache();
@@ -169,7 +169,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
             [$"MethodCache:Services:{Id}:Duration"] = "00:05:00",
         }).Build();
         var services = new ServiceCollection();
-        services.AddDistributedMemoryCache();
+        services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache(c => c.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1))));
         services.AddMethodCacheFromConfiguration(config);
         services.AddMethodCacheDistributedCache();

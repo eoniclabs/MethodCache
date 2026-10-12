@@ -10,13 +10,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace MethodCache.Core.Runtime.Distributed
 {
     /// <summary>
-    /// The distributed cache (L2) behind <see cref="MethodCache.Extensibility.InMemoryCacheManager"/>. Entries are stored in any
-    /// <see cref="IDistributedCache"/> (Redis, SQL Server, ...) together with their tags and creation time.
+    /// The distributed cache (L2) behind <see cref="MethodCache.Extensibility.InMemoryCacheManager"/>. Entries are stored in an
+    /// <see cref="IAtomicInvalidationStore"/> (Redis, SQL Server, ...) together with their tags and creation time.
     /// </summary>
     /// <remarks>
-    /// <para>Tags are invalidated by timestamp, as in HybridCache and FusionCache: invalidating a tag stores the
+    /// <para>Tags are invalidated by monotonic timestamp: invalidating a tag stores the
     /// time it happened, and an entry read later counts as missing when one of its tags was invalidated after the
-    /// entry was created. No reverse index from tags to keys is needed, so any distributed cache works. A removed
+    /// entry was created. No reverse index from tags to keys is needed, with backend atomic writes that cannot move timestamps backwards. A removed
     /// key leaves a short-lived removal stamp, so a load that started before the removal doesn't leave its older
     /// value behind.</para>
     /// <para>An optional <see cref="IBackplane"/> tells other nodes to drop their in-memory copies when an entry is
@@ -27,7 +27,7 @@ namespace MethodCache.Core.Runtime.Distributed
     /// until the distributed cache accepts them; until then nothing is read from it, so an invalidated value
     /// can't come back.</para>
     /// </remarks>
-    internal sealed class DistributedCacheLayer : IDisposable
+    internal sealed class DistributedCacheLayer : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Reserved tag that every entry implicitly carries; invalidating it clears the whole cache. Application tags
@@ -45,6 +45,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private const int MaxTrackedTags = 10_000;
 
         private readonly IDistributedCache _cache;
+        private readonly IAtomicInvalidationStore _stampStore;
         private readonly IBufferDistributedCache? _bufferCache;
         private readonly ISerializer _serializer;
 
@@ -86,6 +87,10 @@ namespace MethodCache.Core.Runtime.Distributed
         private Action<Exception>? _onError;
         private int _subscribed;
         private int _disposed;
+        private readonly object _lifecycleLock = new();
+        private Task _subscriptionTask = Task.CompletedTask;
+        private Task? _shutdownTask;
+        private volatile bool _subscriptionWaitTimedOut;
 
         public DistributedCacheLayer(
             IDistributedCache cache,
@@ -96,6 +101,8 @@ namespace MethodCache.Core.Runtime.Distributed
             ILogger? logger = null)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _stampStore = cache as IAtomicInvalidationStore ?? throw new ArgumentException(
+                "The distributed cache must implement IAtomicInvalidationStore so concurrent invalidations cannot move timestamps backwards. Use MethodCache.Redis/SqlServer or implement backend-atomic stamps in your custom provider.", nameof(cache));
             _bufferCache = cache as IBufferDistributedCache;
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _contentType = Encoding.UTF8.GetBytes(serializer.ContentType);
@@ -148,14 +155,20 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         public void Attach(Action<string> onKeyInvalidated, Action<string> onTagInvalidated, Action onCleared, Action<Exception> onError)
         {
-            _onRemoteKeyInvalidated = onKeyInvalidated;
-            _onRemoteTagInvalidated = onTagInvalidated;
-            _onRemoteCleared = onCleared;
-            _onError = onError;
-
-            if (_backplane != null && Interlocked.Exchange(ref _subscribed, 1) == 0)
+            lock (_lifecycleLock)
             {
-                _ = SubscribeAsync(_backplane);
+                ObjectDisposedException.ThrowIf(_disposed != 0, this);
+                _onRemoteKeyInvalidated = onKeyInvalidated;
+                _onRemoteTagInvalidated = onTagInvalidated;
+                _onRemoteCleared = onCleared;
+                _onError = onError;
+
+                if (_backplane != null && Interlocked.Exchange(ref _subscribed, 1) == 0)
+                {
+                    var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _subscriptionTask = completion.Task;
+                    _ = SubscribeAsync(_backplane, completion);
+                }
             }
         }
 
@@ -365,13 +378,11 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         private async Task<bool> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe)
         {
-            var stamp = new byte[sizeof(long)];
-            BinaryPrimitives.WriteInt64LittleEndian(stamp, now);
 
             // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
             var stamped = await Task.WhenAll(
-                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, stamp, _tagRetention), "invalidate a tag", probe))
-                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, stamp, RemovalLifetime), "remove a key", probe))))
+                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, now, _tagRetention), "invalidate a tag", probe))
+                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, now, RemovalLifetime), "remove a key", probe))))
                 .ConfigureAwait(false);
             if (stamped.Any(static result => !result.Succeeded))
             {
@@ -414,24 +425,73 @@ namespace MethodCache.Core.Runtime.Distributed
 
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            lock (_lifecycleLock)
             {
-                _retryTimer?.Dispose();
+                if (_disposed != 0) return;
+                Volatile.Write(ref _disposed, 1);
+                _onRemoteKeyInvalidated = null;
+                _onRemoteTagInvalidated = null;
+                _onRemoteCleared = null;
+                _onError = null;
+                lock (_pendingLock)
+                {
+                    _retryTimer?.Dispose();
+                    _retryTimer = null;
+                    _pendingKeys.Clear();
+                    _pendingTags.Clear();
+                }
+                _shutdownTask = ShutdownAsync();
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            Dispose();
+            Task shutdown;
+            lock (_lifecycleLock) shutdown = _shutdownTask!;
+            await shutdown.ConfigureAwait(false);
+        }
+
+        private async Task ShutdownAsync()
+        {
+            if (_backplane == null || _subscribed == 0) return;
+            try
+            {
+                await _subscriptionTask.WaitAsync(_timeout, _time).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                _subscriptionWaitTimedOut = true;
+            }
+            await UnsubscribeAsync().ConfigureAwait(false);
+        }
+
+        private async Task UnsubscribeAsync()
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(_timeout, _time);
+                await _backplane!.UnsubscribeAsync(timeout.Token).WaitAsync(_timeout, _time).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "MethodCache could not finish unsubscribing from its backplane.");
             }
         }
 
         // ---------- operations, each bounded by the timeout ----------
 
-        private static async Task<byte[]?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
+        private static async Task<ReadOnlyMemory<byte>?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
         {
             if (layer._bufferCache == null)
             {
-                return await layer._cache.GetAsync(layer._entryPrefix + key, cancellationToken).ConfigureAwait(false);
+                var bytes = await layer._cache.GetAsync(layer._entryPrefix + key, cancellationToken).ConfigureAwait(false);
+                return bytes == null ? null : new ReadOnlyMemory<byte>(bytes);
             }
 
             var buffer = new ArrayBufferWriter<byte>();
             return await layer._bufferCache.TryGetAsync(layer._entryPrefix + key, buffer, cancellationToken).ConfigureAwait(false)
-                ? buffer.WrittenSpan.ToArray()
+                ? buffer.WrittenMemory
                 : null;
         }
 
@@ -450,10 +510,9 @@ namespace MethodCache.Core.Runtime.Distributed
             return true;
         }
 
-        private static async Task<bool> StoreStampAsync(DistributedCacheLayer layer, (string Key, byte[] Stamp, TimeSpan Lifetime) state, CancellationToken cancellationToken)
+        private static async Task<bool> StoreStampAsync(DistributedCacheLayer layer, (string Key, long Timestamp, TimeSpan Lifetime) state, CancellationToken cancellationToken)
         {
-            var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = state.Lifetime };
-            await layer._cache.SetAsync(state.Key, state.Stamp, options, cancellationToken).ConfigureAwait(false);
+            await layer._stampStore.WriteInvalidationStampAsync(state.Key, state.Timestamp, state.Lifetime, cancellationToken).ConfigureAwait(false);
             return true;
         }
 
@@ -652,6 +711,7 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             lock (_pendingLock)
             {
+                if (Volatile.Read(ref _disposed) != 0) return;
                 _pendingKeys.UnionWith(keys);
                 _pendingTags.UnionWith(tags);
 
@@ -741,7 +801,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
-        private async Task SubscribeAsync(IBackplane backplane)
+        private async Task SubscribeAsync(IBackplane backplane, TaskCompletionSource completion)
         {
             try
             {
@@ -751,42 +811,53 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 _onError?.Invoke(ex);
             }
+            finally
+            {
+                // A client that ignores cancellation can register after bounded shutdown has returned.
+                if (_subscriptionWaitTimedOut)
+                    await UnsubscribeAsync().ConfigureAwait(false);
+                completion.TrySetResult();
+            }
         }
 
         private Task OnBackplaneMessageAsync(BackplaneMessage message)
         {
-            if (message.InstanceId == _backplane!.InstanceId)
+            lock (_lifecycleLock)
             {
+                if (_disposed != 0) return Task.CompletedTask;
+                if (message.InstanceId == _backplane!.InstanceId)
+                {
+                    return Task.CompletedTask;
+                }
+
+                try
+                {
+                    switch (message.Type)
+                    {
+                        case BackplaneMessageType.KeyInvalidation when message.Key != null:
+                            _onRemoteKeyInvalidated?.Invoke(message.Key);
+                            break;
+
+                        case BackplaneMessageType.TagInvalidation when message.Tag == ClearTag:
+                        case BackplaneMessageType.ClearAll:
+                            _tagStamps.Clear();
+                            _onRemoteCleared?.Invoke();
+                            break;
+
+                        case BackplaneMessageType.TagInvalidation when message.Tag != null:
+                            // Re-read the stamp the other node wrote rather than trusting this node's clock
+                            _tagStamps.TryRemove(message.Tag, out _);
+                            _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _onError?.Invoke(ex);
+                }
+
                 return Task.CompletedTask;
             }
-
-            try
-            {
-                switch (message.Type)
-                {
-                    case BackplaneMessageType.KeyInvalidation when message.Key != null:
-                        _onRemoteKeyInvalidated?.Invoke(message.Key);
-                        break;
-
-                    case BackplaneMessageType.TagInvalidation when message.Tag == ClearTag:
-                    case BackplaneMessageType.ClearAll:
-                        _tagStamps.Clear();
-                        _onRemoteCleared?.Invoke();
-                        break;
-
-                    case BackplaneMessageType.TagInvalidation when message.Tag != null:
-                        // Re-read the stamp the other node wrote rather than trusting this node's clock
-                        _tagStamps.TryRemove(message.Tag, out _);
-                        _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _onError?.Invoke(ex);
-            }
-
-            return Task.CompletedTask;
         }
 
         // ---------- entry format ----------

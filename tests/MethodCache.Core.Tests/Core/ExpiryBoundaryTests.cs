@@ -181,7 +181,7 @@ public class ExpiryBoundaryTests
     [Fact]
     public async Task DistributedEntry_KeepsItsOriginalExpiry_WhenAnotherInstanceReadsItLater()
     {
-        var shared = new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
+        var shared = new MethodCache.TestSupport.AtomicTestCache();
         var first = CreateManager(distributed: CreateLayer(shared));
         var second = CreateManager(distributed: CreateLayer(shared));
         var policy = Policy(TimeSpan.FromSeconds(10));
@@ -220,8 +220,9 @@ public class ExpiryBoundaryTests
     }
 
     /// <summary>Never answers until the caller's token is cancelled.</summary>
-    private sealed class HangingDistributedCache : IDistributedCache
+    private sealed class HangingDistributedCache : MethodCache.Extensibility.IAtomicInvalidationStore
     {
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => Task.Delay(Timeout.Infinite, cancellationToken);
         public byte[]? Get(string key) => throw new NotSupportedException();
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => throw new NotSupportedException();
         public void Refresh(string key) => throw new NotSupportedException();

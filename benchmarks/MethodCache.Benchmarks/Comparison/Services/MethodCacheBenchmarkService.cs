@@ -6,12 +6,16 @@ namespace MethodCache.Benchmarks.Comparison.Services;
 /// </summary>
 public class MethodCacheBenchmarkService : IMethodCacheBenchmarkService
 {
-    private static readonly SamplePayload _payload = new()
+    private static readonly SamplePayload _defaultPayload = new()
     {
         Id = 1,
         Name = "Cached",
         Data = new byte[1024]
     };
+
+    private readonly SamplePayload _payload;
+
+    public MethodCacheBenchmarkService(SamplePayload? payload = null) => _payload = payload ?? _defaultPayload;
 
     /// <summary>
     /// Optional factory function for GetOrCreateAsync/GetOrCreate methods.
@@ -57,6 +61,8 @@ public class MethodCacheBenchmarkService : IMethodCacheBenchmarkService
         // Otherwise return immediately (for cache hit benchmarks)
         return _payload;
     }
+
+    public Task<T> GetOrCreateValueAsync<T>(string key, Func<Task<T>> factory) => factory();
 
     public void Set(string key, SamplePayload value)
     {

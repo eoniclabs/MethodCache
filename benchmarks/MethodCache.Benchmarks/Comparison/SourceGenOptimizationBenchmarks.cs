@@ -32,7 +32,7 @@ public class SourceGenOptimizationBenchmarks
 
         // Register the benchmark service with caching using the generated extension method
         services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp =>
-            new MethodCacheBenchmarkService());
+            new MethodCacheBenchmarkService(_testPayload));
 
         // Also setup raw MemoryCache for comparison
         services.AddMemoryCache(options =>

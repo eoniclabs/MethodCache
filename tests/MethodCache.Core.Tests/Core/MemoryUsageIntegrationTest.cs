@@ -14,6 +14,18 @@ namespace MethodCache.Core.Tests.Core
     /// </summary>
     public class MemoryUsageIntegrationTest
     {
+        [Fact]
+        public async Task DefaultStatistics_ReplacedBytePayload_ReportsItsGrowth()
+        {
+            using var cache = new InMemoryCacheManager(new MethodCache.Extensibility.NullCacheMetricsProvider(), null,
+                new Microsoft.Extensions.Time.Testing.FakeTimeProvider(), null);
+            await cache.SetAsync("key", new byte[1], TimeSpan.FromMinutes(1));
+            var small = (await cache.GetStatsAsync()).MemoryUsage;
+            await cache.SetAsync("key", new byte[1024 * 1024], TimeSpan.FromMinutes(1));
+            var large = (await cache.GetStatsAsync()).MemoryUsage;
+            Assert.True(large - small >= 1024 * 1024 - 1, $"{small} -> {large}");
+        }
+
         private readonly ITestOutputHelper _output;
 
         public MemoryUsageIntegrationTest(ITestOutputHelper output)
@@ -64,7 +76,7 @@ namespace MethodCache.Core.Tests.Core
                 _output.WriteLine($"  Hit Ratio: {stats.HitRatio:P1}");
 
                 Assert.True(stats.Entries > 0, "Should have cache entries");
-                
+
                 if (mode == MemoryUsageCalculationMode.Disabled)
                 {
                     Assert.Equal(0, stats.MemoryUsage);

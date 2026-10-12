@@ -30,7 +30,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
     private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(10);
 
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
-    private readonly IDistributedCache _shared = new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
+    private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
     private readonly ChaosBackplaneHub _hub;
     private readonly List<ServiceProvider> _providers = new();
 
@@ -102,6 +102,28 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
 
         (await Get(b, "key", "v2", "users")).Should().Be("v2");
         (await Get(a, "key", "unused", "users")).Should().Be("v2");
+    }
+
+    [Fact]
+    public async Task BulkRead_KeyOnlyInTheDistributedCache_IsNotPassedToTheFactory()
+    {
+        var (a, b, _, _) = CreateNodes();
+        (await Get(a, "stored", "A")).Should().Be("A");
+
+        var requested = new List<string>();
+        var result = await b.GetOrCreateManyAsync<string>(
+            new[] { "stored", "missing" },
+            (keys, _, _) =>
+            {
+                requested.AddRange(keys);
+                return ValueTask.FromResult<IDictionary<string, string>>(keys.ToDictionary(key => key, key => "from factory"));
+            },
+            options => options.WithDuration(Duration));
+
+        requested.Should().Equal("missing");
+        result.Should().Equal(new Dictionary<string, string> { ["stored"] = "A", ["missing"] = "from factory" });
+        (await b.TryGetAsync<string>("stored")).Value.Should().Be("A", "the distributed hit is now in B's memory");
+        (await Get(a, "missing", "unused")).Should().Be("from factory");
     }
 
     [Fact]

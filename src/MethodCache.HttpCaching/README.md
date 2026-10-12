@@ -63,8 +63,26 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 | `CacheableMethods` | GET, HEAD | POST, PUT, PATCH and DELETE are never cached, even if added. |
 | `AddDiagnosticHeaders` | `false` | Adds `X-Cache`, `X-Cache-Age` and `X-Cache-TTL` |
 
-`must-revalidate` (and `proxy-revalidate` / `s-maxage` in a shared cache) always wins: such responses are never
-served stale.
+`no-cache` requires successful validation, including when stale-while-revalidate or stale-if-error is enabled.
+A request with `no-cache` also requires validation and propagates origin errors. `must-revalidate` (and
+`proxy-revalidate` / `s-maxage` in a shared cache) forbids serving stale responses.
+
+A 304 also updates storage policy: `no-store`, `Vary: *` or shared-cache `private` removes the old response,
+including during background revalidation. Omitted `Vary` keeps the original variant selection.
+
+An in-flight GET or background revalidation that started before a successful write cannot publish a response
+into the new cache generation, including across instances. Publication generations are separate from response
+writers. The built-in store bounds this metadata to 4096 slots per storage prefix; a slot collision can cause an
+additional cache miss for another URL. Generation records use maximum absolute expiration; if the backend
+evicts one anyway, a fresh generation starts, so the loss only causes misses and never serves a response from
+before the write. Read failures fall back to the origin; invalidation write failures propagate after
+the origin write, which may already have succeeded. Custom storage implementations implement
+`GetGenerationAsync` and `InvalidateAsync` with shared, unique generations. See [HTTP caching](../../docs/features/http-caching.md).
+
+Cacheable bodies with an accurate `Content-Length` of up to 1 MB use one owned array. Larger, unknown or
+inaccurate lengths use pooled temporary storage plus the final array; a declared length never allocates more than
+1 MB up front, and a HEAD response allocates nothing for the `Content-Length` it carries. An oversized body remains readable as a stream; dispose the
+response to release its storage.
 
 ## Storage
 
@@ -80,7 +98,9 @@ builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1
 ### Sharing responses between instances
 
 With several instances of your app, each one would otherwise fetch and revalidate on its own. Turn on
-`UseDistributedCache` and responses are kept in the registered `IDistributedCache` instead of memory, the same
+`UseDistributedCache` and responses use MethodCache's own distributed cache from `AddMethodCacheRedis` or
+`AddMethodCacheSqlServer`. If neither is registered, they use the application's `IDistributedCache`. The
+application cache registration stays unchanged. Responses are kept outside memory, with the same
 Redis or SQL Server that MethodCache uses:
 
 <!-- snippet: http-distributed -->
@@ -95,7 +115,62 @@ through one instance invalidates the cached GET for all of them. If the distribu
 straight to the origin. Apps that share one Redis or SQL Server should each set their own `KeyPrefix`
 (default `methodcache-http:`). `ClearAsync()` cannot clear a distributed cache; entries there expire on their own.
 
-To store responses somewhere else entirely, register your own `IHttpCacheStorage` before `AddHttpCaching()`.
+To store responses somewhere else entirely, register your own `IHttpCacheStorage` before `AddHttpCaching()`:
+
+<!-- snippet: http-custom-storage-registration -->
+```cs
+builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
+builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+```
+<!-- endSnippet -->
+
+A custom storage must implement `GetGenerationAsync` and `InvalidateAsync`: a successful POST, PUT, PATCH or
+DELETE now invalidates only through `InvalidateAsync` (it used to call `RemoveAsync`), so a storage that implements
+it as a no-op keeps serving old responses after a write. A minimal correct storage:
+
+<!-- snippet: http-custom-storage -->
+```cs
+public sealed class DictionaryHttpCacheStorage(TimeProvider time) : IHttpCacheStorage
+{
+    private readonly ConcurrentDictionary<string, (HttpCacheEntry Entry, DateTimeOffset Expires)> _entries = new();
+    private readonly ConcurrentDictionary<string, string> _generations = new();
+
+    // Responses are stored per generation. A missing generation (never set, cleared or lost) starts a new
+    // unique one, never a value used before, so losing it can only cause cache misses.
+    public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(_generations.GetOrAdd(key, _ => Guid.NewGuid().ToString("N")));
+
+    // Called after a successful POST, PUT, PATCH or DELETE: a fresh generation hides every older response.
+    public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
+    {
+        _generations[key] = Guid.NewGuid().ToString("N");
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(_entries.TryGetValue(key, out var stored) && stored.Expires > time.GetUtcNow() ? stored.Entry : null);
+
+    public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default)
+    {
+        _entries[key] = (entry, time.GetUtcNow() + timeToLive);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        _entries.TryRemove(key, out _);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask ClearAsync(CancellationToken cancellationToken = default)
+    {
+        _generations.Clear(); // in-flight requests can then only publish into orphaned generations
+        _entries.Clear();
+        return ValueTask.CompletedTask;
+    }
+}
+```
+<!-- endSnippet -->
 
 ### Time
 

@@ -11,6 +11,9 @@ namespace MethodCache.HttpCaching.Internal;
 /// </summary>
 internal static class HttpCacheKeys
 {
+    public static string ForGeneration(string urlKey, string generation)
+        => generation.Length == 0 ? urlKey : urlKey + "|generation:" + generation;
+
     public static string ForRequest(string clientName, HttpRequestMessage request)
         => ForUri(clientName, request.Method, request.RequestUri);
 

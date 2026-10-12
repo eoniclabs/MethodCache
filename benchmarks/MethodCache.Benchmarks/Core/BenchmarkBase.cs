@@ -21,7 +21,7 @@ public abstract class BenchmarkBase
         ConfigureServices(services);
         ServiceProvider = services.BuildServiceProvider();
         Logger = ServiceProvider.GetRequiredService<ILogger<BenchmarkBase>>();
-        
+
         OnSetupComplete();
     }
 
@@ -64,11 +64,9 @@ public abstract class BenchmarkBase
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         }, typeof(BenchmarkBase).Assembly);
 
-        services.AddSingleton(sp => (InMemoryCacheManager)sp.GetRequiredService<ICacheManager>());
-
         // Configure specific cache providers
         ConfigureCacheProviders(services);
-        
+
         // Configure benchmark-specific services
         ConfigureBenchmarkServices(services);
     }
@@ -89,12 +87,12 @@ public abstract class BenchmarkBase
     /// <summary>
     /// Creates a service provider with specific cache manager
     /// </summary>
-    protected IServiceProvider CreateServiceProviderWithCache<TCacheManager>() 
+    protected IServiceProvider CreateServiceProviderWithCache<TCacheManager>()
         where TCacheManager : class, ICacheManager
     {
         var services = new ServiceCollection();
         ConfigureServices(services);
-        
+
         // Remove all existing ICacheManager registrations safely
         var descriptors = services
             .Where(d => d.ServiceType == typeof(ICacheManager))
@@ -107,7 +105,7 @@ public abstract class BenchmarkBase
 
         // Add the specific cache manager for this benchmark
         services.AddSingleton<ICacheManager, TCacheManager>();
-        
+
         return services.BuildServiceProvider();
     }
 }

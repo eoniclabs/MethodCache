@@ -25,6 +25,13 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
   its in-memory copy at once: Redis pub/sub, or a table that SQL Server instances poll.
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
+- A buffer-capable distributed cache fills an owned entry buffer which the deserializer reads directly, without an
+  additional full entry copy. The buffer remains valid across awaited metadata checks and is not returned to a pool.
+
+Disposing the cache manager disables its backplane callbacks and starts unsubscribing. Asynchronous service-provider
+disposal waits for cleanup; a stalled custom backplane is bounded by `OperationTimeout` for the subscription wait
+and again for the unsubscribe wait. If its subscription later finishes despite cancellation, MethodCache attempts
+to unsubscribe again. Redis removes only its own handlers and preserves a connection supplied by the application.
 
 ## When the distributed cache is down
 
@@ -71,15 +78,27 @@ builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.Mes
 Each entry records its format, so after a switch older entries count as misses. Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](native-aot.md)).
 
-## Any IDistributedCache
+## Custom distributed caches
 
 <!-- snippet: distributed-custom -->
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheDistributedCache(
-    _ => new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));   // any IDistributedCache
+    _ => customCache);   // IDistributedCache with backend-atomic invalidation stamps
 ```
 <!-- endSnippet -->
+
+`customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
+`IDistributedCache`. MethodCache rejects a provider without this capability when the cache manager is
+resolved. Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
+signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
+stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
+insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
+transaction with a key/range update lock. This applies to tag, clear and key-removal stamps.
+
+Upgrade all instances that share a prefix together: older unconditional stamp writers do not obey this
+contract. Timestamp metadata keeps its existing binary format. The HTTP response cache has its own
+generation contract and still accepts a plain `IDistributedCache` for response storage.
 
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
 `IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them.
@@ -92,5 +111,17 @@ Without a backplane, other instances keep their in-memory copy of an invalidated
 
 ## Package guides
 
+SQL Server backplane publication, polling and retention cleanup are isolated by `KeyPrefix` even when
+applications share the same tables. Scope matching is case-sensitive and independent of SQL collation.
+Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
+messages and recovery clears; one that still fails after five polls is replaced by a clear of that instance's
+memory, so later messages aren't held back. See the SQL Server guide for the schema migration required by an existing
+invalidations table.
+
 The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation and outage settings.
+
+SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
+trailing spaces, NULs and different Unicode representations distinct despite SQL collation, and
+gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
+and expire normally; upgrade all instances sharing a prefix together.

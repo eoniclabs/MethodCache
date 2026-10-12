@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Benchmarks.Infrastructure;
 using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +18,7 @@ namespace MethodCache.Benchmarks.Scenarios;
 public class ConcurrentAccessBenchmarks : BenchmarkBase
 {
     private IConcurrentCacheService _service = null!;
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private long _missInvocation;
 
     [Params(2, 4, 8, 16)]
     public int ThreadCount { get; set; }
@@ -62,6 +63,7 @@ public class ConcurrentAccessBenchmarks : BenchmarkBase
     [Benchmark]
     public async Task ConcurrentCacheMisses()
     {
+        var invocation = Interlocked.Increment(ref _missInvocation);
         var tasks = new List<Task>();
         for (int t = 0; t < ThreadCount; t++)
         {
@@ -71,7 +73,7 @@ public class ConcurrentAccessBenchmarks : BenchmarkBase
                 for (int i = 0; i < OperationsPerThread; i++)
                 {
                     // Use unique keys to ensure cache misses
-                    await _service.GetDataAsync(threadId * 10000 + i);
+                    await _service.GetDataAsync(checked(threadId * OperationsPerThread + i), invocation);
                 }
             }));
         }
@@ -111,7 +113,7 @@ public class ConcurrentAccessBenchmarks : BenchmarkBase
     public async Task ConcurrentSameKeyAccess()
     {
         const int sameKey = 42;
-        
+
         var tasks = new List<Task<SmallModel>>();
         for (int t = 0; t < ThreadCount; t++)
         {
@@ -139,7 +141,7 @@ public class ConcurrentAccessBenchmarks : BenchmarkBase
         }
 
         var tasks = new List<Task>();
-        
+
         // Mix of reads and bulk invalidations
         for (int t = 0; t < ThreadCount; t++)
         {
@@ -177,7 +179,7 @@ public class ConcurrentAccessBenchmarks : BenchmarkBase
     {
         // Simulate cache stampede - multiple threads trying to access the same expired item
         const int stampedeKey = 999;
-        
+
         // Clear cache to ensure miss
         await _service.InvalidateDataAsync(stampedeKey);
 
@@ -193,7 +195,7 @@ public class ConcurrentAccessBenchmarks : BenchmarkBase
 
 public interface IConcurrentCacheService
 {
-    Task<SmallModel> GetDataAsync(int id);
+    Task<SmallModel> GetDataAsync(int id, long invocation = 0);
     Task<SmallModel> GetSlowDataAsync(int id);
     Task InvalidateDataAsync(int id);
     Task BulkInvalidateAsync();
@@ -216,10 +218,12 @@ public class ConcurrentCacheService : IConcurrentCacheService
         _keyGenerator = keyGenerator;
     }
 
-    public virtual async Task<SmallModel> GetDataAsync(int id)
+    public virtual async Task<SmallModel> GetDataAsync(int id, long invocation = 0)
     {
-        var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetDataAsync));
-        var args = new object[] { id };
+        var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetDataAsync))
+            with
+        { Tags = new[] { "data" } };
+        var args = new object[] { id, invocation };
 
         return await _cacheManager.GetOrCreateAsync<SmallModel>(
             "GetDataAsync",
@@ -231,7 +235,9 @@ public class ConcurrentCacheService : IConcurrentCacheService
 
     public virtual async Task<SmallModel> GetSlowDataAsync(int id)
     {
-        var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetSlowDataAsync));
+        var settings = _policyRegistry.GetSettingsFor<ConcurrentCacheService>(nameof(GetSlowDataAsync))
+            with
+        { Tags = new[] { "data", "slow_data" } };
         var args = new object[] { id };
 
         return await _cacheManager.GetOrCreateAsync<SmallModel>(
@@ -256,25 +262,25 @@ public class ConcurrentCacheService : IConcurrentCacheService
     {
         // Track call count for analysis
         _callCounts.AddOrUpdate(id, 1, (key, count) => count + 1);
-        
+
         // Simulate fast operation
         await Task.Yield();
         return SmallModel.Create(id);
     }
 
-    private async Task<SmallModel> CreateSlowDataAsync(int id)
+    protected virtual async Task<SmallModel> CreateSlowDataAsync(int id)
     {
         // Track call count for stampede analysis
         _callCounts.AddOrUpdate(id, 1, (key, count) => count + 1);
-        
+
         // Simulate slow operation (database query, API call, etc.)
         await Task.Delay(100);
         return SmallModel.Create(id);
     }
 
-    public static Dictionary<int, int> GetCallCounts() => 
+    public static Dictionary<int, int> GetCallCounts() =>
         new(_callCounts);
 
-    public static void ResetCallCounts() => 
+    public static void ResetCallCounts() =>
         _callCounts.Clear();
 }

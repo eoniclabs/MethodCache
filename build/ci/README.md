@@ -66,6 +66,42 @@ except `mutation`, which builds for itself.
 
 Results and logs go to `artifacts/ci/<job>.log` and `.exit` as for every job when run through `linux.sh`.
 
+## SQL Server integration readiness
+
+The fixture opens a connection and runs a readiness query before cache operations start. Node setup also waits
+for `SqlServerTables.Creating`, because hosted startup can return while background table creation is still
+running. Tests give each distributed operation five seconds for emulated SQL Server or concurrent framework
+runs; the shipped library still defaults to one second. Readiness regression tests cover pending creation,
+creation errors and cancellation. Set `METHODCACHE_REQUIRE_INFRA_TESTS=true` to make unavailable infrastructure
+fail the run.
+
+## Dependency audit
+
+Restore audits direct and transitive dependencies in every project, including test tooling. On CI, `NU1903` and
+`NU1904` (high and critical advisories) are errors, so CI cannot continue with a known affected version:
+`jobs.sh` and `windows.ps1` set `MethodCacheEnforceAudit=true`, which `Directory.Build.props` reads. Without it
+(a local build, or a rebuild of an old tag) they are warnings, so a newly published advisory does not stop
+anyone's restore. Pass `-p:MethodCacheEnforceAudit=true` to see locally what CI will do.
+
+When CI fails on a new advisory:
+
+1. Upgrade the package, or the direct reference that pulls it in, to a fixed version. For a transitive
+   package, a direct `PackageReference` to the fixed version in the affected project works too.
+2. Only when no fixed version exists or the vulnerable code cannot run in this repository, suppress that one
+   advisory in the project (or in `Directory.Build.props` when every project needs it), with the link and the
+   reason next to it:
+
+   ```xml
+   <ItemGroup>
+     <!-- <why the advisory does not apply, or what we are waiting for> -->
+     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-xxxx-xxxx-xxxx" />
+   </ItemGroup>
+   ```
+
+   Remove the suppression once a fixed version is out. Testcontainers Redis and SQL Server use 4.16.0, which resolves SSH.NET 2026.0.0 for
+the fixes in [GHSA-mggc-4xg6-vcxf](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-mggc-4xg6-vcxf)
+and [GHSA-q939-rpr3-3284](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-q939-rpr3-3284).
+
 ## The build servers
 
 The same servers as Skribera, over Tailscale:

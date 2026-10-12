@@ -35,8 +35,11 @@ On .NET 9 and later the decorator writes simple keys into a stack buffer and loo
 
 ## Types whose state is private
 
-A type with only private state would give every value the same key, so the key generators refuse it with an
-`InvalidOperationException` instead of returning wrong results. Implement `ICacheKeyProvider` on it:
+A type with only private state, including private fields inherited from a base class, would give every value the
+same key, so the key generators refuse it with an
+`InvalidOperationException` instead of returning wrong results. This holds wherever the type appears in an argument:
+as the argument itself, as a property of a record, or as an element of an array, list or dictionary. Implement
+`ICacheKeyProvider` on it, or give it public properties:
 
 <!-- snippet: keys-provider -->
 ```cs
@@ -92,3 +95,10 @@ await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.Ge
   [Expiration](expiration.md#versions).
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](monitoring.md)).
+
+Overloaded methods use namespace-qualified parameter types in their method ids and key prefixes.
+For example, overloads accepting `A.Request` and `B.Request` have separate cache entries even when their
+argument members have the same values. Configuration and runtime policy updates use those same qualified ids.
+
+An `ICacheKeyProvider.CacheKeyPart` getter may generate another key: hash buffers are owned by one
+invocation at a time, including when JSON property getters generate keys or a nested call throws.

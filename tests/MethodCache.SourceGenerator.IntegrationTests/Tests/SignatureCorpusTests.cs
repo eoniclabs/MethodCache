@@ -86,9 +86,26 @@ public class SignatureCorpusTests
     public async Task UnsupportedShape_ReportsItsDiagnostic_AndTheProjectStillCompiles(string name)
     {
         var (member, implementation, expectedId) = Unsupported[name];
-        var source = Member(member, implementation, "await Task.CompletedTask", "await Task.CompletedTask").ToSource()
-            .Replace("var s = provider.GetRequiredService<ISvc>();", "var s = (ISvc)new Svc();")
-            .Replace("if (!s.GetType().Name.Contains(\"Decorator\", StringComparison.Ordinal))", "if (s is null)");
+        // Keep one valid cached method too: unsupported members must still forward without breaking its decorator.
+        var source = $$"""
+            using System;
+            using System.Collections.Generic;
+            using System.Threading.Tasks;
+            using MethodCache;
+            namespace Corpus
+            {
+                public interface ISvc
+                {
+                    [Cache] string Ping(int id);
+                    [Cache] {{member}};
+                }
+                public class Svc : ISvc
+                {
+                    public string Ping(int id) => id.ToString();
+                    public {{implementation}}
+                }
+            }
+            """;
 
         GeneratedTestAssembly compiled;
         try
@@ -112,6 +129,16 @@ public class SignatureCorpusTests
         ["ref parameter"] = ("Task<string> Get(ref int id)", "Task<string> Get(ref int id) => Task.FromResult(\"v\");", "MCG003"),
         ["out parameter"] = ("string Get(int id, out int found)", "string Get(int id, out int found) { found = 1; return \"v\"; }", "MCG003"),
         ["ReadOnlySpan parameter"] = ("string Get(ReadOnlySpan<char> id)", "string Get(ReadOnlySpan<char> id) => \"v\";", "MCG007"),
+        ["Span result"] = ("Span<int> Get(int id)", "Span<int> Get(int id) => new[] { id };", "MCG007"),
+        ["ReadOnlySpan result"] = ("ReadOnlySpan<int> Get(int id)", "ReadOnlySpan<int> Get(int id) => new[] { id };", "MCG007"),
+        ["ref result"] = ("ref int Get(int id)", "ref int Get(int id) => ref _value; private int _value;", "MCG003"),
+        ["ref readonly result"] = ("ref readonly int Get(int id)", "ref readonly int Get(int id) => ref _value; private int _value;", "MCG003"),
+        ["pointer result"] = ("unsafe int* Get(int id)", "unsafe int* Get(int id) => null;", "MCG006"),
+        ["function pointer result"] = ("unsafe delegate*<int> Get(int id)", "unsafe delegate*<int> Get(int id) => null;", "MCG006"),
+        ["pointer array parameter"] = ("unsafe string Get(int*[] ids)", "unsafe string Get(int*[] ids) => \"v\";", "MCG006"),
+        ["pointer array result"] = ("unsafe int*[] Get(int id)", "unsafe int*[] Get(int id) => new int*[1];", "MCG006"),
+        ["function pointer array parameter"] = ("unsafe string Get(delegate*<int>[] f)", "unsafe string Get(delegate*<int>[] f) => \"v\";", "MCG006"),
+        ["pointer to pointer parameter"] = ("unsafe string Get(int** p)", "unsafe string Get(int** p) => \"v\";", "MCG006"),
         ["IEnumerable result"] = ("IEnumerable<int> Get(int id)", "IEnumerable<int> Get(int id) { yield return id; }", "MCG014"),
         ["IAsyncEnumerable result"] = ("IAsyncEnumerable<int> Get(int id)", "async IAsyncEnumerable<int> Get(int id) { await Task.Yield(); yield return id; }", "MCG014"),
     };
@@ -228,6 +255,77 @@ public class SignatureCorpusTests
 
         // Parameter names that are keywords or collide with names in generated code
         ["keyword parameter names"] = Member("Task<string> Get(int @class, string @event)", "Task<string> Get(int @class, string @event) { Counter.Hit(); return Task.FromResult(@event); }", "await s.Get(1, \"a\")", "await s.Get(1, \"b\")"),
+        ["unsafe members next to a cached method"] = new("""
+                public unsafe interface ISvc
+                {
+                    [Cache] Task<string> Get(int id);
+                    int*[] GetPointers(int id);
+                    void Take(delegate*<int>[] functions);
+                    int** Deep(int id);
+                    int* Pointer { get; }
+                    int*[] Pointers { get; set; }
+                    int* this[int i] { get; }
+                }
+                public unsafe class Svc : ISvc
+                {
+                    public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(id.ToString()); }
+                    public int*[] GetPointers(int id) => new int*[id];
+                    public void Take(delegate*<int>[] functions) { }
+                    public int** Deep(int id) => null;
+                    public int* Pointer => null;
+                    public int*[] Pointers { get; set; } = new int*[0];
+                    public int* this[int i] => null;
+                }
+            """, "ISvc", "await s.Get(1)", "await s.Get(2)"),
+        ["keyword property and event names"] = new("""
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(int id);
+                    int @class { get; set; }
+                    event Action? @event;
+                }
+                public class Svc : ISvc
+                {
+                    private int _value;
+                    public int @class { get => _value; set { _value = value; @event?.Invoke(); } }
+                    public event Action? @event;
+                    public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(id.ToString()); }
+                }
+                public static class Checks
+                {
+                    public static Task<string> Call(ISvc service, int id)
+                    {
+                        var raised = false;
+                        Action handler = () => raised = true;
+                        service.@event += handler;
+                        service.@class = id;
+                        service.@event -= handler;
+                        if (!raised || service.@class != id) throw new InvalidOperationException("passthrough failed");
+                        return service.Get(service.@class);
+                    }
+                }
+            """, "ISvc", "await Checks.Call(s, 1)", "await Checks.Call(s, 2)"),
+        ["keyword indexer parameter name"] = new("""
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(int id);
+                    int this[int @class] { get; set; }
+                }
+                public class Svc : ISvc
+                {
+                    private readonly Dictionary<int, int> _values = new();
+                    public int this[int @class] { get => _values[@class]; set => _values[@class] = value; }
+                    public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(id.ToString()); }
+                }
+                public static class Checks
+                {
+                    public static Task<string> Call(ISvc service, int id)
+                    {
+                        service[0] = id;
+                        return service.Get(service[0]);
+                    }
+                }
+            """, "ISvc", "await Checks.Call(s, 1)", "await Checks.Call(s, 2)"),
         ["generated local names as parameters"] = Member("Task<string> Get(int result, int key, int value, int policy, int cacheKey, int cacheSnapshot)", "Task<string> Get(int result, int key, int value, int policy, int cacheKey, int cacheSnapshot) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1, 2, 3, 4, 5, 6)", "await s.Get(1, 2, 3, 4, 5, 7)"),
         ["more generated names as parameters"] = Member("Task<string> Get(int factory, int services, int inner, int metrics, int buffer, int args)", "Task<string> Get(int factory, int services, int inner, int metrics, int buffer, int args) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1, 2, 3, 4, 5, 6)", "await s.Get(1, 2, 3, 4, 5, 7)"),
 
@@ -272,6 +370,20 @@ public class SignatureCorpusTests
             """, "ISvc", "await s.GetAll()", "await s.GetOther()"),
 
         // Overloads and generics
+        ["overloads with equal type names in different namespaces"] = new("""
+                namespace A { public sealed record Request(int Id); }
+                namespace B { public sealed record Request(int Id); }
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(A.Request request);
+                    [Cache] Task<string> Get(B.Request request);
+                }
+                public class Svc : ISvc
+                {
+                    public Task<string> Get(A.Request request) { Counter.Hit(); return Task.FromResult("A"); }
+                    public Task<string> Get(B.Request request) { Counter.Hit(); return Task.FromResult("B"); }
+                }
+            """, "ISvc", "await s.Get(new A.Request(1))", "await s.Get(new B.Request(1))"),
         ["overloads"] = new("""
                 public interface ISvc
                 {
@@ -301,6 +413,17 @@ public class SignatureCorpusTests
         ["generic method"] = Member("Task<T?> Get<T>(int id)", "Task<T?> Get<T>(int id) { Counter.Hit(); return Task.FromResult<T?>(default); }", "await s.Get<int>(1)", "await s.Get<string>(1)"),
         ["generic method with class constraint"] = Member("Task<T?> Get<T>(int id) where T : class", "Task<T?> Get<T>(int id) where T : class { Counter.Hit(); return Task.FromResult<T?>(null); }", "await s.Get<string>(1)", "await s.Get<object>(1)"),
         ["generic method with struct constraint"] = Member("Task<T> Get<T>(int id) where T : struct", "Task<T> Get<T>(int id) where T : struct { Counter.Hit(); return Task.FromResult(default(T)); }", "await s.Get<int>(1)", "await s.Get<long>(1)"),
+        ["generic method with unmanaged constraint"] = Member("Task<T> Get<T>(int id) where T : unmanaged", "Task<T> Get<T>(int id) where T : unmanaged { Counter.Hit(); return Task.FromResult(default(T)); }", "await s.Get<int>(1)", "await s.Get<long>(1)"),
+        ["generic interface with unmanaged constraint"] = new("""
+                public interface ISvc<T> where T : unmanaged
+                {
+                    [Cache] Task<T> Get(int id);
+                }
+                public class Svc : ISvc<int>
+                {
+                    public Task<int> Get(int id) { Counter.Hit(); return Task.FromResult(id); }
+                }
+            """, "ISvc<int>", "await s.Get(1)", "await s.Get(2)"),
         ["generic method with interface constraint"] = Member("Task<string> Get<T>(T value) where T : IComparable<T>", "Task<string> Get<T>(T value) where T : IComparable<T> { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1)", "await s.Get(2)"),
         ["generic constraint from another namespace"] = new("""
                 public interface ISvc

@@ -15,7 +15,7 @@ public class Program
     {
         Console.WriteLine("MethodCache Performance Benchmarks");
         Console.WriteLine("===================================");
-        
+
         if (args.Length == 0)
         {
             ShowHelp();
@@ -136,7 +136,7 @@ public class Program
         Console.WriteLine("  basic        - Basic caching operations (hit/miss, different data sizes)");
         Console.WriteLine("  baseline     - Compare with Microsoft.Extensions.Caching.Memory and LazyCache");
         Console.WriteLine("  comparison   - Unified comparison: MethodCache vs FusionCache vs EasyCaching vs LazyCache");
-        Console.WriteLine("  providers    - Compare different cache providers (InMemory, Redis, Hybrid)");
+        Console.WriteLine("  providers    - In-memory provider hits, misses and invalidation");
         Console.WriteLine("  concurrent   - Concurrent access and scalability tests");
         Console.WriteLine("  memory       - Memory usage and GC pressure analysis");
         Console.WriteLine("  realworld    - Real-world application scenarios");

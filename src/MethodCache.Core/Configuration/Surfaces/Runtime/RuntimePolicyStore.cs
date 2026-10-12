@@ -16,6 +16,8 @@ internal sealed class RuntimePolicyStore : IDisposable
     private readonly ConcurrentDictionary<string, StoredPolicy> _policies = new(StringComparer.Ordinal);
     private readonly TimeProvider _time;
     private readonly object _timerSync = new();
+    private readonly object _changesSync = new();
+    private long _revision;
     private ITimer? _expiryTimer;
     private bool _disposed;
 
@@ -51,23 +53,26 @@ internal sealed class RuntimePolicyStore : IDisposable
     private const string MetadataTicketKey = "runtime.ticket";
     private const string MetadataExpiresAtKey = "runtime.expiresAt";
 
-    public IReadOnlyCollection<PolicySnapshot> GetSnapshots()
+    public IReadOnlyCollection<PolicySnapshot> GetSnapshots() => CaptureSnapshots().Snapshots;
+
+    internal (IReadOnlyCollection<PolicySnapshot> Snapshots, long Revision) CaptureSnapshots()
     {
         RemoveExpiredPolicies();
-        var snapshots = new List<PolicySnapshot>(_policies.Count);
-
-        foreach (var (methodId, stored) in _policies)
+        lock (_changesSync)
         {
-            snapshots.Add(PolicySnapshotBuilder.FromPolicy(
-                PolicySourceIds.RuntimeOverrides,
-                methodId,
-                stored.Policy,
-                stored.Fields,
-                stored.Timestamp,
-                metadata: stored.Policy.Metadata));
+            var snapshots = new List<PolicySnapshot>(_policies.Count);
+            foreach (var (methodId, stored) in _policies)
+            {
+                snapshots.Add(PolicySnapshotBuilder.FromPolicy(
+                    PolicySourceIds.RuntimeOverrides,
+                    methodId,
+                    stored.Policy,
+                    stored.Fields,
+                    stored.Timestamp,
+                    metadata: stored.Policy.Metadata));
+            }
+            return (snapshots, _revision);
         }
-
-        return snapshots;
     }
 
     public PolicySnapshot? GetSnapshot(string methodId)
@@ -118,24 +123,18 @@ internal sealed class RuntimePolicyStore : IDisposable
         var enriched = CachePolicyMapper.AttachContribution(policyWithMetadata, PolicySourceIds.RuntimeOverrides, fields, timestamp, contributionMetadata);
         var stored = new StoredPolicy(enriched, fields, timestamp, metadata);
 
-        var reason = PolicyChangeReason.Added;
-        _policies.AddOrUpdate(
-            methodId,
-            _ => stored,
-            (_, _) =>
-            {
-                reason = PolicyChangeReason.Updated;
-                return stored;
-            });
-
-        EnqueueChange(PolicySnapshotBuilder.CreateChange(
-            PolicySourceIds.RuntimeOverrides,
-                methodId,
-                enriched,
-                fields,
-                reason,
-                timestamp,
-                contributionMetadata));
+        PolicyChange change;
+        lock (_changesSync)
+        {
+            var reason = _policies.ContainsKey(methodId) ? PolicyChangeReason.Updated : PolicyChangeReason.Added;
+            _policies[methodId] = stored;
+            change = PolicySnapshotBuilder.CreateChange(
+                PolicySourceIds.RuntimeOverrides, methodId, enriched, fields, reason, timestamp, contributionMetadata);
+            change.SourceRevision = ++_revision;
+        }
+        // Never hold the mutation lock while invoking observers: snapshot initialization takes the resolver lock
+        // first, and observers can also make reentrant overrides. Revisions preserve order across either case.
+        EnqueueChange(change);
 
         if (metadata?.ExpiresAt != null)
         {
@@ -152,29 +151,38 @@ internal sealed class RuntimePolicyStore : IDisposable
             throw new ArgumentException("Method id must be provided.", nameof(methodId));
         }
 
-        if (_policies.TryRemove(methodId, out _))
+        PolicyChange? change = null;
+        lock (_changesSync)
         {
-            EnqueueRemovedChange(methodId, "Runtime override removed");
+            if (_policies.TryRemove(methodId, out _))
+            {
+                change = CreateRemovedChange(methodId, "Runtime override removed");
+            }
         }
-
+        if (change != null)
+        {
+            EnqueueChange(change);
+        }
         return Task.CompletedTask;
     }
 
     public Task ClearAsync()
     {
-        if (_policies.IsEmpty)
+        var changes = new List<PolicyChange>();
+        lock (_changesSync)
         {
-            return Task.CompletedTask;
-        }
-
-        foreach (var key in _policies.Keys)
-        {
-            if (_policies.TryRemove(key, out _))
+            foreach (var key in _policies.Keys)
             {
-                EnqueueRemovedChange(key, "Runtime overrides cleared");
+                if (_policies.TryRemove(key, out _))
+                {
+                    changes.Add(CreateRemovedChange(key, "Runtime overrides cleared"));
+                }
             }
         }
-
+        foreach (var change in changes)
+        {
+            EnqueueChange(change);
+        }
         return Task.CompletedTask;
     }
 
@@ -250,25 +258,32 @@ internal sealed class RuntimePolicyStore : IDisposable
     private void RemoveExpiredPolicies()
     {
         var now = _time.GetUtcNow();
-
-        foreach (var (methodId, stored) in _policies)
+        List<PolicyChange>? changes = null;
+        lock (_changesSync)
         {
-            var expiresAt = stored.Metadata?.ExpiresAt;
-            if (!expiresAt.HasValue || expiresAt.Value > now)
+            foreach (var (methodId, stored) in _policies)
             {
-                continue;
+                if (stored.Metadata?.ExpiresAt is not { } expiresAt || expiresAt > now)
+                {
+                    continue;
+                }
+                if (_policies.TryRemove(new KeyValuePair<string, StoredPolicy>(methodId, stored)))
+                {
+                    (changes ??= new List<PolicyChange>()).Add(CreateRemovedChange(methodId, "Runtime override expired", BuildContributionMetadata(stored.Metadata)));
+                }
             }
-
-            // Only the expired override: one renewed since it was read stays
-            if (_policies.TryRemove(new KeyValuePair<string, StoredPolicy>(methodId, stored)))
+        }
+        if (changes != null)
+        {
+            foreach (var change in changes)
             {
-                var metadata = BuildContributionMetadata(stored.Metadata);
-                EnqueueRemovedChange(methodId, "Runtime override expired", metadata);
+                EnqueueChange(change);
             }
         }
     }
 
-    private void EnqueueRemovedChange(string methodId, string notes, IReadOnlyDictionary<string, string?>? metadata = null)
+    // Called while holding _changesSync, so the revision describes the actual mutation order.
+    private PolicyChange CreateRemovedChange(string methodId, string notes, IReadOnlyDictionary<string, string?>? metadata = null)
     {
         var timestamp = _time.GetUtcNow();
         var policy = CachePolicyMapper.AttachContribution(
@@ -278,15 +293,16 @@ internal sealed class RuntimePolicyStore : IDisposable
             timestamp,
             metadata: metadata,
             notes: notes);
-
-        EnqueueChange(PolicySnapshotBuilder.CreateChange(
+        var change = PolicySnapshotBuilder.CreateChange(
             PolicySourceIds.RuntimeOverrides,
             methodId,
             policy,
             CachePolicyFields.None,
             PolicyChangeReason.Removed,
             timestamp,
-            metadata));
+            metadata);
+        change.SourceRevision = ++_revision;
+        return change;
     }
 
     private static CachePolicy ApplyRuntimeMetadata(CachePolicy policy, RuntimeOverrideMetadata? metadata)

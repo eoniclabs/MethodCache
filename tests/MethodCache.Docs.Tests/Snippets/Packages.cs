@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using MethodCache;
 using MethodCache.HttpCaching;
 using MethodCache.OpenTelemetry;
@@ -63,7 +64,57 @@ namespace Docs.Packages
             builder.Services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
             // end-snippet
         }
+
+        public static void CustomStorage(WebApplicationBuilder builder)
+        {
+            // begin-snippet: http-custom-storage-registration
+            builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
+            builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+            // end-snippet
+        }
     }
+
+    // begin-snippet: http-custom-storage
+    public sealed class DictionaryHttpCacheStorage(TimeProvider time) : IHttpCacheStorage
+    {
+        private readonly ConcurrentDictionary<string, (HttpCacheEntry Entry, DateTimeOffset Expires)> _entries = new();
+        private readonly ConcurrentDictionary<string, string> _generations = new();
+
+        // Responses are stored per generation. A missing generation (never set, cleared or lost) starts a new
+        // unique one, never a value used before, so losing it can only cause cache misses.
+        public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(_generations.GetOrAdd(key, _ => Guid.NewGuid().ToString("N")));
+
+        // Called after a successful POST, PUT, PATCH or DELETE: a fresh generation hides every older response.
+        public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _generations[key] = Guid.NewGuid().ToString("N");
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(_entries.TryGetValue(key, out var stored) && stored.Expires > time.GetUtcNow() ? stored.Entry : null);
+
+        public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default)
+        {
+            _entries[key] = (entry, time.GetUtcNow() + timeToLive);
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _entries.TryRemove(key, out _);
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask ClearAsync(CancellationToken cancellationToken = default)
+        {
+            _generations.Clear(); // in-flight requests can then only publish into orphaned generations
+            _entries.Clear();
+            return ValueTask.CompletedTask;
+        }
+    }
+    // end-snippet
 
     public static class Redis
     {

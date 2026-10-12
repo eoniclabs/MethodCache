@@ -19,7 +19,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
-    <PackageReference Include="Testcontainers.Redis" Version="4.7.0" />
+    <PackageReference Include="Testcontainers.Redis" Version="4.16.0" />
     <PackageReference Include="FluentAssertions" Version="8.7.0" />
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
@@ -30,4 +30,7 @@
     <ProjectReference Include="..\..\src\MethodCache.Redis\MethodCache.Redis.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../TestSupport/InvalidationStampContract.cs" Link="TestSupport/InvalidationStampContract.cs" />
+  </ItemGroup>
 </Project>

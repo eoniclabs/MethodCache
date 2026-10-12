@@ -3,11 +3,11 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|------
 MCG001 | MethodCacheGenerator | Error | Reports [Cache] usage on void-returning methods.
 MCG002 | MethodCacheGenerator | Error | Reports [Cache] on non-generic Task/ValueTask methods.
-MCG003 | MethodCacheGenerator | Error | Reports [Cache] usage with ref/out/in parameters.
+MCG003 | MethodCacheGenerator | Error | Reports [Cache] usage with reference parameters or returns.
 MCG004 | MethodCacheGenerator | Error | Reports conflicting [Cache] and [CacheInvalidate] attributes.
 MCG005 | MethodCacheGenerator | Warning | Reports missing tags for [CacheInvalidate].
-MCG006 | MethodCacheGenerator | Error | Reports [Cache] usage with pointer types.
-MCG007 | MethodCacheGenerator | Error | Reports [Cache] usage with ref struct parameters.
+MCG006 | MethodCacheGenerator | Error | Reports [Cache] usage with pointer or function pointer parameters or returns, including arrays of them.
+MCG007 | MethodCacheGenerator | Error | Reports [Cache] usage with ref struct parameters or returns.
 MCG009 | MethodCacheGenerator | Warning | Reports dynamic tags on [Cache] or [CacheInvalidate] referencing unknown parameters.
 MCG010 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] on a type it cannot cache.
 MCG011 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] listing a method it cannot cache.

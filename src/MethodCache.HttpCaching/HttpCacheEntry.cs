@@ -1,5 +1,7 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Http.Headers;
+using MethodCache.HttpCaching.Internal;
 
 namespace MethodCache.HttpCaching;
 
@@ -97,32 +99,49 @@ public sealed record HttpCacheEntry
         HttpResponseMessage response,
         DateTimeOffset now,
         long maxSize = 0,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ArrayPool<byte>? bufferPool = null)
     {
         var contentHeaders = SerializeHeaders(response.Content.Headers);
-        var body = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         var limit = maxSize > 0 ? maxSize : long.MaxValue;
-        var buffer = new MemoryStream();
-        var chunk = new byte[81920];
-        int read;
-        while (buffer.Length <= limit && (read = await body.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
+        // HEAD, 204 and 304 responses have no body whatever Content-Length says (RFC 9110 sections 9.3.2, 8.6).
+        var knownLength = HasNoBody(request, response) ? 0 : response.Content.Headers.ContentLength;
+        if (knownLength > limit || knownLength > Array.MaxLength) return null;
+        var body = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var buffer = new ResponseBodyBuffer(knownLength, limit, bufferPool ?? ArrayPool<byte>.Shared);
+        byte[]? probe = null;
+        while (buffer.Length <= limit && buffer.Length < Array.MaxLength)
         {
-            buffer.Write(chunk, 0, read);
+            if (buffer.Length == buffer.Capacity)
+            {
+                // Verify the advertised length instead of trusting it. Grow only when another byte exists.
+                probe ??= new byte[1];
+                if (await body.ReadAsync(probe, cancellationToken).ConfigureAwait(false) == 0) break;
+                buffer.Append(probe[0], limit);
+            }
+            else
+            {
+                var available = buffer.Available;
+                if (limit - buffer.Length < available.Length)
+                    available = available[..(int)(limit - buffer.Length + 1)];
+                var read = await body.ReadAsync(available, cancellationToken).ConfigureAwait(false);
+                if (read == 0) break;
+                buffer.Length += read;
+            }
         }
 
-        if (buffer.Length > limit)
+        if (buffer.Length > limit || buffer.Length == Array.MaxLength)
         {
             // Too large to cache: hand the caller what was read followed by the rest of the stream
-            buffer.Position = 0;
-            response.Content = new StreamContent(new ConcatenatedStream(buffer, body));
+            response.Content = new StreamContent(new ConcatenatedStream(buffer.DetachStream(), body));
             RestoreHeaders(response.Content.Headers, contentHeaders);
             return null;
         }
 
-        var content = buffer.ToArray();
+        var content = buffer.ToOwnedArray();
         await body.DisposeAsync().ConfigureAwait(false);
 
-        // The body was consumed, so the caller reads it from a copy
+        // The entry and the original response share the one owned final array.
         response.Content = new ByteArrayContent(content);
         RestoreHeaders(response.Content.Headers, contentHeaders);
 
@@ -217,7 +236,7 @@ public sealed record HttpCacheEntry
             Date = notModifiedResponse.Headers.Date ?? Date,
             StoredAt = now,
             InitialAge = CalculateInitialAge(notModifiedResponse, now),
-            VaryHeaders = notModifiedResponse.Headers.Vary?.ToArray() ?? VaryHeaders
+            VaryHeaders = notModifiedResponse.Headers.Contains("Vary") ? notModifiedResponse.Headers.Vary.ToArray() : VaryHeaders
         };
     }
 
@@ -248,6 +267,10 @@ public sealed record HttpCacheEntry
         }
         return result;
     }
+
+    private static bool HasNoBody(HttpRequestMessage request, HttpResponseMessage response)
+        => request.Method == HttpMethod.Head
+        || response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotModified;
 
     private static void RestoreHeaders(HttpContentHeaders target, Dictionary<string, string[]> headers)
     {

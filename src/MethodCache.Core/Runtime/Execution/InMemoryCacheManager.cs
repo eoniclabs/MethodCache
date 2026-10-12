@@ -425,6 +425,7 @@ namespace MethodCache.Extensibility
             }
 
             _maintenanceTimer?.Dispose();
+            _distributed?.Dispose();
             _engine.Clear();
             GC.SuppressFinalize(this);
         }
@@ -622,6 +623,64 @@ namespace MethodCache.Extensibility
             finally
             {
                 _flights.TryRemove(new KeyValuePair<string, Flight>(key, flight));
+            }
+        }
+
+        /// <summary>
+        /// Looks up a key missing from memory in the distributed cache without running a factory, and stores a hit in
+        /// memory as a load would. Not found when there is no distributed cache, when it doesn't hold the key, or when
+        /// another caller is already loading the key (a later load joins that one).
+        /// </summary>
+        internal async ValueTask<(bool Found, T? Value)> TryGetDistributedAsync<T>(string key, string methodName, CacheRuntimePolicy policy, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(policy);
+            if (_distributed == null)
+            {
+                return (false, default);
+            }
+
+            var entryPolicy = GetEntryPolicy(policy);
+            var flight = new Flight(entryPolicy.Tags);
+            if (!ReferenceEquals(JoinOrStartFlight(key, flight), flight))
+            {
+                return (false, default);
+            }
+
+            var completed = false;
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // A load that finished since the caller's miss stored its value already
+                if (TryGetFresh<T>(key, _engine.Now, out var loaded, out _, out _))
+                {
+                    flight.Complete(loaded);
+                    completed = true;
+                    RecordHit(methodName);
+                    return (true, loaded);
+                }
+
+                var stored = await _distributed.TryGetAsync<T>(key).ConfigureAwait(false);
+                if (stored.Found)
+                {
+                    StoreLoaded(key, stored.Value, entryPolicy, flight, duration: Math.Max(1, ToNanos(stored.RemainingLifetime)));
+                    flight.Complete(stored.Value);
+                    completed = true;
+                    RecordHit(methodName);
+                    return (true, stored.Value);
+                }
+
+                return (false, default);
+            }
+            finally
+            {
+                _flights.TryRemove(new KeyValuePair<string, Flight>(key, flight));
+
+                // No value to share: callers that joined load again, as after a load its caller cancelled
+                if (!completed)
+                {
+                    flight.CancelByCaller(new OperationCanceledException());
+                }
             }
         }
 

@@ -35,8 +35,10 @@ public static class MethodCacheHttpClientBuilderExtensions
             IDistributedCache? distributed = null;
             if (storageOptions.Value.UseDistributedCache)
             {
-                distributed = sp.GetService<IDistributedCache>() ?? throw new InvalidOperationException(
-                    "HttpCacheStorageOptions.UseDistributedCache is on, but no IDistributedCache is registered. " +
+                // Shared registration contract with AddMethodCacheDistributedCache's factory overload.
+                // Resolve its owned cache first, keeping the application's unrelated cache untouched.
+                distributed = sp.GetKeyedService<IDistributedCache>("MethodCache") ?? sp.GetService<IDistributedCache>() ?? throw new InvalidOperationException(
+                    "HttpCacheStorageOptions.UseDistributedCache is on, but neither a MethodCache-owned nor an application IDistributedCache is registered. " +
                     "Register one first, for example with AddMethodCacheRedis() or AddStackExchangeRedisCache().");
             }
 

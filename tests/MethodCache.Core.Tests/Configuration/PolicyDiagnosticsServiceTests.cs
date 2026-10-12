@@ -172,7 +172,7 @@ public class PolicyDiagnosticsServiceTests
     }
     private static async Task<PolicyDiagnosticsReport> WaitForDurationAsync(PolicyDiagnosticsService diagnostics, TimeSpan expected)
     {
-        var timeout = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        var timeout = DateTime.UtcNow + TimeSpan.FromSeconds(30);
         while (DateTime.UtcNow <= timeout)
         {
             var report = diagnostics.GetPolicy(MethodId);

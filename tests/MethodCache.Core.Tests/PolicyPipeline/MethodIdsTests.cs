@@ -38,8 +38,8 @@ public class MethodIdsTests
         Assert.Equal(new[]
         {
             "Find(int)",
-            "Find(int?, string[], List<Guid>, T)",
-            "Find(string, CancellationToken)",
+            "Find(int?, string[], System.Collections.Generic.List<System.Guid>, T)",
+            "Find(string, System.Threading.CancellationToken)",
         }, finds);
         Assert.Equal(prefix + "Get", MethodIds.For(typeof(IOrders).GetMethod("Get")!));
     }

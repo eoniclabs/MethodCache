@@ -69,7 +69,12 @@ if (lookup.Found)
 
 ## Many keys at once
 
-`GetOrCreateManyAsync` looks up every key and calls the factory once, with only the keys that were missing:
+`GetOrCreateManyAsync` checks the local cache for every key, looks up the local misses in the distributed cache,
+and calls the factory once with the keys neither holds. Each key gets the value the cache selects: memory first, then
+the distributed cache, then the factory. A bulk read therefore agrees with individual reads of the same keys, even
+across nodes: a value another node stored in the distributed cache is returned as is, and its key is not passed to
+the factory. A concurrent writer may still win over a value the factory produced; the returned dictionary then holds
+the writer's value, as an individual read would:
 
 <!-- snippet: manual-many -->
 ```cs
