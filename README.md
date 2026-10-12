@@ -140,6 +140,7 @@ A service registered after `AddMethodCache()` is not cached. If you don't regist
 `AddMethodCache()` registers it as a singleton when it lives in the same project as the interface.
 Generic interfaces such as `IRepository<T>` are cached for each closed type your project implements
 (`UserRepository : IRepository<User>`); an open generic registration (`typeof(IRepository<>)`) is not.
+Key generators preserve exact UTF-16 string identity, including custom key-provider parts and nested values.
 C# keyword names for generic parameters and their constraints are preserved in generated code.
 Automatic decoration preserves normal DI disposal ownership, including application-supplied instances.
 

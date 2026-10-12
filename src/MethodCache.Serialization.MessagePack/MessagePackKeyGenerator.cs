@@ -1,7 +1,8 @@
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Security.Cryptography;
-using System.Text;
+using MessagePack.Formatters;
+using MessagePack.Resolvers;
 using MessagePack;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
@@ -28,6 +29,11 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
     private const byte NullFrame = 0x00;
     private const byte KeyProviderFrame = 0x01;
     private const byte SerializedFrame = 0x02;
+    private const byte NullKeyProviderFrame = 0x03;
+    private static readonly MessagePackSerializerOptions KeyOptions = TypelessContractlessStandardResolver.Options
+        .WithResolver(CompositeResolver.Create(
+            new IMessagePackFormatter[] { new KeyStringFormatter(), new KeyObjectFormatter() },
+            new IFormatterResolver[] { TypelessContractlessStandardResolver.Instance }));
 
     /// <inheritdoc />
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
@@ -51,10 +57,13 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
                     AppendFrame(hash, NullFrame, ReadOnlySpan<byte>.Empty);
                     break;
                 case ICacheKeyProvider keyProvider:
-                    AppendFrame(hash, KeyProviderFrame, Encoding.UTF8.GetBytes(keyProvider.CacheKeyPart ?? string.Empty));
+                    if (keyProvider.CacheKeyPart is { } part)
+                        AppendFrame(hash, KeyProviderFrame, Utf16Bytes(part));
+                    else
+                        AppendFrame(hash, NullKeyProviderFrame, ReadOnlySpan<byte>.Empty);
                     break;
                 default:
-                    AppendFrame(hash, SerializedFrame, MessagePackSerializer.Typeless.Serialize(arg));
+                    AppendFrame(hash, SerializedFrame, MessagePackSerializer.Serialize<object>(arg, KeyOptions));
                     break;
             }
         }
@@ -63,6 +72,39 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
         return policy.Version is { } version
             ? string.Concat(methodName, ":v", version.ToString(CultureInfo.InvariantCulture), ":", digest)
             : string.Concat(methodName, ":", digest);
+    }
+
+    private static byte[] Utf16Bytes(string value)
+    {
+        var bytes = new byte[checked(value.Length * sizeof(char))];
+        for (var i = 0; i < value.Length; i++)
+            BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * sizeof(char)), value[i]);
+        return bytes;
+    }
+
+    // Only the key serializer uses these formatters. Cached values keep the application's MessagePack format.
+    internal sealed class KeyStringFormatter : IMessagePackFormatter<string?>
+    {
+        public void Serialize(ref MessagePackWriter writer, string? value, MessagePackSerializerOptions options)
+        {
+            if (value is null) writer.WriteNil();
+            else writer.WriteExtensionFormat(new ExtensionResult(42, Utf16Bytes(value)));
+        }
+        public string? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) =>
+            throw new NotSupportedException("Cache keys are hashed, never deserialized.");
+    }
+
+    internal sealed class KeyObjectFormatter : IMessagePackFormatter<object?>
+    {
+        public void Serialize(ref MessagePackWriter writer, object? value, MessagePackSerializerOptions options)
+        {
+            if (value is string text)
+                options.Resolver.GetFormatterWithVerify<string?>().Serialize(ref writer, text, options);
+            else
+                TypelessFormatter.Instance.Serialize(ref writer, value, options);
+        }
+        public object? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) =>
+            throw new NotSupportedException("Cache keys are hashed, never deserialized.");
     }
 
     private static void AppendFrame(IncrementalHash hash, byte frameType, ReadOnlySpan<byte> payload)
