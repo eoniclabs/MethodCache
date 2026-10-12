@@ -70,3 +70,5 @@ Runtime tag templates match against every method parameter, even when the attrib
 Cached interfaces may declare nested helper interfaces and abstract types. These declarations do not trigger MCG013.
 
 An invalidation attribute without tags forwards the operation without issuing an empty tag invalidation, including asynchronous methods with reference parameters.
+
+Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.

@@ -101,3 +101,5 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
 - `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
   `NoOpCacheManager` ([Testing](testing.md)).
+
+Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.
