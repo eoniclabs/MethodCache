@@ -18,36 +18,36 @@ namespace MethodCache.SourceGenerator
         /// </summary>
         private static class DecoratorRegistrationsEmitter
         {
-            internal static string Emit(List<InterfaceInfo> interfaces, ImmutableArray<INamedTypeSymbol?> classes)
+            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes)
             {
+                // A partial class is declared, and so found, more than once
                 var allClasses = classes
-                    .Where(c => c != null)
-                    .Cast<INamedTypeSymbol>()
-                    .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
+                    .GroupBy(c => c.Fqn, StringComparer.Ordinal)
+                    .Select(g => g.First())
                     .ToList();
-                var candidates = allClasses.Where(IsAccessibleFromAssembly).ToList();
+                var candidates = allClasses.Where(c => c.IsAccessible).ToList();
 
                 // A generic interface is registered once per closed type the assembly implements, such as
                 // IRepository<User> for UserRepository : IRepository<User>. Private classes count too, since the
                 // application can still register them through a factory
-                var registrable = new List<(InterfaceInfo Info, INamedTypeSymbol Service)>();
+                var registrable = new List<(InterfaceSummary Info, string ServiceFqn, EquatableArray<string> TypeArguments)>();
                 foreach (var info in interfaces)
                 {
-                    if (!info.Symbol.IsGenericType)
+                    if (!info.IsGeneric)
                     {
-                        registrable.Add((info, info.Symbol));
+                        registrable.Add((info, info.InterfaceFqn, EquatableArray<string>.Empty));
                         continue;
                     }
 
                     var closedTypes = allClasses
-                        .SelectMany(c => c.AllInterfaces)
-                        .Where(i => SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, info.Symbol.OriginalDefinition)
-                                    && i.TypeArguments.All(t => IsNameableFrom(t, info.Symbol.ContainingAssembly)))
-                        .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
-                        .OrderBy(i => i.ToDisplayString(), StringComparer.Ordinal);
+                        .SelectMany(c => c.Interfaces)
+                        .Where(i => i.AssemblyIdentity == info.AssemblyIdentity && i.OriginalDefinitionFqn == info.OriginalDefinitionFqn && i.IsNameable)
+                        .GroupBy(i => i.Fqn, StringComparer.Ordinal)
+                        .Select(g => g.First())
+                        .OrderBy(i => i.DisplayName, StringComparer.Ordinal);
                     foreach (var closed in closedTypes)
                     {
-                        registrable.Add((info, closed));
+                        registrable.Add((info, closed.Fqn, closed.TypeArgumentFqns));
                     }
                 }
 
@@ -74,17 +74,16 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        internal static void Register()");
                 sb.AppendLine("        {");
 
-                foreach (var (info, service) in registrable)
+                foreach (var (info, interfaceFqn, typeArguments) in registrable)
                 {
-                    var interfaceFqn = Utils.GetFullyQualifiedName(service);
-                    var decoratorFqn = Utils.GetDecoratorFullName(info.Symbol);
-                    if (service.IsGenericType)
+                    var decoratorFqn = info.DecoratorFqn;
+                    if (typeArguments.Count > 0)
                     {
-                        decoratorFqn += "<" + string.Join(", ", service.TypeArguments.Select(Utils.GetFullyQualifiedName)) + ">";
+                        decoratorFqn += "<" + string.Join(", ", typeArguments) + ">";
                     }
 
-                    var hasPolicies = info.CachedMethods.Length > 0;
-                    var implementation = FindImplementation(service, candidates);
+                    var hasPolicies = info.HasCachedMethods;
+                    var implementation = FindImplementation(info.AssemblyIdentity, interfaceFqn, info.Name, candidates);
 
                     sb.AppendLine("            MethodCacheDecorators.Register(new DecoratorRegistration(");
                     sb.AppendLine($"                typeof({interfaceFqn}),");
@@ -95,7 +94,7 @@ namespace MethodCache.SourceGenerator
                         ? "                GeneratedPolicyRegistrations.AddPolicies,"
                         : "                null,");
                     sb.AppendLine(implementation != null
-                        ? $"                typeof({Utils.GetFullyQualifiedName(implementation)})));"
+                        ? $"                typeof({implementation.Fqn})));"
                         : "                null));");
                 }
 
@@ -110,12 +109,12 @@ namespace MethodCache.SourceGenerator
             /// like the interface without its leading "I", otherwise the first by name. Only classes with a public
             /// constructor qualify, since the container needs one.
             /// </summary>
-            private static INamedTypeSymbol? FindImplementation(INamedTypeSymbol interfaceSymbol, List<INamedTypeSymbol> candidates)
+            private static ClassInfo? FindImplementation(string assemblyIdentity, string interfaceFqn, string interfaceName, List<ClassInfo> candidates)
             {
                 var matches = candidates
-                    .Where(c => c.AllInterfaces.Contains(interfaceSymbol, SymbolEqualityComparer.Default))
-                    .Where(c => c.InstanceConstructors.Any(ctor => ctor.DeclaredAccessibility == Accessibility.Public))
-                    .OrderBy(c => c.ToDisplayString(), StringComparer.Ordinal)
+                    .Where(c => c.Interfaces.Any(i => i.AssemblyIdentity == assemblyIdentity && i.Fqn == interfaceFqn))
+                    .Where(c => c.HasPublicConstructor)
+                    .OrderBy(c => c.DisplayName, StringComparer.Ordinal)
                     .ToList();
 
                 if (matches.Count == 0)
@@ -123,15 +122,15 @@ namespace MethodCache.SourceGenerator
                     return null;
                 }
 
-                var preferredName = interfaceSymbol.Name.StartsWith("I", StringComparison.Ordinal)
-                    ? interfaceSymbol.Name.Substring(1)
-                    : interfaceSymbol.Name;
+                var preferredName = interfaceName.StartsWith("I", StringComparison.Ordinal)
+                    ? interfaceName.Substring(1)
+                    : interfaceName;
 
                 return matches.FirstOrDefault(c => c.Name == preferredName) ?? matches[0];
             }
 
             /// <summary>Whether generated code in <paramref name="assembly"/> can name the type, including its type arguments.</summary>
-            private static bool IsNameableFrom(ITypeSymbol type, IAssemblySymbol assembly) => type switch
+            internal static bool IsNameableFrom(ITypeSymbol type, IAssemblySymbol assembly) => type switch
             {
                 IArrayTypeSymbol array => IsNameableFrom(array.ElementType, assembly),
                 INamedTypeSymbol named => (SymbolEqualityComparer.Default.Equals(named.ContainingAssembly, assembly)
@@ -154,7 +153,7 @@ namespace MethodCache.SourceGenerator
                 return true;
             }
 
-            private static bool IsAccessibleFromAssembly(INamedTypeSymbol? type)
+            internal static bool IsAccessibleFromAssembly(INamedTypeSymbol? type)
             {
                 for (var current = type; current != null; current = current.ContainingType)
                 {
