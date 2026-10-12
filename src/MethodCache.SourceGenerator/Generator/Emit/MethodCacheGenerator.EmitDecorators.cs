@@ -195,7 +195,7 @@ namespace MethodCache.SourceGenerator
                 if (!symbol.IsGenericType || symbol.TypeParameters.Length == 0)
                     return string.Empty;
 
-                return $"<{string.Join(", ", symbol.TypeParameters.Select(tp => tp.Name))}>";
+                return $"<{string.Join(", ", symbol.TypeParameters.Select(tp => Utils.Identifier(tp.Name)))}>";
             }
 
             private static void EmitCachedMethodSites(StringBuilder sb, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
@@ -349,7 +349,7 @@ namespace MethodCache.SourceGenerator
                 if (method.IsGenericMethod)
                 {
                     // The type arguments are part of the key, so Get<int>(1) and Get<string>(1) never share an entry
-                    var typeArguments = string.Join(", \",\", ", method.TypeParameters.Select(tp => $"typeof({tp.Name}).ToString()"));
+                    var typeArguments = string.Join(", \",\", ", method.TypeParameters.Select(tp => $"typeof({Utils.Identifier(tp.Name)}).ToString()"));
                     var declarations = $"            var __mcTypeArguments = string.Concat(\"<\", {typeArguments}, \">\");\n" +
                                        "            var __mcPrefix = string.Concat(__mcSnapshot.KeyPrefix, __mcTypeArguments);\n";
                     // The key code was emitted with the plain prefix; point it at the one with the type arguments
@@ -473,7 +473,7 @@ namespace MethodCache.SourceGenerator
             private static string LoaderName(IMethodSymbol method, string safeFieldName)
             {
                 var typeArgs = method.TypeParameters.Any()
-                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
+                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => Utils.Identifier(tp.Name)))}>"
                     : string.Empty;
                 return $"__Load_{safeFieldName}{typeArgs}";
             }
@@ -1016,7 +1016,7 @@ namespace MethodCache.SourceGenerator
                 var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
                 var declaring = Utils.GetReturnTypeForSignature(method.ContainingType);
                 var typeParams = method.TypeParameters.Any()
-                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
+                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => Utils.Identifier(tp.Name)))}>"
                     : string.Empty;
 
                 var parameters = string.Join(", ", method.Parameters.Select(p =>
@@ -1029,7 +1029,7 @@ namespace MethodCache.SourceGenerator
                 foreach (var tp in method.TypeParameters)
                 {
                     var clause = tp.HasReferenceTypeConstraint ? "class" : tp.HasValueTypeConstraint ? "struct" : "default";
-                    sb.AppendLine($"            where {tp.Name} : {clause}");
+                    sb.AppendLine($"            where {Utils.Identifier(tp.Name)} : {clause}");
                 }
             }
 
@@ -1049,7 +1049,7 @@ namespace MethodCache.SourceGenerator
             private static string BuildMethodCall(IMethodSymbol method)
             {
                 var typeArgs = method.TypeParameters.Any()
-                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => tp.Name))}>"
+                    ? $"<{string.Join(", ", method.TypeParameters.Select(tp => Utils.Identifier(tp.Name)))}>"
                     : string.Empty;
 
                 var args = string.Join(", ", method.Parameters.Select(p =>
@@ -1088,7 +1088,7 @@ namespace MethodCache.SourceGenerator
                     constraints.Add("new()");
 
                 return constraints.Any()
-                    ? $"where {tp.Name} : {string.Join(", ", constraints)}"
+                    ? $"where {Utils.Identifier(tp.Name)} : {string.Join(", ", constraints)}"
                     : string.Empty;
             }
 
