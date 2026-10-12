@@ -43,7 +43,7 @@ namespace MethodCache.SourceGenerator
                     var containingTypes = new List<string>();
                     for (var type = interfaceSymbol.ContainingType; type != null; type = type.ContainingType)
                     {
-                        containingTypes.Insert(0, type.Name);
+                        containingTypes.Insert(0, Identifier(type.Name) + (type.Arity > 0 ? "_Arity" + type.Arity : string.Empty));
                     }
 
                     return containingTypes.Count == 0 ? result : result + "." + string.Join(".", containingTypes);
@@ -73,7 +73,7 @@ namespace MethodCache.SourceGenerator
             /// </summary>
             internal static string GetDecoratorClassName(INamedTypeSymbol interfaceSymbol)
             {
-                var name = interfaceSymbol.Name + "Decorator";
+                var name = interfaceSymbol.Name.Replace("_", "__") + "Decorator";
                 if (IsFromReferencedAssembly(interfaceSymbol))
                 {
                     return name;
@@ -81,7 +81,7 @@ namespace MethodCache.SourceGenerator
 
                 for (var type = interfaceSymbol.ContainingType; type != null; type = type.ContainingType)
                 {
-                    name = type.Name + "_" + name;
+                    name = type.Name.Replace("_", "__") + "_" + type.Arity + "_" + name;
                 }
 
                 return name;
@@ -270,6 +270,19 @@ namespace MethodCache.SourceGenerator
                 .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
             internal static string GetReturnTypeForSignature(ITypeSymbol type) => SourceTypeName(type, SignatureFormat);
+
+            internal static IEnumerable<INamedTypeSymbol> ContainingTypes(INamedTypeSymbol symbol)
+            {
+                var hierarchy = new Stack<INamedTypeSymbol>();
+                for (var type = symbol; type != null; type = type.ContainingType) hierarchy.Push(type);
+                return hierarchy;
+            }
+
+            internal static IEnumerable<ITypeParameterSymbol> AllTypeParameters(INamedTypeSymbol symbol) =>
+                ContainingTypes(symbol).SelectMany(type => type.TypeParameters);
+
+            internal static IEnumerable<ITypeSymbol> AllTypeArguments(INamedTypeSymbol symbol) =>
+                ContainingTypes(symbol).SelectMany(type => type.TypeArguments);
 
             // Explicit implementations inherit public parameter names from the interface. Internal aliases keep
             // user names out of generated local, loader and field scopes.

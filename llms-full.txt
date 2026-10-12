@@ -215,7 +215,8 @@ Put cache attributes on interface methods. The generator builds a decorator arou
 and routes cached calls through MethodCache. Your implementation stays ordinary application code.
 
 The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`, overloaded methods, generic
-interfaces and generic methods. Generic constraints, including `unmanaged`, are preserved. Overloaded methods
+interfaces and generic methods, including interfaces nested in generic containing types. Constraints on both
+the containing type and the interface, including `unmanaged`, are preserved. Overloaded methods
 include namespace-qualified parameter types in their identities so equally named types remain separate.
 
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.

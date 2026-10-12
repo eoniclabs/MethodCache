@@ -121,7 +121,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine($"    internal sealed class {className}{genericParams} : {interfaceFqn}");
 
                 // Add generic constraints after class declaration
-                foreach (var typeParam in info.Symbol.TypeParameters)
+                foreach (var typeParam in Utils.AllTypeParameters(info.Symbol))
                 {
                     var constraints = BuildConstraints(typeParam);
                     if (!string.IsNullOrEmpty(constraints))
@@ -194,10 +194,9 @@ namespace MethodCache.SourceGenerator
 
             private static string GetClassGenericParameters(INamedTypeSymbol symbol)
             {
-                if (!symbol.IsGenericType || symbol.TypeParameters.Length == 0)
-                    return string.Empty;
-
-                return $"<{string.Join(", ", symbol.TypeParameters.Select(tp => Utils.TypeParameterIdentifier(tp)))}>";
+                var parameters = Utils.AllTypeParameters(symbol).ToArray();
+                return parameters.Length == 0 ? string.Empty
+                    : $"<{string.Join(", ", parameters.Select(Utils.TypeParameterIdentifier))}>";
             }
 
             private static void EmitCachedMethodSites(StringBuilder sb, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
