@@ -36,6 +36,7 @@ namespace MethodCache.SourceGenerator
             var symbol = info.Symbol;
             var summary = new InterfaceSummary(
                 symbol.Name,
+                GetAssemblyIdentity(symbol),
                 Utils.GetFullyQualifiedName(symbol),
                 Utils.GetFullyQualifiedName(symbol.OriginalDefinition),
                 Utils.GetDecoratorFullName(symbol),
@@ -52,6 +53,8 @@ namespace MethodCache.SourceGenerator
                 new EquatableArray<DiagnosticInfo>(info.Diagnostics));
         }
 
+        private static string GetAssemblyIdentity(INamedTypeSymbol type) => type.ContainingAssembly?.Identity.ToString() ?? string.Empty;
+
         /// <summary>A class that implements interfaces, as the decorator registrations need it.</summary>
         private static ClassInfo? GetClassInfo(INamedTypeSymbol? symbol)
         {
@@ -62,6 +65,7 @@ namespace MethodCache.SourceGenerator
 
             var interfaces = symbol.AllInterfaces
                 .Select(i => new ImplementedInterface(
+                    GetAssemblyIdentity(i),
                     Utils.GetFullyQualifiedName(i),
                     Utils.GetFullyQualifiedName(i.OriginalDefinition),
                     i.ToDisplayString(),

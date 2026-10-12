@@ -41,7 +41,7 @@ namespace MethodCache.SourceGenerator
 
                     var closedTypes = allClasses
                         .SelectMany(c => c.Interfaces)
-                        .Where(i => i.OriginalDefinitionFqn == info.OriginalDefinitionFqn && i.IsNameable)
+                        .Where(i => i.AssemblyIdentity == info.AssemblyIdentity && i.OriginalDefinitionFqn == info.OriginalDefinitionFqn && i.IsNameable)
                         .GroupBy(i => i.Fqn, StringComparer.Ordinal)
                         .Select(g => g.First())
                         .OrderBy(i => i.DisplayName, StringComparer.Ordinal);
@@ -83,7 +83,7 @@ namespace MethodCache.SourceGenerator
                     }
 
                     var hasPolicies = info.HasCachedMethods;
-                    var implementation = FindImplementation(interfaceFqn, info.Name, candidates);
+                    var implementation = FindImplementation(info.AssemblyIdentity, interfaceFqn, info.Name, candidates);
 
                     sb.AppendLine("            MethodCacheDecorators.Register(new DecoratorRegistration(");
                     sb.AppendLine($"                typeof({interfaceFqn}),");
@@ -109,10 +109,10 @@ namespace MethodCache.SourceGenerator
             /// like the interface without its leading "I", otherwise the first by name. Only classes with a public
             /// constructor qualify, since the container needs one.
             /// </summary>
-            private static ClassInfo? FindImplementation(string interfaceFqn, string interfaceName, List<ClassInfo> candidates)
+            private static ClassInfo? FindImplementation(string assemblyIdentity, string interfaceFqn, string interfaceName, List<ClassInfo> candidates)
             {
                 var matches = candidates
-                    .Where(c => c.Interfaces.Any(i => i.Fqn == interfaceFqn))
+                    .Where(c => c.Interfaces.Any(i => i.AssemblyIdentity == assemblyIdentity && i.Fqn == interfaceFqn))
                     .Where(c => c.HasPublicConstructor)
                     .OrderBy(c => c.DisplayName, StringComparer.Ordinal)
                     .ToList();

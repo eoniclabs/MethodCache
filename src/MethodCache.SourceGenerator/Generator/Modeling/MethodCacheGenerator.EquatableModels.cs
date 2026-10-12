@@ -89,6 +89,7 @@ namespace MethodCache.SourceGenerator
         /// <summary>What the shared generated files need to know about one interface.</summary>
         internal sealed record InterfaceSummary(
             string Name,
+            string AssemblyIdentity,
             string InterfaceFqn,
             string OriginalDefinitionFqn,
             string DecoratorFqn,
@@ -117,8 +118,12 @@ namespace MethodCache.SourceGenerator
             GeneratedInterface? Interface,
             EquatableArray<DiagnosticInfo> Diagnostics);
 
-        /// <summary>An interface a class implements, as the decorator registrations compare and name it.</summary>
+        /// <summary>
+        /// An interface a class implements, as the decorator registrations compare and name it. The assembly tells apart
+        /// two interfaces with the same name, such as one reached through an extern alias.
+        /// </summary>
         internal sealed record ImplementedInterface(
+            string AssemblyIdentity,
             string Fqn,
             string OriginalDefinitionFqn,
             string DisplayName,
