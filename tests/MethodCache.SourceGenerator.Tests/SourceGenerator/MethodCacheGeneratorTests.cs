@@ -187,8 +187,8 @@ namespace TestApp
 
             var registrations = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class MethodCacheDecoratorRegistrations"));
             Assert.NotNull(registrations);
-            AssertContainsIgnoreWhitespace(registrations, "[System.Runtime.CompilerServices.ModuleInitializer]");
-            AssertContainsIgnoreWhitespace(registrations, "MethodCacheDecorators.Register(new DecoratorRegistration( typeof(global::TestApp.IUserService),");
+            AssertContainsIgnoreWhitespace(registrations, "[global::System.Runtime.CompilerServices.ModuleInitializer]");
+            AssertContainsIgnoreWhitespace(registrations, "global::MethodCache.Infrastructure.MethodCacheDecorators.Register(new global::MethodCache.Infrastructure.DecoratorRegistration( typeof(global::TestApp.IUserService),");
             AssertContainsIgnoreWhitespace(registrations, "new global::TestApp.IUserServiceDecorator( (global::TestApp.IUserService)inner,");
 
             // The class named like the interface wins over other implementations
@@ -260,10 +260,10 @@ namespace TestApp
             Assert.Contains("GeneratedAttributePolicySource", registrySource);
             Assert.Contains("PolicySourceRegistration", registrySource);
             Assert.Contains("PolicySnapshot", registrySource);
-            AssertContainsIgnoreWhitespace(registrySource, $"SlidingExpiration = System.TimeSpan.FromTicks({TimeSpan.FromMinutes(2).Ticks}L)");
-            AssertContainsIgnoreWhitespace(registrySource, $"RefreshAhead = System.TimeSpan.FromTicks({TimeSpan.FromSeconds(30).Ticks}L)");
-            AssertContainsIgnoreWhitespace(registrySource, "fields |= CachePolicyFields.SlidingExpiration;");
-            AssertContainsIgnoreWhitespace(registrySource, "fields |= CachePolicyFields.RefreshAhead;");
+            AssertContainsIgnoreWhitespace(registrySource, $"SlidingExpiration = global::System.TimeSpan.FromTicks({TimeSpan.FromMinutes(2).Ticks}L)");
+            AssertContainsIgnoreWhitespace(registrySource, $"RefreshAhead = global::System.TimeSpan.FromTicks({TimeSpan.FromSeconds(30).Ticks}L)");
+            AssertContainsIgnoreWhitespace(registrySource, "fields |= global::MethodCache.Policies.CachePolicyFields.SlidingExpiration;");
+            AssertContainsIgnoreWhitespace(registrySource, "fields |= global::MethodCache.Policies.CachePolicyFields.RefreshAhead;");
         }
 
         [Fact]
@@ -296,7 +296,7 @@ namespace TestApp
             // Sync methods with simple parameters use the ultra-fast path with GetOrCreateFastAsync
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateFastAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(((global::TestApp.ITestService)this._decorated).GetValue(__mcArgument0))!");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => global::System.Threading.Tasks.Task.FromResult(((global::TestApp.ITestService)this._decorated).GetValue(__mcArgument0))!");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
@@ -420,7 +420,7 @@ namespace TestApp
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetValue(int __mcArgument0)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> global::TestApp.ITestService.GetValueAsync(int __mcArgument0)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int __mcArgument0)");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearUserCache()");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, "InvalidateByTagsAsync");

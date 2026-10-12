@@ -30,3 +30,5 @@ Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Tas
 Factory registration helpers dispose owned implementations even when their service interface does not declare disposal. Asynchronous disposal prefers `IAsyncDisposable`, then falls back to `IDisposable`. Automatically discovered DI services retain container ownership.
 
 Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.
+
+Generated decorators qualify framework and cache infrastructure type names globally, so application types such as `Task`, `List` or `CachedMethod` cannot shadow them.
