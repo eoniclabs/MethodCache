@@ -233,6 +233,8 @@ var rate = await cache.GetOrCreateAsync(
 ```
 <!-- endSnippet -->
 
+`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
+
 See [Caching third-party code](docs/features/third-party.md).
 
 ### HTTP responses

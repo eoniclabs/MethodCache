@@ -1,5 +1,7 @@
 # Manual caching
 
+`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
+
 When an attribute doesn't fit, such as a call in the middle of a method or a client without an interface, use the same
 cache through `ICacheManager` with a key you choose:
 
