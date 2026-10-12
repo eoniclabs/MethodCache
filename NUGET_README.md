@@ -33,6 +33,6 @@ builder.Services.AddMethodCache();
 - **One line to go distributed.** `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)`, with every instance's memory cache kept in sync. Your own distributed cache must implement `IAtomicInvalidationStore` as well as `IDistributedCache`, or the host fails at startup.
 - **Built for production.** Stampede protection, a W-TinyLFU memory cache that stays within its size limit under load, admin endpoints, a health check and OpenTelemetry.
 
-`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
+`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options. Fluent key versions cannot alias unversioned user keys.
 
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache

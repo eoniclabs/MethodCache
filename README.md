@@ -233,7 +233,7 @@ var rate = await cache.GetOrCreateAsync(
 ```
 <!-- endSnippet -->
 
-`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
+`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options. Fluent key versions cannot alias unversioned user keys.
 
 See [Caching third-party code](docs/features/third-party.md).
 

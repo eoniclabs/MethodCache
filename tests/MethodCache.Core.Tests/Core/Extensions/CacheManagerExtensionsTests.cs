@@ -265,7 +265,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
         }
 
         [Fact]
-        public async Task GetOrCreateAsync_WithVersion_AppendsVersionToKey()
+        public async Task GetOrCreateAsync_WithVersion_UsesReservedVersionNamespace()
         {
             var cacheManager = new CapturingCacheManager();
 
@@ -274,7 +274,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 static (_, _) => new ValueTask<int>(42),
                 options => options.WithVersion(3));
 
-            Assert.Equal("user:version::v3", cacheManager.LastKey);
+            Assert.Equal("\0v3:user:version", cacheManager.LastKey);
         }
 
         // Enhanced Conditional Logic Tests

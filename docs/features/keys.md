@@ -1,5 +1,7 @@
 # Cache keys
 
+Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
+
 You never write keys for `[Cache]` methods. The generated decorator builds each key from the interface, the method
 and the arguments, so two calls share an entry exactly when they call the same method with equal arguments.
 
