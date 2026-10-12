@@ -25,7 +25,7 @@ builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
 
-- **One attribute, zero boilerplate.** Keys are built from the method and its arguments, and values of different types never share a key, nested ones included. Generic interfaces such as `IRepository<User>` work too. Overloaded methods include namespace-qualified parameter types in their identities. Arguments with only private state, including inherited fields, are refused. Custom key providers can safely compose other keys. Generic interfaces and methods preserve their `unmanaged` constraints.
+- **One attribute, zero boilerplate.** Keys are built from the method and its arguments, and values of different types never share a key, nested ones included. Generic interfaces such as `IRepository<User>` work too. Overloaded methods include namespace-qualified parameter types in their identities. Arguments with only private state, including inherited fields and values nested inside an argument, are refused. Custom key providers can safely compose other keys. Generic interfaces and methods preserve their `unmanaged` constraints.
 - **Fast.** A hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and takes 4 to 6 times less time than HybridCache or FusionCache.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`.
 - **Tune it without redeploying.** Attributes, global defaults, `appsettings.json` (reloaded live) and runtime overrides.
