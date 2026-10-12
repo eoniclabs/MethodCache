@@ -26,3 +26,5 @@ The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.Integra
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
 
 Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
+
+Factory registration helpers dispose owned implementations even when their service interface does not declare disposal. Asynchronous disposal prefers `IAsyncDisposable`, then falls back to `IDisposable`. Automatically discovered DI services retain container ownership.

@@ -148,6 +148,43 @@ public class SignatureCorpusTests
         Assert.DoesNotContain(compiled.Diagnostics, d => d.Id == "CS8785");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FactoryOwnedImplementation_DisposesResourcesWithoutDisposableInterface(bool asyncOnly)
+    {
+        var disposalInterface = asyncOnly ? "IAsyncDisposable" : "IDisposable";
+        var dispose = asyncOnly ? "public ValueTask DisposeAsync() { Disposed++; return default; }" : "public void Dispose() { Disposed++; }";
+        var source = $$"""
+            using System;
+            using System.Threading.Tasks;
+            using MethodCache;
+            using Microsoft.Extensions.DependencyInjection;
+            namespace Corpus {
+                public interface ISvc { [Cache] int Get(int id); }
+                public class Svc : ISvc, {{disposalInterface}} {
+                    public static int Disposed;
+                    public int Get(int id) => id;
+                    {{dispose}}
+                }
+                public static class Scenario {
+                    public static async Task<int> RunAsync() {
+                        var services = new ServiceCollection();
+                        services.AddMethodCache();
+                        services.AddISvcWithCaching(_ => new Svc());
+                        await using (var provider = services.BuildServiceProvider()) {
+                            provider.GetRequiredService<ISvc>().Get(1);
+                        }
+                        return Svc.Disposed;
+                    }
+                }
+            }
+            """;
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "FactoryOwnedHiddenDisposal" + asyncOnly, LanguageVersion.CSharp12);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(1, await (Task<int>)run.Invoke(null, null)!);
+    }
+
     private static readonly Dictionary<string, (string Member, string Implementation, string ExpectedId)> Unsupported = new()
     {
         ["void"] = ("void Touch(int id)", "void Touch(int id) { }", "MCG001"),

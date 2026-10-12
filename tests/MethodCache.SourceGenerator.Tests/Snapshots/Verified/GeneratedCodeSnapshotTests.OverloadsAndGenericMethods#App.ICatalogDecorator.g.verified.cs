@@ -17,7 +17,7 @@ namespace App
 {
     [System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
     [System.Diagnostics.DebuggerNonUserCode]
-    internal sealed class ICatalogDecorator : global::App.ICatalog
+    internal sealed class ICatalogDecorator : global::App.ICatalog, global::System.IDisposable, global::System.IAsyncDisposable
     {
         private readonly global::App.ICatalog _decorated;
         private readonly bool _ownsDecorated;
@@ -159,6 +159,19 @@ namespace App
             where __mcTypeArgument0 : class
             => this._cacheManager.GetOrCreateFastAsync<__mcTypeArgument0?>(__cacheKey, this._method_Method2.Name, () => ((global::App.ICatalog)this._decorated).Load<__mcTypeArgument0>(__mcArgument0)!, __policy);
 
+        void global::System.IDisposable.Dispose()
+        {
+            if (!this._ownsDecorated) return;
+            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
+            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException("This owned implementation requires asynchronous disposal. Use DisposeAsync.");
+        }
+        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()
+        {
+            if (!this._ownsDecorated) return default;
+            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();
+            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
+            return default;
+        }
     }
 }
 #pragma warning restore CS8019
