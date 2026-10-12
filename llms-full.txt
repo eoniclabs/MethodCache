@@ -973,6 +973,8 @@ See [Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/fea
 
 # HTTP response caching
 
+An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
+
 Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses according to their response
 headers. Freshness comes from `Cache-Control` and expiry headers; ETag and Last-Modified enable conditional
 validation. A successful 304 is returned to the caller as the full response.
@@ -2215,6 +2217,8 @@ MIT License - see LICENSE file for details.
 <!-- source: src/MethodCache.HttpCaching/README.md -->
 
 # MethodCache.HttpCaching
+
+An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached

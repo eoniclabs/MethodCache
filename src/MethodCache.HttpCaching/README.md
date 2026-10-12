@@ -1,5 +1,7 @@
 # MethodCache.HttpCaching
 
+An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
+
 HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
 response. It follows RFC 9111.
