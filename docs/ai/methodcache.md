@@ -83,3 +83,5 @@ Custom distributed method-result caches must implement `MethodCache.Extensibilit
 including backend-atomic maximum timestamps and retention preservation. A plain `IDistributedCache` is
 rejected when the host starts (`ValidateOnStart`), or without a generic host when the method cache manager is
 resolved. Redis and SQL Server supply this contract.
+
+HTTP caching bypasses transports with automatic cookies enabled. Configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` for cacheable clients, and send explicit cookie headers before the cache handler.

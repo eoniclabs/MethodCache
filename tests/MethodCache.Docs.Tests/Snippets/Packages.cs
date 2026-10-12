@@ -33,6 +33,7 @@ namespace Docs.Packages
         {
             // begin-snippet: http-basic
             builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
                 .AddHttpCaching();
             // end-snippet
         }
@@ -41,6 +42,7 @@ namespace Docs.Packages
         {
             // begin-snippet: http-settings
             builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
                 .AddHttpCaching(options =>
                 {
                     options.EnableStaleIfError = true;           // serve the last response when the API is down
@@ -69,7 +71,9 @@ namespace Docs.Packages
         {
             // begin-snippet: http-custom-storage-registration
             builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
-            builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+            builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
+                .AddHttpCaching();
             // end-snippet
         }
     }
