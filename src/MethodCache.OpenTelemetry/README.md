@@ -116,3 +116,5 @@ instrumentation: `.WithTracing(t => t.AddAspNetCoreInstrumentation().AddMethodCa
 ## License
 
 MIT License - see LICENSE file for details.
+
+Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.

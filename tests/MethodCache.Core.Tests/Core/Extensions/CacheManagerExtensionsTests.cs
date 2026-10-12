@@ -316,7 +316,11 @@ namespace MethodCache.Core.Tests.Core.Extensions
             public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
                 => GetOrCreateFastAsync(keyGenerator.GenerateKey(methodName, args, policy), methodName, factory, policy);
 
-            public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+            /// <inheritdoc />
+        public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+            => new(CacheLookupResult<T>.Miss);
+
+        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
                 => new(default(T));
 
             public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)

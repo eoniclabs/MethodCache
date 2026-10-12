@@ -299,6 +299,15 @@ namespace MethodCache.Benchmarks.Microbenchmarks.Legacy
             }, methodName, entryPolicy).ConfigureAwait(false);
         }
 
+        public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        {
+            ArgumentNullException.ThrowIfNull(policy);
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
+            return new(TryGetInternal<T>(key, updateStatistics: false, out var value)
+                ? CacheLookupResult<T>.Hit(value!)
+                : CacheLookupResult<T>.Miss);
+        }
+
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             if (policy == null)

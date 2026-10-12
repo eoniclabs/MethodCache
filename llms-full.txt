@@ -1351,6 +1351,8 @@ have their own costs. Hits are still counted. Cache keys and tags are left off s
 you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
 [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.OpenTelemetry/README.md) and [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
+Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
+
 
 ---
 
@@ -2266,6 +2268,8 @@ instrumentation: `.WithTracing(t => t.AddAspNetCoreInstrumentation().AddMethodCa
 ## License
 
 MIT License - see LICENSE file for details.
+
+Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
 
 
 ---
