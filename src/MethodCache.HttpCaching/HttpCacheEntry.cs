@@ -102,7 +102,8 @@ public sealed record HttpCacheEntry
         CancellationToken cancellationToken = default,
         ArrayPool<byte>? bufferPool = null)
     {
-        var contentHeaders = SerializeHeaders(response.Content.Headers);
+        var originalContent = response.Content;
+        var contentHeaders = SerializeHeaders(originalContent.Headers);
         var limit = maxSize > 0 ? maxSize : long.MaxValue;
         // HEAD, 204 and 304 responses have no body whatever Content-Length says (RFC 9110 sections 9.3.2, 8.6).
         var knownLength = HasNoBody(request, response) ? 0 : response.Content.Headers.ContentLength;
@@ -133,17 +134,16 @@ public sealed record HttpCacheEntry
         if (buffer.Length > limit || buffer.Length == Array.MaxLength)
         {
             // Too large to cache: hand the caller what was read followed by the rest of the stream
-            response.Content = new StreamContent(new ConcatenatedStream(buffer.DetachStream(), body));
+            response.Content = new StreamContent(new ConcatenatedStream(buffer.DetachStream(), body, originalContent));
             RestoreHeaders(response.Content.Headers, contentHeaders);
             return null;
         }
 
         var content = buffer.ToOwnedArray();
-        await body.DisposeAsync().ConfigureAwait(false);
-
         // The entry and the original response share the one owned final array.
         response.Content = new ByteArrayContent(content);
         RestoreHeaders(response.Content.Headers, contentHeaders);
+        originalContent.Dispose();
 
         return new HttpCacheEntry
         {
@@ -298,8 +298,9 @@ public sealed record HttpCacheEntry
     };
 
     /// <summary>Reads one stream to its end, then the other.</summary>
-    private sealed class ConcatenatedStream(Stream first, Stream second) : Stream
+    private sealed class ConcatenatedStream(Stream first, Stream second, HttpContent owner) : Stream
     {
+        private int _disposed;
         public override bool CanRead => true;
         public override bool CanSeek => false;
         public override bool CanWrite => false;
@@ -331,10 +332,10 @@ public sealed record HttpCacheEntry
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && Interlocked.Exchange(ref _disposed, 1) == 0)
             {
-                first.Dispose();
-                second.Dispose();
+                try { first.Dispose(); }
+                finally { owner.Dispose(); }
             }
 
             base.Dispose(disposing);
