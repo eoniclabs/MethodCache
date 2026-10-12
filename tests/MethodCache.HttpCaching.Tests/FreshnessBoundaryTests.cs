@@ -59,6 +59,43 @@ public class FreshnessBoundaryTests
     }
 
     [Fact]
+    public void RawInvalidExpires_FromCustomStorage_IsImmediatelyStale()
+    {
+        var entry = new HttpCacheEntry
+        {
+            RequestUri = Url,
+            Method = "GET",
+            Date = _time.GetUtcNow(),
+            StoredAt = _time.GetUtcNow(),
+            ContentHeaders = new() { ["expires"] = new[] { "0" } },
+            LastModified = _time.GetUtcNow().AddDays(-1)
+        };
+        var calculator = new FreshnessCalculator(new HttpCacheOptions { DefaultMaxAge = TimeSpan.FromHours(1) }, _time);
+        Assert.Equal(TimeSpan.Zero, calculator.GetFreshnessLifetime(entry));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("not a date")]
+    public async Task InvalidExpires_DoesNotFallBackToHeuristicOrDefaultFreshness(string expires)
+    {
+        var options = new HttpCacheOptions { AllowHeuristicFreshness = true, DefaultMaxAge = TimeSpan.FromHours(1) };
+        var (client, inner) = HttpCacheTestFactory.CreateClient(options, timeProvider: _time);
+        using var owner = client;
+        var expired = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("old") };
+        expired.Headers.Date = _time.GetUtcNow();
+        expired.Content.Headers.TryAddWithoutValidation("Expires", expires);
+        expired.Content.Headers.LastModified = _time.GetUtcNow().AddDays(-1);
+        inner.SetResponses(expired, Response("new", TimeSpan.FromMinutes(1)));
+
+        using var first = await client.GetAsync(Url);
+        using var second = await client.GetAsync(Url);
+
+        Assert.Equal("new", await second.Content.ReadAsStringAsync());
+        Assert.Equal(2, inner.RequestCount);
+    }
+
+    [Fact]
     public async Task MaxAge_IsFreshOneTickBefore_AndStaleExactlyAtIt()
     {
         var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { AddDiagnosticHeaders = true }, timeProvider: _time);

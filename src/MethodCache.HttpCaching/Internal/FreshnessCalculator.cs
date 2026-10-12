@@ -43,6 +43,11 @@ internal sealed class FreshnessCalculator
             return expires > date ? expires - date : TimeSpan.Zero;
         }
 
+        if (entry.Expires is null && entry.ContentHeaders.Keys.Any(name => string.Equals(name, "Expires", StringComparison.OrdinalIgnoreCase)))
+        {
+            return TimeSpan.Zero;
+        }
+
         if (_options.AllowHeuristicFreshness && entry.LastModified is { } lastModified && entry.Date is { } responseDate)
         {
             var heuristic = TimeSpan.FromSeconds(Math.Max(0, (responseDate - lastModified).TotalSeconds * 0.1));
