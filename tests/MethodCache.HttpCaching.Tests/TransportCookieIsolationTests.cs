@@ -55,6 +55,32 @@ public class TransportCookieIsolationTests
         Assert.Equal(0, origin.Requests);
     }
 
+    [Fact]
+    public async Task HiddenCookieTransport_DefaultPolicy_NeverCachesAnotherSessionsResponse()
+    {
+        await using var origin = new CookieOrigin();
+        var jar = new CookieContainer();
+        jar.Add(origin.Uri, new Cookie("session", "A"));
+        using var transport = new HiddenHandler(new SocketsHttpHandler { CookieContainer = jar });
+        var state = new MethodCache.HttpCaching.Internal.HttpCacheClientState("hidden");
+        using var handler = new MethodCache.HttpCaching.Internal.HttpCacheHandler(state,
+            HttpCacheTestFactory.CreateInMemoryStorage(), new TestOptionsMonitor<HttpCacheOptions>(new()), TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<MethodCache.HttpCaching.Internal.HttpCacheHandler>.Instance) { InnerHandler = transport };
+        using var client = new HttpClient(handler);
+        Assert.Equal("session=A", await client.GetStringAsync(origin.Uri));
+        jar.Add(origin.Uri, new Cookie("session", "B"));
+        Assert.Equal("session=B", await client.GetStringAsync(origin.Uri));
+        Assert.Equal(2, origin.Requests);
+    }
+
+    private sealed class HiddenHandler(HttpMessageHandler inner) : HttpMessageHandler
+    {
+        private readonly HttpMessageInvoker _transport = new(inner);
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => _transport.SendAsync(request, cancellationToken);
+        protected override void Dispose(bool disposing) { if (disposing) _transport.Dispose(); base.Dispose(disposing); }
+    }
+
     private sealed class ForwardHandler : DelegatingHandler
     {
         public ForwardHandler(HttpMessageHandler inner) { InnerHandler = inner; }

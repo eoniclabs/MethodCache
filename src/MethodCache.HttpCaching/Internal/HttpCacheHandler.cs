@@ -61,19 +61,24 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     // Cookies are added below this handler and can change while a request or redirect is in flight.
     // No snapshot of the jar can reliably identify the cookies the transport actually sends.
-    private bool UsesAutomaticCookies()
+    private bool HasUnsafeTransport(HttpCacheOptions options)
     {
         HttpMessageHandler? transport = InnerHandler;
         while (transport is DelegatingHandler delegating)
         {
             transport = delegating.InnerHandler;
         }
-        return transport switch
+        var unsafeTransport = transport switch
         {
             SocketsHttpHandler sockets => sockets.UseCookies,
             HttpClientHandler client => client.UseCookies,
-            _ => false
+            _ => !options.AllowUnverifiedTransport
         };
+        if (unsafeTransport && Interlocked.Exchange(ref _state.TransportWarningLogged, 1) == 0)
+        {
+            _logger.LogWarning("HTTP caching for client {ClientName} is bypassed because its transport uses automatic cookies or cannot be verified. Disable transport cookies, or set AllowUnverifiedTransport only for a verified cookie-free custom transport.", _state.Name);
+        }
+        return unsafeTransport;
     }
 
     private static HttpResponseMessage CreateCacheUnavailableResponse(HttpRequestMessage request) =>
@@ -90,7 +95,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         // Range requests go to the origin: a partial response is never stored, and a stored full one isn't cut up.
         // So do requests with the caller's own validators: its 304 must reach it, not be replaced by the cache's.
         if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
-            HasCallerConditionals(request) || UsesAutomaticCookies())
+            HasCallerConditionals(request) || HasUnsafeTransport(options))
         {
             if (requestDirectives.OnlyIfCached)
             {

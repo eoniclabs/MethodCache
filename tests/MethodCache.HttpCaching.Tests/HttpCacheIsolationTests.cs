@@ -384,10 +384,11 @@ public class HttpCacheIsolationTests
 
         using var metrics = new HttpCacheMetrics();
         var origin = new EchoOrigin();
+        var options = new HttpCacheOptions { AllowUnverifiedTransport = true }; // Verified test transport.
         var handler = new HttpCacheHandler(
             new HttpCacheClientState("orders-api"),
             HttpCacheTestFactory.CreateInMemoryStorage(),
-            new TestOptionsMonitor<HttpCacheOptions>(new HttpCacheOptions()),
+            new TestOptionsMonitor<HttpCacheOptions>(options),
             TimeProvider.System,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<HttpCacheHandler>.Instance,
             metrics)
