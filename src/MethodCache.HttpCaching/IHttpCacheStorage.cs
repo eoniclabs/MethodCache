@@ -10,11 +10,13 @@ public interface IHttpCacheStorage
     /// </summary>
     /// <param name="key">The URL cache key.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The current opaque generation, or an empty string before the first invalidation.</returns>
+    /// <returns>The current opaque generation. Storage that cannot lose its generations may return an empty string before the first invalidation.</returns>
     /// <remarks>
-    /// Generations must be shared by every instance that shares entries. Do not expire, evict or reuse a generation
-    /// while entries or in-flight publishers from an older generation can exist. A failed read must return a unique
-    /// non-reusable generation or throw, so it cannot make an older namespace visible.
+    /// Generations must be shared by every instance that shares entries, and a generation value must never be reused.
+    /// When the generation record is missing and may have been lost (for example evicted by a distributed backend),
+    /// do not return a value used before, such as the empty string: store and return a new unique generation, so a
+    /// lost record only causes cache misses. A failed read must return a unique non-reusable generation or throw, so
+    /// it cannot make an older namespace visible.
     /// </remarks>
     ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default);
 

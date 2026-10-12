@@ -73,8 +73,9 @@ including during background revalidation. Omitted `Vary` keeps the original vari
 An in-flight GET or background revalidation that started before a successful write cannot publish a response
 into the new cache generation, including across instances. Publication generations are separate from response
 writers. The built-in store bounds this metadata to 4096 slots per storage prefix; a slot collision can cause an
-additional cache miss for another URL. Generation records use maximum absolute expiration and must not be
-subject to backend eviction. Read failures fall back to the origin; invalidation write failures propagate after
+additional cache miss for another URL. Generation records use maximum absolute expiration; if the backend
+evicts one anyway, a fresh generation starts, so the loss only causes misses and never serves a response from
+before the write. Read failures fall back to the origin; invalidation write failures propagate after
 the origin write, which may already have succeeded. Custom storage implementations implement
 `GetGenerationAsync` and `InvalidateAsync` with shared, unique generations. See [HTTP caching](../../docs/features/http-caching.md).
 

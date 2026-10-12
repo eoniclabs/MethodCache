@@ -16,6 +16,8 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
     // A fixed number of non-expiring epoch slots bounds metadata without allowing an expired tombstone to
     // resurrect an old response. A collision only causes an additional cache miss for an unrelated URL.
     private const int GenerationSlots = 4096;
+    // Maximum absolute expiry also overrides providers' default sliding expiry (such as SQL Server).
+    private static DistributedCacheEntryOptions PermanentEntry => new() { AbsoluteExpiration = DateTimeOffset.MaxValue };
     private readonly string?[] _generations = new string?[GenerationSlots];
     private readonly MemoryCache _memory;
     private readonly IDistributedCache? _distributed;
@@ -49,13 +51,26 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
         var slot = GenerationSlot(key);
         if (_distributed == null)
         {
+            // Process-local slots are never evicted and live exactly as long as the entries they guard, so the
+            // empty initial namespace cannot come back after an invalidation.
             return Volatile.Read(ref _generations[slot]) ?? string.Empty;
         }
 
         try
         {
-            var bytes = await _distributed.GetAsync(GenerationKey(slot), cancellationToken).ConfigureAwait(false);
-            return bytes == null ? string.Empty : bytes.Length == 16 ? new Guid(bytes).ToString("N") : Guid.NewGuid().ToString("N");
+            var generationKey = GenerationKey(slot);
+            var bytes = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
+            if (bytes == null)
+            {
+                // A missing record (never written, or evicted by the backend) must never map to a namespace that
+                // was used before: start a fresh one. Entries of the lost generation become unreachable, so a lost
+                // record can only cause misses. The new value is unique, so even if this write lands after a
+                // concurrent invalidation it cannot make a previously observed namespace current again.
+                var fresh = Guid.NewGuid();
+                await _distributed.SetAsync(generationKey, fresh.ToByteArray(), PermanentEntry, cancellationToken).ConfigureAwait(false);
+                return fresh.ToString("N");
+            }
+            return bytes.Length == 16 ? new Guid(bytes).ToString("N") : Guid.NewGuid().ToString("N");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -78,8 +93,7 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
         for (var attempt = 0; attempt < 3; attempt++)
         {
             var generation = Guid.NewGuid().ToByteArray();
-            // Maximum absolute expiry also overrides providers' default sliding expiry (such as SQL Server).
-            await _distributed.SetAsync(generationKey, generation, new DistributedCacheEntryOptions { AbsoluteExpiration = DateTimeOffset.MaxValue }, cancellationToken).ConfigureAwait(false);
+            await _distributed.SetAsync(generationKey, generation, PermanentEntry, cancellationToken).ConfigureAwait(false);
             var stored = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
             if (stored != null && generation.AsSpan().SequenceEqual(stored))
             {

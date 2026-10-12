@@ -98,6 +98,44 @@ public class GenerationStorageTests
     }
 
     [Fact]
+    public async Task Generation_RecordLostAfterInvalidation_NeverServesResponsesFromBeforeThePost()
+    {
+        var time = new FakeTimeProvider();
+        var backend = new EpochBackend(time);
+        using var storage = Store(time, backend);
+        using var origin = new VersionedOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), origin, storage, time));
+        const string url = "https://api.example.com/resource";
+
+        using (var first = await client.GetAsync(url)) Assert.Equal("old", await first.Content.ReadAsStringAsync());
+        origin.Version = "new";
+        using (await client.PostAsync(url, new StringContent("update"))) { }
+        using (var second = await client.GetAsync(url)) Assert.Equal("new", await second.Content.ReadAsStringAsync());
+
+        backend.RemoveGenerationRecords(); // Redis eviction or a compaction of the generation keys
+
+        using var third = await client.GetAsync(url);
+        Assert.Equal("new", await third.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Generation_MissingRecord_IsReplacedByAFreshStoredGeneration()
+    {
+        var time = new FakeTimeProvider();
+        var backend = new EpochBackend(time);
+        using var first = Store(time, backend);
+        using var second = Store(time, backend);
+        var created = await first.GetGenerationAsync("url");
+        Assert.NotEmpty(created);
+        Assert.Equal(created, await second.GetGenerationAsync("url"));
+        Assert.Equal(DateTimeOffset.MaxValue, Assert.Single(backend.Expirations.Values));
+        backend.RemoveGenerationRecords();
+        var recreated = await second.GetGenerationAsync("url");
+        Assert.NotEmpty(recreated);
+        Assert.NotEqual(created, recreated);
+    }
+
+    [Fact]
     public async Task ClearMemory_ChangesGenerations_EvenForUrlsNeverInvalidated()
     {
         using var storage = Store(new FakeTimeProvider());
@@ -126,9 +164,10 @@ public class GenerationStorageTests
         var backend = new EpochBackend(time);
         using var first = new HttpCacheStore(Options.Create(new HttpCacheStorageOptions { KeyPrefix = "first:" }), NullLogger<HttpCacheStore>.Instance, time, backend);
         using var second = new HttpCacheStore(Options.Create(new HttpCacheStorageOptions { KeyPrefix = "second:" }), NullLogger<HttpCacheStore>.Instance, time, backend);
+        var untouched = await second.GetGenerationAsync("url");
         await first.InvalidateAsync("url");
-        Assert.NotEmpty(await first.GetGenerationAsync("url"));
-        Assert.Empty(await second.GetGenerationAsync("url"));
+        Assert.NotEqual(untouched, await first.GetGenerationAsync("url"));
+        Assert.Equal(untouched, await second.GetGenerationAsync("url"));
     }
 
     [Fact]
@@ -144,6 +183,19 @@ public class GenerationStorageTests
 
     private static HttpCacheStore Store(TimeProvider time, IDistributedCache? distributed = null)
         => new(Options.Create(new HttpCacheStorageOptions()), NullLogger<HttpCacheStore>.Instance, time, distributed);
+
+    private sealed class VersionedOrigin : HttpMessageHandler
+    {
+        public string Version { get; set; } = "old";
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(request.Method == HttpMethod.Get
+                ? new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(Version),
+                    Headers = { CacheControl = System.Net.Http.Headers.CacheControlHeaderValue.Parse("max-age=300") }
+                }
+                : new HttpResponseMessage(System.Net.HttpStatusCode.NoContent));
+    }
 
     private sealed class SuccessfulWriteOrigin : HttpMessageHandler
     {
@@ -207,6 +259,10 @@ public class GenerationStorageTests
                 await Release.Task.WaitAsync(token);
             }
             Set(key, value, options);
+        }
+        public void RemoveGenerationRecords()
+        {
+            foreach (var key in _values.Keys.Where(k => k.Contains("$generation:", StringComparison.Ordinal)).ToList()) Remove(key);
         }
         public void Remove(string key) { _values.TryRemove(key, out _); Expirations.TryRemove(key, out _); }
         public Task RemoveAsync(string key, CancellationToken token = default) { Remove(key); return Task.CompletedTask; }

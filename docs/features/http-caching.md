@@ -20,12 +20,15 @@ already in progress when the POST finished; response writers never replace gener
 
 Built-in storage uses 4096 generation slots per storage prefix to bound metadata. URLs that share a slot can cause
 an additional cache miss when either is invalidated. Old response data expires normally; generation records use
-maximum absolute expiration and must be protected from backend eviction. A generation read error falls back to
-the origin. An invalidation write error is surfaced to the caller: the origin write may already have succeeded.
+maximum absolute expiration. If the backend evicts a generation record anyway, the next request starts a fresh
+generation, so a lost record only causes cache misses and never brings back responses from before a POST. A
+generation read error falls back to the origin. An invalidation write error is surfaced to the caller: the origin
+write may already have succeeded.
 
 Custom `IHttpCacheStorage` implementations supply `GetGenerationAsync` and `InvalidateAsync`. Every invalidation
-must publish a new unique generation shared across storage instances. Generations cannot expire or be reused
-while old responses or writers may exist; grouping keys is allowed. Clearing memory also changes generations,
+must publish a new unique generation shared across storage instances. A generation value must never be reused,
+and a missing or lost generation record must not map back to a namespace used before (start a new unique one
+instead); grouping keys is allowed. Clearing memory also changes generations,
 so a concurrent older reader cannot repopulate the active namespace.
 
 With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
