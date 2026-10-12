@@ -95,6 +95,37 @@ public class FreshnessBoundaryTests
         Assert.Equal(2, inner.RequestCount);
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("not a date")]
+    [InlineData("")]
+    public void Revalidation_InvalidExpiresReplacement_DoesNotRetainPriorFreshness(string expires)
+    {
+        var entry = new HttpCacheEntry
+        {
+            RequestUri = Url,
+            Method = "GET",
+            Date = _time.GetUtcNow(),
+            StoredAt = _time.GetUtcNow(),
+            Expires = _time.GetUtcNow().AddHours(1)
+        };
+        using var response = new HttpResponseMessage(HttpStatusCode.NotModified) { Content = new StringContent("") };
+        response.Headers.Date = _time.GetUtcNow();
+        response.Content.Headers.TryAddWithoutValidation("Expires", new[] { expires });
+        Assert.True(response.Content.Headers.Contains("Expires"));
+        var updated = entry.WithUpdatedHeaders(response, _time.GetUtcNow());
+        var calculator = new FreshnessCalculator(new HttpCacheOptions { DefaultMaxAge = TimeSpan.FromHours(1) }, _time);
+        Assert.Equal(TimeSpan.Zero, calculator.GetFreshnessLifetime(updated));
+    }
+
+    [Fact]
+    public void Revalidation_AbsentExpires_PreservesPriorFreshness()
+    {
+        var entry = new HttpCacheEntry { RequestUri = Url, Method = "GET", Expires = _time.GetUtcNow().AddHours(1) };
+        using var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+        Assert.Equal(entry.Expires, entry.WithUpdatedHeaders(response, _time.GetUtcNow()).Expires);
+    }
+
     [Fact]
     public async Task MaxAge_IsFreshOneTickBefore_AndStaleExactlyAtIt()
     {
