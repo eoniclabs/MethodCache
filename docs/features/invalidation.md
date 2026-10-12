@@ -79,3 +79,5 @@ With [Redis or SQL Server](distributed-cache.md), invalidating a tag or key remo
 tells every instance to drop its in-memory copy. You don't need to do anything else.
 
 Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. Cached tags and invalidation use the same rule.
+
+An invalidated in-flight memory load cannot publish over a newer load or explicit write. Publication and invalidation are coordinated per load; application weighers run outside that coordination so they may call the cache safely.
