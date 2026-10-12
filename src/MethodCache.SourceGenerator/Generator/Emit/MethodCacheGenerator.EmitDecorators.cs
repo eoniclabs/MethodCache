@@ -828,38 +828,42 @@ namespace MethodCache.SourceGenerator
                 var tags = ExtractTags(model.InvalidateAttr!);
                 var dynamicTags = ParseDynamicTags(tags, method);
 
-                // For async methods, we need to emit async method signature
-                if (Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _))
-                {
-                    EmitAsyncInvalidateMethodSignature(sb, method);
-                }
-                else
-                {
-                    EmitMethodSignature(sb, method);
-                }
-
+                var awaitable = Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _);
+                var byRefReturn = method.ReturnsByRef || method.ReturnsByRefReadonly;
+                var deferredWrapper = awaitable && !byRefReturn && method.Parameters.Any(p => p.RefKind != RefKind.None || IsRefLikeType(p.Type));
+                EmitMethodSignature(sb, method, awaitable && !byRefReturn && !deferredWrapper ? "async " : string.Empty);
                 sb.AppendLine("        {");
-
                 var call = BuildMethodCall(method);
-
-                // Handle async methods differently
-                if (Utils.IsTask(method.ReturnType, out _) || Utils.IsValueTask(method.ReturnType, out _))
-                {
-                    // For async methods, emit async wrapper
+                if (deferredWrapper)
+                    EmitDeferredInvalidateMethodBody(sb, method, call, tags, dynamicTags);
+                else if (awaitable && !byRefReturn)
                     EmitAsyncInvalidateMethodBody(sb, method, call, tags, dynamicTags);
-                }
                 else
-                {
-                    // For sync methods, emit sync wrapper
                     EmitSyncInvalidateMethodBody(sb, method, call, tags, dynamicTags);
-                }
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
 
-            private static void EmitAsyncInvalidateMethodSignature(StringBuilder sb, IMethodSymbol method)
-                => EmitMethodSignature(sb, method, "async ");
+            // The original call and by-reference arguments must stay in a non-async method. Only its
+            // returned operation and the tags captured after that call cross the asynchronous boundary.
+            private static void EmitDeferredInvalidateMethodBody(StringBuilder sb, IMethodSymbol method, string call, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags)
+            {
+                var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
+                var hasResult = (Utils.IsTask(method.ReturnType, out var resultType) || Utils.IsValueTask(method.ReturnType, out resultType)) && resultType != null;
+                sb.AppendLine($"            var __mcPending = {call};");
+                EmitTagInvalidation(sb, method, staticTags, dynamicTags, "            ");
+                sb.AppendLine("            return __mcComplete(__mcPending, __mcTags.ToArray());");
+                sb.AppendLine($"            async {returnType} __mcComplete({returnType} __mcOperation, string[] __mcCapturedTags)");
+                sb.AppendLine("            {");
+                sb.AppendLine(hasResult
+                    ? "                var __mcResult = await __mcOperation.ConfigureAwait(false);"
+                    : "                await __mcOperation.ConfigureAwait(false);");
+                sb.AppendLine("                await this._cacheManager.InvalidateByTagsAsync(__mcCapturedTags).ConfigureAwait(false);");
+                if (hasResult)
+                    sb.AppendLine("                return __mcResult;");
+                sb.AppendLine("            }");
+            }
 
             private static void EmitAsyncInvalidateMethodBody(StringBuilder sb, IMethodSymbol method, string call, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags)
             {
@@ -908,7 +912,9 @@ namespace MethodCache.SourceGenerator
                 }
                 else
                 {
-                    sb.AppendLine($"                var __mcResult = {call};");
+                    var reference = method.ReturnsByRefReadonly ? "ref readonly " : method.ReturnsByRef ? "ref " : string.Empty;
+                    var initializer = reference.Length > 0 ? "ref " : string.Empty;
+                    sb.AppendLine($"                {reference}var __mcResult = {initializer}{call};");
                 }
 
                 // Invalidate cache AFTER successful execution
@@ -920,7 +926,7 @@ namespace MethodCache.SourceGenerator
 
                 if (!method.ReturnsVoid)
                 {
-                    sb.AppendLine("                return __mcResult;");
+                    sb.AppendLine(method.ReturnsByRef || method.ReturnsByRefReadonly ? "                return ref __mcResult;" : "                return __mcResult;");
                 }
 
                 sb.AppendLine("            }");

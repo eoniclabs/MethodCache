@@ -24,3 +24,5 @@ interface is cacheable. See [keys](keys.md) for argument identity and
 
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
+
+Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
