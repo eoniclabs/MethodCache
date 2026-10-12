@@ -38,3 +38,5 @@ Non-public default interface helpers are supported. Interfaces with non-public a
 `CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options. Fluent key versions cannot alias unversioned user keys.
 
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache
+
+Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
