@@ -59,6 +59,9 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
+    private static HttpResponseMessage CreateCacheUnavailableResponse(HttpRequestMessage request) =>
+        new(HttpStatusCode.GatewayTimeout) { RequestMessage = request, ReasonPhrase = "Cache entry not available" };
+
     private async Task<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, long startedAt, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.Get(_state.Name);
@@ -72,6 +75,11 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
             HasCallerConditionals(request))
         {
+            if (requestDirectives.OnlyIfCached)
+            {
+                return Record(Outcome.Bypass, request, CreateCacheUnavailableResponse(request), startedAt);
+            }
+
             var bypassResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
             if (isUnsafe && (int)bypassResponse.StatusCode is >= 200 and < 400)
@@ -109,7 +117,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
             if (currentAge > freshnessLifetime && !requestDirectives.NoCache && freshness.CanUseStaleWhileRevalidate(cachedEntry))
             {
-                if (_state.RevalidationsInFlight.TryAdd(cacheKey, 0))
+                if (!requestDirectives.OnlyIfCached && _state.RevalidationsInFlight.TryAdd(cacheKey, 0))
                 {
                     _ = RevalidateInBackgroundAsync(request, cachedEntry, urlKey, cacheKey, options);
                 }
@@ -121,11 +129,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         // RFC 9111 section 5.2.1.7: only-if-cached never goes to the origin
         if (requestDirectives.OnlyIfCached)
         {
-            var timeout = new HttpResponseMessage(HttpStatusCode.GatewayTimeout)
-            {
-                RequestMessage = request,
-                ReasonPhrase = "Cache entry not available"
-            };
+            var timeout = CreateCacheUnavailableResponse(request);
             return Record(Outcome.Bypass, request, timeout, startedAt);
         }
 
