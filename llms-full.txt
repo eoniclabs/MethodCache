@@ -1111,6 +1111,8 @@ cache isolation, limits and metrics, and [security](https://github.com/eoniclabs
 
 # Distributed cache
 
+L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is `TagRetention` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
+
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
 instances and keep them across restarts:
 

@@ -32,7 +32,7 @@ Non-public default interface helpers are supported. Interfaces with non-public a
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`.
 - **Tune it without redeploying.** Attributes, global defaults, `appsettings.json` (reloaded live) and runtime overrides.
 - **Third-party clients too.** Decoration preserves normal DI disposal ownership. `[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync))]` caches an SDK client's methods without a wrapper.
-- **One line to go distributed.** `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)`, with every instance's memory cache kept in sync. Your own distributed cache must implement `IAtomicInvalidationStore` as well as `IDistributedCache`, or the host fails at startup.
+- **One line to go distributed.** L2 lifetimes include time spent loading, so entries cannot outlive their tag/clear metadata. `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)`, with every instance's memory cache kept in sync. Your own distributed cache must implement `IAtomicInvalidationStore` as well as `IDistributedCache`, or the host fails at startup.
 - **Built for production.** Stampede protection, a W-TinyLFU memory cache that stays within its size limit under load, admin endpoints, a health check and OpenTelemetry.
 
 `CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options. Fluent key versions cannot alias unversioned user keys.

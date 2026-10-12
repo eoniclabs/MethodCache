@@ -239,12 +239,12 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false)
         {
-            if (lifetime > _tagRetention)
-            {
-                lifetime = _tagRetention;
-            }
-
-            var lifetimeMilliseconds = (long)lifetime.TotalMilliseconds;
+            // The metadata that can invalidate this value must outlive it, including time spent loading or
+            // writing it. Anchor its logical expiry to the source read, not the later publication time.
+            var now = Now;
+            var expiresAt = Math.Min(now + (long)lifetime.TotalMilliseconds,
+                createdAt + (long)_tagRetention.TotalMilliseconds - _clockSkewMilliseconds);
+            var lifetimeMilliseconds = expiresAt - now;
             if (lifetimeMilliseconds <= 0)
             {
                 return;
@@ -270,7 +270,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var buffer = new ArrayBufferWriter<byte>(256);
-            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, Now + lifetimeMilliseconds, Convert(tags, StoredTag));
+            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, expiresAt, Convert(tags, StoredTag));
             if (value is not null)
             {
                 try

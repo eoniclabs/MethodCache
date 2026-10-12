@@ -190,6 +190,8 @@ policy in code, and the change applies to the next call. See [Configuration](doc
 
 ### Distributed cache
 
+L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is `TagRetention` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
+
 <!-- snippet: readme-distributed -->
 ```cs
 builder.Services.AddMethodCache();
