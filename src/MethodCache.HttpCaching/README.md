@@ -1,5 +1,7 @@
 # MethodCache.HttpCaching
 
+Automatic transport cookies bypass caching because the cookie jar can change below the cache handler. For cached clients, configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` and send any required `Cookie` header explicitly before the cache handler. The default private cache isolates those explicit cookie headers.
+
 A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
 
 `only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
@@ -15,6 +17,7 @@ response. It follows RFC 9111.
 <!-- snippet: http-basic -->
 ```cs
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching();
 ```
 <!-- endSnippet -->
@@ -49,6 +52,7 @@ Settings are per HttpClient:
 <!-- snippet: http-settings -->
 ```cs
 builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching(options =>
     {
         options.EnableStaleIfError = true;           // serve the last response when the API is down
@@ -128,7 +132,9 @@ To store responses somewhere else entirely, register your own `IHttpCacheStorage
 <!-- snippet: http-custom-storage-registration -->
 ```cs
 builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
-builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
+    .AddHttpCaching();
 ```
 <!-- endSnippet -->
 

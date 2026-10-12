@@ -38,7 +38,7 @@ authorization too.
 
 | Threat | What MethodCache does |
 |---|---|
-| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
+| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. Transports with automatic cookies enabled bypass caching; disable automatic cookies and send explicit headers for cacheable requests. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
 | A 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` keeps its previous value. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |

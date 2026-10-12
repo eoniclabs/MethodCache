@@ -243,6 +243,8 @@ See [Caching third-party code](docs/features/third-party.md).
 
 ### HTTP responses
 
+Automatic transport cookies bypass caching because the cookie jar can change below the cache handler. For cached clients, configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` and send any required `Cookie` header explicitly before the cache handler. The default private cache isolates those explicit cookie headers.
+
 A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
 
 `only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
@@ -256,6 +258,7 @@ When the API sends caching headers, let `HttpClient` use them instead of choosin
 <!-- snippet: http-basic -->
 ```cs
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching();
 ```
 <!-- endSnippet -->

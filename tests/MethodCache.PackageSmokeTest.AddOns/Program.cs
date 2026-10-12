@@ -344,7 +344,9 @@ public static class HttpCachingCheck
         await origin.StartAsync();
 
         var services = new ServiceCollection();
-        services.AddHttpClient("origin", c => c.BaseAddress = new Uri(origin.Urls.First())).AddHttpCaching();
+        services.AddHttpClient("origin", c => c.BaseAddress = new Uri(origin.Urls.First()))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
+            .AddHttpCaching();
         await using var provider = services.BuildServiceProvider();
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("origin");
 

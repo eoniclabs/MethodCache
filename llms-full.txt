@@ -89,6 +89,8 @@ including backend-atomic maximum timestamps and retention preservation. A plain 
 rejected when the host starts (`ValidateOnStart`), or without a generic host when the method cache manager is
 resolved. Redis and SQL Server supply this contract.
 
+HTTP caching bypasses transports with automatic cookies enabled. Configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` for cacheable clients, and send explicit cookie headers before the cache handler.
+
 
 ---
 
@@ -980,6 +982,8 @@ See [Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/fea
 
 # HTTP response caching
 
+Automatic transport cookies bypass caching because the cookie jar can change below the cache handler. For cached clients, configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` and send any required `Cookie` header explicitly before the cache handler. The default private cache isolates those explicit cookie headers.
+
 A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
 
 `only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
@@ -1071,7 +1075,9 @@ Register it before `AddHttpCaching()`:
 
 ```cs
 builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
-builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
+    .AddHttpCaching();
 ```
 
 With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
@@ -1549,7 +1555,7 @@ authorization too.
 
 | Threat | What MethodCache does |
 |---|---|
-| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
+| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. Transports with automatic cookies enabled bypass caching; disable automatic cookies and send explicit headers for cacheable requests. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
 | A 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` keeps its previous value. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
@@ -2234,6 +2240,8 @@ MIT License - see LICENSE file for details.
 
 # MethodCache.HttpCaching
 
+Automatic transport cookies bypass caching because the cookie jar can change below the cache handler. For cached clients, configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` and send any required `Cookie` header explicitly before the cache handler. The default private cache isolates those explicit cookie headers.
+
 A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
 
 `only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
@@ -2248,6 +2256,7 @@ response. It follows RFC 9111.
 
 ```cs
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching();
 ```
 
@@ -2280,6 +2289,7 @@ Settings are per HttpClient:
 
 ```cs
 builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
     .AddHttpCaching(options =>
     {
         options.EnableStaleIfError = true;           // serve the last response when the API is down
@@ -2353,7 +2363,9 @@ To store responses somewhere else entirely, register your own `IHttpCacheStorage
 
 ```cs
 builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
-builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
+    .AddHttpCaching();
 ```
 
 A custom storage must implement `GetGenerationAsync` and `InvalidateAsync`: a successful POST, PUT, PATCH or
