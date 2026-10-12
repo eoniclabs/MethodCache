@@ -125,3 +125,5 @@ In short:
 
 See the [HTTP package guide](../../src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](../security.md) for the threat model.
+
+An invalid `Expires` date (including `Expires: 0`) is immediately stale, even when heuristic freshness or a default lifetime is enabled. Explicit `max-age` and `s-maxage` take precedence.
