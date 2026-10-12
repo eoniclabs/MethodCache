@@ -12,13 +12,13 @@ namespace MethodCache.SourceGenerator
             public INamedTypeSymbol Symbol { get; }
             public ImmutableArray<MethodModel> CachedMethods { get; }
             public ImmutableArray<MethodModel> InvalidateMethods { get; }
-            public ImmutableArray<Diagnostic> Diagnostics { get; }
+            public ImmutableArray<DiagnosticInfo> Diagnostics { get; }
 
             public InterfaceInfo(
                 INamedTypeSymbol symbol,
                 ImmutableArray<MethodModel> cachedMethods,
                 ImmutableArray<MethodModel> invalidateMethods,
-                ImmutableArray<Diagnostic> diagnostics)
+                ImmutableArray<DiagnosticInfo> diagnostics)
             {
                 Symbol = symbol;
                 CachedMethods = cachedMethods;
