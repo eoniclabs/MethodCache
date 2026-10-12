@@ -271,11 +271,13 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     private async Task<PendingBatch> ReadAsync(DateTime now, CancellationToken cancellationToken)
     {
         // All discovery state is staged. A query or callback failure cannot consume a cursor or a gap id.
+        // READPAST skips rows that are still committing, as read committed snapshot does, so an open insert never
+        // blocks the poll. A skipped row below a later one becomes a gap and arrives once it commits.
         var gaps = _gaps.Where(gap => now - gap.SeenAt <= GapLifetime)
             .Select(gap => gap with { Delivered = new HashSet<long>(gap.Delivered) }).ToList();
         var sql = $"""
             SELECT TOP (@batch) [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
-            FROM {_options.QualifiedInvalidationsTableName}
+            FROM {_options.QualifiedInvalidationsTableName} WITH (READPAST)
             WHERE [Scope] = @scope AND [Id] > @lastId
             ORDER BY [Id];
             """;
@@ -345,7 +347,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             ORDER BY MIN([Id]);
 
             SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
-            FROM {_options.QualifiedInvalidationsTableName}
+            FROM {_options.QualifiedInvalidationsTableName} WITH (READPAST)
             WHERE [Scope] = @scope AND ({ranges});
             """;
 
