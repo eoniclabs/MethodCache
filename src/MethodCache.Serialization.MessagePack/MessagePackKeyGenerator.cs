@@ -74,13 +74,7 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
             : string.Concat(methodName, ":", digest);
     }
 
-    private static byte[] Utf16Bytes(string value)
-    {
-        var bytes = new byte[checked(value.Length * sizeof(char))];
-        for (var i = 0; i < value.Length; i++)
-            BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * sizeof(char)), value[i]);
-        return bytes;
-    }
+    private static byte[] Utf16Bytes(string value) => LosslessUtf16.GetBytes(value);
 
     // Only the key serializer uses these formatters. Cached values keep the application's MessagePack format.
     internal sealed class KeyStringFormatter : IMessagePackFormatter<string?>

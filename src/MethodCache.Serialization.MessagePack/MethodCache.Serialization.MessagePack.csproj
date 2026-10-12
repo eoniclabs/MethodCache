@@ -23,4 +23,8 @@
     <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../Shared/LosslessUtf16.cs" Link="Internal/LosslessUtf16.cs" />
+  </ItemGroup>
+
 </Project>

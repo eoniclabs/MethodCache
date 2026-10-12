@@ -1,3 +1,4 @@
+using MethodCache.Infrastructure;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
@@ -883,8 +884,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     var length = checked(tag.Length * sizeof(char));
                     span = writer.GetSpan(sizeof(int) + length);
                     BinaryPrimitives.WriteInt32LittleEndian(span, length);
-                    for (var i = 0; i < tag.Length; i++)
-                        BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(sizeof(int) + i * sizeof(char)), tag[i]);
+                    LosslessUtf16.Write(tag, span.Slice(sizeof(int)));
                     writer.Advance(sizeof(int) + length);
                 }
             }
@@ -922,13 +922,8 @@ namespace MethodCache.Core.Runtime.Distributed
                         return false;
                     }
 
-                    var chars = new char[length / sizeof(char)];
-                    for (var c = 0; c < chars.Length; c++)
-                    {
-                        if (!reader.TryReadLittleEndian(out short codeUnit)) return false;
-                        chars[c] = (char)codeUnit;
-                    }
-                    tags[i] = new string(chars);
+                    tags[i] = LosslessUtf16.Read(reader.Sequence.Slice(reader.Position, length));
+                    reader.Advance(length);
                 }
             }
 

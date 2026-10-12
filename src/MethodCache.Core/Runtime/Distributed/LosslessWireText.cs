@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+using System.Buffers;
 using MethodCache.Extensibility;
 
 namespace MethodCache.Infrastructure;
@@ -22,9 +22,7 @@ internal static class LosslessWireText
 
     internal static string Encode(string value)
     {
-        var bytes = new byte[checked(value.Length * 2)];
-        for (var i = 0; i < value.Length; i++)
-            BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * 2), value[i]);
+        var bytes = LosslessUtf16.GetBytes(value);
         return "4:" + Convert.ToBase64String(bytes);
     }
 
@@ -32,14 +30,10 @@ internal static class LosslessWireText
     {
         value = string.Empty;
         if (!wire.StartsWith("4:", StringComparison.Ordinal)) return false;
-        byte[] bytes;
-        try { bytes = Convert.FromBase64String(wire[2..]); }
-        catch (FormatException) { return false; }
-        if ((bytes.Length & 1) != 0) return false;
-        var chars = new char[bytes.Length / 2];
-        for (var i = 0; i < chars.Length; i++)
-            chars[i] = (char)BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(i * 2));
-        value = new string(chars);
+        if (wire.Length == 2) return true;
+        var bytes = new byte[((wire.Length - 2) / 4 + 1) * 3];
+        if (!Convert.TryFromBase64Chars(wire.AsSpan(2), bytes, out var written) || (written & 1) != 0) return false;
+        value = LosslessUtf16.Read(new ReadOnlySequence<byte>(bytes.AsMemory(0, written)));
         return true;
     }
 }
