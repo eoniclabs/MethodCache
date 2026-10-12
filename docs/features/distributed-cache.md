@@ -136,3 +136,5 @@ gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cach
 and expire normally; upgrade all instances sharing a prefix together.
 
 Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
+
+Redis escapes unpaired UTF-16 surrogates and backslashes in physical keys, keeping distinct logical keys separate in every data and invalidation operation. Ordinary keys and their prefixes stay unchanged.
