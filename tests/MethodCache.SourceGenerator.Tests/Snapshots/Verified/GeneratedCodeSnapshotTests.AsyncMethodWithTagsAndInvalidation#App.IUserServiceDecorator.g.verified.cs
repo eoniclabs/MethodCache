@@ -25,7 +25,7 @@ namespace App
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider? _metricsProvider;
 
-        private readonly CachedMethod _method_GetUserAsync;
+        private readonly CachedMethod _method_Method0;
 
         public IUserServiceDecorator(global::App.IUserService decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
@@ -38,61 +38,61 @@ namespace App
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
             var sites = services.GetSites(static registry => new CachedMethodSites(registry));
-            _method_GetUserAsync = sites.GetUserAsync;
+            _method_Method0 = sites.Method0;
         }
 
         private sealed class CachedMethodSites
         {
-            public readonly CachedMethod GetUserAsync;
+            public readonly CachedMethod Method0;
 
             public CachedMethodSites(IPolicyRegistry registry)
             {
-                GetUserAsync = new CachedMethod(PolicyHandle.For(registry, "App.IUserService.GetUserAsync"), typeof(global::App.IUserService), "GetUserAsync", "GetUserAsync");
+                Method0 = new CachedMethod(PolicyHandle.For(registry, "App.IUserService.GetUserAsync"), typeof(global::App.IUserService), "GetUserAsync", "GetUserAsync");
             }
         }
 
-        global::System.Threading.Tasks.Task<global::App.User> global::App.IUserService.GetUserAsync(int userId, global::System.Threading.CancellationToken cancellationToken)
+        global::System.Threading.Tasks.Task<global::App.User> global::App.IUserService.GetUserAsync(int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
         {
-            var __mcSnapshot = _method_GetUserAsync.Current;
+            var __mcSnapshot = this._method_Method0.Current;
 #if NET9_0_OR_GREATER
             var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
-            __mcKeyBuilder.AppendPart(userId);
+            __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (_cacheManager.TryGetFastTask<global::App.User>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
+            if (this._cacheManager.TryGetFastTask<global::App.User>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
             {
-                _metricsProvider?.CacheHit(_method_GetUserAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedTask;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(userId));
+            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument0));
 
-            if (_cacheManager.TryGetFastTask<global::App.User>(__mcKey, out var __mcCachedTask))
+            if (this._cacheManager.TryGetFastTask<global::App.User>(__mcKey, out var __mcCachedTask))
             {
-                _metricsProvider?.CacheHit(_method_GetUserAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedTask;
             }
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            var __mcPolicy = CacheTagTemplates.Expand(__mcSnapshot.Policy, new[] { "userId" }, new[] { (global::System.Convert.ToString((object?)userId, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
-            return __Load_GetUserAsync(__mcKey, __mcPolicy, userId, cancellationToken);
+            var __mcPolicy = CacheTagTemplates.Expand(__mcSnapshot.Policy, new[] { "userId" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
+            return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0, __mcArgument1);
         }
 
-        private Task<global::App.User> __Load_GetUserAsync(string __cacheKey, CacheRuntimePolicy __policy, int userId, global::System.Threading.CancellationToken cancellationToken)
-            => _cacheManager.GetOrCreateFastAsync<global::App.User>(__cacheKey, _method_GetUserAsync.Name, () => ((global::App.IUserService)_decorated).GetUserAsync(userId, cancellationToken)!, __policy, cancellationToken);
+        private Task<global::App.User> __Load_Method0(string __cacheKey, CacheRuntimePolicy __policy, int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
+            => this._cacheManager.GetOrCreateFastAsync<global::App.User>(__cacheKey, this._method_Method0.Name, () => ((global::App.IUserService)this._decorated).GetUserAsync(__mcArgument0, __mcArgument1)!, __policy, __mcArgument1);
 
-        async global::System.Threading.Tasks.Task global::App.IUserService.UpdateUserAsync(int userId, string name)
+        async global::System.Threading.Tasks.Task global::App.IUserService.UpdateUserAsync(int __mcArgument0, string __mcArgument1)
         {
             try
             {
-                await ((global::App.IUserService)_decorated).UpdateUserAsync(userId, name).ConfigureAwait(false);
+                await ((global::App.IUserService)this._decorated).UpdateUserAsync(__mcArgument0, __mcArgument1).ConfigureAwait(false);
                 var __mcTags = new List<string>();
                 __mcTags.AddRange(new[] { "users" });
-                __mcTags.Add(string.Format(global::System.Globalization.CultureInfo.InvariantCulture, "user:{0}", (global::System.Convert.ToString((object?)userId, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null")));
-                await _cacheManager.InvalidateByTagsAsync(__mcTags.ToArray()).ConfigureAwait(false);
+                __mcTags.Add(string.Format(global::System.Globalization.CultureInfo.InvariantCulture, "user:{0}", (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null")));
+                await this._cacheManager.InvalidateByTagsAsync(__mcTags.ToArray()).ConfigureAwait(false);
             }
             catch
             {
@@ -103,7 +103,7 @@ namespace App
 
         global::System.Threading.Tasks.Task<int> global::App.IUserService.CountAsync()
         {
-            return ((global::App.IUserService)_decorated).CountAsync();
+            return ((global::App.IUserService)this._decorated).CountAsync();
         }
 
     }

@@ -12,7 +12,8 @@ include namespace-qualified parameter types in their identities so equally named
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public default helpers stay on the interface and are not emitted as decorator implementations. Non-public abstract contracts are rejected with `MCG013` because the decorator cannot call those members on the decorated instance.
 Names that are C# keywords are escaped in the generated code, including namespaces, generic type parameters, constraints, property/event names and indexer
-parameters. Property getters/setters and event add/remove accessors reach the original implementation.
+parameters. Parameters, generic parameters and overload names that resemble generator internals do not collide;
+named calls through the interface keep its original parameter names. Property getters/setters and event add/remove accessors reach the original implementation.
 
 Unsupported cached method shapes receive a [generator diagnostic](../user-guide/DIAGNOSTICS.md), with a code fix
 to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer

@@ -88,7 +88,8 @@ namespace LivePolicy
         var second = secondScope.ServiceProvider.GetRequiredService(interfaceType);
         Assert.NotSame(first, second);
 
-        var field = first.GetType().GetField("_method_GetAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var field = first.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Single(f => f.Name.StartsWith("_method_", StringComparison.Ordinal));
         Assert.Same(field.GetValue(first), field.GetValue(second));
     }
 
