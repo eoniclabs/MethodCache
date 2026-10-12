@@ -50,8 +50,8 @@ public class HttpCachingRegistrationTests
     {
         var origin = new CountingOrigin();
         var services = new ServiceCollection();
-        services.AddHttpClient("a").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => origin);
-        services.AddHttpClient("b").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => origin);
+        services.AddHttpClient("a").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => origin);
+        services.AddHttpClient("b").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => origin);
         var factory = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
 
         await factory.CreateClient("a").GetStringAsync("https://api.example.com/x");
@@ -67,7 +67,7 @@ public class HttpCachingRegistrationTests
         var origin = new CountingOrigin();
         var services = new ServiceCollection();
         services.AddHttpClient("api", c => c.BaseAddress = new Uri("https://api.example.com/"))
-            .AddHttpCaching()
+            .AddHttpCaching(o => o.AllowUnverifiedTransport = true)
             .ConfigurePrimaryHttpMessageHandler(() => origin);
         var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("api");
 
@@ -89,7 +89,7 @@ public class HttpCachingRegistrationTests
             var services = new ServiceCollection();
             services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(distributed);
             services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
-            services.AddHttpClient("api").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => origin);
+            services.AddHttpClient("api").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => origin);
             return services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
         }
 
@@ -140,8 +140,8 @@ public class HttpCachingRegistrationTests
         listener.Start();
 
         var services = new ServiceCollection();
-        services.AddHttpClient("metered").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => new CountingOrigin());
-        services.AddHttpClient("down").AddHttpCaching().ConfigurePrimaryHttpMessageHandler(() => new FailingOrigin());
+        services.AddHttpClient("metered").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => new CountingOrigin());
+        services.AddHttpClient("down").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => new FailingOrigin());
         var factory = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
         var client = factory.CreateClient("metered");
         await client.GetStringAsync("https://api.example.com/metered");

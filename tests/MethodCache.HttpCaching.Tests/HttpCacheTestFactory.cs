@@ -21,6 +21,7 @@ public static class HttpCacheTestFactory
         IHttpCacheStorage? storage = null,
         TimeProvider? timeProvider = null)
     {
+        options.AllowUnverifiedTransport = true; // These test transports have no automatic cookie jar.
         storage ??= CreateInMemoryStorage(timeProvider: timeProvider);
 
         return new HttpCacheHandler(

@@ -18,10 +18,11 @@ namespace MethodCache.SourceGenerator
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
                 memberOptions: SymbolDisplayMemberOptions.IncludeParameters | SymbolDisplayMemberOptions.IncludeContainingType,
                 parameterOptions: SymbolDisplayParameterOptions.IncludeType,
-                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included);
+                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
             internal static string GetFullyQualifiedName(ITypeSymbol type)
-                => type.ToDisplayString(FullyQualifiedFormat);
+                => SourceTypeName(type, FullyQualifiedFormat);
 
             /// <summary>
             /// The namespace of an interface's decorator: the interface's own, or MethodCache.Generated for an
@@ -42,7 +43,7 @@ namespace MethodCache.SourceGenerator
                     var containingTypes = new List<string>();
                     for (var type = interfaceSymbol.ContainingType; type != null; type = type.ContainingType)
                     {
-                        containingTypes.Insert(0, type.Name);
+                        containingTypes.Insert(0, Identifier(type.Name.Replace("_", "__") + "_Arity" + type.Arity));
                     }
 
                     return containingTypes.Count == 0 ? result : result + "." + string.Join(".", containingTypes);
@@ -52,6 +53,10 @@ namespace MethodCache.SourceGenerator
             }
 
             /// <summary>An interface with static abstract members can't be a service type or get a decorator.</summary>
+            internal static bool HasNonPublicAbstractMembers(INamedTypeSymbol interfaceSymbol)
+                => new[] { interfaceSymbol }.Concat(interfaceSymbol.AllInterfaces).SelectMany(i => i.GetMembers())
+                    .Any(m => m is not ITypeSymbol && m.IsAbstract && m.DeclaredAccessibility != Accessibility.Public);
+
             internal static bool HasStaticAbstractMembers(INamedTypeSymbol interfaceSymbol)
                 => new[] { interfaceSymbol }.Concat(interfaceSymbol.AllInterfaces).SelectMany(i => i.GetMembers()).Any(m => m.IsStatic && m.IsAbstract);
 
@@ -68,7 +73,7 @@ namespace MethodCache.SourceGenerator
             /// </summary>
             internal static string GetDecoratorClassName(INamedTypeSymbol interfaceSymbol)
             {
-                var name = interfaceSymbol.Name + "Decorator";
+                var name = interfaceSymbol.Name.Replace("_", "__") + "Decorator";
                 if (IsFromReferencedAssembly(interfaceSymbol))
                 {
                     return name;
@@ -76,7 +81,7 @@ namespace MethodCache.SourceGenerator
 
                 for (var type = interfaceSymbol.ContainingType; type != null; type = type.ContainingType)
                 {
-                    name = type.Name + "_" + name;
+                    name = type.Name.Replace("_", "__") + "_" + type.Arity + "_" + name;
                 }
 
                 return name;
@@ -89,7 +94,7 @@ namespace MethodCache.SourceGenerator
             internal static string GetDecoratorHintName(INamedTypeSymbol interfaceSymbol)
             {
                 var arity = interfaceSymbol.Arity > 0 ? "`" + interfaceSymbol.Arity : string.Empty;
-                return $"{GetDecoratorNamespace(interfaceSymbol)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
+                return $"{GetDecoratorNamespace(interfaceSymbol).Replace("@", string.Empty)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
             }
 
             /// <summary>A parameter or member name as C# source: keywords such as <c>class</c> become <c>@class</c>.</summary>
@@ -264,7 +269,37 @@ namespace MethodCache.SourceGenerator
             private static readonly SymbolDisplayFormat SignatureFormat = SymbolDisplayFormat.FullyQualifiedFormat
                 .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
-            internal static string GetReturnTypeForSignature(ITypeSymbol type) => type.ToDisplayString(SignatureFormat);
+            internal static string GetReturnTypeForSignature(ITypeSymbol type) => SourceTypeName(type, SignatureFormat);
+
+            internal static IEnumerable<INamedTypeSymbol> ContainingTypes(INamedTypeSymbol symbol)
+            {
+                var hierarchy = new Stack<INamedTypeSymbol>();
+                for (var type = symbol; type != null; type = type.ContainingType) hierarchy.Push(type);
+                return hierarchy;
+            }
+
+            internal static IEnumerable<ITypeParameterSymbol> AllTypeParameters(INamedTypeSymbol symbol) =>
+                ContainingTypes(symbol).SelectMany(type => type.TypeParameters);
+
+            internal static IEnumerable<ITypeSymbol> AllTypeArguments(INamedTypeSymbol symbol) =>
+                ContainingTypes(symbol).SelectMany(type => type.TypeArguments);
+
+            // Explicit implementations inherit public parameter names from the interface. Internal aliases keep
+            // user names out of generated local, loader and field scopes.
+            internal static string ParameterIdentifier(IParameterSymbol parameter) => "__mcArgument" + parameter.Ordinal;
+
+            internal static string TypeParameterIdentifier(ITypeParameterSymbol parameter)
+            {
+                if (parameter.ContainingSymbol is IMethodSymbol) return "__mcTypeArgument" + parameter.Ordinal;
+                var ordinal = parameter.Ordinal;
+                for (var outer = (parameter.ContainingSymbol as INamedTypeSymbol)?.ContainingType; outer != null; outer = outer.ContainingType)
+                    ordinal += outer.Arity;
+                return "__mcClassArgument" + ordinal;
+            }
+
+            private static string SourceTypeName(ITypeSymbol type, SymbolDisplayFormat format) =>
+                string.Concat(type.ToDisplayParts(format).Select(part => part.Symbol is ITypeParameterSymbol parameter
+                    ? TypeParameterIdentifier(parameter) : part.ToString()));
         }
     }
 }

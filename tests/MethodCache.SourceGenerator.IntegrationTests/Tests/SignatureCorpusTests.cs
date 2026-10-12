@@ -120,6 +120,139 @@ public class SignatureCorpusTests
         Assert.Contains(compiled.Diagnostics, d => d.Id == expectedId);
     }
 
+    [Theory]
+    [InlineData("protected abstract void Touch();", "void ISvc.Touch() { }")]
+    [InlineData("protected abstract int Value { get; }", "int ISvc.Value => 1;")]
+    [InlineData("protected abstract event Action Changed;", "event Action ISvc.Changed { add { } remove { } }")]
+    public async Task NonPublicAbstractContract_ReportsDiagnostic_WithoutInaccessibleForwarding(string member, string implementation)
+    {
+        var source = $$"""
+            using System;
+            using MethodCache;
+            public interface ISvc { [Cache] int Get(int id); {{member}} }
+            public class Svc : ISvc { public int Get(int id) => id; {{implementation}} }
+            """;
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "NonPublicAbstractContract", LanguageVersion.CSharp12);
+        Assert.Contains(compiled.Diagnostics, d => d.Id == "MCG013");
+    }
+
+    [Fact]
+    public async Task AmbiguousPlaceholder_ReportsWarning_AndKeepsLiteralTag()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync("""
+            using MethodCache;
+            public interface ISvc { [Cache(Tags = new[] { "n:{NAME}" })] int Get(int name, int Name); }
+            public class Svc : ISvc { public int Get(int name, int Name) => name + Name; }
+            """, "AmbiguousPlaceholder", LanguageVersion.CSharp12);
+        Assert.Contains(compiled.Diagnostics, d => d.Id == "MCG016");
+        Assert.DoesNotContain(compiled.Diagnostics, d => d.Id == "CS8785");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FactoryOwnedImplementation_DisposesResourcesWithoutDisposableInterface(bool asyncOnly)
+    {
+        var disposalInterface = asyncOnly ? "IAsyncDisposable" : "IDisposable";
+        var dispose = asyncOnly ? "public ValueTask DisposeAsync() { Disposed++; return default; }" : "public void Dispose() { Disposed++; }";
+        var source = $$"""
+            using System;
+            using System.Threading.Tasks;
+            using MethodCache;
+            using Microsoft.Extensions.DependencyInjection;
+            namespace Corpus {
+                public interface ISvc { [Cache] int Get(int id); }
+                public class Svc : ISvc, {{disposalInterface}} {
+                    public static int Disposed;
+                    public int Get(int id) => id;
+                    {{dispose}}
+                }
+                public static class Scenario {
+                    public static async Task<int> RunAsync() {
+                        var services = new ServiceCollection();
+                        services.AddMethodCache();
+                        services.AddISvcWithCaching(_ => new Svc());
+                        await using (var provider = services.BuildServiceProvider()) {
+                            provider.GetRequiredService<ISvc>().Get(1);
+                        }
+                        return Svc.Disposed;
+                    }
+                }
+            }
+            """;
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "FactoryOwnedHiddenDisposal" + asyncOnly, LanguageVersion.CSharp12);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(1, await (Task<int>)run.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public void ReferencedNestedInterfaces_ArityLookingNames_HaveDistinctDecoratorNamespaces()
+    {
+        var refs = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+            .Select(path => MetadataReference.CreateFromFile(path)).ToArray();
+        var library = CSharpCompilation.Create("ExternalNaming", new[] { CSharpSyntaxTree.ParseText("""
+            namespace External {
+                public class Outer_Arity1 { public interface IInner { int Get(int id); } }
+                public class Outer<T> { public interface IInner { int Get(int id); } }
+            }
+            """) }, refs, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var image = new MemoryStream();
+        var emitted = library.Emit(image);
+        Assert.True(emitted.Success, string.Join("; ", emitted.Diagnostics));
+        var consumer = CSharpCompilation.Create("NamingConsumer", references: refs.Append(MetadataReference.CreateFromImage(image.ToArray())));
+        var a = consumer.GetTypeByMetadataName("External.Outer_Arity1+IInner")!;
+        var b = consumer.GetTypeByMetadataName("External.Outer`1+IInner")!;
+        var utilities = typeof(MethodCacheGenerator).GetNestedType("Utils", BindingFlags.NonPublic)!;
+        var name = utilities.GetMethod("GetDecoratorNamespace", BindingFlags.NonPublic | BindingFlags.Static)!;
+        Assert.NotEqual(name.Invoke(null, new object[] { a }), name.Invoke(null, new object[] { b }));
+    }
+
+    [Theory]
+    [InlineData("Task", "Task.CompletedTask")]
+    [InlineData("ValueTask", "default")]
+    [InlineData("Task<int>", "Task.FromResult(42)")]
+    [InlineData("ValueTask<int>", "new ValueTask<int>(42)")]
+    public async Task DeferredInvalidation_WithoutTags_NeverCallsTheInvalidationProvider(string returnType, string result)
+    {
+        var source = $$"""
+            using System.Threading.Tasks;
+            using MethodCache;
+            using MethodCache.Extensibility;
+            using Microsoft.Extensions.DependencyInjection;
+            namespace Corpus {
+                public interface ISvc { [Cache] int Get(int id); [CacheInvalidate] {{returnType}} Update(ref int value); }
+                public class Svc : ISvc {
+                    public int Get(int id) => id;
+                    public {{returnType}} Update(ref int value) { value++; return {{result}}; }
+                }
+                public class CountingManager : NoOpCacheManager, ICacheManager {
+                    public int Calls;
+                    public new Task InvalidateByTagsAsync(params string[] tags) { Calls++; return Task.CompletedTask; }
+                }
+                public static class Scenario {
+                    public static async Task<int> RunAsync() {
+                        var manager = new CountingManager();
+                        var services = new ServiceCollection();
+                        services.AddSingleton<ICacheManager>(manager);
+                        services.AddMethodCache();
+                        await using var provider = services.BuildServiceProvider();
+                        var service = provider.GetRequiredService<ISvc>();
+                        var value = 1;
+                        await service.Update(ref value);
+                        if (value != 2) throw new System.InvalidOperationException("The reference argument was not forwarded.");
+                        return manager.Calls;
+                    }
+                }
+            }
+            """;
+        foreach (var language in new[] { LanguageVersion.CSharp12, LanguageVersion.Latest })
+        {
+            var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "EmptyDeferredTags" + Sanitize(returnType) + language, language);
+            var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+            Assert.Equal(0, await (Task<int>)run.Invoke(null, null)!);
+        }
+    }
+
     private static readonly Dictionary<string, (string Member, string Implementation, string ExpectedId)> Unsupported = new()
     {
         ["void"] = ("void Touch(int id)", "void Touch(int id) { }", "MCG001"),
@@ -172,7 +305,7 @@ public class SignatureCorpusTests
 
                 public static class Scenario
                 {
-                    public static async Task<int[]> RunAsync()
+                    public static async global::System.Threading.Tasks.Task<int[]> RunAsync()
                     {
                         var services = new ServiceCollection();
                         {{Registrations}}
@@ -215,6 +348,97 @@ public class SignatureCorpusTests
 
     private static readonly Dictionary<string, Shape> Cases = new()
     {
+        ["nested internal helper interface is not an abstract service member"] = new("""
+            public interface ISvc { [Cache] int Get(int id); internal interface Helper { void Run(); } }
+            public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }
+            """, "ISvc", "s.Get(1)", "s.Get(2)"),
+
+        ["runtime tags see every case-distinct argument"] = new("""
+            public interface ISvc { [Cache(Tags = new[] { "attribute:{a}" })] Task<int> Get(int a, int A); }
+            public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }
+            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:2\"); await s.Get(1, 2)",
+            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
+        ["runtime tags retain ambiguous placeholders"] = new("""
+            public interface ISvc { [Cache(Tags = new[] { "attribute:{name}" })] Task<int> Get(int name, int Name); }
+            public class Svc : ISvc { public Task<int> Get(int name, int Name) { Counter.Hit(); return Task.FromResult(name + Name); } }
+            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
+            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
+
+        ["application types shadow framework and cache infrastructure"] = new("""
+            public class Task { }
+            public class ValueTask { }
+            public class List<T> { }
+            public class CachedMethod { }
+            public class CacheRuntimePolicy { }
+            public class ICacheManager { }
+            public class ICacheKeyGenerator { }
+            public class ICacheMetricsProvider { }
+            public class IPolicyRegistry { }
+            public class PolicyHandle { }
+            public class CacheTagTemplates { }
+            public class MethodCacheKeys { }
+            public class MethodCacheKeyBuilder { }
+            public interface ISvc {
+                [Cache(Tags = new[] { "id:{id}" })] global::System.Threading.Tasks.Task<int> Get(int id);
+                [CacheInvalidate(Tags = new[] { "id:{id}" })] global::System.Threading.Tasks.ValueTask Clear(int id);
+            }
+            public class Svc : ISvc {
+                public global::System.Threading.Tasks.Task<int> Get(int id) { Counter.Hit(); return global::System.Threading.Tasks.Task.FromResult(id); }
+                public global::System.Threading.Tasks.ValueTask Clear(int id) => default;
+            }
+            """, "ISvc", "await s.Get(1)", "await s.Clear(1); await s.Get(1)"),
+
+        ["sealed default helper members"] = new("""
+            public interface ISvc {
+                [Cache] int Get(int id);
+                public sealed int Helper() => 7;
+                public sealed int Value => 8;
+                public sealed event Action Changed { add { } remove { } }
+            }
+            public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }
+            """, "ISvc", "s.Get(s.Helper())", "s.Get(s.Value)"),
+
+        ["keyword generic method parameter"] = Member("T Get<@class, T>(T id) where @class : class", "T Get<@class, T>(T id) where @class : class { Counter.Hit(); return id; }", "s.Get<object, int>(1)", "s.Get<object, int>(2)"),
+        ["keyword generic interface parameter"] = new("public interface ISvc<@class> where @class : class { [Cache] int Get(int id); } public class Svc : ISvc<string> { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc<string>", "s.Get(1)", "s.Get(2)"),
+        ["keyword namespace"] = new("namespace @class { public interface ISvc { [Cache] int Get(int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } } }", "@class.ISvc", "s.Get(1)", "s.Get(2)"),
+        ["private default interface members"] = new("public interface ISvc { [Cache] int Get(int id); private int Helper() => 42; private int Hidden => 42; private event Action Changed { add { } remove { } } } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc", "s.Get(1)", "s.Get(2)"),
+        ["protected default interface members"] = new("public interface ISvc { [Cache] int Get(int id); protected int Helper() => 42; protected int Hidden => 42; } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter __mcKey"] = Member("int Get(int __mcKey)", "int Get(int __mcKey) { Counter.Hit(); return __mcKey; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter _cacheManager"] = Member("int Get(int _cacheManager)", "int Get(int _cacheManager) { Counter.Hit(); return _cacheManager; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter _decorated"] = Member("int Get(int _decorated)", "int Get(int _decorated) { Counter.Hit(); return _decorated; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter _keyGenerator"] = Member("int Get(int _keyGenerator)", "int Get(int _keyGenerator) { Counter.Hit(); return _keyGenerator; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter __cacheKey"] = Member("int Get(int __cacheKey)", "int Get(int __cacheKey) { Counter.Hit(); return __cacheKey; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter __policy"] = Member("int Get(int __policy)", "int Get(int __policy) { Counter.Hit(); return __policy; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter __mcTags"] = Member("int Get(int __mcTags)", "int Get(int __mcTags) { Counter.Hit(); return __mcTags; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter __mcResult"] = Member("int Get(int __mcResult)", "int Get(int __mcResult) { Counter.Hit(); return __mcResult; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter _method_Get"] = Member("int Get(int _method_Get)", "int Get(int _method_Get) { Counter.Hit(); return _method_Get; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved parameter __mcArgument0"] = Member("int Get(int __mcArgument0)", "int Get(int __mcArgument0) { Counter.Hit(); return __mcArgument0; }", "s.Get(1)", "s.Get(2)"),
+        ["reserved generic method parameter"] = Member("T Get<__mcKey, T>(T value)", "T Get<__mcKey, T>(T value) { Counter.Hit(); return value; }", "s.Get<object, int>(1)", "s.Get<object, int>(2)"),
+        ["overload field name collision"] = new("public interface ISvc { [Cache] int Get(int id); [Cache] int Get(string id); [Cache] int Get_0(int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public int Get(string id) { Counter.Hit(); return id.Length; } public int Get_0(int id) { Counter.Hit(); return id; } }", "ISvc", "s.Get(1)", "s.Get_0(1)"),
+        ["multiple generic outers with shadowed parameters"] = new("public class Outer<T> where T : struct { public class Middle<T> where T : class { public interface IInner<U> where U : struct { [Cache] string Get(T value, U other); } } } public class Svc : Outer<int>.Middle<string>.IInner<Guid> { public string Get(string value, Guid other) { Counter.Hit(); return value; } }", "Outer<int>.Middle<string>.IInner<Guid>", "s.Get(\"a\", Guid.Empty)", "s.Get(\"b\", Guid.Empty)"),
+        ["interface in generic outer type"] = new("public class Outer<T> where T : class { public interface IInner { [Cache] int Get(int id); } } public class Svc : Outer<string>.IInner { public int Get(int id) { Counter.Hit(); return id; } }", "Outer<string>.IInner", "s.Get(1)", "s.Get(2)"),
+        ["generic inner and outer constraints"] = new("public class Outer<T> where T : unmanaged { public interface IInner<U> where U : class { [Cache] int Get(T id, U value); } } public class Svc : Outer<int>.IInner<string> { public int Get(int id, string value) { Counter.Hit(); return id; } }", "Outer<int>.IInner<string>", "s.Get(1, \"a\")", "s.Get(2, \"a\")"),
+        ["generic outer arity collision"] = new("public class Outer { public interface IInner { [Cache] int Get(int id); } } public class Outer<T> { public interface IInner { [Cache] int Get(int id); } } public class Plain : Outer.IInner { public int Get(int id) { Counter.Hit(); return id; } } public class Svc : Outer<string>.IInner { public int Get(int id) { Counter.Hit(); return id; } }", "Outer<string>.IInner", "s.Get(1)", "s.Get(2)"),
+        ["generic outer arity lookalike"] = new("public class Outer_Arity1 { public interface IInner { [Cache] int Get(int id); } } public class Outer<T> { public interface IInner { [Cache] int Get(int id); } } public class Plain : Outer_Arity1.IInner { public int Get(int id) { Counter.Hit(); return id; } } public class Svc : Outer<string>.IInner { public int Get(int id) { Counter.Hit(); return id; } }", "Outer<string>.IInner", "s.Get(1)", "s.Get(2)"),
+        ["case distinct parameters no tags"] = new("public interface ISvc { [Cache] int Get(int a, int A); } public class Svc : ISvc { public int Get(int a, int A) { Counter.Hit(); return a + A; } }", "ISvc", "s.Get(1,2)", "s.Get(2,3)"),
+        ["case distinct parameters exact lower"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{a}\" })] int Get(int a, int A); [CacheInvalidate(Tags = new[] { \"n:{a}\" })] void Touch(int a); } public class Svc : ISvc { public int Get(int a, int A) { Counter.Hit(); return a + A; } public void Touch(int a) { } }", "ISvc", "s.Get(1,2)", "s.Touch(1); s.Get(1,2)"),
+        ["case distinct parameters exact upper"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{A}\" })] int Get(int a, int A); [CacheInvalidate(Tags = new[] { \"n:{A}\" })] void Touch(int A); } public class Svc : ISvc { public int Get(int a, int A) { Counter.Hit(); return a + A; } public void Touch(int A) { } }", "ISvc", "s.Get(1,2)", "s.Touch(2); s.Get(1,2)"),
+        ["invalidation pending ref"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task<int> Touch(ref int id); } public class Svc : ISvc { public static TaskCompletionSource<int> Pending = new(); public int Get(int id) { Counter.Hit(); return id; } public Task<int> Touch(ref int id) => Pending.Task; }", "ISvc", "s.Get(1)", "int id = 1; var pending = s.Touch(ref id); s.Get(1); if (Counter.Calls != 1) throw new Exception(\"Invalidated before completion\"); Svc.Pending.SetResult(7); if (await pending != 7) throw new Exception(\"Lost result\"); s.Get(1)"),
+        ["invalidation failure ref"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task<int> Touch(ref int id); } public class Svc : ISvc { public static TaskCompletionSource<int> Pending = new(); public int Get(int id) { Counter.Hit(); return id; } public Task<int> Touch(ref int id) => Pending.Task; }", "ISvc", "s.Get(1)", "int id = 1; var pending = s.Touch(ref id); Svc.Pending.SetException(new InvalidOperationException(\"failed\")); try { await pending; throw new Exception(\"Swallowed failure\"); } catch (InvalidOperationException) { } s.Get(1); if (Counter.Calls != 1) throw new Exception(\"Invalidated after failure\"); Svc.Pending = new TaskCompletionSource<int>(); pending = s.Touch(ref id); Svc.Pending.SetResult(7); await pending; s.Get(1)"),
+        ["invalidation Task ref"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task Touch(ref int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public Task Touch(ref int id) { return Task.CompletedTask; } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(ref id); s.Get(1)"),
+        ["invalidation Task out"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task Touch(out int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public Task Touch(out int id) { id = 1; return Task.CompletedTask; } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(out id); s.Get(1)"),
+        ["invalidation Task in"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task Touch(in int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public Task Touch(in int id) { return Task.CompletedTask; } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(in id); s.Get(1)"),
+        ["invalidation ValueTask ref"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] ValueTask Touch(ref int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public ValueTask Touch(ref int id) { return default; } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(ref id); s.Get(1)"),
+        ["invalidation ValueTask out"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] ValueTask Touch(out int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public ValueTask Touch(out int id) { id = 1; return default; } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(out id); s.Get(1)"),
+        ["invalidation ValueTask in"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] ValueTask Touch(in int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public ValueTask Touch(in int id) { return default; } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(in id); s.Get(1)"),
+        ["invalidation Task<int> ref"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task<int> Touch(ref int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public Task<int> Touch(ref int id) { return Task.FromResult(7); } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(ref id); s.Get(1)"),
+        ["invalidation Task<int> out"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task<int> Touch(out int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public Task<int> Touch(out int id) { id = 1; return Task.FromResult(7); } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(out id); s.Get(1)"),
+        ["invalidation Task<int> in"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] Task<int> Touch(in int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public Task<int> Touch(in int id) { return Task.FromResult(7); } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(in id); s.Get(1)"),
+        ["invalidation ValueTask<int> ref"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] ValueTask<int> Touch(ref int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public ValueTask<int> Touch(ref int id) { return new ValueTask<int>(7); } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(ref id); s.Get(1)"),
+        ["invalidation ValueTask<int> out"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] ValueTask<int> Touch(out int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public ValueTask<int> Touch(out int id) { id = 1; return new ValueTask<int>(7); } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(out id); s.Get(1)"),
+        ["invalidation ValueTask<int> in"] = new("public interface ISvc { [Cache(Tags = new[] { \"n:{id}\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n:{id}\" })] ValueTask<int> Touch(in int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } public ValueTask<int> Touch(in int id) { return new ValueTask<int>(7); } }", "ISvc", "s.Get(1)", "int id = 1; await s.Touch(in id); s.Get(1)"),
+        ["invalidation ref result"] = new("public interface ISvc { [Cache(Tags = new[] { \"n\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n\" })] ref int Reference(); } public class Svc : ISvc { private int _value; public int Get(int id) { Counter.Hit(); return id; } public ref int Reference() => ref _value; }", "ISvc", "s.Get(1)", "_ = s.Reference(); s.Get(1)"),
+        ["invalidation ref readonly result"] = new("public interface ISvc { [Cache(Tags = new[] { \"n\" })] int Get(int id); [CacheInvalidate(Tags = new[] { \"n\" })] ref readonly int Reference(); } public class Svc : ISvc { private int _value; public int Get(int id) { Counter.Hit(); return id; } public ref readonly int Reference() => ref _value; }", "ISvc", "s.Get(1)", "_ = s.Reference(); s.Get(1)"),
         // Return types
         ["Task<T>"] = Member("Task<string> Get(int id)", "Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(\"v\" + id); }", "await s.Get(1)", "await s.Get(2)"),
         ["ValueTask<T>"] = Member("ValueTask<string> Get(int id)", "ValueTask<string> Get(int id) { Counter.Hit(); return new ValueTask<string>(\"v\" + id); }", "await s.Get(1)", "await s.Get(2)"),
@@ -416,6 +640,16 @@ public class SignatureCorpusTests
                     public Task<string> Get(int id, int version) { Counter.Hit(); return Task.FromResult("2"); }
                 }
             """, "ISvc", "await s.Get(1)", "await s.Get(1, 0)"),
+        ["generic method exact type check"] = Member("int Get<T>(Wrapper<T> value)",
+            "int Get<T>(Wrapper<T> value) { Counter.Hit(); return value.Id; }",
+            "s.Get(new Wrapper<int> { Id = 1 })", "s.Get(new Wrapper<int> { Id = 2 })",
+            "public class Wrapper<T> { public int Id { get; set; } }"),
+        ["generic interface exact type check"] = new("""
+            public class Wrapper<T> { public int Id { get; set; } }
+            public interface ISvc<T> { [Cache] int Get(Wrapper<T> value); }
+            public class Svc : ISvc<int> { public int Get(Wrapper<int> value) { Counter.Hit(); return value.Id; } }
+            """, "ISvc<int>", "s.Get(new Wrapper<int> { Id = 1 })", "s.Get(new Wrapper<int> { Id = 2 })"),
+
         ["generic method"] = Member("Task<T?> Get<T>(int id)", "Task<T?> Get<T>(int id) { Counter.Hit(); return Task.FromResult<T?>(default); }", "await s.Get<int>(1)", "await s.Get<string>(1)"),
         ["generic method with class constraint"] = Member("Task<T?> Get<T>(int id) where T : class", "Task<T?> Get<T>(int id) where T : class { Counter.Hit(); return Task.FromResult<T?>(null); }", "await s.Get<string>(1)", "await s.Get<object>(1)"),
         ["generic method with struct constraint"] = Member("Task<T> Get<T>(int id) where T : struct", "Task<T> Get<T>(int id) where T : struct { Counter.Hit(); return Task.FromResult(default(T)); }", "await s.Get<int>(1)", "await s.Get<long>(1)"),

@@ -69,7 +69,8 @@ namespace Docs.Packages
         {
             // begin-snippet: http-custom-storage-registration
             builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
-            builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+            builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
+                .AddHttpCaching();
             // end-snippet
         }
     }

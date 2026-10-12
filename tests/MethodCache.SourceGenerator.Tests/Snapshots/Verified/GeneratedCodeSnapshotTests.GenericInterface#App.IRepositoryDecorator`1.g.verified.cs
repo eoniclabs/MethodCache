@@ -3,15 +3,15 @@
 #nullable enable
 #pragma warning disable CS8019 // Unnecessary using directive
 using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MethodCache;
-using MethodCache.Extensibility;
-using MethodCache.Infrastructure;
-using MethodCache.Policies;
+using global::System.Collections.Generic;
+using global::System.Collections.Concurrent;
+using global::System.Linq;
+using global::System.Threading;
+using global::System.Threading.Tasks;
+using global::MethodCache;
+using global::MethodCache.Extensibility;
+using global::MethodCache.Infrastructure;
+using global::MethodCache.Policies;
 
 namespace App
 {
@@ -24,72 +24,90 @@ namespace App
     /// for high-throughput scenarios due to runtime type resolution for cache keys.
     /// For maximum performance in critical paths, consider using non-generic interfaces.
     /// </remarks>
-    [System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
-    [System.Diagnostics.DebuggerNonUserCode]
-    internal sealed class IRepositoryDecorator<T> : global::App.IRepository<T>
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
+    [global::System.Diagnostics.DebuggerNonUserCode]
+    internal sealed class IRepositoryDecorator<__mcClassArgument0> : global::App.IRepository<__mcClassArgument0>, global::System.IDisposable, global::System.IAsyncDisposable
     {
-        private readonly global::App.IRepository<T> _decorated;
-        private readonly ICacheManager _cacheManager;
-        private readonly ICacheKeyGenerator _keyGenerator;
-        private readonly ICacheMetricsProvider? _metricsProvider;
+        private readonly global::App.IRepository<__mcClassArgument0> _decorated;
+        private readonly bool _ownsDecorated;
+        private readonly global::MethodCache.ICacheManager _cacheManager;
+        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;
+        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;
 
-        private readonly CachedMethod _method_GetAsync;
+        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method0;
 
-        public IRepositoryDecorator(global::App.IRepository<T> decorated, global::MethodCache.Infrastructure.DecoratorServices services)
+        public IRepositoryDecorator(global::App.IRepository<__mcClassArgument0> decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
-            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));
-            if (services == null) throw new ArgumentNullException(nameof(services));
+            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
+            _ownsDecorated = ownsDecorated;
+            if (services == null) throw new global::System.ArgumentNullException(nameof(services));
             _cacheManager = services.CacheManager;
             _keyGenerator = services.KeyGenerator;
             _metricsProvider = services.MetricsProvider;
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
             var sites = services.GetSites(static registry => new CachedMethodSites(registry));
-            _method_GetAsync = sites.GetAsync;
+            _method_Method0 = sites.Method0;
         }
 
         private sealed class CachedMethodSites
         {
-            public readonly CachedMethod GetAsync;
+            public readonly global::MethodCache.Infrastructure.CachedMethod Method0;
 
-            public CachedMethodSites(IPolicyRegistry registry)
+            public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
             {
-                GetAsync = new CachedMethod(PolicyHandle.For(registry, "App.IRepository<T>.GetAsync"), typeof(global::App.IRepository<T>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<T>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
+                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IRepository<T>.GetAsync"), typeof(global::App.IRepository<__mcClassArgument0>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<__mcClassArgument0>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
             }
         }
 
-        global::System.Threading.Tasks.Task<T?> global::App.IRepository<T>.GetAsync(int id)
+        global::System.Threading.Tasks.Task<__mcClassArgument0?> global::App.IRepository<__mcClassArgument0>.GetAsync(int __mcArgument0)
         {
-            var __mcSnapshot = _method_GetAsync.Current;
+            var __mcSnapshot = this._method_Method0.Current;
 #if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
+            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
-            __mcKeyBuilder.AppendPart(id);
+            __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (_cacheManager.TryGetFastTask<T?>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
+            if (this._cacheManager.TryGetFastTask<__mcClassArgument0?>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
             {
-                _metricsProvider?.CacheHit(_method_GetAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedTask;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(id));
+            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0));
 
-            if (_cacheManager.TryGetFastTask<T?>(__mcKey, out var __mcCachedTask))
+            if (this._cacheManager.TryGetFastTask<__mcClassArgument0?>(__mcKey, out var __mcCachedTask))
             {
-                _metricsProvider?.CacheHit(_method_GetAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedTask;
             }
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            return __Load_GetAsync(__mcKey, __mcSnapshot.Policy, id);
+            var __mcPolicy = __mcSnapshot.Policy;
+            if (__mcPolicy.Tags.Count > 0)
+                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "id" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
+            return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0);
         }
 
-        private Task<T?> __Load_GetAsync(string __cacheKey, CacheRuntimePolicy __policy, int id)
-            => _cacheManager.GetOrCreateFastAsync<T?>(__cacheKey, _method_GetAsync.Name, () => ((global::App.IRepository<T>)_decorated).GetAsync(id)!, __policy);
+        private global::System.Threading.Tasks.Task<__mcClassArgument0?> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
+            => this._cacheManager.GetOrCreateFastAsync<__mcClassArgument0?>(__cacheKey, this._method_Method0.Name, () => ((global::App.IRepository<__mcClassArgument0>)this._decorated).GetAsync(__mcArgument0)!, __policy);
 
+        void global::System.IDisposable.Dispose()
+        {
+            if (!this._ownsDecorated) return;
+            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
+            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException("This owned implementation requires asynchronous disposal. Use DisposeAsync.");
+        }
+        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()
+        {
+            if (!this._ownsDecorated) return default;
+            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();
+            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
+            return default;
+        }
     }
 }
 #pragma warning restore CS8019

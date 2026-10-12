@@ -145,10 +145,17 @@ namespace MethodCache.SourceGenerator
 
         private static string EscapeFormatBraces(string text) => text.Replace("{", "{{").Replace("}", "}}");
 
+        private static IParameterSymbol? ResolveTagParameter(IMethodSymbol method, string name)
+        {
+            var exact = method.Parameters.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.Ordinal));
+            if (exact != null) return exact;
+            var matches = method.Parameters.Where(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
+            return matches.Length == 1 ? matches[0] : null;
+        }
+
         private static List<(string template, List<string> paramNames)> ParseDynamicTags(List<string> tags, IMethodSymbol method)
         {
             var dynamicTags = new List<(string template, List<string> paramNames)>();
-            var parameterNames = method.Parameters.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
 
             foreach (var tag in tags)
             {
@@ -160,7 +167,8 @@ namespace MethodCache.SourceGenerator
                 // doubled so string.Format keeps them
                 foreach (System.Text.RegularExpressions.Match match in DynamicTagParameterRegex.Matches(tag))
                 {
-                    if (!parameterNames.TryGetValue(match.Groups[1].Value, out var parameter))
+                    var parameter = ResolveTagParameter(method, match.Groups[1].Value);
+                    if (parameter == null)
                     {
                         continue;
                     }
@@ -186,7 +194,6 @@ namespace MethodCache.SourceGenerator
         private static List<DiagnosticInfo> ValidateDynamicTags(List<string> tags, IMethodSymbol method, Location? location = null)
         {
             var diagnostics = new List<DiagnosticInfo>();
-            var parameterNames = new HashSet<string>(method.Parameters.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
             location ??= method.Locations.FirstOrDefault();
 
             foreach (var tag in tags)
@@ -195,10 +202,11 @@ namespace MethodCache.SourceGenerator
                 foreach (System.Text.RegularExpressions.Match match in matches)
                 {
                     var paramName = match.Groups[1].Value;
-                    if (!parameterNames.Contains(paramName))
+                    if (ResolveTagParameter(method, paramName) == null)
                     {
                         diagnostics.Add(DiagnosticInfo.CreateWithParameter(
-                            Diagnostics.DynamicTagParameterNotFound,
+                            method.Parameters.Any(p => string.Equals(p.Name, paramName, StringComparison.OrdinalIgnoreCase))
+                                ? Diagnostics.AmbiguousTagParameter : Diagnostics.DynamicTagParameterNotFound,
                             location,
                             // The code fix reads the unknown name from here to offer the closest parameter
                             paramName,

@@ -83,6 +83,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MCG009"));
 
+            internal static readonly DiagnosticDescriptor AmbiguousTagParameter = new(
+                id: "MCG016",
+                title: "Tag placeholder matches multiple parameters",
+                messageFormat: "Tag '{0}' names '{1}', which matches multiple parameters of '{2}' when ignoring case, so it stays literal text. Use the exact spelling of the intended parameter.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG016"));
+
             internal static readonly DiagnosticDescriptor MalformedTagPlaceholder = new(
                 id: "MCG015",
                 title: "Tag placeholder is not a parameter name",

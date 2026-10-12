@@ -8,6 +8,25 @@ namespace MethodCache.Core.Tests.Core.Extensions
     public class CacheManagerExtensionsTests
     {
         [Fact]
+        public async Task VersionedManualEntry_FormattedKeyInvalidationReloads_AndContextsKeepLogicalKeys()
+        {
+            using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
+            var contexts = new List<string>();
+            var calls = 0;
+            ValueTask<int> Load(CacheContext context, CancellationToken token) { contexts.Add(context.Key); return ValueTask.FromResult(++calls); }
+            void Configure(CacheEntryOptions.Builder options) => options.WithVersion(3).OnHit(c => contexts.Add(c.Key));
+            Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
+            Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
+            await cache.InvalidateByKeysAsync(CacheManagerExtensions.GetCacheKey("logical", 3));
+            Assert.Equal(2, await cache.GetOrCreateAsync("logical", Load, Configure));
+            Assert.All(contexts, key => Assert.Equal("logical", key));
+            Assert.Equal("plain", CacheManagerExtensions.GetCacheKey("plain"));
+            Assert.Equal("\0\0hostile", CacheManagerExtensions.GetCacheKey("\0hostile"));
+            Assert.Throws<ArgumentOutOfRangeException>(() => CacheManagerExtensions.GetCacheKey("key", -1));
+            Assert.Throws<ArgumentException>(() => CacheManagerExtensions.GetCacheKey(" "));
+        }
+
+        [Fact]
         public async Task GetOrCreateAsync_UsesFactoryOnceAndCachesValue()
         {
             // Arrange
@@ -265,7 +284,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
         }
 
         [Fact]
-        public async Task GetOrCreateAsync_WithVersion_AppendsVersionToKey()
+        public async Task GetOrCreateAsync_WithVersion_UsesReservedVersionNamespace()
         {
             var cacheManager = new CapturingCacheManager();
 
@@ -274,7 +293,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 static (_, _) => new ValueTask<int>(42),
                 options => options.WithVersion(3));
 
-            Assert.Equal("user:version::v3", cacheManager.LastKey);
+            Assert.Equal("\0v3:user:version", cacheManager.LastKey);
         }
 
         // Enhanced Conditional Logic Tests
@@ -316,8 +335,12 @@ namespace MethodCache.Core.Tests.Core.Extensions
             public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
                 => GetOrCreateFastAsync(keyGenerator.GenerateKey(methodName, args, policy), methodName, factory, policy);
 
+            /// <inheritdoc />
+            public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+                => new(CacheLookupResult<T>.Miss);
+
             public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
-                => new(default(T));
+                    => new(default(T));
 
             public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
             {

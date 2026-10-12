@@ -44,6 +44,27 @@ public class ExpiryBoundaryTests
         public Task<int> Next() => Task.FromResult(++Calls);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Exists_FailSafeThrottleCannotOutlivePhysicalExpiry(bool sliding)
+    {
+        using var manager = CreateManager();
+        var policy = Policy(TimeSpan.FromSeconds(1)) with
+        {
+            SlidingExpiration = sliding ? TimeSpan.FromSeconds(1) : null,
+            FailSafe = TimeSpan.FromSeconds(1),
+            FailSafeRetryAfter = TimeSpan.FromSeconds(5)
+        };
+        Assert.Equal(1, await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult(1), policy));
+        _time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(1, await manager.GetOrCreateFastAsync<int>("key", "M", () => Task.FromException<int>(new InvalidOperationException()), policy));
+        _time.Advance(TimeSpan.FromSeconds(1) - OneTick);
+        Assert.True(await manager.ExistsAsync("key"));
+        _time.Advance(OneTick);
+        Assert.False(await manager.ExistsAsync("key"));
+    }
+
     [Fact]
     public async Task Duration_IsFreshOneTickBeforeTheBoundary_AndExpiredExactlyAtIt()
     {

@@ -1,3 +1,4 @@
+using MethodCache.Infrastructure;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
@@ -38,7 +39,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>How long a key's removal stamp keeps values loaded before the removal out of the cache.</summary>
         internal static readonly TimeSpan RemovalLifetime = TimeSpan.FromMinutes(5);
 
-        private const byte FormatVersion = 3;
+        private const byte FormatVersion = 4;
         private const byte KindNull = 0;
         private const byte KindValue = 1;
         private const int HeaderSize = 1 + 1 + 8 + 8 + 4;
@@ -111,6 +112,8 @@ namespace MethodCache.Core.Runtime.Distributed
                 throw new ArgumentException($"The serializer's content type must be at most {byte.MaxValue} bytes.", nameof(serializer));
             }
             ArgumentNullException.ThrowIfNull(options);
+            if (!options.HasEffectiveTagRetention)
+                throw new ArgumentException("TagRetention must exceed ClockSkewTolerance after truncation to whole milliseconds.", nameof(options));
 
             _backplane = backplane;
             _time = timeProvider ?? TimeProvider.System;
@@ -119,7 +122,7 @@ namespace MethodCache.Core.Runtime.Distributed
             _tagPrefix = options.KeyPrefix + "t:";
             _removalPrefix = options.KeyPrefix + "r:";
             _tagCheckMilliseconds = (long)options.TagCheckInterval.TotalMilliseconds;
-            _clockSkewMilliseconds = (long)options.ClockSkewTolerance.TotalMilliseconds;
+            _clockSkewMilliseconds = options.ClockSkewTolerance.Ticks / TimeSpan.TicksPerMillisecond;
             _tagRetention = options.TagRetention;
             _timeout = options.OperationTimeout;
             _breakDuration = options.CircuitBreakerDuration;
@@ -225,7 +228,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             // No write asks for more than the tag retention; a damaged expiry far in the future must not overflow
-            var remaining = Math.Min(header.ExpiresAt - now, (long)_tagRetention.TotalMilliseconds);
+            var remaining = Math.Min(header.ExpiresAt - now, _tagRetention.Ticks / TimeSpan.TicksPerMillisecond);
             return new DistributedEntry<T>(value, Convert(header.Tags, ApplicationTag), TimeSpan.FromMilliseconds(remaining));
         }
 
@@ -239,12 +242,12 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false)
         {
-            if (lifetime > _tagRetention)
-            {
-                lifetime = _tagRetention;
-            }
-
-            var lifetimeMilliseconds = (long)lifetime.TotalMilliseconds;
+            // The metadata that can invalidate this value must outlive it, including time spent loading or
+            // writing it. Anchor its logical expiry to the source read, not the later publication time.
+            var now = Now;
+            var expiresAt = Math.Min(now + (long)lifetime.TotalMilliseconds,
+                createdAt + _tagRetention.Ticks / TimeSpan.TicksPerMillisecond - _clockSkewMilliseconds);
+            var lifetimeMilliseconds = expiresAt - now;
             if (lifetimeMilliseconds <= 0)
             {
                 return;
@@ -270,7 +273,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var buffer = new ArrayBufferWriter<byte>(256);
-            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, Now + lifetimeMilliseconds, Convert(tags, StoredTag));
+            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, expiresAt, Convert(tags, StoredTag));
             if (value is not null)
             {
                 try
@@ -878,10 +881,10 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 foreach (var tag in tags)
                 {
-                    var length = Encoding.UTF8.GetByteCount(tag);
+                    var length = checked(tag.Length * sizeof(char));
                     span = writer.GetSpan(sizeof(int) + length);
                     BinaryPrimitives.WriteInt32LittleEndian(span, length);
-                    Encoding.UTF8.GetBytes(tag, span.Slice(sizeof(int)));
+                    LosslessUtf16.Write(tag, span.Slice(sizeof(int)));
                     writer.Advance(sizeof(int) + length);
                 }
             }
@@ -914,12 +917,12 @@ namespace MethodCache.Core.Runtime.Distributed
                 tags = new string[tagCount];
                 for (var i = 0; i < tagCount; i++)
                 {
-                    if (!reader.TryReadLittleEndian(out int length) || length < 0 || length > reader.Remaining)
+                    if (!reader.TryReadLittleEndian(out int length) || length < 0 || (length & 1) != 0 || length > reader.Remaining)
                     {
                         return false;
                     }
 
-                    tags[i] = Encoding.UTF8.GetString(reader.UnreadSequence.Slice(0, length));
+                    tags[i] = LosslessUtf16.Read(reader.Sequence.Slice(reader.Position, length));
                     reader.Advance(length);
                 }
             }

@@ -50,7 +50,10 @@ public class JsonKeyGenerator : ICacheKeyGenerator
                         writer.WriteNullValue();
                         break;
                     case ICacheKeyProvider keyProvider:
-                        writer.WriteStringValue(keyProvider.CacheKeyPart);
+                        if (keyProvider.CacheKeyPart is { } part)
+                            writer.WriteRawValue(KeyArguments.Serialize(part), skipInputValidation: true);
+                        else
+                            writer.WriteNullValue();
                         break;
                     default:
                         writer.WriteRawValue(KeyArguments.Serialize(arg), skipInputValidation: true);

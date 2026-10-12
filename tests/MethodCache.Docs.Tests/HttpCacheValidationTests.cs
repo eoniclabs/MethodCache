@@ -18,6 +18,7 @@ public class HttpCacheValidationTests
         services.AddHttpClient("validated").ConfigurePrimaryHttpMessageHandler(() => origin)
             .AddHttpCaching(options =>
             {
+                options.AllowUnverifiedTransport = true;
                 options.EnableStaleIfError = true;
                 options.EnableStaleWhileRevalidate = true;
             });
@@ -39,7 +40,7 @@ public class HttpCacheValidationTests
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(time);
         var origin = new ValidationOrigin(noStoreOnValidation: true);
-        services.AddHttpClient("policy").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching();
+        services.AddHttpClient("policy").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         using var provider = services.BuildServiceProvider();
         using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("policy");
         using var first = await client.GetAsync("https://api.example.com/policy");

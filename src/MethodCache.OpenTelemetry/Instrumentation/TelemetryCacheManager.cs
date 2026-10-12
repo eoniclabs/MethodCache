@@ -118,15 +118,9 @@ internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
             _activitySource.SetCacheKey(activity, cacheKey);
             SetActivityTagsFromPolicy(activity, policy);
 
-            var result = await _innerManager.TryGetAsync<T>(methodName, args, policy, keyGenerator).ConfigureAwait(false);
-            var requiresExistenceCheck =
-                typeof(T).IsValueType &&
-                Nullable.GetUnderlyingType(typeof(T)) is null &&
-                EqualityComparer<T>.Default.Equals(result!, default!);
-            var hit = requiresExistenceCheck
-                ? _innerManager.TryGetFast<T>(cacheKey, out _)
-                : result is not null;
-            _activitySource.SetCacheHit(activity, hit);
+            var lookup = await _innerManager.LookupAsync<T>(methodName, args, policy, keyGenerator).ConfigureAwait(false);
+            var result = lookup.Value;
+            _activitySource.SetCacheHit(activity, lookup.Found);
 
             stopwatch.Stop();
             _meterProvider.RecordOperationDuration(methodName, stopwatch.Elapsed.TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
@@ -141,6 +135,9 @@ internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
             throw;
         }
     }
+
+    public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        => _innerManager.LookupAsync<T>(methodName, args, policy, keyGenerator);
 
     public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
     {

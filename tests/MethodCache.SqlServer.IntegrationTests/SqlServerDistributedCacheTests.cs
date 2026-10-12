@@ -147,7 +147,7 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         // More rows than one read returns, all recent, from another instance
         await ExecuteAsync($"""
             INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
-            SELECT TOP (3000) @scope, 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            SELECT TOP (3000) @scope, 'other', 4, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await first.InvalidateByKeysAsync("key");
@@ -176,9 +176,9 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await using var transaction = connection.BeginTransaction();
         await using (var insert = new SqlCommand(
             $"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target]) VALUES (@scope, 'other', 0, 'key');
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target]) VALUES (@scope, 'other', 4, '4:awBlAHkA');
             INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
-            SELECT TOP (200) @scope, 'other', 0, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            SELECT TOP (200) @scope, 'other', 4, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """,
             connection,
@@ -190,7 +190,7 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
 
         await ExecuteAsync($"""
             INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
-            SELECT TOP (500) @scope, 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            SELECT TOP (500) @scope, 'other', 4, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await Task.Delay(500);
@@ -207,7 +207,7 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await CreateNodeAsync();
         await ExecuteAsync($"""
             INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target], [CreatedAt])
-            SELECT TOP (12000) @scope, 'other', 0, 'old', DATEADD(hour, -2, SYSUTCDATETIME())
+            SELECT TOP (12000) @scope, 'other', 4, 'old', DATEADD(hour, -2, SYSUTCDATETIME())
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await CreateNodeAsync();

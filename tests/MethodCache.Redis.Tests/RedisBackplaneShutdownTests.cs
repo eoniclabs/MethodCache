@@ -1,11 +1,43 @@
 using NSubstitute;
 using StackExchange.Redis;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace MethodCache.Redis.Tests;
 
 public class RedisBackplaneShutdownTests
 {
+    private sealed class RecordingLogger : ILogger<RedisBackplane>
+    {
+        public List<(LogLevel Level, string Message)> Messages { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> formatter)
+            => Messages.Add((level, formatter(state, error)));
+    }
+
+    [Fact]
+    public async Task InvalidFrames_WarnOnceWithoutLoggingTheirContents()
+    {
+        var connection = Substitute.For<IConnectionMultiplexer>();
+        var subscriber = Substitute.For<ISubscriber>();
+        connection.GetSubscriber().Returns(subscriber);
+        Action<RedisChannel, RedisValue>? receive = null;
+        subscriber.SubscribeAsync(Arg.Any<RedisChannel>(), Arg.Do<Action<RedisChannel, RedisValue>>(h => receive = h), Arg.Any<CommandFlags>()).Returns(Task.CompletedTask);
+        subscriber.UnsubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>()).Returns(Task.CompletedTask);
+        var logger = new RecordingLogger();
+        await using var backplane = new RedisBackplane(() => Task.FromResult(connection), "channel", logger);
+        var delivered = 0;
+        await backplane.SubscribeAsync(_ => { delivered++; return Task.CompletedTask; });
+        receive!(RedisChannel.Literal("channel"), "0\nlegacy\nsensitive-key");
+        receive!(RedisChannel.Literal("channel"), "bad-frame");
+        var logs = logger.Messages.ToArray();
+        Assert.Single(logs);
+        Assert.Equal(LogLevel.Warning, logs[0].Level);
+        Assert.DoesNotContain("sensitive-key", logs[0].Message);
+        Assert.Equal(0, delivered);
+    }
+
     [Fact]
     public void Backplane_SupportsOwnedSubscriptionDisposal()
     {
