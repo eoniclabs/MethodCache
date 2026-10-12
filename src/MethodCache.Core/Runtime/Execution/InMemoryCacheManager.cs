@@ -152,6 +152,16 @@ namespace MethodCache.Extensibility
         }
 
         /// <inheritdoc />
+        public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        {
+            ArgumentNullException.ThrowIfNull(policy);
+            ArgumentNullException.ThrowIfNull(keyGenerator);
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
+            return new(TryGetFresh<T>(key, _engine.Now, out var value, out _, out _)
+                ? CacheLookupResult<T>.Hit(value!) : CacheLookupResult<T>.Miss);
+        }
+
+        /// <inheritdoc />
         public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
             return new ValueTask<T?>(TryGetFast<T>(cacheKey, out var value) ? value : default);
@@ -386,7 +396,8 @@ namespace MethodCache.Extensibility
         /// <inheritdoc />
         public ValueTask<bool> ExistsAsync(string key)
         {
-            var exists = _engine.TryPeek(key, out var node) && !node.IsLogicallyExpired(_engine.Now);
+            var now = _engine.Now;
+            var exists = _engine.TryPeek(key, out var node) && !node.IsLogicallyExpired(now) && !node.IsPhysicallyExpired(now);
             return new ValueTask<bool>(exists);
         }
 
@@ -818,44 +829,27 @@ namespace MethodCache.Extensibility
         }
 
         /// <summary>
-        /// Stores a factory result unless its key or tags were invalidated while it loaded. Invalidators flag the
-        /// flight before removing entries, so either they remove this node or the re-check below sees the flag.
+        /// Stores a factory result unless invalidated. Publication and the invalidation flag share a flight lock,
+        /// so an invalidated load can never briefly publish a node or overwrite a newer write.
         /// </summary>
         private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, Node? replacing = null, long? duration = null)
         {
-            if (flight.Invalidated)
-            {
-                return;
-            }
-
+            if (flight.Invalidated) return;
             if (result == null && !_options.CacheNullValues)
             {
-                // Nothing to store, so drop the entry this load replaces. A write that invalidated the flight
-                // before adding its node is seen by the re-check, so its newer entry is never removed.
-                var current = replacing;
-                if (current == null && !_engine.TryPeek(key, out current))
+                lock (flight.Gate)
                 {
-                    return;
-                }
-
-                Interlocked.MemoryBarrier();
-                if (!flight.Invalidated)
-                {
+                    if (flight.Invalidated) return;
+                    var current = replacing;
+                    if (current == null && !_engine.TryPeek(key, out current)) return;
                     _engine.RemoveNode(current);
                 }
-
                 return;
             }
-
-            var node = Store(key, result, policy, duration, replacing);
-            Interlocked.MemoryBarrier();
-            if (node != null && flight.Invalidated)
-            {
-                _engine.RemoveNode(node);
-            }
+            Store(key, result, policy, duration, replacing, flight);
         }
 
-        private Node? Store<T>(string key, T value, EntryPolicy policy, long? duration = null, Node? replacing = null)
+        private Node? Store<T>(string key, T value, EntryPolicy policy, long? duration = null, Node? replacing = null, Flight? flight = null)
         {
             if (value == null && !_options.CacheNullValues)
             {
@@ -894,6 +888,16 @@ namespace MethodCache.Extensibility
                 Weight = _weigher == null ? 1 : Math.Max(0, _weigher(key, value))
             };
 
+            // The application weigher and clock run above, outside the lock: they may re-enter the cache.
+            if (flight == null) return Publish(node, replacing);
+            lock (flight.Gate)
+            {
+                return flight.Invalidated ? null : Publish(node, replacing);
+            }
+        }
+
+        private Node? Publish(Node node, Node? replacing)
+        {
             if (replacing == null)
             {
                 _engine.Add(node);
@@ -946,8 +950,9 @@ namespace MethodCache.Extensibility
             {
                 // Serve the stale value for a short while before trying the factory again. Reads must not extend it
                 // with sliding expiration, or the factory would never be tried again.
-                Volatile.Write(ref node.AbsoluteExpiresAt, now + policy.FailSafeRetryAfter);
-                Volatile.Write(ref node.LogicalExpiresAt, now + policy.FailSafeRetryAfter);
+                var retryUntil = Math.Min(now + policy.FailSafeRetryAfter, Volatile.Read(ref node.PhysicalExpiresAt));
+                Volatile.Write(ref node.AbsoluteExpiresAt, retryUntil);
+                Volatile.Write(ref node.LogicalExpiresAt, retryUntil);
                 Interlocked.Exchange(ref node.RefreshState, 0);
                 return true;
             }
@@ -1200,6 +1205,7 @@ namespace MethodCache.Extensibility
         private sealed class Flight : TaskCompletionSource<object?>
         {
             private volatile bool _invalidated;
+            public object Gate { get; } = new();
 
             public Flight(string[]? tags)
                 : base(TaskCreationOptions.RunContinuationsAsynchronously)
@@ -1213,7 +1219,7 @@ namespace MethodCache.Extensibility
             public bool Invalidated
             {
                 get => _invalidated;
-                set => _invalidated = value;
+                set { lock (Gate) _invalidated = value; }
             }
 
             /// <summary>Set when the caller that started the load cancelled it; callers that joined load again.</summary>

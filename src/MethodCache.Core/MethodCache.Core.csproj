@@ -76,4 +76,8 @@
     <None Include="build\MethodCache.props" Pack="true" PackagePath="build;buildTransitive" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../Shared/LosslessUtf16.cs" Link="Internal/LosslessUtf16.cs" />
+  </ItemGroup>
+
 </Project>

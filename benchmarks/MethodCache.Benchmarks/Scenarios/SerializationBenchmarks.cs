@@ -20,6 +20,8 @@ namespace MethodCache.Benchmarks.Scenarios;
 [RankColumn]
 public class SerializationBenchmarks : BenchmarkBase
 {
+    private readonly List<ServiceProvider> _keyGeneratorProviders = [];
+
     private ISerializationTestService _messagePackService = null!;
     private ISerializationTestService _jsonService = null!;
     private ISerializationTestService _toStringService = null!;
@@ -43,15 +45,42 @@ public class SerializationBenchmarks : BenchmarkBase
     {
         var services = new ServiceCollection();
         ConfigureServices(services);
-        
+
         // Replace key generator
         services.Remove(services.First(s => s.ServiceType == typeof(ICacheKeyGenerator)));
         services.AddSingleton<ICacheKeyGenerator, TKeyGenerator>();
-        
+
         services.AddSingleton<ISerializationTestService, SerializationTestService>();
-        
+
         var provider = services.BuildServiceProvider();
-        return provider.GetRequiredService<ISerializationTestService>();
+        try
+        {
+            var service = provider.GetRequiredService<ISerializationTestService>();
+            _keyGeneratorProviders.Add(provider);
+            return service;
+        }
+        catch
+        {
+            provider.Dispose();
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public override void GlobalCleanup()
+    {
+        try
+        {
+            foreach (var provider in _keyGeneratorProviders)
+            {
+                provider.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+        }
+        finally
+        {
+            _keyGeneratorProviders.Clear();
+            base.GlobalCleanup();
+        }
     }
 
     [Benchmark(Baseline = true)]
@@ -119,7 +148,7 @@ public class SerializationBenchmarks : BenchmarkBase
     private async Task RunComplexObjectTest(ISerializationTestService service)
     {
         var complexParams = CreateComplexParameters();
-        
+
         for (int i = 0; i < ObjectCount / 10; i++)
         {
             await service.GetComplexDataAsync(complexParams, i, ObjectType);
@@ -130,18 +159,18 @@ public class SerializationBenchmarks : BenchmarkBase
     {
         // Test scenarios that might cause key collisions
         var tasks = new List<Task>();
-        
+
         for (int i = 0; i < ObjectCount; i++)
         {
             // Similar but different parameters
             tasks.Add(service.GetDataWithArrayAsync(new[] { i, i + 1 }));
             tasks.Add(service.GetDataWithArrayAsync(new[] { i + 1, i }));
-            
+
             // Similar strings
             tasks.Add(service.GetDataWithStringAsync($"test_{i}"));
             tasks.Add(service.GetDataWithStringAsync($"test{i}"));
         }
-        
+
         await Task.WhenAll(tasks);
     }
 

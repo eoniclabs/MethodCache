@@ -32,6 +32,10 @@ namespace MethodCache.Extensibility
         }
 
         /// <inheritdoc />
+        public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+            => new(CacheLookupResult<T>.Miss);
+
+        /// <inheritdoc />
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             // Always return cache miss for no-op cache

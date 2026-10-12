@@ -94,7 +94,7 @@ namespace MethodCache.SourceGenerator.Tests.SourceGenerator
         {
             if (string.IsNullOrEmpty(source))
                 return source;
-                
+
             // Normalize line endings and remove excessive whitespace while preserving structure
             return source
                 .Replace("\r\n", "\n")
@@ -108,7 +108,7 @@ namespace MethodCache.SourceGenerator.Tests.SourceGenerator
             // Normalize whitespace in both strings and then check contains
             var normalizedHaystack = System.Text.RegularExpressions.Regex.Replace(haystack, @"\s+", " ").Trim();
             var normalizedNeedle = System.Text.RegularExpressions.Regex.Replace(needle, @"\s+", " ").Trim();
-            Assert.True(normalizedHaystack.Contains(normalizedNeedle), 
+            Assert.True(normalizedHaystack.Contains(normalizedNeedle),
                 $"Expected to find pattern '{needle}' in generated source.\n" +
                 $"Normalized needle: '{normalizedNeedle}'\n" +
                 $"Normalized haystack: '{normalizedHaystack}'");
@@ -187,8 +187,8 @@ namespace TestApp
 
             var registrations = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class MethodCacheDecoratorRegistrations"));
             Assert.NotNull(registrations);
-            AssertContainsIgnoreWhitespace(registrations, "[System.Runtime.CompilerServices.ModuleInitializer]");
-            AssertContainsIgnoreWhitespace(registrations, "MethodCacheDecorators.Register(new DecoratorRegistration( typeof(global::TestApp.IUserService),");
+            AssertContainsIgnoreWhitespace(registrations, "[global::System.Runtime.CompilerServices.ModuleInitializer]");
+            AssertContainsIgnoreWhitespace(registrations, "global::MethodCache.Infrastructure.MethodCacheDecorators.Register(new global::MethodCache.Infrastructure.DecoratorRegistration( typeof(global::TestApp.IUserService),");
             AssertContainsIgnoreWhitespace(registrations, "new global::TestApp.IUserServiceDecorator( (global::TestApp.IUserService)inner,");
 
             // The class named like the interface wins over other implementations
@@ -260,10 +260,10 @@ namespace TestApp
             Assert.Contains("GeneratedAttributePolicySource", registrySource);
             Assert.Contains("PolicySourceRegistration", registrySource);
             Assert.Contains("PolicySnapshot", registrySource);
-            AssertContainsIgnoreWhitespace(registrySource, $"SlidingExpiration = System.TimeSpan.FromTicks({TimeSpan.FromMinutes(2).Ticks}L)");
-            AssertContainsIgnoreWhitespace(registrySource, $"RefreshAhead = System.TimeSpan.FromTicks({TimeSpan.FromSeconds(30).Ticks}L)");
-            AssertContainsIgnoreWhitespace(registrySource, "fields |= CachePolicyFields.SlidingExpiration;");
-            AssertContainsIgnoreWhitespace(registrySource, "fields |= CachePolicyFields.RefreshAhead;");
+            AssertContainsIgnoreWhitespace(registrySource, $"SlidingExpiration = global::System.TimeSpan.FromTicks({TimeSpan.FromMinutes(2).Ticks}L)");
+            AssertContainsIgnoreWhitespace(registrySource, $"RefreshAhead = global::System.TimeSpan.FromTicks({TimeSpan.FromSeconds(30).Ticks}L)");
+            AssertContainsIgnoreWhitespace(registrySource, "fields |= global::MethodCache.Policies.CachePolicyFields.SlidingExpiration;");
+            AssertContainsIgnoreWhitespace(registrySource, "fields |= global::MethodCache.Policies.CachePolicyFields.RefreshAhead;");
         }
 
         [Fact]
@@ -289,14 +289,14 @@ namespace TestApp
             // Should generate the cache decorator
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
-            AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetValue(int id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetValue(int __mcArgument0)");
             // Sync methods with simple parameters use the ultra-fast path with GetOrCreateFastAsync
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateFastAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => Task.FromResult(((global::TestApp.ITestService)_decorated).GetValue(id))!");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => global::System.Threading.Tasks.Task.FromResult(((global::TestApp.ITestService)this._decorated).GetValue(__mcArgument0))!");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
@@ -324,7 +324,7 @@ namespace TestApp
             // Should generate the invalidate decorator
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearCache()");
@@ -357,16 +357,16 @@ namespace TestApp
             // Should generate the cache decorator
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
             // Ultra-fast path generates non-async method signature that returns Task
-            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int __mcArgument0)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
             // Task methods return the entry's completed task, so hits do not allocate
             AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(__mcKey, out var __mcCachedTask)");
             // On .NET 9 and later the key is written to the stack, so a hit allocates no key string either
-            AssertContainsIgnoreWhitespace(decoratorSource, "__mcKeyBuilder.AppendPart(id);");
+            AssertContainsIgnoreWhitespace(decoratorSource, "__mcKeyBuilder.AppendPart(__mcArgument0);");
             AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask)");
             AssertContainsIgnoreWhitespace(decoratorSource, "return __mcCachedTask;");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
@@ -374,7 +374,7 @@ namespace TestApp
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValueAsync\"");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)_decorated).GetValueAsync(id)!");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)this._decorated).GetValueAsync(__mcArgument0)!");
             Assert.DoesNotContain("async () =>", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcSnapshot.Policy");
             // Ultra-fast path returns Task.FromResult or createdTask directly, no async/await on the method
@@ -416,11 +416,11 @@ namespace TestApp
             // Should generate cache decorator with both methods
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
-            AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetValue(int id)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "Task<string> global::TestApp.ITestService.GetValueAsync(int id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetValue(int __mcArgument0)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int __mcArgument0)");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearUserCache()");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, "InvalidateByTagsAsync");
@@ -517,15 +517,15 @@ namespace TestApp
 
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
-            AssertContainsIgnoreWhitespace(decoratorSource, "GetValue(int id, string name,");
-            AssertContainsIgnoreWhitespace(decoratorSource, "List<int> items)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "T global::TestApp.ITestService.GetGeneric");
+            AssertContainsIgnoreWhitespace(decoratorSource, "GetValue(int __mcArgument0, string __mcArgument1,");
+            AssertContainsIgnoreWhitespace(decoratorSource, "List<int> __mcArgument2)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "__mcTypeArgument0 global::TestApp.ITestService.GetGeneric");
             // Note: Generic constraints are not currently preserved by the source generator
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)_decorated).GetValue(id, name, items)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)_decorated).GetGeneric");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)this._decorated).GetValue(__mcArgument0, __mcArgument1, __mcArgument2)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)this._decorated).GetGeneric");
         }
 
         [Fact]
@@ -553,15 +553,15 @@ namespace TestApp
 
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearAll()");
             // Zero-parameter methods use the key prefix as the whole key
             AssertContainsIgnoreWhitespace(decoratorSource, "var __mcKey = __mcSnapshot.KeyPrefix;");
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)_decorated).GetConstantValue()");
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)_decorated).ClearAll()");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)this._decorated).GetConstantValue()");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)this._decorated).ClearAll()");
         }
 
         [Fact]
@@ -608,7 +608,7 @@ namespace TestApp.Services.Data
 
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "namespace TestApp.Services.Data");
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.Services.Data.ITestService");
@@ -660,23 +660,23 @@ namespace TestApp
 
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
             // Ultra-fast path generates non-async method signature that returns Task
-            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int __mcArgument0)");
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
             // Task methods return the entry's completed task, so hits do not allocate
             AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(__mcKey, out var __mcCachedTask)");
             // On .NET 9 and later the key is written to the stack, so a hit allocates no key string either
-            AssertContainsIgnoreWhitespace(decoratorSource, "__mcKeyBuilder.AppendPart(id);");
+            AssertContainsIgnoreWhitespace(decoratorSource, "__mcKeyBuilder.AppendPart(__mcArgument0);");
             AssertContainsIgnoreWhitespace(decoratorSource, "TryGetFastTask<string>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask)");
             AssertContainsIgnoreWhitespace(decoratorSource, "return __mcCachedTask;");
             AssertContainsIgnoreWhitespace(decoratorSource, "_metricsProvider?.CacheHit");
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync<string>");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)_decorated).GetValueAsync(id)!");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)this._decorated).GetValueAsync(__mcArgument0)!");
             Assert.DoesNotContain("async () =>", decoratorSource);
         }
 
@@ -702,7 +702,7 @@ namespace TestApp
 
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Check for expected patterns with flexible whitespace matching
             AssertContainsIgnoreWhitespace(decoratorSource, "internal sealed class ITestServiceDecorator : global::TestApp.ITestService");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearMultipleTags()");
@@ -762,11 +762,11 @@ namespace TestApp
 
             var decoratorSource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("internal sealed class ITestServiceDecorator"));
             Assert.NotNull(decoratorSource);
-            
+
             // Should generate all methods including non-cached ones
-            AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetValue(int id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetValue(int __mcArgument0)");
             // Ultra-fast path generates non-async method signature that returns Task
-            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int id)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "global::System.Threading.Tasks.Task<string> global::TestApp.ITestService.GetValueAsync(int __mcArgument0)");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearAll()");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.RegularMethod()");
 
@@ -779,7 +779,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.InvalidateByTagsAsync");
 
             // Check pass-through for regular method
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)_decorated).RegularMethod()");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)this._decorated).RegularMethod()");
         }
 
         [Fact]

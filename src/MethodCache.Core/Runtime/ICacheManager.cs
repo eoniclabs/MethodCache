@@ -59,6 +59,15 @@ namespace MethodCache
         /// <returns>The cached value if found, or default(T) if not in cache</returns>
         ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator);
 
+        /// <summary>Reads a fresh memory entry once and reports presence separately from its value, including null.</summary>
+        /// <typeparam name="T">The cached value type.</typeparam>
+        /// <param name="methodName">The method name used to generate its key.</param>
+        /// <param name="args">The method arguments.</param>
+        /// <param name="policy">The method's runtime policy.</param>
+        /// <param name="keyGenerator">The cache key generator.</param>
+        /// <returns>A hit with the stored value, or a miss. Does not start a load or refresh.</returns>
+        ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator);
+
         /// <summary>
         /// Ultra-fast cache lookup that bypasses key generation, policy checks, and statistics.
         /// Use this when you have a pre-computed cache key and need minimal latency.

@@ -1,5 +1,7 @@
 using MethodCache.Extensibility;
 using StackExchange.Redis;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MethodCache.Redis;
 
@@ -21,12 +23,15 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     private Task? _shutdown;
     private Task _cleanupTask = Task.CompletedTask;
     private bool _disposed;
+    private readonly ILogger _logger;
+    private int _rejectedWarning;
 
-    public RedisBackplane(Func<Task<IConnectionMultiplexer>> connect, string channel)
+    public RedisBackplane(Func<Task<IConnectionMultiplexer>> connect, string channel, ILogger<RedisBackplane>? logger = null)
     {
         _connect = connect ?? throw new ArgumentNullException(nameof(connect));
         ArgumentException.ThrowIfNullOrEmpty(channel);
         _channel = RedisChannel.Literal(channel);
+        _logger = (ILogger?)logger ?? NullLogger.Instance;
     }
 
     /// <inheritdoc />
@@ -65,8 +70,12 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             subscription.Handler = (_, value) =>
             {
                 if (!subscription.Cancellation.IsCancellationRequested &&
-                    Volatile.Read(ref subscription.Callback) is { } callback && TryParse(value, out var message))
-                    Observe(callback(message));
+                    Volatile.Read(ref subscription.Callback) is { } callback)
+                {
+                    if (TryParse(value, out var message)) Observe(callback(message));
+                    else if (Interlocked.Exchange(ref _rejectedWarning, 1) == 0)
+                        _logger.LogWarning("Rejected an incompatible or malformed MethodCache backplane frame. Invalidations do not cross wire versions; deploy the same version on all nodes.");
+                }
             };
             subscription.Restored = (_, _) =>
             {
@@ -172,7 +181,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     internal static string Format(BackplaneMessageType type, string instanceId, string value)
     {
         // Type, sender and value on separate lines; the value is last, so it may contain anything
-        return string.Concat(((int)type).ToString(System.Globalization.CultureInfo.InvariantCulture), "\n", instanceId, "\n", value);
+        return string.Concat(MethodCache.Infrastructure.LosslessWireText.ToMessageType(type).ToString(System.Globalization.CultureInfo.InvariantCulture), "\n", instanceId, "\n", MethodCache.Infrastructure.LosslessWireText.Encode(value));
     }
 
     private static void Observe(Task task)
@@ -204,9 +213,10 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             return false;
         }
 
+        if (!MethodCache.Infrastructure.LosslessWireText.TryMessageType(type, out var logicalType)) return false;
         var instanceId = text.Substring(first + 1, second - first - 1);
-        var target = text.Substring(second + 1);
-        message = (BackplaneMessageType)type switch
+        if (!MethodCache.Infrastructure.LosslessWireText.TryDecode(text.Substring(second + 1), out var target)) return false;
+        message = logicalType switch
         {
             BackplaneMessageType.KeyInvalidation => new BackplaneMessage { Type = BackplaneMessageType.KeyInvalidation, Key = target, InstanceId = instanceId },
             BackplaneMessageType.TagInvalidation => new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, Tag = target, InstanceId = instanceId },

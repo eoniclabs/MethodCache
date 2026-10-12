@@ -89,3 +89,9 @@ tags also stay within the producer's inline storage; larger lists can allocate. 
 have their own costs. Hits are still counted. Cache keys and tags are left off spans unless
 you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
 [package README](../../src/MethodCache.OpenTelemetry/README.md) and [Security](../security.md).
+
+## Behavior and compatibility
+
+Tracing counts cached `null` values as hits, including nullable value types.
+
+Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.

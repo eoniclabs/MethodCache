@@ -4,12 +4,15 @@ Put cache attributes on interface methods. The generator builds a decorator arou
 and routes cached calls through MethodCache. Your implementation stays ordinary application code.
 
 The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`, overloaded methods, generic
-interfaces and generic methods. Generic constraints, including `unmanaged`, are preserved. Overloaded methods
+interfaces and generic methods, including interfaces nested in generic containing types. Constraints on both
+the containing type and the interface, including `unmanaged`, are preserved. Overloaded methods
 include namespace-qualified parameter types in their identities so equally named types remain separate.
 
-Other interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
-Names that are C# keywords are escaped in the generated code, including property/event names and indexer
-parameters. Property getters/setters and event add/remove accessors reach the original implementation.
+Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
+Non-public default helpers stay on the interface and are not emitted as decorator implementations. Non-public abstract contracts are rejected with `MCG013` because the decorator cannot call those members on the decorated instance.
+Names that are C# keywords are escaped in the generated code, including namespaces, generic type parameters, constraints, property/event names and indexer
+parameters. Parameters, generic parameters and overload names that resemble generator internals do not collide;
+named calls through the interface keep its original parameter names. Property getters/setters and event add/remove accessors reach the original implementation.
 
 Unsupported cached method shapes receive a [generator diagnostic](../user-guide/DIAGNOSTICS.md), with a code fix
 to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer
@@ -19,3 +22,19 @@ interface is cacheable. See [keys](keys.md) for argument identity and
 
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
+
+## Behavior and compatibility
+
+Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated `Add...WithCaching` factory helpers own the instances their factories return; create a new instance in those factories.
+
+Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
+
+Factory registration helpers dispose owned implementations even when their service interface does not declare disposal. Asynchronous disposal prefers `IAsyncDisposable`, then falls back to `IDisposable`. Automatically discovered DI services retain container ownership.
+
+Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.
+
+Generated decorators qualify framework and cache infrastructure type names globally, so application types such as `Task`, `List` or `CachedMethod` cannot shadow them.
+
+Cached interfaces may declare nested helper interfaces and abstract types. These declarations do not trigger MCG013.
+
+Generated runtime type checks use the same generic-parameter aliases as decorator signatures, including unsealed generic argument types whose simple members form inline cache keys.

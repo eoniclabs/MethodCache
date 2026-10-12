@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Text;
 using MethodCache.Extensibility;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -39,18 +40,45 @@ internal sealed class RedisDistributedCache(RedisConnection connection) : IBuffe
         ConnectionMultiplexerFactory = connection.GetAsync,
     }));
 
-    public byte[]? Get(string key) => _inner.Get(key);
-    public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => _inner.GetAsync(key, token);
-    public bool TryGet(string key, IBufferWriter<byte> destination) => _inner.TryGet(key, destination);
-    public ValueTask<bool> TryGetAsync(string key, IBufferWriter<byte> destination, CancellationToken token = default) => _inner.TryGetAsync(key, destination, token);
-    public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => _inner.Set(key, value, options);
-    public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => _inner.SetAsync(key, value, options, token);
-    public void Set(string key, ReadOnlySequence<byte> value, DistributedCacheEntryOptions options) => _inner.Set(key, value, options);
-    public ValueTask SetAsync(string key, ReadOnlySequence<byte> value, DistributedCacheEntryOptions options, CancellationToken token = default) => _inner.SetAsync(key, value, options, token);
-    public void Refresh(string key) => _inner.Refresh(key);
-    public Task RefreshAsync(string key, CancellationToken token = default) => _inner.RefreshAsync(key, token);
-    public void Remove(string key) => _inner.Remove(key);
-    public Task RemoveAsync(string key, CancellationToken token = default) => _inner.RemoveAsync(key, token);
+    public byte[]? Get(string key) => _inner.Get(GetPhysicalKey(key));
+    public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => _inner.GetAsync(GetPhysicalKey(key), token);
+    public bool TryGet(string key, IBufferWriter<byte> destination) => _inner.TryGet(GetPhysicalKey(key), destination);
+    public ValueTask<bool> TryGetAsync(string key, IBufferWriter<byte> destination, CancellationToken token = default) => _inner.TryGetAsync(GetPhysicalKey(key), destination, token);
+    public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => _inner.Set(GetPhysicalKey(key), value, options);
+    public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => _inner.SetAsync(GetPhysicalKey(key), value, options, token);
+    public void Set(string key, ReadOnlySequence<byte> value, DistributedCacheEntryOptions options) => _inner.Set(GetPhysicalKey(key), value, options);
+    public ValueTask SetAsync(string key, ReadOnlySequence<byte> value, DistributedCacheEntryOptions options, CancellationToken token = default) => _inner.SetAsync(GetPhysicalKey(key), value, options, token);
+    public void Refresh(string key) => _inner.Refresh(GetPhysicalKey(key));
+    public Task RefreshAsync(string key, CancellationToken token = default) => _inner.RefreshAsync(GetPhysicalKey(key), token);
+    public void Remove(string key) => _inner.Remove(GetPhysicalKey(key));
+    public Task RemoveAsync(string key, CancellationToken token = default) => _inner.RemoveAsync(GetPhysicalKey(key), token);
+
+    // Keep ordinary keys and their cleanup prefixes unchanged. Escape both the escape character and every
+    // unpaired surrogate before UTF-8 encoding, so a literal escape cannot impersonate another logical key.
+    internal static string GetPhysicalKey(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        var first = -1;
+        for (var i = 0; i < key.Length; i++)
+        {
+            var c = key[i];
+            if (char.IsHighSurrogate(c) && i + 1 < key.Length && char.IsLowSurrogate(key[i + 1])) { i++; continue; }
+            if (c == '\\' || char.IsSurrogate(c)) { first = i; break; }
+        }
+        if (first < 0) return key;
+        var physical = new StringBuilder(key.Length + 16).Append(key, 0, first);
+        for (var i = first; i < key.Length; i++)
+        {
+            var c = key[i];
+            if (c == '\\') physical.Append("\\\\");
+            else if (char.IsHighSurrogate(c) && i + 1 < key.Length && char.IsLowSurrogate(key[i + 1]))
+                physical.Append(c).Append(key[++i]);
+            else if (char.IsSurrogate(c))
+                physical.Append("\\u").Append(((int)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture));
+            else physical.Append(c);
+        }
+        return physical.ToString();
+    }
 
     public async Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default)
     {
@@ -60,7 +88,7 @@ internal sealed class RedisDistributedCache(RedisConnection connection) : IBuffe
         var stamp = new byte[8];
         BinaryPrimitives.WriteInt64LittleEndian(stamp, timestamp);
         var multiplexer = await connection.GetAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
-        await multiplexer.GetDatabase().ScriptEvaluateAsync(StampScript, new RedisKey[] { key },
+        await multiplexer.GetDatabase().ScriptEvaluateAsync(StampScript, new RedisKey[] { GetPhysicalKey(key) },
             new RedisValue[] { stamp, (long)Math.Ceiling(retention.TotalMilliseconds) }).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 }

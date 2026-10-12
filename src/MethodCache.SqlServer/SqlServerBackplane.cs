@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Data;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -40,6 +39,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
     private readonly SqlServerOptions _options;
     private readonly ILogger _logger;
+    private int _rejectedWarning;
     private readonly byte[] _scope;
     private readonly TimeProvider _timeProvider;
     private readonly List<GapRange> _gaps = new();
@@ -144,8 +144,8 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         await using var commandScope = command.ConfigureAwait(false);
         AddScope(command);
         command.Parameters.Add(new SqlParameter("@instanceId", SqlDbType.VarChar, 32) { Value = InstanceId });
-        command.Parameters.Add(new SqlParameter("@type", SqlDbType.TinyInt) { Value = (byte)type });
-        command.Parameters.Add(new SqlParameter("@target", SqlDbType.NVarChar, -1) { Value = target });
+        command.Parameters.Add(new SqlParameter("@type", SqlDbType.TinyInt) { Value = (byte)MethodCache.Infrastructure.LosslessWireText.ToMessageType(type) });
+        command.Parameters.Add(new SqlParameter("@target", SqlDbType.NVarChar, -1) { Value = MethodCache.Infrastructure.LosslessWireText.Encode(target) });
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -469,12 +469,19 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             return;
         }
 
-        var message = CreateMessage((BackplaneMessageType)reader.GetByte(2), reader.GetString(3), instanceId, reader.GetDateTime(4));
+        var message = CreateWireMessage(reader.GetByte(2), reader.GetString(3), instanceId, reader.GetDateTime(4));
+        if (message == null && Interlocked.Exchange(ref _rejectedWarning, 1) == 0)
+            _logger.LogWarning("Rejected an incompatible or malformed MethodCache backplane frame. Invalidations do not cross wire versions; deploy the same version on all nodes.");
         if (message != null)
         {
             messages.Add(message);
         }
     }
+
+    internal static BackplaneMessage? CreateWireMessage(byte type, string wire, string instanceId, DateTime createdAt)
+        => MethodCache.Infrastructure.LosslessWireText.TryMessageType(type, out var logical)
+            && MethodCache.Infrastructure.LosslessWireText.TryDecode(wire, out var target)
+            ? CreateMessage(logical, target, instanceId, createdAt) : null;
 
     internal static BackplaneMessage? CreateMessage(BackplaneMessageType type, string target, string instanceId, DateTime createdAt)
     {
@@ -525,9 +532,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     {
         // Hash exact UTF-16 code units in a fixed byte order: casing, normalization and even unpaired
         // surrogates stay distinct, independently of SQL collation and text encoder fallback.
-        var bytes = new byte[checked(prefix.Length * 2)];
-        for (var i = 0; i < prefix.Length; i++)
-            BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * 2, 2), prefix[i]);
+        var bytes = MethodCache.Infrastructure.LosslessUtf16.GetBytes(prefix);
         return SHA256.HashData(bytes);
     }
 }

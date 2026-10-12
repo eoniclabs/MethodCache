@@ -6,6 +6,13 @@ namespace MethodCache.HttpCaching;
 public sealed class HttpCacheOptions
 {
     /// <summary>
+    /// Allows caching with a transport other than SocketsHttpHandler or HttpClientHandler. Default false.
+    /// Enable only after verifying that the custom transport and every opaque wrapper send no automatic cookies
+    /// and add no caller identity below the cache handler. Known transports with automatic cookies always bypass.
+    /// </summary>
+    public bool AllowUnverifiedTransport { get; set; }
+
+    /// <summary>
     /// <c>false</c> (default): a private cache, as in a browser. Responses marked <c>private</c> are cached and the
     /// <c>Authorization</c> header is part of the cache key, so callers never see each other's responses.
     /// <c>true</c>: a shared cache, as in a proxy. <c>private</c> responses are not stored and <c>s-maxage</c> applies.

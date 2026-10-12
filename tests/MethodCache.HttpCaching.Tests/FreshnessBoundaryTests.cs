@@ -37,6 +37,95 @@ public class FreshnessBoundaryTests
     private static string? XCache(HttpResponseMessage response) =>
         response.Headers.TryGetValues("X-Cache", out var values) ? values.FirstOrDefault() : null;
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    public async Task ExpiredExpires_DoesNotFallBackToHeuristicOrDefaultFreshness(int seconds)
+    {
+        var options = new HttpCacheOptions { AllowHeuristicFreshness = true, DefaultMaxAge = TimeSpan.FromHours(1) };
+        var (client, inner) = HttpCacheTestFactory.CreateClient(options, timeProvider: _time);
+        using var owner = client;
+        var expired = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("old") };
+        expired.Headers.Date = _time.GetUtcNow();
+        expired.Content.Headers.Expires = _time.GetUtcNow().AddSeconds(seconds);
+        expired.Content.Headers.LastModified = _time.GetUtcNow().AddDays(-1);
+        inner.SetResponses(expired, Response("new", TimeSpan.FromMinutes(1)));
+
+        using var first = await client.GetAsync(Url);
+        using var second = await client.GetAsync(Url);
+
+        Assert.Equal("new", await second.Content.ReadAsStringAsync());
+        Assert.Equal(2, inner.RequestCount);
+    }
+
+    [Fact]
+    public void RawInvalidExpires_FromCustomStorage_IsImmediatelyStale()
+    {
+        var entry = new HttpCacheEntry
+        {
+            RequestUri = Url,
+            Method = "GET",
+            Date = _time.GetUtcNow(),
+            StoredAt = _time.GetUtcNow(),
+            ContentHeaders = new() { ["expires"] = new[] { "0" } },
+            LastModified = _time.GetUtcNow().AddDays(-1)
+        };
+        var calculator = new FreshnessCalculator(new HttpCacheOptions { DefaultMaxAge = TimeSpan.FromHours(1) }, _time);
+        Assert.Equal(TimeSpan.Zero, calculator.GetFreshnessLifetime(entry));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("not a date")]
+    public async Task InvalidExpires_DoesNotFallBackToHeuristicOrDefaultFreshness(string expires)
+    {
+        var options = new HttpCacheOptions { AllowHeuristicFreshness = true, DefaultMaxAge = TimeSpan.FromHours(1) };
+        var (client, inner) = HttpCacheTestFactory.CreateClient(options, timeProvider: _time);
+        using var owner = client;
+        var expired = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("old") };
+        expired.Headers.Date = _time.GetUtcNow();
+        expired.Content.Headers.TryAddWithoutValidation("Expires", expires);
+        expired.Content.Headers.LastModified = _time.GetUtcNow().AddDays(-1);
+        inner.SetResponses(expired, Response("new", TimeSpan.FromMinutes(1)));
+
+        using var first = await client.GetAsync(Url);
+        using var second = await client.GetAsync(Url);
+
+        Assert.Equal("new", await second.Content.ReadAsStringAsync());
+        Assert.Equal(2, inner.RequestCount);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("not a date")]
+    [InlineData("")]
+    public void Revalidation_InvalidExpiresReplacement_DoesNotRetainPriorFreshness(string expires)
+    {
+        var entry = new HttpCacheEntry
+        {
+            RequestUri = Url,
+            Method = "GET",
+            Date = _time.GetUtcNow(),
+            StoredAt = _time.GetUtcNow(),
+            Expires = _time.GetUtcNow().AddHours(1)
+        };
+        using var response = new HttpResponseMessage(HttpStatusCode.NotModified) { Content = new StringContent("") };
+        response.Headers.Date = _time.GetUtcNow();
+        response.Content.Headers.TryAddWithoutValidation("Expires", new[] { expires });
+        Assert.True(response.Content.Headers.Contains("Expires"));
+        var updated = entry.WithUpdatedHeaders(response, _time.GetUtcNow());
+        var calculator = new FreshnessCalculator(new HttpCacheOptions { DefaultMaxAge = TimeSpan.FromHours(1) }, _time);
+        Assert.Equal(TimeSpan.Zero, calculator.GetFreshnessLifetime(updated));
+    }
+
+    [Fact]
+    public void Revalidation_AbsentExpires_PreservesPriorFreshness()
+    {
+        var entry = new HttpCacheEntry { RequestUri = Url, Method = "GET", Expires = _time.GetUtcNow().AddHours(1) };
+        using var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+        Assert.Equal(entry.Expires, entry.WithUpdatedHeaders(response, _time.GetUtcNow()).Expires);
+    }
+
     [Fact]
     public async Task MaxAge_IsFreshOneTickBefore_AndStaleExactlyAtIt()
     {

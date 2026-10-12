@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using MethodCache.HttpCaching.Internal;
 using Xunit;
+using NSubstitute;
 
 namespace MethodCache.HttpCaching.Tests;
 
@@ -369,11 +370,14 @@ public class HttpCacheIsolationTests
     [Fact]
     public async Task Metrics_CarryOnlyTheClientNameAndOutcome_NeverTheUrl()
     {
+        using var meter = new Meter(HttpCacheMetrics.MeterName);
+        var factory = Substitute.For<IMeterFactory>();
+        factory.Create(Arg.Any<MeterOptions>()).Returns(meter);
         var tags = new ConcurrentBag<KeyValuePair<string, object?>>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, l) =>
         {
-            if (instrument.Name.StartsWith("methodcache.http.", StringComparison.Ordinal))
+            if (ReferenceEquals(instrument.Meter, meter) && instrument.Name.StartsWith("methodcache.http.", StringComparison.Ordinal))
             {
                 l.EnableMeasurementEvents(instrument);
             }
@@ -382,12 +386,13 @@ public class HttpCacheIsolationTests
         listener.SetMeasurementEventCallback<double>((_, _, t, _) => { foreach (var tag in t) { tags.Add(tag); } });
         listener.Start();
 
-        using var metrics = new HttpCacheMetrics();
+        using var metrics = new HttpCacheMetrics(factory);
         var origin = new EchoOrigin();
+        var options = new HttpCacheOptions { AllowUnverifiedTransport = true }; // Verified test transport.
         var handler = new HttpCacheHandler(
             new HttpCacheClientState("orders-api"),
             HttpCacheTestFactory.CreateInMemoryStorage(),
-            new TestOptionsMonitor<HttpCacheOptions>(new HttpCacheOptions()),
+            new TestOptionsMonitor<HttpCacheOptions>(options),
             TimeProvider.System,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<HttpCacheHandler>.Instance,
             metrics)
