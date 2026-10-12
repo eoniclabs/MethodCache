@@ -29,7 +29,7 @@ public class DistributedHttpRegistrationTests
                 break;
         }
         services.Configure<HttpCacheStorageOptions>(options => options.UseDistributedCache = true);
-        services.AddHttpClient("owned").AddHttpCaching();
+        services.AddHttpClient("owned").AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         using var provider = services.BuildServiceProvider();
 
         using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("owned");
@@ -50,7 +50,7 @@ public class DistributedHttpRegistrationTests
             services.AddMethodCacheDistributedCache(_ => ownedCache);
         }
         services.Configure<HttpCacheStorageOptions>(options => options.UseDistributedCache = true);
-        services.AddHttpClient("selected").ConfigurePrimaryHttpMessageHandler(() => new Origin()).AddHttpCaching();
+        services.AddHttpClient("selected").ConfigurePrimaryHttpMessageHandler(() => new Origin()).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         using var provider = services.BuildServiceProvider();
         using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("selected");
         using var response = await client.GetAsync("https://api.example.com/distributed");

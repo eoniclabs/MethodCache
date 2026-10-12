@@ -15,6 +15,8 @@ internal sealed class HttpCacheClientState
     /// <summary>The HttpClient name; selects the named <see cref="HttpCacheOptions"/> and prefixes the cache keys.</summary>
     public string Name { get; }
 
+    internal int TransportWarningLogged;
+
     /// <summary>Cache keys with a background revalidation running, so each key is revalidated once at a time.</summary>
     public ConcurrentDictionary<string, byte> RevalidationsInFlight { get; } = new(StringComparer.Ordinal);
 }

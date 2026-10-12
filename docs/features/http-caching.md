@@ -127,3 +127,6 @@ See the [HTTP package guide](../../src/MethodCache.HttpCaching/README.md) for re
 cache isolation, limits and metrics, and [security](../security.md) for the threat model.
 
 An invalid `Expires` date (including `Expires: 0`) is immediately stale, even when heuristic freshness or a default lifetime is enabled. Explicit `max-age` and `s-maxage` take precedence.
+
+
+Unknown HTTP transports (including opaque wrappers and native platform handlers) bypass caching by default and emit one warning per named client. Set `AllowUnverifiedTransport` only when you have verified that the whole transport sends no automatic cookies or hidden caller identity. Recognized transports with automatic cookies always bypass.
