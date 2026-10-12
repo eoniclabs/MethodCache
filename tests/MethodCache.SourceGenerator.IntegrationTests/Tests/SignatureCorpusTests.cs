@@ -207,6 +207,52 @@ public class SignatureCorpusTests
         Assert.NotEqual(name.Invoke(null, new object[] { a }), name.Invoke(null, new object[] { b }));
     }
 
+    [Theory]
+    [InlineData("Task", "Task.CompletedTask")]
+    [InlineData("ValueTask", "default")]
+    [InlineData("Task<int>", "Task.FromResult(42)")]
+    [InlineData("ValueTask<int>", "new ValueTask<int>(42)")]
+    public async Task DeferredInvalidation_WithoutTags_NeverCallsTheInvalidationProvider(string returnType, string result)
+    {
+        var source = $$"""
+            using System.Threading.Tasks;
+            using MethodCache;
+            using MethodCache.Extensibility;
+            using Microsoft.Extensions.DependencyInjection;
+            namespace Corpus {
+                public interface ISvc { [Cache] int Get(int id); [CacheInvalidate] {{returnType}} Update(ref int value); }
+                public class Svc : ISvc {
+                    public int Get(int id) => id;
+                    public {{returnType}} Update(ref int value) { value++; return {{result}}; }
+                }
+                public class CountingManager : NoOpCacheManager, ICacheManager {
+                    public int Calls;
+                    public new Task InvalidateByTagsAsync(params string[] tags) { Calls++; return Task.CompletedTask; }
+                }
+                public static class Scenario {
+                    public static async Task<int> RunAsync() {
+                        var manager = new CountingManager();
+                        var services = new ServiceCollection();
+                        services.AddSingleton<ICacheManager>(manager);
+                        services.AddMethodCache();
+                        await using var provider = services.BuildServiceProvider();
+                        var service = provider.GetRequiredService<ISvc>();
+                        var value = 1;
+                        await service.Update(ref value);
+                        if (value != 2) throw new System.InvalidOperationException("The reference argument was not forwarded.");
+                        return manager.Calls;
+                    }
+                }
+            }
+            """;
+        foreach (var language in new[] { LanguageVersion.CSharp12, LanguageVersion.Latest })
+        {
+            var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "EmptyDeferredTags" + Sanitize(returnType) + language, language);
+            var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+            Assert.Equal(0, await (Task<int>)run.Invoke(null, null)!);
+        }
+    }
+
     private static readonly Dictionary<string, (string Member, string Implementation, string ExpectedId)> Unsupported = new()
     {
         ["void"] = ("void Touch(int id)", "void Touch(int id) { }", "MCG001"),

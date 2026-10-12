@@ -83,3 +83,5 @@ Tag placeholders prefer the exact C# parameter spelling. A unique case-insensiti
 An invalidated in-flight memory load cannot publish over a newer load or explicit write. Publication and invalidation are coordinated per load; application weighers run outside that coordination so they may call the cache safely.
 
 Runtime tag templates match against every method parameter, even when the attributes use only a subset. Exact names take precedence; an ambiguous case-insensitive placeholder remains literal. Untagged policies do not format argument values.
+
+An invalidation attribute without tags forwards the operation without issuing an empty tag invalidation, including asynchronous methods with reference parameters.

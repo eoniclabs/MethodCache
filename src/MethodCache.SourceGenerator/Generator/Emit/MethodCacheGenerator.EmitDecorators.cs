@@ -864,6 +864,12 @@ namespace MethodCache.SourceGenerator
             // returned operation and the tags captured after that call cross the asynchronous boundary.
             private static void EmitDeferredInvalidateMethodBody(StringBuilder sb, IMethodSymbol method, string call, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags)
             {
+                if (staticTags.Count == 0 && dynamicTags.Count == 0)
+                {
+                    sb.AppendLine($"            return {call};");
+                    return;
+                }
+
                 var returnType = Utils.GetReturnTypeForSignature(method.ReturnType);
                 var hasResult = (Utils.IsTask(method.ReturnType, out var resultType) || Utils.IsValueTask(method.ReturnType, out resultType)) && resultType != null;
                 sb.AppendLine($"            var __mcPending = {call};");

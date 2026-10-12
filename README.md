@@ -414,3 +414,5 @@ Oversized HTTP responses remain streamed; disposing them closes both stream segm
 Runtime tag templates match against every method parameter, even when the attributes use only a subset. Exact names take precedence; an ambiguous case-insensitive placeholder remains literal. Untagged policies do not format argument values.
 
 Cached interfaces may declare nested helper interfaces and abstract types. These declarations do not trigger MCG013.
+
+An invalidation attribute without tags forwards the operation without issuing an empty tag invalidation, including asynchronous methods with reference parameters.
