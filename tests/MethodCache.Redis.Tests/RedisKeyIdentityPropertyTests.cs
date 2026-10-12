@@ -1,12 +1,11 @@
 using System.Text;
 using CsCheck;
-using MethodCache.Core.Tests.Core;
+using MethodCache.Core.Tests.Properties;
 using MethodCache.Redis;
 using Xunit;
 
-namespace MethodCache.Core.Tests.Properties;
+namespace MethodCache.Redis.Tests;
 
-[Collection(nameof(CpuIntensiveCollection))]
 public class RedisKeyIdentityPropertyTests
 {
     [Fact]

@@ -33,4 +33,8 @@
     <InternalsVisibleTo Include="MethodCache.SqlServer.IntegrationTests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../MethodCache.Core/Runtime/Distributed/LosslessWireText.cs" Link="Internal/LosslessWireText.cs" />
+  </ItemGroup>
+
 </Project>
