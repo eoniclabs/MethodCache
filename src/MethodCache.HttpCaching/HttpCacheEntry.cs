@@ -335,7 +335,11 @@ public sealed record HttpCacheEntry
             if (disposing && Interlocked.Exchange(ref _disposed, 1) == 0)
             {
                 try { first.Dispose(); }
-                finally { owner.Dispose(); }
+                finally
+                {
+                    try { owner.Dispose(); }
+                    finally { second.Dispose(); }
+                }
             }
 
             base.Dispose(disposing);
