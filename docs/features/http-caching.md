@@ -1,5 +1,7 @@
 # HTTP response caching
 
+HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
+
 An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses according to their response

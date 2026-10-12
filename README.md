@@ -239,6 +239,8 @@ See [Caching third-party code](docs/features/third-party.md).
 
 ### HTTP responses
 
+HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
+
 An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 When the API sends caching headers, let `HttpClient` use them instead of choosing a duration yourself:

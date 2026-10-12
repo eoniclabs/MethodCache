@@ -1,5 +1,7 @@
 # MethodCache.HttpCaching
 
+HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
+
 An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.
 
 HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -92,7 +93,12 @@ internal static class HttpCacheKeys
             request.Content?.Headers.TryGetValues(header, out values) == true)
         {
             Append(hash, "1");
-            Append(hash, string.Join(",", values));
+            var items = values.ToArray();
+            Append(hash, items.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            foreach (var value in items)
+            {
+                Append(hash, value);
+            }
         }
         else
         {
@@ -102,7 +108,10 @@ internal static class HttpCacheKeys
 
     private static void Append(IncrementalHash hash, string value)
     {
-        hash.AppendData(Encoding.UTF8.GetBytes(value));
-        hash.AppendData([0]); // separator, so "ab" + "c" and "a" + "bc" hash differently
+        var bytes = Encoding.UTF8.GetBytes(value);
+        Span<byte> length = stackalloc byte[sizeof(int)];
+        BinaryPrimitives.WriteInt32LittleEndian(length, bytes.Length);
+        hash.AppendData(length);
+        hash.AppendData(bytes);
     }
 }

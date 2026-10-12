@@ -8,6 +8,20 @@ public class HttpCacheKeysTests
 {
     private const string Url = "https://api.example.com/users";
 
+    [Theory]
+    [InlineData("Cookie")]
+    [InlineData("X-Tenant")]
+    public void ForVariant_PreservesHeaderValueBoundaries(string header)
+    {
+        using var multiple = Get();
+        using var single = Get();
+        multiple.Headers.TryAddWithoutValidation(header, new[] { "session=A", "other=B" });
+        single.Headers.TryAddWithoutValidation(header, "session=A,other=B");
+
+        Assert.NotEqual(HttpCacheKeys.ForVariant("base", "g", multiple, [header]),
+            HttpCacheKeys.ForVariant("base", "g", single, [header]));
+    }
+
     [Fact]
     public void ForRequest_IsDeterministic_AndPrefixedWithTheClient()
     {
