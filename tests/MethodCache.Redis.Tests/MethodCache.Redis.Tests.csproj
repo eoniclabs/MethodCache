@@ -31,4 +31,9 @@
     <ProjectReference Include="..\..\src\MethodCache.Redis\MethodCache.Redis.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="CsCheck" Version="4.9.1" />
+    <Compile Include="../MethodCache.Core.Tests/Properties/PropertySettings.cs" Link="Properties/PropertySettings.cs" />
+  </ItemGroup>
+
 </Project>

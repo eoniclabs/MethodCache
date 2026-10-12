@@ -24,8 +24,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.Redis.Tests" />
-    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
     <InternalsVisibleTo Include="MethodCache.Redis.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../MethodCache.Core/Runtime/Distributed/LosslessWireText.cs" Link="Internal/LosslessWireText.cs" />
   </ItemGroup>
 
 </Project>
