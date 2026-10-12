@@ -611,3 +611,7 @@ MethodCache.Extensibility.IAtomicInvalidationStore
 MethodCache.Extensibility.IAtomicInvalidationStore.WriteInvalidationStampAsync(string! key, long timestamp, System.TimeSpan retention, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 MethodCache.ICacheManagerDecorator
 MethodCache.ICacheManagerDecorator.InnerManager.get -> MethodCache.ICacheManager!
+
+MethodCache.Extensibility.InMemoryCacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
+MethodCache.Extensibility.NoOpCacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
+MethodCache.ICacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>

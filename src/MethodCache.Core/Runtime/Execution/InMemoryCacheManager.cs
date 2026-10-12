@@ -152,6 +152,16 @@ namespace MethodCache.Extensibility
         }
 
         /// <inheritdoc />
+        public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        {
+            ArgumentNullException.ThrowIfNull(policy);
+            ArgumentNullException.ThrowIfNull(keyGenerator);
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
+            return new(TryGetFresh<T>(key, _engine.Now, out var value, out _, out _)
+                ? CacheLookupResult<T>.Hit(value!) : CacheLookupResult<T>.Miss);
+        }
+
+        /// <inheritdoc />
         public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
             return new ValueTask<T?>(TryGetFast<T>(cacheKey, out var value) ? value : default);
