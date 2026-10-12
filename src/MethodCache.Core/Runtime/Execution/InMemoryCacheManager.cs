@@ -837,7 +837,7 @@ namespace MethodCache.Extensibility
             if (flight.Invalidated) return;
             if (result == null && !_options.CacheNullValues)
             {
-                lock (flight)
+                lock (flight.Gate)
                 {
                     if (flight.Invalidated) return;
                     var current = replacing;
@@ -890,7 +890,7 @@ namespace MethodCache.Extensibility
 
             // The application weigher and clock run above, outside the lock: they may re-enter the cache.
             if (flight == null) return Publish(node, replacing);
-            lock (flight)
+            lock (flight.Gate)
             {
                 return flight.Invalidated ? null : Publish(node, replacing);
             }
@@ -1205,6 +1205,7 @@ namespace MethodCache.Extensibility
         private sealed class Flight : TaskCompletionSource<object?>
         {
             private volatile bool _invalidated;
+            public object Gate { get; } = new();
 
             public Flight(string[]? tags)
                 : base(TaskCreationOptions.RunContinuationsAsynchronously)
@@ -1218,7 +1219,7 @@ namespace MethodCache.Extensibility
             public bool Invalidated
             {
                 get => _invalidated;
-                set { lock (this) _invalidated = value; }
+                set { lock (Gate) _invalidated = value; }
             }
 
             /// <summary>Set when the caller that started the load cancelled it; callers that joined load again.</summary>
