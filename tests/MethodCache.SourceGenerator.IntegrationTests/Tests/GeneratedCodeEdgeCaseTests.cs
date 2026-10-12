@@ -449,4 +449,99 @@ public interface IOrders {
         Assert.Contains("\"App.IOrders.Find(string, System.Threading.CancellationToken)\"", policies);
         Assert.Contains("\"App.IOrders.Find(int?, string[], System.Collections.Generic.List<System.Guid>, T)\"", policies);
     }
+
+    [Fact]
+    public void OverloadIds_EqualMethodIdsFor_ForEveryParameterShape()
+    {
+        // Policies set in code or at runtime are looked up by MethodIds.For(MethodInfo), so every generated id must
+        // be exactly the id the runtime computes for the same method
+        var r = Run(Usings + @"
+public sealed record GlobalRequest(int Id);
+namespace App {
+public class Outer<T> { public sealed record Inner(int Id); public sealed record Inner2<U>(int Id); }
+public class Plain { public sealed record Nested(int Id); }
+public interface IOrders {
+  [Cache] string Find(int id);
+  [Cache] string Find((int, string) pair);
+  [Cache] string Find((int Id, string Name) named, bool flag);
+  [Cache] string Find(List<(int A, string B)> list);
+  [Cache] string Find((int, (string, long)) nested);
+  [Cache] string Find((int, int, int, int, int, int, int, int, int) wide);
+  [Cache] string Find((int, string)? maybe);
+  [Cache] string Find(nint n);
+  [Cache] string Find(nuint n);
+  [Cache] string Find(IntPtr n, int x);
+  [Cache] string Find(UIntPtr n, int x);
+  [Cache] string Find(List<nint> list);
+  [Cache] string Find(List<dynamic> list);
+  [Cache] string Find(dynamic value, int x);
+  [Cache] string Find(Outer<int>.Inner inner);
+  [Cache] string Find(Outer<string>.Inner2<long> inner);
+  [Cache] string Find(Plain.Nested nested);
+  [Cache] string Find(GlobalRequest request);
+  [Cache] string Find(List<int?[]> list);
+  [Cache] string Find(Dictionary<string, List<int[,]>> map);
+  [Cache] string Find(int[][] jagged);
+  [Cache] string Find(int?[] a, string? s, List<string?> l);
+  [Cache] string Find<T>(List<T> list, T x);
+  [Cache] string Find(Func<int, string> f);
+  [Cache] string Find(KeyValuePair<Guid, DateTime?> pair);
+}
+public interface IRepo<T> {
+  [Cache] string Get(T id);
+  [Cache] string Get(List<(T, int)> ids);
+}}", nameof(OverloadIds_EqualMethodIdsFor_ForEveryParameterShape), load: true);
+        AssertCompiles(r);
+        var policies = r.Sources["GeneratedPolicyRegistrations.g.cs"];
+        var generated = System.Text.RegularExpressions.Regex.Matches(policies, "\"(App\\.I[A-Za-z]+(?:<T>)?\\.[A-Za-z]+\\([^\"]*\\))\"")
+            .Select(m => m.Groups[1].Value)
+            .ToHashSet();
+
+        foreach (var iface in new[] { "App.IOrders", "App.IRepo`1" })
+        {
+            foreach (var method in r.Assembly!.GetType(iface)!.GetMethods())
+            {
+                var id = MethodCache.Core.PolicyPipeline.Model.MethodIds.For(method);
+                _out.WriteLine(id);
+                Assert.True(generated.Contains(id),
+                    $"The runtime id '{id}' has no generated policy id. Generated:\n{string.Join("\n", generated)}");
+            }
+        }
+
+        Assert.Equal(27, generated.Count);
+    }
+
+    [Fact]
+    public async Task FluentPolicy_ForTupleOverload_ReachesTheDecorator()
+    {
+        var r = Run(Usings + @"namespace App {
+public interface ISvc {
+  [Cache] Task<string> Find(int id);
+  [Cache] Task<string> Find((int Id, string Name) key);
+}
+public class Svc : ISvc {
+  public int Calls;
+  public Task<string> Find(int id) { Calls++; return Task.FromResult(""int""); }
+  public Task<string> Find((int Id, string Name) key) { Calls++; return Task.FromResult(""tuple""); }
+}
+public static class Startup { public static void Configure(IServiceCollection s) {
+  s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>());
+  s.AddMethodCache(config => {
+    var svc = config.ForService<ISvc>();
+    svc.Method(x => x.Find(Any<(int Id, string Name)>.Value)).CacheWhen(v => false);
+  });
+} }
+public static class Probe { public static async Task<int> Go(ISvc s, Svc impl) {
+  await s.Find(1); await s.Find(1);
+  await s.Find((1, ""a"")); await s.Find((1, ""a""));
+  return impl.Calls;
+} }
+}", nameof(FluentPolicy_ForTupleOverload_ReachesTheDecorator), load: true);
+        AssertCompiles(r);
+        var svc = Resolve(r.Assembly!, "App.ISvc", out var sp);
+        var impl = sp.GetRequiredService(r.Assembly!.GetType("App.Svc")!);
+        var calls = await (Task<int>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
+        // Find(int) is cached; the fluent CacheWhen(false) keeps the tuple overload from being cached
+        Assert.Equal(3, calls);
+    }
 }

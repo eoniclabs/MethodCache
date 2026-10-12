@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 
@@ -130,12 +131,12 @@ namespace MethodCache.SourceGenerator
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
 
-            private static readonly SymbolDisplayFormat ParameterTypeIdFormat = new(
-                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-            /// <summary>A parameter type as MethodIds writes it: C# keywords, qualified names, T?, T[].</summary>
+            /// <summary>
+            /// A parameter type as MethodIds writes it from reflection: C# keywords for the built-in types, otherwise
+            /// the qualified name with its type arguments, T? and T[]. Reflection has no tuple syntax, native int
+            /// keywords or dynamic, so tuples are written as System.ValueTuple&lt;...&gt;, nint as System.IntPtr and
+            /// dynamic as object.
+            /// </summary>
             private static string ParameterTypeName(ITypeSymbol type)
             {
                 switch (type)
@@ -170,7 +171,44 @@ namespace MethodCache.SourceGenerator
                     return keyword;
                 }
 
-                return type.ToDisplayString(ParameterTypeIdFormat);
+                switch (type)
+                {
+                    case IDynamicTypeSymbol:
+                        return "object";
+                    case ITypeParameterSymbol typeParameter:
+                        return typeParameter.Name;
+                    case INamedTypeSymbol named:
+                        return NamedParameterTypeName(named.IsTupleType && named.TupleUnderlyingType is { } tuple ? tuple : named);
+                    default:
+                        return type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                }
+            }
+
+            /// <summary>
+            /// A named type as MethodIds writes it: its containing type (with that type's arguments) or namespace,
+            /// its name, and its own type arguments.
+            /// </summary>
+            private static string NamedParameterTypeName(INamedTypeSymbol type)
+            {
+                var builder = new StringBuilder();
+                if (type.ContainingType is { } containing)
+                {
+                    builder.Append(ParameterTypeName(containing)).Append('.');
+                }
+                else if (type.ContainingNamespace is { IsGlobalNamespace: false } ns)
+                {
+                    builder.Append(ns.ToDisplayString()).Append('.');
+                }
+
+                builder.Append(type.Name);
+                if (type.TypeArguments.Length > 0)
+                {
+                    builder.Append('<')
+                        .Append(string.Join(", ", type.TypeArguments.Select(ParameterTypeName)))
+                        .Append('>');
+                }
+
+                return builder.ToString();
             }
 
             internal static bool IsCancellationToken(ITypeSymbol type)

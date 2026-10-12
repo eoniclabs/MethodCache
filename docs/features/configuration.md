@@ -164,6 +164,8 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 cached method throws `InvalidOperationException` at startup.
 
 For overloaded methods, non-built-in parameter types are qualified by namespace, for example
-`MyApp.IUsers.Find(MyApp.Request)`. This is also the format used by expression-based and runtime configuration.
+`MyApp.IUsers.Find(MyApp.Request)`. Types are named as reflection sees them: a tuple is
+`System.ValueTuple<int, string>` (element names dropped), `nint` is `System.IntPtr` and `dynamic` is `object`. This is
+also the format used by expression-based and runtime configuration.
 
 Generated decorators preserve generic constraints, including `unmanaged`, on cached interfaces and methods.
