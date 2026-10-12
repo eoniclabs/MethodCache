@@ -90,7 +90,7 @@ namespace MethodCache.SourceGenerator
             internal static string GetDecoratorHintName(INamedTypeSymbol interfaceSymbol)
             {
                 var arity = interfaceSymbol.Arity > 0 ? "`" + interfaceSymbol.Arity : string.Empty;
-                return $"{GetDecoratorNamespace(interfaceSymbol)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
+                return $"{GetDecoratorNamespace(interfaceSymbol).Replace("@", string.Empty)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
             }
 
             /// <summary>A parameter or member name as C# source: keywords such as <c>class</c> become <c>@class</c>.</summary>
