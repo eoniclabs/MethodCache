@@ -89,3 +89,5 @@ resolved. Redis and SQL Server supply this contract.
 For direct invalidation or administration of versioned fluent entries, use `CacheManagerExtensions.GetCacheKey(logicalKey, version)`. Treat the returned identity as opaque; callback `CacheContext.Key` remains the logical key.
 
 `AddHttpCaching()` runs the cache after all additional handlers, so injected caller identity and rewritten requests are visible before lookup. Delegating handlers inside the primary transport, or below a directly constructed cache handler, are unverified and bypass caching unless the entire chain is explicitly trusted.
+
+Unversioned fluent keys that begin with NUL are escaped too. Use `CacheManagerExtensions.GetCacheKey(logicalKey)` for direct invalidation or administration of those entries, just as you use the overload with a version for versioned entries.

@@ -56,6 +56,32 @@ public class KeyInjectionPropertyTests
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
     }
 
+    [Fact]
+    public async Task FluentKeys_LeadingControlCharactersAndVersions_CanBeInvalidatedUsingTheirPublicIdentity()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<TimeProvider>(new Microsoft.Extensions.Time.Testing.FakeTimeProvider());
+        services.AddMethodCache();
+        services.Configure<MethodCacheMemoryOptions>(o => { o.EnableBackgroundCleanup = false; o.MaxItems = 16; });
+        var versions = Gen.Int[0, 10].Nullable(0.5);
+        await Gen.Select(GenHostile, versions).SampleAsync(async (text, version) =>
+        {
+            // Every sample has its own cache: unrelated samples must not evict the entry under test.
+            await using var provider = services.BuildServiceProvider();
+            var cache = provider.GetRequiredService<ICacheManager>();
+            var loads = 0;
+            var key = "\0" + text;
+            var identity = CacheManagerExtensions.GetCacheKey(key, version);
+            ValueTask<int> Load() => cache.GetOrCreateAsync(key, (_, _) => ValueTask.FromResult(++loads),
+                options => { if (version is { } value) options.WithVersion(value); });
+            await cache.InvalidateByKeysAsync(identity);
+            var first = await Load();
+            Assert.Equal(first, await Load());
+            await cache.InvalidateByKeysAsync(identity);
+            Assert.NotEqual(first, await Load());
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+    }
+
     private static ICacheManager CapturingManager()
     {
         var manager = Substitute.For<ICacheManager>();
