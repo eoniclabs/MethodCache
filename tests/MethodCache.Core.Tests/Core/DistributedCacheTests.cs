@@ -73,6 +73,27 @@ public class DistributedCacheTests
         }));
     }
 
+    [Theory]
+    [InlineData(15000, 14000)]
+    [InlineData(9000, 0)]
+    public void MillisecondRetentionWithoutEffectiveLifetime_RejectsConfiguration(long retentionTicks, long skewTicks)
+    {
+        Assert.Throws<ArgumentException>(() => CreateNode(backplane: false, configure: o =>
+        {
+            o.TagRetention = TimeSpan.FromTicks(retentionTicks);
+            o.ClockSkewTolerance = TimeSpan.FromTicks(skewTicks);
+        }));
+        var services = new ServiceCollection();
+        services.AddMethodCacheDistributedCache(_ => _shared, o =>
+        {
+            o.TagRetention = TimeSpan.FromTicks(retentionTicks);
+            o.ClockSkewTolerance = TimeSpan.FromTicks(skewTicks);
+        });
+        using var provider = services.BuildServiceProvider();
+        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() =>
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DistributedCacheOptions>>().Value);
+    }
+
     [Fact]
     public async Task BulkRead_ConcurrentWriterWinsOverFactory_ReturnsTheSameValueAsASingleRead()
     {

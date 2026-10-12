@@ -191,7 +191,7 @@ policy in code, and the change applies to the next call. See [Configuration](doc
 
 ### Distributed cache
 
-L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is `TagRetention` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
+L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is the effective `TagRetention - ClockSkewTolerance` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
 
 <!-- snippet: readme-distributed -->
 ```cs
@@ -424,3 +424,5 @@ Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtension
 HTTP key framing changes all response cache keys, including requests without `Vary`; old entries become cold misses. See the [release compatibility notes](docs/developer/RELEASE_NOTES.md).
 
 `AddHttpCaching()` runs the cache after all additional handlers, so injected caller identity and rewritten requests are visible before lookup. Delegating handlers inside the primary transport, or below a directly constructed cache handler, are unverified and bypass caching unless the entire chain is explicitly trusted.
+
+L2 timestamps have millisecond precision: `TagRetention` and `ClockSkewTolerance` are each truncated to whole milliseconds before validation and lifetime calculation. Their effective difference must be at least one millisecond; settings that collapse to zero fail startup or direct construction.

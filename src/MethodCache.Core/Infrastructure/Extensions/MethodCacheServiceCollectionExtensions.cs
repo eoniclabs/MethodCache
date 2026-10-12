@@ -216,7 +216,7 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             var options = services.AddOptions<DistributedCacheOptions>()
-                .Validate(o => o.TagRetention > o.ClockSkewTolerance, "TagRetention must be greater than ClockSkewTolerance.")
+                .Validate(o => o.HasEffectiveTagRetention, "TagRetention must exceed ClockSkewTolerance after truncation to whole milliseconds.")
                 .ValidateOnStart();
             if (configure != null)
             {
