@@ -90,12 +90,16 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
         }
 
         var generationKey = GenerationKey(slot);
+        // The namespace to retire is the one current now, after the origin write. Every generation value is
+        // unique and written once, so any stored value different from it was written after this read: ours, or a
+        // concurrent invalidator's (another instance, or a URL sharing the slot). Either retires the old namespace.
+        var previous = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
         for (var attempt = 0; attempt < 3; attempt++)
         {
             var generation = Guid.NewGuid().ToByteArray();
             await _distributed.SetAsync(generationKey, generation, PermanentEntry, cancellationToken).ConfigureAwait(false);
             var stored = await _distributed.GetAsync(generationKey, cancellationToken).ConfigureAwait(false);
-            if (stored != null && generation.AsSpan().SequenceEqual(stored))
+            if (stored != null && (previous == null || !previous.AsSpan().SequenceEqual(stored)))
             {
                 return;
             }

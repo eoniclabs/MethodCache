@@ -28,6 +28,8 @@ public interface IHttpCacheStorage
     /// <remarks>
     /// Only invalidations may change a generation. Each change must publish a fresh value, including after a retry;
     /// ordinary response writers must never replace it. Implementations may group keys to bound generation storage.
+    /// The call has done its job once the generation differs from the one current when it started: a fresh value
+    /// stored by a concurrent invalidation of the same key or group is as good as its own.
     /// </remarks>
     ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default);
 

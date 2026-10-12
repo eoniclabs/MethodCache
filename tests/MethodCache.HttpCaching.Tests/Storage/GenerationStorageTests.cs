@@ -59,6 +59,34 @@ public class GenerationStorageTests
     }
 
     [Fact]
+    public async Task Invalidation_ConcurrentInvalidatorWinsTheWrite_Succeeds()
+    {
+        var time = new FakeTimeProvider();
+        var backend = new EpochBackend(time);
+        using var storage = Store(time, backend);
+        await storage.InvalidateAsync("url");
+        var before = await storage.GetGenerationAsync("url");
+        // Another instance (or a URL sharing the slot) invalidates right after each of our writes
+        backend.ConcurrentInvalidator = true;
+        await storage.InvalidateAsync("url");
+        backend.ConcurrentInvalidator = false;
+        var after = await storage.GetGenerationAsync("url");
+        Assert.NotEqual(before, after);
+    }
+
+    [Fact]
+    public async Task Post_ConcurrentInvalidationOfTheSameSlot_ReturnsTheOriginResponse()
+    {
+        var time = new FakeTimeProvider();
+        var backend = new EpochBackend(time) { ConcurrentInvalidator = true };
+        using var storage = Store(time, backend);
+        using var origin = new VersionedOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), origin, storage, time));
+        using var response = await client.PostAsync("https://api.example.com/write", new StringContent("update"));
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Invalidation_ProviderNeverConfirmsWrite_ReportsFailureAfterBoundedRetries()
     {
         var time = new FakeTimeProvider();
@@ -227,6 +255,8 @@ public class GenerationStorageTests
         public bool HoldNextWrite { get; set; }
         public bool IgnoreNextWrite { get; set; }
         public bool IgnoreEveryWrite { get; set; }
+        /// <summary>After each generation write, another invalidator stores its own fresh generation.</summary>
+        public bool ConcurrentInvalidator { get; set; }
         public List<string> WrittenGenerations { get; } = new();
         public bool ThrowOnRead { get; set; }
         public byte[]? ReadResult { get; set; }
@@ -249,6 +279,10 @@ public class GenerationStorageTests
             }
             _values[key] = value;
             Expirations[key] = options.AbsoluteExpiration ?? time.GetUtcNow() + (options.AbsoluteExpirationRelativeToNow ?? TimeSpan.FromMinutes(20));
+            if (ConcurrentInvalidator && key.Contains("$generation:", StringComparison.Ordinal))
+            {
+                _values[key] = Guid.NewGuid().ToByteArray();
+            }
         }
         public async Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
         {
