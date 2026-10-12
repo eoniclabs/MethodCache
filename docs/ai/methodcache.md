@@ -81,4 +81,5 @@ builder.Services.AddMethodCache();                               // after your r
 
 Custom distributed method-result caches must implement `MethodCache.Extensibility.IAtomicInvalidationStore`,
 including backend-atomic maximum timestamps and retention preservation. A plain `IDistributedCache` is
-rejected when the method cache manager is resolved. Redis and SQL Server supply this contract.
+rejected when the host starts (`ValidateOnStart`), or without a generic host when the method cache manager is
+resolved. Redis and SQL Server supply this contract.

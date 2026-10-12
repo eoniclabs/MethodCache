@@ -89,8 +89,11 @@ builder.Services.AddMethodCacheDistributedCache(
 <!-- endSnippet -->
 
 `customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
-`IDistributedCache`. MethodCache rejects a provider without this capability when the cache manager is
-resolved. Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
+`IDistributedCache`. MethodCache rejects a provider without this capability, such as Microsoft's
+`MemoryDistributedCache` (`AddDistributedMemoryCache()`), `RedisCache` or `SqlServerCache`: with a generic host,
+`host.StartAsync()` throws an `OptionsValidationException` naming `IAtomicInvalidationStore`, so the app fails at
+startup rather than on its first request; without a host, resolving the cache manager throws an `ArgumentException`.
+Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
 signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
 stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
 insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a

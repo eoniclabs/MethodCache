@@ -102,7 +102,7 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _stampStore = cache as IAtomicInvalidationStore ?? throw new ArgumentException(
-                "The distributed cache must implement IAtomicInvalidationStore so concurrent invalidations cannot move timestamps backwards. Use MethodCache.Redis/SqlServer or implement backend-atomic stamps in your custom provider.", nameof(cache));
+                DistributedCacheStoreValidation.NotAtomicMessage(cache.GetType()), nameof(cache));
             _bufferCache = cache as IBufferDistributedCache;
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _contentType = Encoding.UTF8.GetBytes(serializer.ContentType);
