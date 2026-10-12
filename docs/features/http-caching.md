@@ -31,6 +31,65 @@ and a missing or lost generation record must not map back to a namespace used be
 instead); grouping keys is allowed. Clearing memory also changes generations,
 so a concurrent older reader cannot repopulate the active namespace.
 
+**Migrating a custom storage:** a successful POST, PUT, PATCH or DELETE used to invalidate by calling `RemoveAsync`
+on the cached GET. It now calls only `InvalidateAsync`, and responses are found through `GetGenerationAsync`. A
+storage that returns a constant generation or implements `InvalidateAsync` as a no-op keeps serving old responses
+after a write. A minimal correct storage:
+
+<!-- snippet: http-custom-storage -->
+```cs
+public sealed class DictionaryHttpCacheStorage(TimeProvider time) : IHttpCacheStorage
+{
+    private readonly ConcurrentDictionary<string, (HttpCacheEntry Entry, DateTimeOffset Expires)> _entries = new();
+    private readonly ConcurrentDictionary<string, string> _generations = new();
+
+    // Responses are stored per generation. A missing generation (never set, cleared or lost) starts a new
+    // unique one, never a value used before, so losing it can only cause cache misses.
+    public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(_generations.GetOrAdd(key, _ => Guid.NewGuid().ToString("N")));
+
+    // Called after a successful POST, PUT, PATCH or DELETE: a fresh generation hides every older response.
+    public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
+    {
+        _generations[key] = Guid.NewGuid().ToString("N");
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(_entries.TryGetValue(key, out var stored) && stored.Expires > time.GetUtcNow() ? stored.Entry : null);
+
+    public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default)
+    {
+        _entries[key] = (entry, time.GetUtcNow() + timeToLive);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        _entries.TryRemove(key, out _);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask ClearAsync(CancellationToken cancellationToken = default)
+    {
+        _generations.Clear(); // in-flight requests can then only publish into orphaned generations
+        _entries.Clear();
+        return ValueTask.CompletedTask;
+    }
+}
+```
+<!-- endSnippet -->
+
+A production storage also bounds its generation records (the built-in one groups URLs into 4096 slots).
+Register it before `AddHttpCaching()`:
+
+<!-- snippet: http-custom-storage-registration -->
+```cs
+builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
+builder.Services.AddHttpClient<IGitHubClient, GitHubClient>().AddHttpCaching();
+```
+<!-- endSnippet -->
+
 With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
 cache is registered, it uses the application's `IDistributedCache`. It leaves application registrations unchanged.
 
@@ -41,6 +100,16 @@ than 1 MB up front, and HEAD, 204 and 304 responses, which have no body, allocat
 `Content-Length`. Returned rentals are cleared. Only the size limit plus one byte is read
 before an oversized unknown-length response is handed back as a stream, and disposing that response returns
 its temporary storage even if the caller never reads it.
+
+In short:
+
+- A GET that was already in flight when a POST, PUT, PATCH or DELETE invalidated its URL never repopulates the
+  cache with its older response.
+- A `no-cache` response or request is never served stale without a successful validation, including with
+  stale-while-revalidate or stale-if-error.
+- A 304 whose headers forbid storage (`no-store`, `Vary: *`, or `private` in a shared cache) removes the stored
+  response.
+- Bodies are buffered with bounded reads and pooled temporary storage.
 
 See the [HTTP package guide](../../src/MethodCache.HttpCaching/README.md) for registration, storage, private/shared
 cache isolation, limits and metrics, and [security](../security.md) for the threat model.

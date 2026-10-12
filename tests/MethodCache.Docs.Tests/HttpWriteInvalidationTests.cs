@@ -30,6 +30,41 @@ public class HttpWriteInvalidationTests
         Assert.Equal("new", await current.Content.ReadAsStringAsync());
     }
 
+    [Fact]
+    public async Task CustomStorageExample_InvalidatesOnPostAndClear()
+    {
+        var storage = new global::Docs.Packages.DictionaryHttpCacheStorage(TimeProvider.System);
+        var services = new ServiceCollection();
+        services.AddSingleton<IHttpCacheStorage>(storage);
+        using var origin = new VersionedOrigin();
+        services.AddHttpClient("custom").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching();
+        using var provider = services.BuildServiceProvider();
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("custom");
+        const string url = "https://api.example.com/item";
+
+        Assert.Equal("v1", await client.GetStringAsync(url));
+        origin.Version = "v2";
+        Assert.Equal("v1", await client.GetStringAsync(url)); // served from the cache
+        using (await client.PostAsync(url, new StringContent("update"))) { }
+        Assert.Equal("v2", await client.GetStringAsync(url));
+        origin.Version = "v3";
+        await storage.ClearAsync();
+        Assert.Equal("v3", await client.GetStringAsync(url));
+    }
+
+    private sealed class VersionedOrigin : HttpMessageHandler
+    {
+        public string Version { get; set; } = "v1";
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(request.Method == HttpMethod.Post
+                ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                : new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(Version),
+                    Headers = { CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(5) } }
+                });
+    }
+
     private static ServiceProvider Provider(RacingOrigin origin, IDistributedCache? backend)
     {
         var services = new ServiceCollection();

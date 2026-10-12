@@ -68,6 +68,10 @@ public class HttpCacheIntegrationTests
         Assert.IsType<FakeHttpCacheStorage>(storage);
     }
 
+    /// <summary>
+    /// Registration-only stub: it never stores a response, so a constant generation and a no-op invalidation are
+    /// correct here. A storage that keeps responses must rotate the generation in <c>InvalidateAsync</c>.
+    /// </summary>
     private sealed class FakeHttpCacheStorage : IHttpCacheStorage
     {
         public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default) => ValueTask.FromResult(string.Empty);
