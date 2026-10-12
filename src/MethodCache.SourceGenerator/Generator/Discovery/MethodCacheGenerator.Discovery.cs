@@ -69,8 +69,8 @@ namespace MethodCache.SourceGenerator
                     Utils.GetFullyQualifiedName(i),
                     Utils.GetFullyQualifiedName(i.OriginalDefinition),
                     i.ToDisplayString(),
-                    new EquatableArray<string>(i.TypeArguments.Select(Utils.GetFullyQualifiedName)),
-                    i.TypeArguments.All(t => DecoratorRegistrationsEmitter.IsNameableFrom(t, symbol.ContainingAssembly))));
+                    new EquatableArray<string>(Utils.AllTypeArguments(i).Select(Utils.GetFullyQualifiedName)),
+                    Utils.AllTypeArguments(i).All(t => DecoratorRegistrationsEmitter.IsNameableFrom(t, symbol.ContainingAssembly))));
 
             return new ClassInfo(
                 Utils.GetFullyQualifiedName(symbol),
@@ -83,7 +83,7 @@ namespace MethodCache.SourceGenerator
 
         private static InterfaceInfo? GetInterfaceInfo(INamedTypeSymbol interfaceSymbol)
         {
-            if (Utils.HasStaticAbstractMembers(interfaceSymbol))
+            if (Utils.HasStaticAbstractMembers(interfaceSymbol) || Utils.HasNonPublicAbstractMembers(interfaceSymbol))
             {
                 // Reported once; Execute emits nothing for an interface without cached or invalidating methods
                 return new InterfaceInfo(
@@ -94,7 +94,9 @@ namespace MethodCache.SourceGenerator
                         Diagnostics.UnsupportedInterface,
                         interfaceSymbol.Locations.FirstOrDefault(),
                         interfaceSymbol.ToDisplayString(),
-                        "it has static abstract members, so it can't be used as a service type")));
+                        Utils.HasStaticAbstractMembers(interfaceSymbol)
+                            ? "it has static abstract members, so it can't be used as a service type"
+                            : "it has non-public abstract members that cannot be forwarded to the decorated instance")));
             }
 
             var allMethods = GetAllInterfaceMethods(interfaceSymbol).ToList();

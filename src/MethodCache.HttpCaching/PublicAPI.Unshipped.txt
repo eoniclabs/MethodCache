@@ -73,3 +73,6 @@ Microsoft.Extensions.DependencyInjection.MethodCacheHttpClientBuilderExtensions
 static Microsoft.Extensions.DependencyInjection.MethodCacheHttpClientBuilderExtensions.AddHttpCaching(this Microsoft.Extensions.DependencyInjection.IHttpClientBuilder! builder, System.Action<MethodCache.HttpCaching.HttpCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IHttpClientBuilder!
 MethodCache.HttpCaching.IHttpCacheStorage.GetGenerationAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<string!>
 MethodCache.HttpCaching.IHttpCacheStorage.InvalidateAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+
+MethodCache.HttpCaching.HttpCacheOptions.AllowUnverifiedTransport.get -> bool
+MethodCache.HttpCaching.HttpCacheOptions.AllowUnverifiedTransport.set -> void

@@ -37,7 +37,7 @@ public class HttpWriteInvalidationTests
         var services = new ServiceCollection();
         services.AddSingleton<IHttpCacheStorage>(storage);
         using var origin = new VersionedOrigin();
-        services.AddHttpClient("custom").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching();
+        services.AddHttpClient("custom").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         using var provider = services.BuildServiceProvider();
         using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("custom");
         const string url = "https://api.example.com/item";
@@ -73,7 +73,7 @@ public class HttpWriteInvalidationTests
             services.AddMethodCacheDistributedCache(_ => backend);
             services.Configure<HttpCacheStorageOptions>(options => options.UseDistributedCache = true);
         }
-        services.AddHttpClient("race").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching();
+        services.AddHttpClient("race").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         return services.BuildServiceProvider();
     }
 

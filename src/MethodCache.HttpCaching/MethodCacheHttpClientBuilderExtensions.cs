@@ -4,6 +4,7 @@ using MethodCache.HttpCaching.Internal;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,9 @@ public static class MethodCacheHttpClientBuilderExtensions
     /// <param name="builder">The HttpClient to cache.</param>
     /// <param name="configure">Settings for this HttpClient only.</param>
     /// <remarks>
+    /// Caching runs after all additional handlers, so their request transformations and caller identity are visible.
+    /// Automatic cookies are disabled on this client's SocketsHttpHandler or HttpClientHandler after all handler configuration.
+    /// Send caller cookies explicitly so they participate in cache isolation. Unknown transports bypass caching unless explicitly trusted.
     /// Responses are stored in memory. Set <see cref="HttpCacheStorageOptions.UseDistributedCache"/> to share them through
     /// Redis or SQL Server as well, or register your own <see cref="IHttpCacheStorage"/> to store them elsewhere.
     /// </remarks>
@@ -28,6 +32,12 @@ public static class MethodCacheHttpClientBuilderExtensions
         var services = builder.Services;
         var name = builder.Name ?? Microsoft.Extensions.Options.Options.DefaultName;
 
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, HttpCacheTransportFilter>());
+        // The outermost filter finishes last, after logging and application filters have added their handlers.
+        var transportFilter = services.First(descriptor => descriptor.ServiceType == typeof(IHttpMessageHandlerBuilderFilter)
+            && descriptor.ImplementationType == typeof(HttpCacheTransportFilter));
+        services.Remove(transportFilter);
+        services.Insert(0, transportFilter);
         services.AddOptions<HttpCacheStorageOptions>();
         services.TryAddSingleton<IHttpCacheStorage>(static sp =>
         {

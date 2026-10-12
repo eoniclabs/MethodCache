@@ -59,6 +59,33 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
+    // Cookies are added below this handler and can change while a request or redirect is in flight.
+    // No snapshot of the jar can reliably identify the cookies the transport actually sends.
+    private bool HasUnsafeTransport(HttpCacheOptions options)
+    {
+        HttpMessageHandler? transport = InnerHandler;
+        var hasUnverifiedHandler = false;
+        while (transport is DelegatingHandler delegating)
+        {
+            hasUnverifiedHandler = true;
+            transport = delegating.InnerHandler;
+        }
+        var unsafeTransport = (hasUnverifiedHandler && !options.AllowUnverifiedTransport) || transport switch
+        {
+            SocketsHttpHandler sockets => sockets.UseCookies,
+            HttpClientHandler client => client.UseCookies,
+            _ => !options.AllowUnverifiedTransport
+        };
+        if (unsafeTransport && Interlocked.Exchange(ref _state.TransportWarningLogged, 1) == 0)
+        {
+            _logger.LogWarning("HTTP caching for client {ClientName} is bypassed because its transport uses automatic cookies or cannot be verified. Disable transport cookies, or set AllowUnverifiedTransport only for a verified cookie-free custom transport.", _state.Name);
+        }
+        return unsafeTransport;
+    }
+
+    private static HttpResponseMessage CreateCacheUnavailableResponse(HttpRequestMessage request) =>
+        new(HttpStatusCode.GatewayTimeout) { RequestMessage = request, ReasonPhrase = "Cache entry not available" };
+
     private async Task<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, long startedAt, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.Get(_state.Name);
@@ -70,8 +97,13 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         // Range requests go to the origin: a partial response is never stored, and a stored full one isn't cut up.
         // So do requests with the caller's own validators: its 304 must reach it, not be replaced by the cache's.
         if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
-            HasCallerConditionals(request))
+            HasCallerConditionals(request) || HasUnsafeTransport(options))
         {
+            if (requestDirectives.OnlyIfCached)
+            {
+                return Record(Outcome.Bypass, request, CreateCacheUnavailableResponse(request), startedAt);
+            }
+
             var bypassResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
             if (isUnsafe && (int)bypassResponse.StatusCode is >= 200 and < 400)
@@ -109,7 +141,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
             if (currentAge > freshnessLifetime && !requestDirectives.NoCache && freshness.CanUseStaleWhileRevalidate(cachedEntry))
             {
-                if (_state.RevalidationsInFlight.TryAdd(cacheKey, 0))
+                if (!requestDirectives.OnlyIfCached && _state.RevalidationsInFlight.TryAdd(cacheKey, 0))
                 {
                     _ = RevalidateInBackgroundAsync(request, cachedEntry, urlKey, cacheKey, options);
                 }
@@ -121,11 +153,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         // RFC 9111 section 5.2.1.7: only-if-cached never goes to the origin
         if (requestDirectives.OnlyIfCached)
         {
-            var timeout = new HttpResponseMessage(HttpStatusCode.GatewayTimeout)
-            {
-                RequestMessage = request,
-                ReasonPhrase = "Cache entry not available"
-            };
+            var timeout = CreateCacheUnavailableResponse(request);
             return Record(Outcome.Bypass, request, timeout, startedAt);
         }
 
@@ -146,39 +174,48 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness), startedAt);
         }
 
-        if (cachedEntry != null && !requestDirectives.NoCache && (int)upstreamResponse.StatusCode >= 500 && freshness.CanUseStaleIfError(cachedEntry))
+        try
         {
-            _logger.LogWarning("Origin returned {StatusCode}, serving stale content for {Uri}", (int)upstreamResponse.StatusCode, request.RequestUri);
-            upstreamResponse.Dispose();
-            return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness), startedAt);
-        }
-
-        if (upstreamResponse.StatusCode == HttpStatusCode.NotModified && cachedEntry != null)
-        {
-            _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", request.RequestUri);
-            var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow());
-            await StoreRevalidatedEntryAsync(request, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
-
-            var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
-
-            // Not stored, but this caller's own: the origin set it on this response
-            if (upstreamResponse.Headers.TryGetValues("Set-Cookie", out var setCookie))
+            if (cachedEntry != null && !requestDirectives.NoCache && (int)upstreamResponse.StatusCode >= 500 && freshness.CanUseStaleIfError(cachedEntry))
             {
-                revalidated.Headers.TryAddWithoutValidation("Set-Cookie", setCookie);
+                _logger.LogWarning("Origin returned {StatusCode}, serving stale content for {Uri}", (int)upstreamResponse.StatusCode, request.RequestUri);
+                upstreamResponse.Dispose();
+                return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness), startedAt);
             }
 
-            upstreamResponse.Dispose();
-            return Record(Outcome.Revalidated, request, revalidated, startedAt);
+            if (upstreamResponse.StatusCode == HttpStatusCode.NotModified && cachedEntry != null)
+            {
+                _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", request.RequestUri);
+                var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow());
+                await StoreRevalidatedEntryAsync(request, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
+
+                var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
+
+                // Not stored, but this caller's own: the origin set it on this response
+                if (upstreamResponse.Headers.TryGetValues("Set-Cookie", out var setCookie))
+                {
+                    revalidated.Headers.TryAddWithoutValidation("Set-Cookie", setCookie);
+                }
+
+                upstreamResponse.Dispose();
+                return Record(Outcome.Revalidated, request, revalidated, startedAt);
+            }
+
+            await TryStoreResponseAsync(request, upstreamResponse, cacheKey, options, freshness, cancellationToken).ConfigureAwait(false);
+
+            if (options.AddDiagnosticHeaders && !upstreamResponse.Headers.Contains("X-Cache"))
+            {
+                upstreamResponse.Headers.TryAddWithoutValidation("X-Cache", "MISS");
+            }
+
+            return Record(Outcome.Miss, request, upstreamResponse, startedAt);
         }
-
-        await TryStoreResponseAsync(request, upstreamResponse, cacheKey, options, freshness, cancellationToken).ConfigureAwait(false);
-
-        if (options.AddDiagnosticHeaders && !upstreamResponse.Headers.Contains("X-Cache"))
+        catch
         {
-            upstreamResponse.Headers.TryAddWithoutValidation("X-Cache", "MISS");
+            upstreamResponse.Dispose();
+            throw;
         }
 
-        return Record(Outcome.Miss, request, upstreamResponse, startedAt);
     }
 
     // RFC 9110 section 9.2.1: GET, HEAD, OPTIONS and TRACE are safe; everything else may change the resource.
@@ -256,14 +293,16 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return;
         }
 
+        // Reading a response body is part of the HTTP request. A failed read cannot be treated as a cache miss:
+        // the partially consumed response would reach the caller with missing bytes.
+        var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken).ConfigureAwait(false);
+        if (entry == null)
+        {
+            return; // Larger than MaxResponseSize; the caller still reads all of it
+        }
+
         try
         {
-            var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken).ConfigureAwait(false);
-            if (entry == null)
-            {
-                return; // Larger than MaxResponseSize; the caller still reads all of it
-            }
-
             await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("Cached response for {Uri}, size: {Size} bytes", request.RequestUri, entry.Content.Length);
         }

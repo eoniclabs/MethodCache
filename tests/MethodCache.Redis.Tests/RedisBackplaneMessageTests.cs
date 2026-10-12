@@ -8,6 +8,19 @@ namespace MethodCache.Redis.Tests;
 public class RedisBackplaneMessageTests
 {
     [Theory]
+    [InlineData("0\nlegacy\n4:awBlAHkA")]
+    [InlineData("1\nlegacy\n4:awBlAHkA")]
+    public void LegacyMessageType_WithVersionLookingKey_IsRejected(string wire)
+        => Assert.False(RedisBackplane.TryParse(wire, out _));
+
+    [Fact]
+    public void EncodedMessages_UseDistinctMessageTypeNumbers()
+    {
+        Assert.StartsWith("4\n", RedisBackplane.Format(BackplaneMessageType.KeyInvalidation, "sender", "key"));
+        Assert.StartsWith("5\n", RedisBackplane.Format(BackplaneMessageType.TagInvalidation, "sender", "tag"));
+    }
+
+    [Theory]
     [InlineData("user:1")]
     [InlineData("")]
     [InlineData("multi\nline\nvalue")]
@@ -20,6 +33,18 @@ public class RedisBackplaneMessageTests
         message.Type.Should().Be(BackplaneMessageType.KeyInvalidation);
         message.Key.Should().Be(key);
         message.InstanceId.Should().Be("instance");
+    }
+
+    [Fact]
+    public void TagInvalidation_Utf8Transport_PreservesAllUtf16Units()
+    {
+        foreach (var tag in new[] { "tag:\ud800", "tag:\ud801", "tag:\udfff", "tag:\0", "tag:\ufffd" })
+        {
+            var payload = RedisBackplane.Format(BackplaneMessageType.TagInvalidation, "instance", tag);
+            RedisValue transported = System.Text.Encoding.UTF8.GetBytes(payload);
+            Assert.True(RedisBackplane.TryParse(transported, out var message));
+            Assert.Equal(tag, message.Tag);
+        }
     }
 
     [Fact]

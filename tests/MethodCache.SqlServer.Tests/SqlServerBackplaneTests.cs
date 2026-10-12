@@ -7,6 +7,25 @@ public class SqlServerBackplaneTests
 {
     private static readonly DateTime CreatedAt = new(2026, 10, 10, 12, 0, 0, DateTimeKind.Unspecified);
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(42)]
+    public void CreateWireMessage_RejectsLegacyAndUnknownTypes(byte type)
+        => Assert.Null(SqlServerBackplane.CreateWireMessage(type, "4:AAAA==", "other", CreatedAt));
+
+    [Theory]
+    [InlineData(4, BackplaneMessageType.KeyInvalidation)]
+    [InlineData(5, BackplaneMessageType.TagInvalidation)]
+    public void CreateWireMessage_DecodesOnlyVersionedMessageTypes(byte type, BackplaneMessageType logical)
+    {
+        var message = SqlServerBackplane.CreateWireMessage(type, "4:awBlAHkA", "other", CreatedAt);
+        Assert.NotNull(message);
+        Assert.Equal(logical, message.Type);
+        Assert.Equal("key", logical == BackplaneMessageType.KeyInvalidation ? message.Key : message.Tag);
+        Assert.Null(SqlServerBackplane.CreateWireMessage(type, "invalid", "other", CreatedAt));
+    }
+
     [Fact]
     public void CreateMessage_KeyInvalidation()
     {

@@ -19,9 +19,10 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG010](#mcg010) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
 | [MCG011](#mcg011) | Error | `[assembly: CacheInterface]` lists a method it can't cache | |
 | [MCG012](#mcg012) | Error | The same interface in more than one `[assembly: CacheInterface]` | |
-| [MCG013](#mcg013) | Error | An interface with static abstract members | |
+| [MCG013](#mcg013) | Error | An interface with static or non-public abstract members | |
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
 | [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
+| [MCG016](#mcg016) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
 
 ## MC0001
 
@@ -122,8 +123,9 @@ methods in the same attribute.
 
 ## MCG013
 
-The interface has static abstract members, so no class can implement it as a decorator. Move the cached methods to an
-interface without them.
+Nested helper type declarations are supported and do not count as abstract service members.
+
+The interface has static abstract members, or non-public abstract members that cannot be forwarded to the decorated instance. Move the cached methods to an interface without them. Non-public default helpers are supported because they remain on the interface.
 
 ## MCG014
 
@@ -139,3 +141,7 @@ parameter name only, so the braces stay literal text and every call shares the s
 add the value as its own parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](../getting-started.md). For `[assembly: CacheInterface]` both MCG009 and MCG015 are reported on the
 attribute.
+
+## MCG016
+
+The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for parameters `name` and `Name`. Use the intended parameter’s exact spelling. Until corrected, the placeholder remains literal in both cached tags and invalidation.

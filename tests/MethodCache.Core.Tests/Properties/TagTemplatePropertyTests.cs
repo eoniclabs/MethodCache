@@ -19,7 +19,7 @@ public class TagTemplatePropertyTests
 {
     private static readonly string[] NamePool = { "id", "userId", "org", "x", "Name" };
 
-    /// <summary>Distinct (case-insensitively, as C# parameter names used in tags must be) parameter names.</summary>
+    /// <summary>Distinct (case-insensitively, for these fallback-matching cases) parameter names.</summary>
     private static readonly Gen<string[]> GenNames =
         Gen.Int[1, (1 << NamePool.Length) - 1].Select(mask => NamePool.Where((_, i) => (mask & (1 << i)) != 0).ToArray());
 
@@ -41,6 +41,17 @@ public class TagTemplatePropertyTests
             GenValue.Array[names.Length],
             GenTag(names).Array[1, 3],
             (values, tags) => (names, values, tags)));
+
+    [Fact]
+    public void Expand_CaseDistinctNames_UsesExactMatchAndLeavesAmbiguityLiteral()
+    {
+        Gen.Select(GenValue, GenValue).Sample((lower, upper) =>
+        {
+            var result = CacheTagTemplates.Expand(Policy("{name}", "{Name}", "{NAME}"),
+                new[] { "name", "Name" }, new[] { lower, upper });
+            Assert.Equal(new[] { lower, upper, "{NAME}" }, result.Tags);
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+    }
 
     [Fact]
     public void Expand_BuildsTheTagsThatCacheInvalidateRemoves()

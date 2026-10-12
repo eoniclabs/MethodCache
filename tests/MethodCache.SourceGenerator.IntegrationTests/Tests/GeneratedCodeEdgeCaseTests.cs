@@ -260,7 +260,7 @@ public static class Probe { public static async Task<string> Go(ISvc s, Svc impl
 } }
 }", nameof(CallerCancellingASharedLoad_DoesNotFailTheOtherCaller), load: true);
         AssertCompiles(r);
-        Assert.Contains(r.Sources.Values, source => source.Contains("__policy, ct);"));
+        Assert.Contains(r.Sources.Values, source => source.Contains("__policy, __mcArgument1);"));
         var svc = Resolve(r.Assembly!, "App.ISvc", out var sp);
         var impl = sp.GetRequiredService(r.Assembly!.GetType("App.Svc")!);
         var text = await (Task<string>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
