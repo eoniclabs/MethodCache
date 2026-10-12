@@ -25,9 +25,17 @@
     <MicrosoftTestSdkVersion>17.11.1</MicrosoftTestSdkVersion>
     <FluentAssertionsVersion>6.12.1</FluentAssertionsVersion>
     <StackExchangeRedisVersion>2.8.12</StackExchangeRedisVersion>
-    <!-- Audit transitive dependencies as well, including test tooling. High and critical advisories stop restore. -->
+    <!-- Audit transitive dependencies as well, including test tooling. -->
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
+  </PropertyGroup>
+
+  <!--
+    High and critical advisories (NU1903, NU1904) stop restore only on CI: build/ci/jobs.sh and windows.ps1 set
+    MethodCacheEnforceAudit=true. Locally they stay warnings, so a new advisory does not break every checkout
+    or the rebuild of an old tag. See build/ci/README.md for how to handle one.
+  -->
+  <PropertyGroup Condition="'$(MethodCacheEnforceAudit)' == 'true'">
     <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
 
