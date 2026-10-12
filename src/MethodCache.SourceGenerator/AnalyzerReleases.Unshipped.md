@@ -12,7 +12,7 @@ MCG009 | MethodCacheGenerator | Warning | Reports dynamic tags on [Cache] or [Ca
 MCG010 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] on a type it cannot cache.
 MCG011 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] listing a method it cannot cache.
 MCG012 | MethodCacheGenerator | Error | Reports an interface listed in more than one [assembly: CacheInterface].
-MCG013 | MethodCacheGenerator | Error | Reports a local interface that cannot be decorated, such as one with static or non-public abstract members.
+MCG013 | MethodCacheGenerator | Error | Reports a local interface that cannot be decorated, such as one with static or non-public abstract service members. Nested helper types are supported.
 MCG014 | MethodCacheGenerator | Error | Reports [Cache] on a method that returns a lazy sequence (IEnumerable, IAsyncEnumerable, IQueryable).
 MCG015 | MethodCacheGenerator | Warning | Reports a tag placeholder that is not a parameter name, such as "{product.Id}".
 MCG016 | MethodCacheGenerator | Warning | Reports a tag placeholder matching multiple parameters without an exact spelling match.

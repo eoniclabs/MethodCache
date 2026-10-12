@@ -55,7 +55,7 @@ namespace MethodCache.SourceGenerator
             /// <summary>An interface with static abstract members can't be a service type or get a decorator.</summary>
             internal static bool HasNonPublicAbstractMembers(INamedTypeSymbol interfaceSymbol)
                 => new[] { interfaceSymbol }.Concat(interfaceSymbol.AllInterfaces).SelectMany(i => i.GetMembers())
-                    .Any(m => m.IsAbstract && m.DeclaredAccessibility != Accessibility.Public);
+                    .Any(m => m is not ITypeSymbol && m.IsAbstract && m.DeclaredAccessibility != Accessibility.Public);
 
             internal static bool HasStaticAbstractMembers(INamedTypeSymbol interfaceSymbol)
                 => new[] { interfaceSymbol }.Concat(interfaceSymbol.AllInterfaces).SelectMany(i => i.GetMembers()).Any(m => m.IsStatic && m.IsAbstract);
