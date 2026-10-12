@@ -84,4 +84,6 @@ including backend-atomic maximum timestamps and retention preservation. A plain 
 rejected when the host starts (`ValidateOnStart`), or without a generic host when the method cache manager is
 resolved. Redis and SQL Server supply this contract.
 
-HTTP caching bypasses transports with automatic cookies enabled. Configure `SocketsHttpHandler` or `HttpClientHandler` with `UseCookies = false` for cacheable clients, and send explicit cookie headers before the cache handler.
+`AddHttpCaching()` disables automatic cookies on the named client’s `SocketsHttpHandler` or `HttpClientHandler` after handler configuration. Send caller cookies explicitly before the cache handler. Unknown transports bypass caching with a warning unless `AllowUnverifiedTransport` is enabled after verifying that the entire transport has no automatic cookies or hidden caller identity.
+
+For direct invalidation or administration of versioned fluent entries, use `CacheManagerExtensions.GetCacheKey(logicalKey, version)`. Treat the returned identity as opaque; callback `CacheContext.Key` remains the logical key.
