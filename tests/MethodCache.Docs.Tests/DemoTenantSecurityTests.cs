@@ -3,6 +3,7 @@ using Xunit;
 
 namespace MethodCache.Docs.Tests;
 
+// Tenant isolation belongs to the security tests; docs/security.md links to this class.
 public class DemoTenantSecurityTests
 {
     [Fact]

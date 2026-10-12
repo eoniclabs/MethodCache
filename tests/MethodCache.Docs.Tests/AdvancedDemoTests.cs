@@ -1,5 +1,4 @@
 using MethodCache.Demo;
-using MethodCache.HttpDemo;
 using Xunit;
 
 namespace MethodCache.Docs.Tests;
@@ -24,7 +23,7 @@ public class AdvancedDemoTests
     }
 
     [Fact]
-    public async Task HttpDemo_LocalServer_MaxAgeEtagNoStoreAndWriteInvalidationWork()
+    public async Task HttpClientExample_LocalServer_MaxAgeEtagNoStoreAndWriteInvalidationWork()
     {
         var checks = await HttpExamples.RunAsync();
         Assert.NotEmpty(checks);

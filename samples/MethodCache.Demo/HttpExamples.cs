@@ -1,16 +1,19 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
-namespace MethodCache.HttpDemo;
-
-public sealed record HttpExampleCheck(string Claim, bool Passed);
+namespace MethodCache.Demo;
 
 /// <summary>Runs the exact same local HTTP scenarios in the demo and the docs tests.</summary>
 public static class HttpExamples
 {
-    public static async Task<IReadOnlyList<HttpExampleCheck>> RunAsync()
+    public static async Task<IReadOnlyList<ExampleCheck>> RunAsync()
     {
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var builder = WebApplication.CreateBuilder();
@@ -57,11 +60,13 @@ public static class HttpExamples
 
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(clock);
+        // Cache-visible identity must not be changed by an automatic transport cookie jar.
         services.AddHttpClient<ProductApiClient>(http => http.BaseAddress = new Uri(origin.Urls.Single()))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })
             .AddHttpCaching(options => options.AddDiagnosticHeaders = true);
         await using var provider = services.BuildServiceProvider();
         var client = provider.GetRequiredService<ProductApiClient>();
-        var checks = new List<HttpExampleCheck>();
+        var checks = new List<ExampleCheck>();
 
         var first = await client.GetAsync("/product");
         var second = await client.GetAsync("/product");

@@ -26,7 +26,7 @@ Each job writes `artifacts/ci/<job>.log` and `artifacts/ci/<job>.exit`. A new CI
 
 ## Demo verification
 
-The `demo` job runs the ten-chapter console tour, the local-server HttpClient tour and the web demo's
+The `demo` job runs the eleven-chapter console tour (including the local-server HttpClient chapter) and the web demo's
 cache/security/storage checks. `webdemo` runs all web-demo tests with Docker required, including two hosts
 sharing Redis and an outage/restart of a private Redis container. The regular `tests` job also includes these
 Redis scenarios. The `unit` and culture jobs exclude the `RedisDemo` test category along with the other

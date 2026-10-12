@@ -16,18 +16,21 @@ public interface ITimedReports
 
 public sealed class TimedReports : ITimedReports
 {
-    public int ReportCalls { get; private set; }
-    public int SessionCalls { get; private set; }
-    public int PriceCalls { get; private set; }
+    private int _reportCalls;
+    private int _sessionCalls;
+    private int _priceCalls;
+    public int ReportCalls => Volatile.Read(ref _reportCalls);
+    public int SessionCalls => Volatile.Read(ref _sessionCalls);
+    public int PriceCalls => Volatile.Read(ref _priceCalls);
     public TaskCompletionSource RefreshStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource ReleaseRefresh { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public Task<int> GetReportAsync() => Task.FromResult(++ReportCalls);
-    public Task<int> GetSessionAsync(string id) => Task.FromResult(++SessionCalls);
+    public Task<int> GetReportAsync() => Task.FromResult(Interlocked.Increment(ref _reportCalls));
+    public Task<int> GetSessionAsync(string id) => Task.FromResult(Interlocked.Increment(ref _sessionCalls));
 
     public async Task<int> GetPricesAsync()
     {
-        var revision = ++PriceCalls;
+        var revision = Interlocked.Increment(ref _priceCalls);
         if (revision == 2)
         {
             RefreshStarted.TrySetResult();
@@ -45,7 +48,8 @@ public interface IResilientRates
 
 public sealed class ResilientRates : IResilientRates
 {
-    public int Calls { get; private set; }
+    private int _calls;
+    public int Calls => Volatile.Read(ref _calls);
     public decimal Rate { get; set; } = 100m;
     public bool Failing { get; set; }
     public TaskCompletionSource<decimal>? SlowResponse { get; set; }
@@ -53,7 +57,7 @@ public sealed class ResilientRates : IResilientRates
 
     public Task<decimal> GetAsync(string pair)
     {
-        Calls++;
+        Interlocked.Increment(ref _calls);
         if (Failing) throw new HttpRequestException("The demo exchange-rate API is unavailable.");
         if (SlowResponse is { } response)
         {

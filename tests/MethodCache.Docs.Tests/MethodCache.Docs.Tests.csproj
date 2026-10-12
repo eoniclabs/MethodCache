@@ -52,7 +52,6 @@
     <ProjectReference Include="..\..\samples\MethodCache.Demo.FxVendor\MethodCache.Demo.FxVendor.csproj" />
     <ProjectReference Include="..\..\samples\MethodCache.WebDemo\MethodCache.WebDemo.csproj" />
     <ProjectReference Include="..\..\samples\MethodCache.Demo\MethodCache.Demo.csproj" />
-    <ProjectReference Include="..\..\samples\MethodCache.HttpDemo\MethodCache.HttpDemo.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\MethodCache.Analyzers\MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>

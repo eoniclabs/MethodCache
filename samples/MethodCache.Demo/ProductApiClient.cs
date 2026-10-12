@@ -1,12 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 
-namespace MethodCache.HttpDemo;
+namespace MethodCache.Demo;
 
 public sealed record HttpObservation(HttpStatusCode Status, string Body, string? CacheOutcome);
 
 /// <summary>A normal typed HttpClient: caching is added to its registration, not to these methods.</summary>
-public sealed class ProductApiClient(HttpClient http) : IDisposable
+public sealed class ProductApiClient(HttpClient http)
 {
     public async Task<HttpObservation> GetAsync(string path)
     {
@@ -21,6 +21,4 @@ public sealed class ProductApiClient(HttpClient http) : IDisposable
         using var response = await http.PutAsJsonAsync("/product", new { price });
         response.EnsureSuccessStatusCode();
     }
-
-    public void Dispose() => http.Dispose();
 }

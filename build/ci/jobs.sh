@@ -3,7 +3,7 @@
 # build servers (inside the image from build/ci/Dockerfile), on a developer machine and in any CI host.
 #
 #   build/ci/jobs.sh build      restore and build the solution (Release)
-#   build/ci/jobs.sh demo       console and HttpClient tours, plus web tests without Docker
+#   build/ci/jobs.sh demo       eleven-chapter console tour (including HttpClient), plus web tests without Docker
 #   build/ci/jobs.sh webdemo    all web demo tests, including two instances and Redis outage/recovery
 #   build/ci/jobs.sh tests      every test on net8.0, net9.0 and net10.0, Redis and SQL Server required
 #   build/ci/jobs.sh unit       every test except the Docker-backed ones (Windows and macOS); FRAMEWORK=net10.0 picks one
@@ -44,7 +44,6 @@ job_build() {
 
 job_demo() {
   dotnet run --project samples/MethodCache.Demo --configuration Release --no-build
-  dotnet run --project samples/MethodCache.HttpDemo --configuration Release --no-build
   dotnet test tests/MethodCache.Docs.Tests --configuration Release --no-build \
     --filter "FullyQualifiedName~WebDemo&Category!=RedisDemo"
 }

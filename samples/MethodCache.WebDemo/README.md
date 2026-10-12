@@ -81,7 +81,7 @@ configured distributed-operation timeout while a failure is being detected.
 ## Automated verification
 
 ```bash
-bash build/ci/jobs.sh demo       # console tour, HttpClient tour and web checks without Docker
+bash build/ci/jobs.sh demo       # eleven-chapter console tour (including HttpClient) and web checks without Docker
 bash build/ci/jobs.sh webdemo    # all web checks, including a private Redis container (requires Docker)
 ```
 

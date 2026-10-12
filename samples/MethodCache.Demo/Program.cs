@@ -52,7 +52,9 @@ try
     foreach (var check in await AdvancedExamples.ConditionalAsync()) Ui.Check(check.Passed, check.Claim);
     Ui.Chapter(10, "Separate tenants", "The tenant is an explicit argument in both the cache key and the invalidation tag.");
     foreach (var check in await AdvancedExamples.TenantsAsync()) Ui.Check(check.Passed, check.Claim);
-    Ui.Summary(chapters: 10);
+    Ui.Chapter(11, "HttpClient caching", "A local HTTP server demonstrates max-age hits, ETag/304 validation, no-store and invalidation after PUT.");
+    foreach (var check in await HttpExamples.RunAsync()) Ui.Check(check.Passed, check.Claim);
+    Ui.Summary(chapters: 11);
 }
 finally
 {

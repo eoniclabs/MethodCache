@@ -52,7 +52,7 @@ cd MethodCache
 dotnet run -c Release --project samples/MethodCache.Demo
 ```
 
-A ten-chapter tour with checked claims (CI runs it too). The first chapters measure real calls; expiration,
+A tour with eleven chapters and checked claims (CI runs it too). The first chapters measure real calls; expiration,
 refresh-ahead and fail-safe use an explicitly advanced demo clock:
 
 ```text
@@ -70,7 +70,7 @@ refresh-ahead and fail-safe use an explicitly advanced demo clock:
     Rename user 1, load both again    1 new database query
     ✓ User 2 still came from the cache: Alan Turing
   ...
-  All 10 chapters behaved as described.
+  All 11 chapters behaved as described.
 ```
 
 For ASP.NET Core with admin endpoints, OpenTelemetry and two instances sharing Redis, see the
@@ -79,9 +79,9 @@ The web demo opens its admin endpoints in Development; in Production they requir
 Its price endpoint rejects missing, null and negative prices with HTTP 400, preserving stored and cached data.
 Its SQLite data can be reset, and query counters show which requests actually reach the database.
 
-The [HttpClient demo](samples/MethodCache.HttpDemo/) starts a local HTTP server and checks `Cache-Control`,
-ETag/304, `no-store` and invalidation after PUT. Run `dotnet run -c Release --project samples/MethodCache.HttpDemo`.
-See the [console guide](samples/MethodCache.Demo/) for the four advanced chapters and the
+Chapter 11 of the [console tour](samples/MethodCache.Demo/#httpclient-caching) starts a local HTTP server and
+checks `Cache-Control`, ETag/304, `no-store` and invalidation after PUT in the same run.
+See the [console guide](samples/MethodCache.Demo/) for all eleven chapters and the
 [web guide](samples/MethodCache.WebDemo/) for automated two-instance Redis and outage scenarios.
 
 ## Before and after
@@ -361,5 +361,5 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
 - [Troubleshooting](docs/troubleshooting.md), [build diagnostics](docs/user-guide/DIAGNOSTICS.md) and
   [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
 - Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md)
-- [Demo](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
+- [Console tour, including HttpClient caching](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
 - Using a coding agent? Give it [docs/ai/methodcache.md](docs/ai/methodcache.md). [llms.txt](llms.txt) and [llms-full.txt](llms-full.txt) have the docs for language models, and `context7.json` lets Context7 index them.

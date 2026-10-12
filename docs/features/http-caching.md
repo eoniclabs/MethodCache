@@ -4,7 +4,7 @@ Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses a
 headers. Freshness comes from `Cache-Control` and expiry headers; ETag and Last-Modified enable conditional
 validation. A successful 304 is returned to the caller as the full response.
 
-The [HttpClient demo](../../samples/MethodCache.HttpDemo/) starts a local HTTP server and checks max-age
+Chapter 11 of the [console tour](../../samples/MethodCache.Demo/#httpclient-caching) starts a local HTTP server and checks max-age
 cache hits, ETag/304 validation, `no-store` and invalidation after PUT. Origin-call counters make each result
 observable; it needs no external API or Docker.
 
