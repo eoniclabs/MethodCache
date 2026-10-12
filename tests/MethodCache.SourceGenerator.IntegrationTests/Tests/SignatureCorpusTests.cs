@@ -302,6 +302,11 @@ public class SignatureCorpusTests
 
     private static readonly Dictionary<string, Shape> Cases = new()
     {
+        ["nested internal helper interface is not an abstract service member"] = new("""
+            public interface ISvc { [Cache] int Get(int id); internal interface Helper { void Run(); } }
+            public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }
+            """, "ISvc", "s.Get(1)", "s.Get(2)"),
+
         ["runtime tags see every case-distinct argument"] = new("""
             public interface ISvc { [Cache(Tags = new[] { "attribute:{a}" })] Task<int> Get(int a, int A); }
             public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }

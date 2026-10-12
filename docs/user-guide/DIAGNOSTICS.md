@@ -123,6 +123,8 @@ methods in the same attribute.
 
 ## MCG013
 
+Nested helper type declarations are supported and do not count as abstract service members.
+
 The interface has static abstract members, or non-public abstract members that cannot be forwarded to the decorated instance. Move the cached methods to an interface without them. Non-public default helpers are supported because they remain on the interface.
 
 ## MCG014

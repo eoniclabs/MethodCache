@@ -32,3 +32,5 @@ Factory registration helpers dispose owned implementations even when their servi
 Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.
 
 Generated decorators qualify framework and cache infrastructure type names globally, so application types such as `Task`, `List` or `CachedMethod` cannot shadow them.
+
+Cached interfaces may declare nested helper interfaces and abstract types. These declarations do not trigger MCG013.

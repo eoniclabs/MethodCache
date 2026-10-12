@@ -242,6 +242,8 @@ Sealed default interface helpers retain their interface bodies and are never rei
 
 Generated decorators qualify framework and cache infrastructure type names globally, so application types such as `Task`, `List` or `CachedMethod` cannot shadow them.
 
+Cached interfaces may declare nested helper interfaces and abstract types. These declarations do not trigger MCG013.
+
 
 ---
 
@@ -1838,6 +1840,8 @@ The same interface is listed in more than one `[assembly: CacheInterface]`. List
 methods in the same attribute.
 
 ## MCG013
+
+Nested helper type declarations are supported and do not count as abstract service members.
 
 The interface has static abstract members, or non-public abstract members that cannot be forwarded to the decorated instance. Move the cached methods to an interface without them. Non-public default helpers are supported because they remain on the interface.
 
