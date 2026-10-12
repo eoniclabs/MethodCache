@@ -61,3 +61,5 @@ turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `
 
 The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
 once.
+
+`ExistsAsync` reports an entry only while it is both logically fresh and physically retained. A fail-safe retry window never makes existence extend beyond the physical fail-safe lifetime.
