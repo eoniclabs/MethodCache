@@ -1,5 +1,7 @@
 # HTTP response caching
 
+A failed response-body read fails the request rather than returning a partially consumed body. Buffered and streamed responses release their original content resources on completion, cancellation or disposal.
+
 `only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
 
 HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
