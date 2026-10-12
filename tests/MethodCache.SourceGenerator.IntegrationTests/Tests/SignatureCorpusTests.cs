@@ -640,6 +640,16 @@ public class SignatureCorpusTests
                     public Task<string> Get(int id, int version) { Counter.Hit(); return Task.FromResult("2"); }
                 }
             """, "ISvc", "await s.Get(1)", "await s.Get(1, 0)"),
+        ["generic method exact type check"] = Member("int Get<T>(Wrapper<T> value)",
+            "int Get<T>(Wrapper<T> value) { Counter.Hit(); return value.Id; }",
+            "s.Get(new Wrapper<int> { Id = 1 })", "s.Get(new Wrapper<int> { Id = 2 })",
+            "public class Wrapper<T> { public int Id { get; set; } }"),
+        ["generic interface exact type check"] = new("""
+            public class Wrapper<T> { public int Id { get; set; } }
+            public interface ISvc<T> { [Cache] int Get(Wrapper<T> value); }
+            public class Svc : ISvc<int> { public int Get(Wrapper<int> value) { Counter.Hit(); return value.Id; } }
+            """, "ISvc<int>", "s.Get(new Wrapper<int> { Id = 1 })", "s.Get(new Wrapper<int> { Id = 2 })"),
+
         ["generic method"] = Member("Task<T?> Get<T>(int id)", "Task<T?> Get<T>(int id) { Counter.Hit(); return Task.FromResult<T?>(default); }", "await s.Get<int>(1)", "await s.Get<string>(1)"),
         ["generic method with class constraint"] = Member("Task<T?> Get<T>(int id) where T : class", "Task<T?> Get<T>(int id) where T : class { Counter.Hit(); return Task.FromResult<T?>(null); }", "await s.Get<string>(1)", "await s.Get<object>(1)"),
         ["generic method with struct constraint"] = Member("Task<T> Get<T>(int id) where T : struct", "Task<T> Get<T>(int id) where T : struct { Counter.Hit(); return Task.FromResult(default(T)); }", "await s.Get<int>(1)", "await s.Get<long>(1)"),

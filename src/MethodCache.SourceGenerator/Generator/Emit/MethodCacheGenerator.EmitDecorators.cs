@@ -566,7 +566,7 @@ namespace MethodCache.SourceGenerator
                         AddObjectPieces(pieces, name, param.Type, members);
                         if (param.Type.TypeKind == TypeKind.Class && !param.Type.IsSealed)
                         {
-                            exactTypeChecks.Add($"({name} is null || {name}.GetType() == typeof({param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}))");
+                            exactTypeChecks.Add($"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}))");
                         }
                     }
                     else
