@@ -77,3 +77,5 @@ await cache.InvalidateByTagPatternAsync("customer:7:*");   // in-memory cache on
 
 With [Redis or SQL Server](distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
 tells every instance to drop its in-memory copy. You don't need to do anything else.
+
+Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. Cached tags and invalidation use the same rule.

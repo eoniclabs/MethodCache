@@ -44,7 +44,7 @@ namespace MethodCache.SourceGenerator
         {
             foreach (System.Text.RegularExpressions.Match match in DynamicTagParameterRegex.Matches(tag))
             {
-                if (method.Parameters.Any(p => string.Equals(p.Name, match.Groups[1].Value, StringComparison.OrdinalIgnoreCase)))
+                if (ResolveTagParameter(method, match.Groups[1].Value) != null)
                 {
                     return true;
                 }
