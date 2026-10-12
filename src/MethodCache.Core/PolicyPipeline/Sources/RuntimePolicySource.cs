@@ -18,6 +18,8 @@ internal sealed class RuntimePolicySource : IImmediatePolicySource
     public Task<IReadOnlyCollection<PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(_store.GetSnapshots());
 
+    internal (IReadOnlyCollection<PolicySnapshot> Snapshots, long Revision) CaptureSnapshots() => _store.CaptureSnapshots();
+
     public IReadOnlyCollection<PolicySnapshot> GetSnapshot() => _store.GetSnapshots();
 
     public event Action<PolicyChange>? Changed

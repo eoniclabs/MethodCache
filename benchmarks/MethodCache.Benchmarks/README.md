@@ -7,7 +7,7 @@ This project contains comprehensive performance benchmarks for the MethodCache l
 The benchmark suite includes:
 
 - **Basic Caching Operations** - Fundamental cache hit/miss performance
-- **Cache Provider Comparisons** - InMemory, Hybrid, and Redis provider performance
+- **Provider Scenarios** - InMemory hits, misses, and tag invalidation
 - **Concurrent Access Patterns** - Thread safety and scalability testing
 - **Memory Usage Analysis** - GC pressure and memory efficiency
 - **Real-World Scenarios** - Application-specific use cases
@@ -19,7 +19,6 @@ The benchmark suite includes:
 ### Prerequisites
 
 - .NET 9.0 or later
-- Optional: Redis server (for Redis provider benchmarks)
 
 ### Running Benchmarks
 
@@ -66,20 +65,9 @@ Tests fundamental caching operations with different data sizes:
 
 #### 2. Cache Provider Comparison (`providers`)
 
-Compares performance across different cache providers:
+Measures in-memory hits, misses and bulk tag invalidation. Hit data is populated in setup; misses clear
+actual tagged entries. Redis and hybrid scenarios are not implemented and are excluded from measurements.
 
-- **InMemory Cache** - Default in-memory implementation
-- **Hybrid Cache** - L1 (memory) + L2 (Redis) hybrid approach
-- **Redis Cache** - Pure Redis implementation (if available)
-
-**Parameters:**
-- `ItemCount`: 10, 100, 1000 items
-- `DataType`: Small, Medium objects
-
-**Tests:**
-- Cache hits performance
-- Cache misses performance
-- Bulk invalidation performance
 
 #### 3. Concurrent Access Benchmarks (`concurrent`)
 
@@ -156,20 +144,6 @@ Compares different cache key generation strategies:
 
 ## Configuration
 
-### Redis Setup (Optional)
-
-For Redis provider benchmarks, ensure Redis is running:
-
-```bash
-# Using Docker
-docker run -d -p 6379:6379 redis:alpine
-
-# Or install Redis locally
-# Windows: Use Redis for Windows
-# macOS: brew install redis && redis-server
-# Linux: sudo apt-get install redis-server && redis-server
-```
-
 ### Benchmark Configuration
 
 The benchmarks use BenchmarkDotNet with the following configuration:
@@ -212,37 +186,12 @@ The benchmarks use BenchmarkDotNet with the following configuration:
 - GC pressure should be minimal during steady state
 - Cache eviction should be efficient
 
-## Example Output
-
-```
-BenchmarkDotNet v0.14.0, Windows 11 (10.0.22631.4317/23H2/2023Update/SunValley3)
-12th Gen Intel Core i7-12700K, 1 CPU, 20 logical and 12 physical cores
-.NET 9.0.0 (9.0.24.52809), X64 RyuJIT AVX2
-
-| Method          | ItemCount | Provider | Mean      | Error     | StdDev    | Ratio | Gen0   | Allocated |
-|---------------- |---------- |--------- |----------:|----------:|----------:|------:|-------:|----------:|
-| InMemory_Hits   | 100       | InMemory | 89.23 μs  | 1.234 μs  | 1.155 μs  | 1.00  | 0.4883 |   2.01 KB |
-| Hybrid_Hits     | 100       | Hybrid   | 92.45 μs  | 1.789 μs  | 1.674 μs  | 1.04  | 0.4883 |   2.13 KB |
-| Redis_Hits      | 100       | Redis    | 145.67 μs | 2.456 μs  | 2.298 μs  | 1.63  | 0.2441 |   1.87 KB |
-```
-
 ## Continuous Performance Monitoring
 
-The benchmarks can be integrated into CI/CD pipelines for continuous performance monitoring:
-
-```yaml
-# Example GitHub Actions workflow
-- name: Run Performance Benchmarks
-  run: |
-    cd MethodCache.Benchmarks
-    dotnet run -c Release -- basic > benchmark-results.txt
-    
-- name: Upload Results
-  uses: actions/upload-artifact@v3
-  with:
-    name: benchmark-results
-    path: benchmark-results.txt
-```
+Run benchmark contract tests with `dotnet test tests/MethodCache.Benchmarks.Tests -c Release`.
+For measurements, run the relevant category on a dedicated machine and retain the BenchmarkDotNet
+report with runtime, hardware, package versions and workload parameters. Repository CI is defined
+in `build/ci`; see `build/ci/README.md`.
 
 ## Contributing
 
@@ -255,11 +204,6 @@ When adding new benchmarks:
 5. Test with different data sizes and scenarios
 
 ## Troubleshooting
-
-**Redis Connection Issues:**
-- Ensure Redis server is running on localhost:6379
-- Check firewall and network connectivity
-- Redis benchmarks will be skipped if connection fails
 
 **Memory Issues:**
 - Increase available memory for large dataset benchmarks

@@ -8,12 +8,12 @@ namespace MethodCache
     public class MethodCacheMemoryOptions
     {
         private long _maxItems = 10000;
-        
+
         /// <summary>
         /// Maximum number of items in the cache.
         /// </summary>
-        public long MaxItems 
-        { 
+        public long MaxItems
+        {
             get => _maxItems;
             set
             {
@@ -26,13 +26,13 @@ namespace MethodCache
         }
 
         private long _maxMemoryBytes = 1000 * 1024 * 1024; // 1000MB
-        
+
         /// <summary>
         /// Maximum total weight of the cache when a <see cref="Weigher"/> is configured (typically bytes).
         /// Ignored without a weigher, since object sizes cannot be measured reliably at runtime.
         /// </summary>
-        public long MaxMemoryBytes 
-        { 
+        public long MaxMemoryBytes
+        {
             get => _maxMemoryBytes;
             set
             {
@@ -43,12 +43,12 @@ namespace MethodCache
         }
 
         private TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
-        
+
         /// <summary>
         /// Default expiration time for cache entries.
         /// </summary>
-        public TimeSpan DefaultExpiration 
-        { 
+        public TimeSpan DefaultExpiration
+        {
             get => _defaultExpiration;
             set
             {
@@ -61,12 +61,12 @@ namespace MethodCache
         }
 
         private TimeSpan _maxExpiration = TimeSpan.FromDays(7);
-        
+
         /// <summary>
         /// Maximum expiration time for cache entries.
         /// </summary>
-        public TimeSpan MaxExpiration 
-        { 
+        public TimeSpan MaxExpiration
+        {
             get => _maxExpiration;
             set
             {
@@ -115,12 +115,12 @@ namespace MethodCache
         }
 
         private TimeSpan _cleanupInterval = TimeSpan.FromMinutes(1);
-        
+
         /// <summary>
         /// Interval for background cleanup of expired entries.
         /// </summary>
-        public TimeSpan CleanupInterval 
-        { 
+        public TimeSpan CleanupInterval
+        {
             get => _cleanupInterval;
             set
             {
@@ -156,28 +156,57 @@ namespace MethodCache
         public MemoryUsageCalculationMode MemoryCalculationMode { get; set; } = MemoryUsageCalculationMode.Fast;
 
         private double _samplingPercentage = 0.1; // 10%
-        
+
         /// <summary>
-        /// Sample size for sampling mode (percentage of entries to measure).
+        /// Target sample size for sampling mode (fraction of entries), bounded by <see cref="SamplingMaxEntries"/>.
         /// </summary>
-        public double SamplingPercentage 
-        { 
+        public double SamplingPercentage
+        {
             get => _samplingPercentage;
             set
             {
-                if (value <= 0 || value > 1)
+                if (!double.IsFinite(value) || value <= 0 || value > 1)
                     throw new ArgumentOutOfRangeException(nameof(SamplingPercentage), value, "SamplingPercentage must be between 0 (exclusive) and 1 (inclusive).");
                 _samplingPercentage = value;
             }
         }
 
-        private int _accurateModeRecalculationInterval = 1000;
-        
+        private int _samplingMaxEntries = 1024;
+
+        /// <summary>Maximum entries serialized by one sampling estimate. Default 1024; must be positive.</summary>
+        public int SamplingMaxEntries
+        {
+            get => _samplingMaxEntries;
+            set
+            {
+                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(SamplingMaxEntries), value, "SamplingMaxEntries must be positive.");
+                _samplingMaxEntries = value;
+            }
+        }
+
+        private int _samplingRecalculationInterval = 100;
+
         /// <summary>
-        /// How often to recalculate memory usage in accurate mode (in cache operations).
+        /// Statistics reads between new samples. Default 100; 1 resamples every read. Between samples the previous
+        /// average entry estimate is scaled by the current entry count. Must be positive.
         /// </summary>
-        public int AccurateModeRecalculationInterval 
-        { 
+        public int SamplingRecalculationInterval
+        {
+            get => _samplingRecalculationInterval;
+            set
+            {
+                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(SamplingRecalculationInterval), value, "SamplingRecalculationInterval must be positive.");
+                _samplingRecalculationInterval = value;
+            }
+        }
+
+        private int _accurateModeRecalculationInterval = 1000;
+
+        /// <summary>
+        /// How often to recalculate memory usage in accurate mode (in statistics reads).
+        /// </summary>
+        public int AccurateModeRecalculationInterval
+        {
             get => _accurateModeRecalculationInterval;
             set
             {

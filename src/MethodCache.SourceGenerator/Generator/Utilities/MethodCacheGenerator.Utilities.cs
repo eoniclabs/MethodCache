@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 
@@ -18,10 +19,10 @@ namespace MethodCache.SourceGenerator
                 memberOptions: SymbolDisplayMemberOptions.IncludeParameters | SymbolDisplayMemberOptions.IncludeContainingType,
                 parameterOptions: SymbolDisplayParameterOptions.IncludeType,
                 globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included);
-        
+
             internal static string GetFullyQualifiedName(ITypeSymbol type)
                 => type.ToDisplayString(FullyQualifiedFormat);
-        
+
             /// <summary>
             /// The namespace of an interface's decorator: the interface's own, or MethodCache.Generated for an
             /// interface in the global namespace, such as one declared next to top-level statements.
@@ -130,7 +131,12 @@ namespace MethodCache.SourceGenerator
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
 
-            /// <summary>A parameter type as MethodIds writes it: C# keywords, simple names, T?, T[].</summary>
+            /// <summary>
+            /// A parameter type as MethodIds writes it from reflection: C# keywords for the built-in types, otherwise
+            /// the qualified name with its type arguments, T? and T[]. Reflection has no tuple syntax, native int
+            /// keywords or dynamic, so tuples are written as System.ValueTuple&lt;...&gt;, nint as System.IntPtr and
+            /// dynamic as object.
+            /// </summary>
             private static string ParameterTypeName(ITypeSymbol type)
             {
                 switch (type)
@@ -165,15 +171,50 @@ namespace MethodCache.SourceGenerator
                     return keyword;
                 }
 
-                return type is INamedTypeSymbol { IsGenericType: true } generic
-                    ? type.Name + "<" + string.Join(", ", generic.TypeArguments.Select(ParameterTypeName)) + ">"
-                    : type.Name;
+                switch (type)
+                {
+                    case IDynamicTypeSymbol:
+                        return "object";
+                    case ITypeParameterSymbol typeParameter:
+                        return typeParameter.Name;
+                    case INamedTypeSymbol named:
+                        return NamedParameterTypeName(named.IsTupleType && named.TupleUnderlyingType is { } tuple ? tuple : named);
+                    default:
+                        return type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                }
             }
-        
+
+            /// <summary>
+            /// A named type as MethodIds writes it: its containing type (with that type's arguments) or namespace,
+            /// its name, and its own type arguments.
+            /// </summary>
+            private static string NamedParameterTypeName(INamedTypeSymbol type)
+            {
+                var builder = new StringBuilder();
+                if (type.ContainingType is { } containing)
+                {
+                    builder.Append(ParameterTypeName(containing)).Append('.');
+                }
+                else if (type.ContainingNamespace is { IsGlobalNamespace: false } ns)
+                {
+                    builder.Append(ns.ToDisplayString()).Append('.');
+                }
+
+                builder.Append(type.Name);
+                if (type.TypeArguments.Length > 0)
+                {
+                    builder.Append('<')
+                        .Append(string.Join(", ", type.TypeArguments.Select(ParameterTypeName)))
+                        .Append('>');
+                }
+
+                return builder.ToString();
+            }
+
             internal static bool IsCancellationToken(ITypeSymbol type)
                 => type.Name == nameof(CancellationToken) &&
                    type.ContainingNamespace?.ToDisplayString() == "System.Threading";
-        
+
             internal static bool IsTask(ITypeSymbol type, out ITypeSymbol? innerType)
             {
                 if (type is INamedTypeSymbol namedType)
@@ -195,7 +236,7 @@ namespace MethodCache.SourceGenerator
                 innerType = null;
                 return false;
             }
-        
+
             internal static bool IsValueTask(ITypeSymbol type, out ITypeSymbol? innerType)
             {
                 if (type is INamedTypeSymbol namedType)
@@ -217,7 +258,7 @@ namespace MethodCache.SourceGenerator
                 innerType = null;
                 return false;
             }
-        
+
             // Fully qualified so generated code never depends on the user's usings, and with nullable annotations
             // so the decorator's signatures match the interface it implements exactly (no CS8613/CS8614 warnings)
             private static readonly SymbolDisplayFormat SignatureFormat = SymbolDisplayFormat.FullyQualifiedFormat

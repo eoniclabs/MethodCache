@@ -25,10 +25,11 @@ public class OptimizedMethodCacheAdapter : ICacheAdapter
 
     public string Name => "OptimizedMethodCache";
 
-    public OptimizedMethodCacheAdapter()
+    public OptimizedMethodCacheAdapter(TimeProvider? timeProvider = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        if (timeProvider != null) services.AddSingleton(timeProvider);
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
@@ -77,7 +78,7 @@ public class OptimizedMethodCacheAdapter : ICacheAdapter
 
                 return result;
             },
-            _defaultPolicy,
+            _defaultPolicy with { Duration = duration },
             _keyGenerator
         );
     }
@@ -88,66 +89,26 @@ public class OptimizedMethodCacheAdapter : ICacheAdapter
         // Generate the actual cache key once
         var cacheKey = _keyGenerator.GenerateKey(key, _emptyArgs, _defaultPolicy);
 
-        // Use GetAsync which returns ValueTask (not async/await to avoid state machine)
-        var valueTask = _memoryCache.GetAsync<TValue>(cacheKey);
-
-        // ValueTask.IsCompletedSuccessfully is true for synchronous completion
-        if (valueTask.IsCompletedSuccessfully)
-        {
-            value = valueTask.Result;
-            var found = value != null && !EqualityComparer<TValue>.Default.Equals(value, default);
-
-            if (found)
-                _stats.Hits++;
-            else
-                _stats.Misses++;
-
-            return found;
-        }
-
-        // Fallback: If not completed synchronously (shouldn't happen for in-memory)
-        // We have to block, but this should be rare
-        value = valueTask.AsTask().GetAwaiter().GetResult();
-        var foundAsync = value != null && !EqualityComparer<TValue>.Default.Equals(value, default);
-
-        if (foundAsync)
-            _stats.Hits++;
-        else
-            _stats.Misses++;
-
-        return foundAsync;
+        var found = _cacheManager.TryGetFast(cacheKey, out value);
+        if (found) _stats.Hits++;
+        else _stats.Misses++;
+        return found;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Set<TValue>(string key, TValue value, TimeSpan duration)
     {
-        // Use fire-and-forget for Set to avoid blocking
-        _ = SetAsyncInternal(key, value, duration);
-    }
-
-    private async Task SetAsyncInternal<TValue>(string key, TValue value, TimeSpan duration)
-    {
-        // Generate the cache key
         var cacheKey = _keyGenerator.GenerateKey(key, _emptyArgs, _defaultPolicy);
-
-        // Set directly in memory cache
-        await _memoryCache.SetAsync(cacheKey, value, duration);
+        _memoryCache.SetAsync(cacheKey, value, duration).GetAwaiter().GetResult();
     }
 
     public void Remove(string key)
     {
-        // Fire and forget for remove
-        _ = _cacheManager.InvalidateByKeysAsync(key);
+        var cacheKey = _keyGenerator.GenerateKey(key, _emptyArgs, _defaultPolicy);
+        _memoryCache.RemoveAsync(cacheKey).GetAwaiter().GetResult();
     }
 
-    public void Clear()
-    {
-        // Fire and forget for clear
-        if (_memoryCache != null)
-        {
-            _ = _memoryCache.ClearAsync();
-        }
-    }
+    public void Clear() => _memoryCache.ClearAsync().GetAwaiter().GetResult();
 
     public CacheStatistics GetStatistics() => _stats;
 

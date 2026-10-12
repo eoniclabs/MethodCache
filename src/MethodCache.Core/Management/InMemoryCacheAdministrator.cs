@@ -11,6 +11,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
     // Durations saturate far in the future; anything beyond a century is reported as "does not expire".
     private static readonly long NoExpiryThreshold = TimeSpan.FromDays(36_500).Ticks * NanosPerTick;
+    private static readonly IComparer<string> DescendingKeys = Comparer<string>.Create(
+        static (a, b) => string.CompareOrdinal(b, a));
 
     private readonly InMemoryCacheManager _cache;
     private readonly IPolicyRegistry? _policies;
@@ -39,25 +41,33 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
         var engine = _cache.Engine;
         var now = engine.Now;
-        var matches = new List<Node>();
+        // A max heap retains only the smallest requested keys. Enumerate the map directly: Values would
+        // allocate a snapshot of every entry and acquire all of the dictionary's locks.
+        var matches = new PriorityQueue<Node, string>(Math.Min(limit, 256), DescendingKeys);
 
-        foreach (var node in engine.Map.Values)
+        foreach (var pair in engine.Map)
         {
+            var node = pair.Value;
             if (IsLive(node, now)
                 && (keyPrefix == null || node.Key.StartsWith(keyPrefix, StringComparison.Ordinal))
                 && (tag == null || HasTag(node, tag)))
             {
-                matches.Add(node);
+                if (matches.Count < limit)
+                {
+                    matches.Enqueue(node, node.Key);
+                }
+                else if (matches.TryPeek(out _, out var largestKey) && string.CompareOrdinal(node.Key, largestKey) < 0)
+                {
+                    matches.DequeueEnqueue(node, node.Key);
+                }
             }
         }
 
-        matches.Sort(static (a, b) => string.CompareOrdinal(a.Key, b.Key));
-
-        var count = Math.Min(limit, matches.Count);
+        var count = matches.Count;
         var result = new CacheEntryInfo[count];
-        for (var i = 0; i < count; i++)
+        for (var i = count - 1; i >= 0; i--)
         {
-            result[i] = Describe(matches[i], now);
+            result[i] = Describe(matches.Dequeue(), now);
         }
 
         return result;

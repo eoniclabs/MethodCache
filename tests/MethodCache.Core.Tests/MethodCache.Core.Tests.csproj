@@ -36,4 +36,7 @@
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/AtomicTestCache.cs" Link="TestSupport/AtomicTestCache.cs" />
+  </ItemGroup>
 </Project>

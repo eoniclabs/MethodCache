@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
+using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 
 namespace MethodCache
@@ -12,6 +13,9 @@ namespace MethodCache
     {
         private const string FluentMethodName = "MethodCache.Fluent";
         private const string BulkMethodName = "MethodCache.Fluent.Bulk";
+
+        // Distributed lookups a bulk read runs at once, so a large batch doesn't exhaust the cache's connections
+        private const int MaxConcurrentDistributedReads = 8;
 
         /// <summary>
         /// Gets a cache value or creates it using the provided factory, using a fluent configuration surface.
@@ -123,6 +127,11 @@ namespace MethodCache
         /// <summary>
         /// Gets multiple cache values or creates them using the provided batch factory.
         /// </summary>
+        /// <remarks>
+        /// Keys missing from memory are looked up in the distributed cache first, so the factory receives only the
+        /// keys neither holds. A concurrent writer may still supply the final value for a key the factory produced;
+        /// the returned dictionary uses the value the cache keeps.
+        /// </remarks>
         public static async ValueTask<IDictionary<string, T>> GetOrCreateManyAsync<T>(
             this ICacheManager cacheManager,
             IEnumerable<string> keys,
@@ -168,6 +177,11 @@ namespace MethodCache
                 missingKeys.Add(key);
             }
 
+            if (missingKeys.Count > 0 && cacheManager is InMemoryCacheManager manager)
+            {
+                missingKeys = await TakeDistributedHitsAsync(manager, missingKeys, skipCacheKeys, results, options, services, cancellationToken).ConfigureAwait(false);
+            }
+
             if (missingKeys.Count > 0)
             {
                 var bulkContext = new CacheContext(BulkMethodName, services);
@@ -181,22 +195,65 @@ namespace MethodCache
                         throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
                     }
 
-                    results[key] = value!;
-
                     if (skipCacheKeys != null && skipCacheKeys.Contains(key))
                     {
+                        results[key] = value!;
                         continue;
                     }
 
-                    await cacheManager.GetOrCreateFastAsync(
+                    // A distributed hit or a concurrent publisher can win over this batch's candidate value.
+                    results[key] = await cacheManager.GetOrCreateFastAsync(
                         VersionedKey(key, options.Version),
                         FluentMethodName,
                         () => Task.FromResult(value!),
-                        policy).ConfigureAwait(false);
+                        policy,
+                        cancellationToken).ConfigureAwait(false);
                 }
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Reads the distributed cache for the keys missing from memory, a few at a time, and moves the hits into
+        /// <paramref name="results"/>. Returns the keys still missing.
+        /// </summary>
+        private static async Task<List<string>> TakeDistributedHitsAsync<T>(
+            InMemoryCacheManager manager,
+            List<string> missingKeys,
+            HashSet<string>? skipCacheKeys,
+            Dictionary<string, T> results,
+            CacheEntryOptions options,
+            IServiceProvider? services,
+            CancellationToken cancellationToken)
+        {
+            var lookups = missingKeys.Distinct(StringComparer.Ordinal)
+                .Where(key => skipCacheKeys == null || !skipCacheKeys.Contains(key))
+                .ToList();
+            if (lookups.Count == 0)
+            {
+                return missingKeys;
+            }
+
+            var policy = CreateRuntimePolicy(FluentMethodName, options);
+            var hits = new (bool Found, T? Value)[lookups.Count];
+            var parallel = new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentDistributedReads, CancellationToken = cancellationToken };
+            await Parallel.ForEachAsync(Enumerable.Range(0, lookups.Count), parallel, async (index, ct) =>
+                hits[index] = await manager.TryGetDistributedAsync<T>(VersionedKey(lookups[index], options.Version), FluentMethodName, policy, ct).ConfigureAwait(false))
+                .ConfigureAwait(false);
+
+            HashSet<string>? found = null;
+            for (var i = 0; i < lookups.Count; i++)
+            {
+                if (hits[i].Found)
+                {
+                    results[lookups[i]] = hits[i].Value!;
+                    InvokeCallbacks(options.OnHitCallbacks, new CacheContext(lookups[i], services));
+                    (found ??= new HashSet<string>(StringComparer.Ordinal)).Add(lookups[i]);
+                }
+            }
+
+            return found == null ? missingKeys : missingKeys.Where(key => !found.Contains(key)).ToList();
         }
 
         /// <summary>The key a fluent entry is stored under: the caller's key, plus its version when it has one.</summary>

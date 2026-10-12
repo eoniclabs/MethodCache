@@ -8,16 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace MethodCache.Benchmarks.Comparison.Adapters;
 
 /// <summary>
-/// MethodCache adapter that uses pre-generated static keys to bypass runtime key generation.
-/// This more accurately represents how MethodCache works in real usage (source generator creates specialized code).
-///
-/// Key differences from MethodCacheAdapter:
-/// - Keys are generated ONCE during initialization (like source generator does at compile time)
-/// - No runtime key generation overhead (~700ns eliminated)
-/// - Direct cache access without ICacheKeyGenerator allocation
-///
-/// This adapter demonstrates that the performance gap in adapter-based comparisons
-/// comes from forced runtime key generation, not from MethodCache's core caching logic.
+/// MethodCache adapter with a prefix generated once during setup and the user key appended per operation.
+/// All operations share this identity. This measures a manual precomputed-prefix approach;
+/// the source-generator adapter exercises generated decorators separately.
 /// </summary>
 public class StaticKeyMethodCacheAdapter : ICacheAdapter
 {
@@ -25,18 +18,16 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
     private readonly IServiceProvider _serviceProvider;
     private readonly CacheStatistics _stats = new();
 
-    // Pre-generated static keys (simulates what source generator does at compile time)
-    private readonly string _tryGetKey;
-    private readonly string _setKey;
-    private readonly string _getOrSetKey;
-    private readonly string _removeKey;
+    private readonly ICacheManager _cacheManager;
+    private readonly string _keyPrefix;
 
     public string Name => "StaticKeyMethodCache";
 
-    public StaticKeyMethodCacheAdapter()
+    public StaticKeyMethodCacheAdapter(TimeProvider? timeProvider = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        if (timeProvider != null) services.AddSingleton(timeProvider);
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
@@ -45,8 +36,8 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
         _serviceProvider = services.BuildServiceProvider();
 
         // Get ICacheManager and cast to IMemoryCache
-        var cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();
-        _memoryCache = (IMemoryCache)cacheManager;
+        _cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();
+        _memoryCache = (IMemoryCache)_cacheManager;
 
         // Pre-generate all cache keys ONCE (this is what the source generator does at compile time)
         var keyGenerator = _serviceProvider.GetRequiredService<ICacheKeyGenerator>();
@@ -56,11 +47,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
             CachePolicyFields.Duration
         );
 
-        // Generate keys for common operations
-        _tryGetKey = keyGenerator.GenerateKey("TryGet", Array.Empty<object>(), defaultPolicy);
-        _setKey = keyGenerator.GenerateKey("Set", Array.Empty<object>(), defaultPolicy);
-        _getOrSetKey = keyGenerator.GenerateKey("GetOrSet", Array.Empty<object>(), defaultPolicy);
-        _removeKey = keyGenerator.GenerateKey("Remove", Array.Empty<object>(), defaultPolicy);
+        _keyPrefix = keyGenerator.GenerateKey("StaticKey", Array.Empty<object>(), defaultPolicy);
     }
 
     public async Task<TValue> GetOrSetAsync<TValue>(
@@ -69,18 +56,12 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
         TimeSpan duration)
     {
         // Use pre-generated key + user key (simulates what source generator does)
-        var cacheKey = $"{_getOrSetKey}:{key}";
+        var cacheKey = $"{_keyPrefix}:{key}";
 
-        // Try get first - direct cache access, no key generation!
-        var valueTask = _memoryCache.GetAsync<TValue>(cacheKey);
-        var cached = valueTask.IsCompletedSuccessfully
-            ? valueTask.Result
-            : await valueTask;
-
-        if (cached != null && !EqualityComparer<TValue>.Default.Equals(cached, default))
+        if (_cacheManager.TryGetFast<TValue>(cacheKey, out var cached))
         {
             _stats.Hits++;
-            return cached;
+            return cached!;
         }
 
         // Cache miss - execute factory
@@ -98,16 +79,9 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
     public bool TryGet<TValue>(string key, out TValue? value)
     {
         // Use pre-generated static key - NO runtime key generation!
-        var cacheKey = $"{_tryGetKey}:{key}";
+        var cacheKey = $"{_keyPrefix}:{key}";
 
-        // Direct cache access - this is what source-generated code does
-        var valueTask = _memoryCache.GetAsync<TValue>(cacheKey);
-
-        value = valueTask.IsCompletedSuccessfully
-            ? valueTask.Result
-            : valueTask.GetAwaiter().GetResult();
-
-        var found = value != null && !EqualityComparer<TValue>.Default.Equals(value, default);
+        var found = _cacheManager.TryGetFast(cacheKey, out value);
 
         if (found)
             _stats.Hits++;
@@ -120,7 +94,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
     public void Set<TValue>(string key, TValue value, TimeSpan duration)
     {
         // Pre-generated key - no allocation overhead
-        var cacheKey = $"{_setKey}:{key}";
+        var cacheKey = $"{_keyPrefix}:{key}";
 
         var valueTask = _memoryCache.SetAsync(cacheKey, value, duration);
 
@@ -132,7 +106,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
 
     public void Remove(string key)
     {
-        var cacheKey = $"{_removeKey}:{key}";
+        var cacheKey = $"{_keyPrefix}:{key}";
         var valueTask = _memoryCache.RemoveAsync(cacheKey);
         if (!valueTask.IsCompleted)
         {

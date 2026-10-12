@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MethodCache.SqlServer;
 
 namespace MethodCache.SqlServer.IntegrationTests;
 
@@ -37,6 +38,9 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     {
         var connectionString = _sqlServer.RequireConnectionString();
         var services = new ServiceCollection();
+        // SQL Server runs under emulation on some developer hosts, and all three TFMs share its CPU in CI.
+        // Test sharing/invalidations with a realistic infrastructure budget; production still defaults to 1s.
+        services.Configure<DistributedCacheOptions>(options => options.OperationTimeout = TimeSpan.FromSeconds(5));
         services.AddMethodCache();
         services.AddMethodCacheSqlServer(options =>
         {
@@ -47,10 +51,13 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
 
         var provider = services.BuildServiceProvider();
         _nodes.Add(provider);
-        foreach (var hostedService in provider.GetServices<IHostedService>())
+        var hostedServices = provider.GetServices<IHostedService>().ToArray();
+        foreach (var hostedService in hostedServices)
         {
             await hostedService.StartAsync(CancellationToken.None);
         }
+        using var readinessDeadline = new CancellationTokenSource(Eventually);
+        await SqlServerFixture.WaitForTablesAsync(hostedServices, readinessDeadline.Token);
 
         return provider.GetRequiredService<ICacheManager>();
     }
@@ -109,6 +116,27 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     }
 
     [SkippableFact]
+    public async Task LongKeyAndTag_AreSharedAndInvalidated_WithoutDisablingTheDistributedCache()
+    {
+        var first = await CreateNodeAsync();
+        var second = await CreateNodeAsync();
+        var longKey = new string('k', 500);
+        var longTag = new string('t', 500);
+
+        await Get(first, longKey, "v1", longTag);
+        (await Get(second, longKey, "unused", longTag)).Should().Be("v1", "a long key is stored under its hash");
+
+        await first.InvalidateByTagsAsync(longTag);
+        await WaitUntil(async () => await Get(second, longKey, "v2", longTag) == "v2");
+
+        // Neither node fell back to memory only: a new value still reaches the other node through SQL Server
+        await Get(first, "other", "from first");
+        (await Get(second, "other", "from second")).Should().Be("from first");
+        await Get(second, "another", "from second");
+        (await Get(first, "another", "from first")).Should().Be("from second");
+    }
+
+    [SkippableFact]
     public async Task ABurstOfInvalidations_DoesNotDelayNewOnes()
     {
         var first = await CreateNodeAsync();
@@ -118,8 +146,8 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
 
         // More rows than one read returns, all recent, from another instance
         await ExecuteAsync($"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
-            SELECT TOP (3000) 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
+            SELECT TOP (3000) @scope, 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await first.InvalidateByKeysAsync("key");
@@ -148,20 +176,21 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await using var transaction = connection.BeginTransaction();
         await using (var insert = new SqlCommand(
             $"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target]) VALUES ('other', 0, 'key');
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
-            SELECT TOP (200) 'other', 0, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target]) VALUES (@scope, 'other', 0, 'key');
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
+            SELECT TOP (200) @scope, 'other', 0, CONCAT('pending', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """,
             connection,
             transaction))
         {
+            insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
             await insert.ExecuteNonQueryAsync();
         }
 
         await ExecuteAsync($"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target])
-            SELECT TOP (500) 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target])
+            SELECT TOP (500) @scope, 'other', 0, CONCAT('unrelated', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await Task.Delay(500);
@@ -177,8 +206,8 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     {
         await CreateNodeAsync();
         await ExecuteAsync($"""
-            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([InstanceId], [MessageType], [Target], [CreatedAt])
-            SELECT TOP (12000) 'other', 0, 'old', DATEADD(hour, -2, SYSUTCDATETIME())
+            INSERT INTO [{_schema}].[MethodCacheInvalidations] ([Scope], [InstanceId], [MessageType], [Target], [CreatedAt])
+            SELECT TOP (12000) @scope, 'other', 0, 'old', DATEADD(hour, -2, SYSUTCDATETIME())
             FROM sys.all_objects a CROSS JOIN sys.all_objects b;
             """);
         await CreateNodeAsync();
@@ -191,6 +220,7 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         await using var connection = new SqlConnection(_sqlServer.ConnectionString);
         await connection.OpenAsync();
         await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
         await command.ExecuteNonQueryAsync();
     }
 

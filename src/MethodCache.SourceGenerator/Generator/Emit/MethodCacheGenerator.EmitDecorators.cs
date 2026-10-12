@@ -965,18 +965,19 @@ namespace MethodCache.SourceGenerator
                     var parameters = string.Join(", ", property.Parameters.Select(p =>
                     {
                         var modifier = p.RefKind == RefKind.In ? "in " : string.Empty;
-                        return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {p.Name}";
+                        return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.Identifier(p.Name)}";
                     }));
                     name = $"this[{parameters}]";
-                    access = $"{target}[{string.Join(", ", property.Parameters.Select(p => p.Name))}]";
+                    access = $"{target}[{string.Join(", ", property.Parameters.Select(p => Utils.Identifier(p.Name)))}]";
                 }
                 else
                 {
-                    name = property.Name;
-                    access = $"{target}.{property.Name}";
+                    name = Utils.Identifier(property.Name);
+                    access = $"{target}.{name}";
                 }
 
-                sb.AppendLine($"        {byRef}{type} {declaring}.{name}");
+                var unsafeModifier = IsPointerType(property.Type) || property.Parameters.Any(p => IsPointerType(p.Type)) ? "unsafe " : "";
+                sb.AppendLine($"        {unsafeModifier}{byRef}{type} {declaring}.{name}");
                 sb.AppendLine("        {");
                 if (property.GetMethod != null)
                     sb.AppendLine(byRef.Length > 0 ? $"            get => ref {access};" : $"            get => {access};");
@@ -994,8 +995,9 @@ namespace MethodCache.SourceGenerator
             private static void EmitPassthroughEvent(StringBuilder sb, IEventSymbol @event)
             {
                 var declaring = Utils.GetReturnTypeForSignature(@event.ContainingType);
-                var target = $"(({declaring})_decorated).{@event.Name}";
-                sb.AppendLine($"        event {Utils.GetReturnTypeForSignature(@event.Type)} {declaring}.{@event.Name}");
+                var name = Utils.Identifier(@event.Name);
+                var target = $"(({declaring})_decorated).{name}";
+                sb.AppendLine($"        event {Utils.GetReturnTypeForSignature(@event.Type)} {declaring}.{name}");
                 sb.AppendLine("        {");
                 sb.AppendLine($"            add => {target} += value;");
                 sb.AppendLine($"            remove => {target} -= value;");
@@ -1020,7 +1022,8 @@ namespace MethodCache.SourceGenerator
                 var parameters = string.Join(", ", method.Parameters.Select(p =>
                     $"{ParameterModifier(p)}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.Identifier(p.Name)}"));
 
-                sb.AppendLine($"        {modifiers}{byRef}{returnType} {declaring}.{Utils.Identifier(method.Name)}{typeParams}({parameters})");
+                var unsafeModifier = IsPointerType(method.ReturnType) || method.Parameters.Any(p => IsPointerType(p.Type)) ? "unsafe " : "";
+                sb.AppendLine($"        {modifiers}{unsafeModifier}{byRef}{returnType} {declaring}.{Utils.Identifier(method.Name)}{typeParams}({parameters})");
 
                 // An explicit implementation inherits the constraints; it may only say how T? reads
                 foreach (var tp in method.TypeParameters)
@@ -1072,10 +1075,10 @@ namespace MethodCache.SourceGenerator
 
                 if (tp.HasReferenceTypeConstraint)
                     constraints.Add("class");
-                if (tp.HasValueTypeConstraint)
-                    constraints.Add("struct");
                 if (tp.HasUnmanagedTypeConstraint)
                     constraints.Add("unmanaged");
+                else if (tp.HasValueTypeConstraint)
+                    constraints.Add("struct");
                 if (tp.HasNotNullConstraint)
                     constraints.Add("notnull");
 

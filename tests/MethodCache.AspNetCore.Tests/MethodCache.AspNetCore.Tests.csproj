@@ -28,4 +28,7 @@
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../TestSupport/AtomicTestCache.cs" Link="TestSupport/AtomicTestCache.cs" />
+  </ItemGroup>
 </Project>

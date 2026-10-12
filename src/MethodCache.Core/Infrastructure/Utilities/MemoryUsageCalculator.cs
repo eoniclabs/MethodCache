@@ -21,14 +21,19 @@ namespace MethodCache.Core.Infrastructure.Utilities
     internal sealed class MemoryUsageCalculator
     {
         private readonly MethodCacheMemoryOptions _options;
-        private readonly ConcurrentDictionary<Type, long> _typeSizeCache = new();
         private long _operationCounter = 0;
         private long _lastAccurateCalculation = 0;
-        private readonly Random _random = new();
+        private readonly Random _random;
+        private readonly object _samplingSync = new();
+        private bool _hasSample;
+        private bool _samplingInProgress;
+        private int _readsSinceSample;
+        private double _sampleAverage;
 
-        public MemoryUsageCalculator(MethodCacheMemoryOptions options)
+        public MemoryUsageCalculator(MethodCacheMemoryOptions options, Random? random = null)
         {
             _options = options;
+            _random = random ?? Random.Shared;
         }
 
         /// <summary>
@@ -38,11 +43,11 @@ namespace MethodCache.Core.Infrastructure.Utilities
         {
             return _options.MemoryCalculationMode switch
             {
-                MemoryUsageCalculationMode.Fast => CalculateFast(cache),
+                MemoryUsageCalculationMode.Fast => CalculateFast(cache, valueExtractor),
                 MemoryUsageCalculationMode.Accurate => CalculateAccurate(cache, valueExtractor),
                 MemoryUsageCalculationMode.Sampling => CalculateSampling(cache, valueExtractor),
                 MemoryUsageCalculationMode.Disabled => 0,
-                _ => CalculateFast(cache)
+                _ => CalculateFast(cache, valueExtractor)
             };
         }
 
@@ -53,26 +58,26 @@ namespace MethodCache.Core.Infrastructure.Utilities
         /// size estimates. Results may be significantly different from actual memory usage.
         /// Use only for relative comparisons and performance monitoring trends.
         /// </summary>
-        private long CalculateFast<T>(ConcurrentDictionary<string, T> cache)
+        private long CalculateFast<T>(ConcurrentDictionary<string, T> cache, Func<T, object> valueExtractor)
         {
             if (cache.Count == 0) return 0;
 
             const long overheadPerEntry = 120; // ConcurrentDictionary overhead + EnhancedCacheEntry overhead
             const long averageKeySize = 50;
-            
+
             // Improved value size estimation based on common types
             long averageValueSize = 500; // Default fallback
-            
+
             // Sample a few entries to get better type-based estimates
             var sampleSize = Math.Min(10, cache.Count);
             var samples = cache.Take(sampleSize).ToList();
-            
+
             if (samples.Any())
             {
                 var totalEstimatedSize = 0L;
                 foreach (var kvp in samples)
                 {
-                    var valueSize = EstimateValueSizeFast(kvp.Value!);
+                    var valueSize = EstimateValueSizeFast(valueExtractor(kvp.Value));
                     totalEstimatedSize += valueSize;
                 }
                 averageValueSize = totalEstimatedSize / samples.Count;
@@ -94,12 +99,12 @@ namespace MethodCache.Core.Infrastructure.Utilities
         private long CalculateAccurate<T>(ConcurrentDictionary<string, T> cache, Func<T, object> valueExtractor)
         {
             var currentOperation = Interlocked.Increment(ref _operationCounter);
-            
+
             // Only recalculate if enough operations have passed
             if (currentOperation - _lastAccurateCalculation < _options.AccurateModeRecalculationInterval)
             {
                 // Return fast calculation for intermediate calls
-                return CalculateFast(cache);
+                return CalculateFast(cache, valueExtractor);
             }
 
             Interlocked.Exchange(ref _lastAccurateCalculation, currentOperation);
@@ -128,63 +133,128 @@ namespace MethodCache.Core.Infrastructure.Utilities
         /// </summary>
         private long CalculateSampling<T>(ConcurrentDictionary<string, T> cache, Func<T, object> valueExtractor)
         {
-            if (cache.Count == 0) return 0;
-
-            var sampleSize = Math.Max(1, (int)(cache.Count * _options.SamplingPercentage));
-            var samples = cache.OrderBy(x => _random.Next()).Take(sampleSize).ToList();
-
-            if (!samples.Any()) return CalculateFast(cache);
-
-            long totalSampleSize = 0;
-            const long overheadPerEntry = 120;
-
-            foreach (var kvp in samples)
+            var count = cache.Count;
+            var calculate = false;
+            double? average = null;
+            lock (_samplingSync)
             {
-                var keySize = Encoding.UTF8.GetByteCount(kvp.Key);
-                var valueSize = CalculateValueSizeAccurate(valueExtractor(kvp.Value));
-                totalSampleSize += overheadPerEntry + keySize + valueSize;
+                if (count == 0)
+                {
+                    _hasSample = false;
+                    _readsSinceSample = 0;
+                    return 0;
+                }
+                if (_samplingInProgress)
+                {
+                    average = _hasSample ? _sampleAverage : null;
+                }
+                else if (_hasSample && ++_readsSinceSample < _options.SamplingRecalculationInterval)
+                {
+                    average = _sampleAverage;
+                }
+                else
+                {
+                    _samplingInProgress = true;
+                    calculate = true;
+                }
+            }
+            if (!calculate)
+            {
+                return average.HasValue ? (long)(count * average.Value) : CalculateFast(cache, valueExtractor);
             }
 
-            var averageEntrySize = totalSampleSize / samples.Count;
-            return cache.Count * averageEntrySize;
+            try
+            {
+                var sampleSize = Math.Min(_options.SamplingMaxEntries, Math.Max(1, (int)(count * _options.SamplingPercentage)));
+                var samples = new KeyValuePair<string, T>[sampleSize];
+                var seen = 0;
+                var filled = 0;
+                // Reservoir sampling: one pass, bounded memory, and every observed entry has the same chance.
+                foreach (var entry in cache)
+                {
+                    seen++;
+                    if (filled < sampleSize)
+                    {
+                        samples[filled++] = entry;
+                    }
+                    else
+                    {
+                        var slot = _random.Next(seen);
+                        if (slot < sampleSize)
+                        {
+                            samples[slot] = entry;
+                        }
+                    }
+                }
+                if (filled == 0)
+                {
+                    lock (_samplingSync) { _hasSample = false; }
+                    return 0;
+                }
+
+                long total = 0;
+                const long overheadPerEntry = 120;
+                // Serialization invokes payload getters. Keep it outside the state lock so concurrent or reentrant
+                // statistics reads can use the last average (or a fast estimate) instead of blocking or resampling.
+                for (var i = 0; i < filled; i++)
+                {
+                    var entry = samples[i];
+                    total += overheadPerEntry + Encoding.UTF8.GetByteCount(entry.Key) + CalculateValueSizeAccurate(valueExtractor(entry.Value));
+                }
+                var nextAverage = (double)total / filled;
+                lock (_samplingSync)
+                {
+                    _sampleAverage = nextAverage;
+                    _hasSample = true;
+                    _readsSinceSample = 0;
+                }
+                return (long)(cache.Count * nextAverage);
+            }
+            finally
+            {
+                lock (_samplingSync) { _samplingInProgress = false; }
+            }
         }
 
         /// <summary>
         /// Fast estimation for common value types.
         /// </summary>
-        private long EstimateValueSizeFast(object value)
+        private static long EstimateValueSizeFast(object value)
         {
-            if (value == null) return 8; // Reference size
-
+            if (value == null) return IntPtr.Size;
             var type = value.GetType();
-            
-            // Check cache first
-            if (_typeSizeCache.TryGetValue(type, out var cachedSize))
+            // Variable-size values must be measured on every sample, even when the type was seen before.
+            return value switch
             {
-                return cachedSize;
-            }
-
-            long estimatedSize = value switch
-            {
-                string str => str.Length * 2 + 24, // Unicode + string overhead
-                int => 4,
-                long => 8,
-                double => 8,
-                decimal => 16,
-                DateTime => 8,
-                DateTimeOffset => 16,
-                Guid => 16,
-                bool => 1,
-                byte[] bytes => bytes.Length + 24,
-                Array array => array.Length * 8 + 24, // Rough estimate for object arrays
-                ICollection<object> collection => collection.Count * 8 + 32,
-                _ when type.IsValueType => System.Runtime.InteropServices.Marshal.SizeOf(type),
-                _ => 100 // Default for complex objects
+                string text => (long)text.Length * 2 + 24,
+                byte[] bytes => bytes.LongLength + 24,
+                Array array => array.LongLength * IntPtr.Size + 24,
+                System.Collections.ICollection collection => (long)collection.Count * IntPtr.Size + 32,
+                int or uint or float => 4,
+                long or ulong or double => 8,
+                short or ushort or char => 2,
+                byte or sbyte or bool => 1,
+                decimal or DateTimeOffset or Guid => 16,
+                DateTime or TimeSpan or TimeOnly => 8,
+                DateOnly => 4,
+                IntPtr or UIntPtr => IntPtr.Size,
+                _ when type.IsEnum => System.Runtime.InteropServices.Marshal.SizeOf(Enum.GetUnderlyingType(type)),
+                _ when type.IsValueType => EstimateStructSize(type),
+                _ => 100 // Complex object graphs still use a rough fallback, not a deep measurement.
             };
+        }
 
-            // Cache the result for this type
-            _typeSizeCache.TryAdd(type, estimatedSize);
-            return estimatedSize;
+        private static long EstimateStructSize(Type type)
+        {
+            try
+            {
+                return System.Runtime.InteropServices.Marshal.SizeOf(type);
+            }
+            catch (ArgumentException)
+            {
+                // Generic structs and structs without a supported interop layout still need usable statistics.
+                return 100;
+            }
         }
 
         /// <summary>

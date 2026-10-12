@@ -91,7 +91,11 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
 
 ## Runtime overrides
 
-Runtime overrides win over everything else. Use them to change a policy without a deploy, for example to shorten a
+Runtime overrides win over everything else. Concurrent mutations carry an ordered revision, so a delayed
+notification cannot replace a newer override or remove one that has been renewed. The effective policy agrees
+with the latest stored mutation after the operations complete. This also applies to removal, clearing and expiry.
+
+Use runtime overrides to change a policy without a deploy, for example to shorten a
 duration during an incident:
 
 <!-- snippet: configuration-runtime-overrides -->
@@ -158,3 +162,10 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 
 `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to [manual caching](manual-caching.md); configuring them for a
 cached method throws `InvalidOperationException` at startup.
+
+For overloaded methods, non-built-in parameter types are qualified by namespace, for example
+`MyApp.IUsers.Find(MyApp.Request)`. Types are named as reflection sees them: a tuple is
+`System.ValueTuple<int, string>` (element names dropped), `nint` is `System.IntPtr` and `dynamic` is `object`. This is
+also the format used by expression-based and runtime configuration.
+
+Generated decorators preserve generic constraints, including `unmanaged`, on cached interfaces and methods.

@@ -10,15 +10,17 @@ namespace MethodCache.Redis;
 /// Pub/sub delivers nothing while a connection is down, so when the connection comes back this instance treats it
 /// as a clear and drops its in-memory entries; they are read again from Redis.
 /// </remarks>
-internal sealed class RedisBackplane : IBackplane
+internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
 {
     private const char Separator = '\n';
 
     private readonly Func<Task<IConnectionMultiplexer>> _connect;
     private readonly RedisChannel _channel;
-    private IConnectionMultiplexer? _subscribed;
-    private Action<RedisChannel, RedisValue>? _handler;
-    private Func<BackplaneMessage, Task>? _onMessage;
+    private readonly object _lifecycleLock = new();
+    private Subscription? _subscription;
+    private Task? _shutdown;
+    private Task _cleanupTask = Task.CompletedTask;
+    private bool _disposed;
 
     public RedisBackplane(Func<Task<IConnectionMultiplexer>> connect, string channel)
     {
@@ -39,51 +41,126 @@ internal sealed class RedisBackplane : IBackplane
         => PublishAsync(BackplaneMessageType.TagInvalidation, tag);
 
     /// <inheritdoc />
-    public async Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
+    public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(onMessage);
-        if (_handler != null)
+        lock (_lifecycleLock)
         {
-            throw new InvalidOperationException("The backplane already has a subscriber.");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_subscription != null) throw new InvalidOperationException("The backplane already has a subscriber.");
+            var subscription = new Subscription(onMessage, cancellationToken);
+            _subscription = subscription;
+            _ = StartSubscriptionAsync(subscription);
+            return subscription.Completion.Task;
         }
+    }
 
-        _onMessage = onMessage;
-        _handler = (_, value) =>
-        {
-            if (TryParse(value, out var message))
-            {
-                Observe(onMessage(message));
-            }
-        };
-        var connection = await _connect().ConfigureAwait(false);
-        _subscribed = connection;
-        connection.ConnectionRestored += OnConnectionRestored;
-
+    private async Task StartSubscriptionAsync(Subscription subscription)
+    {
         try
         {
-            await connection.GetSubscriber().SubscribeAsync(_channel, _handler).ConfigureAwait(false);
+            var connection = await _connect().WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+            subscription.Cancellation.Token.ThrowIfCancellationRequested();
+            subscription.Connection = connection;
+            subscription.Handler = (_, value) =>
+            {
+                if (!subscription.Cancellation.IsCancellationRequested &&
+                    Volatile.Read(ref subscription.Callback) is { } callback && TryParse(value, out var message))
+                    Observe(callback(message));
+            };
+            subscription.Restored = (_, _) =>
+            {
+                if (!subscription.Cancellation.IsCancellationRequested && Volatile.Read(ref subscription.Callback) is { } callback)
+                    Observe(callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }));
+            };
+            connection.ConnectionRestored += subscription.Restored;
+            try
+            {
+                await connection.GetSubscriber().SubscribeAsync(_channel, subscription.Handler).ConfigureAwait(false);
+            }
+            catch (RedisConnectionException)
+            {
+                // The multiplexer retains the registration and subscribes again when it reconnects.
+            }
+            subscription.Completion.TrySetResult();
         }
-        catch (RedisConnectionException)
+        catch (OperationCanceledException) when (subscription.Cancellation.IsCancellationRequested)
         {
-            // Redis is unreachable right now. The subscription stays registered with the connection, which
-            // subscribes again when it reconnects.
+            subscription.Completion.TrySetCanceled(subscription.Cancellation.Token);
+        }
+        catch (Exception ex)
+        {
+            subscription.Completion.TrySetException(ex);
         }
     }
 
     /// <inheritdoc />
-    public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
+    public Task UnsubscribeAsync(CancellationToken cancellationToken = default)
     {
-        _onMessage = null;
-        var connection = Interlocked.Exchange(ref _subscribed, null);
-        var handler = Interlocked.Exchange(ref _handler, null);
-        if (connection != null)
+        Task cleanup;
+        lock (_lifecycleLock)
         {
-            connection.ConnectionRestored -= OnConnectionRestored;
-            if (handler != null)
+            var subscription = _subscription;
+            _subscription = null;
+            if (subscription == null) return _cleanupTask.WaitAsync(cancellationToken);
+            Volatile.Write(ref subscription.Callback, null);
+            subscription.Cancellation.Cancel();
+            var removing = CleanupSubscriptionAsync(subscription);
+            cleanup = _cleanupTask = _cleanupTask.IsCompletedSuccessfully ? removing : Task.WhenAll(_cleanupTask, removing);
+        }
+        return cleanup.WaitAsync(cancellationToken);
+    }
+
+    private async Task CleanupSubscriptionAsync(Subscription subscription)
+    {
+        try { await subscription.Completion.Task.ConfigureAwait(false); }
+        catch (Exception) { /* Failed or cancelled subscriptions still need their registrations removed. */ }
+        try
+        {
+            if (subscription.Connection is { } connection)
             {
-                await connection.GetSubscriber().UnsubscribeAsync(_channel, handler).ConfigureAwait(false);
+                connection.ConnectionRestored -= subscription.Restored;
+                if (subscription.Handler is { } handler)
+                {
+                    try { await connection.GetSubscriber().UnsubscribeAsync(_channel, handler).ConfigureAwait(false); }
+                    catch (RedisConnectionException) { /* The client removes its local handler before sending UNSUBSCRIBE. */ }
+                    catch (RedisTimeoutException) { /* A missing server acknowledgement cannot restore the removed handler. */ }
+                    catch (ObjectDisposedException) { /* The application may already have closed its borrowed connection. */ }
+                }
             }
         }
+        finally { subscription.Cancellation.Dispose(); }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        lock (_lifecycleLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _shutdown = UnsubscribeAsync();
+            Observe(_shutdown);
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        Task shutdown;
+        lock (_lifecycleLock) shutdown = _shutdown!;
+        await shutdown.ConfigureAwait(false);
+    }
+
+    private sealed class Subscription(Func<BackplaneMessage, Task> callback, CancellationToken cancellationToken)
+    {
+        public readonly CancellationTokenSource Cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        public readonly TaskCompletionSource Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Func<BackplaneMessage, Task>? Callback = callback;
+        public IConnectionMultiplexer? Connection;
+        public Action<RedisChannel, RedisValue>? Handler;
+        public EventHandler<ConnectionFailedEventArgs>? Restored;
     }
 
     private async Task PublishAsync(BackplaneMessageType type, string value)
@@ -96,15 +173,6 @@ internal sealed class RedisBackplane : IBackplane
     {
         // Type, sender and value on separate lines; the value is last, so it may contain anything
         return string.Concat(((int)type).ToString(System.Globalization.CultureInfo.InvariantCulture), "\n", instanceId, "\n", value);
-    }
-
-    private void OnConnectionRestored(object? sender, ConnectionFailedEventArgs e)
-    {
-        // Invalidations sent while this instance was disconnected were lost
-        if (_onMessage is { } onMessage)
-        {
-            Observe(onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }));
-        }
     }
 
     private static void Observe(Task task)

@@ -92,7 +92,7 @@ public sealed class ChaosException(string message) : Exception(message);
 /// ignore cancellation, delays on the injected <see cref="TimeProvider"/>, intermittent failures and damaged payloads.
 /// Several nodes can share one instance, or each wrap the same inner cache with their own faults.
 /// </summary>
-public sealed class ChaosDistributedCache : IDistributedCache
+public sealed class ChaosDistributedCache : MethodCache.Extensibility.IAtomicInvalidationStore
 {
     private readonly object _lock = new();
     private readonly IDistributedCache _inner;
@@ -106,7 +106,7 @@ public sealed class ChaosDistributedCache : IDistributedCache
 
     public ChaosDistributedCache(IDistributedCache? inner = null, TimeProvider? time = null)
     {
-        _inner = inner ?? new MemoryDistributedCache(MsOptions.Create(new MemoryDistributedCacheOptions()));
+        _inner = inner ?? new MethodCache.TestSupport.AtomicTestCache();
         _time = time ?? TimeProvider.System;
     }
 
@@ -171,6 +171,21 @@ public sealed class ChaosDistributedCache : IDistributedCache
         }
 
         release.SetResult();
+    }
+
+    public async Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default)
+    {
+        var fault = await BeforeAsync(ChaosOperations.Set, key, cancellationToken).ConfigureAwait(false);
+        var bytes = new byte[8];
+        System.Buffers.Binary.BinaryPrimitives.WriteInt64LittleEndian(bytes, timestamp);
+        bytes = Damage(fault.Fault, bytes)!;
+        var token = fault.Landed ? CancellationToken.None : cancellationToken;
+        if (bytes.Length == 8)
+            await ((MethodCache.Extensibility.IAtomicInvalidationStore)_inner).WriteInvalidationStampAsync(key, System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes), retention, token).ConfigureAwait(false);
+        else
+            await _inner.SetAsync(key, bytes, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = retention }, token).ConfigureAwait(false);
+        CountLanding(fault.Landed);
+        await AfterAsync(fault.Fault, cancellationToken).ConfigureAwait(false);
     }
 
     // ---------- async ----------

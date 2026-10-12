@@ -212,8 +212,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddMethodCacheDistributedCache(_ => new Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache(
-            Microsoft.Extensions.Options.Options.Create(new Microsoft.Extensions.Caching.Memory.MemoryDistributedCacheOptions())));
+        services.AddMethodCacheDistributedCache(_ => new MethodCache.TestSupport.AtomicTestCache());
         services.AddHealthChecks().AddMethodCache();
         await using var provider = services.BuildServiceProvider();
 
@@ -224,8 +223,9 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         Assert.Equal(true, entry.Value.Data["distributedCacheAvailable"]);
     }
 
-    private sealed class UnreachableDistributedCache : Microsoft.Extensions.Caching.Distributed.IDistributedCache
+    private sealed class UnreachableDistributedCache : MethodCache.Extensibility.IAtomicInvalidationStore
     {
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => throw new InvalidOperationException("offline");
         public byte[]? Get(string key) => throw Unreachable();
         public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Task.FromException<byte[]?>(Unreachable());
         public void Refresh(string key) => throw Unreachable();

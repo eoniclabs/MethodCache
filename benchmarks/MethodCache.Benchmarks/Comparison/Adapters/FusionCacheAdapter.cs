@@ -43,7 +43,7 @@ public class FusionCacheAdapter : ICacheAdapter
     public bool TryGet<TValue>(string key, out TValue? value)
     {
         var result = _cache.TryGet<TValue>(key);
-        value = result.Value;
+        value = result.HasValue ? result.Value : default;
         if (result.HasValue)
             _stats.Hits++;
         else

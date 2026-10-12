@@ -66,7 +66,7 @@ internal sealed class FreshnessCalculator
     }
 
     /// <summary>
-    /// <c>must-revalidate</c>, and for a shared cache <c>proxy-revalidate</c> and <c>s-maxage</c>, forbid serving the
+    /// <c>no-cache</c>, <c>must-revalidate</c>, and for a shared cache <c>proxy-revalidate</c> and <c>s-maxage</c>, forbid serving the
     /// response stale (RFC 9111 sections 5.2.2.2, 5.2.2.8 and 5.2.2.10).
     /// </summary>
     public bool MayServeStale(HttpCacheEntry entry)
@@ -77,7 +77,7 @@ internal sealed class FreshnessCalculator
             return true;
         }
 
-        if (cacheControl.MustRevalidate)
+        if (cacheControl.NoCache || cacheControl.MustRevalidate)
         {
             return false;
         }

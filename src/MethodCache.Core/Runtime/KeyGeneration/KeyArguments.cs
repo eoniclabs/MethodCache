@@ -25,34 +25,66 @@ internal static class KeyArguments
 
     private static readonly ConcurrentDictionary<Type, string> TypeNames = new();
 
-    private static readonly ConcurrentDictionary<Type, bool> HasHiddenState = new();
-
     /// <summary>
-    /// Serializes <paramref name="arg"/> to JSON. Throws when the type can't be serialized, or when all of its
-    /// state is non-public: every value would then serialize to <c>{}</c> and share one key, and callers would get
-    /// each other's cached results.
+    /// Serializes <paramref name="arg"/> to JSON. Throws when the type can't be serialized, or when it or any value
+    /// inside it (a property, an element) has a type whose state is all non-public: every such value would serialize
+    /// to <c>{}</c>, different arguments would share one key, and callers would get each other's cached results.
     /// </summary>
     public static byte[] Serialize(object arg)
     {
         var type = arg.GetType();
-        byte[] json;
         try
         {
-            json = JsonSerializer.SerializeToUtf8Bytes(arg, JsonOptions.GetTypeInfo(type));
+            return JsonSerializer.SerializeToUtf8Bytes(arg, JsonOptions.GetTypeInfo(type));
+        }
+        catch (HiddenStateException hidden)
+        {
+            throw Unsupported(type, hidden.Type == type
+                ? "its state is not public, so every value would get the same key"
+                : $"it holds a '{hidden.Type.FullName}', whose state is not public, so different values would get the same key",
+                inner: null);
         }
         catch (Exception ex)
         {
             // Falling back to ToString() would give different values the same key and return the wrong data.
             throw Unsupported(type, "it can't be serialized", ex);
         }
+    }
 
-        if (json.Length == 2 && json[0] == (byte)'{' && json[1] == (byte)'}' &&
-            HasHiddenState.GetOrAdd(type, static t => t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Length > 0))
+    /// <summary>
+    /// Makes the contract of a type that JSON writes as <c>{}</c> but that holds instance state refuse to write.
+    /// Contracts are built once per type, so serializing pays nothing for the check.
+    /// </summary>
+    private static JsonTypeInfo? RefuseHiddenState(JsonTypeInfo? info)
+    {
+        if (info is { Kind: JsonTypeInfoKind.Object, Properties.Count: 0 } && HasInstanceFields(info.Type))
         {
-            throw Unsupported(type, "its state is not public, so every value would get the same key", inner: null);
+            var type = info.Type;
+            info.OnSerializing = _ => throw new HiddenStateException(type);
         }
 
-        return json;
+        return info;
+    }
+
+    /// <summary>Thrown while writing a value whose type has only non-public state.</summary>
+    private sealed class HiddenStateException(Type type) : Exception
+    {
+        public Type Type { get; } = type;
+    }
+
+    private static bool HasInstanceFields(Type type)
+    {
+        // GetFields without DeclaredOnly omits private base fields. Inspect every level so inheritance cannot
+        // turn stateful objects into the same empty JSON object.
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            if (current.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static InvalidOperationException Unsupported(Type type, string reason, Exception? inner)
@@ -144,7 +176,7 @@ internal static class KeyArguments
 
         public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options)
             => IsExact(type)
-                ? _default.GetTypeInfo(type, options)
+                ? RefuseHiddenState(_default.GetTypeInfo(type, options))
                 : (JsonTypeInfo)CreateInfoMethod.MakeGenericMethod(type).Invoke(null, [_default, options])!;
 
         private static JsonTypeInfo<T> CreateInfo<T>(DefaultJsonTypeInfoResolver resolver, JsonSerializerOptions options)
@@ -168,7 +200,7 @@ internal static class KeyArguments
             if (type == typeof(T))
             {
                 // The usual contract of T, built here because options resolve T to this converter
-                _exact ??= (JsonTypeInfo<T>)resolver.GetTypeInfo(typeof(T), options);
+                _exact ??= (JsonTypeInfo<T>)RefuseHiddenState(resolver.GetTypeInfo(typeof(T), options))!;
                 JsonSerializer.Serialize(writer, value, _exact);
                 return;
             }

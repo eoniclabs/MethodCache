@@ -31,8 +31,8 @@ namespace MethodCache.SourceGenerator
 
             internal static readonly DiagnosticDescriptor UnsupportedRefParams = new(
                 id: "MCG003",
-                title: "Caching not supported with ref/out/in parameters",
-                messageFormat: "[Cache] on '{0}' is not supported: ref, out and in parameters can't be part of a cache key. Pass the values by value, or remove [Cache].",
+                title: "Caching not supported with reference parameters or returns",
+                messageFormat: "[Cache] on '{0}' is not supported: reference parameters and reference returns cannot be cached. Pass and return values by value, or remove [Cache].",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
@@ -59,7 +59,7 @@ namespace MethodCache.SourceGenerator
             internal static readonly DiagnosticDescriptor UnsupportedPointerType = new(
                 id: "MCG006",
                 title: "Caching not supported with pointer types",
-                messageFormat: "[Cache] on '{0}' is not supported: pointer parameters can't be part of a cache key. Pass a value or an array, or remove [Cache].",
+                messageFormat: "[Cache] on '{0}' is not supported: pointer and function pointer parameters or returns, including arrays of them, cannot be cached. Use a value or an array of values, or remove [Cache].",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
@@ -68,7 +68,7 @@ namespace MethodCache.SourceGenerator
             internal static readonly DiagnosticDescriptor UnsupportedRefLikeType = new(
                 id: "MCG007",
                 title: "Caching not supported with ref struct types",
-                messageFormat: "[Cache] on '{0}' is not supported: ref struct parameters such as Span<T> can't be part of a cache key. Pass an array, Memory<T> or a string, or remove [Cache].",
+                messageFormat: "[Cache] on '{0}' is not supported: ref struct parameters or returns such as Span<T> cannot be cached. Use an array, Memory<T> or a string, or remove [Cache].",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true,

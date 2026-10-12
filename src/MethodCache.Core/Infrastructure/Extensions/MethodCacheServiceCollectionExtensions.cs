@@ -174,13 +174,15 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<IPolicyRegistry>()));
         }
 
-        // Service key of a distributed cache that only MethodCache uses, so the app's own IDistributedCache is untouched
+        // Shared service key contract: MethodCache.HttpCaching resolves this owned cache before the app's cache.
+        // Keep this key stable so the HTTP add-on can remain independent of a Core package reference.
         private const string OwnDistributedCacheKey = "MethodCache";
 
         /// <summary>
         /// Keeps cached results in a distributed cache that only MethodCache uses, created by
         /// <paramref name="cacheFactory"/>, as well as in memory. The app's own <see cref="IDistributedCache"/>, if
-        /// any, is left alone. Integrations such as <c>AddMethodCacheRedis</c> use this.
+        /// any, is left alone. The method-result provider must implement <see cref="IAtomicInvalidationStore"/>; otherwise
+        /// resolving the cache manager fails. Integrations such as <c>AddMethodCacheRedis</c> supply this capability.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="cacheFactory">Creates the distributed cache, once</param>
@@ -198,8 +200,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <summary>
         /// Keeps cached results in the registered <see cref="IDistributedCache"/> (Redis, SQL Server, ...) as well as
         /// in memory. An in-memory miss reads the distributed cache before running the method, so instances share
-        /// results, and invalidating a key or tag reaches every instance. Register the distributed cache itself
-        /// first, for example with <c>AddStackExchangeRedisCache</c>; register an <see cref="IBackplane"/> too so
+        /// results, and invalidating a key or tag reaches every instance. The registered cache must implement
+        /// <see cref="IAtomicInvalidationStore"/> with backend atomic stamp writes; otherwise resolving the cache
+        /// manager fails. Register the distributed cache itself first; register an <see cref="IBackplane"/> too so
         /// other instances also drop their in-memory copies at once.
         /// </summary>
         /// <param name="services">The service collection</param>

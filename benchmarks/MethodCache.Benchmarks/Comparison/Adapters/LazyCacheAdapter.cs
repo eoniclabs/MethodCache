@@ -1,4 +1,6 @@
 using LazyCache;
+using LazyCache.Providers;
+using Microsoft.Extensions.Caching.Memory;
 using System.Diagnostics;
 
 namespace MethodCache.Benchmarks.Comparison.Adapters;
@@ -9,13 +11,15 @@ namespace MethodCache.Benchmarks.Comparison.Adapters;
 public class LazyCacheAdapter : ICacheAdapter
 {
     private readonly IAppCache _cache;
+    private readonly MemoryCache _memoryCache;
     private readonly CacheStatistics _stats = new();
 
     public string Name => "LazyCache";
 
     public LazyCacheAdapter()
     {
-        _cache = new CachingService();
+        _memoryCache = new MemoryCache(new MemoryCacheOptions());
+        _cache = new CachingService(new MemoryCacheProvider(_memoryCache));
     }
 
     public async Task<TValue> GetOrSetAsync<TValue>(
@@ -33,12 +37,13 @@ public class LazyCacheAdapter : ICacheAdapter
             _stats.TotalFactoryDuration += sw.Elapsed;
 
             return result;
-        }, duration);
+        }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = duration });
     }
 
     public bool TryGet<TValue>(string key, out TValue? value)
     {
-        var found = _cache.TryGetValue(key, out value);
+        var found = _memoryCache.TryGetValue(key, out _);
+        value = found ? _cache.Get<TValue>(key) : default;
         if (found)
             _stats.Hits++;
         else
@@ -48,7 +53,7 @@ public class LazyCacheAdapter : ICacheAdapter
 
     public void Set<TValue>(string key, TValue value, TimeSpan duration)
     {
-        _cache.Add(key, value, duration);
+        _cache.Add(key, value, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = duration });
     }
 
     public void Remove(string key)
@@ -58,14 +63,13 @@ public class LazyCacheAdapter : ICacheAdapter
 
     public void Clear()
     {
-        // LazyCache doesn't expose a clear method
-        // Would need to track keys or recreate cache
+        _memoryCache.Clear();
     }
 
     public CacheStatistics GetStatistics() => _stats;
 
     public void Dispose()
     {
-        // LazyCache doesn't implement IDisposable
+        _memoryCache.Dispose();
     }
 }

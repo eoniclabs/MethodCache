@@ -68,28 +68,35 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
 
     private static string GenerateKey(string methodName, object?[] args, int? version)
     {
-        var writer = t_writer ??= new ArrayBufferWriter<byte>(256);
+        var writer = t_writer ?? new ArrayBufferWriter<byte>(256);
+        // Key providers and JSON getters may call GenerateKey recursively. The active writer belongs to this
+        // invocation only; a nested invocation must borrow a different buffer.
+        t_writer = null;
         writer.ResetWrittenCount();
-
-        WriteString(writer, methodName);
-        WriteInt32(writer, version ?? -1);
-        WriteInt32(writer, args.Length);
-        foreach (var arg in args)
+        try
         {
-            WriteArgument(writer, arg);
-        }
+            WriteString(writer, methodName);
+            WriteInt32(writer, version ?? -1);
+            WriteInt32(writer, args.Length);
+            foreach (var arg in args)
+            {
+                WriteArgument(writer, arg);
+            }
 
-        var hash = XxHash128.HashToUInt128(writer.WrittenSpan);
-        if (writer.Capacity > 64 * 1024)
+            var hash = XxHash128.HashToUInt128(writer.WrittenSpan);
+            var prefix = version.HasValue
+                ? string.Concat(methodName, ":v", version.Value.ToString(CultureInfo.InvariantCulture))
+                : methodName;
+            return string.Concat(prefix, ":", ToHexString(hash));
+        }
+        finally
         {
-            // Don't keep a buffer grown by one huge argument alive on this thread.
-            t_writer = null;
+            if (writer.Capacity <= 64 * 1024)
+            {
+                // Return the buffer after failures too, but never retain one grown by a huge argument.
+                t_writer = writer;
+            }
         }
-
-        var prefix = version.HasValue
-            ? string.Concat(methodName, ":v", version.Value.ToString(CultureInfo.InvariantCulture))
-            : methodName;
-        return string.Concat(prefix, ":", ToHexString(hash));
     }
 
     private static void WriteArgument(ArrayBufferWriter<byte> writer, object? arg)

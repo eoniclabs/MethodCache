@@ -17,7 +17,7 @@ public abstract class SimpleBenchmarkBase
     public virtual void GlobalSetup()
     {
         var services = new ServiceCollection();
-        
+
         // Add basic logging
         services.AddLogging(builder => builder
             .SetMinimumLevel(LogLevel.Warning)
@@ -30,11 +30,9 @@ public abstract class SimpleBenchmarkBase
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         }, typeof(SimpleBenchmarkBase).Assembly);
 
-        services.AddSingleton(sp => (InMemoryCacheManager)sp.GetRequiredService<ICacheManager>());
-        
         ServiceProvider = services.BuildServiceProvider();
         CacheManager = ServiceProvider.GetRequiredService<ICacheManager>();
-        
+
         OnSetupComplete();
     }
 

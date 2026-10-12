@@ -60,7 +60,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`,
   `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the first argument.
 - Cached objects are shared between callers: return immutable types such as records.
-- For a type with only private state used as an argument, implement `ICacheKeyProvider`.
+- For a type with only private state used as an argument or inside one (a property, a list element), implement
+  `ICacheKeyProvider`.
 - For a client from a NuGet package with an interface, use
   `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` instead of a wrapper.
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,
@@ -77,3 +78,7 @@ builder.Services.AddMethodCache();                               // after your r
   `NoOpCacheManager`.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
+
+Custom distributed method-result caches must implement `MethodCache.Extensibility.IAtomicInvalidationStore`,
+including backend-atomic maximum timestamps and retention preservation. A plain `IDistributedCache` is
+rejected when the method cache manager is resolved. Redis and SQL Server supply this contract.

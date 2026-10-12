@@ -309,6 +309,14 @@ public class HttpCacheSafetyTests
     private sealed class TimeToLiveStorage : IHttpCacheStorage
     {
         private readonly Dictionary<string, HttpCacheEntry> _entries = new();
+        private readonly Dictionary<string, string> _generations = new();
+        public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(_generations.GetValueOrDefault(key, string.Empty));
+        public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _generations[key] = Guid.NewGuid().ToString("N");
+            return ValueTask.CompletedTask;
+        }
 
         public Dictionary<string, TimeSpan> TimeToLives { get; } = new();
 

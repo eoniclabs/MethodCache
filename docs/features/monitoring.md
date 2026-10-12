@@ -26,6 +26,10 @@ await admin.InvalidateTagsAsync(["user:42"]);
 - `ListEntries(keyPrefix, tag, limit)` and `GetEntry(key)`: live entries, without their values.
 - `InvalidateTagsAsync(tags)`, `RemoveEntryAsync(key)` and `ClearAsync()`.
 
+`ListEntries` scans the live cache to find the first keys in ordinal order, but keeps at most `limit`
+candidates in memory. A small page does not allocate a snapshot or sort every matching entry. Entries
+can change during this diagnostic scan; it is not a transaction.
+
 It works with the default in-memory cache manager; a custom `ICacheManager` has no administrator.
 
 ## Admin endpoints
@@ -79,6 +83,9 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-Hits have no span, so they stay allocation-free, but they are counted. Cache keys and tags are left off spans unless
+Hits have no span and the metric producer allocates nothing for its normal method tag, with or without a listener.
+It skips tag construction for instruments without listeners. Custom metric tag lists with at most eight total
+tags also stay within the producer's inline storage; larger lists can allocate. SDK processors and exporters
+have their own costs. Hits are still counted. Cache keys and tags are left off spans unless
 you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
 [package README](../../src/MethodCache.OpenTelemetry/README.md) and [Security](../security.md).

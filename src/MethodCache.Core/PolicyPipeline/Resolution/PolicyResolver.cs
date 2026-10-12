@@ -23,6 +23,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private readonly bool _knowsCachedMethods;
     private readonly List<Task> _watcherTasks = new();
     private readonly List<(IImmediatePolicySource Source, Action<PolicyChange> Handler)> _immediateSubscriptions = new();
+    private readonly Dictionary<PolicySourceRegistration, long> _snapshotRevisions = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<(LayerKey Source, string MethodId), long> _changeRevisions = new();
     private readonly object _immediateSync = new(); // Orders an immediate source's snapshot against its changes
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _initializationGate = new(1, 1);
@@ -258,7 +260,18 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             source.Changed += Handler;
             _immediateSubscriptions.Add((source, Handler));
 
-            foreach (var snapshot in source.GetSnapshot())
+            IReadOnlyCollection<PolicySnapshot> snapshots;
+            if (source is RuntimePolicySource runtime)
+            {
+                var captured = runtime.CaptureSnapshots();
+                snapshots = captured.Snapshots;
+                _snapshotRevisions[registration] = captured.Revision;
+            }
+            else
+            {
+                snapshots = source.GetSnapshot();
+            }
+            foreach (var snapshot in snapshots)
             {
                 if (!string.IsNullOrWhiteSpace(snapshot.MethodId))
                 {
@@ -306,6 +319,17 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         if (string.IsNullOrWhiteSpace(change.MethodId))
         {
             return;
+        }
+
+        if (change.SourceRevision > 0)
+        {
+            var key = (KeyOf(registration), change.MethodId);
+            var seen = Math.Max(_snapshotRevisions.GetValueOrDefault(registration), _changeRevisions.GetValueOrDefault(key));
+            if (change.SourceRevision <= seen)
+            {
+                return;
+            }
+            _changeRevisions[key] = change.SourceRevision;
         }
 
         switch (change.Reason)

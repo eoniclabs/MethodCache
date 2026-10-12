@@ -14,6 +14,8 @@ Set-Location $repo
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_NOLOGO = '1'
 $env:CI = 'true'
+# High and critical NuGet advisories fail restore (see Directory.Build.props and README.md)
+$env:MethodCacheEnforceAudit = 'true'
 
 $results = if ($env:METHODCACHE_CI_RESULTS) { $env:METHODCACHE_CI_RESULTS } else { Join-Path $repo 'artifacts\ci' }
 New-Item -ItemType Directory -Force -Path $results | Out-Null
