@@ -57,7 +57,8 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> 
 | `generic` | Generic interfaces |
 | `serialization` | Serializers for the distributed layer |
 | `quick` | A small set for development |
-| `all` | Everything |
+| `profile` | The generated decorator's sync and async hit paths |
+| `all` | `basic`, `providers`, `concurrent`, `memory`, `realworld`, `generic` and `serialization` in turn |
 
 `--quick` (or `BENCHMARK_QUICK=true`) uses fewer iterations: good while developing, not for numbers you publish.
 Results land in `BenchmarkDotNet.Artifacts/results/`. `benchmarks/MethodCache.Benchmarks/README.md` has more detail.

@@ -133,6 +133,8 @@ public class Program
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
         Console.WriteLine("  readme       - The README numbers: MethodCache vs IMemoryCache, HybridCache and FusionCache");
+        Console.WriteLine("  engine       - The in-memory engine on its own");
+        Console.WriteLine("  hitratio     - Hit ratio of the eviction policy on skewed workloads (a simulation)");
         Console.WriteLine("  basic        - Basic caching operations (hit/miss, different data sizes)");
         Console.WriteLine("  baseline     - Compare with Microsoft.Extensions.Caching.Memory and LazyCache");
         Console.WriteLine("  comparison   - Unified comparison: MethodCache vs FusionCache vs EasyCaching vs LazyCache");
@@ -143,7 +145,8 @@ public class Program
         Console.WriteLine("  generic      - Generic interface performance");
         Console.WriteLine("  serialization - Serialization performance comparison");
         Console.WriteLine("  quick        - Quick benchmarks for development (minimal parameters)");
-        Console.WriteLine("  all          - Run all benchmark categories");
+        Console.WriteLine("  profile      - Generated decorator sync and async hit paths");
+        Console.WriteLine("  all          - basic, providers, concurrent, memory, realworld, generic and serialization");
         Console.WriteLine("");
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run -- basic");
