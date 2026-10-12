@@ -44,6 +44,34 @@ public class TelemetryCacheManagerTests : IDisposable
             .Build()!;
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task TryGetAsync_NullReference_DistinguishesCachedNullFromMiss(bool stored) =>
+        AssertNullHitAsync<string>(stored);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task TryGetAsync_NullNullable_DistinguishesCachedNullFromMiss(bool stored) =>
+        AssertNullHitAsync<int?>(stored);
+
+    private async Task AssertNullHitAsync<T>(bool stored)
+    {
+        var policy = CacheRuntimePolicy.FromPolicy("test", Policies.CachePolicy.Empty, Policies.CachePolicyFields.None);
+        var keys = new Mock<ICacheKeyGenerator>();
+        keys.Setup(x => x.GenerateKey("null", It.IsAny<object[]>(), policy)).Returns("null-key");
+        _innerManagerMock.Setup(x => x.TryGetAsync<T>("null", It.IsAny<object[]>(), policy, keys.Object))
+            .ReturnsAsync(default(T));
+        _innerManagerMock.Setup(x => x.TryGetFast<T>("null-key", out It.Ref<T?>.IsAny)).Returns(stored);
+        using var activity = new Activity("cached-null");
+        _activitySourceMock.Setup(x => x.StartCacheOperation("null", TracingConstants.Operations.Get)).Returns(activity);
+
+        await _telemetryCacheManager.TryGetAsync<T>("null", Array.Empty<object>(), policy, keys.Object);
+
+        _activitySourceMock.Verify(x => x.SetCacheHit(activity, stored), Times.Once);
+    }
+
     [Fact]
     public async Task GetOrCreateAsync_CacheHit_MarksSpanAsHitWithoutCountingIt()
     {

@@ -1,5 +1,7 @@
 # MethodCache.OpenTelemetry
 
+Tracing counts cached `null` values as hits, including nullable value types.
+
 [![NuGet Version](https://img.shields.io/nuget/v/MethodCache.OpenTelemetry)](https://www.nuget.org/packages/MethodCache.OpenTelemetry)
 
 OpenTelemetry metrics and traces for MethodCache.

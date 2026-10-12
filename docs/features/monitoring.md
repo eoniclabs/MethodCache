@@ -1,5 +1,7 @@
 # Monitoring
 
+Tracing counts cached `null` values as hits, including nullable value types.
+
 MethodCache shows what it is doing in code, over HTTP, in health checks and through OpenTelemetry.
 
 ## In code

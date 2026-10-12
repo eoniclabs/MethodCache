@@ -119,10 +119,7 @@ internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
             SetActivityTagsFromPolicy(activity, policy);
 
             var result = await _innerManager.TryGetAsync<T>(methodName, args, policy, keyGenerator).ConfigureAwait(false);
-            var requiresExistenceCheck =
-                typeof(T).IsValueType &&
-                Nullable.GetUnderlyingType(typeof(T)) is null &&
-                EqualityComparer<T>.Default.Equals(result!, default!);
+            var requiresExistenceCheck = EqualityComparer<T>.Default.Equals(result!, default!);
             var hit = requiresExistenceCheck
                 ? _innerManager.TryGetFast<T>(cacheKey, out _)
                 : result is not null;

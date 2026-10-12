@@ -260,6 +260,8 @@ See [HTTP response caching](docs/features/http-caching.md) and the [package READ
 
 ### Monitoring
 
+Tracing counts cached `null` values as hits, including nullable value types.
+
 <!-- snippet: readme-monitoring -->
 ```cs
 builder.Services.AddHealthChecks().AddMethodCache();         // MethodCache.AspNetCore

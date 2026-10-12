@@ -1226,6 +1226,8 @@ and expire normally; upgrade all instances sharing a prefix together.
 
 # Monitoring
 
+Tracing counts cached `null` values as hits, including nullable value types.
+
 MethodCache shows what it is doing in code, over HTTP, in health checks and through OpenTelemetry.
 
 ## In code
@@ -2101,6 +2103,8 @@ Each check asks the distributed cache once, waiting at most its operation timeou
 <!-- source: src/MethodCache.OpenTelemetry/README.md -->
 
 # MethodCache.OpenTelemetry
+
+Tracing counts cached `null` values as hits, including nullable value types.
 
 [![NuGet Version](https://img.shields.io/nuget/v/MethodCache.OpenTelemetry)](https://www.nuget.org/packages/MethodCache.OpenTelemetry)
 
