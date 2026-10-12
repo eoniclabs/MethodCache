@@ -120,6 +120,22 @@ public class SignatureCorpusTests
         Assert.Contains(compiled.Diagnostics, d => d.Id == expectedId);
     }
 
+    [Theory]
+    [InlineData("protected abstract void Touch();", "void ISvc.Touch() { }")]
+    [InlineData("protected abstract int Value { get; }", "int ISvc.Value => 1;")]
+    [InlineData("protected abstract event Action Changed;", "event Action ISvc.Changed { add { } remove { } }")]
+    public async Task NonPublicAbstractContract_ReportsDiagnostic_WithoutInaccessibleForwarding(string member, string implementation)
+    {
+        var source = $$"""
+            using System;
+            using MethodCache;
+            public interface ISvc { [Cache] int Get(int id); {{member}} }
+            public class Svc : ISvc { public int Get(int id) => id; {{implementation}} }
+            """;
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "NonPublicAbstractContract", LanguageVersion.CSharp12);
+        Assert.Contains(compiled.Diagnostics, d => d.Id == "MCG013");
+    }
+
     private static readonly Dictionary<string, (string Member, string Implementation, string ExpectedId)> Unsupported = new()
     {
         ["void"] = ("void Touch(int id)", "void Touch(int id) { }", "MCG001"),
@@ -218,6 +234,8 @@ public class SignatureCorpusTests
         ["keyword generic method parameter"] = Member("T Get<@class, T>(T id) where @class : class", "T Get<@class, T>(T id) where @class : class { Counter.Hit(); return id; }", "s.Get<object, int>(1)", "s.Get<object, int>(2)"),
         ["keyword generic interface parameter"] = new("public interface ISvc<@class> where @class : class { [Cache] int Get(int id); } public class Svc : ISvc<string> { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc<string>", "s.Get(1)", "s.Get(2)"),
         ["keyword namespace"] = new("namespace @class { public interface ISvc { [Cache] int Get(int id); } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } } }", "@class.ISvc", "s.Get(1)", "s.Get(2)"),
+        ["private default interface members"] = new("public interface ISvc { [Cache] int Get(int id); private int Helper() => 42; private int Hidden => 42; private event Action Changed { add { } remove { } } } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc", "s.Get(1)", "s.Get(2)"),
+        ["protected default interface members"] = new("public interface ISvc { [Cache] int Get(int id); protected int Helper() => 42; protected int Hidden => 42; } public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc", "s.Get(1)", "s.Get(2)"),
         // Return types
         ["Task<T>"] = Member("Task<string> Get(int id)", "Task<string> Get(int id) { Counter.Hit(); return Task.FromResult(\"v\" + id); }", "await s.Get(1)", "await s.Get(2)"),
         ["ValueTask<T>"] = Member("ValueTask<string> Get(int id)", "ValueTask<string> Get(int id) { Counter.Hit(); return new ValueTask<string>(\"v\" + id); }", "await s.Get(1)", "await s.Get(2)"),

@@ -157,7 +157,7 @@ namespace MethodCache.SourceGenerator
                     .Concat(info.Symbol.AllInterfaces.SelectMany(i => i.GetMembers().OfType<IMethodSymbol>()))
                     .Distinct(SymbolEqualityComparer.Default)
                     .Cast<IMethodSymbol>()
-                    .Where(m => m.MethodKind == MethodKind.Ordinary && !m.IsStatic);
+                    .Where(m => m.MethodKind == MethodKind.Ordinary && !m.IsStatic && (m.DeclaredAccessibility == Accessibility.Public || m.IsAbstract));
 
                 foreach (var method in allMethods)
                 {
@@ -175,7 +175,8 @@ namespace MethodCache.SourceGenerator
                 // Properties, indexers and events always call the decorated instance
                 var otherMembers = info.Symbol.GetMembers()
                     .Concat(info.Symbol.AllInterfaces.SelectMany(i => i.GetMembers()))
-                    .Where(m => !m.IsStatic && m is IPropertySymbol or IEventSymbol);
+                    .Where(m => !m.IsStatic && m is IPropertySymbol or IEventSymbol)
+                    .Where(m => m.DeclaredAccessibility == Accessibility.Public || m.IsAbstract);
                 foreach (var member in otherMembers)
                 {
                     if (member is IPropertySymbol property)

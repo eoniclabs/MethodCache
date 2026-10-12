@@ -9,7 +9,8 @@ The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`,
 interfaces and generic methods. Generic constraints, including `unmanaged`, are preserved. Overloaded methods
 include namespace-qualified parameter types in their identities so equally named types remain separate.
 
-Other interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
+Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
+Non-public default helpers stay on the interface and are not emitted as decorator implementations. Non-public abstract contracts are rejected with `MCG013` because the decorator cannot call those members on the decorated instance.
 Names that are C# keywords are escaped in the generated code, including namespaces, generic type parameters, constraints, property/event names and indexer
 parameters. Property getters/setters and event add/remove accessors reach the original implementation.
 

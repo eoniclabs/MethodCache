@@ -56,6 +56,10 @@ namespace MethodCache.SourceGenerator
             {
                 problem = "it has static abstract members, so it can't be used as a service type";
             }
+            else if (Utils.HasNonPublicAbstractMembers(type))
+            {
+                problem = "it has non-public abstract members that cannot be forwarded to the decorated instance";
+            }
 
             var methodNames = attribute.ConstructorArguments[1].Kind == TypedConstantKind.Array
                 ? attribute.ConstructorArguments[1].Values.Select(v => v.Value as string).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList()

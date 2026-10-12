@@ -25,6 +25,8 @@ builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
 
+Non-public default interface helpers are supported. Interfaces with non-public abstract members report `MCG013`.
+
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments, and values of different types never share a key, nested ones included. Generic interfaces such as `IRepository<User>` work too, including escaped keyword names for type parameters.
 - **Fast.** A hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and takes 4 to 6 times less time than HybridCache or FusionCache.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`.
