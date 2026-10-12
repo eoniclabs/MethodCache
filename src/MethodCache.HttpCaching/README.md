@@ -1,5 +1,7 @@
 # MethodCache.HttpCaching
 
+`only-if-cached` never contacts the origin, including range requests, caller validators, `no-store`, unsupported methods and background revalidation. An unavailable representation returns 504.
+
 HTTP cache keys preserve individual header-value boundaries, including `Cookie` and custom tenant headers.
 
 An explicit `Expires` at or before the response date is stale immediately; heuristic freshness and `DefaultMaxAge` do not extend it.

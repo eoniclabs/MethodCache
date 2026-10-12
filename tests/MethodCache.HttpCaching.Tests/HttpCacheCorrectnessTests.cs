@@ -312,6 +312,47 @@ public class HttpCacheCorrectnessTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("range")]
+    [InlineData("no-store")]
+    [InlineData("conditional")]
+    [InlineData("method")]
+    public async Task OnlyIfCached_BypassRequest_DoesNotContactOrigin(string reason)
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        using var owner = client;
+        inner.SetResponse(Cacheable("origin"));
+        using var request = new HttpRequestMessage(reason == "method" ? HttpMethod.Post : HttpMethod.Get, Url);
+        request.Headers.CacheControl = new CacheControlHeaderValue { OnlyIfCached = true, NoStore = reason == "no-store" };
+        if (reason == "range") request.Headers.Range = new RangeHeaderValue(0, 1);
+        if (reason == "conditional") request.Headers.IfNoneMatch.Add(new EntityTagHeaderValue("\"caller\""));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.GatewayTimeout, response.StatusCode);
+        Assert.Equal(0, inner.RequestCount);
+    }
+
+    [Fact]
+    public async Task OnlyIfCached_StaleWhileRevalidate_DoesNotStartBackgroundOriginRequest()
+    {
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { EnableStaleWhileRevalidate = true }, timeProvider: clock);
+        using var owner = client;
+        var first = Cacheable("cached", maxAge: TimeSpan.FromSeconds(1));
+        first.Headers.CacheControl!.Extensions.Add(new NameValueHeaderValue("stale-while-revalidate", "60"));
+        inner.SetResponses(first, Cacheable("origin"));
+        using var initial = await client.GetAsync(Url);
+        clock.Advance(TimeSpan.FromSeconds(2));
+        using var request = new HttpRequestMessage(HttpMethod.Get, Url);
+        request.Headers.CacheControl = new CacheControlHeaderValue { OnlyIfCached = true };
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal("cached", await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, inner.RequestCount);
+    }
+
     [Fact]
     public async Task OnlyIfCached_ReturnsGatewayTimeout_InsteadOfCallingTheOrigin()
     {
