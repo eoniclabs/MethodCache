@@ -5,7 +5,7 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 
 | Script | Runs on | What it does |
 |---|---|---|
-| `jobs.sh <job>...` | anything with the .NET 8, 9 and 10 SDKs | the jobs themselves: `build`, `demo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
+| `jobs.sh <job>...` | anything with the .NET 8, 9 and 10 SDKs | the jobs themselves: `build`, `demo`, `webdemo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
 | `diff_coverage.py` | | the share of changed lines under `src/` that a Cobertura report covers (used by `diffcoverage`) |
 | `linux.sh [job...]` | Linux with Docker | every Linux job inside the build image (`Dockerfile`), with Redis and SQL Server for the package apps |
 | `windows.ps1 [job...]` | Windows | `build` and `unit` (the Docker-backed tests run on Linux only) |
@@ -23,6 +23,14 @@ build/ci/linux.sh build tests   # or only some jobs
 
 Each job writes `artifacts/ci/<job>.log` and `artifacts/ci/<job>.exit`. A new CI job goes into `jobs.sh` (or
 `windows.ps1`) as a script or `dotnet` command, never as a step that only works in one CI system.
+
+## Demo verification
+
+The `demo` job runs the ten-chapter console tour, the local-server HttpClient tour and the web demo's
+cache/security/storage checks. `webdemo` runs all web-demo tests with Docker required, including two hosts
+sharing Redis and an outage/restart of a private Redis container. The regular `tests` job also includes these
+Redis scenarios. The `unit` and culture jobs exclude the `RedisDemo` test category along with the other
+Docker-backed integration tests. Each web test uses a separate SQLite database; no developer demo data is touched.
 
 ## Diff coverage (pull requests)
 

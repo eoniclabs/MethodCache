@@ -4,6 +4,9 @@ HTTP caching for `HttpClient`, the way a browser does it: responses are cached a
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
 response. It follows RFC 9111.
 
+Run the [HttpClient demo](../../samples/MethodCache.HttpDemo/) to see cache hits, ETag validation, `no-store`
+and PUT invalidation against a real local HTTP server with checked origin-call counters.
+
 <!-- snippet: http-basic -->
 ```cs
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()

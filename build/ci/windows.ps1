@@ -20,7 +20,7 @@ $env:MethodCacheEnforceAudit = 'true'
 $results = if ($env:METHODCACHE_CI_RESULTS) { $env:METHODCACHE_CI_RESULTS } else { Join-Path $repo 'artifacts\ci' }
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
-$withoutDocker = 'FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests'
+$withoutDocker = 'FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests&Category!=RedisDemo'
 $steps = @{
     build = @(
         @('restore', 'MethodCache.sln'),

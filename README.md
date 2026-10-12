@@ -52,7 +52,8 @@ cd MethodCache
 dotnet run -c Release --project samples/MethodCache.Demo
 ```
 
-A six-chapter tour where every number is measured live and every claim is checked (CI runs it too):
+A ten-chapter tour with checked claims (CI runs it too). The first chapters measure real calls; expiration,
+refresh-ahead and fail-safe use an explicitly advanced demo clock:
 
 ```text
   1. One attribute
@@ -69,11 +70,18 @@ A six-chapter tour where every number is measured live and every claim is checke
     Rename user 1, load both again    1 new database query
     ✓ User 2 still came from the cache: Alan Turing
   ...
-  All 6 chapters behaved as described.
+  All 10 chapters behaved as described.
 ```
 
 For ASP.NET Core with admin endpoints, OpenTelemetry and two instances sharing Redis, see the
 [web demo](samples/MethodCache.WebDemo/).
+The web demo opens its admin endpoints in Development; in Production they require authentication and the `Admin` role.
+Its SQLite data can be reset, and query counters show which requests actually reach the database.
+
+The [HttpClient demo](samples/MethodCache.HttpDemo/) starts a local HTTP server and checks `Cache-Control`,
+ETag/304, `no-store` and invalidation after PUT. Run `dotnet run -c Release --project samples/MethodCache.HttpDemo`.
+See the [console guide](samples/MethodCache.Demo/) for the four advanced chapters and the
+[web guide](samples/MethodCache.WebDemo/) for automated two-instance Redis and outage scenarios.
 
 ## Before and after
 

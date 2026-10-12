@@ -3,6 +3,9 @@
 Each cached method decides how long its entries live. The settings below can be set on `[Cache]`, in startup code, in
 `appsettings.json` or at runtime ([Configuration](configuration.md)).
 
+Chapter 7 of the [console demo](../../samples/MethodCache.Demo/) runs absolute expiry, sliding windows and
+refresh-ahead with an explicitly advanced clock and checked source-call counts.
+
 <!-- snippet: expiration-attributes -->
 ```cs
 public interface IReportService
