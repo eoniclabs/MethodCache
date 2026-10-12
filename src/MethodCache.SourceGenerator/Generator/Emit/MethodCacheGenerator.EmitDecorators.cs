@@ -134,6 +134,7 @@ namespace MethodCache.SourceGenerator
 
                 // Fields
                 sb.AppendLine($"        private readonly {interfaceFqn} _decorated;");
+                sb.AppendLine("        private readonly bool _ownsDecorated;");
                 sb.AppendLine("        private readonly ICacheManager _cacheManager;");
                 sb.AppendLine("        private readonly ICacheKeyGenerator _keyGenerator;");
                 sb.AppendLine("        private readonly ICacheMetricsProvider? _metricsProvider;");
@@ -236,9 +237,10 @@ namespace MethodCache.SourceGenerator
             private static void EmitConstructorWithPolicies(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
             {
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
-                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Infrastructure.DecoratorServices services)");
+                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
+                sb.AppendLine("            _ownsDecorated = ownsDecorated;");
                 sb.AppendLine("            if (services == null) throw new ArgumentNullException(nameof(services));");
                 sb.AppendLine("            _cacheManager = services.CacheManager;");
                 sb.AppendLine("            _keyGenerator = services.KeyGenerator;");
@@ -935,6 +937,17 @@ namespace MethodCache.SourceGenerator
             {
                 EmitMethodSignature(sb, method);
                 sb.AppendLine("        {");
+
+                if (method.Name == "Dispose" && method.Parameters.Length == 0 &&
+                    method.ContainingType.ToDisplayString() == "System.IDisposable")
+                {
+                    sb.AppendLine("            if (!this._ownsDecorated) return;");
+                }
+                else if (method.Name == "DisposeAsync" && method.Parameters.Length == 0 &&
+                    method.ContainingType.ToDisplayString() == "System.IAsyncDisposable")
+                {
+                    sb.AppendLine("            if (!this._ownsDecorated) return default;");
+                }
 
                 var call = BuildMethodCall(method);
                 if (method.ReturnsVoid)

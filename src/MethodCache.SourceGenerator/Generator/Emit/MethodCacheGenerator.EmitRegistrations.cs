@@ -89,7 +89,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                typeof({interfaceFqn}),");
                     sb.AppendLine($"                static (provider, inner) => new {decoratorFqn}(");
                     sb.AppendLine($"                    ({interfaceFqn})inner,");
-                    sb.AppendLine("                    global::MethodCache.Infrastructure.DecoratorServices.From(provider)),");
+                    sb.AppendLine("                    global::MethodCache.Infrastructure.DecoratorServices.From(provider), ownsDecorated: false),");
                     sb.AppendLine(hasPolicies
                         ? "                GeneratedPolicyRegistrations.AddPolicies,"
                         : "                null,");

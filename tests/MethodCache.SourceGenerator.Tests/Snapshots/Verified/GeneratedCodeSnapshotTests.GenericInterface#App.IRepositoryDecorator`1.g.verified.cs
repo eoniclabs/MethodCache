@@ -29,15 +29,17 @@ namespace App
     internal sealed class IRepositoryDecorator<T> : global::App.IRepository<T>
     {
         private readonly global::App.IRepository<T> _decorated;
+        private readonly bool _ownsDecorated;
         private readonly ICacheManager _cacheManager;
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider? _metricsProvider;
 
         private readonly CachedMethod _method_GetAsync;
 
-        public IRepositoryDecorator(global::App.IRepository<T> decorated, global::MethodCache.Infrastructure.DecoratorServices services)
+        public IRepositoryDecorator(global::App.IRepository<T> decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
             _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));
+            _ownsDecorated = ownsDecorated;
             if (services == null) throw new ArgumentNullException(nameof(services));
             _cacheManager = services.CacheManager;
             _keyGenerator = services.KeyGenerator;
