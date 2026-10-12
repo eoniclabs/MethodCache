@@ -237,7 +237,7 @@ public class SignatureCorpusTests
 
                 public static class Scenario
                 {
-                    public static async Task<int[]> RunAsync()
+                    public static async global::System.Threading.Tasks.Task<int[]> RunAsync()
                     {
                         var services = new ServiceCollection();
                         {{Registrations}}
@@ -280,6 +280,30 @@ public class SignatureCorpusTests
 
     private static readonly Dictionary<string, Shape> Cases = new()
     {
+        ["application types shadow framework and cache infrastructure"] = new("""
+            public class Task { }
+            public class ValueTask { }
+            public class List<T> { }
+            public class CachedMethod { }
+            public class CacheRuntimePolicy { }
+            public class ICacheManager { }
+            public class ICacheKeyGenerator { }
+            public class ICacheMetricsProvider { }
+            public class IPolicyRegistry { }
+            public class PolicyHandle { }
+            public class CacheTagTemplates { }
+            public class MethodCacheKeys { }
+            public class MethodCacheKeyBuilder { }
+            public interface ISvc {
+                [Cache(Tags = new[] { "id:{id}" })] global::System.Threading.Tasks.Task<int> Get(int id);
+                [CacheInvalidate(Tags = new[] { "id:{id}" })] global::System.Threading.Tasks.ValueTask Clear(int id);
+            }
+            public class Svc : ISvc {
+                public global::System.Threading.Tasks.Task<int> Get(int id) { Counter.Hit(); return global::System.Threading.Tasks.Task.FromResult(id); }
+                public global::System.Threading.Tasks.ValueTask Clear(int id) => default;
+            }
+            """, "ISvc", "await s.Get(1)", "await s.Clear(1); await s.Get(1)"),
+
         ["sealed default helper members"] = new("""
             public interface ISvc {
                 [Cache] int Get(int id);

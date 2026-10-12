@@ -13,7 +13,7 @@ namespace MethodCache.SourceGenerator
         // ======================== Decorator Emitter ========================
         private static void EmitTagInvalidation(StringBuilder sb, IMethodSymbol method, List<string> staticTags, List<(string template, List<string> paramNames)> dynamicTags, string indent)
         {
-            sb.AppendLine($"{indent}var __mcTags = new List<string>();");
+            sb.AppendLine($"{indent}var __mcTags = new global::System.Collections.Generic.List<string>();");
 
             // Add static tags
             if (staticTags.Any())
@@ -85,15 +85,15 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#nullable enable");
                 sb.AppendLine("#pragma warning disable CS8019 // Unnecessary using directive");
                 sb.AppendLine("using System;");
-                sb.AppendLine("using System.Collections.Generic;");
-                sb.AppendLine("using System.Collections.Concurrent;");
-                sb.AppendLine("using System.Linq;");
-                sb.AppendLine("using System.Threading;");
-                sb.AppendLine("using System.Threading.Tasks;");
-                sb.AppendLine("using MethodCache;");
-                sb.AppendLine("using MethodCache.Extensibility;");
-                sb.AppendLine("using MethodCache.Infrastructure;");
-                sb.AppendLine("using MethodCache.Policies;");
+                sb.AppendLine("using global::System.Collections.Generic;");
+                sb.AppendLine("using global::System.Collections.Concurrent;");
+                sb.AppendLine("using global::System.Linq;");
+                sb.AppendLine("using global::System.Threading;");
+                sb.AppendLine("using global::System.Threading.Tasks;");
+                sb.AppendLine("using global::MethodCache;");
+                sb.AppendLine("using global::MethodCache.Extensibility;");
+                sb.AppendLine("using global::MethodCache.Infrastructure;");
+                sb.AppendLine("using global::MethodCache.Policies;");
                 sb.AppendLine();
                 sb.AppendLine($"namespace {ns}");
                 sb.AppendLine("{");
@@ -115,8 +115,8 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("    /// </remarks>");
                 }
 
-                sb.AppendLine("    [System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
-                sb.AppendLine("    [System.Diagnostics.DebuggerNonUserCode]");
+                sb.AppendLine("    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
+                sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
                 // Internal: generated code in the application's assembly, never part of its public API
                 sb.AppendLine($"    internal sealed class {className}{genericParams} : {interfaceFqn}, global::System.IDisposable, global::System.IAsyncDisposable");
 
@@ -135,15 +135,15 @@ namespace MethodCache.SourceGenerator
                 // Fields
                 sb.AppendLine($"        private readonly {interfaceFqn} _decorated;");
                 sb.AppendLine("        private readonly bool _ownsDecorated;");
-                sb.AppendLine("        private readonly ICacheManager _cacheManager;");
-                sb.AppendLine("        private readonly ICacheKeyGenerator _keyGenerator;");
-                sb.AppendLine("        private readonly ICacheMetricsProvider? _metricsProvider;");
+                sb.AppendLine("        private readonly global::MethodCache.ICacheManager _cacheManager;");
+                sb.AppendLine("        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;");
+                sb.AppendLine("        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;");
                 sb.AppendLine();
 
                 // Each cached method reads its live policy and key prefix from a CachedMethod shared per registry
                 foreach (var cached in info.CachedMethods)
                 {
-                    sb.AppendLine($"        private readonly CachedMethod _method_{SiteName(cached, info.CachedMethods)};");
+                    sb.AppendLine($"        private readonly global::MethodCache.Infrastructure.CachedMethod _method_{SiteName(cached, info.CachedMethods)};");
                 }
                 sb.AppendLine();
 
@@ -225,10 +225,10 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        {");
                 foreach (var cached in cachedMethods)
                 {
-                    sb.AppendLine($"            public readonly CachedMethod {SiteName(cached, cachedMethods)};");
+                    sb.AppendLine($"            public readonly global::MethodCache.Infrastructure.CachedMethod {SiteName(cached, cachedMethods)};");
                 }
                 sb.AppendLine();
-                sb.AppendLine("            public CachedMethodSites(IPolicyRegistry registry)");
+                sb.AppendLine("            public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)");
                 sb.AppendLine("            {");
                 foreach (var cached in cachedMethods)
                 {
@@ -242,7 +242,7 @@ namespace MethodCache.SourceGenerator
                         ? $"\"{interfaceSymbol.Name}<\" + string.Join(\",\", typeof({interfaceFqn}).GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\""
                         : Utils.Literal(methodName);
 
-                    sb.AppendLine($"                {safeFieldName} = new CachedMethod(PolicyHandle.For(registry, {Utils.Literal(methodId)}), typeof({interfaceFqn}), {Utils.Literal(methodName)}, {displayName});");
+                    sb.AppendLine($"                {safeFieldName} = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, {Utils.Literal(methodId)}), typeof({interfaceFqn}), {Utils.Literal(methodName)}, {displayName});");
                 }
                 sb.AppendLine("            }");
                 sb.AppendLine("        }");
@@ -254,9 +254,9 @@ namespace MethodCache.SourceGenerator
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
                 sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)");
                 sb.AppendLine("        {");
-                sb.AppendLine("            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));");
+                sb.AppendLine("            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));");
                 sb.AppendLine("            _ownsDecorated = ownsDecorated;");
-                sb.AppendLine("            if (services == null) throw new ArgumentNullException(nameof(services));");
+                sb.AppendLine("            if (services == null) throw new global::System.ArgumentNullException(nameof(services));");
                 sb.AppendLine("            _cacheManager = services.CacheManager;");
                 sb.AppendLine("            _keyGenerator = services.KeyGenerator;");
                 sb.AppendLine("            _metricsProvider = services.MetricsProvider;");
@@ -398,7 +398,7 @@ namespace MethodCache.SourceGenerator
                 TryBuildInlineKey(keyParams, out var stringKey, out _);
 
                 sb.AppendLine("#if NET9_0_OR_GREATER");
-                sb.AppendLine("            var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);");
+                sb.AppendLine("            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);");
                 sb.AppendLine("            __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);");
                 foreach (var param in keyParams)
                 {
@@ -440,7 +440,7 @@ namespace MethodCache.SourceGenerator
                         sb.AppendLine("                return __mcCachedTask;");
                         break;
                     case ResultKind.ValueTask:
-                        sb.AppendLine($"                return new ValueTask<{type}>(__mcCachedValue!);");
+                        sb.AppendLine($"                return new global::System.Threading.Tasks.ValueTask<{type}>(__mcCachedValue!);");
                         break;
                     default:
                         sb.AppendLine("                return __mcCachedValue!;");
@@ -463,7 +463,7 @@ namespace MethodCache.SourceGenerator
                     // Tags such as "user:{userId}" get this call's arguments, matching what [CacheInvalidate] removes
                     var names = string.Join(", ", tagParameters.Select(p => $"\"{p}\""));
                     var values = string.Join(", ", tagParameters.Select(p => FormatTagArgument(method, p)));
-                    sb.AppendLine($"            var __mcPolicy = CacheTagTemplates.Expand({policy}, new[] {{ {names} }}, new[] {{ {values} }});");
+                    sb.AppendLine($"            var __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand({policy}, new[] {{ {names} }}, new[] {{ {values} }});");
                     policy = "__mcPolicy";
                 }
 
@@ -477,7 +477,7 @@ namespace MethodCache.SourceGenerator
                         sb.AppendLine($"            return {load};");
                         break;
                     case ResultKind.ValueTask:
-                        sb.AppendLine($"            return new ValueTask<{type}>({load});");
+                        sb.AppendLine($"            return new global::System.Threading.Tasks.ValueTask<{type}>({load});");
                         break;
                     default:
                         sb.AppendLine($"            return {load}.ConfigureAwait(false).GetAwaiter().GetResult();");
@@ -509,10 +509,10 @@ namespace MethodCache.SourceGenerator
                 {
                     ResultKind.Task => $"() => {call}!",
                     ResultKind.ValueTask => $"() => {call}.AsTask()!",
-                    _ => $"() => Task.FromResult({call})!"
+                    _ => $"() => global::System.Threading.Tasks.Task.FromResult({call})!"
                 };
 
-                sb.AppendLine($"        private Task<{type}> {LoaderName(method, safeFieldName)}(string __cacheKey, CacheRuntimePolicy __policy{parameters})");
+                sb.AppendLine($"        private global::System.Threading.Tasks.Task<{type}> {LoaderName(method, safeFieldName)}(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy{parameters})");
                 foreach (var tp in method.TypeParameters)
                 {
                     var constraints = BuildConstraints(tp);
@@ -547,7 +547,7 @@ namespace MethodCache.SourceGenerator
                 var pieces = new List<string> { "__mcSnapshot.KeyPrefix" };
                 foreach (var param in keyParams)
                 {
-                    pieces.Add("MethodCacheKeys.Separator");
+                    pieces.Add("global::MethodCache.MethodCacheKeys.Separator");
                     var name = Utils.ParameterIdentifier(param);
                     if (IsSimpleType(param.Type))
                     {
@@ -556,10 +556,10 @@ namespace MethodCache.SourceGenerator
                     else if (ImplementsCacheKeyProvider(param.Type))
                     {
                         // Through the interface, so explicit and re-implemented CacheKeyPart members are the ones called
-                        var keyPart = $"MethodCacheKeys.Part(((global::MethodCache.ICacheKeyProvider){name}).CacheKeyPart)";
+                        var keyPart = $"global::MethodCache.MethodCacheKeys.Part(((global::MethodCache.ICacheKeyProvider){name}).CacheKeyPart)";
                         pieces.Add(param.Type.IsValueType
                             ? keyPart
-                            : $"({name} is null ? MethodCacheKeys.Null : {keyPart})");
+                            : $"({name} is null ? global::MethodCache.MethodCacheKeys.Null : {keyPart})");
                     }
                     else if (TryGetKeyMembers(param.Type, out var members))
                     {
@@ -592,7 +592,7 @@ namespace MethodCache.SourceGenerator
                 {
                     if (memberPieces.Count > 0)
                     {
-                        memberPieces.Add("MethodCacheKeys.Separator");
+                        memberPieces.Add("global::MethodCache.MethodCacheKeys.Separator");
                     }
 
                     memberPieces.Add(FormatSimpleValue($"{name}.@{member.Name}", member.Type));
@@ -606,17 +606,17 @@ namespace MethodCache.SourceGenerator
                     return;
                 }
 
-                pieces.Add($"({name} is null ? MethodCacheKeys.Null : string.Concat(\"(\", {string.Join(", ", memberPieces)}, \")\"))");
+                pieces.Add($"({name} is null ? global::MethodCache.MethodCacheKeys.Null : string.Concat(\"(\", {string.Join(", ", memberPieces)}, \")\"))");
             }
 
             private static string FormatSimpleValue(string expression, ITypeSymbol type)
             {
                 if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T })
                 {
-                    return $"({expression}.HasValue ? MethodCacheKeys.Part({expression}.Value) : MethodCacheKeys.Null)";
+                    return $"({expression}.HasValue ? global::MethodCache.MethodCacheKeys.Part({expression}.Value) : global::MethodCache.MethodCacheKeys.Null)";
                 }
 
-                return $"MethodCacheKeys.Part({expression})";
+                return $"global::MethodCache.MethodCacheKeys.Part({expression})";
             }
 
             private static string AppendSimpleValue(string expression, ITypeSymbol type)

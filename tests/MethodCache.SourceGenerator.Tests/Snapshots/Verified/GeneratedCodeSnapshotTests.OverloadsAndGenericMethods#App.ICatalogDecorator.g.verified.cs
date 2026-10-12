@@ -3,37 +3,37 @@
 #nullable enable
 #pragma warning disable CS8019 // Unnecessary using directive
 using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MethodCache;
-using MethodCache.Extensibility;
-using MethodCache.Infrastructure;
-using MethodCache.Policies;
+using global::System.Collections.Generic;
+using global::System.Collections.Concurrent;
+using global::System.Linq;
+using global::System.Threading;
+using global::System.Threading.Tasks;
+using global::MethodCache;
+using global::MethodCache.Extensibility;
+using global::MethodCache.Infrastructure;
+using global::MethodCache.Policies;
 
 namespace App
 {
-    [System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
-    [System.Diagnostics.DebuggerNonUserCode]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
+    [global::System.Diagnostics.DebuggerNonUserCode]
     internal sealed class ICatalogDecorator : global::App.ICatalog, global::System.IDisposable, global::System.IAsyncDisposable
     {
         private readonly global::App.ICatalog _decorated;
         private readonly bool _ownsDecorated;
-        private readonly ICacheManager _cacheManager;
-        private readonly ICacheKeyGenerator _keyGenerator;
-        private readonly ICacheMetricsProvider? _metricsProvider;
+        private readonly global::MethodCache.ICacheManager _cacheManager;
+        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;
+        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;
 
-        private readonly CachedMethod _method_Method0;
-        private readonly CachedMethod _method_Method1;
-        private readonly CachedMethod _method_Method2;
+        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method0;
+        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method1;
+        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method2;
 
         public ICatalogDecorator(global::App.ICatalog decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
-            _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));
+            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
             _ownsDecorated = ownsDecorated;
-            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (services == null) throw new global::System.ArgumentNullException(nameof(services));
             _cacheManager = services.CacheManager;
             _keyGenerator = services.KeyGenerator;
             _metricsProvider = services.MetricsProvider;
@@ -47,15 +47,15 @@ namespace App
 
         private sealed class CachedMethodSites
         {
-            public readonly CachedMethod Method0;
-            public readonly CachedMethod Method1;
-            public readonly CachedMethod Method2;
+            public readonly global::MethodCache.Infrastructure.CachedMethod Method0;
+            public readonly global::MethodCache.Infrastructure.CachedMethod Method1;
+            public readonly global::MethodCache.Infrastructure.CachedMethod Method2;
 
-            public CachedMethodSites(IPolicyRegistry registry)
+            public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
             {
-                Method0 = new CachedMethod(PolicyHandle.For(registry, "App.ICatalog.Get(int)"), typeof(global::App.ICatalog), "Get(int)", "Get(int)");
-                Method1 = new CachedMethod(PolicyHandle.For(registry, "App.ICatalog.Get(string)"), typeof(global::App.ICatalog), "Get(string)", "Get(string)");
-                Method2 = new CachedMethod(PolicyHandle.For(registry, "App.ICatalog.Load"), typeof(global::App.ICatalog), "Load", "Load");
+                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Get(int)"), typeof(global::App.ICatalog), "Get(int)", "Get(int)");
+                Method1 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Get(string)"), typeof(global::App.ICatalog), "Get(string)", "Get(string)");
+                Method2 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Load"), typeof(global::App.ICatalog), "Load", "Load");
             }
         }
 
@@ -63,7 +63,7 @@ namespace App
         {
             var __mcSnapshot = this._method_Method0.Current;
 #if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
+            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
@@ -75,7 +75,7 @@ namespace App
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument0));
+            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0));
 
             if (this._cacheManager.TryGetFastTask<string>(__mcKey, out var __mcCachedTask))
             {
@@ -88,14 +88,14 @@ namespace App
             return __Load_Method0(__mcKey, __mcSnapshot.Policy, __mcArgument0);
         }
 
-        private Task<string> __Load_Method0(string __cacheKey, CacheRuntimePolicy __policy, int __mcArgument0)
+        private global::System.Threading.Tasks.Task<string> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
             => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method0.Name, () => ((global::App.ICatalog)this._decorated).Get(__mcArgument0)!, __policy);
 
         global::System.Threading.Tasks.Task<string> global::App.ICatalog.Get(string __mcArgument0)
         {
             var __mcSnapshot = this._method_Method1.Current;
 #if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
+            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
@@ -107,7 +107,7 @@ namespace App
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument0));
+            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0));
 
             if (this._cacheManager.TryGetFastTask<string>(__mcKey, out var __mcCachedTask))
             {
@@ -120,7 +120,7 @@ namespace App
             return __Load_Method1(__mcKey, __mcSnapshot.Policy, __mcArgument0!);
         }
 
-        private Task<string> __Load_Method1(string __cacheKey, CacheRuntimePolicy __policy, string __mcArgument0)
+        private global::System.Threading.Tasks.Task<string> __Load_Method1(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string __mcArgument0)
             => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method1.Name, () => ((global::App.ICatalog)this._decorated).Get(__mcArgument0)!, __policy);
 
         global::System.Threading.Tasks.Task<__mcTypeArgument0?> global::App.ICatalog.Load<__mcTypeArgument0>(int __mcArgument0)
@@ -130,7 +130,7 @@ namespace App
             var __mcTypeArguments = string.Concat("<", typeof(__mcTypeArgument0).ToString(), ">");
             var __mcPrefix = string.Concat(__mcSnapshot.KeyPrefix, __mcTypeArguments);
 #if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
+            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcPrefix);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
@@ -142,7 +142,7 @@ namespace App
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument0));
+            var __mcKey = string.Concat(__mcPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0));
 
             if (this._cacheManager.TryGetFastTask<__mcTypeArgument0?>(__mcKey, out var __mcCachedTask))
             {
@@ -155,7 +155,7 @@ namespace App
             return __Load_Method2<__mcTypeArgument0>(__mcKey, __mcSnapshot.Policy, __mcArgument0);
         }
 
-        private Task<__mcTypeArgument0?> __Load_Method2<__mcTypeArgument0>(string __cacheKey, CacheRuntimePolicy __policy, int __mcArgument0)
+        private global::System.Threading.Tasks.Task<__mcTypeArgument0?> __Load_Method2<__mcTypeArgument0>(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
             where __mcTypeArgument0 : class
             => this._cacheManager.GetOrCreateFastAsync<__mcTypeArgument0?>(__cacheKey, this._method_Method2.Name, () => ((global::App.ICatalog)this._decorated).Load<__mcTypeArgument0>(__mcArgument0)!, __policy);
 
