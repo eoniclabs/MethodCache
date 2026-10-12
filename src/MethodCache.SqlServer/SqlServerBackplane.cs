@@ -145,7 +145,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         AddScope(command);
         command.Parameters.Add(new SqlParameter("@instanceId", SqlDbType.VarChar, 32) { Value = InstanceId });
         command.Parameters.Add(new SqlParameter("@type", SqlDbType.TinyInt) { Value = (byte)type });
-        command.Parameters.Add(new SqlParameter("@target", SqlDbType.NVarChar, -1) { Value = target });
+        command.Parameters.Add(new SqlParameter("@target", SqlDbType.NVarChar, -1) { Value = MethodCache.Infrastructure.LosslessWireText.Encode(target) });
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -469,7 +469,8 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             return;
         }
 
-        var message = CreateMessage((BackplaneMessageType)reader.GetByte(2), reader.GetString(3), instanceId, reader.GetDateTime(4));
+        if (!MethodCache.Infrastructure.LosslessWireText.TryDecode(reader.GetString(3), out var target)) return;
+        var message = CreateMessage((BackplaneMessageType)reader.GetByte(2), target, instanceId, reader.GetDateTime(4));
         if (message != null)
         {
             messages.Add(message);

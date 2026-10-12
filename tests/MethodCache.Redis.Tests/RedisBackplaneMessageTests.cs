@@ -23,6 +23,18 @@ public class RedisBackplaneMessageTests
     }
 
     [Fact]
+    public void TagInvalidation_Utf8Transport_PreservesAllUtf16Units()
+    {
+        foreach (var tag in new[] { "tag:\ud800", "tag:\ud801", "tag:\udfff", "tag:\0", "tag:\ufffd" })
+        {
+            var payload = RedisBackplane.Format(BackplaneMessageType.TagInvalidation, "instance", tag);
+            RedisValue transported = System.Text.Encoding.UTF8.GetBytes(payload);
+            Assert.True(RedisBackplane.TryParse(transported, out var message));
+            Assert.Equal(tag, message.Tag);
+        }
+    }
+
+    [Fact]
     public void TagInvalidation_RoundTrips()
     {
         var payload = RedisBackplane.Format(BackplaneMessageType.TagInvalidation, "instance", "tag:users");

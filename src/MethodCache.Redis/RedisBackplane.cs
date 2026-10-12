@@ -172,7 +172,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     internal static string Format(BackplaneMessageType type, string instanceId, string value)
     {
         // Type, sender and value on separate lines; the value is last, so it may contain anything
-        return string.Concat(((int)type).ToString(System.Globalization.CultureInfo.InvariantCulture), "\n", instanceId, "\n", value);
+        return string.Concat(((int)type).ToString(System.Globalization.CultureInfo.InvariantCulture), "\n", instanceId, "\n", MethodCache.Infrastructure.LosslessWireText.Encode(value));
     }
 
     private static void Observe(Task task)
@@ -205,7 +205,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
         }
 
         var instanceId = text.Substring(first + 1, second - first - 1);
-        var target = text.Substring(second + 1);
+        if (!MethodCache.Infrastructure.LosslessWireText.TryDecode(text.Substring(second + 1), out var target)) return false;
         message = (BackplaneMessageType)type switch
         {
             BackplaneMessageType.KeyInvalidation => new BackplaneMessage { Type = BackplaneMessageType.KeyInvalidation, Key = target, InstanceId = instanceId },
