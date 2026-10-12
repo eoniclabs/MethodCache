@@ -182,7 +182,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Keeps cached results in a distributed cache that only MethodCache uses, created by
         /// <paramref name="cacheFactory"/>, as well as in memory. The app's own <see cref="IDistributedCache"/>, if
         /// any, is left alone. The method-result provider must implement <see cref="IAtomicInvalidationStore"/>; otherwise
-        /// resolving the cache manager fails. Integrations such as <c>AddMethodCacheRedis</c> supply this capability.
+        /// starting the host fails (or, without a generic host, resolving the cache manager). Integrations such as <c>AddMethodCacheRedis</c> supply this capability.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="cacheFactory">Creates the distributed cache, once</param>
@@ -201,8 +201,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Keeps cached results in the registered <see cref="IDistributedCache"/> (Redis, SQL Server, ...) as well as
         /// in memory. An in-memory miss reads the distributed cache before running the method, so instances share
         /// results, and invalidating a key or tag reaches every instance. The registered cache must implement
-        /// <see cref="IAtomicInvalidationStore"/> with backend atomic stamp writes; otherwise resolving the cache
-        /// manager fails. Register the distributed cache itself first; register an <see cref="IBackplane"/> too so
+        /// <see cref="IAtomicInvalidationStore"/> with backend atomic stamp writes; otherwise starting the host
+        /// fails (or, without a generic host, resolving the cache manager). Register the distributed cache itself first; register an <see cref="IBackplane"/> too so
         /// other instances also drop their in-memory copies at once.
         /// </summary>
         /// <param name="services">The service collection</param>
@@ -229,6 +229,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<IBackplane>(),
                 sp.GetService<TimeProvider>(),
                 sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>()));
+
+            // A generic host checks the cache when it starts; without one, the layer above rejects it on first use
+            services.AddOptions<DistributedCacheStoreValidation>().ValidateOnStart();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DistributedCacheStoreValidation>, DistributedCacheStoreValidation.Validator>(
+                static sp => new DistributedCacheStoreValidation.Validator(sp, OwnDistributedCacheKey)));
 
             EnsureCoreServices(services);
             return services;

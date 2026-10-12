@@ -607,7 +607,65 @@ namespace MethodCache.Core.Tests.Core
             { "int and long in nested object[]", new object[] { new object[] { 1 } }, new object[] { new object[] { 1L } } },
             { "int[] and long[] in object[]", new object[] { new[] { 1 } }, new object[] { new[] { 1L } } },
             { "int[] and List<int> in object[]", new object[] { new[] { 1 } }, new object[] { new List<int> { 1 } } },
+            { "nint and long in object[]", new object[] { (nint)1 }, new object[] { 1L } },
+            { "nint and nuint in object[]", new object[] { (nint)1 }, new object[] { (nuint)1 } },
+            { "nuint and ulong in List<object>", new List<object> { (nuint)1 }, new List<object> { 1UL } },
+            { "nint and int in an object property", new Boxed((nint)1), new Boxed(1) },
+            { "nint[] and long[] in object[]", new object[] { new nint[] { 1 } }, new object[] { new[] { 1L } } },
         };
+
+        public sealed record NativeHandle(nint Handle, nuint Size);
+
+        public static TheoryData<string, object> NativeIntegerArguments() => new()
+        {
+            { "nint", (nint)1 },
+            { "nint zero", (nint)0 },
+            { "negative nint", (nint)(-1) },
+            { "nint.MaxValue", nint.MaxValue },
+            { "nint.MinValue", nint.MinValue },
+            { "nuint", (nuint)1 },
+            { "nuint.MaxValue", nuint.MaxValue },
+            { "nint in a record", new NativeHandle(1, 2) },
+            { "other nint in a record", new NativeHandle(2, 2) },
+            { "nint[]", new nint[] { 1, -1 } },
+            { "nuint[]", new nuint[] { 1, 2 } },
+            { "nint in object[]", new object[] { (nint)1 } },
+            { "nint in an object property", new Boxed((nint)2) },
+            { "long", 1L },
+            { "int", 1 },
+            { "ulong", 1UL },
+        };
+
+        [Theory]
+        [InlineData(typeof(FastHashKeyGenerator))]
+        [InlineData(typeof(JsonKeyGenerator))]
+        public void KeyGenerators_NativeIntegerArguments_GetDistinctStableKeys(Type generatorType)
+        {
+            var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+            var args = NativeIntegerArguments().Select(row => row[1]).ToArray();
+
+            var keys = args.Select(a => generator.GenerateKey("M", new[] { a }, policy)).ToArray();
+            var again = args.Select(a => generator.GenerateKey("M", new[] { a }, policy)).ToArray();
+
+            Assert.Equal(keys, again);
+            Assert.Equal(keys.Length, keys.Distinct().Count());
+        }
+
+        [Theory]
+        [MemberData(nameof(NativeIntegerArguments))]
+        public void JsonKeyGenerator_NativeIntegerArgument_IsWrittenAsANumber(string because, object arg)
+        {
+            var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
+
+            var key = new JsonKeyGenerator().GenerateKey("M", new[] { arg }, policy);
+
+            key.Should().NotContain("{}", because);
+            if (arg is nint value)
+            {
+                key.Should().StartWith($"M:[{((long)value).ToString(System.Globalization.CultureInfo.InvariantCulture)}]:", because);
+            }
+        }
 
         [Theory]
         [MemberData(nameof(NestedValuesOfDifferentTypes))]
@@ -627,7 +685,7 @@ namespace MethodCache.Core.Tests.Core
             // int, long, string, double, float, decimal and enum values that all write "1" or 1 in JSON
             var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
             var policy = CacheRuntimePolicy.FromPolicy("M", CachePolicy.Empty, CachePolicyFields.None);
-            object[] ones = [1, 1L, "1", 1.0, 1.0f, 1m, (byte)1, DayOfWeek.Monday, '1'];
+            object[] ones = [1, 1L, "1", 1.0, 1.0f, 1m, (byte)1, DayOfWeek.Monday, '1', (nint)1, (nuint)1];
 
             var args = ones.Select(o => (object)new object[] { o })
                 .Concat(ones.Select(o => (object)new List<object> { o }))

@@ -18,8 +18,8 @@ namespace MethodCache.Extensibility;
 /// Keys have the form <c>{methodName}[:v{version}]:{hash}</c>, so all entries of one method share a readable
 /// prefix that pattern invalidation can match (see <see cref="MethodCacheKeys"/>). Every argument is written as a
 /// type tag followed by its value, and variable-length values by their length first, so two different argument
-/// lists never produce the same input to the hash. Built-in value types are written in binary, enums by their
-/// numeric value, dates with full precision. Other types are serialized with System.Text.Json, public fields
+/// lists never produce the same input to the hash. Built-in value types (<see cref="nint"/> and <see cref="nuint"/>
+/// included) are written in binary, enums by their numeric value, dates with full precision. Other types are serialized with System.Text.Json, public fields
 /// included, and a value inside them whose runtime type differs from its declared type (an element of
 /// <c>object[]</c>, a base-typed property) with that type's name and members; a type whose state is all
 /// non-public is refused, since every value of it would share one key.
@@ -60,6 +60,8 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         Guid,
         Enum,
         Object,
+        IntPtr, // after Object, so the tags above, and the keys built with them, stay the same
+        UIntPtr,
     }
 
     /// <inheritdoc />
@@ -153,6 +155,15 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
             case ulong ul:
                 WriteTag(writer, Tag.UInt64);
                 WriteUInt64(writer, ul);
+                break;
+            case nint n:
+                // Widened, so a value has the same key in 32-bit and 64-bit processes
+                WriteTag(writer, Tag.IntPtr);
+                WriteInt64(writer, n);
+                break;
+            case nuint un:
+                WriteTag(writer, Tag.UIntPtr);
+                WriteUInt64(writer, un);
                 break;
             case float f:
                 WriteTag(writer, Tag.Single);

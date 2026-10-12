@@ -16,10 +16,11 @@ internal static class KeyArguments
     // Fields count too, so two values that differ only in a public field don't share a key. JSON writes every lone
     // surrogate as U+FFFD, so strings and chars that hold one are written in a form no valid text can take. A value
     // whose runtime type differs from the type it is declared as is written with that type (see RuntimeTypeResolver).
+    // JSON has no converter for nint and nuint, so they are written as the 64-bit numbers they widen to.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerOptions.Default)
     {
         IncludeFields = true,
-        Converters = { new LosslessStringConverter(), new LosslessCharConverter() },
+        Converters = { new LosslessStringConverter(), new LosslessCharConverter(), new NativeIntConverter(), new NativeUIntConverter() },
         TypeInfoResolver = new RuntimeTypeResolver(),
     };
 
@@ -324,5 +325,34 @@ internal static class KeyArguments
 
         public override void WriteAsPropertyName(Utf8JsonWriter writer, char value, JsonSerializerOptions options)
             => writer.WritePropertyName(char.IsSurrogate(value) ? "\uFFFF" + ((int)value).ToString("x4", CultureInfo.InvariantCulture) : value.ToString());
+    }
+
+    /// <summary>
+    /// Writes an <see cref="nint"/> as the <see cref="long"/> it widens to, so a value has the same key on 32-bit and
+    /// 64-bit processes. In an <c>object</c> slot its runtime type is written too, so it stays apart from a <c>long</c>.
+    /// </summary>
+    private sealed class NativeIntConverter : JsonConverter<nint>
+    {
+        public override nint Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, nint value, JsonSerializerOptions options)
+            => writer.WriteNumberValue((long)value);
+
+        public override void WriteAsPropertyName(Utf8JsonWriter writer, nint value, JsonSerializerOptions options)
+            => writer.WritePropertyName(((long)value).ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Writes an <see cref="nuint"/> as the <see cref="ulong"/> it widens to, like <see cref="NativeIntConverter"/>.</summary>
+    private sealed class NativeUIntConverter : JsonConverter<nuint>
+    {
+        public override nuint Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, nuint value, JsonSerializerOptions options)
+            => writer.WriteNumberValue((ulong)value);
+
+        public override void WriteAsPropertyName(Utf8JsonWriter writer, nuint value, JsonSerializerOptions options)
+            => writer.WritePropertyName(((ulong)value).ToString(CultureInfo.InvariantCulture));
     }
 }
