@@ -1,0 +1,49 @@
+# Start the redis-a and redis-b profiles. Use the same Demo__DataFile and Demo__CachePrefix on both.
+# For a fresh run, POST /demo/reset and wait at least 3 seconds BEFORE the first GET (clock-skew tolerance).
+@a = http://localhost:5081
+@b = http://localhost:5082
+
+### 1. A queries SQLite and writes L1/L2
+GET {{a}}/products/1
+
+### 2. B reads Redis: zero database reads on B so far
+GET {{b}}/products/1
+
+### 3. Cache a second product on A
+GET {{a}}/products/2
+
+### 4. Cache that same product on B from Redis
+GET {{b}}/products/2
+
+### 5. Cache a list on B
+GET {{b}}/products?category=keyboards
+
+### 6. A changes product 1; the backplane invalidates it and the lists on B
+PUT {{a}}/products/1/price
+Content-Type: application/json
+
+{ "price": 119 }
+
+### 7. Product 2 on B is still cached
+GET {{b}}/products/2
+
+### 8. Product 1 on B is fresh
+GET {{b}}/products/1
+
+### 9. The list on B also contains the new price
+GET {{b}}/products?category=keyboards
+
+### 10. A's real database reads
+GET {{a}}/demo/queries
+
+### 11. B's real database reads
+GET {{b}}/demo/queries
+
+### 12. Remaining entries on B
+GET {{b}}/methodcache/entries
+
+### 13. A's health (Degraded after a Redis failure is observed)
+GET {{a}}/health
+
+### 14. B's health
+GET {{b}}/health

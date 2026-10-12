@@ -1,5 +1,9 @@
 # Distributed cache
 
+The [web demo](../../samples/MethodCache.WebDemo/) includes two-instance request examples and automated
+Redis outage/restart scenarios. Both hosts share a transactional SQLite database, and query counters distinguish
+Redis hits from source reads. Its tests own their Redis container and never stop a developer's Redis.
+
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
 instances and keep them across restarts:
 
