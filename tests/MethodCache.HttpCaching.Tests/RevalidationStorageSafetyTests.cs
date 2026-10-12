@@ -78,6 +78,61 @@ public class RevalidationStorageSafetyTests
         Assert.Equal(3, origin.Calls);
     }
 
+    [Fact]
+    public async Task Revalidation_ForbidsStorage_KeepsAnEarlierInFlightResponseOut()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+        using var origin = new RacingOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(
+            new HttpCacheOptions { IsSharedCache = true }, origin, timeProvider: time));
+        using var first = await client.GetAsync(Url);
+        time.Advance(TimeSpan.FromSeconds(2));
+
+        // An earlier GET is still waiting on the origin when a revalidation learns the response may not be stored.
+        var earlier = client.GetAsync(Url);
+        await origin.EarlierStarted.Task;
+        using var validated = await client.GetAsync(Url);
+        origin.ReleaseEarlier.SetResult();
+        using var earlierResponse = await earlier;
+
+        using var next = await client.GetAsync(Url);
+        Assert.Equal("fresh", await next.Content.ReadAsStringAsync());
+        Assert.Equal(4, origin.Calls);
+    }
+
+    private sealed class RacingOrigin : HttpMessageHandler
+    {
+        private int _calls;
+        public int Calls => Volatile.Read(ref _calls);
+        public TaskCompletionSource EarlierStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseEarlier { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var call = Interlocked.Increment(ref _calls);
+            if (call == 2)
+            {
+                EarlierStarted.SetResult();
+                await ReleaseEarlier.Task;
+                return Cacheable("earlier", "max-age=300");
+            }
+            if (call == 3)
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotModified)
+                {
+                    Headers = { CacheControl = CacheControlHeaderValue.Parse("no-store, max-age=300") }
+                };
+            }
+            return Cacheable(call == 1 ? "old" : "fresh", "max-age=1");
+        }
+
+        private static HttpResponseMessage Cacheable(string body, string cacheControl) => new(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body),
+            Headers = { ETag = new EntityTagHeaderValue("\"v1\""), CacheControl = CacheControlHeaderValue.Parse(cacheControl) }
+        };
+    }
+
     private sealed class LanguageOrigin : HttpMessageHandler
     {
         public int Calls { get; private set; }

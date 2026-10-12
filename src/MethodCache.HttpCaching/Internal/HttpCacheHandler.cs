@@ -111,7 +111,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             {
                 if (_state.RevalidationsInFlight.TryAdd(cacheKey, 0))
                 {
-                    _ = RevalidateInBackgroundAsync(request, cachedEntry, cacheKey, options);
+                    _ = RevalidateInBackgroundAsync(request, cachedEntry, urlKey, cacheKey, options);
                 }
 
                 return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE", options, freshness), startedAt);
@@ -157,7 +157,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         {
             _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", request.RequestUri);
             var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow());
-            await StoreRevalidatedEntryAsync(request, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
+            await StoreRevalidatedEntryAsync(request, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
 
             var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
 
@@ -275,6 +275,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     private async ValueTask StoreRevalidatedEntryAsync(
         HttpRequestMessage request,
+        string urlKey,
         string cacheKey,
         HttpCacheEntry entry,
         HttpCacheOptions options,
@@ -289,8 +290,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
         else
         {
-            // Remove the URL index too, so previously stored variants cannot be reused.
+            // Remove the URL index too, so previously stored variants cannot be reused, and start a new
+            // generation, so a response another request fetched earlier cannot be published afterwards.
             await _storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+            await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -468,7 +471,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
-    private Task RevalidateInBackgroundAsync(HttpRequestMessage originalRequest, HttpCacheEntry cachedEntry, string cacheKey, HttpCacheOptions options)
+    private Task RevalidateInBackgroundAsync(HttpRequestMessage originalRequest, HttpCacheEntry cachedEntry, string urlKey, string cacheKey, HttpCacheOptions options)
     {
         // Copy the request now: the caller may dispose the original as soon as it has the stale response
         var request = new HttpRequestMessage(originalRequest.Method, originalRequest.RequestUri);
@@ -493,7 +496,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
                     var updatedEntry = cachedEntry.WithUpdatedHeaders(response, _timeProvider.GetUtcNow());
-                    await StoreRevalidatedEntryAsync(request, cacheKey, updatedEntry, options, freshness, timeout.Token).ConfigureAwait(false);
+                    await StoreRevalidatedEntryAsync(request, urlKey, cacheKey, updatedEntry, options, freshness, timeout.Token).ConfigureAwait(false);
                 }
                 else
                 {
