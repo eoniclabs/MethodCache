@@ -40,6 +40,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
     private readonly SqlServerOptions _options;
     private readonly ILogger _logger;
+    private int _rejectedWarning;
     private readonly byte[] _scope;
     private readonly TimeProvider _timeProvider;
     private readonly List<GapRange> _gaps = new();
@@ -144,7 +145,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         await using var commandScope = command.ConfigureAwait(false);
         AddScope(command);
         command.Parameters.Add(new SqlParameter("@instanceId", SqlDbType.VarChar, 32) { Value = InstanceId });
-        command.Parameters.Add(new SqlParameter("@type", SqlDbType.TinyInt) { Value = (byte)type });
+        command.Parameters.Add(new SqlParameter("@type", SqlDbType.TinyInt) { Value = (byte)MethodCache.Infrastructure.LosslessWireText.ToMessageType(type) });
         command.Parameters.Add(new SqlParameter("@target", SqlDbType.NVarChar, -1) { Value = MethodCache.Infrastructure.LosslessWireText.Encode(target) });
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -469,13 +470,19 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             return;
         }
 
-        if (!MethodCache.Infrastructure.LosslessWireText.TryDecode(reader.GetString(3), out var target)) return;
-        var message = CreateMessage((BackplaneMessageType)reader.GetByte(2), target, instanceId, reader.GetDateTime(4));
+        var message = CreateWireMessage(reader.GetByte(2), reader.GetString(3), instanceId, reader.GetDateTime(4));
+        if (message == null && Interlocked.Exchange(ref _rejectedWarning, 1) == 0)
+            _logger.LogWarning("Rejected an incompatible or malformed MethodCache backplane frame. Invalidations do not cross wire versions; deploy the same version on all nodes.");
         if (message != null)
         {
             messages.Add(message);
         }
     }
+
+    internal static BackplaneMessage? CreateWireMessage(byte type, string wire, string instanceId, DateTime createdAt)
+        => MethodCache.Infrastructure.LosslessWireText.TryMessageType(type, out var logical)
+            && MethodCache.Infrastructure.LosslessWireText.TryDecode(wire, out var target)
+            ? CreateMessage(logical, target, instanceId, createdAt) : null;
 
     internal static BackplaneMessage? CreateMessage(BackplaneMessageType type, string target, string instanceId, DateTime createdAt)
     {

@@ -154,7 +154,7 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
         await using var command = new SqlCommand($"""
             SET IDENTITY_INSERT {options.QualifiedInvalidationsTableName} ON;
             INSERT INTO {options.QualifiedInvalidationsTableName} (Id, Scope, InstanceId, MessageType, Target)
-            VALUES (@id, @scope, 'other', 0, @key);
+            VALUES (@id, @scope, 'other', 4, @key);
             SET IDENTITY_INSERT {options.QualifiedInvalidationsTableName} OFF;
             """, connection);
         command.Parameters.AddWithValue("@id", id);
@@ -185,7 +185,7 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
                 await connection.OpenAsync();
                 await using var command = new SqlCommand($"""
                     INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target)
-                    SELECT @scope, 'other', 0, [value] FROM OPENJSON(@targets) ORDER BY CONVERT(int, [key]);
+                    SELECT @scope, 'other', 4, [value] FROM OPENJSON(@targets) ORDER BY CONVERT(int, [key]);
                     """, connection);
                 command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
                 command.Parameters.AddWithValue("@targets", System.Text.Json.JsonSerializer.Serialize(Enumerable.Range(1, 1005)

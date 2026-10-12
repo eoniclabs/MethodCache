@@ -8,6 +8,19 @@ namespace MethodCache.Redis.Tests;
 public class RedisBackplaneMessageTests
 {
     [Theory]
+    [InlineData("0\nlegacy\n4:awBlAHkA")]
+    [InlineData("1\nlegacy\n4:awBlAHkA")]
+    public void LegacyMessageType_WithVersionLookingKey_IsRejected(string wire)
+        => Assert.False(RedisBackplane.TryParse(wire, out _));
+
+    [Fact]
+    public void EncodedMessages_UseDistinctMessageTypeNumbers()
+    {
+        Assert.StartsWith("4\n", RedisBackplane.Format(BackplaneMessageType.KeyInvalidation, "sender", "key"));
+        Assert.StartsWith("5\n", RedisBackplane.Format(BackplaneMessageType.TagInvalidation, "sender", "tag"));
+    }
+
+    [Theory]
     [InlineData("user:1")]
     [InlineData("")]
     [InlineData("multi\nline\nvalue")]

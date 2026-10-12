@@ -96,7 +96,7 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
             await using var transaction = connection.BeginTransaction();
-            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 0, '4:bABhAHQAZQA=');", connection, transaction))
+            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 4, '4:bABhAHQAZQA=');", connection, transaction))
             {
                 insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
                 await insert.ExecuteNonQueryAsync();

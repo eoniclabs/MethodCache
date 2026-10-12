@@ -1,5 +1,6 @@
 using MethodCache.Extensibility;
 using MethodCache.Redis;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -51,7 +52,7 @@ public static class MethodCacheRedisServiceCollectionExtensions
         if (options.EnableBackplane)
         {
             services.TryAddSingleton<IBackplane>(sp =>
-                new RedisBackplane(sp.GetRequiredService<RedisConnection>().GetAsync, options.EffectiveBackplaneChannel));
+                new RedisBackplane(sp.GetRequiredService<RedisConnection>().GetAsync, options.EffectiveBackplaneChannel, sp.GetService<ILogger<RedisBackplane>>()));
         }
 
         return services.AddMethodCacheDistributedCache(

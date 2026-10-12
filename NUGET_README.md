@@ -58,3 +58,5 @@ Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a mis
 Factory registration helpers dispose owned implementations even when their service interface does not declare disposal. Asynchronous disposal prefers `IAsyncDisposable`, then falls back to `IDisposable`. Automatically discovered DI services retain container ownership.
 
 Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.
+
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.

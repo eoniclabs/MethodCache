@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using MethodCache.Extensibility;
 
 namespace MethodCache.Infrastructure;
 
@@ -6,6 +7,19 @@ namespace MethodCache.Infrastructure;
 // UTF-16 surrogates; write each code unit explicitly so Redis and SQL backplanes preserve tag/key identity.
 internal static class LosslessWireText
 {
+    internal static int ToMessageType(BackplaneMessageType type) => type switch
+    {
+        BackplaneMessageType.KeyInvalidation => 4,
+        BackplaneMessageType.TagInvalidation => 5,
+        _ => throw new ArgumentOutOfRangeException(nameof(type))
+    };
+
+    internal static bool TryMessageType(int type, out BackplaneMessageType logical)
+    {
+        logical = type == 5 ? BackplaneMessageType.TagInvalidation : BackplaneMessageType.KeyInvalidation;
+        return type is 4 or 5;
+    }
+
     internal static string Encode(string value)
     {
         var bytes = new byte[checked(value.Length * 2)];
