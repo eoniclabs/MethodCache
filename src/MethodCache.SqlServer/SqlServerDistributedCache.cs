@@ -88,9 +88,9 @@ internal sealed class SqlServerDistributedCache : IAtomicInvalidationStore
     private static string GetPhysicalKey(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
-        if (key.Length > 449) throw new ArgumentException("SQL Server cache keys must be at most 449 UTF-16 code units.", nameof(key));
         // SQL text comparisons can equate NULs, trailing spaces and normalized Unicode even with CS_AS.
-        // Hash exact UTF-16 code units so data and stamp operations use the same ordinal identity.
+        // Hash exact UTF-16 code units so data and stamp operations use the same ordinal identity. The ID is always
+        // 67 characters, so a logical key of any length fits the nvarchar(449) column.
         var bytes = new byte[checked(key.Length * 2)];
         for (var i = 0; i < key.Length; i++)
             BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * 2, 2), key[i]);

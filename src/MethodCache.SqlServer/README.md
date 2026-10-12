@@ -48,7 +48,7 @@ together, and restart them with empty in-memory caches.
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
-- Keys are stored hashed, so keys that SQL collation would treat as equal (casing, trailing spaces, Unicode forms) stay distinct. A key, `KeyPrefix` included, is limited to 449 UTF-16 characters.
+- Keys are stored hashed, so keys that SQL collation would treat as equal (casing, trailing spaces, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll.

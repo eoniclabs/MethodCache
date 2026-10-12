@@ -121,6 +121,6 @@ The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/Me
 cover their options, shared connections, table creation and outage settings.
 
 SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
-trailing spaces, NULs and different Unicode representations distinct despite SQL collation. The
-logical key still includes `KeyPrefix` and keeps the 449 UTF-16 code-unit limit. On upgrade, old
-unhashed cache rows become misses and expire normally; upgrade all instances sharing a prefix together.
+trailing spaces, NULs and different Unicode representations distinct despite SQL collation, and
+gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
+and expire normally; upgrade all instances sharing a prefix together.

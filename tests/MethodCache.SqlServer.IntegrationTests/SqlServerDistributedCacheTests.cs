@@ -116,6 +116,27 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     }
 
     [SkippableFact]
+    public async Task LongKeyAndTag_AreSharedAndInvalidated_WithoutDisablingTheDistributedCache()
+    {
+        var first = await CreateNodeAsync();
+        var second = await CreateNodeAsync();
+        var longKey = new string('k', 500);
+        var longTag = new string('t', 500);
+
+        await Get(first, longKey, "v1", longTag);
+        (await Get(second, longKey, "unused", longTag)).Should().Be("v1", "a long key is stored under its hash");
+
+        await first.InvalidateByTagsAsync(longTag);
+        await WaitUntil(async () => await Get(second, longKey, "v2", longTag) == "v2");
+
+        // Neither node fell back to memory only: a new value still reaches the other node through SQL Server
+        await Get(first, "other", "from first");
+        (await Get(second, "other", "from second")).Should().Be("from first");
+        await Get(second, "another", "from second");
+        (await Get(first, "another", "from first")).Should().Be("from second");
+    }
+
+    [SkippableFact]
     public async Task ABurstOfInvalidations_DoesNotDelayNewOnes()
     {
         var first = await CreateNodeAsync();
