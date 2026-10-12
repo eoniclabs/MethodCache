@@ -8,6 +8,28 @@ namespace MethodCache.HttpCaching.Tests;
 
 public class ContentOwnershipTests
 {
+    [Fact]
+    public async Task OversizedBody_ContentOwnerDoesNotCloseStream_ClosesStreamExplicitly()
+    {
+        using var body = new MemoryStream(new byte[1000]);
+        var original = new NonClosingContent(body);
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions { MaxResponseSize = 100 }, new Origin(Fresh(original))));
+        var response = await client.GetAsync("https://example.test/content", HttpCompletionOption.ResponseHeadersRead);
+        Assert.True(body.CanRead);
+        response.Dispose();
+        Assert.False(body.CanRead);
+        Assert.Equal(1, original.Disposals);
+    }
+
+    private sealed class NonClosingContent(Stream body) : HttpContent
+    {
+        public int Disposals;
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
+        protected override Task SerializeToStreamAsync(Stream destination, TransportContext? context) => body.CopyToAsync(destination);
+        protected override Task<Stream> CreateContentReadStreamAsync() => Task.FromResult(body);
+        protected override void Dispose(bool disposing) { if (disposing) Disposals++; }
+    }
+
     [Theory]
     [InlineData(100, 1000)]
     [InlineData(1000, 100)]
