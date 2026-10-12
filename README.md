@@ -76,6 +76,7 @@ refresh-ahead and fail-safe use an explicitly advanced demo clock:
 For ASP.NET Core with admin endpoints, OpenTelemetry and two instances sharing Redis, see the
 [web demo](samples/MethodCache.WebDemo/).
 The web demo opens its admin endpoints in Development; in Production they require authentication and the `Admin` role.
+Its price endpoint rejects missing, null and negative prices with HTTP 400, preserving stored and cached data.
 Its SQLite data can be reset, and query counters show which requests actually reach the database.
 
 The [HttpClient demo](samples/MethodCache.HttpDemo/) starts a local HTTP server and checks `Cache-Control`,

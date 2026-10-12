@@ -33,8 +33,9 @@ another database, `Demo__QueryDelayMs` to change the simulated latency, and `Dem
 another run's Redis cache. Instances sharing data must also use the same cache prefix.
 
 `POST /demo/reset` restores all four seed products, resets this instance's query counter, and invalidates
-product/list caches everywhere. Reset and query-counter endpoints exist only in Development. A negative price
-returns 400; updating a missing product returns 404.
+product/list caches everywhere. Reset and query-counter endpoints exist only in Development. A missing, null or
+negative price returns 400 without changing stored or cached products; zero is a valid price. Updating a missing
+product returns 404.
 
 ## Two instances sharing Redis
 

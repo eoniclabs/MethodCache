@@ -16,12 +16,23 @@ namespace MethodCache.Docs.Tests;
 public class WebDemoRedisTests : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
-    private readonly RedisContainer _redis = CreateRedis();
+    private RedisContainer? _redis;
+    private readonly Func<RedisContainer> _createRedis;
+    private readonly bool _infrastructureRequired;
     private readonly string _prefix = $"webdemo-test:{Guid.NewGuid():N}:";
     private readonly FakeTimeProvider _clock = new(DateTimeOffset.UtcNow);
     private string? _unavailable;
 
-    public WebDemoRedisTests(ITestOutputHelper output) => _output = output;
+    public WebDemoRedisTests(ITestOutputHelper output) : this(output, CreateRedis,
+        string.Equals(Environment.GetEnvironmentVariable("METHODCACHE_REQUIRE_INFRA_TESTS"), "true", StringComparison.OrdinalIgnoreCase))
+    { }
+
+    internal WebDemoRedisTests(ITestOutputHelper output, Func<RedisContainer> createRedis, bool infrastructureRequired)
+    {
+        _output = output;
+        _infrastructureRequired = infrastructureRequired;
+        _createRedis = createRedis;
+    }
 
     private static RedisContainer CreateRedis()
     {
@@ -35,19 +46,26 @@ public class WebDemoRedisTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        try { await _redis.StartAsync(); }
-        catch (Exception ex) when (!string.Equals(Environment.GetEnvironmentVariable("METHODCACHE_REQUIRE_INFRA_TESTS"), "true", StringComparison.OrdinalIgnoreCase))
+        try
+        {
+            _redis = _createRedis();
+            await _redis.StartAsync();
+        }
+        catch (Exception ex) when (!_infrastructureRequired)
         {
             _unavailable = $"Docker is required for the web demo Redis scenarios ({ex.GetType().Name}).";
         }
     }
 
-    public async Task DisposeAsync() => await _redis.DisposeAsync();
+    public async Task DisposeAsync()
+    {
+        if (_redis != null) await _redis.DisposeAsync();
+    }
 
-    private async Task<ConnectionMultiplexer> ConnectAsync()
+    internal async Task<ConnectionMultiplexer> ConnectAsync()
     {
         Skip.If(_unavailable != null, _unavailable);
-        var options = ConfigurationOptions.Parse(_redis.GetConnectionString());
+        var options = ConfigurationOptions.Parse(_redis!.GetConnectionString());
         options.AbortOnConnectFail = false;
         options.BacklogPolicy = BacklogPolicy.FailFast;
         options.ConnectTimeout = 1000;
@@ -119,7 +137,7 @@ public class WebDemoRedisTests : IAsyncLifetime
         var disconnectedB = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         connectionA.ConnectionFailed += (_, args) => { if (args.ConnectionType == ConnectionType.Interactive) disconnectedA.TrySetResult(); };
         connectionB.ConnectionFailed += (_, args) => { if (args.ConnectionType == ConnectionType.Interactive) disconnectedB.TrySetResult(); };
-        await _redis.StopAsync();
+        await _redis!.StopAsync();
         await Task.WhenAll(disconnectedA.Task, disconnectedB.Task).WaitAsync(TimeSpan.FromSeconds(15));
 
         Assert.Equal(99m, (await a.GetFromJsonAsync<Product>("/products/2"))!.Price);

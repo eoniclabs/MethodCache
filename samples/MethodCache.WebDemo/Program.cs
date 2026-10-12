@@ -91,8 +91,8 @@ app.MapGet("/products", (string category, IProductCatalog catalog) => catalog.Ge
 
 app.MapPut("/products/{id:int}/price", async (int id, PriceChange change, IProductCatalog catalog) =>
 {
-    if (change.Price < 0) return Results.BadRequest(new { error = "Price must be non-negative." });
-    try { await catalog.UpdatePriceAsync(id, change.Price); }
+    if (change.Price is not { } price || price < 0) return Results.BadRequest(new { error = "Price is required and must be non-negative." });
+    try { await catalog.UpdatePriceAsync(id, price); }
     catch (KeyNotFoundException) { return Results.NotFound(); }
     return Results.NoContent();
 });
@@ -115,4 +115,4 @@ app.MapHealthChecks("/health");
 
 app.Run();
 
-internal sealed record PriceChange(decimal Price);
+internal sealed record PriceChange(decimal? Price);

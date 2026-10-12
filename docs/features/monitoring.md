@@ -62,6 +62,8 @@ Configure your application's authentication scheme as well as the authorization 
 Development environment allows anonymous admin requests so you can try the endpoints locally.
 It also exposes Development-only `/demo/queries` and `/demo/reset` routes to count source reads and restore
 the demonstration data; those routes are not part of the MethodCache admin package.
+The sample price endpoint rejects missing, null and negative prices before writes or invalidation; rejected requests
+leave both stored products and the cache unchanged.
 
 ## Health check
 
