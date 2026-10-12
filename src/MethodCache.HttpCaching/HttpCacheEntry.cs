@@ -104,7 +104,8 @@ public sealed record HttpCacheEntry
     {
         var contentHeaders = SerializeHeaders(response.Content.Headers);
         var limit = maxSize > 0 ? maxSize : long.MaxValue;
-        var knownLength = response.Content.Headers.ContentLength;
+        // HEAD, 204 and 304 responses have no body whatever Content-Length says (RFC 9110 sections 9.3.2, 8.6).
+        var knownLength = HasNoBody(request, response) ? 0 : response.Content.Headers.ContentLength;
         if (knownLength > limit || knownLength > Array.MaxLength) return null;
         var body = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var buffer = new ResponseBodyBuffer(knownLength, limit, bufferPool ?? ArrayPool<byte>.Shared);
@@ -266,6 +267,10 @@ public sealed record HttpCacheEntry
         }
         return result;
     }
+
+    private static bool HasNoBody(HttpRequestMessage request, HttpResponseMessage response)
+        => request.Method == HttpMethod.Head
+        || response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotModified;
 
     private static void RestoreHeaders(HttpContentHeaders target, Dictionary<string, string[]> headers)
     {

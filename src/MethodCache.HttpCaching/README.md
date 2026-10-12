@@ -79,8 +79,9 @@ before the write. Read failures fall back to the origin; invalidation write fail
 the origin write, which may already have succeeded. Custom storage implementations implement
 `GetGenerationAsync` and `InvalidateAsync` with shared, unique generations. See [HTTP caching](../../docs/features/http-caching.md).
 
-Cacheable bodies with an accurate `Content-Length` use one owned array. Unknown or inaccurate lengths use
-pooled temporary storage plus the final array. An oversized body remains readable as a stream; dispose the
+Cacheable bodies with an accurate `Content-Length` of up to 1 MB use one owned array. Larger, unknown or
+inaccurate lengths use pooled temporary storage plus the final array; a declared length never allocates more than
+1 MB up front, and a HEAD response allocates nothing for the `Content-Length` it carries. An oversized body remains readable as a stream; dispose the
 response to release its storage.
 
 ## Storage

@@ -34,9 +34,11 @@ so a concurrent older reader cannot repopulate the active namespace.
 With `UseDistributedCache`, HTTP storage prefers MethodCache's owned Redis/SQL Server cache. When no owned
 cache is registered, it uses the application's `IDistributedCache`. It leaves application registrations unchanged.
 
-A cacheable body with an accurate `Content-Length` is read directly into its final owned array. Bodies with
-unknown or inaccurate lengths use pooled temporary storage and copy into one owned array; temporary and final
-storage can coexist during that copy. Returned rentals are cleared. Only the size limit plus one byte is read
+A cacheable body with an accurate `Content-Length` of up to 1 MB is read directly into its final owned array.
+Larger, unknown or inaccurate lengths use pooled temporary storage that grows only as bytes arrive, then copy into
+one owned array; temporary and final storage can coexist during that copy. A declared length never allocates more
+than 1 MB up front, and HEAD, 204 and 304 responses, which have no body, allocate nothing for their
+`Content-Length`. Returned rentals are cleared. Only the size limit plus one byte is read
 before an oversized unknown-length response is handed back as a stream, and disposing that response returns
 its temporary storage even if the caller never reads it.
 

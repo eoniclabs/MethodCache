@@ -2,9 +2,19 @@ using System.Buffers;
 
 namespace MethodCache.HttpCaching.Internal;
 
-/// <summary>Owns the final array for an exact Content-Length, or rents temporary storage for an unknown length.</summary>
+/// <summary>
+/// Owns the final array for a Content-Length of at most <see cref="MaxPreallocation"/>, or rents temporary storage
+/// for an unknown or larger length.
+/// </summary>
 internal sealed class ResponseBodyBuffer : IDisposable
 {
+    /// <summary>
+    /// The largest body allocated up front from Content-Length alone. The header is not verified until the body is
+    /// read, so a lying or bodiless response (HEAD) must not be able to force a larger allocation; larger bodies grow
+    /// in pooled storage as their bytes actually arrive.
+    /// </summary>
+    internal const int MaxPreallocation = 1024 * 1024;
+    private const int MinimumRental = 16_384;
     private readonly ArrayPool<byte> _pool;
     private byte[] _bytes;
     private bool _rented;
@@ -12,13 +22,15 @@ internal sealed class ResponseBodyBuffer : IDisposable
     internal ResponseBodyBuffer(long? contentLength, long limit, ArrayPool<byte> pool)
     {
         _pool = pool;
-        if (contentLength is >= 0 && contentLength <= Array.MaxLength && contentLength <= limit)
+        if (contentLength is >= 0 && contentLength <= MaxPreallocation && contentLength <= limit)
         {
-            _bytes = new byte[(int)contentLength.Value];
+            _bytes = contentLength == 0 ? Array.Empty<byte>() : new byte[(int)contentLength.Value];
         }
         else
         {
-            _bytes = pool.Rent((int)Math.Min(16_384, limit < Array.MaxLength ? limit + 1 : Array.MaxLength));
+            // Start a large declared length at the pre-allocation bound: pooled, and grown only as bytes arrive.
+            var initial = Math.Clamp(contentLength ?? MinimumRental, MinimumRental, MaxPreallocation);
+            _bytes = pool.Rent((int)Math.Min(initial, limit < Array.MaxLength ? limit + 1 : Array.MaxLength));
             _rented = true;
         }
     }

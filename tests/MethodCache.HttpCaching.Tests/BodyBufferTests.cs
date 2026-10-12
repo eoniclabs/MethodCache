@@ -44,6 +44,7 @@ public class BodyBufferTests
     [InlineData(16_385, -1)]
     [InlineData(65_537, 65_536)]
     [InlineData(65_537, 65_537)]
+    [InlineData(3_000_000, 3_000_000)]
     public async Task InaccurateLengthAndPartialReads_ReturnExactBodyAndReleaseTemporaryStorage(int size, int advertised)
     {
         var bytes = Enumerable.Range(0, size).Select(i => (byte)i).ToArray();
@@ -106,6 +107,40 @@ public class BodyBufferTests
     }
 
     [Theory]
+    [InlineData("HEAD", HttpStatusCode.OK, 0)]
+    [InlineData("GET", HttpStatusCode.NoContent, 0)]
+    [InlineData("GET", HttpStatusCode.OK, 1000)]
+    public async Task DeclaredLengthWithoutThatBody_DoesNotAllocateTheDeclaredLength(string method, HttpStatusCode status, int actual)
+    {
+        // A HEAD carries the GET's Content-Length with no body; a lying origin can declare any length up to the limit.
+        const long declared = 8_000_000;
+        var bytes = Enumerable.Range(0, actual).Select(i => (byte)i).ToArray();
+        // An isolated pool, warmed below, so a pooled rental is not counted as an allocation.
+        var pool = new TrackingPool(ArrayPool<byte>.Create(2 * 1024 * 1024, 4));
+        using var request = new HttpRequestMessage(new HttpMethod(method), "https://example.test/item");
+        using (var warmup = DeclaredResponse())
+            _ = await HttpCacheEntry.FromResponseAsync(request, warmup, DateTimeOffset.UnixEpoch, 10 * 1024 * 1024, bufferPool: pool);
+        using var response = DeclaredResponse();
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var operation = HttpCacheEntry.FromResponseAsync(request, response, DateTimeOffset.UnixEpoch, 10 * 1024 * 1024, bufferPool: pool);
+        Assert.True(operation.IsCompletedSuccessfully);
+        var entry = await operation;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.NotNull(entry);
+        Assert.Equal(bytes, entry.Content);
+        Assert.Empty(pool.Outstanding);
+        Assert.InRange(allocated, 0, 128 * 1024);
+
+        HttpResponseMessage DeclaredResponse()
+        {
+            var content = new StreamContent(new BodyStream(bytes));
+            content.Headers.ContentLength = declared;
+            return new HttpResponseMessage(status) { Content = content };
+        }
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task FailedRead_ReturnsRentalAndLeavesBodyOwnedByOriginalResponse(bool cancel)
@@ -131,13 +166,14 @@ public class BodyBufferTests
         Assert.True(body.WasDisposed);
     }
 
-    private sealed class TrackingPool : ArrayPool<byte>
+    /// <summary>Tracks rentals; with <paramref name="inner"/>, reuses that pool's arrays so allocations can be measured.</summary>
+    private sealed class TrackingPool(ArrayPool<byte>? inner = null) : ArrayPool<byte>
     {
         internal HashSet<byte[]> Outstanding { get; } = new();
         internal List<byte[]> Returned { get; } = new();
         public override byte[] Rent(int minimumLength)
         {
-            var rental = new byte[minimumLength];
+            var rental = inner?.Rent(minimumLength) ?? new byte[minimumLength];
             Assert.True(Outstanding.Add(rental));
             return rental;
         }
@@ -147,6 +183,7 @@ public class BodyBufferTests
             Assert.True(Outstanding.Remove(array));
             Array.Clear(array);
             Returned.Add(array);
+            inner?.Return(array);
         }
     }
 
