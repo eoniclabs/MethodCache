@@ -26,17 +26,17 @@ namespace App
     /// </remarks>
     [System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
     [System.Diagnostics.DebuggerNonUserCode]
-    internal sealed class IRepositoryDecorator<T> : global::App.IRepository<T>
+    internal sealed class IRepositoryDecorator<__mcClassArgument0> : global::App.IRepository<__mcClassArgument0>
     {
-        private readonly global::App.IRepository<T> _decorated;
+        private readonly global::App.IRepository<__mcClassArgument0> _decorated;
         private readonly bool _ownsDecorated;
         private readonly ICacheManager _cacheManager;
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider? _metricsProvider;
 
-        private readonly CachedMethod _method_GetAsync;
+        private readonly CachedMethod _method_Method0;
 
-        public IRepositoryDecorator(global::App.IRepository<T> decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
+        public IRepositoryDecorator(global::App.IRepository<__mcClassArgument0> decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
             _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));
             _ownsDecorated = ownsDecorated;
@@ -47,50 +47,50 @@ namespace App
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
             var sites = services.GetSites(static registry => new CachedMethodSites(registry));
-            _method_GetAsync = sites.GetAsync;
+            _method_Method0 = sites.Method0;
         }
 
         private sealed class CachedMethodSites
         {
-            public readonly CachedMethod GetAsync;
+            public readonly CachedMethod Method0;
 
             public CachedMethodSites(IPolicyRegistry registry)
             {
-                GetAsync = new CachedMethod(PolicyHandle.For(registry, "App.IRepository<T>.GetAsync"), typeof(global::App.IRepository<T>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<T>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
+                Method0 = new CachedMethod(PolicyHandle.For(registry, "App.IRepository<T>.GetAsync"), typeof(global::App.IRepository<__mcClassArgument0>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<__mcClassArgument0>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
             }
         }
 
-        global::System.Threading.Tasks.Task<T?> global::App.IRepository<T>.GetAsync(int id)
+        global::System.Threading.Tasks.Task<__mcClassArgument0?> global::App.IRepository<__mcClassArgument0>.GetAsync(int __mcArgument0)
         {
-            var __mcSnapshot = _method_GetAsync.Current;
+            var __mcSnapshot = this._method_Method0.Current;
 #if NET9_0_OR_GREATER
             var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
-            __mcKeyBuilder.AppendPart(id);
+            __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (_cacheManager.TryGetFastTask<T?>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
+            if (this._cacheManager.TryGetFastTask<__mcClassArgument0?>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
             {
-                _metricsProvider?.CacheHit(_method_GetAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedTask;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(id));
+            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument0));
 
-            if (_cacheManager.TryGetFastTask<T?>(__mcKey, out var __mcCachedTask))
+            if (this._cacheManager.TryGetFastTask<__mcClassArgument0?>(__mcKey, out var __mcCachedTask))
             {
-                _metricsProvider?.CacheHit(_method_GetAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedTask;
             }
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            return __Load_GetAsync(__mcKey, __mcSnapshot.Policy, id);
+            return __Load_Method0(__mcKey, __mcSnapshot.Policy, __mcArgument0);
         }
 
-        private Task<T?> __Load_GetAsync(string __cacheKey, CacheRuntimePolicy __policy, int id)
-            => _cacheManager.GetOrCreateFastAsync<T?>(__cacheKey, _method_GetAsync.Name, () => ((global::App.IRepository<T>)_decorated).GetAsync(id)!, __policy);
+        private Task<__mcClassArgument0?> __Load_Method0(string __cacheKey, CacheRuntimePolicy __policy, int __mcArgument0)
+            => this._cacheManager.GetOrCreateFastAsync<__mcClassArgument0?>(__cacheKey, this._method_Method0.Name, () => ((global::App.IRepository<__mcClassArgument0>)this._decorated).GetAsync(__mcArgument0)!, __policy);
 
     }
 }

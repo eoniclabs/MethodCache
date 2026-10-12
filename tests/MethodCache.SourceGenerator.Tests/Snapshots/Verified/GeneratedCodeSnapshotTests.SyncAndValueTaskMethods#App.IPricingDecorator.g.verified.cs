@@ -25,8 +25,8 @@ namespace App
         private readonly ICacheKeyGenerator _keyGenerator;
         private readonly ICacheMetricsProvider? _metricsProvider;
 
-        private readonly CachedMethod _method_Price;
-        private readonly CachedMethod _method_FindAsync;
+        private readonly CachedMethod _method_Method0;
+        private readonly CachedMethod _method_Method1;
 
         public IPricingDecorator(global::App.IPricing decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
         {
@@ -39,89 +39,89 @@ namespace App
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
             var sites = services.GetSites(static registry => new CachedMethodSites(registry));
-            _method_Price = sites.Price;
-            _method_FindAsync = sites.FindAsync;
+            _method_Method0 = sites.Method0;
+            _method_Method1 = sites.Method1;
         }
 
         private sealed class CachedMethodSites
         {
-            public readonly CachedMethod Price;
-            public readonly CachedMethod FindAsync;
+            public readonly CachedMethod Method0;
+            public readonly CachedMethod Method1;
 
             public CachedMethodSites(IPolicyRegistry registry)
             {
-                Price = new CachedMethod(PolicyHandle.For(registry, "App.IPricing.Price"), typeof(global::App.IPricing), "Price", "Price");
-                FindAsync = new CachedMethod(PolicyHandle.For(registry, "App.IPricing.FindAsync"), typeof(global::App.IPricing), "FindAsync", "FindAsync");
+                Method0 = new CachedMethod(PolicyHandle.For(registry, "App.IPricing.Price"), typeof(global::App.IPricing), "Price", "Price");
+                Method1 = new CachedMethod(PolicyHandle.For(registry, "App.IPricing.FindAsync"), typeof(global::App.IPricing), "FindAsync", "FindAsync");
             }
         }
 
-        decimal global::App.IPricing.Price(string sku, int quantity)
+        decimal global::App.IPricing.Price(string __mcArgument0, int __mcArgument1)
         {
             // Hits return without blocking. A miss blocks this thread while the value loads; the cache never
             // resumes on the caller's SynchronizationContext, so this can't deadlock. With Redis or SQL Server
             // the wait includes the network read, so prefer async methods on hot paths there.
-            var __mcSnapshot = _method_Price.Current;
+            var __mcSnapshot = this._method_Method0.Current;
 #if NET9_0_OR_GREATER
             var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
-            __mcKeyBuilder.AppendPart(sku);
-            __mcKeyBuilder.AppendPart(quantity);
+            __mcKeyBuilder.AppendPart(__mcArgument0);
+            __mcKeyBuilder.AppendPart(__mcArgument1);
 
-            if (_cacheManager.TryGetFast<decimal>(__mcKeyBuilder.AsSpan(), out var __mcCachedValue))
+            if (this._cacheManager.TryGetFast<decimal>(__mcKeyBuilder.AsSpan(), out var __mcCachedValue))
             {
-                _metricsProvider?.CacheHit(_method_Price.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedValue!;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(sku), MethodCacheKeys.Separator, MethodCacheKeys.Part(quantity));
+            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument0), MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument1));
 
-            if (_cacheManager.TryGetFast<decimal>(__mcKey, out var __mcCachedValue))
+            if (this._cacheManager.TryGetFast<decimal>(__mcKey, out var __mcCachedValue))
             {
-                _metricsProvider?.CacheHit(_method_Price.Name);
+                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedValue!;
             }
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            return __Load_Price(__mcKey, __mcSnapshot.Policy, sku!, quantity).ConfigureAwait(false).GetAwaiter().GetResult();
+            return __Load_Method0(__mcKey, __mcSnapshot.Policy, __mcArgument0!, __mcArgument1).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
-        private Task<decimal> __Load_Price(string __cacheKey, CacheRuntimePolicy __policy, string sku, int quantity)
-            => _cacheManager.GetOrCreateFastAsync<decimal>(__cacheKey, _method_Price.Name, () => Task.FromResult(((global::App.IPricing)_decorated).Price(sku, quantity))!, __policy);
+        private Task<decimal> __Load_Method0(string __cacheKey, CacheRuntimePolicy __policy, string __mcArgument0, int __mcArgument1)
+            => this._cacheManager.GetOrCreateFastAsync<decimal>(__cacheKey, this._method_Method0.Name, () => Task.FromResult(((global::App.IPricing)this._decorated).Price(__mcArgument0, __mcArgument1))!, __policy);
 
-        global::System.Threading.Tasks.ValueTask<string?> global::App.IPricing.FindAsync(string? sku)
+        global::System.Threading.Tasks.ValueTask<string?> global::App.IPricing.FindAsync(string? __mcArgument0)
         {
-            var __mcSnapshot = _method_FindAsync.Current;
+            var __mcSnapshot = this._method_Method1.Current;
 #if NET9_0_OR_GREATER
             var __mcKeyBuilder = new MethodCacheKeyBuilder(stackalloc char[MethodCacheKeyBuilder.StackBufferSize]);
             __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
-            __mcKeyBuilder.AppendPart(sku);
+            __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (_cacheManager.TryGetFast<string?>(__mcKeyBuilder.AsSpan(), out var __mcCachedValue))
+            if (this._cacheManager.TryGetFast<string?>(__mcKeyBuilder.AsSpan(), out var __mcCachedValue))
             {
-                _metricsProvider?.CacheHit(_method_FindAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method1.Name);
                 return new ValueTask<string?>(__mcCachedValue!);
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(sku));
+            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, MethodCacheKeys.Separator, MethodCacheKeys.Part(__mcArgument0));
 
-            if (_cacheManager.TryGetFast<string?>(__mcKey, out var __mcCachedValue))
+            if (this._cacheManager.TryGetFast<string?>(__mcKey, out var __mcCachedValue))
             {
-                _metricsProvider?.CacheHit(_method_FindAsync.Name);
+                this._metricsProvider?.CacheHit(this._method_Method1.Name);
                 return new ValueTask<string?>(__mcCachedValue!);
             }
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            return new ValueTask<string?>(__Load_FindAsync(__mcKey, __mcSnapshot.Policy, sku!));
+            return new ValueTask<string?>(__Load_Method1(__mcKey, __mcSnapshot.Policy, __mcArgument0!));
         }
 
-        private Task<string?> __Load_FindAsync(string __cacheKey, CacheRuntimePolicy __policy, string? sku)
-            => _cacheManager.GetOrCreateFastAsync<string?>(__cacheKey, _method_FindAsync.Name, () => ((global::App.IPricing)_decorated).FindAsync(sku).AsTask()!, __policy);
+        private Task<string?> __Load_Method1(string __cacheKey, CacheRuntimePolicy __policy, string? __mcArgument0)
+            => this._cacheManager.GetOrCreateFastAsync<string?>(__cacheKey, this._method_Method1.Name, () => ((global::App.IPricing)this._decorated).FindAsync(__mcArgument0).AsTask()!, __policy);
 
     }
 }

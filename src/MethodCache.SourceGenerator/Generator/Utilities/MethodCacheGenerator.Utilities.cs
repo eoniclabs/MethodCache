@@ -22,7 +22,7 @@ namespace MethodCache.SourceGenerator
                 miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
             internal static string GetFullyQualifiedName(ITypeSymbol type)
-                => type.ToDisplayString(FullyQualifiedFormat);
+                => SourceTypeName(type, FullyQualifiedFormat);
 
             /// <summary>
             /// The namespace of an interface's decorator: the interface's own, or MethodCache.Generated for an
@@ -269,7 +269,24 @@ namespace MethodCache.SourceGenerator
             private static readonly SymbolDisplayFormat SignatureFormat = SymbolDisplayFormat.FullyQualifiedFormat
                 .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
-            internal static string GetReturnTypeForSignature(ITypeSymbol type) => type.ToDisplayString(SignatureFormat);
+            internal static string GetReturnTypeForSignature(ITypeSymbol type) => SourceTypeName(type, SignatureFormat);
+
+            // Explicit implementations inherit public parameter names from the interface. Internal aliases keep
+            // user names out of generated local, loader and field scopes.
+            internal static string ParameterIdentifier(IParameterSymbol parameter) => "__mcArgument" + parameter.Ordinal;
+
+            internal static string TypeParameterIdentifier(ITypeParameterSymbol parameter)
+            {
+                if (parameter.ContainingSymbol is IMethodSymbol) return "__mcTypeArgument" + parameter.Ordinal;
+                var ordinal = parameter.Ordinal;
+                for (var outer = (parameter.ContainingSymbol as INamedTypeSymbol)?.ContainingType; outer != null; outer = outer.ContainingType)
+                    ordinal += outer.Arity;
+                return "__mcClassArgument" + ordinal;
+            }
+
+            private static string SourceTypeName(ITypeSymbol type, SymbolDisplayFormat format) =>
+                string.Concat(type.ToDisplayParts(format).Select(part => part.Symbol is ITypeParameterSymbol parameter
+                    ? TypeParameterIdentifier(parameter) : part.ToString()));
         }
     }
 }
