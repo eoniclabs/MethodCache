@@ -92,6 +92,34 @@ public class ContentOwnershipTests
         Assert.Equal(1, original.Disposals);
     }
 
+    [Fact]
+    public async Task RevalidationToNoStore_InvalidationFails_FailsTheRequest()
+    {
+        var clock = new FakeTimeProvider();
+        var backing = HttpCacheTestFactory.CreateInMemoryStorage(timeProvider: clock);
+        var storage = Substitute.For<IHttpCacheStorage>();
+        storage.GetGenerationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(c => backing.GetGenerationAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
+        storage.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(c => backing.GetAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
+        storage.SetAsync(Arg.Any<string>(), Arg.Any<HttpCacheEntry>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(c => backing.SetAsync(c.ArgAt<string>(0), c.ArgAt<HttpCacheEntry>(1), c.ArgAt<TimeSpan>(2), c.ArgAt<CancellationToken>(3)));
+        storage.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException(new InvalidOperationException("storage failed")));
+        var first = Fresh(new StringContent("cached"));
+        first.Headers.CacheControl!.MaxAge = TimeSpan.FromSeconds(1);
+        first.Headers.ETag = new EntityTagHeaderValue("\"version\"");
+        var notModified = new HttpResponseMessage(HttpStatusCode.NotModified);
+        notModified.Headers.CacheControl = new CacheControlHeaderValue { NoStore = true };
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(),
+            new Origin(first, notModified), storage, clock));
+        using var cached = await client.GetAsync("https://example.test/content");
+        clock.Advance(TimeSpan.FromSeconds(2));
+
+        // The stored response may no longer be used; if it can't be removed, the caller must know
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetAsync("https://example.test/content"));
+    }
+
     private static HttpResponseMessage Fresh(HttpContent content) => new(HttpStatusCode.OK)
     {
         Content = content,

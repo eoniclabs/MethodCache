@@ -228,6 +228,33 @@ public class HttpCacheEdgeCaseTests
         Assert.Equal(2, origin.Count);
     }
 
+    [Theory]
+    [InlineData("Cache-Control", "public, max-age=600", "private; foo")]   // a valid field next to an invalid one
+    [InlineData("Vary", "Accept", "Cookie; x")]
+    public async Task SendAsync_ValidFieldNextToAnInvalidOne_IsNotShared(string header, string valid, string invalid)
+    {
+        var origin = new CookieEchoOrigin(response =>
+        {
+            response.Headers.TryAddWithoutValidation("Cache-Control", "public, max-age=600");
+            if (header != "Cache-Control") response.Headers.TryAddWithoutValidation(header, valid);
+            response.Headers.TryAddWithoutValidation(header, invalid);
+        });
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions { IsSharedCache = true }, origin));
+
+        async Task<string> As(string cookie)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, Url);
+            request.Headers.TryAddWithoutValidation("Cookie", cookie);
+            using var response = await client.SendAsync(request);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        await As("session=alice");
+        var bob = await As("session=bob");
+
+        Assert.StartsWith("cookie=session=bob#", bob);
+    }
+
     // ---------- A GET with a body bypasses the cache ----------
 
     [Fact]

@@ -246,7 +246,9 @@ Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `La
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
 that URL. With `UseDistributedCache`, all instances share the responses through MethodCache's Redis or SQL Server
 cache (or the app's `IDistributedCache` when neither is registered). `AddHttpCaching()` turns off automatic cookies
-on the client's handler; send any cookie the API needs as an explicit `Cookie` header.
+on the client's handler; send any cookie the API needs as an explicit `Cookie` header. Redirects the transport
+follows are not stored under the URL you asked for, retries (Polly, standard resilience) get full responses, and a
+`GET` with a body goes to the origin.
 See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
 
 ### Monitoring

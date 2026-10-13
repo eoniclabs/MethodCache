@@ -27,7 +27,7 @@ limits and metrics. This page covers the rules the cache follows and how to writ
 - A 304 updates the stored response's headers and whether it may be stored. If it changes to `no-store`, `Vary: *`, or
   `private` in a shared cache, the stored response is removed. This applies to background revalidation too. A 304
   without `Vary` keeps the original variant selection.
-- A `Cache-Control` or `Vary` header that doesn't parse (such as `private; max-age=600` or `max-age=-1`) is not
+- A `Cache-Control` or `Vary` field that doesn't parse (such as `private; max-age=600` or `max-age=-1`), also next to a valid one, is not
   read as absent: the response is not stored, because the header may have said `private` or `no-store`.
 - An entry is kept at most a year, even when `Expires` is far in the future (`31 Dec 9999`).
 - Weak ETags (`W/"abc"`) are sent back as weak validators.

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -225,7 +226,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             {
                 _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", sent.RequestUri);
                 var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow(), _timeProvider.GetElapsedTime(requestStartedAt));
-                await TryStoreRevalidatedEntryAsync(sent, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
+                await StoreRevalidatedEntryAsync(sent, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
 
                 var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
 
@@ -351,26 +352,6 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
-    // The origin answered: a failure to update the cache must not fail the request
-    private async ValueTask TryStoreRevalidatedEntryAsync(
-        HttpRequestMessage request,
-        string urlKey,
-        string cacheKey,
-        HttpCacheEntry entry,
-        HttpCacheOptions options,
-        FreshnessCalculator freshness,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await StoreRevalidatedEntryAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "Failed to update the cached response for {Uri}", request.RequestUri);
-        }
-    }
-
     private async ValueTask StoreRevalidatedEntryAsync(
         HttpRequestMessage request,
         string urlKey,
@@ -384,7 +365,16 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         using var mergedResponse = entry.ToHttpResponse(request);
         if (IsStorable(request, mergedResponse, options))
         {
-            await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
+            // The origin answered: failing to refresh a response that may still be stored doesn't fail the request.
+            // Removing one that may no longer be stored (below) does, so it is never served again.
+            try
+            {
+                await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Failed to update the cached response for {Uri}", request.RequestUri);
+            }
         }
         else
         {
@@ -496,8 +486,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         // A Cache-Control or Vary the parser rejects (e.g. "private; max-age=600") may carry private or no-store:
         // reading it as absent could share or keep what must not be, so such a response is not stored
-        if ((cacheControl == null && response.Headers.NonValidated.Contains("Cache-Control")) ||
-            (response.Headers.Vary.Count == 0 && response.Headers.NonValidated.Contains("Vary")))
+        if (HasInvalidField(response.Headers, "Cache-Control", static value => CacheControlHeaderValue.TryParse(value, out _)) ||
+            HasInvalidField(response.Headers, "Vary", IsTokenList))
         {
             return false;
         }
@@ -528,6 +518,47 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var hasValidator = response.Headers.ETag != null || response.Content?.Headers.LastModified != null;
 
         return hasFreshness || hasValidator;
+    }
+
+    // Checks every field as received: the parsed collection keeps the valid fields and drops the others
+    private static bool HasInvalidField(HttpResponseHeaders headers, string name, Func<string, bool> isValid)
+    {
+        if (!headers.NonValidated.TryGetValues(name, out var values))
+        {
+            return false;
+        }
+
+        foreach (var value in values)
+        {
+            if (!isValid(value))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // RFC 9110 section 12.5.5: Vary is "*" or a list of field names
+    private static bool IsTokenList(string value)
+    {
+        foreach (var item in value.Split(',', StringSplitOptions.TrimEntries))
+        {
+            if (item.Length == 0)
+            {
+                continue;
+            }
+
+            foreach (var c in item)
+            {
+                if (!(char.IsAsciiLetterOrDigit(c) || "!#$%&'*+-.^_`|~".Contains(c)))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
