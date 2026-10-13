@@ -285,8 +285,10 @@ public interface IUserService
   `SearchAsync:(alice:2)`. Two records with equal values give the same key.
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
 - **Arrays and collections** of those values are written with their count and then each element in order:
-  `ByIdsAsync:[3:1:2:3]`. A dictionary counts as a collection of key/value pairs. Records and classes inside a
-  collection must be sealed, since an unsealed element type could hold a subclass with more members.
+  `ByIdsAsync:[3:1:2:3]`. Records and classes inside a collection must be sealed, since an unsealed element type
+  could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
+  collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
+  starts with that type, so an array and a list with the same elements stay two entries.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
   generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
@@ -1586,7 +1588,8 @@ Under Native AOT, give cached methods arguments that the decorator writes into t
 - records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
   type (a sealed type is safest: an instance of a derived class goes through the key generator),
 - types that implement `ICacheKeyProvider`,
-- arrays, lists, sets and dictionaries of those (records and classes in them must be sealed).
+- arrays, lists and sets of those (records and classes in them must be sealed), and dictionaries whose keys and values
+  are simple values.
 
 Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
 serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,

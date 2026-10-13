@@ -42,7 +42,8 @@ Under Native AOT, give cached methods arguments that the decorator writes into t
 - records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
   type (a sealed type is safest: an instance of a derived class goes through the key generator),
 - types that implement `ICacheKeyProvider`,
-- arrays, lists, sets and dictionaries of those (records and classes in them must be sealed).
+- arrays, lists and sets of those (records and classes in them must be sealed), and dictionaries whose keys and values
+  are simple values.
 
 Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
 serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,

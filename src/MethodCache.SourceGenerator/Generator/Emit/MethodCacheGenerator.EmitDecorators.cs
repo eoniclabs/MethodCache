@@ -571,7 +571,20 @@ namespace MethodCache.SourceGenerator
                     }
                     else if (TryFormatSequence(name, param.Type, out var sequence))
                     {
-                        pieces.Add(sequence);
+                        if (IsExactType(param.Type))
+                        {
+                            pieces.Add(sequence);
+                        }
+                        else
+                        {
+                            // Another runtime type than the declared one (an array and a list behind IEnumerable<T>, a
+                            // subclass of List<T>) is written before the elements, so equal elements in two collection
+                            // types stay two arguments. A type name never starts like a sequence or null does.
+                            var typed = $"string.Concat(global::MethodCache.MethodCacheKeys.Part({name}.GetType().ToString()), global::MethodCache.MethodCacheKeys.Separator, {sequence})";
+                            pieces.Add(param.Type.TypeKind == TypeKind.Class && !param.Type.IsAbstract
+                                ? $"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}) ? {sequence} : {typed})"
+                                : $"({name} is null ? global::MethodCache.MethodCacheKeys.Null : {typed})");
+                        }
                     }
                     else
                     {
@@ -624,6 +637,15 @@ namespace MethodCache.SourceGenerator
                 expression = $"global::MethodCache.MethodCacheKeys.Sequence({name}, static {item} => {part})";
                 return true;
             }
+
+            /// <summary>
+            /// True when every value declared as <paramref name="type"/> has exactly that runtime type: value types,
+            /// sealed classes, and arrays of such elements (a <c>Shape[]</c> can hold a <c>Circle[]</c>).
+            /// </summary>
+            private static bool IsExactType(ITypeSymbol type)
+                => type is IArrayTypeSymbol array
+                    ? IsExactType(array.ElementType)
+                    : type.IsValueType || type.IsSealed;
 
             /// <summary>
             /// The element type of a one-dimensional array, or of a type that is or implements exactly one

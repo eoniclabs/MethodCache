@@ -28,6 +28,7 @@ namespace KeyFormat
     public record Range(string? From, int To);
     public record NamedRange(string? From, int To, string Name) : Range(From, To);
     public readonly record struct Point(int X, int Y);
+    public sealed class IdList : System.Collections.Generic.List<int> { }
     public sealed class Tenant : ICacheKeyProvider
     {
         public Tenant(string id) => Id = id;
@@ -90,6 +91,12 @@ namespace KeyFormat
 
         [Cache(Duration = ""00:10:00"")]
         Task<int> RangesAsync(Range[] ranges);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> SequenceAsync(System.Collections.Generic.IEnumerable<int> values);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> ListAsync(System.Collections.Generic.List<int> values);
     }
 
     public interface IOrderService
@@ -114,6 +121,8 @@ namespace KeyFormat
         public Task<int> PointsAsync(System.Collections.Generic.List<Point> points, System.Collections.Generic.IEnumerable<Tenant?> tenants) { Calls++; return Task.FromResult(Calls); }
         public Task<int> QueriesAsync(Query[] queries) { Calls++; return Task.FromResult(Calls); }
         public Task<int> RangesAsync(Range[] ranges) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> SequenceAsync(System.Collections.Generic.IEnumerable<int> values) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> ListAsync(System.Collections.Generic.List<int> values) { Calls++; return Task.FromResult(Calls); }
         public Task<string> PointAsync(Point point, Tenant tenant) { Calls++; return Task.FromResult(""point-"" + point.X + "","" + point.Y + ""-"" + tenant.Id); }
     }
 
@@ -301,8 +310,8 @@ namespace KeyFormat
 
         Assert.Equal(ids, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", "[3:1:2:3]")));
         Assert.Equal(noIds, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", MethodCacheKeys.Null)));
-        Assert.Equal(names, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "NamesAsync", "[2:a\\\\\\:b:\\\\0]", "2")));
-        Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "PointsAsync", "[1:(1\\:2)]", "[2:acme:\\\\0]")));
+        Assert.Equal(names, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "NamesAsync", "System.Collections.Generic.List`1[System.String]", "[2:a\\\\\\:b:\\\\0]", "2")));
+        Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "PointsAsync", "[1:(1\\:2)]", "KeyFormat.Tenant[]", "[2:acme:\\\\0]")));
         Assert.Equal(queriesResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "QueriesAsync", "[1:(x\\:1)]")));
     }
 
@@ -321,6 +330,33 @@ namespace KeyFormat
 
         Assert.Equal(first, equal);
         Assert.Equal(5, new[] { first, reordered, empty, emptyName, noNames }.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task CollectionsDeclaredAsInterfaces_KeepTheirRuntimeTypeApart()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+
+        var array = await Call<int>(users, "SequenceAsync", new[] { 1, 2 });
+        var sameArray = await Call<int>(users, "SequenceAsync", new[] { 1, 2 });
+        var list = await Call<int>(users, "SequenceAsync", new List<int> { 1, 2 });
+
+        Assert.Equal(array, sameArray);
+        Assert.NotEqual(array, list);
+
+        // Declared as List<int>: a plain list keeps the short key, a subclass gets its type in front
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var userType = assembly.GetType("KeyFormat.IUserService")!;
+        var plain = await Call<int>(users, "ListAsync", new List<int> { 1, 2 });
+        var subclass = (System.Collections.IList)Activator.CreateInstance(assembly.GetType("KeyFormat.IdList")!)!;
+        subclass.Add(1);
+        subclass.Add(2);
+        var derived = await Call<int>(users, "ListAsync", subclass);
+
+        Assert.NotEqual(plain, derived);
+        Assert.Equal(plain, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ListAsync", "[2:1:2]")));
+        Assert.Equal(derived, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ListAsync", "KeyFormat.IdList", "[2:1:2]")));
     }
 
     [Fact]

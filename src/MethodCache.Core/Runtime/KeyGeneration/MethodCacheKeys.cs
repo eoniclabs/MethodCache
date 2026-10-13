@@ -15,7 +15,8 @@ namespace MethodCache;
 /// A record, class or struct argument whose public properties and fields are simple values is written as
 /// <c>({member1}:{member2}...)</c> in declaration order, and an <see cref="ICacheKeyProvider"/> as its
 /// <see cref="ICacheKeyProvider.CacheKeyPart"/>. An array or collection of such values (records and classes only when
-/// sealed) is written as <see cref="Sequence{T}"/> writes it. Methods with other arguments, or a subclass of a declared record
+/// sealed) is written as <see cref="Sequence{T}"/> writes it, after its runtime type name when that differs from the
+/// declared type. Methods with other arguments, or a subclass of a declared record
 /// or class, use the registered <see cref="MethodCache.Extensibility.ICacheKeyGenerator"/>, which
 /// produces <c>{Service}.{Method}[:v{Version}]:{hash}</c>; <see cref="Pattern"/> matches both forms.
 /// </remarks>

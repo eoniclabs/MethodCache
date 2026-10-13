@@ -24,8 +24,10 @@ public interface IUserService
   `SearchAsync:(alice:2)`. Two records with equal values give the same key.
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
 - **Arrays and collections** of those values are written with their count and then each element in order:
-  `ByIdsAsync:[3:1:2:3]`. A dictionary counts as a collection of key/value pairs. Records and classes inside a
-  collection must be sealed, since an unsealed element type could hold a subclass with more members.
+  `ByIdsAsync:[3:1:2:3]`. Records and classes inside a collection must be sealed, since an unsealed element type
+  could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
+  collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
+  starts with that type, so an array and a list with the same elements stay two entries.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
   generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
