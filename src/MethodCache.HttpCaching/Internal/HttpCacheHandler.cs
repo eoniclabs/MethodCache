@@ -515,7 +515,15 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private Task RevalidateInBackgroundAsync(HttpRequestMessage originalRequest, HttpCacheEntry cachedEntry, string urlKey, string cacheKey, HttpCacheOptions options)
     {
         // Copy the request now: the caller may dispose the original as soon as it has the stale response
-        var request = new HttpRequestMessage(originalRequest.Method, originalRequest.RequestUri);
+        var request = new HttpRequestMessage(originalRequest.Method, originalRequest.RequestUri)
+        {
+            Version = originalRequest.Version,
+            VersionPolicy = originalRequest.VersionPolicy
+        };
+        foreach (var option in originalRequest.Options)
+        {
+            request.Options.Set(new HttpRequestOptionsKey<object?>(option.Key), option.Value);
+        }
         foreach (var header in originalRequest.Headers)
         {
             request.Headers.TryAddWithoutValidation(header.Key, header.Value);
