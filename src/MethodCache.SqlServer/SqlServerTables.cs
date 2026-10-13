@@ -26,8 +26,9 @@ internal sealed class SqlServerTables(
     {
         // Normally the tables are ready before the first request; a database that is down only delays startup a bit
         // On a thread-pool thread: SqlClient can block before its first await (e.g. while connecting), and that
-        // time would not count against StartupWait
-        _creating = Task.Run(() => CreateWithRetriesAsync(_stopping.Token), CancellationToken.None);
+        // time would not count against StartupWait. The token is read here: Dispose may run before the work starts.
+        var stopping = _stopping.Token;
+        _creating = Task.Run(() => CreateWithRetriesAsync(stopping), CancellationToken.None);
         try
         {
             await _creating.WaitAsync(StartupWait, cancellationToken).ConfigureAwait(false);
