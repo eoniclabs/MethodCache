@@ -23,7 +23,7 @@ builder.Services.AddMethodCacheRedis(options =>
 ```
 <!-- endSnippet -->
 
-MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again.
+MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again, and the backplane keeps trying to connect and subscribe (after 1 second, then twice as long each time, up to 30 seconds), logging a warning for each failure, until it succeeds or the application stops.
 
 To share a connection your app already has instead:
 

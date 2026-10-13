@@ -2,6 +2,7 @@ using NSubstitute;
 using StackExchange.Redis;
 using Xunit;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 namespace MethodCache.Redis.Tests;
 
@@ -127,5 +128,67 @@ public class RedisBackplaneShutdownTests
         await backplane.SubscribeAsync(_ => Task.CompletedTask);
         await backplane.DisposeAsync();
         connection.DidNotReceive().Dispose();
+    }
+
+    [Fact]
+    public async Task Subscribe_RedisDownAtFirst_RetriesWithBackoffAndThenDeliversInvalidations()
+    {
+        var connection = Substitute.For<IConnectionMultiplexer>();
+        var subscriber = Substitute.For<ISubscriber>();
+        connection.GetSubscriber().Returns(subscriber);
+        Action<RedisChannel, RedisValue>? receive = null;
+        subscriber.SubscribeAsync(Arg.Any<RedisChannel>(), Arg.Do<Action<RedisChannel, RedisValue>>(h => receive = h), Arg.Any<CommandFlags>()).Returns(Task.CompletedTask);
+        subscriber.UnsubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>()).Returns(Task.CompletedTask);
+
+        // Redis is down for the first two connects
+        var attempts = 0;
+        Task<IConnectionMultiplexer> Connect() => ++attempts <= 2
+            ? Task.FromException<IConnectionMultiplexer>(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"))
+            : Task.FromResult(connection);
+        var time = new FakeTimeProvider();
+        var logger = new RecordingLogger();
+        await using var backplane = new RedisBackplane(Connect, "channel", logger, time);
+        var delivered = new List<string?>();
+        var subscription = backplane.SubscribeAsync(message => { delivered.Add(message.Key); return Task.CompletedTask; });
+
+        await WaitUntil(() => attempts == 1);
+        Assert.False(subscription.IsCompleted);
+        time.Advance(RedisBackplane.FirstRetryDelay);
+        await WaitUntil(() => attempts == 2);
+        time.Advance(RedisBackplane.FirstRetryDelay); // the second wait is twice as long
+        Assert.Equal(2, attempts);
+        time.Advance(RedisBackplane.FirstRetryDelay);
+        await subscription.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(3, attempts);
+        Assert.Equal(2, logger.Messages.Count(m => m.Level == LogLevel.Warning));
+        receive!(RedisChannel.Literal("channel"), RedisBackplane.Format(Extensibility.BackplaneMessageType.KeyInvalidation, "remote", "key"));
+        Assert.Equal(new[] { "key" }, delivered);
+    }
+
+    [Fact]
+    public async Task Dispose_WhileWaitingToRetry_EndsTheSubscription()
+    {
+        var time = new FakeTimeProvider();
+        var attempts = 0;
+        var backplane = new RedisBackplane(() => { attempts++; throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"); }, "channel", timeProvider: time);
+        var subscription = backplane.SubscribeAsync(_ => Task.CompletedTask);
+        await WaitUntil(() => attempts == 1);
+
+        await backplane.DisposeAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => subscription.WaitAsync(TimeSpan.FromSeconds(10)));
+        time.Advance(RedisBackplane.MaxRetryDelay);
+        Assert.Equal(1, attempts);
+    }
+
+    private static async Task WaitUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < deadline, "condition not met in time");
+            await Task.Delay(5);
+        }
     }
 }

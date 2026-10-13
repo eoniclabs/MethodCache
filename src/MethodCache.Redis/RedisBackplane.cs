@@ -10,11 +10,15 @@ namespace MethodCache.Redis;
 /// </summary>
 /// <remarks>
 /// Pub/sub delivers nothing while a connection is down, so when the connection comes back this instance treats it
-/// as a clear and drops its in-memory entries; they are read again from Redis.
+/// as a clear and drops its in-memory entries; they are read again from Redis. A subscription that can't connect is
+/// retried, waiting longer each time up to <see cref="MaxRetryDelay"/>, until it succeeds or is cancelled.
 /// </remarks>
 internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
 {
     private const char Separator = '\n';
+
+    internal static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(1);
+    internal static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
 
     private readonly Func<Task<IConnectionMultiplexer>> _connect;
     private readonly RedisChannel _channel;
@@ -24,10 +28,12 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     private Task _cleanupTask = Task.CompletedTask;
     private bool _disposed;
     private readonly ILogger _logger;
+    private readonly TimeProvider _time;
     private int _rejectedWarning;
 
-    public RedisBackplane(Func<Task<IConnectionMultiplexer>> connect, string channel, ILogger<RedisBackplane>? logger = null)
+    public RedisBackplane(Func<Task<IConnectionMultiplexer>> connect, string channel, ILogger<RedisBackplane>? logger = null, TimeProvider? timeProvider = null)
     {
+        _time = timeProvider ?? TimeProvider.System;
         _connect = connect ?? throw new ArgumentNullException(nameof(connect));
         ArgumentException.ThrowIfNullOrEmpty(channel);
         _channel = RedisChannel.Literal(channel);
@@ -62,9 +68,46 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
 
     private async Task StartSubscriptionAsync(Subscription subscription)
     {
+        // Until Redis answers (it may be down when the app starts), try again, waiting longer each time
+        var delay = FirstRetryDelay;
+        IConnectionMultiplexer connection;
+        while (true)
+        {
+            try
+            {
+                connection = await _connect().WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+                break;
+            }
+            catch (OperationCanceledException) when (subscription.Cancellation.IsCancellationRequested)
+            {
+                subscription.Completion.TrySetCanceled(subscription.Cancellation.Token);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "MethodCache could not connect its Redis backplane; it tries again in {Delay}. Until then other instances' invalidations don't reach this instance's memory.", delay);
+            }
+
+            try
+            {
+                await Task.Delay(delay, _time, subscription.Cancellation.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                subscription.Completion.TrySetCanceled(subscription.Cancellation.Token);
+                return;
+            }
+
+            delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, MaxRetryDelay.Ticks));
+        }
+
+        await SubscribeAsync(subscription, connection).ConfigureAwait(false);
+    }
+
+    private async Task SubscribeAsync(Subscription subscription, IConnectionMultiplexer connection)
+    {
         try
         {
-            var connection = await _connect().WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
             subscription.Cancellation.Token.ThrowIfCancellationRequested();
             subscription.Connection = connection;
             subscription.Handler = (_, value) =>

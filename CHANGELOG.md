@@ -45,7 +45,8 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   circuit breaker for the whole instance. A tag or clear stamp from a server whose clock runs ahead no longer turns
   every entry written since into a miss.
 - **Redis**: a connection factory that threw once (Redis down at first use) is asked again on the next call instead
-  of failing until restart. The docs now say to run Redis with `maxmemory-policy noeviction`: an evicted invalidation
+  of failing until restart, and the backplane retries its subscription with backoff (1 s doubling to 30 s, a warning
+  per failure) instead of never subscribing. The docs now say to run Redis with `maxmemory-policy noeviction`: an evicted invalidation
   stamp brings invalidated values back.
 - **SQL Server**: a `TagRetention` that ends after 9999-12-31 fails at startup instead of making every tag
   invalidation fail, and stamp expiry is capped there. Expired rows are deleted every 5 minutes instead of 30, so each
