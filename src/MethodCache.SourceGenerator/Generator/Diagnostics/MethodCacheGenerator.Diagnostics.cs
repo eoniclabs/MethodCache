@@ -68,7 +68,7 @@ namespace MethodCache.SourceGenerator
             internal static readonly DiagnosticDescriptor UnsupportedRefLikeType = new(
                 id: "MCG007",
                 title: "Caching not supported with ref struct types",
-                messageFormat: "[Cache] on '{0}' is not supported: ref struct parameters or returns such as Span<T> cannot be cached. Use an array, Memory<T> or a string, or remove [Cache].",
+                messageFormat: "[Cache] on '{0}' is not supported: ref struct values such as Span<T>, or type parameters that allow ref structs, cannot be cached as arguments or returns. Use an array, Memory<T> or a string, or remove [Cache].",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true,

@@ -1125,6 +1125,9 @@ namespace MethodCache.SourceGenerator
                 if (tp.HasConstructorConstraint && !tp.HasValueTypeConstraint && !tp.HasUnmanagedTypeConstraint)
                     constraints.Add("new()");
 
+                if (Utils.AllowsRefLikeType(tp))
+                    constraints.Add("allows ref struct");
+
                 return constraints.Any()
                     ? $"where {Utils.TypeParameterIdentifier(tp)} : {string.Join(", ", constraints)}"
                     : string.Empty;
