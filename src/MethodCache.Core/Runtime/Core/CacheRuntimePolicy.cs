@@ -13,6 +13,7 @@ namespace MethodCache.Infrastructure
     /// </remarks>
     public sealed record CacheRuntimePolicy
     {
+        private readonly IReadOnlyCollection<string> _tags = Array.Empty<string>();
         /// <summary>
         /// The unique identifier of the method this policy applies to.
         /// </summary>
@@ -28,7 +29,15 @@ namespace MethodCache.Infrastructure
         /// <summary>
         /// Tags associated with cache entries for bulk invalidation.
         /// </summary>
-        public IReadOnlyCollection<string> Tags { get; init; } = Array.Empty<string>();
+        public IReadOnlyCollection<string> Tags
+        {
+            get => _tags;
+            init
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _tags = value.Count == 0 ? Array.Empty<string>() : Array.AsReadOnly(value.ToArray());
+            }
+        }
 
         /// <summary>
         /// Version number for cache key generation to support cache busting.
