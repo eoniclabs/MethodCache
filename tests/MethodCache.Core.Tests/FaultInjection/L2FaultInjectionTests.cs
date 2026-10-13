@@ -481,8 +481,12 @@ public class L2FaultInjectionTests
         await WaitUntil(() => chaos.LandedLate == 1);
         (await Get(CreateNode().Node, "key", () => "unused")).Should().Be("old", "the late write overwrote the newer value");
 
+        // The removal runs in the background once the delay passes; wait for it to remove the entry and tell the
+        // other nodes, rather than for the breaker, which a timed-out write doesn't open
+        var delivered = _hub.Delivered;
         _time.Advance(BreakDuration);
-        await WaitUntil(() => lateLayer.IsAvailable);
+        await WaitUntil(() => _shared.Get(EntryKey) == null && _hub.Delivered > delivered);
+        lateLayer.IsAvailable.Should().BeTrue();
         (await Get(CreateNode().Node, "key", () => "fresh")).Should().Be("fresh", "the retry removed the late write");
         (await Get(newer, "key", () => "fresh")).Should().Be("fresh", "the retry told the other nodes");
     }
@@ -499,8 +503,10 @@ public class L2FaultInjectionTests
         var load = Get(late, "key", () => "old");
         _time.Advance(Timeout);
         (await load.WaitAsync(RealTimeLimit)).Should().Be("old");
+        var delivered = _hub.Delivered;
         _time.Advance(BreakDuration);
-        await WaitUntil(() => lateLayer.IsAvailable);
+        await WaitUntil(() => _hub.Delivered > delivered); // the removal ran and told the other nodes
+        lateLayer.IsAvailable.Should().BeTrue();
 
         _time.Advance(OneMillisecond);
         await writer.SetAsync("key", "new", OneMinute);
