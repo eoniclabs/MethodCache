@@ -1,0 +1,86 @@
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace MethodCache.Docs.Tests;
+
+/// <summary>
+/// Keyed registrations are cached like unkeyed ones, and an interface registered only keyed stays keyed-only.
+/// </summary>
+public class KeyedRegistrationTests
+{
+    [Fact]
+    public void KeyedRegistration_IsDecorated_AndNoUnkeyedServiceAppears()
+    {
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IKeyedRates, KeyedRates>("ecb");
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Contains("Decorator", provider.GetRequiredKeyedService<IKeyedRates>("ecb").GetType().Name);
+        Assert.Null(provider.GetService<IKeyedRates>());
+    }
+
+    // Keys don't include the service key, so both registrations share entries: "fed" is asked for another id
+    [Fact]
+    public void KeyedRegistrations_AreEachDecorated_AndFactoriesSeeTheirOwnKey()
+    {
+        var ecb = new KeyedRates(1);
+        var fed = new KeyedRates(2);
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IKeyedRates>("ecb", ecb);
+        services.AddKeyedScoped<IKeyedRates>("fed", (_, key) => key is "fed" ? fed : throw new InvalidOperationException($"Factory saw key {key}"));
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var first = scope.ServiceProvider.GetRequiredKeyedService<IKeyedRates>("ecb");
+        Assert.Equal(1, first.Get(1));
+        Assert.Equal(1, first.Get(1));
+        Assert.Equal(1, ecb.Calls);
+
+        var second = scope.ServiceProvider.GetRequiredKeyedService<IKeyedRates>("fed");
+        Assert.Contains("Decorator", second.GetType().Name);
+        Assert.Equal(2, second.Get(2));
+        Assert.Equal(2, second.Get(2));
+        Assert.Equal(1, fed.Calls);
+    }
+
+    [Fact]
+    public void AddMethodCacheTwice_KeyedRegistration_IsDecoratedOnce()
+    {
+        var inner = new KeyedRates(1);
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IKeyedRates>("ecb", inner);
+        services.AddMethodCache();
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        var rates = provider.GetRequiredKeyedService<IKeyedRates>("ecb");
+        rates.Get(1);
+        rates.Get(1);
+
+        Assert.Equal(1, inner.Calls);
+        Assert.Single(services, d => d.ServiceType == typeof(IKeyedRates) && Equals(d.ServiceKey, "ecb"));
+    }
+}
+
+public interface IKeyedRates { [Cache] int Get(int id); }
+
+public sealed class KeyedRates : IKeyedRates
+{
+    private readonly int _value;
+
+    public KeyedRates() : this(0)
+    {
+    }
+
+    public KeyedRates(int value) => _value = value;
+
+    public int Calls { get; private set; }
+
+    public int Get(int id)
+    {
+        Calls++;
+        return _value;
+    }
+}

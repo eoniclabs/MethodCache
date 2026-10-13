@@ -73,7 +73,7 @@ namespace Microsoft.Extensions.DependencyInjection
             EnsureCoreServices(services);
 
             // Attribute policies come from the source the generator emits, registered with each decorator
-            DecorateExistingRegistrations(services);
+            DecorateExistingRegistrations(services, targetAssemblies);
             RegisterUnregisteredServices(services, targetAssemblies);
 
             if (configure != null)
@@ -87,7 +87,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <summary>
         /// Reads cache policies for <c>[Cache]</c> methods from a configuration section, such as <c>"MethodCache"</c> in
         /// <c>appsettings.json</c>. These win over attributes and startup code, and changes apply when the configuration
-        /// reloads. An invalid value throws at startup; an invalid reload is logged and the previous policies stay.
+        /// reloads. The section is read when the host starts (without a generic host, on first use), so configuration
+        /// sources added after this call count too. An invalid value fails startup; an invalid reload is logged and the
+        /// previous policies stay.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="configuration">The application's configuration</param>
@@ -107,10 +109,10 @@ namespace Microsoft.Extensions.DependencyInjection
 
             EnsureCoreServices(services);
 
-            // Parsed here so invalid values fail at startup; reloads are applied while the application runs
-            var source = ConfigFilePolicySourceBuilder.FromConfiguration(configuration, sectionName);
+            // Read when the policies load, so sources added to the configuration after this call are included
             services.AddSingleton<PolicySourceRegistration>(sp =>
             {
+                var source = ConfigFilePolicySourceBuilder.FromConfiguration(configuration, sectionName);
                 var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Configuration");
                 if (logger != null)
                 {
@@ -147,6 +149,11 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             services.TryAddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
+
+            // A generic host loads the policies when it starts, so misconfiguration fails startup instead of the
+            // first call; without one, the first cached call loads them and fails the same way
+            services.AddOptions<PolicyStartupValidation>().ValidateOnStart();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<PolicyStartupValidation>, PolicyStartupValidation.Validator>());
         }
 
         /// <summary>
@@ -255,11 +262,12 @@ namespace Microsoft.Extensions.DependencyInjection
             => callingAssembly == null ? null : new[] { callingAssembly };
 
         /// <summary>
-        /// Wraps services the application registered itself in their generated decorators. The original
-        /// registration moves to a private key so the container still creates and disposes the implementation
-        /// with its own lifetime, factory or instance, and the decorator takes its place under the interface.
+        /// Wraps services the application registered itself, keyed ones included, in their generated decorators.
+        /// The original registration moves to a private key so the container still creates and disposes the
+        /// implementation with its own lifetime, factory or instance, and the decorator takes its place under the
+        /// interface and its service key.
         /// </summary>
-        private static void DecorateExistingRegistrations(IServiceCollection services)
+        private static void DecorateExistingRegistrations(IServiceCollection services, Assembly[]? preferredAssemblies)
         {
             var decorated = GetDecoratedRegistrations(services);
 
@@ -268,22 +276,31 @@ namespace Microsoft.Extensions.DependencyInjection
                 var descriptor = services[index];
                 var serviceType = descriptor.ServiceType;
 
-                if (descriptor.IsKeyedService ||
+                // KeyedService.AnyKey is skipped: its implementation receives the requested key, which the inner
+                // registration can't pass on
+                if (descriptor.ServiceKey is DecoratedServiceKey ||
+                    ReferenceEquals(descriptor.ServiceKey, KeyedService.AnyKey) ||
                     !serviceType.IsInterface ||
                     serviceType.ContainsGenericParameters ||
                     decorated.Contains(descriptor) ||
-                    !MethodCacheDecorators.TryGet(serviceType, out var registration))
+                    !MethodCacheDecorators.TryGet(serviceType, preferredAssemblies, out var registration))
                 {
                     continue;
                 }
 
-                var innerKey = new DecoratedServiceKey(serviceType);
+                var innerKey = new DecoratedServiceKey(serviceType, descriptor.ServiceKey);
                 services.Add(CreateKeyedCopy(descriptor, innerKey));
 
-                var decorator = ServiceDescriptor.Describe(
-                    serviceType,
-                    provider => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)),
-                    descriptor.Lifetime);
+                var decorator = descriptor.IsKeyedService
+                    ? ServiceDescriptor.DescribeKeyed(
+                        serviceType,
+                        descriptor.ServiceKey,
+                        (provider, _) => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)),
+                        descriptor.Lifetime)
+                    : ServiceDescriptor.Describe(
+                        serviceType,
+                        provider => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)),
+                        descriptor.Lifetime);
 
                 // Replacing the original slot keeps registration order, and therefore IEnumerable<T> order
                 services[index] = decorator;
@@ -306,8 +323,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
             foreach (var registration in registrations)
             {
-                // Respect registrations the application made itself (lifetime, factory, test double)
-                if (services.Any(descriptor => descriptor.ServiceType == registration.ServiceType && !descriptor.IsKeyedService))
+                // Respect registrations the application made itself (lifetime, factory, test double, service key)
+                if (services.Any(descriptor => descriptor.ServiceType == registration.ServiceType))
                 {
                     continue;
                 }
@@ -332,6 +349,24 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static ServiceDescriptor CreateKeyedCopy(ServiceDescriptor descriptor, object key)
         {
+            if (descriptor.IsKeyedService)
+            {
+                if (descriptor.KeyedImplementationInstance != null)
+                {
+                    return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.KeyedImplementationInstance);
+                }
+
+                if (descriptor.KeyedImplementationFactory != null)
+                {
+                    // The factory sees the key the application registered, not the private one
+                    var keyedFactory = descriptor.KeyedImplementationFactory;
+                    var serviceKey = descriptor.ServiceKey;
+                    return new ServiceDescriptor(descriptor.ServiceType, key, (provider, _) => keyedFactory(provider, serviceKey), descriptor.Lifetime);
+                }
+
+                return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.KeyedImplementationType!, descriptor.Lifetime);
+            }
+
             if (descriptor.ImplementationInstance != null)
             {
                 return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.ImplementationInstance);
@@ -365,14 +400,23 @@ namespace Microsoft.Extensions.DependencyInjection
             public HashSet<ServiceDescriptor> Descriptors { get; } = new();
         }
 
-        // Compared by reference, so two registrations of the same interface each keep their own inner service
+        // Compared by reference, so two registrations of the same interface each keep their own inner service.
+        // Holds the application's own service key, if any, for diagnostics.
         private sealed class DecoratedServiceKey
         {
-            public DecoratedServiceKey(Type serviceType) => ServiceType = serviceType;
+            public DecoratedServiceKey(Type serviceType, object? serviceKey)
+            {
+                ServiceType = serviceType;
+                ServiceKey = serviceKey;
+            }
 
             public Type ServiceType { get; }
 
-            public override string ToString() => $"MethodCache inner {ServiceType.Name}";
+            public object? ServiceKey { get; }
+
+            public override string ToString() => ServiceKey == null
+                ? $"MethodCache inner {ServiceType.Name}"
+                : $"MethodCache inner {ServiceType.Name} ({ServiceKey})";
         }
     }
 }

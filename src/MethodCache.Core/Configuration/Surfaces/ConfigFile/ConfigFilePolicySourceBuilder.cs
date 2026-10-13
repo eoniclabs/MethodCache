@@ -7,6 +7,17 @@ namespace MethodCache.Core.Configuration.Surfaces.ConfigFile;
 
 internal static class ConfigFilePolicySourceBuilder
 {
+    // The setting names of a method or the Defaults section; configuration keys are case-insensitive
+    private static readonly HashSet<string> PolicySettings = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "FailSafeRetryAfter",
+        "Tags", "Version", "Group", "Metadata", "Notes"
+    };
+
+    private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId" };
+
+    private static readonly HashSet<string> FailSafeSettings = new(StringComparer.OrdinalIgnoreCase) { "Duration", "Timeout", "RetryAfter" };
+
     public static ConfigFilePolicySource FromConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
     {
         if (configuration == null)
@@ -32,7 +43,7 @@ internal static class ConfigFilePolicySourceBuilder
         var descriptors = new List<PolicyDraft>();
 
         // Defaults reach every cached method, including ones configured only with [Cache], whose own values win
-        var defaults = ParseSection(root.GetSection("Defaults"));
+        var defaults = ParseSection(root.GetSection("Defaults"), PolicySettings);
 
         // "FailSafe": { "Duration", "Timeout", "RetryAfter" } turns fail-safe on for every cached method
         defaults.Apply(ParseFailSafeBlock(root.GetSection("FailSafe")), overwriteExisting: false);
@@ -54,14 +65,14 @@ internal static class ConfigFilePolicySourceBuilder
                 continue;
             }
 
-            var notes = methodSection["Notes"] ?? methodSection["notes"];
-            descriptors.Add(ParseSection(methodSection).Build(methodId, notes));
+            var notes = methodSection["Notes"];
+            descriptors.Add(ParseSection(methodSection, MethodSettings).Build(methodId, notes));
         }
 
         return descriptors;
     }
 
-    private static CachePolicyBuilder ParseSection(IConfigurationSection section)
+    private static CachePolicyBuilder ParseSection(IConfigurationSection section, HashSet<string> settings)
     {
         var builder = new CachePolicyBuilder();
 
@@ -70,13 +81,22 @@ internal static class ConfigFilePolicySourceBuilder
             return builder;
         }
 
+        RejectUnknownSettings(section, settings);
+
         var duration = ReadTimeSpan(section, "Duration");
         if (duration is { } durationValue)
         {
             builder.WithDuration(durationValue);
         }
 
-        var tags = ReadValues(section.GetSection("Tags")) ?? ReadValues(section.GetSection("tags"));
+        var tagsSection = section.GetSection("Tags");
+        if (!string.IsNullOrWhiteSpace(tagsSection.Value))
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{tagsSection.Path}' is a single value; write tags as a list, for example [\"users\"] (Tags__0 in environment variables).");
+        }
+
+        var tags = ReadValues(tagsSection);
         if (tags is { Count: > 0 })
         {
             builder.SetTags(tags);
@@ -109,6 +129,14 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithRefreshAhead(refresh);
         }
 
+        var failSafeSection = section.GetSection("FailSafe");
+        if (failSafeSection.GetChildren().Any())
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{failSafeSection.Path}' must be a time span such as \"01:00:00\" or \"off\". " +
+                "Set FailSafeTimeout and FailSafeRetryAfter next to it; the FailSafe block with Duration, Timeout and RetryAfter belongs at the top of the section.");
+        }
+
         if (ReadValue(section, "FailSafe") is { } failSafe)
         {
             builder.WithFailSafe(string.Equals(failSafe, "off", StringComparison.OrdinalIgnoreCase)
@@ -126,18 +154,13 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithFailSafeRetryAfter(failSafeRetryAfter);
         }
 
-        var groupValue = section["Group"] ?? section["group"];
+        var groupValue = section["Group"];
         if (!string.IsNullOrWhiteSpace(groupValue))
         {
             builder.AddMetadata("group", groupValue);
         }
 
         var metadataSection = section.GetSection("Metadata");
-        if (!metadataSection.Exists())
-        {
-            metadataSection = section.GetSection("metadata");
-        }
-
         if (metadataSection.Exists())
         {
             foreach (var child in metadataSection.GetChildren())
@@ -159,6 +182,8 @@ internal static class ConfigFilePolicySourceBuilder
         {
             return builder;
         }
+
+        RejectUnknownSettings(section, FailSafeSettings);
 
         if (ReadTimeSpan(section, "Duration") is not { } duration)
         {
@@ -194,12 +219,28 @@ internal static class ConfigFilePolicySourceBuilder
             return null;
         }
 
-        if (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero)
+        // A bare number such as "300" parses as days, so a value without ':' is rejected rather than misread
+        if (!text.Contains(':', StringComparison.Ordinal) ||
+            !TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) ||
+            value <= TimeSpan.Zero)
         {
             throw InvalidValue(section, name, text, "a positive time span such as \"00:05:00\"");
         }
 
         return value;
+    }
+
+    private static void RejectUnknownSettings(IConfigurationSection section, HashSet<string> settings)
+    {
+        foreach (var child in section.GetChildren())
+        {
+            if (!settings.Contains(child.Key))
+            {
+                throw new InvalidOperationException(
+                    $"MethodCache configuration '{child.Path}' is not a setting MethodCache knows. " +
+                    $"Use one of: {string.Join(", ", settings.OrderBy(static name => name, StringComparer.Ordinal))}.");
+            }
+        }
     }
 
     private static InvalidOperationException InvalidValue(IConfigurationSection section, string name, string value, string expected)

@@ -62,10 +62,11 @@ a key.
 | Exception | Cause |
 |-----------|-------|
 | `InvalidOperationException` when building a key | An argument type has only private state, so every value would get the same key. Implement `ICacheKeyProvider` ([Cache keys](features/keys.md#types-whose-state-is-private)) |
-| `InvalidOperationException` at startup | `OnHit`, `OnMiss`, `WithMetrics` or `When` configured for a `[Cache]` method. They apply to `GetOrCreateAsync` only |
+| `InvalidOperationException` at startup | `OnHit`, `OnMiss`, `WithMetrics` or `When` configured for a `[Cache]` method. They apply to `GetOrCreateAsync` only. Without a generic host, the first cached call throws |
+| `InvalidOperationException` from `AddMethodCache` naming two assemblies | Two assemblies list the same interface in `[assembly: CacheInterface]`; pass the one whose policies apply ([Caching third-party code](features/third-party.md)) |
 | `NotSupportedException` from `InvalidateByTagPatternAsync` | Pattern invalidation doesn't work with a distributed cache. Invalidate exact tags |
 | `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. An override can't turn caching off; invalidate instead |
-| An exception from `AddMethodCacheFromConfiguration` | An invalid value in the `MethodCache` section at startup |
+| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name, a single value for `Tags` or a time span without `:` in the `MethodCache` section |
 
 ## A caller changed a cached object, and others see the change
 

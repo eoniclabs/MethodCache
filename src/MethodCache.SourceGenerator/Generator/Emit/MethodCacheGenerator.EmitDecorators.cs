@@ -118,7 +118,12 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
                 sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
                 // Internal: generated code in the application's assembly, never part of its public API
-                sb.AppendLine($"    internal sealed class {className}{genericParams} : {interfaceFqn}, global::System.IDisposable, global::System.IAsyncDisposable");
+                // Disposable only when the interface is: the container keeps every disposable transient it creates.
+                // Then both kinds, so disposing the container synchronously still works for an IAsyncDisposable one
+                var disposable = info.Symbol.AllInterfaces.Any(i => i.ToDisplayString() is "System.IDisposable" or "System.IAsyncDisposable");
+                sb.AppendLine(disposable
+                    ? $"    internal sealed class {className}{genericParams} : {interfaceFqn}, global::System.IDisposable, global::System.IAsyncDisposable"
+                    : $"    internal sealed class {className}{genericParams} : {interfaceFqn}");
 
                 // Add generic constraints after class declaration
                 foreach (var typeParam in Utils.AllTypeParameters(info.Symbol))
@@ -134,7 +139,6 @@ namespace MethodCache.SourceGenerator
 
                 // Fields
                 sb.AppendLine($"        private readonly {interfaceFqn} _decorated;");
-                sb.AppendLine("        private readonly bool _ownsDecorated;");
                 sb.AppendLine("        private readonly global::MethodCache.ICacheManager _cacheManager;");
                 sb.AppendLine("        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;");
                 sb.AppendLine("        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;");
@@ -173,19 +177,12 @@ namespace MethodCache.SourceGenerator
                         EmitPassthroughMethod(sb, method);
                 }
 
-                sb.AppendLine("        void global::System.IDisposable.Dispose()");
-                sb.AppendLine("        {");
-                sb.AppendLine("            if (!this._ownsDecorated) return;");
-                sb.AppendLine("            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();");
-                sb.AppendLine("            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException(\"This owned implementation requires asynchronous disposal. Use DisposeAsync.\");");
-                sb.AppendLine("        }");
-                sb.AppendLine("        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()");
-                sb.AppendLine("        {");
-                sb.AppendLine("            if (!this._ownsDecorated) return default;");
-                sb.AppendLine("            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();");
-                sb.AppendLine("            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();");
-                sb.AppendLine("            return default;");
-                sb.AppendLine("        }");
+                // The container owns and disposes the implementation, so disposing the decorator does nothing
+                if (disposable)
+                {
+                    sb.AppendLine("        void global::System.IDisposable.Dispose() { }");
+                    sb.AppendLine("        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync() => default;");
+                }
 
                 // Properties, indexers and events always call the decorated instance
                 var otherMembers = info.Symbol.GetMembers()
@@ -256,10 +253,9 @@ namespace MethodCache.SourceGenerator
             private static void EmitConstructorWithPolicies(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
             {
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
-                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)");
+                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Infrastructure.DecoratorServices services)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));");
-                sb.AppendLine("            _ownsDecorated = ownsDecorated;");
                 sb.AppendLine("            if (services == null) throw new global::System.ArgumentNullException(nameof(services));");
                 sb.AppendLine("            _cacheManager = services.CacheManager;");
                 sb.AppendLine("            _keyGenerator = services.KeyGenerator;");
@@ -1084,17 +1080,6 @@ namespace MethodCache.SourceGenerator
             {
                 EmitMethodSignature(sb, method);
                 sb.AppendLine("        {");
-
-                if (method.Name == "Dispose" && method.Parameters.Length == 0 &&
-                    method.ContainingType.ToDisplayString() == "System.IDisposable")
-                {
-                    sb.AppendLine("            if (!this._ownsDecorated) return;");
-                }
-                else if (method.Name == "DisposeAsync" && method.Parameters.Length == 0 &&
-                    method.ContainingType.ToDisplayString() == "System.IAsyncDisposable")
-                {
-                    sb.AppendLine("            if (!this._ownsDecorated) return default;");
-                }
 
                 var call = BuildMethodCall(method);
                 if (method.ReturnsVoid)

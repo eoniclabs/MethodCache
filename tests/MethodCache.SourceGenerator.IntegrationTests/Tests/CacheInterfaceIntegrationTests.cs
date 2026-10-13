@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using MethodCache;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
@@ -110,6 +111,65 @@ namespace VendorApp
 
         Assert.DoesNotContain(methods, m => m.MethodId.EndsWith("IFxVendorClient.CreateOrderAsync", StringComparison.Ordinal));
     }
+
+    // A library and the application can both list a vendor interface; the module initializer that ran last must not
+    // decide whose policies the application gets
+    [Fact]
+    public async Task TwoAssembliesListingTheSameInterface_TheCallingAssemblysDecoratorWins()
+    {
+        var app = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("AppFx", "00:00:30"), "SharedVendor_App");
+        var library = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("LibraryFx", "01:00:00"), "SharedVendor_Library");
+        RuntimeHelpers.RunModuleConstructor(app.Assembly.ManifestModule.ModuleHandle);
+        RuntimeHelpers.RunModuleConstructor(library.Assembly.ManifestModule.ModuleHandle);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+        app.Assembly.GetType("AppFx.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
+        await using var provider = services.BuildServiceProvider();
+
+        var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+            m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromSeconds(30), rate.Duration);
+    }
+
+    [Fact]
+    public async Task TwoAssembliesListingTheSameInterface_AnotherCaller_GetsAClearError()
+    {
+        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("FirstFx", "00:00:30"), "SharedVendor_First");
+        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SecondFx", "01:00:00"), "SharedVendor_Second");
+        RuntimeHelpers.RunModuleConstructor(first.Assembly.ManifestModule.ModuleHandle);
+        RuntimeHelpers.RunModuleConstructor(second.Assembly.ManifestModule.ModuleHandle);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+
+        var error = Assert.Throws<InvalidOperationException>(() => services.AddMethodCache());
+        Assert.Contains("SharedVendor_First", error.Message);
+        Assert.Contains("SharedVendor_Second", error.Message);
+        Assert.Contains("AddMethodCache(configure, typeof(", error.Message);
+
+        // Naming the assembly settles it
+        services.AddMethodCache(null, second.Assembly);
+        await using var provider = services.BuildServiceProvider();
+        var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+            m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromHours(1), rate.Duration);
+    }
+
+    private static string SharedVendorSource(string ns, string duration) => $@"
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
+using MethodCache.SourceGenerator.IntegrationTests.Vendor;
+
+[assembly: CacheInterface(typeof(IFxVendorClient), nameof(IFxVendorClient.GetRateAsync), Duration = ""{duration}"")]
+
+namespace {ns}
+{{
+    public static class Startup
+    {{
+        public static void Configure(IServiceCollection services) => services.AddMethodCache();
+    }}
+}}";
 
     [Fact]
     public async Task PropertiesIndexersAndEvents_ReachTheClient_AndNestedNamesDontCollide()

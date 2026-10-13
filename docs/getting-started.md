@@ -82,6 +82,15 @@ register an implementation at all, `AddMethodCache()` registers it as a singleto
 the interface. To do the same for interfaces in other projects, pass those projects' assemblies:
 `AddMethodCache(null, typeof(ProductService).Assembly)`.
 
+Library code that calls `AddMethodCache()` for its own interfaces, for example in an `AddMyLibrary()` extension
+method, should pass its assembly the same way. Without it, MethodCache asks the runtime for the calling assembly,
+and when the JIT inlines a short wrapper into the application, that is the application's, so the library's
+unregistered interfaces are not registered.
+
+Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
+key; an interface registered only keyed is not also registered without a key. Cache keys don't include the service
+key, so two keyed registrations of one interface share their entries.
+
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
 `AddScoped(typeof(IRepository<>), typeof(Repository<>))` is not cached; register the closed types instead.

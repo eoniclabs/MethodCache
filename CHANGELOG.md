@@ -99,6 +99,19 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   only.
 - **`[assembly: CacheInterface]` in a class library** decorates the client even when none of the library's code has
   run before `AddMethodCache()`, also when several threads resolve services while the library's initializer runs.
+- **Dependency injection.** Generated decorators implement `IDisposable`/`IAsyncDisposable` only when the interface
+  does, so the container no longer keeps every transient decorator resolved from the root (their `ownsDecorated`
+  constructor parameter is gone). Keyed registrations are decorated under their own key, and an interface registered
+  only keyed no longer gets an extra unkeyed singleton. When two assemblies generate a decorator for the same
+  interface (`[assembly: CacheInterface]` in a library and in the app), the one in the assemblies passed to
+  `AddMethodCache` (by default the caller's) or else the entry assembly's is used, instead of whichever module
+  initializer ran last; otherwise `AddMethodCache` throws naming both.
+- **Startup validation.** The generic host loads every policy source when it starts, so startup-code
+  misconfiguration and invalid appsettings fail `StartAsync` and unknown method ids are logged then, not on the first
+  call. `AddMethodCacheFromConfiguration` reads its section at that point, so configuration sources added after the
+  call count. appsettings now rejects unknown setting names, a single value for `Tags`, an object for a method's
+  `FailSafe` and time spans without `:` (`"300"` was 300 days). The resolved policy of a method keeps the newest
+  version when two sources change it concurrently. The `MethodId` property for environment variables is documented.
 
 ### If you used a pre-release build from GitHub Packages
 

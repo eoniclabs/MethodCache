@@ -17,20 +17,18 @@ namespace App
 {
     [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCode]
-    internal sealed class IUserServiceDecorator : global::App.IUserService, global::System.IDisposable, global::System.IAsyncDisposable
+    internal sealed class IUserServiceDecorator : global::App.IUserService
     {
         private readonly global::App.IUserService _decorated;
-        private readonly bool _ownsDecorated;
         private readonly global::MethodCache.ICacheManager _cacheManager;
         private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;
         private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;
 
         private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method0;
 
-        public IUserServiceDecorator(global::App.IUserService decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
+        public IUserServiceDecorator(global::App.IUserService decorated, global::MethodCache.Infrastructure.DecoratorServices services)
         {
             _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
-            _ownsDecorated = ownsDecorated;
             if (services == null) throw new global::System.ArgumentNullException(nameof(services));
             _cacheManager = services.CacheManager;
             _keyGenerator = services.KeyGenerator;
@@ -108,19 +106,6 @@ namespace App
             return ((global::App.IUserService)this._decorated).CountAsync();
         }
 
-        void global::System.IDisposable.Dispose()
-        {
-            if (!this._ownsDecorated) return;
-            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
-            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException("This owned implementation requires asynchronous disposal. Use DisposeAsync.");
-        }
-        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()
-        {
-            if (!this._ownsDecorated) return default;
-            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();
-            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
-            return default;
-        }
     }
 }
 #pragma warning restore CS8019

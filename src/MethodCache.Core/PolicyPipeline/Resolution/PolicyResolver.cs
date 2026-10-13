@@ -435,7 +435,13 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private void Publish(PolicyAggregator aggregator, DateTimeOffset? timestamp)
     {
         var result = aggregator.Rebuild(DefaultLayers, timestamp);
-        _resolutions[aggregator.MethodId] = result;
+
+        // Rebuilt under the aggregator's lock but stored after it, so a slower publisher must not replace a newer result
+        _resolutions.AddOrUpdate(
+            aggregator.MethodId,
+            static (_, added) => added,
+            static (_, existing, added) => existing.Version > added.Version ? existing : added,
+            result);
         if (_initialized)
         {
             RaisePolicyChanged(result);
