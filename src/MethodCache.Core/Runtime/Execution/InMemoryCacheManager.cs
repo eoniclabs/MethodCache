@@ -553,11 +553,17 @@ namespace MethodCache.Extensibility
             }
 
             var load = RunLoadAsync(key, methodName, factory, policy, flight, previous, cancellationToken);
+            if (cancellationToken.CanBeCanceled && !load.IsCompleted)
+            {
+                // This caller may stop waiting while an uncooperative factory still finishes later.
+                _ = load.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
             if (policy.FailSafeTimeout > 0 && previous != null && !load.IsCompleted)
             {
                 try
                 {
-                    return await load.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider).ConfigureAwait(false);
+                    return await load.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider, cancellationToken).ConfigureAwait(false);
                 }
                 catch (TimeoutException)
                 {
@@ -572,7 +578,7 @@ namespace MethodCache.Extensibility
                 }
             }
 
-            return await load.ConfigureAwait(false);
+            return await load.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -585,7 +591,7 @@ namespace MethodCache.Extensibility
             {
                 if (_distributed != null)
                 {
-                    var stored = await _distributed.TryGetAsync<T>(key).ConfigureAwait(false);
+                    var stored = await ReadDistributedAsync<T>(key, cancellationToken).ConfigureAwait(false);
                     if (stored.Found)
                     {
                         StoreLoaded(key, stored.Value, policy, flight, duration: Math.Max(1, ToNanos(stored.RemainingLifetime)));
@@ -637,6 +643,9 @@ namespace MethodCache.Extensibility
             }
         }
 
+        private ValueTask<DistributedEntry<T>> ReadDistributedAsync<T>(string key, CancellationToken cancellationToken)
+            => _distributed!.TryGetAsync<T>(key, cancellationToken);
+
         /// <summary>
         /// Looks up a key missing from memory in the distributed cache without running a factory, and stores a hit in
         /// memory as a load would. Not found when there is no distributed cache, when it doesn't hold the key, or when
@@ -671,7 +680,7 @@ namespace MethodCache.Extensibility
                     return (true, loaded);
                 }
 
-                var stored = await _distributed.TryGetAsync<T>(key).ConfigureAwait(false);
+                var stored = await ReadDistributedAsync<T>(key, cancellationToken).ConfigureAwait(false);
                 if (stored.Found)
                 {
                     StoreLoaded(key, stored.Value, entryPolicy, flight, duration: Math.Max(1, ToNanos(stored.RemainingLifetime)));

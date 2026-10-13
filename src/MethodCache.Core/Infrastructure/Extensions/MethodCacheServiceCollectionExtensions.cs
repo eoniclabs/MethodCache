@@ -157,7 +157,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         internal static void AddDefaultCacheManager(IServiceCollection services)
         {
-            if (services.Any(sd => sd.ServiceType == typeof(ICacheManager)))
+            if (services.Any(sd => !sd.IsKeyedService && sd.ServiceType == typeof(ICacheManager)))
             {
                 return;
             }

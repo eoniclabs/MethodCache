@@ -26,9 +26,8 @@ await admin.InvalidateTagsAsync(["user:42"]);
 - `ListEntries(keyPrefix, tag, limit)` and `GetEntry(key)`: live entries, without their values.
 - `InvalidateTagsAsync(tags)`, `RemoveEntryAsync(key)` and `ClearAsync()`.
 
-`ListEntries` scans the live cache to find the first keys in ordinal order, but keeps at most `limit`
-candidates in memory. A small page does not allocate a snapshot or sort every matching entry. Entries
-can change during this diagnostic scan; it is not a transaction.
+`ListEntries` returns entries in key order. It is a diagnostic scan, not a transaction: entries can change while it
+runs.
 
 It works with the default in-memory cache manager; a custom `ICacheManager` has no administrator.
 
@@ -52,15 +51,14 @@ app.MapHealthChecks("/health");
 ```
 <!-- endSnippet -->
 
-`GET /methodcache/stats`, `/methods`, `/entries` and `/entry`, `POST /methodcache/invalidate` and `DELETE` for entries.
-The [package README](../../src/MethodCache.AspNetCore/README.md) lists every endpoint. They don't change policies;
-use [runtime overrides](configuration.md#runtime-overrides) for that.
+The [package README](../../src/MethodCache.AspNetCore/README.md#endpoints) lists every endpoint. They don't change
+policies; use [runtime overrides](configuration.md#runtime-overrides) for that.
 
 ## Health check
 
-`AddHealthChecks().AddMethodCache()` reports Healthy when the cache answers, with `entries`, `hitRatio`, `evictions`
-and `memoryUsageBytes` in the report data. With Redis or SQL Server it reports Degraded while that cache is
-unreachable and MethodCache serves from memory only.
+`AddHealthChecks().AddMethodCache()`, from the same package, reports Degraded while Redis or SQL Server is unreachable
+and MethodCache serves from memory only. The [package README](../../src/MethodCache.AspNetCore/README.md#health-check)
+lists the data it reports.
 
 ## OpenTelemetry
 
@@ -83,15 +81,58 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-Hits have no span and the metric producer allocates nothing for its normal method tag, with or without a listener.
-It skips tag construction for instruments without listeners. Custom metric tag lists with at most eight total
-tags also stay within the producer's inline storage; larger lists can allocate. SDK processors and exporters
-have their own costs. Hits are still counted. Cache keys and tags are left off spans unless
-you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
-[package README](../../src/MethodCache.OpenTelemetry/README.md) and [Security](../security.md).
+Hits have no span and add no allocations. Cache keys and tags are left off spans unless you turn on `RecordCacheKeys`
+or `RecordCacheTags`, because they can contain argument values. The
+[package README](../../src/MethodCache.OpenTelemetry/README.md) lists the options, span attributes and metrics; see
+also [Security](../security.md#methodcacheopentelemetry).
 
-## Behavior and compatibility
+## Your own metrics
 
-Tracing counts cached `null` values as hits, including nullable value types.
+Without OpenTelemetry, cache events go to an `ICacheMetricsProvider` (in `MethodCache.Extensibility`). The default
+one discards them. To see them on the console while you develop:
 
-Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
+<!-- snippet: monitoring-console-metrics -->
+```cs
+builder.Services.AddMethodCache();
+builder.Services.AddConsoleCacheMetrics();   // "Cache Hit: ...", "Cache Miss: ..." on standard output
+```
+<!-- endSnippet -->
+
+Or implement the interface. Each cached call is reported once, as a hit or a miss; errors and load times are reported
+when your method runs:
+
+<!-- snippet: monitoring-metrics-provider -->
+```cs
+public sealed class CountingMetrics : ICacheMetricsProvider
+{
+    private long _hits, _misses, _errors;
+
+    public long Hits => Interlocked.Read(ref _hits);
+    public long Misses => Interlocked.Read(ref _misses);
+    public long Errors => Interlocked.Read(ref _errors);
+
+    public void CacheHit(string methodName) => Interlocked.Increment(ref _hits);
+    public void CacheMiss(string methodName) => Interlocked.Increment(ref _misses);
+    public void CacheError(string methodName, string errorMessage) => Interlocked.Increment(ref _errors);
+    public void CacheLatency(string methodName, long elapsedMilliseconds) { }   // load time after a miss
+}
+```
+<!-- endSnippet -->
+
+<!-- snippet: monitoring-metrics-provider-registration -->
+```cs
+builder.Services.AddMethodCache();
+builder.Services.AddSingleton<ICacheMetricsProvider, CountingMetrics>();
+```
+<!-- endSnippet -->
+
+One provider receives the events: the last one registered. `AddMethodCacheOpenTelemetry()` registers its own, so use
+it or a provider of your own, not both. A custom `ICacheManager` reports its own hits and misses. If you wrap
+`ICacheManager` in a decorator of your own, implement `ICacheManagerDecorator` so `GetOrCreateManyAsync` still reads
+the distributed cache through it.
+
+OpenTelemetry instruments the unkeyed `ICacheManager` registration and leaves unrelated keyed managers untouched. A keyed-only registration does not satisfy its requirement for a default manager.
+
+OpenTelemetry preserves the original cache manager registration lifetime and DI disposal ownership. Type/factory-created managers remain container-owned; supplied instances remain caller-owned, including asynchronous disposal.
+
+An instrumented cache lookup generates the application cache key once and reuses it for tracing and the presence-aware inner lookup, preserving the original method and arguments without a second serialization/hash pass.

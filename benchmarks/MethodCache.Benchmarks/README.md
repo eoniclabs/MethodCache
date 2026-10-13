@@ -1,211 +1,147 @@
-# MethodCache Performance Benchmarks
+# MethodCache Benchmarks
 
-This project contains comprehensive performance benchmarks for the MethodCache library, designed to measure and compare the performance characteristics of different caching scenarios, providers, and configurations.
+Which benchmark answers which question, and how to run it. Measured results, with the hardware and versions they
+came from, are in [docs/benchmarks.md](../../docs/benchmarks.md); this page quotes no numbers, because they depend on
+the machine and are only meaningful next to the run that produced them.
 
-## Overview
+## Which benchmark to use
 
-The benchmark suite includes:
+| Question | Benchmark | Command |
+|---|---|---|
+| How fast is a `[Cache]` hit compared with other libraries, used the way each documents? | `ReadmeComparisonBenchmarks` | `readme` |
+| How do libraries compare behind one interface (hits, misses, concurrency, stampedes)? | `UnifiedCacheComparisonBenchmarks` | `comparison` |
+| How fast is the in-memory engine on its own? | `MemoryEngineBenchmarks` | `engine` |
+| What hit ratio does the eviction policy reach on skewed workloads? | `HitRatioSimulation` (a simulation, not BenchmarkDotNet) | `hitratio` |
 
-- **Basic Caching Operations** - Fundamental cache hit/miss performance
-- **Provider Scenarios** - InMemory hits, misses, and tag invalidation
-- **Concurrent Access Patterns** - Thread safety and scalability testing
-- **Memory Usage Analysis** - GC pressure and memory efficiency
-- **Real-World Scenarios** - Application-specific use cases
-- **Generic Interface Performance** - Performance of generic caching implementations
-- **Serialization Comparisons** - Different key generation strategies
+Use `readme` to choose a library or to compare against the README: it calls a source-generated decorator, which is
+what an application runs. `comparison` routes every library, MethodCache included, through the same `ICacheAdapter`
+with `string` keys, so MethodCache pays for runtime key and policy handling that generated code does at compile time.
+It is useful for comparing behaviour under the same workload, not for absolute MethodCache numbers.
+[Comparison/README.md](Comparison/README.md) explains the adapters.
 
-## Getting Started
+## Running
 
-### Prerequisites
-
-- The .NET 10 SDK (the project targets `net10.0`)
-
-### Running Benchmarks
+You need the .NET 10 SDK (the project targets `net10.0`). From the repository root, always in Release:
 
 ```bash
-# Build the project
-dotnet build -c Release
-
-# Run all benchmarks
-dotnet run -c Release -- all
-
-# Run specific benchmark categories
-dotnet run -c Release -- basic
-dotnet run -c Release -- providers
-dotnet run -c Release -- concurrent
-dotnet run -c Release -- memory
-dotnet run -c Release -- realworld
-dotnet run -c Release -- generic
-dotnet run -c Release -- serialization
+dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> [--quick] [BenchmarkDotNet options]
 ```
 
-### Benchmark Categories
+| Category | Runs |
+|---|---|
+| `readme` | `ReadmeComparisonBenchmarks`: MethodCache `[Cache]`, `IMemoryCache` by hand, HybridCache, FusionCache |
+| `comparison` | `UnifiedCacheComparisonBenchmarks`: MethodCache, FusionCache, LazyCache, EasyCaching through `ICacheAdapter` |
+| `engine` | `MemoryEngineBenchmarks` |
+| `hitratio` | `HitRatioSimulation` |
+| `basic` | `BasicCachingBenchmarks`: hits and misses with different payload sizes |
+| `baseline` | `BaselineComparisonBenchmarks`: MethodCache against `IMemoryCache` and LazyCache |
+| `providers` | `CacheProviderComparisonBenchmarks`: in-memory hits, misses and tag invalidation |
+| `concurrent` | `ConcurrentAccessBenchmarks` |
+| `memory` | `MemoryUsageBenchmarks` |
+| `realworld` | `RealWorldScenarioBenchmarks` |
+| `generic` | `GenericInterfaceBenchmarks` |
+| `serialization` | `SerializationBenchmarks`: cache key generators (MessagePack, JSON, `ToString`) |
+| `quick` | `QuickCachingBenchmarks`, a small set for development |
+| `profile` | `SourceGenSyncPathProfiler`: the generated decorator's sync and async hit paths |
+| `all` | `basic`, `providers`, `concurrent`, `memory`, `realworld`, `generic` and `serialization` in turn |
 
-#### 1. Basic Caching Benchmarks (`basic`)
+`readme`, `comparison` and `engine` pass the remaining arguments to BenchmarkDotNet, so `--filter` works there:
 
-Tests fundamental caching operations with different data sizes:
+```bash
+# The README numbers (cache hits only)
+dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
 
-- **Cache Miss** - First-time data access (cold cache)
-- **Cache Hit** - Subsequent access to cached data
-- **Cache Invalidation** - Performance of cache clearing operations
-- **Multiple Cache Hits** - Batch operations performance
+# One category of the adapter comparison
+dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- comparison --filter '*Stampede*'
+```
 
-**Parameters:**
-- `DataSize`: 1, 10, 100, 1000 items
-- `ModelType`: Small, Medium, Large objects
+`UnifiedCacheComparisonBenchmarks` groups its methods by category: `CacheHit`, `CacheHitAsync`, `MissAndSet`,
+`Concurrent`, `ConcurrentHits` and `Stampede`. MethodCache appears in three modes:
 
-#### 2. Cache Provider Comparison (`providers`)
+- `MethodCache_SourceGen_*`: a source-generated decorator behind the adapter.
+- `MethodCache_ManualKey_*`: `ICacheManager` with keys the caller supplies.
+- `MethodCache_RuntimeKey_*`: keys generated at run time on every operation through the current API.
 
-Measures in-memory hits, misses and bulk tag invalidation. Hit data is populated in setup; misses clear
-actual tagged entries. Redis and hybrid scenarios are not implemented and are excluded from measurements.
+`--quick` (or `BENCHMARK_QUICK=true`) uses fewer warmups and iterations. It is for checking that a benchmark runs, not
+for numbers you publish. Results land in `BenchmarkDotNet.Artifacts/results/` under the directory you ran from.
 
+### How the runs are configured
 
-#### 3. Concurrent Access Benchmarks (`concurrent`)
+Most categories use one BenchmarkDotNet job, defined in `BenchmarkCommands.cs`: the machine's own architecture, Server GC with
+concurrent collection, and JSON and GitHub Markdown exporters. In quick mode it runs 1 warmup and 3 measured
+iterations. `readme` uses workstation GC, with 6 warmups and 15 iterations (3 and 5 in quick mode), and `engine`
+always uses BenchmarkDotNet's short run. Classes marked `[MemoryDiagnoser]` also report allocations.
 
-Tests thread safety and scalability under concurrent load:
+## Publishing numbers
 
-- **Concurrent Cache Hits** - Multiple threads accessing cached data
-- **Concurrent Cache Misses** - Cache stampede scenarios
-- **Mixed Operations** - Reads and invalidations
-- **Same Key Access** - High contention scenarios
-- **Bulk Invalidation** - Concurrent read/write operations
+Quote a number only next to the run it came from: the BenchmarkDotNet environment summary (runtime, CPU, GC mode),
+the package versions of the libraries compared, and the date. Update [docs/benchmarks.md](../../docs/benchmarks.md)
+and the README together. A shared or cloud machine varies by several percent between runs, so rerun before drawing
+conclusions from small differences.
 
-**Parameters:**
-- `ThreadCount`: 2, 4, 8, 16 threads
-- `OperationsPerThread`: 100, 1000 operations
+## Setup checks
 
-#### 4. Memory Usage Benchmarks (`memory`)
+`tests/MethodCache.Benchmarks.Tests` compiles the benchmark sources and checks that their setup works, on .NET 8, 9
+and 10. Run it after changing a benchmark:
 
-Analyzes memory efficiency and GC pressure:
+```bash
+dotnet test tests/MethodCache.Benchmarks.Tests -c Release
+```
 
-- **Cache Fill-up** - Memory impact of loading cache
-- **Cache Eviction** - Memory behavior during cache turnover
-- **Frequent Invalidation** - GC pressure from cache churn
-- **Large Object Caching** - Impact of caching large objects
-- **Short-lived Cache** - Memory efficiency of frequent expiration
+It uses the actual benchmark sources, including the dependency-injection registrations, and checks that both base
+classes can populate and read the cache before a measurement runs. Adapter contract tests cover all nine adapters:
+one key identity across set, lookup, get-or-create and removal; overwrite; clear; value-type zero; and isolation
+between instances. MethodCache adapter expiration is checked with `FakeTimeProvider`. Scenario checks ensure each
+concurrent miss invocation runs its factories, invalidation removes the entries used by the scenario, and provider
+hits reuse populated values.
 
-**Parameters:**
-- `CacheSize`: 100, 1000, 10000 items
-- `DataType`: Small, Medium, Large objects
+The source-generator adapter uses an explicit raw key for its shared operations and receives each factory as a method
+argument. Its direct async hit benchmark still calls the generated decorator; its `TryGet` operation uses a lookup
+that cannot run a factory.
 
-#### 5. Real-World Scenarios (`realworld`)
+## The scenario benchmarks
 
-Simulates actual application usage patterns:
+### `basic`: BasicCachingBenchmarks
 
-- **Web Application Dashboard** - User profile loading
-- **E-Commerce Catalog** - Product browsing patterns
-- **API Gateway** - External service call caching
-- **Mobile App** - Offline-first caching strategy
-- **Real-time Application** - Frequent cache updates
-- **Analytics Reports** - Expensive computation caching
+No caching (the baseline), a cache miss, a cache hit, a hit without warmup, invalidation and several hits in a row.
+Parameters: `DataSize` 1, 10, 100, 1000 items; `ModelType` Small, Medium, Large.
 
-**Parameters:**
-- `UserCount`: 50, 100, 200 users
-- `ProductCount`: 100, 500, 1000 products
+### `providers`: CacheProviderComparisonBenchmarks
 
-#### 6. Generic Interface Benchmarks (`generic`)
+In-memory hits, misses and bulk tag invalidation. Hit data is populated in setup; misses clear the tagged entries
+first. Parameters: `ItemCount` 10, 100, 1000; `DataType` Small, Medium.
 
-Tests performance of generic interface implementations:
+### `concurrent`: ConcurrentAccessBenchmarks
 
-- **Generic Repository** - Performance with different entity types
-- **Mixed Operations** - Interleaved generic operations
-- **Cache Invalidation** - Independent invalidation per type
-- **Generic Methods** - Performance with generic constraints
-- **Concurrent Generic Access** - Thread safety with generics
+Concurrent hits, concurrent misses, mixed reads and invalidations, many threads on the same key, bulk invalidation
+during reads, and a cache stampede. Parameters: `ThreadCount` 2, 4, 8, 16; `OperationsPerThread` 100, 1000.
 
-**Parameters:**
-- `ItemCount`: 50, 100, 200 items
+### `memory`: MemoryUsageBenchmarks
 
-#### 7. Serialization Benchmarks (`serialization`)
+Filling the cache, hits after filling it, eviction, frequent invalidation, large objects, short-lived entries and
+memory pressure, against a no-caching baseline. Parameters: `CacheSize` 100, 1000, 10000 items; `DataType` Small,
+Medium, Large.
 
-Compares different cache key generation strategies:
+### `realworld`: RealWorldScenarioBenchmarks
 
-- **MessagePack Serialization** - `MessagePackKeyGenerator` from MethodCache.Serialization.MessagePack
-- **JSON Serialization** - Text-based serialization
-- **ToString Serialization** - Simple string conversion
+Application-shaped workloads: a user dashboard, a product catalog, an API gateway, an offline-first mobile app, a
+real-time app with frequent updates and analytics reports. Parameters: `UserCount` 50, 100, 200; `ProductCount` 100,
+500, 1000.
 
-**Tests:**
-- Simple object serialization performance
-- Complex object serialization performance
-- Cache key collision detection
+### `generic`: GenericInterfaceBenchmarks
 
-**Parameters:**
-- `ObjectCount`: 10, 100, 1000 objects
-- `ObjectType`: Small, Medium, Large objects
+A generic repository with different entity types, mixed operations, invalidation per type, generic methods with
+constraints and concurrent access. Parameter: `ItemCount` 50, 100, 200.
 
-## Configuration
+### `serialization`: SerializationBenchmarks
 
-### Benchmark Configuration
+Cache key generators compared: `MessagePackKeyGenerator` (from `MethodCache.Serialization.MessagePack`), a JSON key
+generator and a `ToString` key generator, on simple and complex arguments and on key collisions. Parameters:
+`ObjectCount` 10, 100, 1000; `ObjectType` Small, Medium, Large.
 
-Most categories use one BenchmarkDotNet job, defined in `Program.cs`:
+## Adding a benchmark
 
-- **Runtime**: .NET 10 (`net10.0`)
-- **Platform**: AnyCpu, so the machine's own architecture
-- **GC**: Server GC with concurrent collection
-- **Exporters**: JSON and GitHub Markdown
+Follow the existing naming, add `[MemoryDiagnoser]`, include a baseline where one makes sense, and add the class to
+`Program.cs` and to the category table above. Run the setup checks afterwards.
 
-`readme` uses workstation GC instead, and `engine` uses BenchmarkDotNet's short run. Classes marked
-`[MemoryDiagnoser]` also report allocations. Measured results are in [docs/benchmarks.md](../../docs/benchmarks.md).
-
-## Interpreting Results
-
-### Key Metrics
-
-- **Mean**: Average execution time
-- **Error**: Standard error of measurements
-- **StdDev**: Standard deviation
-- **Ratio**: Performance relative to baseline
-- **Allocated**: Memory allocated per operation
-
-### Performance Guidelines
-
-**Cache Hit Performance:**
-- Should be 10-100x faster than cache miss
-- Memory allocation should be minimal
-- Scales linearly with data size
-
-**Cache Miss Performance:**
-- Should be similar to non-cached operation + caching overhead
-- Acceptable overhead: 10-50% for first access
-- Should prevent cache stampedes
-
-**Concurrent Performance:**
-- Should scale with thread count up to CPU cores
-- Lock contention should be minimal
-- Cache stampede protection should be effective
-
-**Memory Efficiency:**
-- Memory usage should be proportional to cached data
-- GC pressure should be minimal during steady state
-- Cache eviction should be efficient
-
-## Continuous Performance Monitoring
-
-Run benchmark contract tests with `dotnet test tests/MethodCache.Benchmarks.Tests -c Release`.
-For measurements, run the relevant category on a dedicated machine and retain the BenchmarkDotNet
-report with runtime, hardware, package versions and workload parameters. Repository CI is defined
-in `build/ci`; see `build/ci/README.md`.
-
-## Contributing
-
-When adding new benchmarks:
-
-1. Follow the existing naming conventions
-2. Use `[MemoryDiagnoser]` for memory analysis
-3. Include baseline comparisons where appropriate
-4. Document parameters and expected results
-5. Test with different data sizes and scenarios
-
-## Troubleshooting
-
-**Memory Issues:**
-- Increase available memory for large dataset benchmarks
-- Use server GC configuration for better memory management
-- Monitor system memory during benchmark execution
-
-**Performance Variability:**
-- Run benchmarks on dedicated machines when possible
-- Close unnecessary applications during benchmarking
-- Use consistent system configuration across runs
-
-For more information about BenchmarkDotNet configuration and best practices, visit: https://benchmarkdotnet.org/
+The memory benchmark no-caching baseline calls the uncached data source directly, so warmup and repeated invocations cannot turn it into a cache-hit benchmark.

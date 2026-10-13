@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
+using Microsoft.CodeAnalysis.Simplification;
 
 namespace MethodCache.CodeFixes
 {
@@ -118,6 +119,12 @@ namespace MethodCache.CodeFixes
 
             var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
             var attributeNamespace = model?.GetTypeInfo(attribute, cancellationToken).Type?.ContainingNamespace?.ToDisplayString();
+            var movedAttribute = model is null ? attribute : (AttributeSyntax)new PortableAttributeRewriter(model, cancellationToken).Visit(attribute)!;
+            if (model?.GetTypeInfo(attribute, cancellationToken).Type is { } attributeType)
+            {
+                movedAttribute = movedAttribute.WithName(SyntaxFactory.ParseName(attributeType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
+                    .WithAdditionalAnnotations(Simplifier.Annotation));
+            }
 
             if (targetDocument.Id == document.Id)
             {
@@ -127,7 +134,7 @@ namespace MethodCache.CodeFixes
                 if (!alreadyThere)
                 {
                     var current = tracked.GetCurrentNode(targetMethod)!;
-                    tracked = tracked.ReplaceNode(current, AddAttribute(current, attribute));
+                    tracked = tracked.ReplaceNode(current, AddAttribute(current, movedAttribute));
                 }
 
                 return solution.WithDocumentSyntaxRoot(document.Id, tracked);
@@ -140,13 +147,47 @@ namespace MethodCache.CodeFixes
             }
 
             var targetRoot = await target.SyntaxTree.GetRootAsync(cancellationToken).ConfigureAwait(false);
-            var newTargetRoot = targetRoot.ReplaceNode(targetMethod, AddAttribute(targetMethod, attribute));
+            var newTargetRoot = targetRoot.ReplaceNode(targetMethod, AddAttribute(targetMethod, movedAttribute));
             if (attributeNamespace is not null && newTargetRoot is CompilationUnitSyntax unit && !Resolves(targetModel, targetMethod.SpanStart, attributeName, attributeNamespace))
             {
                 newTargetRoot = unit.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(attributeNamespace)).WithAdditionalAnnotations(Formatter.Annotation));
             }
 
             return solution.WithDocumentSyntaxRoot(targetDocument.Id, newTargetRoot);
+        }
+
+        private sealed class PortableAttributeRewriter : CSharpSyntaxRewriter
+        {
+            private readonly SemanticModel _model;
+            private readonly CancellationToken _cancellationToken;
+
+            public PortableAttributeRewriter(SemanticModel model, CancellationToken cancellationToken)
+            {
+                _model = model;
+                _cancellationToken = cancellationToken;
+            }
+
+            public override SyntaxNode? Visit(SyntaxNode? node)
+            {
+                if (node is ExpressionSyntax expression)
+                {
+                    var constant = _model.GetConstantValue(expression, _cancellationToken);
+                    if (constant.HasValue)
+                    {
+                        var literal = constant.Value is null
+                            ? SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
+                            : SyntaxFactory.ParseExpression(SymbolDisplay.FormatPrimitive(constant.Value, true, false));
+                        return literal.WithTriviaFrom(expression);
+                    }
+
+                    if (expression is TypeSyntax && _model.GetSymbolInfo(expression, _cancellationToken).Symbol is ITypeSymbol type)
+                    {
+                        return SyntaxFactory.ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
+                            .WithTriviaFrom(expression).WithAdditionalAnnotations(Simplifier.Annotation);
+                    }
+                }
+                return base.Visit(node);
+            }
         }
 
         private static MethodDeclarationSyntax AddAttribute(MethodDeclarationSyntax method, AttributeSyntax attribute)

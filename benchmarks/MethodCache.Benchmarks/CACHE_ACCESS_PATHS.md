@@ -21,4 +21,4 @@ Runtime key generation remains an active API and its benchmark name describes th
 
 For the published comparison, run `readme`, which calls generated application methods alongside the other
 libraries' cache APIs. Measured numbers and their environment are in [docs/benchmarks.md](../../docs/benchmarks.md).
-See the [benchmarking guide](BENCHMARKING_GUIDE.md) for commands.
+See the [benchmarking guide](README.md) for commands.

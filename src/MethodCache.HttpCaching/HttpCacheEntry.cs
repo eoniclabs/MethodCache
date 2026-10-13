@@ -71,7 +71,8 @@ public sealed record HttpCacheEntry
     public DateTimeOffset StoredAt { get; init; }
 
     /// <summary>
-    /// How old the response already was when it was stored: the larger of its <c>Age</c> header and the time
+    /// How old the response already was when it was stored: the larger of its corrected <c>Age</c> (including
+    /// request/response delay) and the time
     /// since its <c>Date</c> (RFC 9111 section 4.2.3).
     /// </summary>
     public TimeSpan InitialAge { get; init; }
@@ -100,7 +101,8 @@ public sealed record HttpCacheEntry
         DateTimeOffset now,
         long maxSize = 0,
         CancellationToken cancellationToken = default,
-        ArrayPool<byte>? bufferPool = null)
+        ArrayPool<byte>? bufferPool = null,
+        TimeSpan responseDelay = default)
     {
         var originalContent = response.Content;
         var contentHeaders = SerializeHeaders(originalContent.Headers);
@@ -161,7 +163,7 @@ public sealed record HttpCacheEntry
             // RFC 9110 section 6.6.1: without a Date, the time it was received stands in for it
             Date = response.Headers.Date ?? now,
             StoredAt = now,
-            InitialAge = CalculateInitialAge(response, now),
+            InitialAge = CalculateInitialAge(response, now, responseDelay),
             VaryHeaders = response.Headers.Vary?.ToArray()
         };
     }
@@ -195,7 +197,7 @@ public sealed record HttpCacheEntry
     /// <summary>
     /// Updates this entry with new headers from a 304 Not Modified response.
     /// </summary>
-    internal HttpCacheEntry WithUpdatedHeaders(HttpResponseMessage notModifiedResponse, DateTimeOffset now)
+    internal HttpCacheEntry WithUpdatedHeaders(HttpResponseMessage notModifiedResponse, DateTimeOffset now, TimeSpan responseDelay = default)
     {
         var mergedHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
 
@@ -235,7 +237,7 @@ public sealed record HttpCacheEntry
             Expires = notModifiedResponse.Content?.Headers.Expires ?? Expires,
             Date = notModifiedResponse.Headers.Date ?? Date,
             StoredAt = now,
-            InitialAge = CalculateInitialAge(notModifiedResponse, now),
+            InitialAge = CalculateInitialAge(notModifiedResponse, now, responseDelay),
             VaryHeaders = notModifiedResponse.Headers.Contains("Vary") ? notModifiedResponse.Headers.Vary.ToArray() : VaryHeaders
         };
     }
@@ -248,11 +250,13 @@ public sealed record HttpCacheEntry
         return !string.IsNullOrEmpty(ETag) || LastModified.HasValue;
     }
 
-    private static TimeSpan CalculateInitialAge(HttpResponseMessage response, DateTimeOffset now)
+    private static TimeSpan CalculateInitialAge(HttpResponseMessage response, DateTimeOffset now, TimeSpan responseDelay)
     {
         var apparentAge = response.Headers.Date is { } date && now > date ? now - date : TimeSpan.Zero;
         var ageValue = response.Headers.Age ?? TimeSpan.Zero;
-        return apparentAge > ageValue ? apparentAge : ageValue;
+        responseDelay = responseDelay < TimeSpan.Zero ? TimeSpan.Zero : responseDelay;
+        var correctedAge = responseDelay > TimeSpan.MaxValue - ageValue ? TimeSpan.MaxValue : ageValue + responseDelay;
+        return apparentAge > correctedAge ? apparentAge : correctedAge;
     }
 
     private static Dictionary<string, string[]> SerializeHeaders(HttpHeaders headers, Func<string, bool>? include = null)

@@ -12,6 +12,7 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 | `Dockerfile` | | the Linux build image: .NET 10 SDK plus the .NET 8 and 9 SDKs, clang for Native AOT, Python |
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
+| `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
 | `publish.sh <tag>` | Megatron | publishes a release tag the build servers passed to GitHub Packages |
 
 Run all Linux jobs locally, the way the build server does:
@@ -23,6 +24,9 @@ build/ci/linux.sh build tests   # or only some jobs
 
 Each job writes `artifacts/ci/<job>.log` and `artifacts/ci/<job>.exit`. A new CI job goes into `jobs.sh` (or
 `windows.ps1`) as a script or `dotnet` command, never as a step that only works in one CI system.
+
+`jobs.sh build unit` is what the Windows and macOS servers run: every test except the Docker-backed ones. It takes
+about 50 s on Linux with `FRAMEWORK=net10.0`, which runs one framework instead of three.
 
 ## Diff coverage (pull requests)
 
@@ -37,16 +41,15 @@ needs the full history and `origin/main` (the build servers clone both). It take
 
 `properties` and `soak` are in the default `linux.sh` job list, so every pull request runs them with short settings.
 `mutation` takes about an hour, so it is not: start it on a build server when you want a report
-(`build/ci/linux.sh build mutation`; `build` first, because the other jobs skip themselves after a failed build). Each one is a plain entry point that runs on any machine with the SDKs (macOS
-included) or in the build image (`linux.sh build <job>`). All of them expect `build` first in the same checkout,
-except `mutation`, which builds for itself.
+(`build/ci/linux.sh build mutation`). Each one is a plain entry point that runs on any machine with the SDKs (macOS
+included) or in the build image (`linux.sh build <job>`). `properties` and `soak` expect `build` first in the same
+checkout; `mutation` builds for itself.
 
 | Entry point | Run time (measured, 4 cores) | Fails on |
 |---|---|---|
 | `jobs.sh build properties` | about 2 min (5 s per property, 2 frameworks; raise `PROPERTY_SECONDS` for a longer search) | a property failing from a random seed |
 | `jobs.sh build soak` | `METHODCACHE_SOAK_SECONDS` plus about 3 s (30 s by default) | an exception, a stampede, wrong values, inconsistent counters, the size bound or memory growth |
 | `jobs.sh mutation` | about 62 min (2,251 mutants tested, concurrency 2) | Stryker itself failing, never the score |
-| `jobs.sh build unit` (macOS) | 50 s on Linux with `FRAMEWORK=net10.0` (not measured on macOS) | any unit test; `FRAMEWORK=net10.0` for one framework |
 
 - **properties**: the CsCheck properties in `tests/MethodCache.Core.Tests/Properties` with
   `METHODCACHE_PROPERTY_RANDOM_SEED=true` and `CsCheck_Time` set, so each property runs for `PROPERTY_SECONDS`
@@ -66,14 +69,8 @@ except `mutation`, which builds for itself.
 
 Results and logs go to `artifacts/ci/<job>.log` and `.exit` as for every job when run through `linux.sh`.
 
-## SQL Server integration readiness
-
-The fixture opens a connection and runs a readiness query before cache operations start. Node setup also waits
-for `SqlServerTables.Creating`, because hosted startup can return while background table creation is still
-running. Tests give each distributed operation five seconds for emulated SQL Server or concurrent framework
-runs; the shipped library still defaults to one second. Readiness regression tests cover pending creation,
-creation errors and cancellation. Set `METHODCACHE_REQUIRE_INFRA_TESTS=true` to make unavailable infrastructure
-fail the run.
+The Docker-backed integration tests and their settings are described in
+[docs/developer/INTEGRATION_TEST_STRATEGY.md](../../docs/developer/INTEGRATION_TEST_STRATEGY.md).
 
 ## Dependency audit
 
@@ -98,19 +95,23 @@ When CI fails on a new advisory:
    </ItemGroup>
    ```
 
-   Remove the suppression once a fixed version is out. Testcontainers Redis and SQL Server use 4.16.0, which resolves SSH.NET 2026.0.0 for
-the fixes in [GHSA-mggc-4xg6-vcxf](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-mggc-4xg6-vcxf)
+   Remove the suppression once a fixed version is out.
+
+The Testcontainers packages in the Redis and SQL Server integration tests are at 4.16.0 because it resolves
+SSH.NET 2026.0.0, which has the fixes for
+[GHSA-mggc-4xg6-vcxf](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-mggc-4xg6-vcxf)
 and [GHSA-q939-rpr3-3284](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-q939-rpr3-3284).
 
 ## The build servers
 
-The same servers as Skribera, over Tailscale:
+Three machines on a private network, which the coordinator reaches over SSH. Their addresses, logins and the
+shared lock are settings in `~/.config/methodcache-ci/env` on Megatron (see "Installing or updating" below).
 
 | Server | Role |
 |---|---|
-| Megatron (macOS, `johan@100.118.149.97`) | coordinator; runs `jobs.sh build unit` itself with the SDKs in `/usr/local/share/dotnet` |
-| Nimbus (Linux, `agent-admin@100.103.39.117`) | `linux.sh` in Docker, under `~/methodcache-ci`. It holds Skribera's capacity lease `/srv/skribera-ci/ci-build-capacity.lock` shared, so Skribera's image builds wait for it |
-| baloo (Windows, `bldr@baloo`) | `windows.ps1`, under `C:\mc`. The .NET 8, 9 and 10 SDKs are installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
+| Megatron (macOS) | coordinator; runs `jobs.sh build unit` itself with the SDKs in `/usr/local/share/dotnet` |
+| Nimbus (Linux) | `linux.sh` in Docker, under `~/methodcache-ci`. Nimbus also builds another project's images; a MethodCache run holds that project's capacity lock shared (`METHODCACHE_CI_NIMBUS_SHARED_LOCK`), so those builds wait for it |
+| baloo (Windows) | `windows.ps1`, under `C:\mc`. The .NET 8, 9 and 10 SDKs are installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
 
 Every minute the coordinator looks at the head of `main` and every open pull request from this repository. Each
 commit without a result runs on all three servers, one commit at a time. Each server keeps a mirror of the
@@ -126,8 +127,46 @@ Megatron in `~/.cache/methodcache-ci/runs/<run>`, and the coordinator's own log 
 
 Pull requests from forks never run automatically, because their code would run on our servers. Read the diff, then
 on Megatron run `~/.local/share/methodcache-ci/coordinator.sh --pr <number>`. The same command runs any pull request
-again, after waiting for a pass that is already running. A run that could not reach a server is retried by itself
-after 30 minutes.
+again, after waiting for a pass that is already running. Missing results or failed status publication trigger a
+retry after 30 minutes, then exponential backoff capped at six hours. Automatic attempts stop after five passes
+for the commit; a deliberate `--pr` run resets that budget and reruns every platform.
+
+Automatic retries reuse complete passing results for the exact full commit SHA, including their logs. They
+first try to recover Linux results from Nimbus when a finished job's archive did not arrive. Only platforms
+without reusable results are rebuilt. Every expected job needs a valid exit file: a `finished` marker alone
+does not count. Recovered test failures stay failures and end transport retries. Transfer errors are recorded
+in `linux/transfer.log`.
+
+### Checkout and log retention
+
+The collector accepts only local macOS clones from `macos/mirror.git` with a matching run ID/full SHA and
+complete macOS results. It preserves source changes, unexpected local data, unknown directories, symlinks
+and checkouts with open files/processes. Successful jobs lose their generated .NET `bin`/`obj` directories
+after the platform finishes; failed checkouts remain for 24 hours for diagnosis.
+
+Remaining eligible idle checkouts expire after three days. A 10 GiB budget removes the oldest completed
+eligible checkouts sooner. Active/protected checkouts and failures within their diagnostic window may exceed
+the budget rather than being deleted. Linux/Windows checkout age retention is unchanged. Result logs live
+separately under `runs/<run>/<platform>` and survive source-clone removal; they expire 14 days after the last
+report-directory update.
+Successful macOS output is collected immediately when that platform returns. Full retention/budget scans
+run at most once an hour, so the minute-by-minute coordinator does not repeatedly traverse all old clones.
+
+Settings in `~/.config/methodcache-ci/env`:
+
+| Setting | Default | Purpose |
+|---|---:|---|
+| `METHODCACHE_CI_KEEP_RUNS_DAYS` | 3 | completed checkout retention |
+| `METHODCACHE_CI_KEEP_FAILED_HOURS` | 24 | failed macOS checkout diagnostic window |
+| `METHODCACHE_CI_MAX_MACOS_MIB` | 10240 | eligible idle macOS checkout budget |
+| `METHODCACHE_CI_MAX_ATTEMPTS` | 5 | automatic passes per commit |
+
+Preview collection and run the regression tests (no GitHub/build-server access):
+
+```bash
+python3 build/ci/coordinator-state.py gc --state "$HOME/.cache/methodcache-ci" --dry-run
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
+```
 
 ### Installing or updating
 
@@ -136,20 +175,18 @@ On Megatron, from an up-to-date checkout of `main`:
 ```bash
 build/ci/install-coordinator.sh --check   # what each server has and lacks
 build/ci/install-coordinator.sh           # install (or update) and start
+build/ci/install-coordinator.sh --update-only  # atomic update, leave an active pass running
 ```
 
 The coordinator is copied out of the checkout, so a pull request cannot change how it is itself tested. Settings
 (server addresses, the shared lock) are in `~/.config/methodcache-ci/env`; a Linux run fails when the shared lock
 cannot be opened, and an empty `METHODCACHE_CI_NIMBUS_SHARED_LOCK=` runs without it. Stop it with `--remove`.
+The regular installer refuses to restart an active pass. `--update-only` leaves it on its original script
+and atomically installs the next version; content-versioned helpers keep an older running coordinator on
+its matching helper. Check `installed-from` and script hashes when diagnosing drift: committing a fix does
+not update the installed copy automatically.
 
 ## Publishing a release
 
-`release.sh` (or `release.ps1`) bumps the version and pushes the tag. Once the build servers passed the tagged
-commit, publish it on Megatron:
-
-```bash
-build/ci/publish.sh v1.2.0
-```
-
-It packs the 7 packages from a fresh clone of the tag and pushes them to GitHub Packages, never to nuget.org. See
-`RELEASE.md` for the details.
+`publish.sh <tag>` publishes a tag the build servers passed; [docs/developer/RELEASE.md](../../docs/developer/RELEASE.md)
+has the whole release procedure.

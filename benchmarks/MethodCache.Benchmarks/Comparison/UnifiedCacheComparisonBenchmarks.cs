@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace MethodCache.Benchmarks.Comparison;
 
 /// <summary>
-/// Compares cache operations through <see cref="ICacheAdapter"/>. MethodCache rows exercise a generated
-/// decorator, manual storage keys, or runtime key generation. These paths perform different work;
-/// use ReadmeComparisonBenchmarks for the documented application-level comparison.
+/// Compares cache operations through ICacheAdapter using the current engine. MethodCache rows use
+/// generated get-or-create methods, manual storage keys, or runtime key generation.
+/// See ReadmeComparisonBenchmarks for the documented application-level comparison.
 /// </summary>
 [MemoryDiagnoser]
 [RankColumn]
@@ -44,10 +44,14 @@ public class UnifiedCacheComparisonBenchmarks
         // Source-generated MethodCache with the default in-memory engine
         var services = new ServiceCollection();
         services.AddLogging();
+
+        // AddMethodCache wraps the interface registration in the generated decorator
+        services.AddSingleton<MethodCacheBenchmarkService>();
+        services.AddSingleton<IMethodCacheBenchmarkService>(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }); // Don't auto-scan assembly - we register explicitly below
+        });
 
         // PERFORMANCE OPTIMIZATION: Configure cache options for benchmarking
         services.Configure<MethodCache.MethodCacheMemoryOptions>(opts =>
@@ -56,14 +60,6 @@ public class UnifiedCacheComparisonBenchmarks
             opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;
         });
 
-
-        // Register the base implementation
-        services.AddSingleton<MethodCacheBenchmarkService>();
-
-        // Use the source-generated decorator registration extension method
-        // This properly wraps the implementation with the caching decorator
-        services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp =>
-            sp.GetRequiredService<MethodCacheBenchmarkService>());
 
         var serviceProvider = services.BuildServiceProvider();
         _sourceGenProvider = serviceProvider;
@@ -115,8 +111,7 @@ public class UnifiedCacheComparisonBenchmarks
     }
 
     // ==================== CACHE HIT TESTS ====================
-    // SourceGen calls the generated decorator, ManualKey reads storage directly,
-    // and RuntimeKey generates a key through ICacheKeyGenerator on each operation.
+    // ManualKey and ordinary SourceGen lookups read storage directly; RuntimeKey generates each key.
 
     [BenchmarkCategory("CacheHit"), Benchmark]
     public bool MethodCache_RuntimeKey_Hit()
@@ -171,6 +166,7 @@ public class UnifiedCacheComparisonBenchmarks
 
     // ==================== CACHE MISS + SET TESTS ====================
     // NOTE: These tests use unique keys per iteration to ensure consistent cache misses.
+    // This is more reliable than Remove(), which doesn't work for all cache implementations.
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
     public async Task<SamplePayload> MethodCache_RuntimeKey_MissAndSet()
@@ -405,7 +401,7 @@ public class UnifiedCacheComparisonBenchmarks
         // rather than simulate real-world latency. See README for how to reintroduce realistic work.
         // OPTIMIZED: Use Task.Yield() instead of Task.Delay(1)
         // Task.Delay(1) = ~1ms (masks cache overhead completely)
-        // Yield so concurrent misses can overlap.
+        // Task.Yield() = ~100ns (exposes cache overhead differences)
         await Task.Yield();
         return new SamplePayload { Id = 1, Name = "Generated", Data = new byte[1024] };
     }

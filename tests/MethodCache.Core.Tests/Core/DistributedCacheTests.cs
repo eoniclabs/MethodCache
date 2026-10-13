@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MethodCache.Core.Runtime.Distributed;
+using MethodCache.Core.Tests.FaultInjection;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using MethodCache.Serialization.MessagePack;
@@ -555,20 +556,41 @@ public class DistributedCacheTests
         (await Get(second, "key", () => "fresh")).Should().Be("fresh");
     }
 
-    [Fact]
-    public async Task HangingBackplane_HoldsAnInvalidationForOneTimeout_HoweverManyKeys()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HangingBackplane_HoldsAnInvalidationForOneTimeout_HoweverManyKeys(bool asynchronousCache)
     {
-        var layer = new DistributedCacheLayer(_shared, new JsonCacheSerializer(), new DistributedCacheOptions(), new HangingBackplane(), _time);
-        var node = new InMemoryCacheManager(
+        // Each publish has a cancellation timer and a WaitAsync timer. Cache-operation timers are disposed
+        // before publishing starts; the held stamp below has only two, so it cannot signal this barrier.
+        var time = new TimerRegistrationTimeProvider(expectedTimers: 100);
+        var cache = new ToggleDistributedCache(_shared);
+        var releaseStamp = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (asynchronousCache)
+        {
+            cache.BeforeSet = _ =>
+            {
+                cache.BeforeSet = null;
+                return releaseStamp.Task;
+            };
+        }
+        var backplane = new HangingBackplane();
+        using var layer = new DistributedCacheLayer(cache, new JsonCacheSerializer(), new DistributedCacheOptions(), backplane, time);
+        using var node = new InMemoryCacheManager(
             new NullCacheMetricsProvider(),
             MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
-            _time,
+            time,
             layer);
 
         var invalidation = node.InvalidateByKeysAsync(Enumerable.Range(0, 50).Select(i => $"key{i}").ToArray());
-        _time.Advance(TimeSpan.FromSeconds(1));
+        releaseStamp.SetResult();
+        // Wall-time waits are deadlock guards only; fake time controls the timeout being tested.
+        await time.TimersRegistered.WaitAsync(TimeSpan.FromSeconds(30));
+        backplane.PublishedKeys.Should().Be(50);
+        invalidation.IsCompleted.Should().BeFalse();
+        time.Advance(TimeSpan.FromSeconds(1));
 
-        await invalidation.WaitAsync(TimeSpan.FromSeconds(5));
+        await invalidation.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -776,8 +798,14 @@ public class DistributedCacheTests
     /// <summary>A backplane whose publishes never complete and ignore cancellation.</summary>
     private sealed class HangingBackplane : IBackplane
     {
+        private int _publishedKeys;
+        public int PublishedKeys => Volatile.Read(ref _publishedKeys);
         public string InstanceId { get; } = Guid.NewGuid().ToString("N");
-        public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default) => new TaskCompletionSource().Task;
+        public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _publishedKeys);
+            return new TaskCompletionSource().Task;
+        }
         public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) => new TaskCompletionSource().Task;
         public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task UnsubscribeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;

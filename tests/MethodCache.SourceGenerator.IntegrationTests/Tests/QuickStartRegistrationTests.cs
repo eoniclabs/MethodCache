@@ -75,7 +75,7 @@ namespace QuickStart
     [InlineData("Singleton", ServiceLifetime.Singleton)]
     [InlineData("Scoped", ServiceLifetime.Scoped)]
     [InlineData("Transient", ServiceLifetime.Transient)]
-    public async Task GeneratedRegistration_ExplicitLifetime_IsPreserved(string suffix, ServiceLifetime lifetime)
+    public async Task FactoryRegistration_ExplicitLifetime_IsPreserved(string suffix, ServiceLifetime lifetime)
     {
         var source = QuickStartSource.Replace(
             "public static class Startup",
@@ -84,8 +84,8 @@ namespace QuickStart
             {
                 public static void Register(IServiceCollection services)
                 {
+                    services.Add{{suffix}}<IUserService>(_ => new UserService());
                     services.AddMethodCache();
-                    services.AddIUserServiceWithCaching{{suffix}}(_ => new UserService());
                 }
             }
             public static class Startup
@@ -106,8 +106,7 @@ namespace QuickStart
         Assert.Equal(lifetime != ServiceLifetime.Transient, ReferenceEquals(first, repeated));
         Assert.Equal(lifetime == ServiceLifetime.Singleton, ReferenceEquals(first, otherScope));
 
-        var extensions = assembly.GetType("Microsoft.Extensions.DependencyInjection.GeneratedCachingServiceCollectionExtensions")!;
-        Assert.Null(extensions.GetMethod("AddIUserServiceWithCaching", BindingFlags.Static | BindingFlags.NonPublic));
+        Assert.Null(assembly.GetType("Microsoft.Extensions.DependencyInjection.GeneratedCachingServiceCollectionExtensions"));
         var get = interfaceType.GetMethod("GetUserAsync")!;
         Assert.Equal("user-7", await (Task<string>)get.Invoke(first, new object[] { 7 })!);
         Assert.Equal("user-7", await (Task<string>)get.Invoke(first, new object[] { 7 })!);

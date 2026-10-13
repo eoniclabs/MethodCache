@@ -8,6 +8,8 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 - **The attribute is on the class.** `[Cache]` is read from the interface only. The analyzer reports
   [MC0001](user-guide/DIAGNOSTICS.md#mc0001) and its code fix moves the attribute.
 - **The service was registered after `AddMethodCache()`.** Call `AddMethodCache()` after your own registrations.
+- **An open generic registration.** `AddScoped(typeof(IRepository<>), ...)` is not decorated; register the closed
+  types ([Getting started](getting-started.md#3-register-it)).
 - **The caller doesn't use the interface.** The cache is a decorator around the interface. Resolving or injecting the
   class itself, or calling the method from inside the class (`this.GetAsync(...)`), skips it.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
@@ -30,6 +32,12 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   [Redis or SQL Server](features/distributed-cache.md) so invalidations reach all of them. With a custom
   `IDistributedCache`, also register an `IBackplane`.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](features/fail-safe.md)).
+
+## Keys look different than expected
+
+List the keys with `ICacheAdministrator.ListEntries()` or `GET /methodcache/entries`, and build the key you expect with
+`MethodCacheKeys.For(...)` to compare them. [Cache keys](features/keys.md) explains how each argument becomes part of
+a key.
 
 ## A change in appsettings.json has no effect
 

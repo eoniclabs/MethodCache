@@ -27,6 +27,8 @@ public class SourceGenSyncPathProfiler
         // Set up the full SourceGen pipeline exactly like UnifiedCacheComparisonBenchmarks
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<MethodCacheBenchmarkService>();
+        services.AddSingleton<IMethodCacheBenchmarkService>(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
@@ -38,10 +40,6 @@ public class SourceGenSyncPathProfiler
             opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;
         });
 
-
-        services.AddSingleton<MethodCacheBenchmarkService>();
-        services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp =>
-            sp.GetRequiredService<MethodCacheBenchmarkService>());
 
         var serviceProvider = services.BuildServiceProvider();
         _cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
@@ -67,7 +65,7 @@ public class SourceGenSyncPathProfiler
     }
 
     // ========================================================================
-    // Layer 1: Raw cache manager call
+    // Layer 1: Raw cache manager call (should be ~200ns)
     // ========================================================================
 
     [Benchmark(Baseline = true, Description = "Direct TryGetFastAsync (raw cache)")]
@@ -82,7 +80,7 @@ public class SourceGenSyncPathProfiler
     }
 
     // ========================================================================
-    // Layer 2: Through generated decorator async
+    // Layer 2: Through generated decorator async (should be ~300-400ns)
     // ========================================================================
 
     [Benchmark(Description = "SourceGen GetAsync (async path)")]

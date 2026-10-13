@@ -32,10 +32,10 @@ namespace Docs.Readme
     {
         public static void ExplicitFactory(WebApplicationBuilder builder)
         {
-            // begin-snippet: generated-factory-registration
-            builder.Services.AddMethodCache();
-            builder.Services.AddIUserServiceWithCachingScoped(sp =>
+            // begin-snippet: explicit-factory-registration
+            builder.Services.AddScoped<IUserService>(sp =>
                 new UserService(sp.GetRequiredService<IUserDatabase>()));
+            builder.Services.AddMethodCache();
             // end-snippet
         }
 

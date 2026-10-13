@@ -9,11 +9,16 @@ namespace MethodCache.SqlServer;
 /// <see cref="StartupWait"/> for that; an unreachable database is retried in the background, and until the tables
 /// exist, methods run uncached.
 /// </summary>
-internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServerTables>? logger = null) : IHostedService, IDisposable
+internal sealed class SqlServerTables(
+    SqlServerOptions options,
+    ILogger<SqlServerTables>? logger = null,
+    Func<SqlServerOptions, CancellationToken, Task>? createTables = null,
+    TimeProvider? timeProvider = null) : IHostedService, IDisposable
 {
     internal static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(10);
     internal static readonly TimeSpan StartupWait = TimeSpan.FromSeconds(3);
 
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private readonly CancellationTokenSource _stopping = new();
     private Task? _creating;
 
@@ -22,10 +27,13 @@ internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServe
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         // Normally the tables are ready before the first request; a database that is down only delays startup a bit
-        _creating = CreateWithRetriesAsync(_stopping.Token);
+        // On a thread-pool thread: SqlClient can block before its first await (e.g. while connecting), and that
+        // time would not count against StartupWait. The token is read here: Dispose may run before the work starts.
+        var stopping = _stopping.Token;
+        _creating = Task.Run(() => CreateWithRetriesAsync(stopping), CancellationToken.None);
         try
         {
-            await _creating.WaitAsync(StartupWait, cancellationToken).ConfigureAwait(false);
+            await _creating.WaitAsync(StartupWait, _timeProvider, cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
@@ -55,7 +63,7 @@ internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServe
         {
             try
             {
-                await CreateIfMissingAsync(options, cancellationToken).ConfigureAwait(false);
+                await (createTables ?? CreateIfMissingAsync)(options, cancellationToken).ConfigureAwait(false);
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -79,7 +87,7 @@ internal sealed class SqlServerTables(SqlServerOptions options, ILogger<SqlServe
 
             try
             {
-                await Task.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(RetryInterval, _timeProvider, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

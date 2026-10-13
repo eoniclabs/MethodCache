@@ -46,5 +46,5 @@ var results = await cache.GetOrCreateAsync(
 <!-- endSnippet -->
 
 When the predicate returns false, the factory runs and its result is neither read from nor written to the cache.
-`When`, `OnHit`, `OnMiss` and `WithMetrics` only apply to `GetOrCreateAsync`; configuring them for a `[Cache]`
-method throws `InvalidOperationException` at startup instead of being silently ignored.
+`When` only applies to `GetOrCreateAsync`; for a `[Cache]` method use `CacheWhen`
+([Validation](configuration.md#validation)).

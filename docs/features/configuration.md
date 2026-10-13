@@ -73,8 +73,11 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
 
 - Each key under `Services` is the **method id**: the full name of the interface, a dot and the method name. A generic
   interface is written with its type parameters (`MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its
-  parameter types (`MyApp.IUserService.FindAsync(int)`). The admin endpoints list every method id
-  ([Monitoring](monitoring.md)).
+  parameter types (`MyApp.IUserService.FindAsync(int)`). Parameter types other than built-in ones are qualified by
+  namespace (`MyApp.IUsers.Find(MyApp.Request)`), so overloads taking `A.Request` and `B.Request` stay separate. Types
+  are named as reflection sees them: a tuple is `System.ValueTuple<int, string>` (element names dropped), `nint` is
+  `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
+  list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](monitoring.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`,
   `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Metadata` and `Notes` are recorded for
   diagnostics and don't change caching.
@@ -91,11 +94,7 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
 
 ## Runtime overrides
 
-Runtime overrides win over everything else. Concurrent mutations carry an ordered revision, so a delayed
-notification cannot replace a newer override or remove one that has been renewed. The effective policy agrees
-with the latest stored mutation after the operations complete. This also applies to removal, clearing and expiry.
-
-Use runtime overrides to change a policy without a deploy, for example to shorten a
+Runtime overrides win over everything else. Use them to change a policy without a deploy, for example to shorten a
 duration during an incident:
 
 <!-- snippet: configuration-runtime-overrides -->
@@ -130,6 +129,7 @@ await configurator.ClearAsync();
 - `RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is kept with the override for auditing. An override stops
   applying when its `ExpiresAt` passes.
 - Overrides are held in memory. They are lost on restart and not shared between instances.
+- Concurrent changes apply in order: the latest one wins, also for removal, clearing and expiry.
 - An override can't turn caching off: `WithDuration` requires a positive duration. To get rid of stale data,
   [invalidate](invalidation.md) it.
 
@@ -158,14 +158,16 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 | Setting | Rule | Checked |
 |---------|------|---------|
 | `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
-| `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
+| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` only): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative value means "not set" (the default is -1) |
 
 `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to [manual caching](manual-caching.md); configuring them for a
-cached method throws `InvalidOperationException` at startup.
+`[Cache]` method throws `InvalidOperationException` at startup instead of being silently ignored. To decide per result
+whether a `[Cache]` method stores it, use [`CacheWhen`](conditional-caching.md#cachewhen).
 
-For overloaded methods, non-built-in parameter types are qualified by namespace, for example
-`MyApp.IUsers.Find(MyApp.Request)`. Types are named as reflection sees them: a tuple is
-`System.ValueTuple<int, string>` (element names dropped), `nint` is `System.IntPtr` and `dynamic` is `object`. This is
-also the format used by expression-based and runtime configuration.
+Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 
-Generated decorators preserve generic constraints, including `unmanaged`, on cached interfaces and methods.
+Policy tags are owned, read-only snapshots in both `CachePolicy` and `CacheRuntimePolicy`. Mutating the collection supplied by application code cannot change a published policy or bypass its version/change notifications.
+
+A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.

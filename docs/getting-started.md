@@ -17,22 +17,24 @@ A typical service talks to a database on every call:
 ```cs
 public sealed class ProductService(Database db)
 {
-    public Task<Product> GetAsync(int id, CancellationToken ct) => db.LoadProductAsync(id, ct);
+    public Task<Product> GetAsync(int id, CancellationToken ct = default) => db.LoadProductAsync(id, ct);
 
     public Task<List<Product>> SearchAsync(string text, int page) => db.SearchAsync(text, page);
 
-    public Task UpdateAsync(Product product) => db.SaveAsync(product);
+    public Task UpdateAsync(int id, Product product) => db.SaveAsync(product);
 }
 ```
 <!-- endSnippet -->
 
 ## 2. Put the attributes on its interface
 
-`[Cache]` goes on interface methods that return data, `[CacheInvalidate]` on the methods that change it. The
-implementation doesn't change:
+`[Cache]` goes on interface methods that return data, `[CacheInvalidate]` on the methods that change it. The class
+only gains `: IProductService`; its methods don't change:
 
 <!-- snippet: getting-started-interface -->
 ```cs
+using MethodCache;
+
 public interface IProductService
 {
     [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
@@ -77,11 +79,25 @@ builder.Services.AddMethodCache();                               // after your r
 `AddMethodCache()` wraps every registered interface that has cached methods in its generated decorator and keeps the
 lifetime you chose. Call it after your own registrations: a service registered later is not cached. If you don't
 register an implementation at all, `AddMethodCache()` registers it as a singleton when it lives in the same project as
-the interface.
+the interface. To do the same for interfaces in other projects, pass those projects' assemblies:
+`AddMethodCache(null, typeof(ProductService).Assembly)`.
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
 `AddScoped(typeof(IRepository<>), typeof(Repository<>))` is not cached; register the closed types instead.
+
+### Registering with a factory
+
+A factory registration is cached like any other: register it before `AddMethodCache()`, and the decorator wraps
+what your factory returns, with the lifetime you chose.
+
+<!-- snippet: getting-started-factory -->
+```cs
+builder.Services.AddScoped<IProductService>(
+    sp => new ProductService(sp.GetRequiredService<Database>()));
+builder.Services.AddMethodCache();
+```
+<!-- endSnippet -->
 
 ## What can be cached
 
@@ -101,6 +117,8 @@ implements, such as `UserRepository : IRepository<User>`. An open generic regist
 - Exceptions are never cached: the next call runs the method again.
 - Concurrent calls with the same arguments share one call to your method (stampede protection). A caller that cancels
   only stops its own wait.
+- Without a `Duration`, entries live five minutes (`MethodCacheMemoryOptions.DefaultExpiration`) unless you set a
+  default ([Expiration](features/expiration.md#duration)).
 - `null` results are cached. Turn that off with `CacheNullValues` on the [memory cache](features/memory-cache.md), or
   per method with [conditional caching](features/conditional-caching.md).
 - The cached object is returned as is, not copied. Treat cached results as read-only.

@@ -35,14 +35,23 @@ public interface IOrderService
 ## Tag templates
 
 `"order:{orderId}"` is filled in from the method's arguments: `GetAsync(42)` is tagged `order:42`, and
-`CancelAsync(42, 7)` removes `order:42`. The name in braces must be a parameter of the method it is on (case doesn't
-matter); an unknown name is reported as [MCG009](../user-guide/DIAGNOSTICS.md#mcg009), with a code fix that offers the
-closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
+`CancelAsync(42, 7)` removes `order:42`. The name in braces must be a parameter of the method it is on. The exact
+spelling is used first; otherwise a single case-insensitive match is used. A name that matches several parameters
+only by case, such as `{NAME}` for `name` and `Name`, stays literal text and is reported as
+[MCG016](../user-guide/DIAGNOSTICS.md#mcg016). An unknown name is reported as
+[MCG009](../user-guide/DIAGNOSTICS.md#mcg009), with a code fix that offers the closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
 the tag `order:{org}` on both the cached call and the invalidation.
 
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
 share one tag; it is reported as [MCG015](../user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](../getting-started.md).
+
+Tags set in startup code, `appsettings.json` or runtime overrides can use templates too, with any parameter of the
+method.
+
+`[CacheInvalidate]` also works on methods with `ref` or `ref readonly` returns, and on `Task` and `ValueTask` methods
+with `ref`, `out` or `in` parameters. The tags are filled in after the call returns, and the entries are removed only
+once the task has completed successfully.
 
 ## From code
 
@@ -67,7 +76,8 @@ await cache.InvalidateByTagPatternAsync("customer:7:*");   // in-memory cache on
 ```
 <!-- endSnippet -->
 
-- `MethodCacheKeys.For` builds the same key as the generated decorator ([Cache keys](keys.md)).
+- `MethodCacheKeys.For` builds the key the generated decorator uses. Versioned and overloaded methods need a little
+  more; see [Building a key yourself](keys.md#building-a-key-yourself).
 - Patterns match tags, with `*` for any number of characters and `?` for one. With a distributed cache configured,
   `InvalidateByTagPatternAsync` throws `NotSupportedException`, because the distributed cache can't list its tags;
   invalidate exact tags instead.
@@ -78,12 +88,3 @@ await cache.InvalidateByTagPatternAsync("customer:7:*");   // in-memory cache on
 With [Redis or SQL Server](distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
 tells every instance to drop its in-memory copy. You don't need to do anything else.
 
-## Behavior and compatibility
-
-Tag placeholders prefer the exact C# parameter spelling. A unique case-insensitive match is also accepted; ambiguous placeholders stay literal and report generator warning `MCG016`. Cached tags and invalidation use the same rule.
-
-An invalidated in-flight memory load cannot publish over a newer load or explicit write. Publication and invalidation are coordinated per load; application weighers run outside that coordination so they may call the cache safely.
-
-Runtime tag templates match against every method parameter, even when the attributes use only a subset. Exact names take precedence; an ambiguous case-insensitive placeholder remains literal. Untagged policies do not format argument values.
-
-An invalidation attribute without tags forwards the operation without issuing an empty tag invalidation, including asynchronous methods with reference parameters.
