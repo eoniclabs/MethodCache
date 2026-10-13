@@ -11,7 +11,8 @@ public interface IUserService
 {
     [Cache] Task<User> GetAsync(int id);                     // MyApp.IUserService.GetAsync:42
     [Cache] Task<List<User>> SearchAsync(UserQuery query);   // MyApp.IUserService.SearchAsync:(alice:2)
-    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:11b474c4… (hashed)
+    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:[3:1:2:3]
+    [Cache] Task<int> CountAsync(Dictionary<string, int[]> filters); // MyApp.IUserService.CountAsync:fc08ab0d… (hashed)
 }
 ```
 <!-- endSnippet -->
@@ -22,8 +23,11 @@ public interface IUserService
 - **Records, classes and structs** whose public properties and fields are simple values are written field by field:
   `SearchAsync:(alice:2)`. Two records with equal values give the same key.
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
-- **Everything else**, such as arrays and collections, goes through the key generator. The default,
-  `FastHashKeyGenerator`, hashes the arguments into a key such as `ByIdsAsync:11b474c4…`.
+- **Arrays and collections** of those values are written with their count and then each element in order:
+  `ByIdsAsync:[3:1:2:3]`. A dictionary counts as a collection of key/value pairs. Records and classes inside a
+  collection must be sealed, since an unsealed element type could hold a subclass with more members.
+- **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
+  generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.

@@ -68,7 +68,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("                throw new global::System.ArgumentNullException(nameof(services));");
                 sb.AppendLine("            }");
                 sb.AppendLine();
-                sb.AppendLine("            // Every generated Add...WithCaching method calls this, so register the source only once per collection");
+                sb.AppendLine("            // Every decorated interface calls this, so register the source only once per collection");
                 sb.AppendLine("            foreach (var descriptor in services)");
                 sb.AppendLine("            {");
                 sb.AppendLine("                if (descriptor.ServiceType == typeof(RegistrationMarker))");

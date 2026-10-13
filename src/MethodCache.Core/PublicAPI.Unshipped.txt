@@ -588,6 +588,7 @@ static MethodCache.MethodCacheKeys.Part(ushort value) -> string!
 static MethodCache.MethodCacheKeys.Part<TEnum>(TEnum value) -> string!
 static MethodCache.MethodCacheKeys.Pattern(System.Type! serviceType, string! methodName, int? version = null) -> string!
 static MethodCache.MethodCacheKeys.Prefix(System.Type! serviceType, string! methodName, int? version = null) -> string!
+static MethodCache.MethodCacheKeys.Sequence<T>(System.Collections.Generic.IEnumerable<T>? values, System.Func<T, string!>! part) -> string!
 static MethodCache.Policies.CachePolicy.Empty.get -> MethodCache.Policies.CachePolicy!
 static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression) -> System.Threading.Tasks.Task!
 static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression) -> System.Threading.Tasks.Task!

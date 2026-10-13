@@ -3,7 +3,7 @@
 MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
 write into the key itself (see [Keys](#keys) below). The source generator writes the decorators, their registration
 and those keys at build time. CI publishes a test application with Native AOT on every change and checks that
-caching (with simple, record and `ICacheKeyProvider` arguments), the automatic registration and
+caching (with simple, record, collection and `ICacheKeyProvider` arguments), the automatic registration and
 `[assembly: CacheInterface]` work.
 
 ## In-memory caching
@@ -41,9 +41,10 @@ Under Native AOT, give cached methods arguments that the decorator writes into t
 - simple values (strings, numbers, `bool`, `Guid`, dates, enums),
 - records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
   type (a sealed type is safest: an instance of a derived class goes through the key generator),
-- types that implement `ICacheKeyProvider`.
+- types that implement `ICacheKeyProvider`,
+- arrays, lists, sets and dictionaries of those (records and classes in them must be sealed).
 
-Other arguments, such as arrays, lists and dictionaries, go through the key generator, which serializes them with
-reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026, IL3050) from
-`MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
+Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
+serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,
+IL3050) from `MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
 implements `ICacheKeyProvider`, as `TenantId` does in [Cache keys](keys.md#types-whose-state-is-private).

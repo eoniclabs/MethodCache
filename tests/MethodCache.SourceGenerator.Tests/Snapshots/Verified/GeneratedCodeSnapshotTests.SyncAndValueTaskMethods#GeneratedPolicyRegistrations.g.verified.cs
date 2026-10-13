@@ -31,7 +31,7 @@ namespace MethodCache.Generated
                 throw new global::System.ArgumentNullException(nameof(services));
             }
 
-            // Every generated Add...WithCaching method calls this, so register the source only once per collection
+            // Every decorated interface calls this, so register the source only once per collection
             foreach (var descriptor in services)
             {
                 if (descriptor.ServiceType == typeof(RegistrationMarker))

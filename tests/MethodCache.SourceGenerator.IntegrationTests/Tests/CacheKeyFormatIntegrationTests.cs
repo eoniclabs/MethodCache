@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -74,6 +75,21 @@ namespace KeyFormat
 
         [Cache(Duration = ""00:10:00"")]
         Task<string> PolicyAsync(int policy);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> IdsAsync(int[]? ids);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> NamesAsync(System.Collections.Generic.IReadOnlyList<string?> names, int page);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> PointsAsync(System.Collections.Generic.List<Point> points, System.Collections.Generic.IEnumerable<Tenant?> tenants);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> QueriesAsync(Query[] queries);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> RangesAsync(Range[] ranges);
     }
 
     public interface IOrderService
@@ -93,6 +109,11 @@ namespace KeyFormat
         public Task<string> RangeAsync(Range? range) { Calls++; return Task.FromResult(""range-"" + Calls); }
         public Task<string> RegionAsync(Region region) { Calls++; return Task.FromResult(""region-"" + Calls); }
         public Task<string> PolicyAsync(int policy) { Calls++; return Task.FromResult(""policy-"" + policy); }
+        public Task<int> IdsAsync(int[]? ids) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> NamesAsync(System.Collections.Generic.IReadOnlyList<string?> names, int page) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> PointsAsync(System.Collections.Generic.List<Point> points, System.Collections.Generic.IEnumerable<Tenant?> tenants) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> QueriesAsync(Query[] queries) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> RangesAsync(Range[] ranges) { Calls++; return Task.FromResult(Calls); }
         public Task<string> PointAsync(Point point, Tenant tenant) { Calls++; return Task.FromResult(""point-"" + point.X + "","" + point.Y + ""-"" + tenant.Id); }
     }
 
@@ -251,6 +272,76 @@ namespace KeyFormat
 
         Assert.StartsWith(prefix + ":", key);
         Assert.Equal(3, await cache.TryGetFastAsync<int>(key));
+    }
+
+    [Fact]
+    public async Task CollectionArguments_GetReadableInlineKeys()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var userType = assembly.GetType("KeyFormat.IUserService")!;
+
+        var ids = await Call<int>(users, "IdsAsync", new[] { 1, 2, 3 });
+        var noIds = await Call<int>(users, "IdsAsync", new object?[] { null });
+        var names = await Call<int>(users, "NamesAsync", new List<string?> { "a:b", null }, 2);
+
+        var pointType = assembly.GetType("KeyFormat.Point")!;
+        var points = (System.Collections.IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(pointType))!;
+        points.Add(Activator.CreateInstance(pointType, 1, 2));
+        var tenantType = assembly.GetType("KeyFormat.Tenant")!;
+        var tenants = Array.CreateInstance(tenantType, 2);
+        tenants.SetValue(Activator.CreateInstance(tenantType, "acme"), 0);
+        var pointsResult = await Call<int>(users, "PointsAsync", points, tenants);
+
+        var queryType = assembly.GetType("KeyFormat.Query")!;
+        var queries = Array.CreateInstance(queryType, 1);
+        queries.SetValue(Activator.CreateInstance(queryType, "x", 1), 0);
+        var queriesResult = await Call<int>(users, "QueriesAsync", queries);
+
+        Assert.Equal(ids, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", "[3:1:2:3]")));
+        Assert.Equal(noIds, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", MethodCacheKeys.Null)));
+        Assert.Equal(names, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "NamesAsync", "[2:a\\:b:\\0]", "2")));
+        Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "PointsAsync", "[1:(1:2)]", "[2:acme:\\0]")));
+        Assert.Equal(queriesResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "QueriesAsync", "[1:(x:1)]")));
+    }
+
+    [Fact]
+    public async Task EqualCollections_ShareAnEntry_AndDifferentOnesDoNot()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+
+        var first = await Call<int>(users, "IdsAsync", new[] { 1, 2 });
+        var equal = await Call<int>(users, "IdsAsync", new[] { 1, 2 });
+        var reordered = await Call<int>(users, "IdsAsync", new[] { 2, 1 });
+        var empty = await Call<int>(users, "IdsAsync", Array.Empty<int>());
+        var emptyName = await Call<int>(users, "NamesAsync", new List<string?> { "" }, 1);
+        var noNames = await Call<int>(users, "NamesAsync", new List<string?>(), 1);
+
+        Assert.Equal(first, equal);
+        Assert.Equal(5, new[] { first, reordered, empty, emptyName, noNames }.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task CollectionsOfUnsealedRecords_UseTheKeyGenerator()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var userType = assembly.GetType("KeyFormat.IUserService")!;
+        var rangeType = assembly.GetType("KeyFormat.Range")!;
+        var ranges = Array.CreateInstance(rangeType, 1);
+        ranges.SetValue(Activator.CreateInstance(rangeType, "a", 1), 0);
+
+        var result = await Call<int>(users, "RangesAsync", ranges);
+
+        // A Range[] can hold a NamedRange, whose extra member an inline key would miss
+        Assert.Equal(0, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "RangesAsync", "[1:(a:1)]")));
+        var prefix = MethodCacheKeys.Prefix(userType, "RangesAsync");
+        var policy = CacheRuntimePolicy.FromPolicy("RangesAsync", CachePolicy.Empty, CachePolicyFields.None);
+        var key = provider.GetRequiredService<ICacheKeyGenerator>().GenerateKey(prefix, new object[] { ranges }, policy);
+        Assert.Equal(result, await cache.TryGetFastAsync<int>(key));
     }
 
     private async Task<(IServiceProvider Provider, Assembly Assembly)> BuildAsync()

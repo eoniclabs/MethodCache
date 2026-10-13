@@ -569,6 +569,10 @@ namespace MethodCache.SourceGenerator
                             exactTypeChecks.Add($"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}))");
                         }
                     }
+                    else if (TryFormatSequence(name, param.Type, out var sequence))
+                    {
+                        pieces.Add(sequence);
+                    }
                     else
                     {
                         exactTypeChecks.Clear();
@@ -578,6 +582,74 @@ namespace MethodCache.SourceGenerator
 
                 expression = $"string.Concat({string.Join(", ", pieces)})";
                 return true;
+            }
+
+            /// <summary>
+            /// Formats an array or collection whose elements the decorator can write itself: simple values,
+            /// <c>ICacheKeyProvider</c> types, and sealed records, classes or structs made of simple values (an unsealed
+            /// element type could hold a subclass with more state). The element type comes from the collection's one
+            /// <c>IEnumerable&lt;T&gt;</c>, so the element lambda is inferred and its nullability follows the argument's.
+            /// </summary>
+            private static bool TryFormatSequence(string name, ITypeSymbol type, out string expression)
+            {
+                expression = string.Empty;
+                var element = GetSequenceElementType(type);
+                if (element == null)
+                {
+                    return false;
+                }
+
+                const string item = "__mcItem";
+                string part;
+                if (IsSimpleType(element))
+                {
+                    part = FormatSimpleValue(item, element);
+                }
+                else if (ImplementsCacheKeyProvider(element))
+                {
+                    var keyPart = $"global::MethodCache.MethodCacheKeys.Part(((global::MethodCache.ICacheKeyProvider){item}).CacheKeyPart)";
+                    part = element.IsValueType ? keyPart : $"({item} is null ? global::MethodCache.MethodCacheKeys.Null : {keyPart})";
+                }
+                else if ((element.IsValueType || element.IsSealed) && TryGetKeyMembers(element, out var members))
+                {
+                    var pieces = new List<string>();
+                    AddObjectPieces(pieces, item, element, members);
+                    part = pieces.Count == 1 ? pieces[0] : $"string.Concat({string.Join(", ", pieces)})";
+                }
+                else
+                {
+                    return false;
+                }
+
+                expression = $"global::MethodCache.MethodCacheKeys.Sequence({name}, static {item} => {part})";
+                return true;
+            }
+
+            /// <summary>
+            /// The element type of a one-dimensional array, or of a type that is or implements exactly one
+            /// <c>IEnumerable&lt;T&gt;</c>; null for anything else.
+            /// </summary>
+            private static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
+            {
+                if (type is IArrayTypeSymbol array)
+                {
+                    return array.Rank == 1 ? array.ElementType : null;
+                }
+
+                if (type is not INamedTypeSymbol named || type.SpecialType == SpecialType.System_String)
+                {
+                    return null;
+                }
+
+                if (named.ConstructedFrom.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+                {
+                    return named.TypeArguments[0];
+                }
+
+                var enumerables = named.AllInterfaces
+                    .Where(i => i.ConstructedFrom.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+                    .ToList();
+                return enumerables.Count == 1 ? enumerables[0].TypeArguments[0] : null;
             }
 
             /// <summary>

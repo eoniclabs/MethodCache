@@ -273,7 +273,8 @@ public interface IUserService
 {
     [Cache] Task<User> GetAsync(int id);                     // MyApp.IUserService.GetAsync:42
     [Cache] Task<List<User>> SearchAsync(UserQuery query);   // MyApp.IUserService.SearchAsync:(alice:2)
-    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:11b474c4… (hashed)
+    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:[3:1:2:3]
+    [Cache] Task<int> CountAsync(Dictionary<string, int[]> filters); // MyApp.IUserService.CountAsync:fc08ab0d… (hashed)
 }
 ```
 
@@ -283,8 +284,11 @@ public interface IUserService
 - **Records, classes and structs** whose public properties and fields are simple values are written field by field:
   `SearchAsync:(alice:2)`. Two records with equal values give the same key.
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
-- **Everything else**, such as arrays and collections, goes through the key generator. The default,
-  `FastHashKeyGenerator`, hashes the arguments into a key such as `ByIdsAsync:11b474c4…`.
+- **Arrays and collections** of those values are written with their count and then each element in order:
+  `ByIdsAsync:[3:1:2:3]`. A dictionary counts as a collection of key/value pairs. Records and classes inside a
+  collection must be sealed, since an unsealed element type could hold a subclass with more members.
+- **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
+  generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.
@@ -1547,7 +1551,7 @@ object; return immutable types such as records, or copies.
 MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
 write into the key itself (see [Keys](#keys) below). The source generator writes the decorators, their registration
 and those keys at build time. CI publishes a test application with Native AOT on every change and checks that
-caching (with simple, record and `ICacheKeyProvider` arguments), the automatic registration and
+caching (with simple, record, collection and `ICacheKeyProvider` arguments), the automatic registration and
 `[assembly: CacheInterface]` work.
 
 ## In-memory caching
@@ -1581,11 +1585,12 @@ Under Native AOT, give cached methods arguments that the decorator writes into t
 - simple values (strings, numbers, `bool`, `Guid`, dates, enums),
 - records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
   type (a sealed type is safest: an instance of a derived class goes through the key generator),
-- types that implement `ICacheKeyProvider`.
+- types that implement `ICacheKeyProvider`,
+- arrays, lists, sets and dictionaries of those (records and classes in them must be sealed).
 
-Other arguments, such as arrays, lists and dictionaries, go through the key generator, which serializes them with
-reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026, IL3050) from
-`MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
+Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
+serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,
+IL3050) from `MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
 implements `ICacheKeyProvider`, as `TenantId` does in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private).
 
 
@@ -2605,6 +2610,12 @@ release.
 ## Unreleased (1.0.0)
 
 ### If you used a pre-release build from GitHub Packages
+
+- **Generated `Add{Interface}WithCaching` methods are gone.** Combined with `AddMethodCache()` they registered the
+  service twice. Register the interface the usual way (with a factory if you need one), before `AddMethodCache()`.
+- **Keys for array and collection arguments.** The decorator now writes them into the key itself
+  (`ByIdsAsync:[3:1:2:3]`) instead of hashing them, so they also work under Native AOT. Distributed cache entries
+  written by a pre-release build for such methods are misses and expire normally.
 
 - **HTTP cache keys.** Keys are now length-framed, so every HTTP response cache key changes, including for requests
   without `Vary` headers. Entries written by a pre-release build are not read again; this applies to the built-in and
