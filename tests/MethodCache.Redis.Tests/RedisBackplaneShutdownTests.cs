@@ -184,16 +184,42 @@ public class RedisBackplaneShutdownTests
         Task<IConnectionMultiplexer> Connect() => ++attempts == 1
             ? Task.FromException<IConnectionMultiplexer>(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"))
             : Task.FromResult(connection);
-        var time = new FakeTimeProvider();
+        var time = new TimerCountingTimeProvider();
         await using var backplane = new RedisBackplane(Connect, "channel", timeProvider: time);
         var delivered = new List<Extensibility.BackplaneMessageType>();
         var subscription = backplane.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Type); return Task.CompletedTask; });
 
-        await WaitUntil(() => attempts == 1);
+        await WaitUntil(() => attempts == 1 && time.Timers == 1);
         time.Advance(RedisBackplane.FirstRetryDelay);
         await subscription.WaitAsync(TimeSpan.FromSeconds(10));
 
         lock (delivered) Assert.Equal(new[] { Extensibility.BackplaneMessageType.ClearAll }, delivered);
+    }
+
+    [Fact]
+    public async Task Subscribe_ThatTimesOut_IsTriedAgain_AndThenClearsWhatWasMissed()
+    {
+        var connection = Substitute.For<IConnectionMultiplexer>();
+        var subscriber = Substitute.For<ISubscriber>();
+        connection.GetSubscriber().Returns(subscriber);
+        var subscribes = 0;
+        subscriber.SubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>())
+            .Returns(_ => ++subscribes == 1 ? Task.FromException(new RedisTimeoutException("timeout", CommandStatus.Sent)) : Task.CompletedTask);
+        subscriber.UnsubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>()).Returns(Task.CompletedTask);
+
+        var time = new TimerCountingTimeProvider();
+        await using var backplane = new RedisBackplane(() => Task.FromResult(connection), "channel", timeProvider: time);
+        var delivered = new List<Extensibility.BackplaneMessageType>();
+        var subscription = backplane.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Type); return Task.CompletedTask; });
+
+        await WaitUntil(() => subscribes == 1 && time.Timers == 1);
+        Assert.False(subscription.IsCompleted);
+        time.Advance(RedisBackplane.FirstRetryDelay);
+        await subscription.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(2, subscribes);
+        lock (delivered) Assert.Equal(new[] { Extensibility.BackplaneMessageType.ClearAll }, delivered);
+        await subscriber.Received(1).UnsubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>());
     }
 
     [Fact]
