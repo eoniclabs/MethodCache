@@ -378,6 +378,25 @@ public class DistributedInvalidationRobustnessTests
     }
 
     [Fact]
+    public async Task ShutdownDuringASlowWrite_WaitsForIt_AndStoresTheRemovalItLeaves()
+    {
+        var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
+        {
+            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+        });
+        var (node, layer) = CreateNode(chaos);
+        var big = Get(node, "big", () => "large value");
+        await WaitUntil(() => chaos.FaultsStarted == 1);
+
+        // Shutdown starts before the write times out, so nothing is queued yet when it does
+        var shutdown = layer.DisposeAsync().AsTask();
+        await AdvanceUntilDone(shutdown, Timeout);
+        await big.WaitAsync(RealTimeLimit);
+
+        _shared.Get("methodcache:r:big").Should().NotBeNull("the write may still land, so shutdown removes the key");
+    }
+
+    [Fact]
     public async Task SlowWrite_PendingRemoval_IsDoneAtShutdownInsteadOfAfterIt()
     {
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with

@@ -72,7 +72,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly TimeSpan _breakDuration;
         private readonly ConcurrentDictionary<string, TagStamp> _tagStamps = new(StringComparer.Ordinal);
 
-        // Whether a method's values survive the serializer, by method, declared and runtime type; see RoundTrips
+        // Method, declared and runtime types whose values didn't survive the serializer (always false); see RoundTrips
         private readonly ConcurrentDictionary<(string Method, Type Declared, Type Written), bool> _roundTrips = new();
 
         // Methods with a value shared through the distributed cache, so a later value that can't be shared must
@@ -117,6 +117,10 @@ namespace MethodCache.Core.Runtime.Distributed
         // Keys whose write timed out, and when (in TimeProvider timestamps) to remove them; one removal per key
         private readonly ConcurrentDictionary<string, long> _lateRemovals = new(StringComparer.Ordinal);
         private readonly CancellationTokenSource _disposing = new();
+
+        // Writes running now; shutdown waits for them before it flushes the queue
+        private int _writesInFlight;
+        private readonly TaskCompletionSource _writesDrained = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public DistributedCacheLayer(
             IDistributedCache cache,
@@ -268,6 +272,24 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false, string? methodName = null)
         {
+            // Shutdown waits for writes in flight (each bounded by the timeout), so the removal a write that times
+            // out or fails leaves behind is flushed with the rest of the queue
+            Interlocked.Increment(ref _writesInFlight);
+            try
+            {
+                await WriteCoreAsync(key, value, tags, createdAt, lifetime, invalidated, replaces, methodName).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (Interlocked.Decrement(ref _writesInFlight) == 0 && Volatile.Read(ref _disposed) != 0)
+                {
+                    _writesDrained.TrySetResult();
+                }
+            }
+        }
+
+        private async Task WriteCoreAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated, bool replaces, string? methodName)
+        {
             // The metadata that can invalidate this value must outlive it, including time spent loading or
             // writing it. Anchor its logical expiry to the source read, not the later publication time.
             var now = Now;
@@ -416,9 +438,10 @@ namespace MethodCache.Core.Runtime.Distributed
         }
 
         /// <summary>
-        /// Whether values of <typeparamref name="T"/> from <paramref name="methodName"/> come back from the serializer
-        /// as they were written, judged once for each runtime type the method returns, by the first such value: it is
-        /// read back and written again, both writes must match, and so must the value's type. A collection declared
+        /// Whether this value from <paramref name="methodName"/> comes back from the serializer as it was written: it
+        /// is read back and written again, both writes must match, and so must the value's type. Every value is
+        /// checked, since one with default data (an <c>Id</c> of 0 behind a private setter) can pass where the next
+        /// one loses data; once one fails, every value of that method and runtime type stays in memory only. A collection declared
         /// as an interface or abstract type may come back as another implementation of it (an array as a
         /// <c>List&lt;T&gt;</c>, say), since only its elements are written. A value that doesn't come back (private
         /// setters, a derived type returned as its base type, <c>object</c>) is kept in memory only, with one warning
@@ -428,9 +451,9 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             var written = value!.GetType();
             var method = RoundTripKey(methodName, value);
-            if (_roundTrips.TryGetValue(method, out var known))
+            if (_roundTrips.ContainsKey(method))
             {
-                return known;
+                return false;
             }
 
             bool roundTrips;
@@ -450,14 +473,19 @@ namespace MethodCache.Core.Runtime.Distributed
                 roundTrips = false;
             }
 
-            if (_roundTrips.TryAdd(method, roundTrips) && !roundTrips)
+            if (roundTrips)
+            {
+                return true;
+            }
+
+            if (_roundTrips.TryAdd(method, false))
             {
                 _logger.LogWarning(
                     "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type returned as its base type, or object. To share them between instances, register a serializer that does: a JsonCacheSerializer with your own JsonSerializerOptions or JsonSerializerContext (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or your own ISerializer.",
                     methodName ?? "SetAsync", written, typeof(T), _serializer.GetType().Name);
             }
 
-            return _roundTrips[method];
+            return false;
         }
 
         private static (string Method, Type Declared, Type Written) RoundTripKey<T>(string? methodName, T value)
@@ -681,6 +709,12 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async Task ShutdownAsync()
         {
+            // Disposed is set, so the last write to finish completes this
+            if (Volatile.Read(ref _writesInFlight) != 0)
+            {
+                await _writesDrained.Task.ConfigureAwait(false);
+            }
+
             await FlushBeforeShutdownAsync().ConfigureAwait(false);
             if (_backplane == null || _subscribed == 0) return;
             try
@@ -700,7 +734,15 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         private async Task FlushBeforeShutdownAsync()
         {
-            if (!_hasPending)
+            bool nothingQueued;
+            lock (_pendingLock)
+            {
+                // Checked under the lock Queue holds, so whatever is queued after this counts as lost
+                nothingQueued = !_hasPending;
+                _flushedForShutdown = nothingQueued;
+            }
+
+            if (nothingQueued)
             {
                 return;
             }
@@ -1021,7 +1063,7 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             lock (_pendingLock)
             {
-                if (Volatile.Read(ref _disposed) != 0) return;
+                // Also while shutting down: shutdown flushes the queue (AddPending counts what comes after as lost)
                 AddPending(keys, tags);
 
                 _hasPending = true;

@@ -270,7 +270,7 @@ public class DistributedSerializationTests
         _shared.Get("methodcache:e:k0").Should().BeNull();
     }
 
-    // ---------- The check runs once per method ----------
+    // ---------- Which values are checked ----------
 
     private sealed class CountingSerializer(ISerializer inner) : ISerializer
     {
@@ -293,24 +293,7 @@ public class DistributedSerializationTests
     }
 
     [Fact]
-    public async Task RoundTripCheck_RunsOncePerMethod()
-    {
-        var serializer = new CountingSerializer(new JsonCacheSerializer());
-        var (node, _) = CreateNode(serializer);
-
-        for (var i = 0; i < 5; i++)
-        {
-            await Load(node, "a" + i, () => (Total: i, Name: "x"), method: "A");
-        }
-
-        serializer.Reads.Should().Be(1, "the first value of a method is read back once; later writes trust that");
-
-        await Load(node, "b", () => (Total: 1, Name: "x"), method: "B");
-        serializer.Reads.Should().Be(2, "each method is checked on its own");
-    }
-
-    [Fact]
-    public async Task RoundTripCheck_RunsOncePerRuntimeTypeOfAMethod()
+    public async Task RoundTripCheck_RunsForEveryValue_UntilOneFails()
     {
         var serializer = new CountingSerializer(new JsonCacheSerializer());
         var (node, _) = CreateNode(serializer);
@@ -321,7 +304,21 @@ public class DistributedSerializationTests
             await Load<Animal>(node, "dog" + i, () => new Dog { Name = "d" });
         }
 
-        serializer.Reads.Should().Be(2, "an Animal and a Dog are each checked once");
+        serializer.Reads.Should().Be(4, "every Animal is read back; the Dogs only until the first one failed");
         Warnings.Should().Be(1, "the Dogs are kept in memory with one warning");
+    }
+
+    [Fact]
+    public async Task EntityWithPrivateSetter_FirstWithItsDefaultId_DoesNotLetLaterIdsThrough()
+    {
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+
+        // An Id of 0 reads back unchanged, so this one is shared; that says nothing about the next value
+        await Load(a, "zero", () => Entity.Create(0));
+        (await Load(a, "k", () => Entity.Create(42))).Id.Should().Be(42);
+
+        (await Load(b, "k", () => Entity.Create(42))).Id.Should().Be(42, "B runs its method rather than read an Entity without its id");
+        _shared.Get("methodcache:e:k").Should().BeNull();
     }
 }

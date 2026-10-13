@@ -145,7 +145,7 @@ public class RedisBackplaneShutdownTests
         Task<IConnectionMultiplexer> Connect() => ++attempts <= 2
             ? Task.FromException<IConnectionMultiplexer>(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"))
             : Task.FromResult(connection);
-        var time = new FakeTimeProvider();
+        var time = new TimerCountingTimeProvider();
         var logger = new RecordingLogger();
         await using var backplane = new RedisBackplane(Connect, "channel", logger, time);
         var delivered = new List<string?>();
@@ -155,10 +155,11 @@ public class RedisBackplaneShutdownTests
             return Task.CompletedTask;
         });
 
-        await WaitUntil(() => attempts == 1);
+        // Each wait is advanced only once its timer exists: advancing earlier would not count toward it
+        await WaitUntil(() => attempts == 1 && time.Timers == 1);
         Assert.False(subscription.IsCompleted);
         time.Advance(RedisBackplane.FirstRetryDelay);
-        await WaitUntil(() => attempts == 2);
+        await WaitUntil(() => attempts == 2 && time.Timers == 2);
         time.Advance(RedisBackplane.FirstRetryDelay); // the second wait is twice as long
         Assert.Equal(2, attempts);
         time.Advance(RedisBackplane.FirstRetryDelay);
@@ -225,6 +226,21 @@ public class RedisBackplaneShutdownTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => subscription.WaitAsync(TimeSpan.FromSeconds(10)));
         time.Advance(RedisBackplane.MaxRetryDelay);
         Assert.Equal(1, attempts);
+    }
+
+    /// <summary>A fake clock that counts the timers created on it.</summary>
+    private sealed class TimerCountingTimeProvider : FakeTimeProvider
+    {
+        private int _timers;
+
+        public int Timers => Volatile.Read(ref _timers);
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            Interlocked.Increment(ref _timers);
+            return timer;
+        }
     }
 
     private static async Task WaitUntil(Func<bool> condition)

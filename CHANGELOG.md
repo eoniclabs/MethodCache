@@ -43,12 +43,13 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   stored in batches, so a large backlog drains; more than 10,000, or one the cache keeps refusing, become one clear.
   On shutdown the queue is tried once more, after a retry already running, and what is lost is logged. Keys whose
   write timed out are removed at shutdown instead of after a delay nothing waits for, and further timed-out writes
-  of a key push its one removal back instead of adding another. A write that times out no longer opens the
+  of a key push its one removal back instead of adding another. Shutdown also waits for writes still running (each capped
+  by the operation timeout), so the removal one of them leaves behind is stored with the rest of the queue. A write that times out no longer opens the
   circuit breaker for the whole instance. A tag or clear stamp from a server whose clock runs ahead no longer turns
   every entry written since into a miss.
 - **Serialization**: the default `JsonCacheSerializer` includes public fields, so value tuples and structs with
-  fields are shared through the distributed cache instead of coming back empty. For each method and each type it
-  returns, the first value written is read back; values that don't survive that (private setters, a derived type
+  fields are shared through the distributed cache instead of coming back empty. Each value written is read back
+  first; values that don't survive that (private setters, a derived type
   returned as its base type, `object`) stay in memory only, with one warning, instead of handing other instances a
   value with missing data. Collections declared as interfaces are still shared when they come back as another
   implementation. A derived value nested in a collection or property isn't detected. Including fields changes two
