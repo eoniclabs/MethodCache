@@ -23,7 +23,7 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        if (!services.Any(s => s.ServiceType == typeof(ICacheManager)))
+        if (!services.Any(s => !s.IsKeyedService && s.ServiceType == typeof(ICacheManager)))
         {
             throw new InvalidOperationException(
                 "No MethodCache cache manager is registered. Call services.AddMethodCache() before services.AddMethodCacheOpenTelemetry().");
@@ -90,7 +90,7 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
         Func<TInterface, IServiceProvider, TInterface> decorator)
         where TInterface : class
     {
-        var existingRegistrations = services.Where(s => s.ServiceType == typeof(TInterface)).ToList();
+        var existingRegistrations = services.Where(s => !s.IsKeyedService && s.ServiceType == typeof(TInterface)).ToList();
 
         foreach (var registration in existingRegistrations)
         {
