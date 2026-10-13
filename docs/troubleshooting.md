@@ -14,6 +14,9 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   class itself, or calling the method from inside the class (`this.GetAsync(...)`), skips it.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
   makes every key different. List the keys to check ([Cache keys](features/keys.md)).
+- **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error
+  [MCG018](user-guide/DIAGNOSTICS.md#mcg018): its key would not follow its value. Pass a string or an id instead
+  ([Cache keys](features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, the result is `null` with
   `CacheNullValues = false`, or the call threw. Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](features/testing.md)).
@@ -32,6 +35,13 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   [Redis or SQL Server](features/distributed-cache.md) so invalidations reach all of them. With a custom
   `IDistributedCache`, also register an `IBackplane`.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](features/fail-safe.md)).
+
+## Results stay out of the distributed cache
+
+A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
+warning [MCG019](user-guide/DIAGNOSTICS.md#mcg019). The serializer can't tell which class to create when it reads
+such a result back, so when a distributed cache is used these results are kept in memory only, and each instance
+loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
 
 ## Keys look different than expected
 

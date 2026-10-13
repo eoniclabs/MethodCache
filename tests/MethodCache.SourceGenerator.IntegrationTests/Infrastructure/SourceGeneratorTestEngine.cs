@@ -214,7 +214,12 @@ namespace {namespaceName}
             "Microsoft.Extensions.DependencyInjection.Abstractions",
             "System.ComponentModel",
             "System.Linq.Expressions",
-            "System.Private.CoreLib"
+            "System.Private.CoreLib",
+            "System.Memory",
+            "System.Runtime.Numerics",
+            "System.Net.Primitives",
+            "System.Text.Json",
+            "System.Private.Uri",
         };
 
         foreach (var assemblyName in assemblyNames)

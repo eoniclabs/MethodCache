@@ -17,3 +17,5 @@ MCG014 | MethodCacheGenerator | Error | Reports [Cache] on a method that returns
 MCG015 | MethodCacheGenerator | Warning | Reports a tag placeholder that is not a parameter name, such as "{product.Id}".
 MCG016 | MethodCacheGenerator | Warning | Reports a tag placeholder matching multiple parameters without an exact spelling match.
 MCG017 | MethodCacheGenerator | Warning | Reports [Cache] or [CacheInvalidate] on a static, non-public or sealed interface member, which the decorator can't intercept.
+MCG018 | MethodCacheGenerator | Error | Reports a cache key argument, element or member whose framework type has no key form, such as StringBuilder.
+MCG019 | MethodCacheGenerator | Warning | Reports a cached result type of object, an interface or an abstract class, which a distributed cache can't restore.

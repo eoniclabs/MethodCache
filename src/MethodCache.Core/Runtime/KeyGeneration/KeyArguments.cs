@@ -17,12 +17,14 @@ internal static class KeyArguments
     // surrogate as U+FFFD, so strings and chars that hold one are written in a form no valid text can take. A value
     // whose runtime type differs from the type it is declared as is written with that type (see RuntimeTypeResolver).
     // JSON has no converter for nint and nuint, so they are written as the 64-bit numbers they widen to. NaN and
-    // infinities, such as a "no limit" double.PositiveInfinity, are written as their names instead of failing.
+    // infinities, such as a "no limit" double.PositiveInfinity, are written as their names instead of failing. Framework
+    // types whose public properties don't hold their value (BigInteger's are IsZero, Sign...; IPAddress's throw) are
+    // written as their text. A JsonElement is written as its JSON.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerOptions.Default)
     {
         IncludeFields = true,
         NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
-        Converters = { new LosslessStringConverter(), new LosslessCharConverter(), new NativeIntConverter(), new NativeUIntConverter() },
+        Converters = { new LosslessStringConverter(), new LosslessCharConverter(), new NativeIntConverter(), new NativeUIntConverter(), new BigIntegerConverter(), new IPAddressConverter() },
         TypeInfoResolver = new RuntimeTypeResolver(),
     };
 
@@ -35,7 +37,7 @@ internal static class KeyArguments
     /// </summary>
     public static byte[] Serialize(object arg)
     {
-        var type = arg.GetType();
+        var type = KeyType(arg);
         try
         {
             return JsonSerializer.SerializeToUtf8Bytes(arg, JsonOptions.GetTypeInfo(type));
@@ -158,6 +160,13 @@ internal static class KeyArguments
     }
 
     /// <summary>
+    /// The type a value is written as: its runtime type, except that the framework's own read-only subclass of
+    /// <see cref="System.Net.IPAddress"/> (behind <c>IPAddress.Loopback</c> and the like) is an <c>IPAddress</c>, so
+    /// <c>IPAddress.Loopback</c> and <c>IPAddress.Parse("127.0.0.1")</c> get one key.
+    /// </summary>
+    internal static Type KeyType(object value) => value is System.Net.IPAddress ? typeof(System.Net.IPAddress) : value.GetType();
+
+    /// <summary>
     /// True when every value declared as <paramref name="type"/> has exactly that runtime type: value types, and sealed
     /// classes (arrays only when their element type is exact, since an <c>object[]</c> can hold a <c>string[]</c>).
     /// </summary>
@@ -199,7 +208,7 @@ internal static class KeyArguments
 
         public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
         {
-            var type = value!.GetType();
+            var type = KeyType(value!);
             if (type == typeof(T))
             {
                 // The usual contract of T, built here because options resolve T to this converter
@@ -212,7 +221,7 @@ internal static class KeyArguments
             writer.WriteStartObject();
             writer.WriteString(TypeMarker, runtime.Name);
             writer.WritePropertyName(ValueName);
-            runtime.Write(writer, value, options);
+            runtime.Write(writer, value!, options);
             writer.WriteEndObject();
         }
     }
@@ -356,5 +365,25 @@ internal static class KeyArguments
 
         public override void WriteAsPropertyName(Utf8JsonWriter writer, nuint value, JsonSerializerOptions options)
             => writer.WritePropertyName(((ulong)value).ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Writes a <see cref="System.Numerics.BigInteger"/> as its digits.</summary>
+    private sealed class BigIntegerConverter : JsonConverter<System.Numerics.BigInteger>
+    {
+        public override System.Numerics.BigInteger Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, System.Numerics.BigInteger value, JsonSerializerOptions options)
+            => writer.WriteStringValue(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Writes an <see cref="System.Net.IPAddress"/> as its text, with the scope of an IPv6 address.</summary>
+    private sealed class IPAddressConverter : JsonConverter<System.Net.IPAddress>
+    {
+        public override System.Net.IPAddress Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, System.Net.IPAddress value, JsonSerializerOptions options)
+            => writer.WriteStringValue(value.ToString());
     }
 }

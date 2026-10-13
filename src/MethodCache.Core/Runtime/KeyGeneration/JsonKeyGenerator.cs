@@ -90,7 +90,7 @@ public class JsonKeyGenerator : ICacheKeyGenerator
 
             if (args[i] is { } arg)
             {
-                names.Append(KeyArguments.TypeName(arg.GetType()));
+                names.Append(KeyArguments.TypeName(KeyArguments.KeyType(arg)));
             }
             else
             {

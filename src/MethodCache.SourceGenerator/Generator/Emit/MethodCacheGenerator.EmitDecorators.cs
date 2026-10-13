@@ -653,7 +653,7 @@ namespace MethodCache.SourceGenerator
             /// The element type of a one-dimensional array, or of a type that is or implements exactly one
             /// <c>IEnumerable&lt;T&gt;</c>; null for anything else.
             /// </summary>
-            private static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
+            internal static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
             {
                 if (type is IArrayTypeSymbol array)
                 {
@@ -728,7 +728,7 @@ namespace MethodCache.SourceGenerator
             /// <summary>
             /// A class or struct that implements <c>ICacheKeyProvider</c>, or that interface or one derived from it.
             /// </summary>
-            private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
+            internal static bool ImplementsCacheKeyProvider(ITypeSymbol type)
                 => type.TypeKind switch
                 {
                     TypeKind.Class or TypeKind.Struct => type.AllInterfaces.Any(IsCacheKeyProvider),
@@ -750,6 +750,7 @@ namespace MethodCache.SourceGenerator
                     named.TypeKind is not (TypeKind.Class or TypeKind.Struct) ||
                     named.IsAbstract ||
                     named.SpecialType != SpecialType.None ||
+                    IsFrameworkType(named) ||
                     named.AllInterfaces.Any(i => i.SpecialType == SpecialType.System_Collections_IEnumerable))
                 {
                     return false;
@@ -899,7 +900,7 @@ namespace MethodCache.SourceGenerator
                     m.Parameters[0].Type.SpecialType == SpecialType.System_String &&
                     m.Parameters[1].Type.ToDisplayString() == "System.IFormatProvider");
 
-            private static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
+            internal static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
             {
                 foreach (var param in keyParams)
                 {

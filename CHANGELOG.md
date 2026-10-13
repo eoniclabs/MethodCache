@@ -85,6 +85,14 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   these methods and arguments change, so their entries from an earlier build are misses.
 - **Metrics and spans** name a cached method by its id (`MyApp.IUserService.GetAsync`) instead of its bare name, so
   same-named methods on different interfaces are separate series, as the OpenTelemetry README shows.
+- **Framework types in keys**: `BigInteger`, `Complex`, `IPAddress`, `JsonElement`, `Half`, `Int128`, `DateOnly`,
+  `Uri`, `Version` and other immutable .NET types are written by their value, in every key generator and inside
+  records and collections. Before, the decorator wrote `BigInteger`'s `IsZero` and `Sign`, so 3 and 5 shared one
+  entry, and `IPAddress` threw. Other `System` or `Microsoft` types in a key, such as `StringBuilder` or
+  `CultureInfo`, are now build error MCG018 instead of a key that ignores their value. Keys of arguments with these
+  types change, so their entries from an earlier build are misses.
+- **Result types a distributed cache can't restore** (`object`, an interface or an abstract class, also as an
+  element) get warning MCG019: with a distributed cache those results are kept in memory only.
 - **`[assembly: CacheInterface]` in a class library** decorates the client even when none of the library's code has
   run before `AddMethodCache()`.
 

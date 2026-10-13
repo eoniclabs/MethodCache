@@ -30,6 +30,8 @@ public interface IUserService
   starts with that type, so an array and a list with the same elements stay two entries.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
   generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
+- **Framework types** are written by their value wherever they appear, not by their public properties; see
+  [Framework types](#framework-types). Other framework types are a build error.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.
@@ -62,6 +64,23 @@ public sealed class TenantId(Guid value) : ICacheKeyProvider
 }
 ```
 <!-- endSnippet -->
+
+## Framework types
+
+Types from .NET itself often keep their value out of their public properties (`BigInteger` has `IsZero` and
+`Sign`, `IPAddress.ScopeId` throws for IPv4), so writing those would give different values one key. These go through
+the key generator, which writes their value, in an argument of their own or inside a record, collection or tuple:
+
+- `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`, `DateOnly`, `TimeOnly`
+- `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`
+- `Uri`, `Version`, `IPAddress` (`IPAddress.Loopback` and `IPAddress.Parse("127.0.0.1")` share a key)
+- `JsonElement`, as its JSON, so `{"a":1}` and `{ "a": 1 }` share a key
+- arrays, collections, `Memory<T>`, `Tuple`, `ValueTuple` and `KeyValuePair` of these
+
+Any other type from the `System` or `Microsoft` namespaces in a key, such as `StringBuilder` (which can change after
+the call), `CultureInfo`, `Stream`, `Type` or a delegate, is build error
+[MCG018](../user-guide/DIAGNOSTICS.md#mcg018), also as a property of your own record. Pass a value that identifies
+it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`.
 
 ## Readable keys while debugging
 

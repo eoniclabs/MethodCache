@@ -208,7 +208,7 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
                 break;
             default:
                 WriteTag(writer, Tag.Object);
-                WriteString(writer, TypeName(arg.GetType()));
+                WriteString(writer, TypeName(KeyArguments.KeyType(arg)));
                 WriteBytes(writer, KeyArguments.Serialize(arg));
                 break;
         }

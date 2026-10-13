@@ -146,6 +146,24 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MCG017"));
 
+            internal static readonly DiagnosticDescriptor FrameworkTypeWithoutKeyForm = new(
+                id: "MCG018",
+                title: "Cache key argument has a framework type without a key form",
+                messageFormat: "[Cache] on '{0}' is not supported: '{1}' is a '{2}', a framework type the cache key can't be written from, so different values could share a key. Pass a value that identifies it, such as a string or an id, or wrap it in a type that implements ICacheKeyProvider.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG018"));
+
+            internal static readonly DiagnosticDescriptor UnrestorableResultType = new(
+                id: "MCG019",
+                title: "Cached result type can't be read back from a distributed cache",
+                messageFormat: "'{0}' returns '{1}', and '{2}' is not a concrete type: when a distributed cache is used, the serializer can't restore the runtime type from it, so these results are kept in memory only. Return a concrete type to share them through the distributed cache.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG019"));
+
             internal static readonly DiagnosticDescriptor UnsupportedInterface = new(
                 id: "MCG013",
                 title: "Interface cannot be cached",

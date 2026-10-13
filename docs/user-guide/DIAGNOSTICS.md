@@ -24,6 +24,8 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
 | [MCG016](#mcg016) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
 | [MCG017](#mcg017) | Warning | `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member | |
+| [MCG018](#mcg018) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
+| [MCG019](#mcg019) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 
 ## MC0001
 
@@ -115,7 +117,8 @@ instead). It is also reported when the attribute lists no methods. See the [thir
 ## MCG011
 
 `[assembly: CacheInterface]` lists a method that is missing, overloaded or static, or one that `[Cache]` would reject:
-it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, or returns a lazy sequence. Use
+it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, a framework type without a key
+form ([MCG018](#mcg018)), or returns a lazy sequence. Use
 `nameof(IClient.Method)` so a rename is caught by the compiler. See the
 [third-party caching page](../features/third-party.md).
 
@@ -158,3 +161,32 @@ literal in both cached tags and invalidation.
 class, and a class can't implement those members, so calls to them never reach the cache and the attribute does
 nothing. Put the attribute on a public interface method without `static`, `private` or `sealed` (one without a body,
 or a public default method), or remove it.
+
+## MCG018
+
+A key argument has a type from the `System` or `Microsoft` namespaces that the cache key can't be written from: the
+argument itself, an element of a collection or tuple, or a public property or field of your own type, such as
+`StringBuilder`, `CultureInfo`, `Stream`, `Type` or a `Func<T>`. Their public properties don't hold their value, or the
+value can change after the call (a `StringBuilder`), so two different arguments could share a key and one caller
+would get another's result. The message names the value, such as `'note.Text' is a 'StringBuilder'`.
+
+Pass a value that identifies it instead, such as a string, an id or a culture name, or wrap it in a type that
+implements `ICacheKeyProvider` (see [Cache keys](../features/keys.md#framework-types)). The key ignores the rest of the
+arguments when one has `[CacheKey(UseAsRawKey = true)]`, so the error is not reported then.
+
+Framework types with a key form are written by their value: `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`,
+`DateOnly`, `TimeOnly`, `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`, `Uri`, `Version`, `IPAddress` and
+`JsonElement` (as its JSON, so whitespace doesn't count), as well as arrays, collections, `Memory<T>`, tuples and
+`KeyValuePair` of those.
+
+## MCG019
+
+The cached method's result type, after `Task<T>` or `ValueTask<T>`, is `object`, an interface such as `IComparable` or
+`IShape`, or an abstract class, or has one as an element (`List<object>`). A distributed cache stores results as
+JSON or MessagePack of the declared type, which can't say which class to create when it reads them back, so when a
+distributed cache is used these results are kept in the in-memory cache only. Collection interfaces such as
+`IReadOnlyList<Product>` are fine; they are read back as a list.
+
+Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
+cache. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
+`#pragma warning disable MCG019` or `<NoWarn>` in the project.
