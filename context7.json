@@ -8,7 +8,8 @@
     "src/MethodCache.SqlServer",
     "src/MethodCache.AspNetCore",
     "src/MethodCache.OpenTelemetry",
-    "src/MethodCache.HttpCaching"
+    "src/MethodCache.HttpCaching",
+    "src/MethodCache.Serialization.MessagePack"
   ],
   "excludeFolders": [
     "docs/developer"
@@ -16,7 +17,6 @@
   "excludeFiles": [
     "AGENTS.md",
     "CLAUDE.md",
-    "RELEASE.md",
     "NUGET_README.md",
     "llms-full.txt"
   ],

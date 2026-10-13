@@ -18,6 +18,7 @@ public class FeatureTests(ITestOutputHelper output)
         public Task<MyApp.User> GetAsync(int id) => Task.FromResult(new MyApp.User(id, "a"));
         public Task<List<MyApp.User>> SearchAsync(UserQuery query) => Task.FromResult(new List<MyApp.User>());
         public Task<List<MyApp.User>> ByIdsAsync(int[] ids) => Task.FromResult(new List<MyApp.User>());
+        public Task<int> CountAsync(Dictionary<string, int[]> filters) => Task.FromResult(filters.Count);
     }
 
     [Fact]
@@ -32,6 +33,7 @@ public class FeatureTests(ITestOutputHelper output)
         await users.GetAsync(42);
         await users.SearchAsync(new UserQuery("alice", 2));
         await users.ByIdsAsync([1, 2, 3]);
+        await users.CountAsync(new Dictionary<string, int[]> { ["age"] = [30, 40] });
 
         var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "MyApp.").Select(e => e.Key).ToList();
         foreach (var key in keys)
@@ -41,7 +43,77 @@ public class FeatureTests(ITestOutputHelper output)
 
         Assert.Contains("MyApp.IUserService.GetAsync:42", keys);
         Assert.Contains("MyApp.IUserService.SearchAsync:(alice:2)", keys);
-        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.ByIdsAsync:", StringComparison.Ordinal) && !k.Contains(','));
+        Assert.Contains("MyApp.IUserService.ByIdsAsync:[3:1:2:3]", keys);
+        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.CountAsync:fc08ab0d", StringComparison.Ordinal) && !k.Contains("age"));
+    }
+
+    [Fact]
+    public async Task GettingStarted_FactoryRegistrationIsCachedOnceWithItsLifetime()
+    {
+        var created = 0;
+        var services = new ServiceCollection();
+        services.AddSingleton<Database>();
+        services.AddScoped<global::Docs.GettingStarted.After.IProductService>(sp =>
+        {
+            created++;
+            return new global::Docs.GettingStarted.After.ProductService(sp.GetRequiredService<Database>());
+        });
+        services.AddMethodCache();
+
+        var registration = Assert.Single(services, d => d.ServiceType == typeof(global::Docs.GettingStarted.After.IProductService) && !d.IsKeyedService);
+        Assert.Equal(ServiceLifetime.Scoped, registration.Lifetime);
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var products = scope.ServiceProvider.GetRequiredService<global::Docs.GettingStarted.After.IProductService>();
+
+        Assert.IsNotType<global::Docs.GettingStarted.After.ProductService>(products);
+        Assert.Single(scope.ServiceProvider.GetServices<global::Docs.GettingStarted.After.IProductService>());
+        Assert.Equal(1, created);
+    }
+
+    private sealed class Invoices : IInvoiceService
+    {
+        public Task<Invoice> GetAsync(int id) => Task.FromResult(new Invoice(id));
+        public Task<Invoice> FindAsync(int id) => Task.FromResult(new Invoice(id));
+        public Task<Invoice> FindAsync(string number) => Task.FromResult(new Invoice(7));
+    }
+
+    [Fact]
+    public async Task Keys_MethodCacheKeysMatchVersionedAndOverloadedMethods()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IInvoiceService, Invoices>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var invoices = provider.GetRequiredService<IInvoiceService>();
+        await invoices.GetAsync(42);
+        await invoices.FindAsync("INV-7");
+
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "MyApp.IInvoiceService").Select(e => e.Key).ToList();
+        var (versioned, overload) = KeyExamples.Build();
+        Assert.Equal("MyApp.IInvoiceService.GetAsync:v2:42", versioned);
+        Assert.Equal("MyApp.IInvoiceService.FindAsync(string):INV-7", overload);
+        Assert.Contains(versioned, keys);
+        Assert.Contains(overload, keys);
+    }
+
+    private sealed class Documents : IDocumentStore
+    {
+        public Task<byte[]> GetAsync(string key) => Task.FromResult(new byte[] { 1 });
+    }
+
+    [Fact]
+    public async Task Keys_RawKeyArgumentIsTheWholeKey()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IDocumentStore, Documents>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        await provider.GetRequiredService<IDocumentStore>().GetAsync("doc:2026/report.pdf");
+
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries().Select(e => e.Key).ToList();
+        Assert.Contains("doc:2026/report.pdf", keys);
     }
 
     private sealed class Orders : IOrderService

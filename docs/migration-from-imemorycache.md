@@ -76,5 +76,5 @@ Migrate one service at a time; both caches can run side by side.
 
 - **Keys are generated** from the method and its arguments ([Cache keys](features/keys.md)). Check that every argument
   that changes the result is a parameter, not a field of the class.
-- **`null` is cached** by default. Set `CacheNullValues = false` if your old code skipped `null`.
+- **`null` is cached** by default. Set `MethodCacheMemoryOptions.CacheNullValues = false` ([Memory cache](features/memory-cache.md#null-values)) if your old code skipped `null`.
 - **Exceptions are never cached**, as before.

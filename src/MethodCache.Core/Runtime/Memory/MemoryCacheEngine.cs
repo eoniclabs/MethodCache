@@ -496,6 +496,19 @@ internal sealed class MemoryCacheEngine
             return;
         }
 
+        // Drain enough existing weight before addition can overflow. All queue weights are
+        // nonnegative subsets of the total, so this also protects window/protected accounting.
+        while (_totalWeight > long.MaxValue - node.Weight)
+        {
+            var victim = _probation.First ?? _window.First ?? _protected.First;
+            if (victim == null)
+            {
+                EvictNode(node);
+                return;
+            }
+            EvictNode(victim);
+        }
+
         _entryCount++;
         if (_mode == EngineEvictionMode.TinyLfu)
         {

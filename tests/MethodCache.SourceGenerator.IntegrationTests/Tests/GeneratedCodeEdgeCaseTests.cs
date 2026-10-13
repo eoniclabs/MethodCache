@@ -447,7 +447,7 @@ public interface IOrders {
         var policies = r.Sources["GeneratedPolicyRegistrations.g.cs"];
         Assert.Contains("\"App.IOrders.Find(int)\"", policies);
         Assert.Contains("\"App.IOrders.Find(string, System.Threading.CancellationToken)\"", policies);
-        Assert.Contains("\"App.IOrders.Find(int?, string[], System.Collections.Generic.List<System.Guid>, T)\"", policies);
+        Assert.Contains("\"App.IOrders.Find``1(int?, string[], System.Collections.Generic.List<System.Guid>, T)\"", policies);
     }
 
     [Fact]
@@ -493,7 +493,7 @@ public interface IRepo<T> {
 }}", nameof(OverloadIds_EqualMethodIdsFor_ForEveryParameterShape), load: true);
         AssertCompiles(r);
         var policies = r.Sources["GeneratedPolicyRegistrations.g.cs"];
-        var generated = System.Text.RegularExpressions.Regex.Matches(policies, "\"(App\\.I[A-Za-z]+(?:<T>)?\\.[A-Za-z]+\\([^\"]*\\))\"")
+        var generated = System.Text.RegularExpressions.Regex.Matches(policies, "\"(App\\.I[A-Za-z]+(?:<T>)?\\.[A-Za-z]+(?:``[0-9]+)?\\([^\"]*\\))\"")
             .Select(m => m.Groups[1].Value)
             .ToHashSet();
 

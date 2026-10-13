@@ -20,8 +20,8 @@ What each package protects against, what it leaves to you, and the tests that ho
 |---|---|
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
-| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic table initialization rejects missing, nullable or incorrectly typed backplane scope columns; it requires `binary(32) NOT NULL`. |
-| Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
+| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic initialization rejects missing, nullable or incorrectly typed scope columns; it requires `binary(32) NOT NULL`. |
+| Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Messages from another MethodCache version are rejected with one warning, without logging their contents. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
 ## MethodCache.AspNetCore (admin endpoints)
 
@@ -39,7 +39,7 @@ authorization too.
 
 | Threat | What MethodCache does |
 |---|---|
-| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports; explicitly supplied cookie headers isolate callers. Unknown transports bypass caching unless explicitly verified and opted in. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
+| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports; explicitly supplied cookie headers isolate callers. Unknown transports, and handlers inside the primary transport, bypass caching unless explicitly verified and opted in with `AllowUnverifiedTransport`. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
 | A 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` keeps its previous value. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
@@ -74,15 +74,18 @@ personal data out of them.
 
 ## The tests
 
+CI checkout collection and result reuse have a separate boundary from application caching. The collector only
+removes coordinator-owned idle macOS clones with verified origin/full commit, terminal job results, and no
+source changes or unexpected local data. It refuses redirected roots/results and keeps active checkouts and
+unknown directories. Reuse requires the full SHA and all expected valid job exits; partial archives, failed
+results and symlinked exit files cannot become a passing status. The regression suite under `build/ci/tests`
+tests these protections. Build jobs still execute repository code as the build-server user; the collector is
+not a sandbox for malicious pull requests.
+
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests` and
 `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).
 
+MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
 
-Unknown HTTP transports (including opaque wrappers and native platform handlers) bypass caching by default and emit one warning per named client. Set `AllowUnverifiedTransport` only when you have verified that the whole transport sends no automatic cookies or hidden caller identity. Recognized transports with automatic cookies always bypass.
-
-`AddHttpCaching()` disables automatic cookies on the named client’s `SocketsHttpHandler` or `HttpClientHandler`, after all primary-handler configuration. The default registration therefore caches immediately. Send caller cookies explicitly; a handler that manages a hidden cookie jar belongs on a client without HTTP caching. Other named clients are unaffected.
-
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
-
-`AddHttpCaching()` runs the cache after all additional handlers, so injected caller identity and rewritten requests are visible before lookup. Delegating handlers inside the primary transport, or below a directly constructed cache handler, are unverified and bypass caching unless the entire chain is explicitly trusted.
+HTTP age arithmetic saturates during response correction and resident-time accumulation, so an extreme upstream Age value cannot overflow the freshness calculation. `ResponseDelayReviewTests` covers these input boundaries.

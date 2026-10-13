@@ -115,6 +115,10 @@ namespace MethodCache.SourceGenerator
 
         private static bool IsRefLikeType(ITypeSymbol type)
         {
+            if (type is ITypeParameterSymbol parameter)
+            {
+                return Utils.AllowsRefLikeType(parameter);
+            }
             if (type is INamedTypeSymbol namedType)
             {
                 // Check for ref struct (Span<T>, ReadOnlySpan<T>, etc.)

@@ -134,9 +134,9 @@ public class AdapterContractTests
         var services = new ServiceCollection();
         services.AddLogging();
         if (timeProvider != null) services.AddSingleton(timeProvider);
-        services.AddMethodCache();
         services.AddSingleton<MethodCacheBenchmarkService>();
-        services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
+        services.AddSingleton<IMethodCacheBenchmarkService>(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
+        services.AddMethodCache();
         var provider = services.BuildServiceProvider();
         return new AdapterScope(new MethodCacheSourceGenAdapter(provider.GetRequiredService<IMethodCacheBenchmarkService>(),
             provider.GetRequiredService<ICacheManager>()), provider);

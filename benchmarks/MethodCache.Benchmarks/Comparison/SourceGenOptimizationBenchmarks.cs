@@ -24,15 +24,12 @@ public class SourceGenOptimizationBenchmarks
         var services = new ServiceCollection();
         services.AddLogging();
 
-        // Configure MethodCache with the generated decorator
+        // AddMethodCache wraps this registration in the generated decorator
+        services.AddSingleton<IMethodCacheBenchmarkService>(_ => new MethodCacheBenchmarkService(_testPayload));
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         }, typeof(SourceGenOptimizationBenchmarks).Assembly);
-
-        // Register the benchmark service with caching using the generated extension method
-        services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp =>
-            new MethodCacheBenchmarkService(_testPayload));
 
         // Also setup raw MemoryCache for comparison
         services.AddMemoryCache(options =>

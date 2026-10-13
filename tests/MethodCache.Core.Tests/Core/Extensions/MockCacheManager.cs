@@ -36,7 +36,11 @@ namespace MethodCache.Core.Tests.Core.Extensions
 
         /// <inheritdoc />
         public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
-            => new(CacheLookupResult<T>.Miss);
+        {
+            var key = keyGenerator.GenerateKey(methodName, args, policy);
+            return new(!ForceCacheMiss && _cache.TryGetValue(key, out var value)
+                ? CacheLookupResult<T>.Hit((T)value) : CacheLookupResult<T>.Miss);
+        }
 
         public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {

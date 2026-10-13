@@ -569,6 +569,23 @@ namespace MethodCache.SourceGenerator
                             exactTypeChecks.Add($"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}))");
                         }
                     }
+                    else if (TryFormatSequence(name, param.Type, out var sequence))
+                    {
+                        if (IsExactType(param.Type))
+                        {
+                            pieces.Add(sequence);
+                        }
+                        else
+                        {
+                            // Another runtime type than the declared one (an array and a list behind IEnumerable<T>, a
+                            // subclass of List<T>) is written before the elements, so equal elements in two collection
+                            // types stay two arguments. A type name never starts like a sequence or null does.
+                            var typed = $"string.Concat(global::MethodCache.MethodCacheKeys.Part({name}.GetType().ToString()), global::MethodCache.MethodCacheKeys.Separator, {sequence})";
+                            pieces.Add(param.Type is IArrayTypeSymbol || (param.Type.TypeKind == TypeKind.Class && !param.Type.IsAbstract)
+                                ? $"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}) ? {sequence} : {typed})"
+                                : $"({name} is null ? global::MethodCache.MethodCacheKeys.Null : {typed})");
+                        }
+                    }
                     else
                     {
                         exactTypeChecks.Clear();
@@ -578,6 +595,83 @@ namespace MethodCache.SourceGenerator
 
                 expression = $"string.Concat({string.Join(", ", pieces)})";
                 return true;
+            }
+
+            /// <summary>
+            /// Formats an array or collection whose elements the decorator can write itself: simple values,
+            /// <c>ICacheKeyProvider</c> types, and sealed records, classes or structs made of simple values (an unsealed
+            /// element type could hold a subclass with more state). The element type comes from the collection's one
+            /// <c>IEnumerable&lt;T&gt;</c>, so the element lambda is inferred and its nullability follows the argument's.
+            /// </summary>
+            private static bool TryFormatSequence(string name, ITypeSymbol type, out string expression)
+            {
+                expression = string.Empty;
+                var element = GetSequenceElementType(type);
+                if (element == null)
+                {
+                    return false;
+                }
+
+                const string item = "__mcItem";
+                string part;
+                if (IsSimpleType(element))
+                {
+                    part = FormatSimpleValue(item, element);
+                }
+                else if (ImplementsCacheKeyProvider(element))
+                {
+                    var keyPart = $"global::MethodCache.MethodCacheKeys.Part(((global::MethodCache.ICacheKeyProvider){item}).CacheKeyPart)";
+                    part = element.IsValueType ? keyPart : $"({item} is null ? global::MethodCache.MethodCacheKeys.Null : {keyPart})";
+                }
+                else if ((element.IsValueType || element.IsSealed) && TryGetKeyMembers(element, out var members))
+                {
+                    var pieces = new List<string>();
+                    AddObjectPieces(pieces, item, element, members);
+                    part = pieces.Count == 1 ? pieces[0] : $"string.Concat({string.Join(", ", pieces)})";
+                }
+                else
+                {
+                    return false;
+                }
+
+                expression = $"global::MethodCache.MethodCacheKeys.Sequence({name}, static {item} => {part})";
+                return true;
+            }
+
+            /// <summary>
+            /// True when every value declared as <paramref name="type"/> has exactly that runtime type: value types,
+            /// sealed classes, and arrays of such elements (a <c>Shape[]</c> can hold a <c>Circle[]</c>).
+            /// </summary>
+            private static bool IsExactType(ITypeSymbol type)
+                => type is IArrayTypeSymbol array
+                    ? IsExactType(array.ElementType)
+                    : type.IsValueType || type.IsSealed;
+
+            /// <summary>
+            /// The element type of a one-dimensional array, or of a type that is or implements exactly one
+            /// <c>IEnumerable&lt;T&gt;</c>; null for anything else.
+            /// </summary>
+            private static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
+            {
+                if (type is IArrayTypeSymbol array)
+                {
+                    return array.Rank == 1 ? array.ElementType : null;
+                }
+
+                if (type is not INamedTypeSymbol named || type.SpecialType == SpecialType.System_String)
+                {
+                    return null;
+                }
+
+                if (named.ConstructedFrom.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+                {
+                    return named.TypeArguments[0];
+                }
+
+                var enumerables = named.AllInterfaces
+                    .Where(i => i.ConstructedFrom.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+                    .ToList();
+                return enumerables.Count == 1 ? enumerables[0].TypeArguments[0] : null;
             }
 
             /// <summary>
@@ -629,9 +723,19 @@ namespace MethodCache.SourceGenerator
                 return $"            __mcKeyBuilder.AppendPart({expression});";
             }
 
+            /// <summary>
+            /// A class or struct that implements <c>ICacheKeyProvider</c>, or that interface or one derived from it.
+            /// </summary>
             private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
-                => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
-                   type.AllInterfaces.Any(i => i.ToDisplayString() == "MethodCache.ICacheKeyProvider");
+                => type.TypeKind switch
+                {
+                    TypeKind.Class or TypeKind.Struct => type.AllInterfaces.Any(IsCacheKeyProvider),
+                    TypeKind.Interface => IsCacheKeyProvider(type) || type.AllInterfaces.Any(IsCacheKeyProvider),
+                    _ => false,
+                };
+
+            private static bool IsCacheKeyProvider(ITypeSymbol type)
+                => type is { Name: "ICacheKeyProvider", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } };
 
             /// <summary>
             /// Collects the public instance properties and fields of a concrete class or struct, the same members
@@ -1124,6 +1228,9 @@ namespace MethodCache.SourceGenerator
 
                 if (tp.HasConstructorConstraint && !tp.HasValueTypeConstraint && !tp.HasUnmanagedTypeConstraint)
                     constraints.Add("new()");
+
+                if (Utils.AllowsRefLikeType(tp))
+                    constraints.Add("allows ref struct");
 
                 return constraints.Any()
                     ? $"where {Utils.TypeParameterIdentifier(tp)} : {string.Join(", ", constraints)}"

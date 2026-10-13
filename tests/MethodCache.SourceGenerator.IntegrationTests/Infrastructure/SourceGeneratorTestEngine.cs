@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using MethodCache.Policies;
 using MethodCache.SourceGenerator;
 using Microsoft.CodeAnalysis;
@@ -128,80 +129,27 @@ public class SourceGeneratorTestEngine
 
     private void RegisterGeneratedServices(IServiceCollection services, Assembly assembly, Action<string>? logger = null)
     {
-        // Look for generated extension methods like AddITestServiceWithCachingSingleton
-        var extensionTypes = assembly.GetTypes()
-            .Where(t => t.IsStatic() && t.Name.Contains("Extensions"))
-            .ToList();
+        // The generated module initializer lists every decorator in the assembly, as AddMethodCache() sees them
+        var registrations = MethodCacheDecorators.For(assembly);
+        logger?.Invoke($"Found {registrations.Count} decorators: {string.Join(", ", registrations.Select(r => r.ServiceType.Name))}");
 
-        logger?.Invoke($"Found {extensionTypes.Count} extension types: {string.Join(", ", extensionTypes.Select(t => t.Name))}");
-
-        foreach (var extensionType in extensionTypes)
+        foreach (var registration in registrations)
         {
-            var methods = extensionType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-                .Where(m => m.Name.StartsWith("Add") && m.Name.EndsWith("WithCachingSingleton", StringComparison.Ordinal))
-                .ToList();
-
-            logger?.Invoke($"Found {methods.Count} registration methods in {extensionType.Name}: {string.Join(", ", methods.Select(m => m.Name))}");
-
-            foreach (var method in methods)
+            try
             {
-                logger?.Invoke($"Method: {method.Name}, Parameters: {string.Join(", ", method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))}");
+                var mockImplementation = CreateMockImplementation(assembly, registration.ServiceType);
+                logger?.Invoke($"Created mock implementation for {registration.ServiceType.Name}");
+
+                services.AddSingleton(registration.ServiceType, provider => registration.Decorate(provider, mockImplementation));
+                registration.AddPolicies?.Invoke(services);
+                logger?.Invoke($"Successfully registered {registration.ServiceType.Name}");
             }
-
-            foreach (var method in methods)
+            catch (Exception ex)
             {
-                try
-                {
-                    // Call the generated AddXWithCachingSingleton method
-                    // These methods typically take (IServiceCollection, Func<IServiceProvider, object>)
-                    var parameters = method.GetParameters();
-                    if (parameters.Length == 2 &&
-                        parameters[0].ParameterType == typeof(IServiceCollection))
-                    {
-                        // Create a factory that returns a mock implementation
-                        var serviceType = GetServiceTypeFromMethod(method);
-                        if (serviceType != null)
-                        {
-                            var mockImplementation = CreateMockImplementation(assembly, serviceType);
-                            logger?.Invoke($"Created mock implementation for {serviceType.Name}");
-
-                            // Create factory delegate using reflection to avoid type coercion issues
-                            var factoryType = parameters[1].ParameterType; // Should be Func<IServiceProvider, ServiceType>
-                            var createFactoryMethod = typeof(SourceGeneratorTestEngine)
-                                .GetMethod(nameof(CreateTypedFactory), BindingFlags.NonPublic | BindingFlags.Instance)!
-                                .MakeGenericMethod(serviceType);
-
-                            var factoryDelegate = createFactoryMethod.Invoke(this, new object[] { mockImplementation });
-
-                            if (factoryDelegate != null)
-                            {
-                                method.Invoke(null, new object[] { services, factoryDelegate });
-                            }
-                            logger?.Invoke($"Successfully registered {method.Name}");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Log but don't fail - some generated methods might have different signatures
-                    logger?.Invoke($"Warning: Could not register {method.Name}: {ex.Message}");
-                    logger?.Invoke($"Stack trace: {ex.StackTrace}");
-                    if (ex.InnerException != null)
-                    {
-                        logger?.Invoke($"Inner exception: {ex.InnerException.Message}");
-                        logger?.Invoke($"Inner stack trace: {ex.InnerException.StackTrace}");
-                    }
-                }
+                // Log but don't fail: an interface without a concrete implementation in the test code is skipped
+                logger?.Invoke($"Warning: Could not register {registration.ServiceType.Name}: {ex.Message}");
             }
         }
-    }
-
-    /// <summary>
-    /// Creates a typed factory delegate for service registration
-    /// </summary>
-    private Func<IServiceProvider, T> CreateTypedFactory<T>(T implementation) where T : class
-    {
-        return _ => implementation;
     }
 
     /// <summary>
@@ -217,33 +165,6 @@ namespace {namespaceName}
 
 {interfaceAndImplementation}
 }}";
-    }
-
-    private Type? GetServiceTypeFromMethod(MethodInfo method)
-    {
-        // Extract interface type from method name like AddIUserServiceWithCachingSingleton
-        var serviceName = method.Name.Substring(3); // Remove "Add"
-        serviceName = serviceName.Substring(0, serviceName.Length - "WithCachingSingleton".Length);
-
-        // The service type should be in the test assembly, not the extension assembly
-        // Look at the method's parameter types to find the correct type
-        var parameters = method.GetParameters();
-        if (parameters.Length >= 2)
-        {
-            var factoryParam = parameters[1];
-            if (factoryParam.ParameterType.IsGenericType &&
-                factoryParam.ParameterType.GetGenericTypeDefinition() == typeof(Func<,>))
-            {
-                // Get the return type of the Func<IServiceProvider, ServiceType>
-                var genericArgs = factoryParam.ParameterType.GetGenericArguments();
-                if (genericArgs.Length == 2)
-                {
-                    return genericArgs[1]; // ServiceType
-                }
-            }
-        }
-
-        return null;
     }
 
     private object CreateMockImplementation(Assembly assembly, Type serviceType)

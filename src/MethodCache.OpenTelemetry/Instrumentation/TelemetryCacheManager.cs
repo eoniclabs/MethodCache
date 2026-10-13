@@ -118,7 +118,7 @@ internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
             _activitySource.SetCacheKey(activity, cacheKey);
             SetActivityTagsFromPolicy(activity, policy);
 
-            var lookup = await _innerManager.LookupAsync<T>(methodName, args, policy, keyGenerator).ConfigureAwait(false);
+            var lookup = await _innerManager.LookupAsync<T>(methodName, args, policy, new PrecomputedKeyGenerator(cacheKey)).ConfigureAwait(false);
             var result = lookup.Value;
             _activitySource.SetCacheHit(activity, lookup.Found);
 
@@ -138,6 +138,11 @@ internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
 
     public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         => _innerManager.LookupAsync<T>(methodName, args, policy, keyGenerator);
+
+    private sealed class PrecomputedKeyGenerator(string cacheKey) : ICacheKeyGenerator
+    {
+        public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy) => cacheKey;
+    }
 
     public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
     {

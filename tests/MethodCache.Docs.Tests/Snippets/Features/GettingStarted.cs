@@ -18,11 +18,11 @@ namespace Docs.GettingStarted
     // begin-snippet: getting-started-before
     public sealed class ProductService(Database db)
     {
-        public Task<Product> GetAsync(int id, CancellationToken ct) => db.LoadProductAsync(id, ct);
+        public Task<Product> GetAsync(int id, CancellationToken ct = default) => db.LoadProductAsync(id, ct);
 
         public Task<List<Product>> SearchAsync(string text, int page) => db.SearchAsync(text, page);
 
-        public Task UpdateAsync(Product product) => db.SaveAsync(product);
+        public Task UpdateAsync(int id, Product product) => db.SaveAsync(product);
     }
     // end-snippet
 }
@@ -30,6 +30,8 @@ namespace Docs.GettingStarted
 namespace Docs.GettingStarted.After
 {
     // begin-snippet: getting-started-interface
+    using MethodCache;
+
     public interface IProductService
     {
         [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
@@ -60,6 +62,15 @@ namespace Docs.GettingStarted.After
             builder.Services.AddSingleton<Database>();
             builder.Services.AddScoped<IProductService, ProductService>();   // any lifetime
             builder.Services.AddMethodCache();                               // after your registrations
+            // end-snippet
+        }
+
+        public static void RegisterWithFactory(WebApplicationBuilder builder)
+        {
+            // begin-snippet: getting-started-factory
+            builder.Services.AddScoped<IProductService>(
+                sp => new ProductService(sp.GetRequiredService<Database>()));
+            builder.Services.AddMethodCache();
             // end-snippet
         }
     }

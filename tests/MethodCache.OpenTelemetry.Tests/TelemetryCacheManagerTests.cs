@@ -85,7 +85,7 @@ public class TelemetryCacheManagerTests : IDisposable
         var policy = CacheRuntimePolicy.FromPolicy("test", Policies.CachePolicy.Empty, Policies.CachePolicyFields.None);
         var keys = new Mock<ICacheKeyGenerator>();
         keys.Setup(x => x.GenerateKey("null", It.IsAny<object[]>(), policy)).Returns("null-key");
-        _innerManagerMock.Setup(x => x.LookupAsync<T>("null", It.IsAny<object[]>(), policy, keys.Object))
+        _innerManagerMock.Setup(x => x.LookupAsync<T>("null", It.IsAny<object[]>(), policy, It.IsAny<ICacheKeyGenerator>()))
             .ReturnsAsync(stored ? CacheLookupResult<T>.Hit(default!) : CacheLookupResult<T>.Miss);
         using var activity = new Activity("cached-null");
         _activitySourceMock.Setup(x => x.StartCacheOperation("null", TracingConstants.Operations.Get)).Returns(activity);
@@ -108,7 +108,7 @@ public class TelemetryCacheManagerTests : IDisposable
         keyGenerator.Setup(x => x.GenerateKey(methodName, args, settings))
             .Returns("test_key");
 
-        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, keyGenerator.Object))
+        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, It.IsAny<ICacheKeyGenerator>()))
             .ReturnsAsync(CacheLookupResult<string>.Hit(expectedValue));
 
         _innerManagerMock.Setup(x => x.GetOrCreateFastAsync(
@@ -153,7 +153,7 @@ public class TelemetryCacheManagerTests : IDisposable
         keyGenerator.Setup(x => x.GenerateKey(methodName, args, settings))
             .Returns("test_key");
 
-        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, keyGenerator.Object))
+        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, It.IsAny<ICacheKeyGenerator>()))
             .ReturnsAsync(CacheLookupResult<string>.Miss);
 
         _innerManagerMock.Setup(x => x.GetOrCreateFastAsync(
@@ -313,7 +313,7 @@ public class TelemetryCacheManagerTests : IDisposable
             .Returns(activity);
 
         // Test cache hit
-        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, keyGenerator.Object))
+        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, It.IsAny<ICacheKeyGenerator>()))
             .ReturnsAsync(CacheLookupResult<string>.Hit("cached_value"));
 
         var hitResult = await _telemetryCacheManager.TryGetAsync<string>(methodName, args, settings, keyGenerator.Object);
@@ -329,7 +329,7 @@ public class TelemetryCacheManagerTests : IDisposable
             .Returns(activity);
 
         // Test cache miss
-        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, keyGenerator.Object))
+        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, It.IsAny<ICacheKeyGenerator>()))
             .ReturnsAsync(CacheLookupResult<string>.Miss);
 
         var missResult = await _telemetryCacheManager.TryGetAsync<string>(methodName, args, settings, keyGenerator.Object);
@@ -366,7 +366,7 @@ public class TelemetryCacheManagerTests : IDisposable
         _activitySourceMock.Setup(x => x.StartCacheOperation(methodName, TracingConstants.Operations.Get))
             .Returns(activity);
 
-        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, keyGenerator.Object))
+        _innerManagerMock.Setup(x => x.LookupAsync<string>(methodName, args, settings, It.IsAny<ICacheKeyGenerator>()))
             .ReturnsAsync(CacheLookupResult<string>.Hit("value"));
 
         // Act

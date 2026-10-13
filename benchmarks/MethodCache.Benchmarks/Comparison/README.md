@@ -2,12 +2,6 @@
 
 ## Overview
 
-The adapter suite has executable contract tests in `tests/MethodCache.Benchmarks.Tests` for all nine adapters.
-Set, lookup, get-or-create and remove share one key identity; clear removes entries; zero is a valid cached
-value; and each adapter owns an isolated cache. Earlier measurements of adapters with missing clear/removal
-or different operation keys must be rerun before they are used for a comparison. The published README hit
-numbers use the separate `ReadmeComparisonBenchmarks` class.
-
 This framework provides **two distinct comparison approaches** to address the fundamental challenge of comparing source-generated code (MethodCache) with runtime-based caching libraries:
 
 1. **Real Usage Comparison** (`ReadmeComparisonBenchmarks.cs`, `readme`) - Each library used the way its documentation shows; these are the numbers in the README, with the run details in [docs/benchmarks.md](../../../docs/benchmarks.md)
@@ -17,13 +11,18 @@ This framework provides **two distinct comparison approaches** to address the fu
 
 ## Supported Libraries
 
-| Library | Version | Type | Stampede Protection |
-|---------|---------|------|---------------------|
-| **MethodCache** | Current | Source Generation | ✅ Yes |
-| **FusionCache** | 2.0.0 | Runtime Proxy | ✅ Yes |
-| **LazyCache** | 2.4.0 | Runtime Proxy | ✅ Yes |
-| **EasyCaching** | 1.9.2 | AOP/Interceptor | ✅ Yes |
-| **Microsoft.Extensions.Caching.Memory** | 9.0.9 | Direct API | ❌ No |
+The package versions are in `MethodCache.Benchmarks.csproj`.
+
+| Library | Benchmarks | Stampede protection |
+|---------|------------|---------------------|
+| **MethodCache** | `readme`, `comparison` | Yes |
+| **FusionCache** | `readme`, `comparison` | Yes |
+| **HybridCache** (`Microsoft.Extensions.Caching.Hybrid`) | `readme` | Yes |
+| **LazyCache** | `comparison` | Yes |
+| **EasyCaching** | `comparison` | Yes |
+| **Microsoft.Extensions.Caching.Memory** | `readme` (by hand), adapter contract tests | No |
+
+BitFaster.Caching appears only in the `engine` and `hitratio` benchmarks, not in either comparison.
 
 ## The Adapter Problem
 
@@ -32,9 +31,9 @@ This framework provides **two distinct comparison approaches** to address the fu
 MethodCache uses **compile-time source generation** to create optimized caching code, while other frameworks use **runtime abstractions** (proxies, interceptors, decorators). This fundamental difference creates a measurement challenge:
 
 **Through Adapter Interface** (`ICacheAdapter`): every library, MethodCache included, goes through the same generic
-`string key` interface, and each adapter adds its own work. The runtime-key adapter builds policies and generates keys per operation;
-the manual-key adapter uses raw storage keys. The SourceGen adapter calls generated get-or-create methods,
-while its ordinary lookup reads storage directly.
+`string key` interface. The runtime-key adapter builds policies and generates keys per operation; the manual-key
+adapter uses storage keys directly. The SourceGen adapter uses generated get-or-create methods, while ordinary
+lookup reads warmed storage directly.
 
 **Real Usage** (source-generated code): MethodCache runs the decorator the source generator writes for the method.
 This is what an application gets; [docs/benchmarks.md](../../../docs/benchmarks.md) has the measured numbers.
@@ -57,6 +56,7 @@ All libraries implement a common interface:
 ```csharp
 public interface ICacheAdapter : IDisposable
 {
+    string Name { get; }
     Task<TValue> GetOrSetAsync<TValue>(string key, Func<Task<TValue>> factory, TimeSpan duration);
     bool TryGet<TValue>(string key, out TValue? value);
     void Set<TValue>(string key, TValue value, TimeSpan duration);
@@ -70,33 +70,42 @@ public interface ICacheAdapter : IDisposable
 
 Each library has a dedicated adapter that translates between the common interface and the library's native API:
 
-- `RuntimeKeyMethodCacheAdapter` - Uses ICacheManager and generates a storage key on each operation
+- `MethodCacheSourceGenAdapter` - A source-generated decorator (`MethodCache_SourceGen_*`)
+- `DirectApiMethodCacheAdapter` - `ICacheManager` with keys the caller supplies (`MethodCache_ManualKey_*`)
+- `RuntimeKeyMethodCacheAdapter` - `ICacheManager` with keys generated at run time on every call (`MethodCache_RuntimeKey_*`)
+- `OptimizedMethodCacheAdapter` - `ICacheManager` with a cached policy and fewer allocations
+- `StaticKeyMethodCacheAdapter` - a key prefix built once in setup, with the caller's key appended
 - `FusionCacheAdapter` - Wraps FusionCache
 - `LazyCacheAdapter` - Wraps LazyCache/IAppCache
 - `EasyCachingAdapter` - Wraps IEasyCachingProvider
 - `MemoryCacheAdapter` - Wraps IMemoryCache
 
+`UnifiedCacheComparisonBenchmarks` uses the first three and the FusionCache, LazyCache and EasyCaching adapters. The
+others are covered by the adapter contract tests in `tests/MethodCache.Benchmarks.Tests`, which check that set,
+lookup, get-or-create and remove share one key identity, that clear removes entries, that zero is a valid cached
+value and that each adapter owns an isolated cache.
+
 ## Test Scenarios
 
+Each category is grouped separately in the results (`CacheHit`, `CacheHitAsync`, `MissAndSet`, `Concurrent`,
+`ConcurrentHits`, `Stampede`). There is no baseline row; compare the libraries within a category.
+
 ### 1. Cache Hit Performance
-**Tests:** Simple cache read operations
+**Tests:** Reads of a key warmed before each iteration (`CacheHit` through `TryGet`; `CacheHitAsync`, MethodCache only, calls the generated decorator directly)
 **Purpose:** Measure the overhead of cache retrieval
-**Baseline:** Microsoft.Extensions.Caching.Memory
 
 ### 2. Cache Miss + Set
-**Tests:** Factory execution and cache population
+**Tests:** A new key on every call, so the factory runs and the value is stored
 **Purpose:** Measure the cost of cache misses and storing values
-**Baseline:** Microsoft.Extensions.Caching.Memory
 
 ### 3. Concurrent Access
-**Tests:** Multiple threads accessing the same cache simultaneously
-**Parameters:** 10, 100 threads
+**Tests:** `Concurrent`: 10 and 100 tasks at once; `ConcurrentHits`: each task reads a small set of hot keys 256 times
 **Purpose:** Test thread-safety and contention handling
 
 ### 4. Cache Stampede Protection
-**Tests:** 50 concurrent requests for the same missing key with expensive factory (50ms)
-**Purpose:** Verify stampede protection mechanisms
-**Expected:** Libraries with protection should call factory only once
+**Tests:** 50 concurrent requests for the same missing key; the factory only yields, so the time measured is the
+coordination between the requests
+**Purpose:** Measure the cost of stampede protection
 
 ## Running Comparisons
 
@@ -144,7 +153,7 @@ We acknowledge both comparisons are valuable but serve different purposes:
 - **Academic interest** - Analyzing design tradeoffs
 
 ### ❌ Never:
-- Treat measurements from different access paths as equivalent application workloads
+- Treat different cache access paths as equivalent application workloads
 - Compare real-usage MethodCache numbers to adapter-based other framework numbers
 - Mix results from both comparison types in the same analysis
 
@@ -164,7 +173,7 @@ We acknowledge both comparisons are valuable but serve different purposes:
 1. **Cache Hits**: Lower is better - measures cache overhead
 2. **Miss + Set**: Includes factory execution - should be similar across libraries
 3. **Concurrent**: Tests scalability - look for linear vs exponential scaling
-4. **Stampede**: Count factory calls - should be 1 with protection, 50 without
+4. **Stampede**: Lower is better; the benchmark does not count factory calls
 
 ## Adding New Libraries
 
@@ -254,6 +263,5 @@ When adding new comparison scenarios:
 
 ## References
 
-- **Cache access paths**: [CACHE_ACCESS_PATHS.md](../CACHE_ACCESS_PATHS.md)
-- **MethodCache Core**: [src/MethodCache.Core](../../../src/MethodCache.Core)
+- **MethodCache Core**: [`src/MethodCache.Core`](../../../src/MethodCache.Core)
 - **Benchmark Best Practices**: https://benchmarkdotnet.org/articles/guides/good-practices.html
