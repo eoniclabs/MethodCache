@@ -101,7 +101,8 @@ Values are written as JSON with System.Text.Json, public fields included, so val
 are shared as they are. Every value an instance writes is read back and written again first; when that doesn't give
 the same bytes and type, that value and every later value of the method with that type stay in the instance's memory
 only, and one warning names the method and the type. Each value is checked, since one with default data (an `Id` of
-0 behind a private setter) can come back unchanged where the next one doesn't. That happens with properties that have a
+0 behind a private setter) can come back unchanged where the next one doesn't. A serializer that never writes the same
+bytes twice (encryption with a fresh nonce) can't be compared that way, so for it only the type is checked. That happens with properties that have a
 private or protected setter, public readonly fields of a type that also has a parameterless constructor, a derived
 type returned as its declared base type (an `Animal` method returning a `Dog`, even after it returned plain
 `Animal`s), and `object`, with JSON and MessagePack alike. A value the serializer throws on (a cycle, a delegate

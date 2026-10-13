@@ -321,6 +321,33 @@ public class DistributedSerializationTests
         }
     }
 
+    /// <summary>Writes a fresh random prefix each time, as encryption with a new nonce does.</summary>
+    private sealed class NonceSerializer(ISerializer inner) : ISerializer
+    {
+        public string ContentType => inner.ContentType;
+
+        public void Serialize<T>(T value, IBufferWriter<byte> destination)
+        {
+            destination.Write(Guid.NewGuid().ToByteArray());
+            inner.Serialize(value, destination);
+        }
+
+        public T? Deserialize<T>(ReadOnlySequence<byte> source) => inner.Deserialize<T>(source.Slice(16));
+    }
+
+    [Fact]
+    public async Task SerializerThatNeverWritesTheSameBytesTwice_IsStillShared()
+    {
+        var serializer = new NonceSerializer(new JsonCacheSerializer());
+        var (a, _) = CreateNode(serializer);
+        var (b, _) = CreateNode(serializer);
+
+        await Load(a, "k", () => (Total: 7, Name: "x"));
+
+        (await Load(b, "k", () => (Total: 0, Name: "loaded"))).Should().Be((7, "x"), "B reads A's value");
+        Warnings.Should().Be(0);
+    }
+
     [Fact]
     public async Task RoundTripCheck_RunsForEveryValue_UntilOneFails()
     {

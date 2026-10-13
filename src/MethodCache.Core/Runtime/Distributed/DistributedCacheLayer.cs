@@ -440,7 +440,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
         /// <summary>
         /// Whether this value from <paramref name="methodName"/> comes back from the serializer as it was written: it
-        /// is read back and written again, both writes must match, and so must the value's type. Every value is
+        /// is read back and written again, both writes must match (unless the serializer never writes the same bytes
+        /// twice), and so must the value's type. Every value is
         /// checked, since one with default data (an <c>Id</c> of 0 behind a private setter) can pass where the next
         /// one loses data; once one fails, every value of that method and runtime type stays in memory only. A collection declared
         /// as an interface or abstract type may come back as another implementation of it (an array as a
@@ -467,7 +468,8 @@ namespace MethodCache.Core.Runtime.Distributed
                     _serializer.Serialize(read, again);
                 }
 
-                roundTrips = read is not null && SameType(typeof(T), written, read.GetType()) && again.WrittenSpan.SequenceEqual(payload.Span);
+                roundTrips = read is not null && SameType(typeof(T), written, read.GetType()) &&
+                    (again.WrittenSpan.SequenceEqual(payload.Span) || !Deterministic(value, payload));
             }
             catch (Exception)
             {
@@ -487,6 +489,17 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Whether writing <paramref name="value"/> again gives <paramref name="payload"/>. A serializer that doesn't
+        /// (encryption with a fresh nonce, say) can't be judged by its bytes, so only the type is checked for it.
+        /// </summary>
+        private bool Deterministic<T>(T value, ReadOnlyMemory<byte> payload)
+        {
+            var again = new ArrayBufferWriter<byte>(Math.Max(1, payload.Length));
+            _serializer.Serialize(value, again);
+            return again.WrittenSpan.SequenceEqual(payload.Span);
         }
 
         /// <summary>
