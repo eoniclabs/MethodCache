@@ -122,16 +122,16 @@ build once they are older than `BackplaneRetention`; rows of a prefix no applica
 for you to delete.
 Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
 messages and recovery clears; one that still fails after five polls is replaced by a clear of that instance's
-memory, so later messages aren't held back. See the SQL Server guide for the schema migration required by an existing
-invalidations table.
+memory, so later messages aren't held back. SQL Server requires the current invalidations table schema, including
+a non-nullable `binary(32)` `Scope` column; an incompatible scope column stops table initialization with a clear error.
+Existing tables are not upgraded automatically.
 
 The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation and outage settings.
 
 SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
 trailing spaces, NULs and different Unicode representations distinct despite SQL collation, and
-gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
-and expire normally; upgrade all instances sharing a prefix together.
+gives keys and tags of any length a fixed-size ID.
 
 ## Behavior and compatibility
 
@@ -141,7 +141,7 @@ Distributed tags and backplane keys/tags preserve exact UTF-16 code units, inclu
 
 Redis escapes unpaired UTF-16 surrogates and backslashes in physical keys, keeping distinct logical keys separate in every data and invalidation operation. Ordinary keys and their prefixes stay unchanged.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
 
 `TagRetention` must exceed `ClockSkewTolerance`; invalid settings fail startup or direct layer construction. L2 entries live at most `TagRetention - ClockSkewTolerance` from their source read, capped further by their policy duration.
 

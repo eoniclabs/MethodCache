@@ -3,6 +3,21 @@
 Put cache attributes on interface methods. The generator builds a decorator around the registered implementation
 and routes cached calls through MethodCache. Your implementation stays ordinary application code.
 
+`AddMethodCache()` decorates services already registered in DI and preserves their lifetimes. For an explicit
+implementation factory, use the generated `Add…WithCachingSingleton`, `Add…WithCachingScoped` or
+`Add…WithCachingTransient` helper. Each helper names its lifetime; there is no lifetime-free alias.
+The helpers are internal to the application and are generated for non-generic interfaces.
+
+For the `IUserService` example in the README, once `IUserDatabase` is registered:
+
+<!-- snippet: generated-factory-registration -->
+```cs
+builder.Services.AddMethodCache();
+builder.Services.AddIUserServiceWithCachingScoped(sp =>
+    new UserService(sp.GetRequiredService<IUserDatabase>()));
+```
+<!-- endSnippet -->
+
 The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`, overloaded methods, generic
 interfaces and generic methods, including interfaces nested in generic containing types. Constraints on both
 the containing type and the interface, including `unmanaged`, are preserved. Overloaded methods
@@ -25,7 +40,7 @@ with C# 12 and the latest compiler: each generated decorator compiles and runs t
 
 ## Behavior and compatibility
 
-Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated `Add...WithCaching` factory helpers own the instances their factories return; create a new instance in those factories.
+Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated factory registration helpers own the instances their factories return; create a new instance in those factories.
 
 Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
 

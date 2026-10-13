@@ -29,7 +29,7 @@ public class RedisBackplaneShutdownTests
         await using var backplane = new RedisBackplane(() => Task.FromResult(connection), "channel", logger);
         var delivered = 0;
         await backplane.SubscribeAsync(_ => { delivered++; return Task.CompletedTask; });
-        receive!(RedisChannel.Literal("channel"), "0\nlegacy\nsensitive-key");
+        receive!(RedisChannel.Literal("channel"), "0\nsender\nsensitive-key");
         receive!(RedisChannel.Literal("channel"), "bad-frame");
         var logs = logger.Messages.ToArray();
         Assert.Single(logs);

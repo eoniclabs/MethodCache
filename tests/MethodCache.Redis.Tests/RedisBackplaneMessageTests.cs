@@ -8,9 +8,9 @@ namespace MethodCache.Redis.Tests;
 public class RedisBackplaneMessageTests
 {
     [Theory]
-    [InlineData("0\nlegacy\n4:awBlAHkA")]
-    [InlineData("1\nlegacy\n4:awBlAHkA")]
-    public void LegacyMessageType_WithVersionLookingKey_IsRejected(string wire)
+    [InlineData("0\nsender\n4:awBlAHkA")]
+    [InlineData("1\nsender\n4:awBlAHkA")]
+    public void UnsupportedMessageType_WithVersionLookingKey_IsRejected(string wire)
         => Assert.False(RedisBackplane.TryParse(wire, out _));
 
     [Fact]

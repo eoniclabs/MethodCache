@@ -72,6 +72,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,
   prefixed key such as `$"order:{id}"`.
 - Fix every `MC` and `MCG` build diagnostic; each links to its explanation, and many have a code fix.
+- Generated factory registration helpers name their lifetime: `Add…WithCachingSingleton`,
+  `Add…WithCachingScoped` or `Add…WithCachingTransient`. There is no `Add…WithCaching` alias.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
   caching off.
 
@@ -218,6 +220,19 @@ implements, such as `UserRepository : IRepository<User>`. An open generic regist
 Put cache attributes on interface methods. The generator builds a decorator around the registered implementation
 and routes cached calls through MethodCache. Your implementation stays ordinary application code.
 
+`AddMethodCache()` decorates services already registered in DI and preserves their lifetimes. For an explicit
+implementation factory, use the generated `Add…WithCachingSingleton`, `Add…WithCachingScoped` or
+`Add…WithCachingTransient` helper. Each helper names its lifetime; there is no lifetime-free alias.
+The helpers are internal to the application and are generated for non-generic interfaces.
+
+For the `IUserService` example in the README, once `IUserDatabase` is registered:
+
+```cs
+builder.Services.AddMethodCache();
+builder.Services.AddIUserServiceWithCachingScoped(sp =>
+    new UserService(sp.GetRequiredService<IUserDatabase>()));
+```
+
 The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`, overloaded methods, generic
 interfaces and generic methods, including interfaces nested in generic containing types. Constraints on both
 the containing type and the interface, including `unmanaged`, are preserved. Overloaded methods
@@ -240,7 +255,7 @@ with C# 12 and the latest compiler: each generated decorator compiles and runs t
 
 ## Behavior and compatibility
 
-Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated `Add...WithCaching` factory helpers own the instances their factories return; create a new instance in those factories.
+Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated factory registration helpers own the instances their factories return; create a new instance in those factories.
 
 Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
 
@@ -1289,16 +1304,16 @@ build once they are older than `BackplaneRetention`; rows of a prefix no applica
 for you to delete.
 Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
 messages and recovery clears; one that still fails after five polls is replaced by a clear of that instance's
-memory, so later messages aren't held back. See the SQL Server guide for the schema migration required by an existing
-invalidations table.
+memory, so later messages aren't held back. SQL Server requires the current invalidations table schema, including
+a non-nullable `binary(32)` `Scope` column; an incompatible scope column stops table initialization with a clear error.
+Existing tables are not upgraded automatically.
 
 The [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) and [SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation and outage settings.
 
 SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
 trailing spaces, NULs and different Unicode representations distinct despite SQL collation, and
-gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
-and expire normally; upgrade all instances sharing a prefix together.
+gives keys and tags of any length a fixed-size ID.
 
 ## Behavior and compatibility
 
@@ -1308,7 +1323,7 @@ Distributed tags and backplane keys/tags preserve exact UTF-16 code units, inclu
 
 Redis escapes unpaired UTF-16 surrogates and backslashes in physical keys, keeping distinct logical keys separate in every data and invalidation operation. Ordinary keys and their prefixes stay unchanged.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
 
 `TagRetention` must exceed `ClockSkewTolerance`; invalid settings fail startup or direct layer construction. L2 entries live at most `TagRetention - ClockSkewTolerance` from their source read, capped further by their policy duration.
 
@@ -1621,7 +1636,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 |---|---|
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
-| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. |
+| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic table initialization rejects missing, nullable or incorrectly typed backplane scope columns; it requires `binary(32) NOT NULL`. |
 | Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
 ## MethodCache.AspNetCore (admin endpoints)
@@ -1684,7 +1699,7 @@ Unknown HTTP transports (including opaque wrappers and native platform handlers)
 
 `AddHttpCaching()` disables automatic cookies on the named client’s `SocketsHttpHandler` or `HttpClientHandler`, after all primary-handler configuration. The default registration therefore caches immediately. Send caller cookies explicitly; a handler that manages a hidden cookie jar belongs on a client without HTTP caching. Other named clients are unaffected.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
 
 `AddHttpCaching()` runs the cache after all additional handlers, so injected caller identity and rewritten requests are visible before lookup. Delegating handlers inside the primary transport, or below a directly constructed cache handler, are unverified and bypass caching unless the entire chain is explicitly trusted.
 
@@ -2032,7 +2047,7 @@ subscriptions (`DisposeAsync` waits for that).
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack. Each entry records its format, so after a switch older entries count as misses.
 - MethodCache reads Redis on an in-memory miss and writes new results to both.
 - Invalidating a key removes it from Redis. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
-- Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one. Upgrade every instance that shares a `KeyPrefix` together, since earlier builds don't.
+- Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
 - Both also publish a message, so every instance drops its in-memory copies at once.
 - Pub/sub delivers nothing while a connection is down. When the connection comes back, the instance clears its in-memory cache and reads entries from Redis again.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
@@ -2071,7 +2086,7 @@ Distributed tags and backplane keys/tags preserve exact UTF-16 code units, inclu
 
 Redis escapes unpaired UTF-16 surrogates and backslashes in physical keys, keeping distinct logical keys separate in every data and invalidation operation. Ordinary keys and their prefixes stay unchanged.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
 
 
 ---
@@ -2110,14 +2125,14 @@ By default the schema and two tables are created when the application starts, if
 
 If the application's login may not create tables, set `CreateTablesIfMissing = false` and create them in a migration instead.
 
-### Upgrading from an earlier build
+### Required backplane schema
 
-The invalidations table gets a nullable `Scope binary(32)` column and the indexes `Index_Scope_Id (Scope, Id)` and
-`Index_Scope_CreatedAt (Scope, CreatedAt)`; with `CreateTablesIfMissing = false`, add them in your migration before
-deploying. Rows without a scope are ignored, and each instance deletes them once they are older than its
-`BackplaneRetention`, as the old build did. Cache entries
-written by an earlier build become misses and expire normally. Upgrade every instance that shares the tables
-together, and restart them with empty in-memory caches.
+`MethodCacheInvalidations` uses `Scope binary(32) NOT NULL`, with the indexes
+`Index_Scope_Id (Scope, Id)` and `Index_Scope_CreatedAt (Scope, CreatedAt)`. During automatic table initialization,
+a missing, nullable or incorrectly typed scope column stops table initialization with a logged schema error.
+If detected during the three-second startup wait, the error also fails startup.
+Existing tables are not converted, and their rows are not deleted. With `CreateTablesIfMissing = false`, provision
+the current tables and indexes yourself before starting the application.
 
 ## How it works
 
@@ -2129,7 +2144,7 @@ together, and restart them with empty in-memory caches.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table, along with rows an earlier build wrote without a prefix. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
+- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
 - Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again for a few seconds; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
@@ -2170,7 +2185,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 
 Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
 
 
 ---

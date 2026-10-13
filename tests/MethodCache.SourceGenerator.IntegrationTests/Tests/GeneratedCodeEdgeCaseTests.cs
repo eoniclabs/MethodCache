@@ -185,8 +185,8 @@ internal interface ISvc { [Cache] Task<string> Get(int id); }
     {
         var r = Run(Usings + @"namespace App {
 public interface IReader { [Cache] Task<string> Get(int id); }
-public interface ILegacyReader { Task<string> Get(int id); }
-public interface ISvc : IReader, ILegacyReader { [Cache] Task<int> Count(); }
+public interface IStringReader { Task<string> Get(int id); }
+public interface ISvc : IReader, IStringReader { [Cache] Task<int> Count(); }
 }", nameof(SameMethodInTwoBaseInterfaces_Compiles));
         AssertCompiles(r);
     }

@@ -121,7 +121,7 @@ public class AdapterContractTests
         if (kind != 8)
             return new AdapterScope(kind switch
             {
-                0 => new MethodCacheAdapter(timeProvider),
+                0 => new RuntimeKeyMethodCacheAdapter(timeProvider),
                 1 => new OptimizedMethodCacheAdapter(timeProvider),
                 2 => new StaticKeyMethodCacheAdapter(timeProvider),
                 3 => new DirectApiMethodCacheAdapter(timeProvider),
@@ -136,7 +136,7 @@ public class AdapterContractTests
         if (timeProvider != null) services.AddSingleton(timeProvider);
         services.AddMethodCache();
         services.AddSingleton<MethodCacheBenchmarkService>();
-        services.AddIMethodCacheBenchmarkServiceWithCaching(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
+        services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
         var provider = services.BuildServiceProvider();
         return new AdapterScope(new MethodCacheSourceGenAdapter(provider.GetRequiredService<IMethodCacheBenchmarkService>(),
             provider.GetRequiredService<ICacheManager>()), provider);

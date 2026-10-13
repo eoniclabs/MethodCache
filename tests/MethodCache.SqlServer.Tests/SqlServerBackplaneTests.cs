@@ -11,7 +11,7 @@ public class SqlServerBackplaneTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(42)]
-    public void CreateWireMessage_RejectsLegacyAndUnknownTypes(byte type)
+    public void CreateWireMessage_RejectsUnsupportedTypes(byte type)
         => Assert.Null(SqlServerBackplane.CreateWireMessage(type, "4:AAAA==", "other", CreatedAt));
 
     [Theory]

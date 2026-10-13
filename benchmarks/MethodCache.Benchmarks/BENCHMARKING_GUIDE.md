@@ -15,9 +15,10 @@ the machine and are only meaningful next to the run that produced them.
 
 Use `readme` to choose a library or to compare against the README: it calls a source-generated decorator, which is
 what an application runs. `comparison` routes every library, MethodCache included, through the same `ICacheAdapter`
-with `string` keys, so MethodCache pays for runtime key and policy handling that generated code does at compile time.
+with `string` keys. Its runtime-key adapter generates storage keys per operation; its manual-key adapter uses raw
+storage keys, and its SourceGen adapter calls generated get-or-create methods while ordinary lookup reads storage directly.
 It is useful for comparing behaviour under the same workload, not for absolute MethodCache numbers.
-[Comparison/README.md](Comparison/README.md) explains the adapters.
+[Comparison/README.md](Comparison/README.md) and [CACHE_ACCESS_PATHS.md](CACHE_ACCESS_PATHS.md) explain the adapters.
 
 ## Running
 
@@ -58,9 +59,9 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- comparison 
 `UnifiedCacheComparisonBenchmarks` groups its methods by category: `CacheHit`, `CacheHitAsync`, `MissAndSet`,
 `Concurrent`, `ConcurrentHits` and `Stampede`. MethodCache appears in three modes:
 
-- `MethodCache_SourceGen_*`: a source-generated decorator behind the adapter.
+- `MethodCache_SourceGen_*`: generated get-or-create methods behind the adapter; ordinary lookup reads warmed storage directly.
 - `MethodCache_ManualKey_*`: `ICacheManager` with keys the caller supplies.
-- `MethodCache_Legacy_*`: keys generated at run time on every call; kept for comparison only.
+- `MethodCache_RuntimeKey_*`: keys generated at run time on every operation through the current API.
 
 `--quick` (or `BENCHMARK_QUICK=true`) uses fewer warmups and iterations. It is for checking that a benchmark runs, not
 for numbers you publish; `engine` always uses BenchmarkDotNet's short run. Results land in

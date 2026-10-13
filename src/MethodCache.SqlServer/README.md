@@ -34,14 +34,14 @@ By default the schema and two tables are created when the application starts, if
 
 If the application's login may not create tables, set `CreateTablesIfMissing = false` and create them in a migration instead.
 
-### Upgrading from an earlier build
+### Required backplane schema
 
-The invalidations table gets a nullable `Scope binary(32)` column and the indexes `Index_Scope_Id (Scope, Id)` and
-`Index_Scope_CreatedAt (Scope, CreatedAt)`; with `CreateTablesIfMissing = false`, add them in your migration before
-deploying. Rows without a scope are ignored, and each instance deletes them once they are older than its
-`BackplaneRetention`, as the old build did. Cache entries
-written by an earlier build become misses and expire normally. Upgrade every instance that shares the tables
-together, and restart them with empty in-memory caches.
+`MethodCacheInvalidations` uses `Scope binary(32) NOT NULL`, with the indexes
+`Index_Scope_Id (Scope, Id)` and `Index_Scope_CreatedAt (Scope, CreatedAt)`. During automatic table initialization,
+a missing, nullable or incorrectly typed scope column stops table initialization with a logged schema error.
+If detected during the three-second startup wait, the error also fails startup.
+Existing tables are not converted, and their rows are not deleted. With `CreateTablesIfMissing = false`, provision
+the current tables and indexes yourself before starting the application.
 
 ## How it works
 
@@ -53,7 +53,7 @@ together, and restart them with empty in-memory caches.
 - Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table, along with rows an earlier build wrote without a prefix. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
+- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
 - Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again for a few seconds; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
@@ -96,4 +96,4 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 
 Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
