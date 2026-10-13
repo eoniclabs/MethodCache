@@ -169,3 +169,5 @@ For overloaded methods, non-built-in parameter types are qualified by namespace,
 also the format used by expression-based and runtime configuration.
 
 Generated decorators preserve generic constraints, including `unmanaged`, on cached interfaces and methods.
+
+Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.

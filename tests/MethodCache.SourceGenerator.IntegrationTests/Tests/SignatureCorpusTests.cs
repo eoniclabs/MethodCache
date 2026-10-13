@@ -148,6 +148,30 @@ public class SignatureCorpusTests
         Assert.DoesNotContain(compiled.Diagnostics, d => d.Id == "CS8785");
     }
 
+    [Fact]
+    public async Task GenericArityReview_KeepsDistinctPoliciesForDistinctOverloads()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync("""
+            using System.Linq;
+            using MethodCache;
+            using MethodCache.Policies;
+            using Microsoft.Extensions.DependencyInjection;
+            public interface ISvc {
+                [Cache(Duration = "00:01:00")] int Get(int id);
+                [Cache(Duration = "00:02:00")] int Get<T>(int id);
+            }
+            public class Svc : ISvc { public int Get(int id) => id; public int Get<T>(int id) => id; }
+            public static class Scenario {
+                public static int Run() {
+                    var services = new ServiceCollection(); services.AddMethodCache();
+                    using var provider = services.BuildServiceProvider();
+                    return provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies().Count(p => p.MethodId.Contains("ISvc.Get"));
+                }
+            }
+            """, "GenericArityReview", LanguageVersion.CSharp12);
+        Assert.Equal(2, (int)compiled.Assembly.GetType("Scenario")!.GetMethod("Run")!.Invoke(null, null)!);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

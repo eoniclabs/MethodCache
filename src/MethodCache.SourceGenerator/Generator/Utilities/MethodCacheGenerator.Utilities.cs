@@ -122,7 +122,8 @@ namespace MethodCache.SourceGenerator
             {
                 var definition = method.OriginalDefinition;
                 return IsOverloaded(definition)
-                    ? definition.Name + "(" + string.Join(", ", definition.Parameters.Select(p => ParameterTypeName(p.Type))) + ")"
+                    ? definition.Name + (definition.Arity > 0 ? "``" + definition.Arity.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")
+                      + "(" + string.Join(", ", definition.Parameters.Select(p => ParameterTypeName(p.Type))) + ")"
                     : definition.Name;
             }
 
