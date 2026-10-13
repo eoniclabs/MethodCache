@@ -1,7 +1,5 @@
 # MethodCache.OpenTelemetry
 
-[![NuGet Version](https://img.shields.io/nuget/v/MethodCache.OpenTelemetry)](https://www.nuget.org/packages/MethodCache.OpenTelemetry)
-
 OpenTelemetry metrics and traces for MethodCache.
 
 The package depends only on the OpenTelemetry API, as instrumentation libraries should, so it works the same in
