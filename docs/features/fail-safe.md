@@ -67,3 +67,5 @@ once.
 `ExistsAsync` reports an entry only while it is both logically fresh and physically retained. A fail-safe retry window never makes existence extend beyond the physical fail-safe lifetime.
 
 Fail-safe retry throttling is capped at physical expiration. Administration lists, entry details and removal results never report physically expired entries as live.
+
+Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
