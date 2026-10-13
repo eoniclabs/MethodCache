@@ -26,6 +26,30 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   `Cache-Control` or `Vary` that doesn't parse is not stored, clients that get caching from
   `ConfigureHttpClientDefaults` keep their own entries, far-future `Expires` no longer overflows, weak ETags stay weak,
   and the URL fragment is not part of the key. HTTP cache keys change, so entries from an earlier build are misses.
+- **Loading and fail-safe**: a value invalidated or replaced while (or just before) its reload ran is no longer
+  served as the fail-safe fallback to callers that joined the reload or a failed background refresh. A factory that
+  requests the key it is loading now throws `InvalidOperationException` instead of hanging that key for every later
+  caller. While a fail-safe value is reused, refresh-ahead no longer retries the method before `retryAfter`.
+- **Refresh-ahead**: a `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` is rejected by
+  `CacheEntryOptions.Builder.Build()` and in `appsettings.json` (startup fails); one that comes from combining
+  sources starts the reload halfway through the entry's life instead of reloading on every read.
+- **Memory cache**: a manager that is never disposed no longer keeps its values (and the execution context of whoever
+  created it) alive through its cleanup timer. `GetOrCreateManyAsync` no longer sends cached keys to the factory with
+  `EnableFastPath = false` or inside a refresh window. The default `ICacheManager.TryGetFast` of a custom manager
+  asks `LookupAsync`, so a cached `0`, `false` or `null` is a hit. `WithDuration`'s error message no longer promises
+  entries that never expire.
+- **Distributed cache**: a tag invalidation or clear another instance announces while a stamp read is on the wire is
+  no longer forgotten (which promoted invalidated entries into memory). Invalidations queued during an outage are
+  stored in batches, so a large backlog drains; more than 10,000, or one the cache keeps refusing, become one clear.
+  On shutdown the queue is tried once more and what is lost is logged. A write that times out no longer opens the
+  circuit breaker for the whole instance. A tag or clear stamp from a server whose clock runs ahead no longer turns
+  every entry written since into a miss.
+- **Redis**: a connection factory that threw once (Redis down at first use) is asked again on the next call instead
+  of failing until restart. The docs now say to run Redis with `maxmemory-policy noeviction`: an evicted invalidation
+  stamp brings invalidated values back.
+- **SQL Server**: a `TagRetention` that ends after 9999-12-31 fails at startup instead of making every tag
+  invalidation fail, and stamp expiry is capped there. Expired rows are deleted every 5 minutes instead of 30, so each
+  delete stays small.
 
 ### If you used a pre-release build from GitHub Packages
 

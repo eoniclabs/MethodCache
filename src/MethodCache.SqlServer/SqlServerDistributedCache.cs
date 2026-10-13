@@ -40,9 +40,8 @@ internal sealed class SqlServerDistributedCache : IAtomicInvalidationStore
         var stamp = new byte[8];
         BinaryPrimitives.WriteInt64LittleEndian(stamp, timestamp);
         var now = DateTimeOffset.UtcNow;
-        if (retention > DateTimeOffset.MaxValue - now)
-            throw new ArgumentOutOfRangeException(nameof(retention), "The requested retention exceeds SQL Server's maximum datetimeoffset expiration.");
-        var expires = now + retention;
+        // A retention past the latest time SQL Server stores means "keep it", not a failure
+        var expires = retention < DateTimeOffset.MaxValue - now ? now + retention : DateTimeOffset.MaxValue;
         var sql = $"""
             SET XACT_ABORT ON;
             BEGIN TRY

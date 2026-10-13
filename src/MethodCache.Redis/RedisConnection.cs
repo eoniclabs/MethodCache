@@ -7,8 +7,10 @@ namespace MethodCache.Redis;
 /// </summary>
 internal sealed class RedisConnection : IDisposable
 {
-    private readonly Lazy<Task<IConnectionMultiplexer>> _connection;
+    private readonly Func<Task<IConnectionMultiplexer>> _connect;
+    private readonly object _lock = new();
     private readonly bool _owned;
+    private Task<IConnectionMultiplexer>? _connection;
 
     public RedisConnection(RedisOptions options, IServiceProvider services)
         : this(Connect(options, services), owned: options.ConnectionMultiplexerFactory == null)
@@ -17,7 +19,7 @@ internal sealed class RedisConnection : IDisposable
 
     internal RedisConnection(Func<Task<IConnectionMultiplexer>> connect, bool owned)
     {
-        _connection = new Lazy<Task<IConnectionMultiplexer>>(connect);
+        _connect = connect;
         _owned = owned;
     }
 
@@ -33,17 +35,52 @@ internal sealed class RedisConnection : IDisposable
         return () => ConnectAsync(configuration);
     }
 
-    public Task<IConnectionMultiplexer> GetAsync() => _connection.Value;
+    /// <summary>
+    /// The connection, opened by the first call. A connect that failed (the app's factory threw while Redis was
+    /// down, say) is tried again by the next call instead of failing every later one.
+    /// </summary>
+    public Task<IConnectionMultiplexer> GetAsync()
+    {
+        var connection = Volatile.Read(ref _connection);
+        if (connection is { IsFaulted: false, IsCanceled: false })
+        {
+            return connection;
+        }
+
+        lock (_lock)
+        {
+            if (_connection is null or { IsFaulted: true } or { IsCanceled: true })
+            {
+                _connection = Connect(_connect);
+            }
+
+            return _connection;
+        }
+    }
+
+    private static Task<IConnectionMultiplexer> Connect(Func<Task<IConnectionMultiplexer>> connect)
+    {
+        try
+        {
+            return connect();
+        }
+        catch (Exception ex)
+        {
+            return Task.FromException<IConnectionMultiplexer>(ex);
+        }
+    }
 
     public void Dispose()
     {
-        if (!_owned || !_connection.IsValueCreated)
+        Task<IConnectionMultiplexer>? connection;
+        lock (_lock) connection = _connection;
+        if (!_owned || connection == null)
         {
             return;
         }
 
         // A connection still opening is closed once it is open, so it doesn't outlive its owner
-        _ = _connection.Value.ContinueWith(
+        _ = connection.ContinueWith(
             static connecting => connecting.Result.Dispose(),
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnRanToCompletion | TaskContinuationOptions.ExecuteSynchronously,

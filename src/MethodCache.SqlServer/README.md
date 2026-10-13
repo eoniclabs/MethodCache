@@ -93,7 +93,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 
 ## Internals
 
-- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows. Your app's `IDistributedCache` is left alone.
+- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows: every instance runs one `DELETE` of the rows that expired every 5 minutes (the shortest interval that cache allows), so each delete stays small. With a very large table, keep an index on `ExpiresAtTime` (`dotnet sql-cache create` and `CreateTablesIfMissing` add one). Your app's `IDistributedCache` is left alone.
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.

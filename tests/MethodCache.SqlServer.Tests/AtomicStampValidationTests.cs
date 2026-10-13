@@ -9,7 +9,6 @@ public class AtomicStampValidationTests
         await Assert.ThrowsAsync<ArgumentNullException>(() => cache.WriteInvalidationStampAsync(null!, 1, TimeSpan.FromMinutes(1)));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => cache.WriteInvalidationStampAsync("stamp", 1, TimeSpan.Zero));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => cache.WriteInvalidationStampAsync("stamp", 1, TimeSpan.FromSeconds(-1)));
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => cache.WriteInvalidationStampAsync("stamp", 1, TimeSpan.MaxValue));
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.WriteInvalidationStampAsync("stamp", 1, TimeSpan.FromMinutes(1), cancellation.Token));

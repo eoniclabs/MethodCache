@@ -45,6 +45,13 @@ namespace MethodCache.Core.Runtime.Distributed
         private const int HeaderSize = 1 + 1 + 8 + 8 + 4;
         private const int MaxTrackedTags = 10_000;
 
+        // Invalidations stored at once (each its own operation); a longer queue than MaxQueuedInvalidations becomes a clear
+        private const int InvalidationBatchSize = 50;
+        private const int MaxQueuedInvalidations = 10_000;
+
+        // Flushes in a row where the cache stored some invalidations and refused others, before those become a clear
+        private const int MaxRefusedFlushes = 3;
+
         private readonly IDistributedCache _cache;
         private readonly IAtomicInvalidationStore _stampStore;
         private readonly IBufferDistributedCache? _bufferCache;
@@ -65,6 +72,9 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly TimeSpan _breakDuration;
         private readonly ConcurrentDictionary<string, TagStamp> _tagStamps = new(StringComparer.Ordinal);
 
+        // Tag invalidations and clears other nodes announced so far
+        private long _remoteInvalidations;
+
         // Circuit breaker: Unix ms until which the cache is skipped (0 = closed); one caller probes after that.
         // _trips counts openings, so a probe can only close the opening it was let in for.
         private const long NotProbing = -1;
@@ -81,6 +91,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private volatile bool _hasPending;
         private ITimer? _retryTimer;
         private int _flushing;
+        private int _refusedFlushes;
 
         private Action<string>? _onRemoteKeyInvalidated;
         private Action<string>? _onRemoteTagInvalidated;
@@ -312,10 +323,21 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var entry = new Entry(key, buffer.WrittenMemory, TimeSpan.FromMilliseconds(lifetimeMilliseconds));
-            if (!(await TryRunAsync(StoreAsync, entry, "write", probe).ConfigureAwait(false)).Succeeded)
+            var written = await TryRunAsync(StoreAsync, entry, "write", probe, tripOnTimeout: false).ConfigureAwait(false);
+            if (written.TimedOut)
             {
-                // A write that timed out may still land later, after a removal it never saw, so the key is
-                // removed again once the cache answers
+                // Says more about this value (a large one, say) than about the cache, which other operations may
+                // reach fine: the breaker stays closed and reads go on. The write may still land, after a removal it
+                // never saw, so the key is removed everywhere once that write has had time to finish.
+                _logger.LogWarning("MethodCache could not write a value of type {Type} to the distributed cache within {Timeout}; it is removed from there again in {Delay}.", typeof(T), _timeout, _breakDuration);
+                _ = RemoveAfterLateWriteAsync(key);
+                return;
+            }
+
+            if (!written.Succeeded)
+            {
+                // A failed write may still land later, after a removal it never saw, so the key is removed again
+                // once the cache answers
                 Queue(new[] { key }, Array.Empty<string>());
                 return;
             }
@@ -348,6 +370,13 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
+        /// <summary>Removes a key whose write timed out, once that write had time to land.</summary>
+        private async Task RemoveAfterLateWriteAsync(string key)
+        {
+            await Task.Delay(_breakDuration, _time).ConfigureAwait(false);
+            await RemoveAsync(new[] { key }).ConfigureAwait(false);
+        }
+
         /// <summary>
         /// Removes keys everywhere, leaving removal stamps so loads that started earlier don't leave their values. Never
         /// throws: keys the distributed cache didn't accept are retried in the background.
@@ -371,45 +400,76 @@ namespace MethodCache.Core.Runtime.Distributed
             var now = Now;
             foreach (var tag in tags)
             {
-                RememberStamp(tag, new TagStamp(now, now));
+                _ = RememberStamp(tag, new TagStamp(now, now));
             }
 
-            if (_hasPending || !TryEnter(out var probe) || !await StoreInvalidationsAsync(keys, tags, now, probe).ConfigureAwait(false))
+            if (_hasPending || !TryEnter(out var probe))
             {
                 Queue(keys, tags);
+                return;
+            }
+
+            var refused = await StoreInvalidationsAsync(keys, tags, now, probe, force: false).ConfigureAwait(false);
+            if (refused.Count > 0)
+            {
+                Queue(refused.Keys, refused.Tags);
             }
         }
 
         /// <summary>
-        /// Stores removal and tag stamps, then removes the entries and tells other nodes. False when the cache
-        /// refused any of it.
+        /// Stores removal and tag stamps, then removes the entries and tells other nodes. Works in batches, so a
+        /// large backlog never sends the cache more at once than it can do within the timeout; stops at the first
+        /// batch the cache refused part of, and when the breaker opened meanwhile. <paramref name="force"/> ignores
+        /// the breaker and starts no batch after one operation timeout (at shutdown). Returns what wasn't stored.
         /// </summary>
-        private async Task<bool> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe)
+        private async Task<Refused> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe, bool force)
         {
-
-            // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
-            var stamped = await Task.WhenAll(
-                tags.Select(tag => TryRunAsync(StoreStampAsync, (_tagPrefix + tag, now, _tagRetention), "invalidate a tag", probe))
-                    .Concat(keys.Select(key => TryRunAsync(StoreStampAsync, (_removalPrefix + key, now, RemovalLifetime), "remove a key", probe))))
-                .ConfigureAwait(false);
-            if (stamped.Any(static result => !result.Succeeded))
+            var deadline = force ? Now + (long)_timeout.TotalMilliseconds : long.MaxValue;
+            var items = tags.Select(static tag => (IsTag: true, Value: tag)).Concat(keys.Select(static key => (IsTag: false, Value: key))).ToList();
+            var refused = new Refused();
+            for (var start = 0; start < items.Count; start += InvalidationBatchSize)
             {
-                return false;
+                var batch = items.GetRange(start, Math.Min(InvalidationBatchSize, items.Count - start));
+                if (refused.Count > 0 || (start > 0 && (force ? Now >= deadline : !TryEnter(out probe))))
+                {
+                    refused.AddRange(batch);
+                    continue;
+                }
+
+                // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
+                var stamped = await Task.WhenAll(batch.Select(item => item.IsTag
+                        ? TryRunAsync(StoreStampAsync, (_tagPrefix + item.Value, now, _tagRetention), "invalidate a tag", probe)
+                        : TryRunAsync(StoreStampAsync, (_removalPrefix + item.Value, now, RemovalLifetime), "remove a key", probe)))
+                    .ConfigureAwait(false);
+                var removed = await Task.WhenAll(batch.Select((item, i) => item.IsTag || !stamped[i].Succeeded
+                        ? Task.FromResult(stamped[i])
+                        : TryRunAsync(DeleteAsync, item.Value, "remove a key", probe)))
+                    .ConfigureAwait(false);
+
+                var stored = new List<(bool IsTag, string Value)>(batch.Count);
+                for (var i = 0; i < batch.Count; i++)
+                {
+                    if (removed[i].Succeeded)
+                    {
+                        stored.Add(batch[i]);
+                    }
+                    else
+                    {
+                        refused.Add(batch[i]);
+                    }
+                }
+
+                // The cache answered part of this batch, so it refuses particular invalidations, not all of them
+                refused.Answered = refused.Count > 0 && stored.Count > 0;
+
+                // Published together, so a hung backplane holds the caller for one timeout, not one per key or tag
+                await Task.WhenAll(stored.Select(item => item.IsTag
+                        ? PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), item.Value)
+                        : PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), item.Value)))
+                    .ConfigureAwait(false);
             }
 
-            var removed = await Task.WhenAll(keys.Select(key => TryRunAsync(DeleteAsync, key, "remove a key", probe))).ConfigureAwait(false);
-            if (removed.Any(static result => !result.Succeeded))
-            {
-                return false;
-            }
-
-            // Published together, so a hung backplane holds the caller for one timeout, not one per key or tag
-            await Task.WhenAll(
-                tags.Select(tag => PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), tag))
-                    .Concat(keys.Select(key => PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), key))))
-                .ConfigureAwait(false);
-
-            return true;
+            return refused;
         }
 
         /// <summary>
@@ -445,8 +505,6 @@ namespace MethodCache.Core.Runtime.Distributed
                 {
                     _retryTimer?.Dispose();
                     _retryTimer = null;
-                    _pendingKeys.Clear();
-                    _pendingTags.Clear();
                 }
                 _shutdownTask = ShutdownAsync();
             }
@@ -462,6 +520,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async Task ShutdownAsync()
         {
+            await FlushBeforeShutdownAsync().ConfigureAwait(false);
             if (_backplane == null || _subscribed == 0) return;
             try
             {
@@ -472,6 +531,33 @@ namespace MethodCache.Core.Runtime.Distributed
                 _subscriptionWaitTimedOut = true;
             }
             await UnsubscribeAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Tries once, for about one operation timeout, to store invalidations still queued, whatever the breaker
+        /// says: a queue doesn't outlive the process, and every instance would read the invalidated values again.
+        /// </summary>
+        private async Task FlushBeforeShutdownAsync()
+        {
+            if (!_hasPending)
+            {
+                return;
+            }
+
+            await FlushAsync(force: true).ConfigureAwait(false);
+
+            int lost;
+            lock (_pendingLock)
+            {
+                lost = _pendingKeys.Count + _pendingTags.Count;
+                _pendingKeys.Clear();
+                _pendingTags.Clear();
+            }
+
+            if (lost > 0)
+            {
+                _logger.LogWarning("MethodCache is shutting down with {Count} invalidations the distributed cache didn't accept; they are lost, so other instances may read the invalidated values from it until they expire.", lost);
+            }
         }
 
         private async Task UnsubscribeAsync()
@@ -583,13 +669,32 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async Task<long> ReadStampAsync(string tag, long now, CancellationToken cancellationToken)
         {
+            // An invalidation another node announces while this read is on the wire may not be in its answer
+            var generation = Volatile.Read(ref _remoteInvalidations);
             var bytes = await _cache.GetAsync(_tagPrefix + tag, cancellationToken).ConfigureAwait(false);
             var invalidatedAt = bytes is { Length: >= sizeof(long) } ? BinaryPrimitives.ReadInt64LittleEndian(bytes) : long.MinValue;
-            return RememberStamp(tag, new TagStamp(invalidatedAt, now));
+            var stamp = new TagStamp(invalidatedAt, now);
+            if (invalidatedAt > now + _clockSkewMilliseconds)
+            {
+                // Written by a node whose clock runs ahead, so taken as it is it would make every entry written
+                // until that clock's time look invalidated. It happened by now: it counts from when this node first
+                // read it, until this clock passes it
+                var since = _tagStamps.TryGetValue(tag, out var known) && known.Ahead == invalidatedAt ? known.InvalidatedAt : now;
+                stamp = new TagStamp(since, now, Ahead: invalidatedAt);
+            }
+
+            var remembered = RememberStamp(tag, stamp);
+            if (Volatile.Read(ref _remoteInvalidations) != generation)
+            {
+                // Possibly older than that invalidation: not trusted, so the next check reads the stamp again
+                _tagStamps.TryRemove(new KeyValuePair<string, TagStamp>(tag, remembered));
+            }
+
+            return remembered.InvalidatedAt;
         }
 
         /// <summary>Remembers a tag's stamp, never replacing a newer one (a read can finish after an invalidation).</summary>
-        private long RememberStamp(string tag, TagStamp stamp)
+        private TagStamp RememberStamp(string tag, TagStamp stamp)
         {
             // Tags can be per-entity ("user:42"), so keep the local copy bounded; forgotten stamps are re-read
             if (_tagStamps.Count >= MaxTrackedTags)
@@ -612,8 +717,8 @@ namespace MethodCache.Core.Runtime.Distributed
             return _tagStamps.AddOrUpdate(
                 tag,
                 static (_, added) => added,
-                static (_, current, added) => new TagStamp(Math.Max(current.InvalidatedAt, added.InvalidatedAt), added.CheckedAt),
-                stamp).InvalidatedAt;
+                static (_, current, added) => added with { InvalidatedAt = Math.Max(current.InvalidatedAt, added.InvalidatedAt) },
+                stamp);
         }
 
         // ---------- circuit breaker ----------
@@ -649,12 +754,17 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
-        private async Task<(bool Succeeded, TResult Value)> TryRunAsync<TState, TResult>(
+        /// <summary>
+        /// Runs one operation bounded by the timeout. A failure trips the breaker, except a timeout when
+        /// <paramref name="tripOnTimeout"/> is false, which is only reported as <c>TimedOut</c>.
+        /// </summary>
+        private async Task<(bool Succeeded, TResult Value, bool TimedOut)> TryRunAsync<TState, TResult>(
             Func<DistributedCacheLayer, TState, CancellationToken, Task<TResult>> operation,
             TState state,
             string description,
             long probe,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool tripOnTimeout = true)
         {
             try
             {
@@ -673,24 +783,36 @@ namespace MethodCache.Core.Runtime.Distributed
                     Recovered(probe);
                 }
 
-                return (true, result);
+                return (true, result, false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // A caller leaving says nothing about backend health. Free a half-open probe for the next reader.
-                lock (_breakerLock)
-                {
-                    if (probe != NotProbing && _trips == probe)
-                    {
-                        _probing = 0;
-                    }
-                }
+                ReleaseProbe(probe);
                 throw;
+            }
+            catch (Exception ex) when (!tripOnTimeout && ex is TimeoutException or OperationCanceledException)
+            {
+                ReleaseProbe(probe);
+                _onError?.Invoke(ex);
+                return (false, default!, true);
             }
             catch (Exception ex)
             {
                 Trip(ex, description);
-                return (false, default!);
+                return (false, default!, false);
+            }
+        }
+
+        /// <summary>Lets the next caller probe the cache when <paramref name="probe"/> ended without an answer.</summary>
+        private void ReleaseProbe(long probe)
+        {
+            lock (_breakerLock)
+            {
+                if (probe != NotProbing && _trips == probe)
+                {
+                    _probing = 0;
+                }
             }
         }
 
@@ -737,8 +859,7 @@ namespace MethodCache.Core.Runtime.Distributed
             lock (_pendingLock)
             {
                 if (Volatile.Read(ref _disposed) != 0) return;
-                _pendingKeys.UnionWith(keys);
-                _pendingTags.UnionWith(tags);
+                AddPending(keys, tags);
 
                 _hasPending = true;
                 if (_retryTimer == null && Volatile.Read(ref _disposed) == 0)
@@ -750,9 +871,42 @@ namespace MethodCache.Core.Runtime.Distributed
         }
 
         /// <summary>
-        /// Retries queued invalidations. They stay queued, and the distributed cache unread, until all are stored.
+        /// Adds to the queue (under <see cref="_pendingLock"/>). A queued clear stands for everything else, since it is
+        /// stamped when it is stored: so a queue that grew too long becomes one clear.
         /// </summary>
-        internal async Task FlushAsync()
+        private void AddPending(IEnumerable<string> keys, IEnumerable<string> tags)
+        {
+            if (_pendingTags.Contains(ClearTag))
+            {
+                return;
+            }
+
+            _pendingKeys.UnionWith(keys);
+            _pendingTags.UnionWith(tags);
+            if (_pendingTags.Contains(ClearTag) || _pendingKeys.Count + _pendingTags.Count > MaxQueuedInvalidations)
+            {
+                if (!_pendingTags.Contains(ClearTag))
+                {
+                    _logger.LogWarning("More than {Count} invalidations wait for the distributed cache; they are replaced by clearing it once it answers.", MaxQueuedInvalidations);
+                }
+
+                ReplaceQueueWithClear();
+            }
+        }
+
+        private void ReplaceQueueWithClear()
+        {
+            _pendingKeys.Clear();
+            _pendingTags.Clear();
+            _pendingTags.Add(ClearTag);
+        }
+
+        /// <summary>
+        /// Retries queued invalidations, a batch at a time; each one leaves the queue once it is stored. The
+        /// distributed cache stays unread until the queue is empty. <paramref name="force"/> tries even while the
+        /// breaker is open (at shutdown).
+        /// </summary>
+        internal async Task FlushAsync(bool force = false)
         {
             if (Interlocked.Exchange(ref _flushing, 1) != 0)
             {
@@ -780,19 +934,43 @@ namespace MethodCache.Core.Runtime.Distributed
 
                 // Stamped now: entries written before this moment, while the cache was unreachable, count as stale
                 // Nothing to store would let a probe in that never reports back, so skip the cache then
-                var stored = (keys.Length == 0 && tags.Length == 0) ||
-                    (TryEnter(out var probe) && await StoreInvalidationsAsync(keys, tags, Now, probe).ConfigureAwait(false));
+                var probe = NotProbing;
+                Refused refused;
+                if (keys.Length == 0 && tags.Length == 0)
+                {
+                    refused = new Refused();
+                }
+                else if (!force && !TryEnter(out probe))
+                {
+                    refused = Refused.All(keys, tags);
+                }
+                else
+                {
+                    refused = await StoreInvalidationsAsync(keys, tags, Now, probe, force).ConfigureAwait(false);
+
+                    // Refused while the cache still answers a read: it refuses these invalidations, not everything
+                    if (refused.Count > 0 && !refused.Answered && !force)
+                    {
+                        refused.Answered = (await TryRunAsync(ReadRemovalAsync, HealthCheckKey, "answer a health check", NotProbing).ConfigureAwait(false)).Succeeded;
+                    }
+                }
 
                 lock (_pendingLock)
                 {
-                    if (!stored)
+                    AddPending(refused.Keys, refused.Tags);
+                    _refusedFlushes = refused.Answered ? _refusedFlushes + 1 : refused.Count == 0 ? 0 : _refusedFlushes;
+                    if (_refusedFlushes >= MaxRefusedFlushes && !_pendingTags.Contains(ClearTag))
                     {
-                        _pendingKeys.UnionWith(keys);
-                        _pendingTags.UnionWith(tags);
+                        // The cache answers, but keeps refusing some invalidation (a key it rejects, say): a clear
+                        // covers it, so the rest of the queue, and reading the cache, aren't held up by it forever
+                        _logger.LogWarning("The distributed cache keeps refusing {Count} queued invalidations; they are replaced by clearing it.", refused.Count);
+                        ReplaceQueueWithClear();
                     }
-                    else if (_pendingKeys.Count == 0 && _pendingTags.Count == 0)
+
+                    if (_pendingKeys.Count == 0 && _pendingTags.Count == 0)
                     {
                         _hasPending = false;
+                        _refusedFlushes = 0;
                         _retryTimer?.Dispose();
                         _retryTimer = null;
                         _logger.LogInformation("Stored {Count} queued invalidations in the distributed cache.", keys.Length + tags.Length);
@@ -802,6 +980,37 @@ namespace MethodCache.Core.Runtime.Distributed
             finally
             {
                 Volatile.Write(ref _flushing, 0);
+            }
+        }
+
+        /// <summary>Invalidations the distributed cache didn't store.</summary>
+        private sealed class Refused
+        {
+            public List<string> Keys { get; } = new();
+
+            public List<string> Tags { get; } = new();
+
+            public int Count => Keys.Count + Tags.Count;
+
+            /// <summary>Whether the cache answered other operations while it refused these.</summary>
+            public bool Answered { get; set; }
+
+            public void Add((bool IsTag, string Value) item) => (item.IsTag ? Tags : Keys).Add(item.Value);
+
+            public void AddRange(IEnumerable<(bool IsTag, string Value)> items)
+            {
+                foreach (var item in items)
+                {
+                    Add(item);
+                }
+            }
+
+            public static Refused All(IEnumerable<string> keys, IEnumerable<string> tags)
+            {
+                var refused = new Refused();
+                refused.Keys.AddRange(keys);
+                refused.Tags.AddRange(tags);
+                return refused;
             }
         }
 
@@ -863,14 +1072,18 @@ namespace MethodCache.Core.Runtime.Distributed
                             _onRemoteKeyInvalidated?.Invoke(message.Key);
                             break;
 
+                        // Stamp reads still on the wire may predate the message: counted first, so they aren't
+                        // remembered (see ReadStampAsync)
                         case BackplaneMessageType.TagInvalidation when message.Tag == ClearTag:
                         case BackplaneMessageType.ClearAll:
+                            Interlocked.Increment(ref _remoteInvalidations);
                             _tagStamps.Clear();
                             _onRemoteCleared?.Invoke();
                             break;
 
                         case BackplaneMessageType.TagInvalidation when message.Tag != null:
                             // Re-read the stamp the other node wrote rather than trusting this node's clock
+                            Interlocked.Increment(ref _remoteInvalidations);
                             _tagStamps.TryRemove(message.Tag, out _);
                             _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
                             break;
@@ -963,7 +1176,11 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private readonly record struct Header(byte Kind, long CreatedAt, long ExpiresAt, string[]? Tags);
 
-        private readonly record struct TagStamp(long InvalidatedAt, long CheckedAt);
+        /// <summary>
+        /// A tag's stamp as this node uses it, read from the cache at <paramref name="CheckedAt"/>.
+        /// <paramref name="Ahead"/> is the stored stamp when it was ahead of this node's clock (see ReadStampAsync).
+        /// </summary>
+        private readonly record struct TagStamp(long InvalidatedAt, long CheckedAt, long Ahead = long.MinValue);
 
         private readonly record struct Entry(string Key, ReadOnlyMemory<byte> Data, TimeSpan Lifetime);
     }

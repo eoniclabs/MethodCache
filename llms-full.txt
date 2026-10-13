@@ -64,8 +64,9 @@ builder.Services.AddMethodCache();                               // after your r
   literal and gives warning MCG015; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Put ids (`int`, `Guid`) in tag templates, not free text from users: tags are plain text, so `"1:orders"` in
   `"user:{id}"` equals `"user:{id}:orders"` for id 1. Never pass passwords or tokens as arguments of cached methods.
-- Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`,
-  `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the first argument.
+- Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`
+  (shorter than `Duration`), `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the
+  first argument.
 - Cached objects are shared between callers: return immutable types such as records.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
@@ -458,6 +459,11 @@ past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
 gets the cached value at once, and the reload replaces it, so a popular entry never makes anyone wait. An entry that
 isn't read in the window simply expires.
 
+The window must be shorter than `Duration` and `SlidingExpiration`, or every read would reload the entry: in code
+(`Build()` throws an `InvalidOperationException`) and in `appsettings.json` (startup fails) a longer one is rejected.
+When settings from different places combine into such a window, for example an attribute's `RefreshAhead` with a
+shorter `Duration` from configuration, the reload starts halfway through the entry's life instead.
+
 ## Versions
 
 `Version` is part of every key the method produces. Raise it when the shape of the cached result changes, for example
@@ -597,10 +603,12 @@ or in `appsettings.json`:
 
 - **When the method throws**, the caller gets the expired value if it is younger than `duration`. That value is then
   reused for `retryAfter` (default 30 seconds) before the method is called again, so a failing dependency isn't
-  hammered.
+  hammered; no [refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead) reload starts during that time either.
 - **When the method is slow** and `timeout` is set, the caller gets the expired value after `timeout` and the call
   finishes in the background; its result replaces the old value. Without an expired value the caller waits as usual.
 - A caller's own cancellation is never treated as a failure, so it doesn't trigger fail-safe.
+- A value that was invalidated (its key, a tag or a clear) or replaced is never a fallback, also when that happened
+  while the reload ran: callers then wait for the reload, or get its exception.
 - Without an expired value, the exception reaches the caller as usual.
 
 ## Per method
@@ -958,6 +966,8 @@ var users = await cache.GetOrCreateManyAsync<User>(
 
 - Concurrent calls for the same key share one factory run. A caller's `cancellationToken` stops its own wait; if it
   cancels a run others joined, they run the factory again rather than fail.
+- A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
+  itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
 - `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
   `NoOpCacheManager` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
@@ -1268,6 +1278,13 @@ is capped at `OperationTimeout` (one second), a circuit breaker skips it until i
 instead of throwing. Until they are stored, the instance doesn't read entries from it, so an invalidated value can't
 come back. The [health check](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#health-check) reports Degraded while this lasts.
 
+Queued invalidations are stored a batch at a time once the cache answers, so a long outage's backlog drains at the
+pace the cache can take. More than 10,000 are replaced by one clear of the distributed cache (logged as a warning),
+and so is an invalidation the cache keeps refusing while it answers everything else, so neither holds up the rest.
+The queue lives in memory: when the instance shuts down, it tries once more to store what is queued, for about one
+`OperationTimeout`, and logs a warning with the number it had to drop. Other instances can read those invalidated
+values from the distributed cache until they expire.
+
 A value set directly while the distributed cache is down stays in that instance's memory, and the value it replaced is
 removed from the distributed cache and the other instances once it is back. An entry that comes back damaged (cut
 short, or unreadable by the serializer) is a miss: your method runs and its result replaces the entry.
@@ -1291,11 +1308,11 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 
 | Option | Default | |
 |---|---|---|
-| `OperationTimeout` | 1 second | The longest one call to the distributed cache may take. A slower call is abandoned and counts as a failure |
+| `OperationTimeout` | 1 second | The longest one call to the distributed cache may take. A slower call is abandoned and counts as a failure, except a write (see [What other instances see](#what-other-instances-see)) |
 | `CircuitBreakerDuration` | 10 seconds | How long the distributed cache is skipped after a failure or timeout. Invalidations it didn't accept are retried at this interval |
-| `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it |
+| `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
-| `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails |
+| `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | Prefix of every key MethodCache writes. `AddMethodCacheRedis` and `AddMethodCacheSqlServer` set it from their own `KeyPrefix`; give each application its own |
 
 ## What other instances see
@@ -1307,9 +1324,11 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
   again.
 - An invalidation the distributed cache didn't accept is retried every `CircuitBreakerDuration`. Until the retry
   succeeds, other instances can serve the old value; the instance that invalidated never does.
-- A write that timed out may still land later, because a distributed cache has no compare-and-set. Its key is removed
-  again by the same retry, but until then the late value can replace a newer one, and a write that lands after the
-  retry stays until it expires.
+- A write that timed out (a large value, say) doesn't open the circuit breaker, since the cache may answer everything
+  else: the instance logs a warning and keeps using it. Such a write may still land later, because a distributed cache
+  has no compare-and-set, so its key is removed again after `CircuitBreakerDuration` (as after a write that failed,
+  once the cache answers). Until then the late value can replace a newer one, and a write that lands after that
+  removal stays until it expires.
 - Entries carry no checksum: damage that still reads as a valid value is served.
 
 ## Serialization
@@ -1351,6 +1370,15 @@ The [HTTP response cache](http-caching.md) has its own contract and works with a
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
 `IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them. Disposing the service provider
 unsubscribes from the backplane; a backplane that stalls delays disposal by at most twice `OperationTimeout`.
+
+## Keep invalidations from being evicted
+
+Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
+stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
+it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
+noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
+them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
+as down and answers from memory. SQL Server removes rows only once they expired.
 
 ## Limits
 
@@ -1745,6 +1773,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
 | Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. |
+| Invalidations evicted from the store | A store that evicts a tag or removal stamp under memory pressure makes the entries it invalidated valid again (for example data cached before a permission change). Run Redis with `maxmemory-policy noeviction` or a Redis of its own; see [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted). |
 | Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Messages from another MethodCache version are rejected with one warning, without logging their contents. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
 ## MethodCache.AspNetCore (admin endpoints)
@@ -2155,7 +2184,7 @@ builder.Services.AddMethodCacheRedis(options =>
 });
 ```
 
-MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
+MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again.
 
 To share a connection your app already has instead:
 
@@ -2176,6 +2205,15 @@ subscriptions (`DisposeAsync` waits for that).
 - Every invalidation is also published on the backplane channel, so every instance drops its in-memory copies at once.
 - Pub/sub delivers nothing while a connection is down. When the connection comes back, the instance clears its in-memory cache and reads entries from Redis again.
 - Keys with unpaired UTF-16 surrogates or backslashes are escaped, so two different keys never share a Redis key. Other keys are stored unchanged.
+
+## Memory and eviction
+
+Invalidations are stored as expiring keys beside the entries. If Redis evicts one under memory pressure, the entries it
+invalidated are served again by every instance until they expire. Set `maxmemory-policy noeviction` on the Redis
+MethodCache uses (or give it a Redis of its own) and enough memory: every MethodCache key has a time to live, so
+`volatile-lru` and the other `volatile-*` policies, the default of some managed Redis services, can evict them too. A
+full Redis with `noeviction` refuses writes, which MethodCache handles like an outage. See
+[Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted).
 
 ## When Redis is down
 
@@ -2291,7 +2329,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 
 ## Internals
 
-- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows. Your app's `IDistributedCache` is left alone.
+- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows: every instance runs one `DELETE` of the rows that expired every 5 minutes (the shortest interval that cache allows), so each delete stays small. With a very large table, keep an index on `ExpiresAtTime` (`dotnet sql-cache create` and `CreateTablesIfMissing` add one). Your app's `IDistributedCache` is left alone.
 - Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
@@ -2726,6 +2764,30 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   `Cache-Control` or `Vary` that doesn't parse is not stored, clients that get caching from
   `ConfigureHttpClientDefaults` keep their own entries, far-future `Expires` no longer overflows, weak ETags stay weak,
   and the URL fragment is not part of the key. HTTP cache keys change, so entries from an earlier build are misses.
+- **Loading and fail-safe**: a value invalidated or replaced while (or just before) its reload ran is no longer
+  served as the fail-safe fallback to callers that joined the reload or a failed background refresh. A factory that
+  requests the key it is loading now throws `InvalidOperationException` instead of hanging that key for every later
+  caller. While a fail-safe value is reused, refresh-ahead no longer retries the method before `retryAfter`.
+- **Refresh-ahead**: a `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` is rejected by
+  `CacheEntryOptions.Builder.Build()` and in `appsettings.json` (startup fails); one that comes from combining
+  sources starts the reload halfway through the entry's life instead of reloading on every read.
+- **Memory cache**: a manager that is never disposed no longer keeps its values (and the execution context of whoever
+  created it) alive through its cleanup timer. `GetOrCreateManyAsync` no longer sends cached keys to the factory with
+  `EnableFastPath = false` or inside a refresh window. The default `ICacheManager.TryGetFast` of a custom manager
+  asks `LookupAsync`, so a cached `0`, `false` or `null` is a hit. `WithDuration`'s error message no longer promises
+  entries that never expire.
+- **Distributed cache**: a tag invalidation or clear another instance announces while a stamp read is on the wire is
+  no longer forgotten (which promoted invalidated entries into memory). Invalidations queued during an outage are
+  stored in batches, so a large backlog drains; more than 10,000, or one the cache keeps refusing, become one clear.
+  On shutdown the queue is tried once more and what is lost is logged. A write that times out no longer opens the
+  circuit breaker for the whole instance. A tag or clear stamp from a server whose clock runs ahead no longer turns
+  every entry written since into a miss.
+- **Redis**: a connection factory that threw once (Redis down at first use) is asked again on the next call instead
+  of failing until restart. The docs now say to run Redis with `maxmemory-policy noeviction`: an evicted invalidation
+  stamp brings invalidated values back.
+- **SQL Server**: a `TagRetention` that ends after 9999-12-31 fails at startup instead of making every tag
+  invalidation fail, and stamp expiry is capped there. Expired rows are deleted every 5 minutes instead of 30, so each
+  delete stays small.
 
 ### If you used a pre-release build from GitHub Packages
 

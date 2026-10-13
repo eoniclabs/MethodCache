@@ -39,6 +39,13 @@ is capped at `OperationTimeout` (one second), a circuit breaker skips it until i
 instead of throwing. Until they are stored, the instance doesn't read entries from it, so an invalidated value can't
 come back. The [health check](monitoring.md#health-check) reports Degraded while this lasts.
 
+Queued invalidations are stored a batch at a time once the cache answers, so a long outage's backlog drains at the
+pace the cache can take. More than 10,000 are replaced by one clear of the distributed cache (logged as a warning),
+and so is an invalidation the cache keeps refusing while it answers everything else, so neither holds up the rest.
+The queue lives in memory: when the instance shuts down, it tries once more to store what is queued, for about one
+`OperationTimeout`, and logs a warning with the number it had to drop. Other instances can read those invalidated
+values from the distributed cache until they expire.
+
 A value set directly while the distributed cache is down stays in that instance's memory, and the value it replaced is
 removed from the distributed cache and the other instances once it is back. An entry that comes back damaged (cut
 short, or unreadable by the serializer) is a miss: your method runs and its result replaces the entry.
@@ -64,11 +71,11 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 
 | Option | Default | |
 |---|---|---|
-| `OperationTimeout` | 1 second | The longest one call to the distributed cache may take. A slower call is abandoned and counts as a failure |
+| `OperationTimeout` | 1 second | The longest one call to the distributed cache may take. A slower call is abandoned and counts as a failure, except a write (see [What other instances see](#what-other-instances-see)) |
 | `CircuitBreakerDuration` | 10 seconds | How long the distributed cache is skipped after a failure or timeout. Invalidations it didn't accept are retried at this interval |
-| `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it |
+| `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
-| `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails |
+| `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | Prefix of every key MethodCache writes. `AddMethodCacheRedis` and `AddMethodCacheSqlServer` set it from their own `KeyPrefix`; give each application its own |
 
 ## What other instances see
@@ -80,9 +87,11 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
   again.
 - An invalidation the distributed cache didn't accept is retried every `CircuitBreakerDuration`. Until the retry
   succeeds, other instances can serve the old value; the instance that invalidated never does.
-- A write that timed out may still land later, because a distributed cache has no compare-and-set. Its key is removed
-  again by the same retry, but until then the late value can replace a newer one, and a write that lands after the
-  retry stays until it expires.
+- A write that timed out (a large value, say) doesn't open the circuit breaker, since the cache may answer everything
+  else: the instance logs a warning and keeps using it. Such a write may still land later, because a distributed cache
+  has no compare-and-set, so its key is removed again after `CircuitBreakerDuration` (as after a write that failed,
+  once the cache answers). Until then the late value can replace a newer one, and a write that lands after that
+  removal stays until it expires.
 - Entries carry no checksum: damage that still reads as a valid value is served.
 
 ## Serialization
@@ -128,6 +137,15 @@ The [HTTP response cache](http-caching.md) has its own contract and works with a
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
 `IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them. Disposing the service provider
 unsubscribes from the backplane; a backplane that stalls delays disposal by at most twice `OperationTimeout`.
+
+## Keep invalidations from being evicted
+
+Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
+stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
+it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
+noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
+them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
+as down and answers from memory. SQL Server removes rows only once they expired.
 
 ## Limits
 
