@@ -644,13 +644,7 @@ namespace MethodCache.Extensibility
         }
 
         private ValueTask<DistributedEntry<T>> ReadDistributedAsync<T>(string key, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var read = _distributed!.TryGetAsync<T>(key);
-            return !cancellationToken.CanBeCanceled || read.IsCompleted
-                ? read
-                : new ValueTask<DistributedEntry<T>>(read.AsTask().WaitAsync(cancellationToken));
-        }
+            => _distributed!.TryGetAsync<T>(key, cancellationToken);
 
         /// <summary>
         /// Looks up a key missing from memory in the distributed cache without running a factory, and stores a hit in
