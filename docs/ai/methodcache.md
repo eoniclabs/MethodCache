@@ -67,6 +67,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,
   prefixed key such as `$"order:{id}"`.
 - Fix every `MC` and `MCG` build diagnostic; each links to its explanation, and many have a code fix.
+- Generated factory registration helpers name their lifetime: `Add…WithCachingSingleton`,
+  `Add…WithCachingScoped` or `Add…WithCachingTransient`. There is no `Add…WithCaching` alias.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
   caching off.
 

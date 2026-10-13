@@ -2,7 +2,6 @@ using System.Diagnostics;
 using BitFaster.Caching;
 using BitFaster.Caching.Lfu;
 using BitFaster.Caching.Lru;
-using MethodCache.Benchmarks.Microbenchmarks.Legacy;
 using MethodCache.Extensibility;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -26,11 +25,6 @@ public static class HitRatioSimulation
     {
         new("MethodCache (W-TinyLFU)", capacity => FromManager(new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity })))),
         new("MethodCache (LRU)", capacity => FromManager(new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.Lru })))),
-        new("Previous engine (LRU)", capacity =>
-        {
-            var legacy = new LegacyInMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.Lru }));
-            return (key => legacy.TryGetFast<string>(key, out _), key => legacy.SetAsync(key, key, Ttl).GetAwaiter().GetResult(), legacy.Dispose);
-        }),
         new("MS MemoryCache (SizeLimit)", capacity =>
         {
             var cache = new MemoryCache(new MsMemoryCacheOptions { SizeLimit = capacity });

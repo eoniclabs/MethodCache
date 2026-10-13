@@ -54,22 +54,6 @@ namespace MethodCache.SourceGenerator
 
                 var interfaceHasCachedMethods = info.HasCachedMethods;
 
-                // Default (Singleton for backward compatibility)
-                sb.AppendLine($"        internal static global::Microsoft.Extensions.DependencyInjection.IServiceCollection Add{baseName}(");
-                sb.AppendLine($"            this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,");
-                sb.AppendLine($"            global::System.Func<global::System.IServiceProvider, {interfaceFqn}> implementationFactory)");
-                sb.AppendLine("        {");
-                if (hasAnyCachedMethods && interfaceHasCachedMethods)
-                {
-                    sb.AppendLine("            GeneratedPolicyRegistrations.AddPolicies(services);");
-                }
-                sb.AppendLine($"            return services.AddSingleton<{interfaceFqn}>(sp =>");
-                sb.AppendLine($"                new {decoratorFqn}(");
-                sb.AppendLine("                    implementationFactory(sp),");
-                sb.AppendLine("                    global::MethodCache.Infrastructure.DecoratorServices.From(sp)));");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-
                 // Explicit lifetime methods
                 var lifetimes = new[] { ("Singleton", "AddSingleton"), ("Scoped", "AddScoped"), ("Transient", "AddTransient") };
                 foreach (var (suffix, method) in lifetimes)

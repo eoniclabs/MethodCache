@@ -136,6 +136,9 @@ dotnet add package MethodCache
 2. Register your services as usual, then call `builder.Services.AddMethodCache()`. It wraps every registered
    interface that has cached methods in its generated decorator and keeps the lifetime you chose.
 
+For an explicit decorator factory, the generated `Add…WithCachingSingleton`, `Add…WithCachingScoped`
+and `Add…WithCachingTransient` helpers require you to choose the lifetime in the method name.
+
 A service registered after `AddMethodCache()` is not cached. If you don't register an implementation at all,
 `AddMethodCache()` registers it as a singleton when it lives in the same project as the interface.
 Generic interfaces such as `IRepository<T>` are cached for each closed type your project implements
@@ -207,7 +210,8 @@ Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
 If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips
 Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly
 during the outage stays in that instance's memory, and the value it replaced is removed everywhere once Redis is back.
-SQL Server tables created by an earlier build need the schema upgrade in the [SQL Server guide](src/MethodCache.SqlServer/README.md).
+SQL Server requires the current table schema, including a non-nullable `binary(32)` backplane scope;
+an incompatible scope column stops table initialization with a clear error. See the [SQL Server guide](src/MethodCache.SqlServer/README.md).
 
 ### Caching code you don't own
 
@@ -405,7 +409,7 @@ Factory registration helpers dispose owned implementations even when their servi
 
 Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
 
 `TagRetention` must exceed `ClockSkewTolerance`; invalid settings fail startup or direct layer construction. L2 entries live at most `TagRetention - ClockSkewTolerance` from their source read, capped further by their policy duration.
 

@@ -128,7 +128,7 @@ public class SourceGeneratorTestEngine
 
     private void RegisterGeneratedServices(IServiceCollection services, Assembly assembly, Action<string>? logger = null)
     {
-        // Look for generated extension methods like AddITestServiceWithCaching
+        // Look for generated extension methods like AddITestServiceWithCachingSingleton
         var extensionTypes = assembly.GetTypes()
             .Where(t => t.IsStatic() && t.Name.Contains("Extensions"))
             .ToList();
@@ -138,7 +138,7 @@ public class SourceGeneratorTestEngine
         foreach (var extensionType in extensionTypes)
         {
             var methods = extensionType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-                .Where(m => m.Name.StartsWith("Add") && m.Name.EndsWith("WithCaching"))
+                .Where(m => m.Name.StartsWith("Add") && m.Name.EndsWith("WithCachingSingleton", StringComparison.Ordinal))
                 .ToList();
 
             logger?.Invoke($"Found {methods.Count} registration methods in {extensionType.Name}: {string.Join(", ", methods.Select(m => m.Name))}");
@@ -152,7 +152,7 @@ public class SourceGeneratorTestEngine
             {
                 try
                 {
-                    // Call the generated AddXWithCaching method
+                    // Call the generated AddXWithCachingSingleton method
                     // These methods typically take (IServiceCollection, Func<IServiceProvider, object>)
                     var parameters = method.GetParameters();
                     if (parameters.Length == 2 &&
@@ -221,9 +221,9 @@ namespace {namespaceName}
 
     private Type? GetServiceTypeFromMethod(MethodInfo method)
     {
-        // Extract interface type from method name like AddIUserServiceWithCaching
+        // Extract interface type from method name like AddIUserServiceWithCachingSingleton
         var serviceName = method.Name.Substring(3); // Remove "Add"
-        serviceName = serviceName.Substring(0, serviceName.Length - 12); // Remove "WithCaching"
+        serviceName = serviceName.Substring(0, serviceName.Length - "WithCachingSingleton".Length);
 
         // The service type should be in the test assembly, not the extension assembly
         // Look at the method's parameter types to find the correct type

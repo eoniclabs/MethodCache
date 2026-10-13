@@ -171,7 +171,7 @@ public class SignatureCorpusTests
                     public static async Task<int> RunAsync() {
                         var services = new ServiceCollection();
                         services.AddMethodCache();
-                        services.AddISvcWithCaching(_ => new Svc());
+                        services.AddISvcWithCachingSingleton(_ => new Svc());
                         await using (var provider = services.BuildServiceProvider()) {
                             provider.GetRequiredService<ISvc>().Get(1);
                         }

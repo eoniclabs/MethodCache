@@ -25,6 +25,9 @@ builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
 
+`AddMethodCache()` preserves your service's registered lifetime. For an explicit decorator factory, use
+`Add…WithCachingSingleton`, `Add…WithCachingScoped` or `Add…WithCachingTransient` to choose the lifetime.
+
 Non-public default interface helpers are supported. Interfaces with non-public abstract members report `MCG013`.
 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments, and values of different types never share a key, nested ones included, with exact UTF-16 string identity across key generators. Generic interfaces such as `IRepository<User>` and interfaces nested in generic types work too, including escaped keyword and reserved-looking parameter names.
@@ -61,7 +64,7 @@ Factory registration helpers dispose owned implementations even when their servi
 
 Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.
 
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
+Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. Only supported message type numbers are decoded as encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
 
 `TagRetention` must exceed `ClockSkewTolerance`; invalid settings fail startup or direct layer construction. L2 entries live at most `TagRetention - ClockSkewTolerance` from their source read, capped further by their policy duration.
 

@@ -32,15 +32,16 @@ This framework provides **two distinct comparison approaches** to address the fu
 MethodCache uses **compile-time source generation** to create optimized caching code, while other frameworks use **runtime abstractions** (proxies, interceptors, decorators). This fundamental difference creates a measurement challenge:
 
 **Through Adapter Interface** (`ICacheAdapter`): every library, MethodCache included, goes through the same generic
-`string key` interface, so MethodCache pays for runtime key and policy handling that generated code does at compile
-time. Its adapter numbers are higher than in real use.
+`string key` interface, and each adapter adds its own work. The runtime-key adapter builds policies and generates keys per operation;
+the manual-key adapter uses raw storage keys. The SourceGen adapter calls generated get-or-create methods,
+while its ordinary lookup reads storage directly.
 
 **Real Usage** (source-generated code): MethodCache runs the decorator the source generator writes for the method.
 This is what an application gets; [docs/benchmarks.md](../../../docs/benchmarks.md) has the measured numbers.
 
 ### The Root Cause: Key and Policy Handling at Run Time
 
-Through an adapter, MethodCache builds a runtime policy and passes the key through `ICacheManager` on every
+The runtime-key adapter builds a runtime policy and passes the key through `ICacheManager` on every
 operation. A generated decorator has the method's policy and key layout fixed at compile time, writes the key into a
 stack buffer and looks it up without making a string.
 
@@ -69,7 +70,7 @@ public interface ICacheAdapter : IDisposable
 
 Each library has a dedicated adapter that translates between the common interface and the library's native API:
 
-- `MethodCacheAdapter` - Uses ICacheManager directly
+- `RuntimeKeyMethodCacheAdapter` - Uses ICacheManager and generates a storage key on each operation
 - `FusionCacheAdapter` - Wraps FusionCache
 - `LazyCacheAdapter` - Wraps LazyCache/IAppCache
 - `EasyCachingAdapter` - Wraps IEasyCachingProvider
@@ -143,7 +144,7 @@ We acknowledge both comparisons are valuable but serve different purposes:
 - **Academic interest** - Analyzing design tradeoffs
 
 ### ❌ Never:
-- Use adapter-based results to claim MethodCache is slower than other frameworks
+- Treat measurements from different access paths as equivalent application workloads
 - Compare real-usage MethodCache numbers to adapter-based other framework numbers
 - Mix results from both comparison types in the same analysis
 
@@ -253,6 +254,6 @@ When adding new comparison scenarios:
 
 ## References
 
-- **FusionCache Benchmarks**: `/Users/johan/dev/FusionCache/benchmarks`
-- **MethodCache Core**: `../MethodCache.Core`
+- **Cache access paths**: [CACHE_ACCESS_PATHS.md](../CACHE_ACCESS_PATHS.md)
+- **MethodCache Core**: [src/MethodCache.Core](../../../src/MethodCache.Core)
 - **Benchmark Best Practices**: https://benchmarkdotnet.org/articles/guides/good-practices.html

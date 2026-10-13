@@ -40,7 +40,7 @@ public class SourceGenSyncPathProfiler
 
 
         services.AddSingleton<MethodCacheBenchmarkService>();
-        services.AddIMethodCacheBenchmarkServiceWithCaching(sp =>
+        services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp =>
             sp.GetRequiredService<MethodCacheBenchmarkService>());
 
         var serviceProvider = services.BuildServiceProvider();
@@ -67,7 +67,7 @@ public class SourceGenSyncPathProfiler
     }
 
     // ========================================================================
-    // Layer 1: Raw cache manager call (should be ~200ns)
+    // Layer 1: Raw cache manager call
     // ========================================================================
 
     [Benchmark(Baseline = true, Description = "Direct TryGetFastAsync (raw cache)")]
@@ -82,7 +82,7 @@ public class SourceGenSyncPathProfiler
     }
 
     // ========================================================================
-    // Layer 2: Through generated decorator async (should be ~300-400ns)
+    // Layer 2: Through generated decorator async
     // ========================================================================
 
     [Benchmark(Description = "SourceGen GetAsync (async path)")]

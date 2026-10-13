@@ -13,17 +13,6 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     internal static class GeneratedCachingServiceCollectionExtensions
     {
-        internal static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddICatalogWithCaching(
-            this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
-            global::System.Func<global::System.IServiceProvider, global::App.ICatalog> implementationFactory)
-        {
-            GeneratedPolicyRegistrations.AddPolicies(services);
-            return services.AddSingleton<global::App.ICatalog>(sp =>
-                new global::App.ICatalogDecorator(
-                    implementationFactory(sp),
-                    global::MethodCache.Infrastructure.DecoratorServices.From(sp)));
-        }
-
         internal static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddICatalogWithCachingSingleton(
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
             global::System.Func<global::System.IServiceProvider, global::App.ICatalog> implementationFactory)
