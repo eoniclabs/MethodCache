@@ -97,3 +97,5 @@ Tracing counts cached `null` values as hits, including nullable value types.
 Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
 
 OpenTelemetry instruments the unkeyed `ICacheManager` registration and leaves unrelated keyed managers untouched. A keyed-only registration does not satisfy its requirement for a default manager.
+
+OpenTelemetry preserves the original cache manager registration lifetime and DI disposal ownership. Type/factory-created managers remain container-owned; supplied instances remain caller-owned, including asynchronous disposal.
