@@ -13,6 +13,8 @@ namespace MethodCache
     {
         private const string FluentMethodName = "MethodCache.Fluent";
         private const string BulkMethodName = "MethodCache.Fluent.Bulk";
+        private static readonly CacheRuntimePolicy LookupPolicy = CacheRuntimePolicy.Empty(FluentMethodName);
+        private static readonly ICacheKeyGenerator LookupKeyGenerator = new ExplicitKeyGenerator();
 
         // Distributed lookups a bulk read runs at once, so a large batch doesn't exhaust the cache's connections
         private const int MaxConcurrentDistributedReads = 8;
@@ -119,9 +121,12 @@ namespace MethodCache
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return new ValueTask<CacheLookupResult<T>>(cacheManager.TryGetFast<T>(VersionedKey(key, version), out var value)
-                ? CacheLookupResult<T>.Hit(value!)
-                : CacheLookupResult<T>.Miss);
+            return cacheManager.LookupAsync<T>(VersionedKey(key, version), Array.Empty<object>(), LookupPolicy, LookupKeyGenerator);
+        }
+
+        private sealed class ExplicitKeyGenerator : ICacheKeyGenerator
+        {
+            public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy) => methodName;
         }
 
         /// <summary>
