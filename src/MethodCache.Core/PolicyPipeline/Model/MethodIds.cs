@@ -61,6 +61,7 @@ internal static class MethodIds
         if (definition.IsGenericMethod)
         {
             definition = definition.GetGenericMethodDefinition();
+            builder.Append("``").Append(definition.GetGenericArguments().Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         builder.Append('(');
