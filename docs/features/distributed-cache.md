@@ -22,7 +22,9 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 - Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before
   running your method, and a new result is written to both.
 - Invalidating a key or tag removes it from the distributed cache, and a backplane tells every other instance to drop
-  its in-memory copy at once: Redis pub/sub, or a table that SQL Server instances poll.
+  its in-memory copy: at once with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
+- Only Redis and Microsoft SQL Server have packages. Another store, such as PostgreSQL, needs a
+  [custom provider](#custom-distributed-caches).
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 - A buffer-capable distributed cache fills an owned entry buffer which the deserializer reads directly, without an
@@ -114,24 +116,9 @@ Without a backplane, other instances keep their in-memory copy of an invalidated
 
 ## Package guides
 
-SQL Server backplane publication, polling and retention cleanup are isolated by `KeyPrefix` even when
-applications share the same tables. Scope matching is case-sensitive and independent of SQL collation.
-Rows of other prefixes don't cost a poll extra queries: identity values they take are known to be committed,
-so only values no row holds are watched for a late commit. Cleanup also removes unscoped rows from an earlier
-build once they are older than `BackplaneRetention`; rows of a prefix no application uses any more are left
-for you to delete.
-Failed SQL Server backplane callbacks are retried before their rows are acknowledged, including late gap
-messages and recovery clears; one that still fails after five polls is replaced by a clear of that instance's
-memory, so later messages aren't held back. See the SQL Server guide for the schema migration required by an existing
-invalidations table.
-
 The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/MethodCache.SqlServer/README.md) READMEs
-cover their options, shared connections, table creation and outage settings.
-
-SQL Server stores cache IDs as `mc:` followed by a SHA-256 hash of the exact UTF-16 key. This keeps
-trailing spaces, NULs and different Unicode representations distinct despite SQL collation, and
-gives keys and tags of any length a fixed-size ID. On upgrade, old unhashed cache rows become misses
-and expire normally; upgrade all instances sharing a prefix together.
+cover their options, shared connections, table creation, outage settings and how each stores keys and invalidations.
+The SQL Server guide also compares the two and has the schema migration for an existing invalidations table.
 
 ## Behavior and compatibility
 
