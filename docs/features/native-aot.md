@@ -39,7 +39,8 @@ for you, because one source generator can't see another generator's output.
 Under Native AOT, give cached methods arguments that the decorator writes into the key itself:
 
 - simple values (strings, numbers, `bool`, `Guid`, dates, enums),
-- records, classes and structs whose public properties and fields are simple values,
+- records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
+  type (a sealed type is safest: an instance of a derived class goes through the key generator),
 - types that implement `ICacheKeyProvider`.
 
 Other arguments, such as arrays, lists and dictionaries, go through the key generator, which serializes them with

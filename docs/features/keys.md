@@ -89,7 +89,8 @@ public interface IDocumentStore
 ```
 <!-- endSnippet -->
 
-Strings are used as they are and other values are written in the invariant culture. The key is not escaped and has no
+Strings are used as they are. Numbers, dates and other formattable values are written in the invariant culture;
+any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
 prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
 your own code builds, never for text a caller controls; see [Security](../security.md).
 

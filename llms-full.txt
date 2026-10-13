@@ -344,7 +344,8 @@ public interface IDocumentStore
 }
 ```
 
-Strings are used as they are and other values are written in the invariant culture. The key is not escaped and has no
+Strings are used as they are. Numbers, dates and other formattable values are written in the invariant culture;
+any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
 prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
 your own code builds, never for text a caller controls; see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
@@ -1591,7 +1592,8 @@ for you, because one source generator can't see another generator's output.
 Under Native AOT, give cached methods arguments that the decorator writes into the key itself:
 
 - simple values (strings, numbers, `bool`, `Guid`, dates, enums),
-- records, classes and structs whose public properties and fields are simple values,
+- records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
+  type (a sealed type is safest: an instance of a derived class goes through the key generator),
 - types that implement `ICacheKeyProvider`.
 
 Other arguments, such as arrays, lists and dictionaries, go through the key generator, which serializes them with
