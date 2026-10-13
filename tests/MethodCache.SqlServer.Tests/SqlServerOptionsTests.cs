@@ -67,6 +67,32 @@ public class SqlServerOptionsTests
     }
 
     [Fact]
+    public async Task Startup_DoesNotRunTableCreationOnTheCallingThread()
+    {
+        // SqlClient can block before its first await; if that ran inside StartAsync, StartupWait would not bound it
+        var options = new SqlServerOptions { ConnectionString = "Server=127.0.0.1,1" };
+        var ranOnCaller = false;
+        var tables = new SqlServerTables(options, createTables: (_, _) =>
+        {
+            ranOnCaller = _insideStartAsync;
+            return Task.CompletedTask;
+        });
+
+        _insideStartAsync = true;
+        var start = tables.StartAsync(CancellationToken.None);
+        _insideStartAsync = false;
+        await start;
+        await tables.Creating!;
+
+        ranOnCaller.Should().BeFalse();
+        await tables.StopAsync(CancellationToken.None);
+        tables.Dispose();
+    }
+
+    [ThreadStatic]
+    private static bool _insideStartAsync;
+
+    [Fact]
     public async Task DisposeWithoutStop_StopsTheRetries()
     {
         var options = new SqlServerOptions { ConnectionString = "Server=127.0.0.1,1;Connect Timeout=1;TrustServerCertificate=true" };
