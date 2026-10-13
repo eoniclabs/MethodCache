@@ -250,6 +250,10 @@ namespace MethodCache.Core.Runtime.Distributed
             var lifetimeMilliseconds = expiresAt - now;
             if (lifetimeMilliseconds <= 0)
             {
+                if (replaces)
+                {
+                    await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                }
                 return;
             }
 
