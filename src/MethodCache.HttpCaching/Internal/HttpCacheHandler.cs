@@ -365,24 +365,28 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         using var mergedResponse = entry.ToHttpResponse(request);
         if (IsStorable(request, mergedResponse, options))
         {
-            // The origin answered: failing to refresh a response that may still be stored doesn't fail the request.
-            // Removing one that may no longer be stored (below) does, so it is never served again.
+            // The origin answered: failing to refresh the response doesn't fail the request. The old entry
+            // may carry the old freshness and Vary rules, though, so it is removed instead (and that must work).
             try
             {
                 await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
+                return;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Failed to update the cached response for {Uri}", request.RequestUri);
+                _logger.LogWarning(ex, "Failed to update the cached response for {Uri}; removing it", request.RequestUri);
             }
         }
-        else
-        {
-            // Remove the URL index too, so previously stored variants cannot be reused, and start a new
-            // generation, so a response another request fetched earlier cannot be published afterwards.
-            await _storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
-            await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
-        }
+
+        await RemoveUrlAsync(urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Remove the URL index too, so previously stored variants cannot be reused, and start a new
+    // generation, so a response another request fetched earlier cannot be published afterwards.
+    private async ValueTask RemoveUrlAsync(string urlKey, string cacheKey, CancellationToken cancellationToken)
+    {
+        await _storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+        await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
     }
 
     private async ValueTask StoreAsync(

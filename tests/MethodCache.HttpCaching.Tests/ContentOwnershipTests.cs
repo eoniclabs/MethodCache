@@ -120,6 +120,51 @@ public class ContentOwnershipTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetAsync("https://example.test/content"));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ForcedRevalidation_StorageFails_RemovesTheOldEntry(bool removalFails)
+    {
+        var clock = new FakeTimeProvider();
+        var backing = HttpCacheTestFactory.CreateInMemoryStorage(timeProvider: clock);
+        var storage = Substitute.For<IHttpCacheStorage>();
+        var fail = false;
+        storage.GetGenerationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(c => backing.GetGenerationAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
+        storage.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(c => backing.GetAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
+        storage.SetAsync(Arg.Any<string>(), Arg.Any<HttpCacheEntry>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(c => fail ? ValueTask.FromException(new InvalidOperationException("storage failed")) :
+                backing.SetAsync(c.ArgAt<string>(0), c.ArgAt<HttpCacheEntry>(1), c.ArgAt<TimeSpan>(2), c.ArgAt<CancellationToken>(3)));
+        storage.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(c => removalFails ? ValueTask.FromException(new InvalidOperationException("removal failed")) :
+                backing.RemoveAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
+        storage.InvalidateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(c => backing.InvalidateAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
+        var first = Fresh(new StringContent("cached"));
+        first.Headers.ETag = new EntityTagHeaderValue("\"version\"");
+        // The 304 changes the policy of a response that is still fresh: it now varies by caller
+        var notModified = new HttpResponseMessage(HttpStatusCode.NotModified);
+        notModified.Headers.Vary.Add("Authorization");
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions { IsSharedCache = true },
+            new Origin(first, notModified, Fresh(new StringContent("new"))), storage, clock));
+        using (await client.GetAsync("https://example.test/content")) { }
+        fail = true;
+        using var forced = new HttpRequestMessage(HttpMethod.Get, "https://example.test/content");
+        forced.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+
+        if (removalFails)
+        {
+            // The old entry can't be refreshed or removed, so the caller must know
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.SendAsync(forced));
+            return;
+        }
+
+        using (await client.SendAsync(forced)) { }
+        // The old entry, with the old Vary rules, is gone
+        Assert.Equal("new", await client.GetStringAsync("https://example.test/content"));
+    }
+
     private static HttpResponseMessage Fresh(HttpContent content) => new(HttpStatusCode.OK)
     {
         Content = content,
