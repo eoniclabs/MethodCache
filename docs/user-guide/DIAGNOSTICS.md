@@ -1,4 +1,4 @@
-# Build Diagnostics
+# Build diagnostics
 
 MethodCache checks your attributes when you build. Errors mean the method would not be cached as written, so the
 build stops; warnings point at attributes that do nothing. Every diagnostic links to its section below, and the ones
@@ -98,7 +98,8 @@ stored in a cache; use an array, `Memory<T>` or a string.
 ## MCG009
 
 A tag such as `"user:{userId}"` names a parameter the method does not have, so the braces stay literal text and every
-call shares that tag. The name between the braces must match a parameter name (case doesn't matter).
+call shares that tag. The name between the braces must match a parameter name: the exact spelling first, otherwise a
+single case-insensitive match. A name that matches several parameters only by case is [MCG016](#mcg016).
 
 A template takes a parameter name only; a property path such as `"{product.Id}"` is reported as [MCG015](#mcg015).
 
@@ -107,12 +108,13 @@ A template takes a parameter name only; a property path such as `"{product.Id}"`
 ## MCG010
 
 `[assembly: CacheInterface]` names a type MethodCache can't decorate: a class, a generic interface, an interface that
-is not accessible, one with static abstract members, or one declared in your own project (put `[Cache]` on its methods
+is not accessible, one with static abstract or non-public abstract members, or one declared in your own project (put `[Cache]` on its methods
 instead). It is also reported when the attribute lists no methods. See the [third-party caching page](../features/third-party.md).
 
 ## MCG011
 
-`[assembly: CacheInterface]` lists a method that is missing, overloaded, or returns nothing to cache. Use
+`[assembly: CacheInterface]` lists a method that is missing, overloaded or static, or one that `[Cache]` would reject:
+it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, or returns a lazy sequence. Use
 `nameof(IClient.Method)` so a rename is caught by the compiler. See the
 [third-party caching page](../features/third-party.md).
 
@@ -123,9 +125,9 @@ methods in the same attribute.
 
 ## MCG013
 
-Nested helper type declarations are supported and do not count as abstract service members.
-
-The interface has static abstract members, or non-public abstract members that cannot be forwarded to the decorated instance. Move the cached methods to an interface without them. Non-public default helpers are supported because they remain on the interface.
+The interface has static abstract members, or non-public abstract members that cannot be forwarded to the decorated
+instance. Move the cached methods to an interface without them. Non-public default methods are supported because they
+remain on the interface, and so are nested helper types declared inside the interface.
 
 ## MCG014
 
@@ -144,4 +146,6 @@ attribute.
 
 ## MCG016
 
-The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for parameters `name` and `Name`. Use the intended parameter’s exact spelling. Until corrected, the placeholder remains literal in both cached tags and invalidation.
+The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for
+parameters `name` and `Name`. Use the intended parameter's exact spelling. Until corrected, the placeholder remains
+literal in both cached tags and invalidation.

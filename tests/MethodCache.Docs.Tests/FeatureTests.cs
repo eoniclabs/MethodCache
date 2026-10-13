@@ -41,7 +41,51 @@ public class FeatureTests(ITestOutputHelper output)
 
         Assert.Contains("MyApp.IUserService.GetAsync:42", keys);
         Assert.Contains("MyApp.IUserService.SearchAsync:(alice:2)", keys);
-        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.ByIdsAsync:", StringComparison.Ordinal) && !k.Contains(','));
+        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.ByIdsAsync:11b474c4", StringComparison.Ordinal) && !k.Contains(','));
+    }
+
+    private sealed class Invoices : IInvoiceService
+    {
+        public Task<Invoice> GetAsync(int id) => Task.FromResult(new Invoice(id));
+        public Task<Invoice> FindAsync(int id) => Task.FromResult(new Invoice(id));
+        public Task<Invoice> FindAsync(string number) => Task.FromResult(new Invoice(7));
+    }
+
+    [Fact]
+    public async Task Keys_MethodCacheKeysMatchVersionedAndOverloadedMethods()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IInvoiceService, Invoices>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var invoices = provider.GetRequiredService<IInvoiceService>();
+        await invoices.GetAsync(42);
+        await invoices.FindAsync("INV-7");
+
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "MyApp.IInvoiceService").Select(e => e.Key).ToList();
+        var (versioned, overload) = KeyExamples.Build();
+        Assert.Equal("MyApp.IInvoiceService.GetAsync:v2:42", versioned);
+        Assert.Equal("MyApp.IInvoiceService.FindAsync(string):INV-7", overload);
+        Assert.Contains(versioned, keys);
+        Assert.Contains(overload, keys);
+    }
+
+    private sealed class Documents : IDocumentStore
+    {
+        public Task<byte[]> GetAsync(string key) => Task.FromResult(new byte[] { 1 });
+    }
+
+    [Fact]
+    public async Task Keys_RawKeyArgumentIsTheWholeKey()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IDocumentStore, Documents>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        await provider.GetRequiredService<IDocumentStore>().GetAsync("doc:2026/report.pdf");
+
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries().Select(e => e.Key).ToList();
+        Assert.Contains("doc:2026/report.pdf", keys);
     }
 
     private sealed class Orders : IOrderService
