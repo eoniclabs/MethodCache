@@ -38,3 +38,5 @@ Generated decorators qualify framework and cache infrastructure type names globa
 Cached interfaces may declare nested helper interfaces and abstract types. These declarations do not trigger MCG013.
 
 Generated runtime type checks use the same generic-parameter aliases as decorator signatures, including unsealed generic argument types whose simple members form inline cache keys.
+
+The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
