@@ -14,7 +14,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG004](#mcg004) | Error | `[Cache]` and `[CacheInvalidate]` on the same method | |
 | [MCG005](#mcg005) | Warning | `[CacheInvalidate]` without tags | |
 | [MCG006](#mcg006) | Error | `[Cache]` with pointer or function pointer parameters or returns, including arrays of them | Remove `[Cache]` |
-| [MCG007](#mcg007) | Error | `[Cache]` with ref struct parameters or returns | Remove `[Cache]` |
+| [MCG007](#mcg007) | Error | `[Cache]` with ref struct or potentially ref-like parameters or returns | Remove `[Cache]` |
 | [MCG009](#mcg009) | Warning | A tag names a parameter the method does not have | Use the closest parameter |
 | [MCG010](#mcg010) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
 | [MCG011](#mcg011) | Error | `[assembly: CacheInterface]` lists a method it can't cache | |
@@ -93,7 +93,7 @@ any other member of the interface that uses a pointer, are still forwarded throu
 ## MCG007
 
 `[Cache]` on a method with `Span<T>`, `ReadOnlySpan<T>` or other ref struct parameters or returns. These cannot be
-stored in a cache; use an array, `Memory<T>` or a string.
+stored in a cache; use an array, `Memory<T>` or a string. This also applies to a type parameter with `allows ref struct` when that parameter is used as an argument or return value.
 
 ## MCG009
 

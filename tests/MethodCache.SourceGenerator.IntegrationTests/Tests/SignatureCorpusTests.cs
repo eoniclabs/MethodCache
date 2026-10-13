@@ -172,6 +172,40 @@ public class SignatureCorpusTests
         Assert.Equal(2, (int)compiled.Assembly.GetType("Scenario")!.GetMethod("Run")!.Invoke(null, null)!);
     }
 
+#if NET9_0_OR_GREATER
+    [Fact]
+    public async Task RefStructAllowanceReview_HandlesAnUnusedMethodTypeArgument()
+    {
+        var source = new Shape("public interface ISvc { [Cache] int Get<T>(int id) where T : allows ref struct; } public class Svc : ISvc { public int Get<T>(int id) where T : allows ref struct { Counter.Hit(); return id; } }", "ISvc", "s.Get<Span<int>>(1)", "s.Get<Span<int>>(2)").ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RefStructMethodAllowance", LanguageVersion.Latest);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
+    }
+
+    [Theory]
+    [InlineData("int Get<T>(T input) where T : allows ref struct;", "public int Get<T>(T input) where T : allows ref struct => 0;")]
+    [InlineData("T Get<T>(int input) where T : allows ref struct;", "public T Get<T>(int input) where T : allows ref struct => default;")]
+    public async Task RefStructAllowanceReview_RejectsPotentiallyRefLikeCachedValues(string member, string implementation)
+    {
+        var source = $$"""
+            using MethodCache;
+            public interface ISvc { [Cache] int Ping(int id); [Cache] {{member}} }
+            public class Svc : ISvc { public int Ping(int id) => id; {{implementation}} }
+            """;
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RefStructValueAllowance", LanguageVersion.Latest);
+        Assert.Contains(compiled.Diagnostics, d => d.Id == "MCG007");
+    }
+
+    [Fact]
+    public async Task RefStructAllowanceReview_HandlesAnInterfaceWithAnUnusedRefStructTypeArgument()
+    {
+        var source = new Shape("public interface ISvc<T> where T : allows ref struct { [Cache] int Get(int id); } public class Svc : ISvc<Span<int>> { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc<Span<int>>", "s.Get(1)", "s.Get(2)").ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RefStructAllowanceReview", LanguageVersion.Latest);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
+    }
+#endif
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

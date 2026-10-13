@@ -13,6 +13,14 @@ namespace MethodCache.SourceGenerator
         // ======================== Utilities ========================
         private static class Utils
         {
+            // Keep the Roslyn 4.8 build baseline while reading the semantic flag on C# 13+ hosts,
+            // including constraints imported from metadata rather than source syntax.
+            private static readonly System.Reflection.PropertyInfo? AllowsRefLikeTypeProperty =
+                typeof(ITypeParameterSymbol).GetProperty("AllowsRefLikeType");
+
+            internal static bool AllowsRefLikeType(ITypeParameterSymbol parameter)
+                => AllowsRefLikeTypeProperty?.GetValue(parameter) is true;
+
             internal static readonly SymbolDisplayFormat FullyQualifiedFormat = new(
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
