@@ -75,12 +75,16 @@ the key generator, which writes their value, in an argument of their own or insi
 - `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`
 - `Uri`, `Version`, `IPAddress` (`IPAddress.Loopback` and `IPAddress.Parse("127.0.0.1")` share a key)
 - `JsonElement`, as its JSON, so `{"a":1}` and `{ "a": 1 }` share a key
+- `Index`, `Range`, `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane`, `Matrix3x2`, `Matrix4x4`
+- ASP.NET Core's `PathString`, `QueryString` and `HostString`
 - arrays, collections, `Memory<T>`, `Tuple`, `ValueTuple` and `KeyValuePair` of these
 
-Any other type from the `System` or `Microsoft` namespaces in a key, such as `StringBuilder` (which can change after
+Any other type from .NET itself, ASP.NET Core or Microsoft.Extensions in a key (one from an assembly named
+`System.*`, `Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`), such as `StringBuilder` (which can change after
 the call), `CultureInfo`, `Stream`, `Type` or a delegate, is build error
 [MCG018](../user-guide/DIAGNOSTICS.md#mcg018), also as a property of your own record. Pass a value that identifies
-it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`.
+it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`. Other libraries' models, such
+as an SDK's classes in a `Microsoft.*` namespace, are written by their public properties like your own types.
 
 ## Readable keys while debugging
 
@@ -116,8 +120,10 @@ public interface IDocumentStore
 ```
 <!-- endSnippet -->
 
-Strings are used as they are. Dates are written in the round-trip format (`2026-01-01T12:00:00.2500000Z`), so
-fractions of a second and the `Kind` or offset are part of the key. Numbers and other formattable values are written in the invariant culture;
+Strings are used as they are. Dates are written as in generated keys (`MethodCacheKeys.Part`), in the round-trip
+format (`2026-01-01T12:00:00.2500000Z`): fractions of a second and a `DateTimeOffset`'s offset are part of the key,
+and a local `DateTime` is written as UTC, so the key doesn't depend on the server's time zone and a local time and the
+UTC time of the same instant share an entry. Numbers and other formattable values are written in the invariant culture;
 any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
 prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
 your own code builds, never for text a caller controls; see [Security](../security.md).

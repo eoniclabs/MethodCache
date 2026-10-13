@@ -31,6 +31,18 @@ namespace MethodCache.SourceGenerator
             "System.Numerics.Complex",
             "System.Net.IPAddress",
             "System.Text.Json.JsonElement",
+            "System.Index",
+            "System.Range",
+            "System.Numerics.Vector2",
+            "System.Numerics.Vector3",
+            "System.Numerics.Vector4",
+            "System.Numerics.Quaternion",
+            "System.Numerics.Plane",
+            "System.Numerics.Matrix3x2",
+            "System.Numerics.Matrix4x4",
+            "Microsoft.AspNetCore.Http.PathString",
+            "Microsoft.AspNetCore.Http.QueryString",
+            "Microsoft.AspNetCore.Http.HostString",
         };
 
         /// <summary>Framework types whose type arguments are written in their place.</summary>
@@ -49,16 +61,19 @@ namespace MethodCache.SourceGenerator
             "System.Tuple`8",
         };
 
-        /// <summary>A type from the framework's or Microsoft's own namespaces, such as System.Text.StringBuilder.</summary>
+        /// <summary>
+        /// A type from .NET itself, ASP.NET Core or Microsoft.Extensions, such as System.Text.StringBuilder, told by the
+        /// assembly it comes from. A namespace would not do: SDKs such as Microsoft Graph put their own models in
+        /// Microsoft.* namespaces, and those are written by their properties like any other class.
+        /// </summary>
         internal static bool IsFrameworkType(ITypeSymbol type)
         {
-            var ns = type.ContainingNamespace;
-            while (ns is { ContainingNamespace.IsGlobalNamespace: false })
-            {
-                ns = ns.ContainingNamespace;
-            }
-
-            return ns is { IsGlobalNamespace: false, Name: "System" or "Microsoft" };
+            var assembly = type.ContainingAssembly?.Name;
+            return assembly is "mscorlib" or "netstandard" or "System" ||
+                   assembly?.StartsWith("System.", System.StringComparison.Ordinal) == true ||
+                   assembly?.StartsWith("Microsoft.AspNetCore.", System.StringComparison.Ordinal) == true ||
+                   assembly?.StartsWith("Microsoft.Extensions.", System.StringComparison.Ordinal) == true ||
+                   assembly?.StartsWith("Microsoft.Win32.", System.StringComparison.Ordinal) == true;
         }
 
         private static string MetadataName(INamedTypeSymbol type)

@@ -220,6 +220,7 @@ namespace {namespaceName}
             "System.Net.Primitives",
             "System.Text.Json",
             "System.Private.Uri",
+            "System.Numerics.Vectors",
         };
 
         foreach (var assemblyName in assemblyNames)

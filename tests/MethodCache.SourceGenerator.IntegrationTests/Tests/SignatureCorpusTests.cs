@@ -758,8 +758,8 @@ public class SignatureCorpusTests
         ["DateTimeOffset ticks"] = Member("Task<string> Get(DateTimeOffset at)", "Task<string> Get(DateTimeOffset at) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero))", "await s.Get(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero).AddTicks(1))"),
         ["raw key DateTime sub-second apart"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(at.ToString(\"O\")); }",
             "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc).AddMilliseconds(250))"),
-        ["raw key DateTime UTC and local"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(at.ToString(\"O\")); }",
-            "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Local))"),
+        ["raw key DateTime UTC and unspecified"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(at.ToString(\"O\")); }",
+            "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Unspecified))"),
         ["raw key DateTimeOffset sub-second apart"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTimeOffset? at)", "Task<string> Get(DateTimeOffset? at) { Counter.Hit(); return Task.FromResult(\"v\"); }",
             "await s.Get(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero))", "await s.Get(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero).AddMilliseconds(250))"),
         ["TimeSpan"] = Member("Task<string> Get(TimeSpan window)", "Task<string> Get(TimeSpan window) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(TimeSpan.FromSeconds(1))", "await s.Get(TimeSpan.FromSeconds(2))"),
@@ -1246,6 +1246,35 @@ public class SignatureCorpusTests
         ["record with a BigInteger and an IPAddress"] = Member("Task<string> Get(Account account)", "Task<string> Get(Account account) { Counter.Hit(); return Task.FromResult(\"v\"); }",
             "await s.Get(new Account(new BigInteger(3), IPAddress.Loopback))", "await s.Get(new Account(new BigInteger(5), IPAddress.Loopback))",
             extraTypes: "public sealed record Account(BigInteger Balance, IPAddress Origin);", usings: "using System.Net;\nusing System.Numerics;"),
+        ["Index and Range parameters"] = Member("Task<string> Get(Index at, Range span)", "Task<string> Get(Index at, Range span) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1, 1..3)", "await s.Get(^1, 1..3)"),
+        ["Range parameter from the end"] = Member("Task<string> Get(Range span)", "Task<string> Get(Range span) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1..3)", "await s.Get(1..^3)"),
+        ["Vector2 parameter"] = Member("Task<string> Get(Vector2 at)", "Task<string> Get(Vector2 at) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new Vector2(1, 2))", "await s.Get(new Vector2(2, 1))", usings: "using System.Numerics;"),
+        ["Quaternion parameter"] = Member("Task<string> Get(Quaternion rotation)", "Task<string> Get(Quaternion rotation) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new Quaternion(1, 2, 3, 4))", "await s.Get(new Quaternion(1, 2, 3, 5))", usings: "using System.Numerics;"),
+        ["Matrix4x4 parameter"] = Member("Task<string> Get(Matrix4x4 transform)", "Task<string> Get(Matrix4x4 transform) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(Matrix4x4.CreateScale(2))", "await s.Get(Matrix4x4.CreateScale(3))", usings: "using System.Numerics;"),
+        ["SDK model in a Microsoft namespace"] = new("""
+            }
+
+            namespace Microsoft.Graph.Models
+            {
+                public sealed class User
+                {
+                    public string Id { get; set; } = "";
+                    public string DisplayName { get; set; } = "";
+                }
+            }
+
+            namespace Corpus
+            {
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(Microsoft.Graph.Models.User user);
+                }
+
+                public class Svc : ISvc
+                {
+                    public Task<string> Get(Microsoft.Graph.Models.User user) { Counter.Hit(); return Task.FromResult(user.DisplayName); }
+                }
+            """, "ISvc", "await s.Get(new Microsoft.Graph.Models.User { Id = \"1\", DisplayName = \"a\" })", "await s.Get(new Microsoft.Graph.Models.User { Id = \"2\", DisplayName = \"a\" })"),
         ["read-only list result"] = Member("Task<IReadOnlyList<string>> Get(int id)", "Task<IReadOnlyList<string>> Get(int id) { Counter.Hit(); return Task.FromResult<IReadOnlyList<string>>(new[] { \"v\" }); }", "await s.Get(1)", "await s.Get(2)"),
     };
 }

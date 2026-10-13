@@ -1,6 +1,10 @@
 using System.Net;
 using System.Numerics;
 using System.Text.Json;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using MethodCache.Serialization.MessagePack;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -32,6 +36,41 @@ public class FrameworkTypeKeyDocsTests
         Assert.Equal(2, lookups.Filter(Json("{\"a\":2}")));
     }
 
+    [Fact]
+    public async Task AspNetCoreRequestValues_AreKeyedByTheirValue()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IRequests, Requests>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var requests = provider.GetRequiredService<IRequests>();
+
+        Assert.Equal("/a?x=1 example.com", requests.Describe(new PathString("/a"), new QueryString("?x=1"), new HostString("example.com")));
+        Assert.Equal("/b?x=1 example.com", requests.Describe(new PathString("/b"), new QueryString("?x=1"), new HostString("example.com")));
+        Assert.Equal("/a?x=2 example.com", requests.Describe(new PathString("/a"), new QueryString("?x=2"), new HostString("example.com")));
+        Assert.Equal("/a?x=1 example.org", requests.Describe(new PathString("/a"), new QueryString("?x=1"), new HostString("example.org")));
+    }
+
+    [Theory]
+    [InlineData(nameof(FastHashKeyGenerator))]
+    [InlineData(nameof(JsonKeyGenerator))]
+    [InlineData(nameof(MessagePackKeyGenerator))]
+    public void AspNetCoreRequestValues_GetDifferentKeysInEveryKeyGenerator(string name)
+    {
+        ICacheKeyGenerator generator = name switch
+        {
+            nameof(FastHashKeyGenerator) => new FastHashKeyGenerator(),
+            nameof(JsonKeyGenerator) => new JsonKeyGenerator(),
+            _ => new MessagePackKeyGenerator(),
+        };
+        string Key(object value) => generator.GenerateKey("Requests", [value], CacheRuntimePolicy.Empty("Requests"));
+
+        Assert.NotEqual(Key(new PathString("/a")), Key(new PathString("/b")));
+        Assert.Equal(Key(new PathString("/a")), Key(new PathString("/a")));
+        Assert.NotEqual(Key(new QueryString("?x=1")), Key(new QueryString("?x=2")));
+        Assert.NotEqual(Key(new HostString("example.com", 80)), Key(new HostString("example.com", 81)));
+    }
+
     private static JsonElement Json(string json)
     {
         using var document = JsonDocument.Parse(json);
@@ -43,6 +82,16 @@ public class FrameworkTypeKeyDocsTests
         [Cache] string Balance(BigInteger amount);
         [Cache] int Origin(IPAddress address);
         [Cache] int Filter(JsonElement filter);
+    }
+
+    public interface IRequests
+    {
+        [Cache] string Describe(PathString path, QueryString query, HostString host);
+    }
+
+    private sealed class Requests : IRequests
+    {
+        public string Describe(PathString path, QueryString query, HostString host) => $"{path}{query} {host}";
     }
 
     private sealed class Lookups : ILookups

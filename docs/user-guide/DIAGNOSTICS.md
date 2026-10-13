@@ -164,7 +164,8 @@ or a public default method), or remove it.
 
 ## MCG018
 
-A key argument has a type from the `System` or `Microsoft` namespaces that the cache key can't be written from: the
+A key argument has a type from .NET itself, ASP.NET Core or Microsoft.Extensions (an assembly named `System.*`,
+`Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`) that the cache key can't be written from: the
 argument itself, an element of a collection or tuple, or a public property or field of your own type, such as
 `StringBuilder`, `CultureInfo`, `Stream`, `Type` or a `Func<T>`. Their public properties don't hold their value, or the
 value can change after the call (a `StringBuilder`), so two different arguments could share a key and one caller
@@ -176,15 +177,19 @@ arguments when one has `[CacheKey(UseAsRawKey = true)]`, so the error is not rep
 
 Framework types with a key form are written by their value: `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`,
 `DateOnly`, `TimeOnly`, `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`, `Uri`, `Version`, `IPAddress` and
-`JsonElement` (as its JSON, so whitespace doesn't count), as well as arrays, collections, `Memory<T>`, tuples and
-`KeyValuePair` of those.
+`JsonElement` (as its JSON, so whitespace doesn't count), `Index`, `Range`, `Vector2`, `Vector3`, `Vector4`,
+`Quaternion`, `Plane`, `Matrix3x2`, `Matrix4x4`, and ASP.NET Core's `PathString`, `QueryString` and `HostString`, as
+well as arrays, collections, `Memory<T>`, tuples and `KeyValuePair` of those. Models from other libraries, such as
+an SDK's classes in a `Microsoft.*` namespace, are not framework types: they are written by their public properties
+like your own.
 
 ## MCG019
 
 The cached method's result type, after `Task<T>` or `ValueTask<T>`, is `object`, an interface such as `IComparable` or
 `IShape`, or an abstract class, or has one as an element (`List<object>`). A distributed cache stores results as
-JSON or MessagePack of the declared type, which can't say which class to create when it reads them back, so when a
-distributed cache is used these results are kept in the in-memory cache only. Collection interfaces such as
+JSON or MessagePack of the declared type, which can't say which class to create when it reads them back. When a
+distributed cache is used, the default round-trip check finds that such a result doesn't read back, and keeps it in the
+in-memory cache only. Collection interfaces such as
 `IReadOnlyList<Product>` are fine; they are read back as a list.
 
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed

@@ -17,10 +17,26 @@ namespace MethodCache.Infrastructure
     {
         private static readonly ConcurrentDictionary<Type, DecoratorRegistration> Registrations = new();
 
-        // Loaded assemblies whose module initializer TryGet has already run (or that don't use MethodCache)
-        private static readonly ConcurrentDictionary<Assembly, bool> InitializedAssemblies = new();
+        // Whether each loaded assembly references MethodCache, so it is checked once
+        private static readonly ConcurrentDictionary<Assembly, bool> UsesMethodCache = new();
+
+        // The loaded assemblies that reference MethodCache, as of the last scan
+        private static Assembly[] _methodCacheAssemblies = [];
+
+        // Counts assembly loads, so the loaded assemblies are scanned again only after one
+        private static int _loadVersion;
+        private static int _scannedVersion = -1;
+        private static readonly object ScanLock = new();
 
         private static readonly string CoreAssemblyName = typeof(MethodCacheDecorators).Assembly.GetName().Name!;
+
+        static MethodCacheDecorators()
+        {
+            if (RuntimeFeature.IsDynamicCodeSupported)
+            {
+                AppDomain.CurrentDomain.AssemblyLoad += static (_, _) => Interlocked.Increment(ref _loadVersion);
+            }
+        }
 
         /// <summary>
         /// Registers a generated decorator. Called by generated code; a later registration for the same
@@ -59,10 +75,12 @@ namespace MethodCache.Infrastructure
         }
 
         /// <summary>
-        /// Runs the module initializer of each loaded assembly that references MethodCache and has not been seen
-        /// before. An assembly is loaded once code that uses one of its types is
-        /// compiled, so a library the startup code calls into is covered even if none of its code has run yet.
-        /// Native AOT runs every module initializer at startup, so there is nothing to do there.
+        /// Runs the module initializer of each loaded assembly that references MethodCache. An assembly is loaded once
+        /// code that uses one of its types is compiled, so a library the startup code calls into is covered even if
+        /// none of its code has run yet. Running a module initializer again does nothing, and waits while another
+        /// thread runs it, so a parallel lookup never misses a decorator that is being registered. The loaded
+        /// assemblies are listed again only after another one loads. Native AOT runs every module initializer at
+        /// startup, so there is nothing to do there.
         /// </summary>
         private static void InitializeLoadedAssemblies()
         {
@@ -71,19 +89,34 @@ namespace MethodCache.Infrastructure
                 return;
             }
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (var assembly in MethodCacheAssemblies())
             {
-                if (assembly.IsDynamic || InitializedAssemblies.ContainsKey(assembly))
+                RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+            }
+        }
+
+        private static Assembly[] MethodCacheAssemblies()
+        {
+            // Read before listing: an assembly that loads during the scan bumps the version, so the next miss rescans
+            var version = Volatile.Read(ref _loadVersion);
+            if (version == Volatile.Read(ref _scannedVersion))
+            {
+                return Volatile.Read(ref _methodCacheAssemblies);
+            }
+
+            lock (ScanLock)
+            {
+                if (version != _scannedVersion)
                 {
-                    continue;
+                    // Only assemblies that use MethodCache can hold decorators; other libraries' initializers stay untouched
+                    var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+                        .Where(a => !a.IsDynamic && UsesMethodCache.GetOrAdd(a, static a => a.GetReferencedAssemblies().Any(name => name.Name == CoreAssemblyName)))
+                        .ToArray();
+                    Volatile.Write(ref _methodCacheAssemblies, assemblies);
+                    Volatile.Write(ref _scannedVersion, version);
                 }
 
-                // Only assemblies that use MethodCache can hold decorators; other libraries' initializers stay untouched
-                var usesMethodCache = assembly.GetReferencedAssemblies().Any(name => name.Name == CoreAssemblyName);
-                if (InitializedAssemblies.TryAdd(assembly, usesMethodCache) && usesMethodCache)
-                {
-                    RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
-                }
+                return _methodCacheAssemblies;
             }
         }
 

@@ -408,6 +408,47 @@ namespace KeyFormat
     }
 
     [Fact]
+    public async Task RawKeyDates_AreWrittenLikeGeneratedKeys_SoUtcAndLocalOfOneInstantShareAnEntry()
+    {
+        const string source = @"
+using System;
+using System.Threading.Tasks;
+using MethodCache;
+
+namespace KeyFormat
+{
+    public interface IReports
+    {
+        [Cache] Task<string> At([CacheKey(UseAsRawKey = true)] DateTime at);
+        [Cache] Task<string> Since([CacheKey(UseAsRawKey = true)] DateTimeOffset? since);
+    }
+    public class Reports : IReports
+    {
+        public static int AtCalls;
+        public Task<string> At(DateTime at) { AtCalls++; return Task.FromResult(""at""); }
+        public Task<string> Since(DateTimeOffset? since) => Task.FromResult(""since"");
+    }
+}";
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "KeyFormatRawDates");
+        var provider = _engine.CreateTestServiceProvider(compiled, logger: _output.WriteLine);
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var reportsType = compiled.Assembly.GetType("KeyFormat.IReports")!;
+        var reports = provider.GetRequiredService(reportsType);
+        var utc = new DateTime(2026, 1, 1, 12, 0, 0, 250, DateTimeKind.Utc);
+        var since = new DateTimeOffset(2026, 1, 1, 14, 0, 0, TimeSpan.FromHours(2));
+
+        await (Task<string>)reportsType.GetMethod("At")!.Invoke(reports, new object[] { utc })!;
+        await (Task<string>)reportsType.GetMethod("At")!.Invoke(reports, new object[] { utc.ToLocalTime() })!;
+        await (Task<string>)reportsType.GetMethod("Since")!.Invoke(reports, new object?[] { since })!;
+
+        // The local time of the same instant was a hit, under the key MethodCacheKeys.Part writes, whatever the time zone
+        Assert.Equal(1, (int)compiled.Assembly.GetType("KeyFormat.Reports")!.GetField("AtCalls")!.GetValue(null)!);
+        Assert.Equal("at", await cache.TryGetFastAsync<string>(MethodCacheKeys.Part(utc)));
+        Assert.Equal("at", await cache.TryGetFastAsync<string>("2026-01-01T12:00:00.2500000Z"));
+        Assert.Equal("since", await cache.TryGetFastAsync<string>(MethodCacheKeys.Part(since)));
+    }
+
+    [Fact]
     public async Task MethodNamesTwoInterfacesOfAHierarchyDeclare_GetTheDocumentedKeys()
     {
         const string source = @"

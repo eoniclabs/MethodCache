@@ -238,10 +238,12 @@ namespace MethodCache.SourceGenerator
                     // so Find(int) and Find(string) never share keys
                     var keyMethodName = Utils.GetKeyMethodName(cached.Method, interfaceSymbol);
 
-                    // Metrics and spans name the method by its id, such as MyApp.IUserService.GetAsync; generic
-                    // interfaces report the closed type instead, for example IRepository<User>.Get
-                    var displayName = interfaceSymbol.IsGenericType
-                        ? $"{Utils.Literal(interfaceSymbol.Name + "<")} + string.Join(\",\", typeof({interfaceFqn}).GetGenericArguments().Select(t => t.Name)) + {Utils.Literal(">." + Utils.GetMethodName(cached.Method))}"
+                    // Metrics and spans name the method by its id, such as MyApp.IUserService.GetAsync. A method of a
+                    // generic interface, also one inherited from IRepository<User> by IUserRepo, reports the closed
+                    // type instead, for example IRepository<User>.Get, so IRepository<Order>.Get is another series
+                    var owner = cached.Method.ContainingType.IsGenericType ? cached.Method.ContainingType : interfaceSymbol;
+                    var displayName = owner.IsGenericType
+                        ? $"{Utils.Literal(owner.Name + "<")} + string.Join(\",\", typeof({Utils.GetFullyQualifiedName(owner)}).GetGenericArguments().Select(t => t.Name)) + {Utils.Literal(">." + Utils.GetMethodName(cached.Method))}"
                         : Utils.Literal(methodId);
 
                     sb.AppendLine($"                {safeFieldName} = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, {Utils.Literal(methodId)}), typeof({interfaceFqn}), {Utils.Literal(keyMethodName)}, {displayName});");
@@ -849,7 +851,7 @@ namespace MethodCache.SourceGenerator
                     return underlying.TypeKind == TypeKind.Enum
                         ? $"({name} is null ? \"null\" : {GetRawEnumExpression($"{name}.Value")})"
                         : IsDateTime(underlying)
-                            ? $"({name} is null ? \"null\" : {name}.Value.ToString(\"O\", {invariant}))"
+                            ? $"({name} is null ? \"null\" : global::MethodCache.MethodCacheKeys.Part({name}.Value))"
                             : $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
                 }
 
@@ -858,10 +860,11 @@ namespace MethodCache.SourceGenerator
                     return GetRawEnumExpression(name);
                 }
 
-                // The round-trip format keeps fractions of a second, and the Kind or offset, which the default format drops
+                // As in generated keys: fractions of a second and the offset are kept, and a local time is written as
+                // UTC, so the key doesn't depend on the server's time zone
                 if (IsDateTime(param.Type))
                 {
-                    return $"{name}.ToString(\"O\", {invariant})";
+                    return $"global::MethodCache.MethodCacheKeys.Part({name})";
                 }
 
                 if (param.Type.IsValueType)

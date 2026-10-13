@@ -66,3 +66,22 @@ public sealed class ClockVendorClient : IClockVendorClient
 {
     public int Get(int id) => id;
 }
+
+/// <summary>A vendor client for the test of a lookup while another thread runs the library's module initializer.</summary>
+public interface IGatedVendorClient
+{
+    int Get(int id);
+}
+
+/// <summary>Holds a library's module initializer until the test opens it.</summary>
+public static class ModuleInitializerGate
+{
+    public static readonly SemaphoreSlim Entered = new(0);
+    public static readonly ManualResetEventSlim Open = new(false);
+
+    public static void Wait()
+    {
+        Entered.Release();
+        Open.Wait();
+    }
+}

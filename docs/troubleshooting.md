@@ -40,8 +40,8 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 
 A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
 warning [MCG019](user-guide/DIAGNOSTICS.md#mcg019). The serializer can't tell which class to create when it reads
-such a result back, so when a distributed cache is used these results are kept in memory only, and each instance
-loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
+such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
+only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
 
 ## Keys look different than expected
 

@@ -77,6 +77,53 @@ namespace Monitoring
     }
 
     [Fact]
+    public async Task MethodInheritedFromAGenericBase_IsReportedByTheClosedBaseType()
+    {
+        const string source = @"
+using System.Threading.Tasks;
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Monitoring
+{
+    public sealed record User(int Id);
+    public sealed record Order(int Id);
+    public interface IRepository<T> { [Cache] Task<string> GetAsync(int id); }
+    public interface IUserRepo : IRepository<User> { }
+    public interface IOrderRepo : IRepository<Order> { }
+    public class UserRepo : IUserRepo { public Task<string> GetAsync(int id) => Task.FromResult(""u""); }
+    public class OrderRepo : IOrderRepo { public Task<string> GetAsync(int id) => Task.FromResult(""o""); }
+
+    public static class Startup
+    {
+        public static void Configure(IServiceCollection services)
+        {
+            services.AddSingleton<IUserRepo, UserRepo>();
+            services.AddSingleton<IOrderRepo, OrderRepo>();
+            services.AddMethodCache();
+        }
+    }
+}";
+        var assembly = (await _engine.CompileWithSourceGeneratorAsync(source, "MonitoringGenericBaseNames")).Assembly;
+
+        var metrics = new CountingMetricsProvider();
+        var services = new ServiceCollection();
+        services.AddSingleton<ICacheMetricsProvider>(metrics);
+        assembly.GetType("Monitoring.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var (name, entity) in new[] { ("Monitoring.IUserRepo", "Monitoring.User"), ("Monitoring.IOrderRepo", "Monitoring.Order") })
+        {
+            var service = provider.GetRequiredService(assembly.GetType(name)!);
+            var get = assembly.GetType("Monitoring.IRepository`1")!.MakeGenericType(assembly.GetType(entity)!).GetMethod("GetAsync")!;
+            await (Task<string>)get.Invoke(service, new object[] { 1 })!; // miss
+            await (Task<string>)get.Invoke(service, new object[] { 1 })!; // hit
+        }
+
+        Assert.Equal(new[] { "IRepository<Order>.GetAsync", "IRepository<User>.GetAsync" }, metrics.Names.Distinct().Order());
+    }
+
+    [Fact]
     public async Task SameMethodNameOnTwoInterfaces_IsReportedAsTwoMethods_ByMethodId()
     {
         const string source = @"

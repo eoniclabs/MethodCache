@@ -158,7 +158,7 @@ namespace MethodCache.SourceGenerator
             internal static readonly DiagnosticDescriptor UnrestorableResultType = new(
                 id: "MCG019",
                 title: "Cached result type can't be read back from a distributed cache",
-                messageFormat: "'{0}' returns '{1}', and '{2}' is not a concrete type: when a distributed cache is used, the serializer can't restore the runtime type from it, so these results are kept in memory only. Return a concrete type to share them through the distributed cache.",
+                messageFormat: "'{0}' returns '{1}', and '{2}' is not a concrete type: when a distributed cache is used, the serializer can't restore the runtime type from it, and with the default round-trip check these results are kept in memory only. Return a concrete type to share them through the distributed cache.",
                 category: "MethodCacheGenerator",
                 defaultSeverity: DiagnosticSeverity.Warning,
                 isEnabledByDefault: true,
