@@ -22,7 +22,7 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 - Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before
   running your method, and a new result is written to both.
 - Invalidating a key or tag removes it from the distributed cache, and a backplane tells every other instance to drop
-  its in-memory copy: at once with Redis pub/sub, or within a polling interval (1 second) with SQL Server.
+  its in-memory copy: at once with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
 - Only Redis and Microsoft SQL Server have packages. Another store, such as PostgreSQL, needs a
   [custom provider](#custom-distributed-caches).
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
