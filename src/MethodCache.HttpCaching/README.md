@@ -123,3 +123,7 @@ MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
 |---|---|
 | `methodcache.http.requests_total` | `client`, `outcome` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error` when the request threw) |
 | `methodcache.http.request_duration` (ms) | `client`, `outcome` |
+
+HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
+
+Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.

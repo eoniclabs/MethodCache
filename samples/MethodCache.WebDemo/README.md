@@ -40,3 +40,5 @@ dotnet run --project samples/MethodCache.WebDemo --launch-profile redis-b  # htt
 
 The `/methodcache` endpoints show keys and can empty the cache, so they require an authenticated user. This demo
 opens them in the Development environment only; see `Program.cs`.
+
+The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.

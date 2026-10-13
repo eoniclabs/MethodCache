@@ -6,6 +6,17 @@ release.
 
 ## Unreleased (1.0.0)
 
+### Release audit fixes
+
+The release audit fixes presence-aware manual reads, caller cancellation during loads, immutable policy tags,
+HTTP response age and background request metadata, keyed registrations and OpenTelemetry ownership, generic
+method constraints and attribute code fixes, and weighted capacity overflow. The web demo now stores atomic
+price updates in SQLite, and the memory benchmark measures an uncached baseline.
+
+MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements.
+Earlier keys for these arguments become cold misses. Overloaded generic methods include generic arity in their
+policy ids and key prefixes, keeping different overloads distinct; earlier keys become cold misses.
+
 ### If you used a pre-release build from GitHub Packages
 
 - **Generated `Add{Interface}WithCaching` methods are gone.** Combined with `AddMethodCache()` they registered the

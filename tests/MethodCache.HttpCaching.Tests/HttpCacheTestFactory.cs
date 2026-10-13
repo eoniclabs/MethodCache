@@ -75,11 +75,7 @@ public static class HttpCacheTestFactory
 }
 
 /// <summary>A clock the test moves by hand.</summary>
-public sealed class ManualTimeProvider : TimeProvider
+public sealed class ManualTimeProvider : Microsoft.Extensions.Time.Testing.FakeTimeProvider
 {
-    private DateTimeOffset _now = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
-
-    public override DateTimeOffset GetUtcNow() => _now;
-
-    public void Advance(TimeSpan by) => _now += by;
+    public ManualTimeProvider() : base(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)) { }
 }

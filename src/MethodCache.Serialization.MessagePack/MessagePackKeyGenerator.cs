@@ -30,10 +30,11 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
     private const byte KeyProviderFrame = 0x01;
     private const byte SerializedFrame = 0x02;
     private const byte NullKeyProviderFrame = 0x03;
+    private static readonly KeyObjectFormatter ObjectFormatter = new();
     private static readonly MessagePackSerializerOptions KeyOptions = TypelessContractlessStandardResolver.Options
         .WithResolver(CompositeResolver.Create(
-            new IMessagePackFormatter[] { new KeyStringFormatter(), new KeyObjectFormatter() },
-            new IFormatterResolver[] { TypelessContractlessStandardResolver.Instance }));
+            new IMessagePackFormatter[] { new KeyStringFormatter(), ObjectFormatter },
+            new IFormatterResolver[] { new PolymorphicKeyResolver() }));
 
     /// <inheritdoc />
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
@@ -75,6 +76,44 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
     }
 
     private static byte[] Utf16Bytes(string value) => LosslessUtf16.GetBytes(value);
+
+    // A formatter for a declared base/interface slot must consult the runtime type before the
+    // contractless formatter discards derived members. Nested members retain these same options.
+    private sealed class PolymorphicKeyResolver : IFormatterResolver
+    {
+        public IMessagePackFormatter<T>? GetFormatter<T>() => FormatterCache<T>.Instance;
+
+        private static class FormatterCache<T>
+        {
+            internal static readonly IMessagePackFormatter<T>? Instance =
+                !typeof(T).IsValueType && !typeof(T).IsSealed && typeof(T) != typeof(Type)
+                    ? new PolymorphicKeyFormatter<T>()
+                    : TypelessContractlessStandardResolver.Instance.GetFormatter<T>();
+        }
+    }
+
+    private sealed class PolymorphicKeyFormatter<T> : IMessagePackFormatter<T>
+    {
+        public void Serialize(ref MessagePackWriter writer, T value, MessagePackSerializerOptions options)
+        {
+            if (value is null)
+            {
+                writer.WriteNil();
+            }
+            else if (value.GetType() != typeof(T))
+            {
+                ObjectFormatter.Serialize(ref writer, value, options);
+            }
+            else
+            {
+                TypelessContractlessStandardResolver.Instance.GetFormatterWithVerify<T>()
+                    .Serialize(ref writer, value, options);
+            }
+        }
+
+        public T Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) =>
+            throw new NotSupportedException("Cache keys are hashed, never deserialized.");
+    }
 
     // Only the key serializer uses these formatters. Cached values keep the application's MessagePack format.
     internal sealed class KeyStringFormatter : IMessagePackFormatter<string?>

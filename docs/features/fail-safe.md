@@ -63,3 +63,4 @@ turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `
 The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
 once.
 
+Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
