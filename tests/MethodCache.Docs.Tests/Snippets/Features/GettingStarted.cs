@@ -68,9 +68,9 @@ namespace Docs.GettingStarted.After
         public static void RegisterWithFactory(WebApplicationBuilder builder)
         {
             // begin-snippet: getting-started-factory
-            builder.Services.AddMethodCache();
-            builder.Services.AddIProductServiceWithCachingScoped(
+            builder.Services.AddScoped<IProductService>(
                 sp => new ProductService(sp.GetRequiredService<Database>()));
+            builder.Services.AddMethodCache();
             // end-snippet
         }
     }

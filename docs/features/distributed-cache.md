@@ -90,6 +90,7 @@ smaller and faster to read:
 
 <!-- snippet: distributed-messagepack -->
 ```cs
+builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
 builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
 ```

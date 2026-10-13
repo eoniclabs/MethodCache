@@ -13,6 +13,7 @@ dotnet add package MethodCache.Serialization.MessagePack
 
 <!-- snippet: distributed-messagepack -->
 ```cs
+builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
 builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
 ```

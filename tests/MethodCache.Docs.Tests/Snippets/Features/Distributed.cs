@@ -40,6 +40,7 @@ namespace Docs.Distributed
         public static void MessagePack(WebApplicationBuilder builder)
         {
             // begin-snippet: distributed-messagepack
+            builder.Services.AddMethodCache();
             builder.Services.AddMethodCacheRedis("localhost:6379");
             builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
             // end-snippet

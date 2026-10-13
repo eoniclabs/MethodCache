@@ -26,8 +26,7 @@ interface is cacheable. See [keys](keys.md) for argument identity and
 
 `AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
-yourself open. To register a cached interface with a factory instead, use the generated helpers described in
-[Getting started](../getting-started.md#registering-with-a-factory).
+yourself open. Factory registrations are wrapped the same way ([Getting started](../getting-started.md#registering-with-a-factory)).
 
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.

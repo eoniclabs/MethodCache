@@ -44,6 +44,31 @@ public class FeatureTests(ITestOutputHelper output)
         Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.ByIdsAsync:11b474c4", StringComparison.Ordinal) && !k.Contains(','));
     }
 
+    [Fact]
+    public async Task GettingStarted_FactoryRegistrationIsCachedOnceWithItsLifetime()
+    {
+        var created = 0;
+        var services = new ServiceCollection();
+        services.AddSingleton<Database>();
+        services.AddScoped<global::Docs.GettingStarted.After.IProductService>(sp =>
+        {
+            created++;
+            return new global::Docs.GettingStarted.After.ProductService(sp.GetRequiredService<Database>());
+        });
+        services.AddMethodCache();
+
+        var registration = Assert.Single(services, d => d.ServiceType == typeof(global::Docs.GettingStarted.After.IProductService) && !d.IsKeyedService);
+        Assert.Equal(ServiceLifetime.Scoped, registration.Lifetime);
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var products = scope.ServiceProvider.GetRequiredService<global::Docs.GettingStarted.After.IProductService>();
+
+        Assert.IsNotType<global::Docs.GettingStarted.After.ProductService>(products);
+        Assert.Single(scope.ServiceProvider.GetServices<global::Docs.GettingStarted.After.IProductService>());
+        Assert.Equal(1, created);
+    }
+
     private sealed class Invoices : IInvoiceService
     {
         public Task<Invoice> GetAsync(int id) => Task.FromResult(new Invoice(id));

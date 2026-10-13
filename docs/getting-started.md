@@ -88,21 +88,16 @@ implements, such as `UserRepository : IRepository<User>`. An open generic regist
 
 ### Registering with a factory
 
-A factory registration such as `AddScoped<IProductService>(sp => ...)` is cached like any other. The generator also
-writes registration helpers for each interface it decorates in your project:
-`Add{Interface}WithCaching` (singleton) and `Add{Interface}WithCachingSingleton`, `...Scoped` and `...Transient`:
+A factory registration is cached like any other: register it before `AddMethodCache()`, and the decorator wraps
+what your factory returns, with the lifetime you chose.
 
 <!-- snippet: getting-started-factory -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.AddIProductServiceWithCachingScoped(
+builder.Services.AddScoped<IProductService>(
     sp => new ProductService(sp.GetRequiredService<Database>()));
+builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
-
-Call them after `AddMethodCache()`, which would otherwise wrap the service a second time. The cache owns the object
-your factory returns and disposes it with the service, so return a new instance. The helpers are `internal` to your
-project, and generic interfaces don't get them.
 
 ## What can be cached
 
