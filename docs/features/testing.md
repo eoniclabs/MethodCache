@@ -59,3 +59,5 @@ eviction and the background revalidation timeout.
 ## Behavior and compatibility
 
 ## Testing your service
+
+The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.
