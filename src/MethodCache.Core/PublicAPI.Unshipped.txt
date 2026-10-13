@@ -618,3 +618,7 @@ MethodCache.Extensibility.NoOpCacheManager.LookupAsync<T>(string! methodName, ob
 MethodCache.ICacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 
 static MethodCache.CacheManagerExtensions.GetCacheKey(string! key, int? version = null) -> string!
+MethodCache.CacheEntryOptions.Builder.ClearTags() -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.ClearsTags.get -> bool
+MethodCache.Policies.CachePolicyFields.ClearTags = 1024 -> MethodCache.Policies.CachePolicyFields
+static MethodCache.Infrastructure.DecoratorServices.ForLoad<TService>(object! decorator, TService! service) -> TService!

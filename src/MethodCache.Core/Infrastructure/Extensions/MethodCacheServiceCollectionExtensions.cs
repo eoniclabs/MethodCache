@@ -291,16 +291,20 @@ namespace Microsoft.Extensions.DependencyInjection
                 var innerKey = new DecoratedServiceKey(serviceType, descriptor.ServiceKey);
                 services.Add(CreateKeyedCopy(descriptor, innerKey));
 
+                // A load that outlives the request (refresh-ahead, fail-safe after the timeout) gets its own
+                // instance of a scoped or transient service from a new scope; a singleton keeps its one instance
+                var decorate = descriptor.Lifetime == ServiceLifetime.Singleton
+                    ? (Func<IServiceProvider, object>)(provider => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)))
+                    : provider =>
+                    {
+                        var created = registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey));
+                        BackgroundLoadScope.Register(created, provider.GetRequiredService<IServiceScopeFactory>(), serviceType, innerKey);
+                        return created;
+                    };
+
                 var decorator = descriptor.IsKeyedService
-                    ? ServiceDescriptor.DescribeKeyed(
-                        serviceType,
-                        descriptor.ServiceKey,
-                        (provider, _) => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)),
-                        descriptor.Lifetime)
-                    : ServiceDescriptor.Describe(
-                        serviceType,
-                        provider => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)),
-                        descriptor.Lifetime);
+                    ? ServiceDescriptor.DescribeKeyed(serviceType, descriptor.ServiceKey, (provider, _) => decorate(provider), descriptor.Lifetime)
+                    : ServiceDescriptor.Describe(serviceType, decorate, descriptor.Lifetime);
 
                 // Replacing the original slot keeps registration order, and therefore IEnumerable<T> order
                 services[index] = decorator;

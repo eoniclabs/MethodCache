@@ -161,7 +161,9 @@ Generated keys look like `MyApp.IUserService.GetUserAsync:42` (a record argument
 ### Configuration without redeploying
 
 Each setting comes from the highest layer that sets it: runtime overrides, then `appsettings.json`, then startup code,
-then the attribute. Global and group defaults fill in what a method leaves unset.
+then the attribute. Global and group defaults, also ones set at runtime, fill in what a method leaves unset. Tags
+are combined instead: tags from the other layers are added to the attribute's, so `[CacheInvalidate]` keeps working,
+unless an override calls `ClearTags()`.
 
 <!-- snippet: readme-configuration -->
 ```cs

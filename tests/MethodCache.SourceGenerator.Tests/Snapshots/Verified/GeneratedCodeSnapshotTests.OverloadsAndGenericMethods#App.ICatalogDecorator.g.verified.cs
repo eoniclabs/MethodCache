@@ -90,7 +90,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<string> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method0.Name, () => ((global::App.ICatalog)this._decorated).Get(__mcArgument0)!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method0.Name, () => ((global::App.ICatalog)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).Get(__mcArgument0)!, __policy);
 
         global::System.Threading.Tasks.Task<string> global::App.ICatalog.Get(string __mcArgument0)
         {
@@ -125,7 +125,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<string> __Load_Method1(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method1.Name, () => ((global::App.ICatalog)this._decorated).Get(__mcArgument0)!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method1.Name, () => ((global::App.ICatalog)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).Get(__mcArgument0)!, __policy);
 
         global::System.Threading.Tasks.Task<__mcTypeArgument0?> global::App.ICatalog.Load<__mcTypeArgument0>(int __mcArgument0)
             where __mcTypeArgument0 : class
@@ -164,7 +164,7 @@ namespace App
 
         private global::System.Threading.Tasks.Task<__mcTypeArgument0?> __Load_Method2<__mcTypeArgument0>(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
             where __mcTypeArgument0 : class
-            => this._cacheManager.GetOrCreateFastAsync<__mcTypeArgument0?>(__cacheKey, this._method_Method2.Name, () => ((global::App.ICatalog)this._decorated).Load<__mcTypeArgument0>(__mcArgument0)!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<__mcTypeArgument0?>(__cacheKey, this._method_Method2.Name, () => ((global::App.ICatalog)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).Load<__mcTypeArgument0>(__mcArgument0)!, __policy);
 
     }
 }

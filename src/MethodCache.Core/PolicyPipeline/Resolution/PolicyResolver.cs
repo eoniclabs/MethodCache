@@ -564,7 +564,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 layers.AddRange(defaultLayers(MethodIds.AllMethods).Reverse());
 
                 TimeSpan? duration = null;
-                IReadOnlyList<string>? tags = null;
+                List<string>? tags = null;
+                var tagsCleared = false;
                 TimeSpan? slidingExpiration = null;
                 TimeSpan? refreshAhead = null;
                 Func<object?, bool>? cacheWhen = null;
@@ -585,9 +586,14 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                         duration = policy.Duration;
                     }
 
-                    if (tags == null && fields.HasFlag(CachePolicyFields.Tags))
+                    // Tags combine across layers, so an override never disconnects the attribute's [CacheInvalidate]
+                    // tags; a layer that clears them stops the lower layers from adding theirs
+                    if (!tagsCleared && (fields & (CachePolicyFields.Tags | CachePolicyFields.ClearTags)) != 0)
                     {
-                        tags = policy.Tags;
+                        tags ??= new List<string>();
+                        var layerTags = policy.Tags.Distinct(StringComparer.Ordinal).Where(tag => !tags.Contains(tag, StringComparer.Ordinal)).ToList();
+                        tags.InsertRange(0, layerTags);
+                        tagsCleared = fields.HasFlag(CachePolicyFields.ClearTags);
                     }
 
                     if (slidingExpiration == null && fields.HasFlag(CachePolicyFields.SlidingExpiration))
@@ -636,7 +642,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 var effectivePolicy = CachePolicy.Empty with
                 {
                     Duration = duration,
-                    Tags = tags ?? Array.Empty<string>(),
+                    Tags = tags is { Count: > 0 } ? tags.ToArray() : Array.Empty<string>(),
                     SlidingExpiration = slidingExpiration,
                     RefreshAhead = refreshAhead,
                     CacheWhen = cacheWhen,

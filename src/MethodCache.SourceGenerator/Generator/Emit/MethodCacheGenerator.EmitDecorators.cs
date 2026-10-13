@@ -502,7 +502,9 @@ namespace MethodCache.SourceGenerator
             {
                 var type = Utils.GetReturnTypeForSignature(valueType);
                 var parameters = string.Concat(method.Parameters.Select(p => $", {Utils.GetReturnTypeForSignature(p.Type)} {Utils.ParameterIdentifier(p)}"));
-                var call = BuildMethodCall(method);
+                // A refresh-ahead or fail-safe load that outlives its caller gets a scoped or transient service
+                // from its own scope (DecoratorServices.ForLoad); otherwise this is the decorated instance
+                var call = BuildMethodCall(method, "global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)");
 
                 // The decorated method's own task is the factory, so a miss doesn't add an async state machine
                 var factory = kind switch
@@ -1199,7 +1201,7 @@ namespace MethodCache.SourceGenerator
             /// The call to the decorated instance, through the interface that declares the method, so a method two
             /// base interfaces both declare is never ambiguous.
             /// </summary>
-            private static string BuildMethodCall(IMethodSymbol method)
+            private static string BuildMethodCall(IMethodSymbol method, string target = "this._decorated")
             {
                 var typeArgs = method.TypeParameters.Any()
                     ? $"<{string.Join(", ", method.TypeParameters.Select(tp => Utils.TypeParameterIdentifier(tp)))}>"
@@ -1219,7 +1221,7 @@ namespace MethodCache.SourceGenerator
                 }));
 
                 var declaring = Utils.GetReturnTypeForSignature(method.ContainingType);
-                return $"(({declaring})this._decorated).{Utils.Identifier(method.Name)}{typeArgs}({args})";
+                return $"(({declaring}){target}).{Utils.Identifier(method.Name)}{typeArgs}({args})";
             }
 
             private static string BuildConstraints(ITypeParameterSymbol tp)

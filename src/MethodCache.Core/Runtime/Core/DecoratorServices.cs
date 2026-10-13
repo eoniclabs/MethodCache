@@ -62,6 +62,20 @@ namespace MethodCache.Infrastructure
         public ICacheMetricsProvider? MetricsProvider { get; }
 
         /// <summary>
+        /// Returns the instance a generated loader calls. Public only for generated code.
+        /// </summary>
+        /// <remarks>
+        /// Usually <paramref name="service"/>, the decorated instance. In a refresh-ahead, or a fail-safe load that goes
+        /// on after its caller got the stale value, a scoped or transient service is resolved again from a new scope
+        /// instead, which is disposed when the load ends, so the load never uses an instance whose scope ended.
+        /// </remarks>
+        /// <param name="decorator">The generated decorator.</param>
+        /// <param name="service">The instance it decorates.</param>
+        public static TService ForLoad<TService>(object decorator, TService service)
+            where TService : class
+            => BackgroundLoadScope.ForLoad(decorator, service);
+
+        /// <summary>
         /// Returns a decorator's methods, creating them on first use, so each decorator type resolves its policies
         /// and builds its key prefixes once per container rather than per instance.
         /// </summary>

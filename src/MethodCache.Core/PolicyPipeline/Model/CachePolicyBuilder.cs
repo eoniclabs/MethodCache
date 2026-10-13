@@ -9,6 +9,7 @@ internal sealed class CachePolicyBuilder
 
     private readonly List<string> _tags = new();
     private bool _tagsSet;
+    private bool _clearTags; // The tags replace those of lower layers instead of adding to them
 
     private TimeSpan? _slidingExpiration;
     private bool _slidingExpirationSet;
@@ -91,6 +92,7 @@ internal sealed class CachePolicyBuilder
     {
         _tags.Clear();
         _tagsSet = true;
+        _clearTags = true;
         return this;
     }
 
@@ -187,6 +189,7 @@ internal sealed class CachePolicyBuilder
             _tags.Clear();
             _tags.AddRange(source._tags);
             _tagsSet = true;
+            _clearTags = source._clearTags;
         }
 
         if (source._slidingExpirationSet && (overwriteExisting || !_slidingExpirationSet))
@@ -266,7 +269,8 @@ internal sealed class CachePolicyBuilder
             _failSafeRetryAfter = _failSafeRetryAfter,
             _failSafeRetryAfterSet = _failSafeRetryAfterSet,
             _metadataSet = _metadataSet,
-            _tagsSet = _tagsSet
+            _tagsSet = _tagsSet,
+            _clearTags = _clearTags
         };
 
         if (_tagsSet)
@@ -313,6 +317,10 @@ internal sealed class CachePolicyBuilder
         {
             policy = policy with { Tags = _tags.Count == 0 ? Array.Empty<string>() : _tags.ToArray() };
             fields |= CachePolicyFields.Tags;
+            if (_clearTags)
+            {
+                fields |= CachePolicyFields.ClearTags;
+            }
         }
 
         if (_slidingExpirationSet)

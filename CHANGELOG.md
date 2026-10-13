@@ -119,6 +119,18 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   `SetCacheTenantId(null)` clear the value. Admin `DELETE entry` answers 204 with a distributed cache, since the
   removal reached it and the other instances. The web demo's `.http` walkthrough loads product 2 before showing it
   is still cached.
+- **Tags combine across policy layers.** Tags from startup code, `appsettings.json`, runtime overrides and the
+  defaults are added to the `[Cache]` attribute's tags instead of replacing them, so a `[CacheInvalidate]` on an
+  attribute tag always reaches the entry. To replace them, call the new `CacheEntryOptions.Builder.ClearTags()`
+  (`CachePolicyFields.ClearTags` for a raw policy) or set `"ClearTags": true` for a method in `appsettings.json`.
+  The docs no longer say runtime overrides win over everything: a method's own override wins over its other layers,
+  while runtime defaults (`DefaultPolicy`, `ForGroup` in `ApplyAsync`) only fill in what the method leaves unset, as
+  before.
+- **Background loads of scoped services.** A refresh-ahead, and a fail-safe call that goes on after its caller got
+  the expired value, now run a scoped or transient service on a new instance from a new DI scope (keyed services
+  keep their key), disposed when the load ends, instead of on the request's instance after its scope was disposed.
+  Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
+  that generate them together with the new MethodCache.Core.
 
 ### If you used a pre-release build from GitHub Packages
 

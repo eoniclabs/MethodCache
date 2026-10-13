@@ -91,7 +91,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<__mcClassArgument0?> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<__mcClassArgument0?>(__cacheKey, this._method_Method0.Name, () => ((global::App.IRepository<__mcClassArgument0>)this._decorated).GetAsync(__mcArgument0)!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<__mcClassArgument0?>(__cacheKey, this._method_Method0.Name, () => ((global::App.IRepository<__mcClassArgument0>)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetAsync(__mcArgument0)!, __policy);
 
     }
 }

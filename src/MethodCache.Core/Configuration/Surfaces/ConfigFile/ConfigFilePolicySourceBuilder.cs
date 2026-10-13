@@ -14,7 +14,7 @@ internal static class ConfigFilePolicySourceBuilder
         "Tags", "Version", "Group", "Metadata", "Notes"
     };
 
-    private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId" };
+    private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId", "ClearTags" };
 
     private static readonly HashSet<string> FailSafeSettings = new(StringComparer.OrdinalIgnoreCase) { "Duration", "Timeout", "RetryAfter" };
 
@@ -94,6 +94,20 @@ internal static class ConfigFilePolicySourceBuilder
         {
             throw new InvalidOperationException(
                 $"MethodCache configuration '{tagsSection.Path}' is a single value; write tags as a list, for example [\"users\"] (Tags__0 in environment variables).");
+        }
+
+        // "ClearTags": true makes the method's Tags replace those of its [Cache] attribute instead of adding to them
+        if (ReadValue(section, "ClearTags") is { } clearTagsValue)
+        {
+            if (!bool.TryParse(clearTagsValue, out var clearTags))
+            {
+                throw InvalidValue(section, "ClearTags", clearTagsValue, "true or false");
+            }
+
+            if (clearTags)
+            {
+                builder.ClearTags();
+            }
         }
 
         var tags = ReadValues(tagsSection);

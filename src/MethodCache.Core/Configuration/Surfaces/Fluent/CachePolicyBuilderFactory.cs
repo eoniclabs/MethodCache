@@ -36,6 +36,11 @@ internal static class CachePolicyBuilderFactory
             builder.WithDuration(options.Duration.Value);
         }
 
+        if (options.ClearsTags)
+        {
+            builder.ClearTags();
+        }
+
         if (options.Tags.Count > 0)
         {
             builder.SetTags(options.Tags);

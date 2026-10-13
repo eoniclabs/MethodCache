@@ -51,5 +51,10 @@ public enum CachePolicyFields
     /// <summary>
     /// The <see cref="CachePolicy.FailSafeRetryAfter"/> field.
     /// </summary>
-    FailSafeRetryAfter = 1 << 9
+    FailSafeRetryAfter = 1 << 9,
+    /// <summary>
+    /// This layer's <see cref="CachePolicy.Tags"/> replace the tags of the layers below it (the <c>[Cache]</c>
+    /// attribute, other sources and the defaults). Without this flag, the tags of every layer are combined.
+    /// </summary>
+    ClearTags = 1 << 10
 }

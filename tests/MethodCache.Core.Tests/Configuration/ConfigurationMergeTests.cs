@@ -115,11 +115,39 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         var registry = sp.GetRequiredService<IPolicyRegistry>();
         if (resolveFirst) registry.GetPolicy(Id);
 
-        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, CachePolicy.Empty with { Tags = Array.Empty<string>() }, CachePolicyFields.Tags);
+        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, CachePolicy.Empty with { Tags = Array.Empty<string>() }, CachePolicyFields.Tags | CachePolicyFields.ClearTags);
 
         var policy = registry.GetPolicy(Id).Policy;
         output.WriteLine($"resolveFirst={resolveFirst}: tags=[{string.Join(",", policy.Tags)}]");
         Assert.Empty(policy.Tags);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RuntimeOverride_Tags_AreAddedToTheLowerLayersTags(bool resolveFirst)
+    {
+        await using var sp = GroupProvider();
+        var registry = sp.GetRequiredService<IPolicyRegistry>();
+        if (resolveFirst) registry.GetPolicy(Id);
+
+        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.WithTags("t2", "t1"));
+
+        Assert.Equal(new[] { "t2", "t1" }, registry.GetPolicy(Id).Policy.Tags);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RuntimeOverride_BuilderClearTags_ReplacesTheLowerLayersTags(bool resolveFirst)
+    {
+        await using var sp = GroupProvider();
+        var registry = sp.GetRequiredService<IPolicyRegistry>();
+        if (resolveFirst) registry.GetPolicy(Id);
+
+        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.ClearTags().WithTags("t2"));
+
+        Assert.Equal(new[] { "t2" }, registry.GetPolicy(Id).Policy.Tags);
     }
 
     // ---------- 4. Calling AddMethodCache twice: second fluent source replaces the first one's layer ----------

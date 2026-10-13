@@ -6,8 +6,14 @@ namespace MethodCache;
 
 /// <summary>
 /// Provides an API for applying cache policy overrides at runtime.
-/// Runtime overrides take precedence over all other policy sources until removed.
 /// </summary>
+/// <remarks>
+/// A runtime override of a method takes precedence over the other sources of that method (its <c>[Cache]</c>
+/// attribute, startup code and appsettings) until it is removed. Its tags are added to theirs unless the override
+/// calls <see cref="CacheEntryOptions.Builder.ClearTags"/>. Runtime defaults (<c>DefaultPolicy</c> or <c>ForGroup</c>
+/// in <see cref="ApplyAsync"/>) are defaults like the startup ones: they only fill in the values a method does not set,
+/// so a method's own <c>[Cache]</c> values still win over them.
+/// </remarks>
 public interface IRuntimeCacheConfigurator
 {
     /// <summary>

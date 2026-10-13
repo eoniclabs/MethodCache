@@ -82,7 +82,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<global::App.User> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
-            => this._cacheManager.GetOrCreateFastAsync<global::App.User>(__cacheKey, this._method_Method0.Name, () => ((global::App.IUserService)this._decorated).GetUserAsync(__mcArgument0, __mcArgument1)!, __policy, __mcArgument1);
+            => this._cacheManager.GetOrCreateFastAsync<global::App.User>(__cacheKey, this._method_Method0.Name, () => ((global::App.IUserService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetUserAsync(__mcArgument0, __mcArgument1)!, __policy, __mcArgument1);
 
         async global::System.Threading.Tasks.Task global::App.IUserService.UpdateUserAsync(int __mcArgument0, string __mcArgument1)
         {

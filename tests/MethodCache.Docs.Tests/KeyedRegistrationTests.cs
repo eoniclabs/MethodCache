@@ -45,6 +45,27 @@ public class KeyedRegistrationTests
         Assert.Equal(1, fed.Calls);
     }
 
+    // Review G7: a keyed registration next to an unkeyed one of the same interface is cached too
+    [Fact]
+    public void CachedCall_KeyedRegistrationNextToAnUnkeyedOne_IsCached()
+    {
+        var keyed = new KeyedRates(1);
+        var unkeyed = new KeyedRates(2);
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IKeyedRates>("k", keyed);
+        services.AddSingleton<IKeyedRates>(unkeyed);
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredKeyedService<IKeyedRates>("k").Get(10);
+        provider.GetRequiredKeyedService<IKeyedRates>("k").Get(10);
+        provider.GetRequiredService<IKeyedRates>().Get(20);
+        provider.GetRequiredService<IKeyedRates>().Get(20);
+
+        Assert.Equal(1, keyed.Calls);
+        Assert.Equal(1, unkeyed.Calls);
+    }
+
     [Fact]
     public void AddMethodCacheTwice_KeyedRegistration_IsDecoratedOnce()
     {

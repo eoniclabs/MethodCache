@@ -521,6 +521,12 @@ The window must be shorter than `Duration` and `SlidingExpiration`, or every rea
 When settings from different places combine into such a window, for example an attribute's `RefreshAhead` with a
 shorter `Duration` from configuration, the reload starts halfway through the entry's life instead.
 
+The reload outlives the request that triggered it. For a service registered as scoped or transient (a repository
+with a scoped `DbContext`, say), it runs on a new instance from a new DI scope, which is disposed when the reload ends,
+never on the request's instance, whose scope may already be gone. That instance has none of the request's state: no
+`HttpContext`, and no values the request set on the instance or in `AsyncLocal`. Singletons reload on their one
+instance. A `CancellationToken` parameter of the method still cancels the reload.
+
 ## Versions
 
 `Version` is part of every key the method produces. Raise it when the shape of the cached result changes, for example
@@ -590,7 +596,10 @@ share one tag; it is reported as [MCG015](https://github.com/eoniclabs/MethodCac
 [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md).
 
 Tags set in startup code, `appsettings.json` or runtime overrides can use templates too, with any parameter of the
-method.
+method. They are added to the `[Cache]` attribute's tags, so the attribute's `[CacheInvalidate]` tags keep working;
+only an explicit `ClearTags()` (or `"ClearTags": true` in `appsettings.json`) replaces them
+([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md)). An override with `o => o.WithTags("incident")` on `GetAsync` above gives its
+entries the tags `orders`, `order:{orderId}` and `incident`.
 
 `[CacheInvalidate]` also works on methods with `ref` or `ref readonly` returns, and on `Task` and `ValueTask` methods
 with `ref`, `out` or `in` parameters. The tags are filled in after the call returns, and the entries are removed only
@@ -663,6 +672,10 @@ or in `appsettings.json`:
   hammered; no [refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead) reload starts during that time either.
 - **When the method is slow** and `timeout` is set, the caller gets the expired value after `timeout` and the call
   finishes in the background; its result replaces the old value. Without an expired value the caller waits as usual.
+  Because the call may outlive the request, a scoped or transient service makes it on a new instance from a new DI
+  scope, disposed when the call ends, whenever a fallback exists and `timeout` is set (the instance has none of the
+  request's own state, such as values set on the instance). The caller's `HttpContext` and `AsyncLocal` values still
+  flow to it, as it starts on the caller's call. Singletons use their one instance.
 - A caller's own cancellation is never treated as a failure, so it doesn't trigger fail-safe.
 - A value that was invalidated (its key, a tag or a clear) or replaced is never a fallback, also when that happened
   while the reload ran: callers then wait for the reload, or get its exception.
@@ -767,6 +780,13 @@ four layers. Change it in `appsettings.json` or at runtime, and the next call us
 When several layers configure the same method, they are merged setting by setting, and the highest layer that sets a
 setting wins. A runtime override of `Duration` leaves the attribute's `Tags` in place.
 
+Tags are the exception: they are combined, not replaced. Tags from startup code, `appsettings.json`, runtime overrides
+and the defaults are added to the `[Cache]` attribute's tags (without duplicates), so a `[CacheInvalidate]` that
+lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `WithTags`
+(`o => o.ClearTags().WithTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
+`appsettings.json`. The tags of the lower layers and of the defaults are then dropped, and an entry without them is
+no longer removed by a `[CacheInvalidate]` that lists them.
+
 ## Defaults and groups
 
 Within the layers, each setting comes from the most specific place that sets it: the method itself, then its group,
@@ -829,7 +849,8 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
   `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
   list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`,
-  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Metadata` and `Notes` are recorded for
+  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
+  method under `Services`: `true` makes its `Tags` replace the attribute's instead of adding to them. `Metadata` and `Notes` are recorded for
   diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
   `"Durration"` is reported instead of ignored.
 - Time spans are written `"hh:mm:ss"` (or `"d.hh:mm:ss"`); a bare number such as `"300"` is rejected, since .NET
@@ -858,8 +879,9 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
 
 ## Runtime overrides
 
-Runtime overrides win over everything else. Use them to change a policy without a deploy, for example to shorten a
-duration during an incident:
+A runtime override of a method wins over that method's other layers (its attribute, startup code and
+`appsettings.json`). Use them to change a policy without a deploy, for example to shorten a duration during an
+incident:
 
 ```cs
 var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
@@ -888,6 +910,10 @@ await configurator.ClearAsync();
 | `GetOverridesAsync` / `GetOverrideAsync` | Returns the active overrides |
 | `WatchAsync` | Streams override changes |
 
+- Runtime defaults, `DefaultPolicy` or `ForGroup` inside `ApplyAsync`, are defaults like the ones in startup code:
+  they fill in what a method leaves unset, and a method's own values, such as `[Cache(Duration = "01:00:00")]`, still
+  win over them. To change one method, override that method.
+- Tags in an override are added to the method's other tags; call `ClearTags()` first to replace them (see above).
 - `RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is kept with the override for auditing. An override stops
   applying when its `ExpiresAt` passes.
 - Overrides are held in memory. They are lost on restart and not shared between instances.
@@ -3037,6 +3063,18 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   `SetCacheTenantId(null)` clear the value. Admin `DELETE entry` answers 204 with a distributed cache, since the
   removal reached it and the other instances. The web demo's `.http` walkthrough loads product 2 before showing it
   is still cached.
+- **Tags combine across policy layers.** Tags from startup code, `appsettings.json`, runtime overrides and the
+  defaults are added to the `[Cache]` attribute's tags instead of replacing them, so a `[CacheInvalidate]` on an
+  attribute tag always reaches the entry. To replace them, call the new `CacheEntryOptions.Builder.ClearTags()`
+  (`CachePolicyFields.ClearTags` for a raw policy) or set `"ClearTags": true` for a method in `appsettings.json`.
+  The docs no longer say runtime overrides win over everything: a method's own override wins over its other layers,
+  while runtime defaults (`DefaultPolicy`, `ForGroup` in `ApplyAsync`) only fill in what the method leaves unset, as
+  before.
+- **Background loads of scoped services.** A refresh-ahead, and a fail-safe call that goes on after its caller got
+  the expired value, now run a scoped or transient service on a new instance from a new DI scope (keyed services
+  keep their key), disposed when the load ends, instead of on the request's instance after its scope was disposed.
+  Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
+  that generate them together with the new MethodCache.Core.
 
 ### If you used a pre-release build from GitHub Packages
 
