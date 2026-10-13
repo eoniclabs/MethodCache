@@ -20,7 +20,7 @@
 .PARAMETER Cleanup
     Clean up a failed release (delete packages, tags, revert commit)
 .PARAMETER Retry
-    Retry a failed release (publish the tag again)
+    Print how to publish an existing tag again
 .EXAMPLE
     .\release.ps1
     Shows suggested version numbers based on current version
@@ -33,7 +33,7 @@
     Check if version 1.2.0 was published successfully
 .EXAMPLE
     .\release.ps1 -Retry 1.2.0
-    Retry a failed 1.2.0 release
+    Print how to publish the v1.2.0 tag again
 .EXAMPLE
     .\release.ps1 -Cleanup 1.2.0
     Clean up a failed 1.2.0 release
@@ -275,7 +275,7 @@ function Invoke-ReleaseCleanup {
     Write-Info "  .\release.ps1 -Version $ReleaseVersion"
 }
 
-# Function to retry a failed release (publish the tag again)
+# Prints how to publish an existing tag again
 function Invoke-ReleaseRetry {
     param([string]$ReleaseVersion)
 
@@ -364,7 +364,7 @@ if (-not $Version) {
     Write-Info "Usage: .\release.ps1 -Version <version>"
     Write-Info "       .\release.ps1 -Status <version>   # Check release status"
     Write-Info "       .\release.ps1 -Cleanup <version>  # Clean up failed release"
-    Write-Info "       .\release.ps1 -Retry <version>    # Retry failed release"
+    Write-Info "       .\release.ps1 -Retry <version>    # Print how to publish a tag again"
     Write-Info ""
     Write-Info "Example: .\release.ps1 -Version $($suggestions['Minor'])"
     exit 0
@@ -469,5 +469,5 @@ Write-Info "Next steps:"
 Write-Info "1. Wait for the MethodCache CI status on the tagged commit (the build servers run it within minutes)"
 Write-Info "2. Publish on Megatron: build/ci/publish.sh $tagName"
 Write-Info "3. Verify packages: https://github.com/eoniclabs/MethodCache/packages"
-Write-Info "4. Update release notes: https://github.com/eoniclabs/MethodCache/releases/tag/$tagName"
+Write-Info "4. Copy the CHANGELOG.md section into the GitHub release: https://github.com/eoniclabs/MethodCache/releases/tag/$tagName"
 Write-Success ""

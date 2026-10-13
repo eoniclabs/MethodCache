@@ -13,7 +13,7 @@
     <PackageId>MethodCache.SqlServer</PackageId>
     <Title>MethodCache SQL Server Provider</Title>
     <Description>SQL Server as MethodCache's distributed cache, with a polling backplane that keeps every instance's in-memory cache in sync</Description>
-    <PackageTags>cache;sql-server;database;dotnet;performance;infrastructure</PackageTags>
+    <PackageTags>cache;methodcache;sql-server;distributed-cache;backplane</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -217,7 +217,7 @@ cleanup_release() {
     print_info "  ./release.sh $version"
 }
 
-# Function to retry a failed release (publish the tag again)
+# Prints how to publish an existing tag again
 retry_release() {
     local version=$1
     local tag_name="v$version"
@@ -319,7 +319,7 @@ show_help() {
     print_info "  <version>            Create a new release"
     print_info "  --status <version>   Check the status of a release"
     print_info "  --cleanup <version>  Clean up a failed release (delete packages, tags)"
-    print_info "  --retry <version>    Retry a failed release (publish the tag again)"
+    print_info "  --retry <version>    Print how to publish an existing tag again"
     echo ""
     print_info "Options:"
     print_info "  --skip-tests         Skip running tests before release"
@@ -328,7 +328,7 @@ show_help() {
     print_info "Examples:"
     print_info "  ./release.sh 1.2.0              # Create release 1.2.0"
     print_info "  ./release.sh --status 1.2.0    # Check if 1.2.0 was published"
-    print_info "  ./release.sh --retry 1.2.0     # Re-trigger failed 1.2.0 release"
+    print_info "  ./release.sh --retry 1.2.0     # Print how to publish the v1.2.0 tag again"
     print_info "  ./release.sh --cleanup 1.2.0   # Clean up failed 1.2.0 release"
 }
 
@@ -447,5 +447,5 @@ print_info "Next steps:"
 print_info "1. Wait for the MethodCache CI status on the tagged commit (the build servers run it within minutes)"
 print_info "2. Publish on Megatron: build/ci/publish.sh $TAG_NAME"
 print_info "3. Verify packages: https://github.com/eoniclabs/MethodCache/packages"
-print_info "4. Update release notes: https://github.com/eoniclabs/MethodCache/releases/tag/$TAG_NAME"
+print_info "4. Copy the CHANGELOG.md section into the GitHub release: https://github.com/eoniclabs/MethodCache/releases/tag/$TAG_NAME"
 print_success ""

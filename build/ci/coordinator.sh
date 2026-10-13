@@ -34,6 +34,10 @@ windows_root="${METHODCACHE_CI_WINDOWS_ROOT:-C:\\mc}"
 state="${METHODCACHE_CI_STATE:-$HOME/.cache/methodcache-ci}"
 timeout_seconds="${METHODCACHE_CI_TIMEOUT_SECONDS:-3600}"
 keep_runs_days="${METHODCACHE_CI_KEEP_RUNS_DAYS:-3}"
+max_macos_mib="${METHODCACHE_CI_MAX_MACOS_MIB:-10240}"
+keep_failed_hours="${METHODCACHE_CI_KEEP_FAILED_HOURS:-24}"
+retry_limit="${METHODCACHE_CI_MAX_ATTEMPTS:-5}"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # A server that stops answering ends the SSH session within two minutes instead of never
 ssh_options=(-o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
@@ -86,7 +90,8 @@ with_timeout() { # seconds command...; macOS has no timeout(1) by default
   ( sleep "$seconds" && log "timed out after $seconds s: $*" && kill_tree "$pid" ) >&2 7<&- &
   local watchdog=$!
   wait "$pid"; local code=$?
-  kill "$watchdog" 2> /dev/null; wait "$watchdog" 2> /dev/null
+  # Killing only the watchdog shell leaves its sleep holding inherited pipe descriptors open.
+  kill_tree "$watchdog"; wait "$watchdog" 2> /dev/null
   return "$code"
 }
 
@@ -98,7 +103,10 @@ set -euo pipefail
 cd ~ && mkdir -p '$1/runs' && cd '$1'
 [ -d mirror.git ] || git clone --quiet --mirror '$clone_url' mirror.git
 git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
-find runs -mindepth 1 -maxdepth 1 -mtime +$keep_runs_days -exec rm -rf {} +
+# macOS is collected by the owned-checkout collector; never age-delete an active local checkout.
+if [ '$1' != '$state/macos' ]; then
+  find runs -mindepth 1 -maxdepth 1 -mtime +$keep_runs_days -exec rm -rf {} +
+fi
 # A plain local clone (hard links), not --shared: Nerdbank.GitVersioning cannot read objects through alternates
 rm -rf 'runs/$3' && git clone --quiet --no-checkout mirror.git 'runs/$3'
 git -C 'runs/$3' checkout --quiet --detach '$2'
@@ -121,10 +129,20 @@ exit "\$code"
 SCRIPT
   } | with_timeout "$timeout_seconds" ssh "${ssh_options[@]}" "$nimbus" bash -s > "$3/console.log" 2>&1
   local code=$?
-  # The job logs come back whatever happened
-  with_timeout 300 ssh "${ssh_options[@]}" "$nimbus" "cd ~/'$nimbus_root/runs/$2/artifacts/ci' && tar -cf - *.log *.exit finished" \
-    < /dev/null 2> /dev/null | tar -xf - -C "$3" 2> /dev/null
+  # Preserve both SSH and extraction diagnostics: an empty archive must not look like a job that never ran.
+  fetch_linux_results "$2" "$3" "$1" || return 75
   return "$code"
+}
+
+fetch_linux_results() { # run_id results_dir sha; read-only on Nimbus
+  with_timeout 300 ssh "${ssh_options[@]}" "$nimbus" "git -C ~/'$nimbus_root/runs/$1' log -1 --format=%H | grep -qx '$3' && cd ~/'$nimbus_root/runs/$1/artifacts/ci' && tar -cf - *.log *.exit finished" \
+    < /dev/null 2>> "$2/transfer.log" | tar -xf - -C "$2" 2>> "$2/transfer.log"
+  local codes=("${PIPESTATUS[@]}")
+  if [ "${codes[0]}" -ne 0 ] || [ "${codes[1]}" -ne 0 ]; then
+    log "Linux result transfer failed for $1 (SSH ${codes[0]}, tar ${codes[1]}); see $2/transfer.log"
+    return 1
+  fi
+  finished "$2"
 }
 
 run_windows() { # sha run_id results_dir
@@ -196,12 +214,15 @@ $body"
 
 run_macos() { # sha run_id results_dir
   with_timeout "$timeout_seconds" run_macos_jobs "$@"
+  local code=$?
+  collect_macos "$2"
+  return "$code"
 }
 
 run_macos_jobs() { # sha run_id results_dir
   (
     eval "$(checkout_script "$state/macos" "$1" "$2")"
-    METHODCACHE_CI_RESULTS="$3" FRAMEWORK= bash -c '
+    METHODCACHE_CI_RESULTS="$3" FRAMEWORK='' bash -c '
       for job in build unit; do
         if [ "$job" = unit ] && [ "$(cat "$METHODCACHE_CI_RESULTS/build.exit" 2> /dev/null)" != 0 ]; then
           echo skipped > "$METHODCACHE_CI_RESULTS/unit.exit"; continue
@@ -218,7 +239,8 @@ run_macos_jobs() { # sha run_id results_dir
 # "build ✓, tests ✗, docs skipped" from the .exit files of one platform, in the order the jobs ran
 summary_of() { # results_dir
   local summary="" file job code
-  for file in $(ls -tr "$1"/*.exit 2> /dev/null); do
+  for file in "$1"/*.exit; do
+    [ -f "$file" ] || continue
     job=$(basename "$file" .exit); code=$(tr -d '[:space:]' < "$file")
     case "$code" in
       0) summary+="${summary:+, }$job ✓" ;;
@@ -238,7 +260,7 @@ excerpt_of() { # log_file
 
 # The platform script returned, with at least one job result (not killed, disconnected or stopped before any job)
 finished() { # results_dir
-  [ -e "$1/finished" ] && ls "$1"/*.exit > /dev/null 2>&1
+  python3 "$here/coordinator-state.py" complete "$1"
 }
 
 failed_jobs_of() { # results_dir
@@ -255,6 +277,7 @@ run_commit() { # sha pr(optional)
   run_id="$(date '+%Y%m%d-%H%M%S')-${sha:0:12}"
   local run_dir="$state/runs/$run_id"
   mkdir -p "$run_dir/linux" "$run_dir/windows" "$run_dir/macos"
+  printf '%s\n' "$sha" > "$run_dir/commit"
   log "run $run_id for ${pr:+PR #$pr }$sha"
 
   status_failed=0
@@ -262,16 +285,16 @@ run_commit() { # sha pr(optional)
   for context in "$aggregate" "${contexts[@]}"; do post_status "$sha" "$context" pending "Running on the build servers"; done
   local started=$SECONDS
 
-  run_linux "$sha" "$run_id" "$run_dir/linux" & local linux_pid=$!
-  run_windows "$sha" "$run_id" "$run_dir/windows" & local windows_pid=$!
-  run_macos "$sha" "$run_id" "$run_dir/macos" & local macos_pid=$!
+  run_platform linux "$sha" "$run_id" "$run_dir/linux" & local linux_pid=$!
+  run_platform windows "$sha" "$run_id" "$run_dir/windows" & local windows_pid=$!
+  run_platform macos "$sha" "$run_id" "$run_dir/macos" & local macos_pid=$!
 
   local all_ok=1 platform pid code
   for platform in linux windows macos; do
     case $platform in linux) pid=$linux_pid; context=${contexts[0]} ;; windows) pid=$windows_pid; context=${contexts[1]} ;;
                       macos) pid=$macos_pid; context=${contexts[2]} ;; esac
     wait "$pid"; code=$?
-    if [ "$code" -eq 0 ] && [ -z "$(failed_jobs_of "$run_dir/$platform")" ] && ls "$run_dir/$platform"/*.exit > /dev/null 2>&1; then
+    if [ "$code" -eq 0 ] && python3 "$here/coordinator-state.py" passed "$run_dir/$platform"; then
       post_status "$sha" "$context" success "$(summary_of "$run_dir/$platform")"
     else
       all_ok=0
@@ -287,16 +310,48 @@ run_commit() { # sha pr(optional)
   fi
   # A platform that did not finish all its jobs (a server was unreachable, the connection dropped, a timeout), or
   # a result GitHub did not accept, is retried after 30 minutes
-  if [ "$status_failed" -eq 1 ]; then
+  if [ "$status_failed" -eq 1 ] || ! finished "$run_dir/linux" || ! finished "$run_dir/windows" || ! finished "$run_dir/macos"; then
     echo retry > "$state/done/$sha"
-  elif ! finished "$run_dir/linux" || ! finished "$run_dir/windows" || ! finished "$run_dir/macos"; then
-    echo retry > "$state/done/$sha"
+    local retry_args=(retry --state "$state" --sha "$sha" --limit "$retry_limit")
+    [ "${force_run:-0}" -eq 1 ] && retry_args+=(--reset)
+    python3 "$here/coordinator-state.py" "${retry_args[@]}"
   else
-    echo done > "$state/done/$sha"
+    echo 'done' > "$state/done/$sha"
+    rm -f "$state/retries/$sha.json"
   fi
 
   [ -n "$pr" ] && comment_on "$pr" "$sha" "$run_dir" "$all_ok" "$minutes" "$run_id"
   log "run $run_id finished: $([ "$all_ok" -eq 1 ] && echo passed || echo failed)"
+}
+
+run_platform() { # platform sha run_id results_dir
+  local platform=$1; shift
+  if [ "${force_run:-0}" -ne 1 ] && python3 "$here/coordinator-state.py" reuse --state "$state" \
+      --sha "$1" --platform "$platform" --destination "$3"; then
+    log "reused completed $platform results for $1"
+    return 0
+  fi
+  # A previous Linux build may be complete on Nimbus while its transfer was lost. Try collection before rebuilding.
+  if [ "$platform" = linux ] && [ "${force_run:-0}" -ne 1 ]; then
+    local previous
+    while IFS= read -r previous; do
+      [ -n "$previous" ] || continue
+      if fetch_linux_results "$previous" "$3" "$1"; then
+        log "recovered Linux results from $previous"
+        python3 "$here/coordinator-state.py" passed "$3"; return $?
+      fi
+      # Don't mix a partial archive from one run with a later fresh build.
+      rm -f "$3"/*.exit "$3/finished"
+    done < <(python3 "$here/coordinator-state.py" previous --state "$state" --sha "$1" --exclude-run "$2")
+  fi
+  "run_$platform" "$@"
+}
+
+collect_macos() {
+  local scope=(--min-interval-seconds 3600)
+  [ -n "${1:-}" ] && scope=(--only-run "$1")
+  python3 "$here/coordinator-state.py" gc --state "$state" --keep-days "$keep_runs_days" \
+    --keep-failed-hours "$keep_failed_hours" --max-mib "$max_macos_mib" "${scope[@]}" || log "macOS checkout collection failed"
 }
 
 comment_on() { # pr sha run_dir all_ok minutes run_id
@@ -351,17 +406,20 @@ $(excerpt_of "$3/$platform/$job.log")
 }
 
 if [ "${1:-}" = --pr ]; then
+  force_run=1
   pr=${2:?--pr needs a pull request number}
   sha=$(gh api "repos/$repo/pulls/$pr" --jq .head.sha) || exit 1
   run_commit "$sha" "$pr"
   exit 0
 fi
 
+collect_macos
+
 # A commit has a result, unless its last run could not reach a server and that was over 30 minutes ago
 already_ran() { # sha
   local marker="$state/done/$1"
   [ -e "$marker" ] || return 1
-  [ "$(cat "$marker")" = retry ] && [ -n "$(find "$marker" -mmin +30)" ] && return 1
+  [ "$(cat "$marker")" = retry ] && python3 "$here/coordinator-state.py" retry-due --state "$state" --sha "$1" && return 1
   return 0
 }
 

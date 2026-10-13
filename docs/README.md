@@ -22,7 +22,7 @@ pages is compiled and tested in CI.
 
 ## Running in production
 
-- [Distributed cache](features/distributed-cache.md): Redis, SQL Server or any `IDistributedCache`.
+- [Distributed cache](features/distributed-cache.md): Redis, SQL Server, or your own `IDistributedCache` with atomic invalidation stamps.
 - [Monitoring](features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
@@ -44,6 +44,6 @@ pages is compiled and tested in CI.
 
 [Redis](../src/MethodCache.Redis/README.md), [SQL Server](../src/MethodCache.SqlServer/README.md),
 [ASP.NET Core](../src/MethodCache.AspNetCore/README.md), [OpenTelemetry](../src/MethodCache.OpenTelemetry/README.md),
-[HTTP caching](../src/MethodCache.HttpCaching/README.md). [Benchmarks](benchmarks.md) has the measured performance.
-
-- [Release compatibility notes](developer/RELEASE_NOTES.md): cache key and distributed invalidation formats.
+[HTTP caching](../src/MethodCache.HttpCaching/README.md), [MessagePack](../src/MethodCache.Serialization.MessagePack/README.md).
+[Benchmarks](benchmarks.md) has the measured performance, and the [changelog](../CHANGELOG.md) lists what changes
+between releases.

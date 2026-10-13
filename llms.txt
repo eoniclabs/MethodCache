@@ -17,7 +17,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Manual caching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/manual-caching.md): `GetOrCreateAsync` with a key you choose.
 - [Caching third-party code](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/third-party.md): cache a client from a NuGet package.
 - [HTTP response caching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/http-caching.md): `HttpClient` caching with `Cache-Control` and `ETag`.
-- [Distributed cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/distributed-cache.md): Redis, SQL Server or any `IDistributedCache`.
+- [Distributed cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/distributed-cache.md): Redis, SQL Server, or your own `IDistributedCache` with atomic invalidation stamps.
 - [Monitoring](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/native-aot.md): what to register when you publish with Native AOT.
@@ -25,14 +25,15 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Security](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/security.md): what each package protects against, and what it leaves to you.
 - [MethodCache: instructions for coding agents](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/ai/methodcache.md): rules to copy into Copilot, Cursor or Claude Code instructions.
 - [Troubleshooting](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/troubleshooting.md): a method that isn't cached, stale data, keys you didn't expect.
-- [Build Diagnostics](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/user-guide/DIAGNOSTICS.md): every `MC` and `MCG` warning and error.
+- [Build diagnostics](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/user-guide/DIAGNOSTICS.md): every `MC` and `MCG` warning and error.
 - [Migrating from IMemoryCache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/migration-from-imemorycache.md): replace hand-written cache-aside code.
 - [MethodCache.Redis](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Redis/README.md): Redis as MethodCache's distributed cache.
 - [MethodCache.SqlServer](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.SqlServer/README.md): SQL Server as MethodCache's distributed cache.
 - [MethodCache.AspNetCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.AspNetCore/README.md): Admin endpoints and a health check for MethodCache's in-memory cache.
 - [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): OpenTelemetry metrics and traces for MethodCache.
 - [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`, revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached response.
-- [Release compatibility notes](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/developer/RELEASE_NOTES.md): cache key and distributed invalidation formats.
+- [MethodCache.Serialization.MessagePack](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Serialization.MessagePack/README.md): Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack instead of the default System.Text.Json: smaller entries and faster reads.
+- [Changelog](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/CHANGELOG.md): Changes that a user of the packages notices.
 
 ## Optional
 

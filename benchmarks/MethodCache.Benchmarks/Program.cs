@@ -143,7 +143,7 @@ public class Program
         Console.WriteLine("  memory       - Memory usage and GC pressure analysis");
         Console.WriteLine("  realworld    - Real-world application scenarios");
         Console.WriteLine("  generic      - Generic interface performance");
-        Console.WriteLine("  serialization - Serialization performance comparison");
+        Console.WriteLine("  serialization - Cache key generators compared (MessagePack, JSON, ToString)");
         Console.WriteLine("  quick        - Quick benchmarks for development (minimal parameters)");
         Console.WriteLine("  profile      - Generated decorator sync and async hit paths");
         Console.WriteLine("  all          - basic, providers, concurrent, memory, realworld, generic and serialization");

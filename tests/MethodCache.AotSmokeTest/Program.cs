@@ -38,6 +38,19 @@ await rates.GetRateAsync("EUR", "SEK");
 await rates.PlaceOrderAsync("book");
 await rates.PlaceOrderAsync("book");
 
+// Records of simple values, ICacheKeyProvider arguments, and arrays, lists and dictionaries of them are written into
+// the key by the decorator. Other arguments go through the key generator, which uses reflection-based JSON and fails
+// under Native AOT, so they are not used here (see docs/features/native-aot.md).
+var catalog = provider.GetRequiredService<ICatalogService>();
+await catalog.SearchAsync(new CatalogQuery("books", 2));
+await catalog.SearchAsync(new CatalogQuery("books", 2));
+await catalog.ByIdsAsync(new IdList(1, 2, 3));
+await catalog.ByIdsAsync(new IdList(1, 2, 3));
+await catalog.ManyAsync([1, 2, 3], [new CatalogQuery("books", 2)]);
+await catalog.ManyAsync([1, 2, 3], [new CatalogQuery("books", 2)]);
+await catalog.FilteredAsync(new Dictionary<string, int> { ["page"] = 2 });
+await catalog.FilteredAsync(new Dictionary<string, int> { ["page"] = 2 });
+
 var failures = new List<string>();
 if (provider.GetRequiredService<IUserService>().GetType().Name != "IUserServiceDecorator")
 {
@@ -62,6 +75,11 @@ if (RatesClient.RateCalls != 1)
 if (RatesClient.OrderCalls != 2)
 {
     failures.Add($"IRatesClient.PlaceOrderAsync called {RatesClient.OrderCalls} times, expected 2 (it is not listed, so never cached)");
+}
+
+if (CatalogService.Calls != 4)
+{
+    failures.Add($"ICatalogService implementation called {CatalogService.Calls} times, expected 4");
 }
 
 foreach (var failure in failures)
@@ -107,5 +125,50 @@ public sealed class PriceService : IPriceService
     {
         Interlocked.Increment(ref _calls);
         return Task.FromResult(42m);
+    }
+}
+
+public sealed record CatalogQuery(string Term, int Page);
+
+public sealed class IdList(params int[] ids) : ICacheKeyProvider
+{
+    public int Count => ids.Length;
+
+    public string CacheKeyPart => string.Join(',', ids);
+}
+
+public interface ICatalogService
+{
+    [Cache(Duration = "00:01:00")]
+    Task<int> SearchAsync(CatalogQuery query);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> ByIdsAsync(IdList ids);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> ManyAsync(int[] ids, List<CatalogQuery> queries);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> FilteredAsync(Dictionary<string, int> filters);
+}
+
+public sealed class CatalogService : ICatalogService
+{
+    private static int _calls;
+
+    public static int Calls => _calls;
+
+    public Task<int> SearchAsync(CatalogQuery query) => Count(query.Page);
+
+    public Task<int> ByIdsAsync(IdList ids) => Count(ids.Count);
+
+    public Task<int> ManyAsync(int[] ids, List<CatalogQuery> queries) => Count(ids.Length + queries.Count);
+
+    public Task<int> FilteredAsync(Dictionary<string, int> filters) => Count(filters.Count);
+
+    private static Task<int> Count(int value)
+    {
+        Interlocked.Increment(ref _calls);
+        return Task.FromResult(value);
     }
 }

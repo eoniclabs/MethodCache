@@ -11,7 +11,7 @@
     <Description>HTTP caching for HttpClient: ETag and Last-Modified revalidation, Cache-Control and Vary, as in RFC 9111</Description>
     <PackageProjectUrl>https://github.com/eoniclabs/MethodCache</PackageProjectUrl>
     <RepositoryUrl>https://github.com/eoniclabs/MethodCache</RepositoryUrl>
-    <PackageTags>cache;http;httpclient;caching;etag;conditional;304</PackageTags>
+    <PackageTags>cache;methodcache;http;httpclient;http-caching;etag;cache-control;rfc9111</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
