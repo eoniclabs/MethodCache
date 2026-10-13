@@ -8,6 +8,16 @@ namespace MethodCache.Benchmarks.Tests;
 
 public class BenchmarkSetupTests
 {
+    [Theory]
+    [InlineData("engine")]
+    [InlineData("readme")]
+    [InlineData("comparison")]
+    public void BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(string category)
+    {
+        var error = Record.Exception(() => MethodCache.Benchmarks.BenchmarkCommands.Run(new[] { category, "--list", "flat" }));
+        Assert.Null(error);
+    }
+
     [Fact]
     public void BenchmarkBase_ActualRegistrationFactories_HaveNoCacheManagerCycle()
     {

@@ -8,28 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace MethodCache.Benchmarks.Comparison;
 
 /// <summary>
-/// Adapter-based comparison benchmarks for all caching libraries
-/// All tests run through the same ICacheAdapter interface for apples-to-apples comparison
-///
-/// IMPORTANT INTERPRETATION GUIDE:
-///
-/// MethodCache_SourceGen_** benchmarks:
-/// - Uses the default in-memory engine (with tags, stats, eviction)
-/// - Direct storage-to-storage comparison
-/// - Shows MethodCache storage performance vs other frameworks
-///
-/// MethodCache_ManualKey_** benchmarks:
-/// - Direct API calls (no source generation)
-/// - Shows MethodCache storage layer only
-/// - Fair storage-to-storage comparison
-///
-/// MethodCache_Legacy_** benchmarks:
-/// - Legacy/research comparison (runtime reflection-based)
-/// - Shows runtime key generation performance
-/// - Not recommended for decision-making
-///
-/// Key Insight: Compare MethodCache_SourceGen against other frameworks - that's the real comparison!
-/// See Comparison/README.md and the benchmarks README.md for full explanation.
+/// Compares cache operations through ICacheAdapter using the current engine. MethodCache rows use
+/// generated get-or-create methods, manual storage keys, or runtime key generation.
+/// See ReadmeComparisonBenchmarks for the documented application-level comparison.
 /// </summary>
 [MemoryDiagnoser]
 [RankColumn]
@@ -43,9 +24,9 @@ public class UnifiedCacheComparisonBenchmarks
     private const int ConcurrentHitIterationsPerThread = 256;
 
     // All cache adapters - easily extensible!
-    private ICacheAdapter _legacyMethodCache = null!;
+    private ICacheAdapter _runtimeKeyMethodCache = null!;
     private ICacheAdapter _manualKeyMethodCache = null!;
-    private ICacheAdapter _sourceGenMethodCache = null!; // NEW: Uses source generation (proper MethodCache usage)
+    private ICacheAdapter _sourceGenMethodCache = null!;
     private ICacheAdapter _fusionCache = null!;
     private ICacheAdapter _lazyCache = null!;
     private ICacheAdapter _easyCaching = null!;
@@ -57,7 +38,7 @@ public class UnifiedCacheComparisonBenchmarks
     {
         // Initialize all cache adapters
         // MethodCache has 3 usage modes shown here:
-        _legacyMethodCache = new MethodCacheAdapter(); // Runtime key generation (legacy path)
+        _runtimeKeyMethodCache = new RuntimeKeyMethodCacheAdapter(); // Runtime key generation
         _manualKeyMethodCache = new DirectApiMethodCacheAdapter(); // Direct API with manual keys (raw storage comparison)
 
         // Source-generated MethodCache with the default in-memory engine
@@ -75,8 +56,8 @@ public class UnifiedCacheComparisonBenchmarks
         // PERFORMANCE OPTIMIZATION: Configure cache options for benchmarking
         services.Configure<MethodCache.MethodCacheMemoryOptions>(opts =>
         {
-            opts.EnableStatistics = false;  // Skip Interlocked operations (~5-10µs saved)
-            opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;  // Use lazy LRU
+            opts.EnableStatistics = false;
+            opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;
         });
 
 
@@ -104,7 +85,7 @@ public class UnifiedCacheComparisonBenchmarks
     [GlobalCleanup]
     public void GlobalCleanup()
     {
-        _legacyMethodCache?.Dispose();
+        _runtimeKeyMethodCache?.Dispose();
         _manualKeyMethodCache?.Dispose();
         _sourceGenMethodCache?.Dispose();
         _sourceGenProvider?.Dispose();
@@ -116,7 +97,7 @@ public class UnifiedCacheComparisonBenchmarks
     private void WarmupCaches()
     {
         var duration = TimeSpan.FromMinutes(10);
-        _legacyMethodCache.Set(TestKey, TestPayload, duration);
+        _runtimeKeyMethodCache.Set(TestKey, TestPayload, duration);
         _manualKeyMethodCache.Set(TestKey, TestPayload, duration);
 
         // MethodCache_SourceGen must populate cache by calling the cached method so the decorator path runs
@@ -130,20 +111,12 @@ public class UnifiedCacheComparisonBenchmarks
     }
 
     // ==================== CACHE HIT TESTS ====================
-    // MethodCache has 3 usage modes:
-    // 1. MethodCache_SourceGen_*Hit - default in-memory engine (full-featured)
-    // 2. MethodCache_ManualKey_*Hit - Direct API with manual keys (storage-only comparison)
-    // 3. MethodCache_Legacy_*Hit - Runtime key generation research
-    //
-    // COMPARE: MethodCache_SourceGen vs other frameworks for storage comparison
-    //
-    // NOTE: Synchronous benchmark methods (MethodCache_SourceGen_*Hit) suffer from sync-over-async
-    // overhead. Use MethodCache_SourceGen_*HitAsync for true performance.
+    // ManualKey and ordinary SourceGen lookups read storage directly; RuntimeKey generates each key.
 
     [BenchmarkCategory("CacheHit"), Benchmark]
-    public bool MethodCache_Legacy_Hit()
+    public bool MethodCache_RuntimeKey_Hit()
     {
-        return _legacyMethodCache.TryGet<SamplePayload>(TestKey, out _);
+        return _runtimeKeyMethodCache.TryGet<SamplePayload>(TestKey, out _);
     }
 
     [BenchmarkCategory("CacheHit"), Benchmark]
@@ -196,10 +169,10 @@ public class UnifiedCacheComparisonBenchmarks
     // This is more reliable than Remove(), which doesn't work for all cache implementations.
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
-    public async Task<SamplePayload> MethodCache_Legacy_MissAndSet()
+    public async Task<SamplePayload> MethodCache_RuntimeKey_MissAndSet()
     {
         var key = $"{TestKey}_miss_{Guid.NewGuid()}";
-        return await _legacyMethodCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
+        return await _runtimeKeyMethodCache.GetOrSetAsync(key, CreatePayloadAsync, TimeSpan.FromMinutes(10));
     }
 
     [BenchmarkCategory("MissAndSet"), Benchmark]
@@ -244,9 +217,9 @@ public class UnifiedCacheComparisonBenchmarks
     [BenchmarkCategory("Concurrent"), Benchmark]
     [Arguments(10)]
     [Arguments(100)]
-    public async Task MethodCache_Legacy_Concurrent(int threadCount)
+    public async Task MethodCache_RuntimeKey_Concurrent(int threadCount)
     {
-        await RunConcurrentTest(_legacyMethodCache, threadCount);
+        await RunConcurrentTest(_runtimeKeyMethodCache, threadCount);
     }
 
     [BenchmarkCategory("Concurrent"), Benchmark]
@@ -368,9 +341,9 @@ public class UnifiedCacheComparisonBenchmarks
     // ==================== CACHE STAMPEDE TESTS ====================
 
     [BenchmarkCategory("Stampede"), Benchmark]
-    public async Task MethodCache_Legacy_Stampede()
+    public async Task MethodCache_RuntimeKey_Stampede()
     {
-        await RunStampedeTest(_legacyMethodCache);
+        await RunStampedeTest(_runtimeKeyMethodCache);
     }
 
     [BenchmarkCategory("Stampede"), Benchmark]

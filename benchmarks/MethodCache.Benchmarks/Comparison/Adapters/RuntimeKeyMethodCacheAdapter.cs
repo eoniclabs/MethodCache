@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace MethodCache.Benchmarks.Comparison.Adapters;
 
 /// <summary>
-/// Adapter for MethodCache (using direct ICacheManager for fair comparison)
+/// Uses ICacheManager and generates a cache key at runtime for each operation.
 /// </summary>
-public class MethodCacheAdapter : ICacheAdapter
+public class RuntimeKeyMethodCacheAdapter : ICacheAdapter
 {
     private readonly ICacheManager _cacheManager;
     private readonly ICacheKeyGenerator _keyGenerator;
@@ -18,9 +18,9 @@ public class MethodCacheAdapter : ICacheAdapter
     private readonly IServiceProvider _serviceProvider;
     private readonly CacheStatistics _stats = new();
 
-    public string Name => "MethodCache (Legacy Runtime)";
+    public string Name => "MethodCache (Runtime Keys)";
 
-    public MethodCacheAdapter(TimeProvider? timeProvider = null)
+    public RuntimeKeyMethodCacheAdapter(TimeProvider? timeProvider = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();

@@ -60,14 +60,14 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- comparison 
 
 - `MethodCache_SourceGen_*`: a source-generated decorator behind the adapter.
 - `MethodCache_ManualKey_*`: `ICacheManager` with keys the caller supplies.
-- `MethodCache_Legacy_*`: keys generated at run time on every call; kept for comparison only.
+- `MethodCache_RuntimeKey_*`: keys generated at run time on every operation through the current API.
 
 `--quick` (or `BENCHMARK_QUICK=true`) uses fewer warmups and iterations. It is for checking that a benchmark runs, not
 for numbers you publish. Results land in `BenchmarkDotNet.Artifacts/results/` under the directory you ran from.
 
 ### How the runs are configured
 
-Most categories use one BenchmarkDotNet job, defined in `Program.cs`: the machine's own architecture, Server GC with
+Most categories use one BenchmarkDotNet job, defined in `BenchmarkCommands.cs`: the machine's own architecture, Server GC with
 concurrent collection, and JSON and GitHub Markdown exporters. In quick mode it runs 1 warmup and 3 measured
 iterations. `readme` uses workstation GC, with 6 warmups and 15 iterations (3 and 5 in quick mode), and `engine`
 always uses BenchmarkDotNet's short run. Classes marked `[MemoryDiagnoser]` also report allocations.

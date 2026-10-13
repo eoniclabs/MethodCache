@@ -30,6 +30,15 @@ namespace Docs.Readme
 
     public static class Setup
     {
+        public static void ExplicitFactory(WebApplicationBuilder builder)
+        {
+            // begin-snippet: explicit-factory-registration
+            builder.Services.AddScoped<IUserService>(sp =>
+                new UserService(sp.GetRequiredService<IUserDatabase>()));
+            builder.Services.AddMethodCache();
+            // end-snippet
+        }
+
         public static void QuickStart(WebApplicationBuilder builder)
         {
             // begin-snippet: readme-quickstart-registration

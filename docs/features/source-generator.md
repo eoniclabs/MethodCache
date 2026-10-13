@@ -28,6 +28,16 @@ interface is cacheable. See [keys](keys.md) for argument identity and
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
 yourself open. Factory registrations are wrapped the same way ([Getting started](../getting-started.md#registering-with-a-factory)).
 
+A factory registration for the README's `IUserService`, once `IUserDatabase` is registered:
+
+<!-- snippet: explicit-factory-registration -->
+```cs
+builder.Services.AddScoped<IUserService>(sp =>
+    new UserService(sp.GetRequiredService<IUserDatabase>()));
+builder.Services.AddMethodCache();
+```
+<!-- endSnippet -->
+
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
 
