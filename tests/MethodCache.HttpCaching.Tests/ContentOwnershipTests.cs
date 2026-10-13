@@ -212,6 +212,28 @@ public class ContentOwnershipTests
             => Fails(key) ? Task.FromException(new InvalidOperationException("backend down")) : _inner.SetAsync(key, value, options, token);
     }
 
+    [Fact]
+    public async Task ForcedRevalidation_ToNoLifetimeLeft_RemovesTheOldEntry()
+    {
+        var clock = new FakeTimeProvider();
+        var storage = HttpCacheTestFactory.CreateInMemoryStorage(timeProvider: clock);
+        var first = Fresh(new StringContent("cached"));
+        first.Headers.ETag = new EntityTagHeaderValue("\"version\"");
+        // The 304 leaves nothing to keep (max-age=0, no stale retention) and makes the response vary by caller
+        var notModified = new HttpResponseMessage(HttpStatusCode.NotModified);
+        notModified.Headers.CacheControl = new CacheControlHeaderValue { MaxAge = TimeSpan.Zero };
+        notModified.Headers.Vary.Add("Authorization");
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions { IsSharedCache = true, StaleRetention = TimeSpan.Zero },
+            new Origin(first, notModified, Fresh(new StringContent("new"))), storage, clock));
+        using (await client.GetAsync("https://example.test/content")) { }
+        using var forced = new HttpRequestMessage(HttpMethod.Get, "https://example.test/content");
+        forced.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+        using (await client.SendAsync(forced)) { }
+
+        // The old entry, still fresh by its own rules, is gone
+        Assert.Equal("new", await client.GetStringAsync("https://example.test/content"));
+    }
+
     private static HttpResponseMessage Fresh(HttpContent content) => new(HttpStatusCode.OK)
     {
         Content = content,

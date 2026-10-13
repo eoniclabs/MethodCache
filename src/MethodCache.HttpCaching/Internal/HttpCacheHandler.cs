@@ -390,8 +390,11 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             // may carry the old freshness and Vary rules, though, so it is removed instead (and that must work).
             try
             {
-                await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
-                return;
+                // Nothing written (no lifetime left) leaves the old entry, with its old rules: remove it below
+                if (await StoreAsync(request, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false))
+                {
+                    return;
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -420,7 +423,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask StoreAsync(
+    /// <returns>Whether a response was written; false when it may not be kept at all.</returns>
+    private async ValueTask<bool> StoreAsync(
         HttpRequestMessage request,
         string baseKey,
         HttpCacheEntry entry,
@@ -431,14 +435,14 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var timeToLive = GetTimeToLive(entry, options, freshness);
         if (timeToLive <= TimeSpan.Zero)
         {
-            return;
+            return false;
         }
 
         var selectingHeaders = HttpCacheKeys.SelectingHeaders(options, entry.VaryHeaders);
         if (selectingHeaders.Length == 0)
         {
             await _storage.SetAsync(baseKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
-            return;
+            return true;
         }
 
         // A request that sends none of the selecting headers (an anonymous call in a private cache) shares its
@@ -449,7 +453,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             !HttpCacheKeys.SendsAny(request, selectingHeaders))
         {
             await _storage.SetAsync(baseKey, entry with { VariantGeneration = null, VaryHeaders = selectingHeaders }, timeToLive, cancellationToken).ConfigureAwait(false);
-            return;
+            return true;
         }
 
         // Otherwise the URL entry holds no response, only the headers that select a variant and a generation that is
@@ -463,7 +467,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var variantKey = HttpCacheKeys.ForVariant(baseKey, generation, request, selectingHeaders);
         if (variantKey == null)
         {
-            return;
+            return false;
         }
 
         // The URL entry lives as long as its longest-lived variant, so a short-lived variant doesn't hide the others.
@@ -484,6 +488,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         await _storage.SetAsync(variantKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
         await _storage.SetAsync(baseKey, urlEntry, urlTimeToLive, cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     /// <summary>
