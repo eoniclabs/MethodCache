@@ -193,7 +193,8 @@ builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCac
 Results live in memory and in Redis (or SQL Server, or your own cache, see
 [Distributed cache](docs/features/distributed-cache.md)).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
-Values are JSON by default; `AddMethodCacheMessagePack()` makes them smaller.
+Values are JSON by default; a method whose results JSON can't read back unchanged (private setters, a derived type,
+`object`) is kept in memory only, with a warning. `AddMethodCacheMessagePack()` makes values smaller.
 If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips
 Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly
 during the outage stays in that instance's memory, and the value it replaced is removed everywhere once Redis is back.

@@ -72,6 +72,9 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly TimeSpan _breakDuration;
         private readonly ConcurrentDictionary<string, TagStamp> _tagStamps = new(StringComparer.Ordinal);
 
+        // Whether a method's values survive the serializer, by method and result type; see RoundTrips
+        private readonly ConcurrentDictionary<(string Method, Type Type), bool> _roundTrips = new();
+
         // Tag invalidations and clears other nodes announced so far
         private long _remoteInvalidations;
 
@@ -252,7 +255,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// answers), so no node keeps the value it replaced. <paramref name="invalidated"/> is checked again after the
         /// write. Never throws.
         /// </summary>
-        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false)
+        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false, string? methodName = null)
         {
             // The metadata that can invalidate this value must outlive it, including time spent loading or
             // writing it. Anchor its logical expiry to the source read, not the later publication time.
@@ -290,6 +293,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             var buffer = new ArrayBufferWriter<byte>(256);
             WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, expiresAt, Convert(tags, StoredTag));
+            var payloadStart = buffer.WrittenCount;
             if (value is not null)
             {
                 try
@@ -303,6 +307,17 @@ namespace MethodCache.Core.Runtime.Distributed
                     _onError?.Invoke(ex);
 
                     // Other nodes must not keep the value this set replaced
+                    if (replaces)
+                    {
+                        await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                    }
+
+                    return;
+                }
+
+                // A value the serializer can't read back as it was would be a different value on every other node
+                if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))
+                {
                     if (replaces)
                     {
                         await RemoveAsync(new[] { key }).ConfigureAwait(false);
@@ -368,6 +383,47 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 await RemoveAsync(new[] { key }).ConfigureAwait(false);
             }
+        }
+
+        /// <summary>
+        /// Whether values of <typeparamref name="T"/> from <paramref name="methodName"/> come back from the serializer
+        /// as they were written, judged once, by the first one: it is read back and written again, both writes must
+        /// match, and so must the value's type. A method whose value doesn't (private setters, a derived type
+        /// returned as its base type, <c>object</c>) is kept in memory only, with one warning.
+        /// </summary>
+        private bool RoundTrips<T>(string? methodName, T value, ReadOnlyMemory<byte> payload)
+        {
+            var method = (methodName ?? string.Empty, typeof(T));
+            if (_roundTrips.TryGetValue(method, out var known))
+            {
+                return known;
+            }
+
+            bool roundTrips;
+            try
+            {
+                var read = _serializer.Deserialize<T>(new ReadOnlySequence<byte>(payload));
+                var again = new ArrayBufferWriter<byte>(Math.Max(1, payload.Length));
+                if (read is not null)
+                {
+                    _serializer.Serialize(read, again);
+                }
+
+                roundTrips = read is not null && read.GetType() == value!.GetType() && again.WrittenSpan.SequenceEqual(payload.Span);
+            }
+            catch (Exception)
+            {
+                roundTrips = false;
+            }
+
+            if (_roundTrips.TryAdd(method, roundTrips) && !roundTrips)
+            {
+                _logger.LogWarning(
+                    "MethodCache keeps the results of {Method} ({Type}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type returned as its base type, or object. To share them between instances, register a serializer that does: a JsonCacheSerializer with your own JsonSerializerOptions or JsonSerializerContext (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or your own ISerializer.",
+                    methodName ?? "SetAsync", typeof(T), _serializer.GetType().Name);
+            }
+
+            return _roundTrips[method];
         }
 
         /// <summary>Removes a key whose write timed out, once that write had time to land.</summary>

@@ -619,7 +619,7 @@ namespace MethodCache.Extensibility
                 if (ShouldStore(result, policy, methodName))
                 {
                     StoreLoaded(key, result, policy, flight);
-                    await WriteDistributedAsync(key, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                    await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt).ConfigureAwait(false);
                 }
 
                 flight.Complete(result);
@@ -762,7 +762,7 @@ namespace MethodCache.Extensibility
                     if (ShouldStore(result, policy, methodName))
                     {
                         StoreLoaded(key, result, policy, flight, replacing: node);
-                        await WriteDistributedAsync(key, result, policy, flight, loadStartedAt).ConfigureAwait(false);
+                        await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt).ConfigureAwait(false);
                     }
 
                     flight.Complete(result);
@@ -1059,7 +1059,7 @@ namespace MethodCache.Extensibility
         /// read it. This never throws and is bounded by the distributed cache's operation timeout. A removal of the
         /// key during the write is seen through the flight, and the written value is removed again.
         /// </summary>
-        private Task WriteDistributedAsync<T>(string key, T result, EntryPolicy policy, Flight flight, long loadStartedAt)
+        private Task WriteDistributedAsync<T>(string key, T result, EntryPolicy policy, string methodName, Flight flight, long loadStartedAt)
         {
             if (_distributed == null || flight.Invalidated || (result == null && !_options.CacheNullValues))
             {
@@ -1067,7 +1067,7 @@ namespace MethodCache.Extensibility
             }
 
             var lifetime = TimeSpan.FromTicks(Math.Min(policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
-            return _distributed.WriteAsync(key, result, policy.Tags, loadStartedAt, lifetime, () => flight.Invalidated);
+            return _distributed.WriteAsync(key, result, policy.Tags, loadStartedAt, lifetime, () => flight.Invalidated, methodName: methodName);
         }
 
         private bool RemoveLocal(string key)

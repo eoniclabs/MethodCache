@@ -44,6 +44,11 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   On shutdown the queue is tried once more and what is lost is logged. A write that times out no longer opens the
   circuit breaker for the whole instance. A tag or clear stamp from a server whose clock runs ahead no longer turns
   every entry written since into a miss.
+- **Serialization**: the default `JsonCacheSerializer` includes public fields, so value tuples and structs with
+  fields are shared through the distributed cache instead of coming back empty. The first value each method writes
+  is read back; a method whose values don't survive that (private setters, a derived type returned as its base
+  type, `object`) stays in memory only, with one warning, instead of handing other instances a value with missing
+  data. Entries an earlier build wrote for types with public fields are read without those fields until they expire.
 - **Redis**: a connection factory that threw once (Redis down at first use) is asked again on the next call instead
   of failing until restart, and the backplane retries its subscription with backoff (1 s doubling to 30 s, a warning
   per failure) instead of never subscribing. The docs now say to run Redis with `maxmemory-policy noeviction`: an evicted invalidation

@@ -96,7 +96,14 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 
 ## Serialization
 
-Values are written as JSON with System.Text.Json. The `MethodCache.Serialization.MessagePack` package makes them
+Values are written as JSON with System.Text.Json, public fields included, so value tuples and structs with fields
+are shared as they are. The first value of each method that an instance writes is read back and written again; when
+that doesn't give the same bytes and type, the method's results stay in each instance's memory only, and one warning
+names the method and its return type. That happens with properties that have a private or protected setter, a derived
+type returned as its declared base type, and `object`, with JSON and MessagePack alike. Such results are never
+shared with missing data. To share them, register a serializer that reads them back, such as `JsonCacheSerializer`
+with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the setter, `[JsonDerivedType]`
+on the base type), or your own `ISerializer`. The `MethodCache.Serialization.MessagePack` package makes values
 smaller and faster to read:
 
 <!-- snippet: distributed-messagepack -->

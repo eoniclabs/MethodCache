@@ -75,6 +75,7 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
         var options = new DistributedCacheOptions { OperationTimeout = TimeSpan.FromSeconds(1) };
         await using var first = new DistributedCacheLayer(cache, serializer, options, timeProvider: clock);
         await first.WriteAsync("key", (byte)42, null, first.Now, TimeSpan.FromMinutes(1));
+        serializer.ReadCalls = 0; // the first write of a value type reads it back once to check it round-trips
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -90,6 +91,7 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
         cache.OnComplete = null;
         await using var second = new DistributedCacheLayer(cache, serializer, options, timeProvider: clock);
         await second.WriteAsync("key", (byte)7, null, second.Now, TimeSpan.FromMinutes(1));
+        serializer.ReadCalls = 0;
         Assert.Equal((byte)7, (await second.TryGetAsync<byte>("key")).Value);
         var validPayload = serializer.LastRead;
         release.SetResult();
