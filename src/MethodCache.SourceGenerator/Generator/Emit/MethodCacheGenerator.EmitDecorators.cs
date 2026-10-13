@@ -581,7 +581,7 @@ namespace MethodCache.SourceGenerator
                             // subclass of List<T>) is written before the elements, so equal elements in two collection
                             // types stay two arguments. A type name never starts like a sequence or null does.
                             var typed = $"string.Concat(global::MethodCache.MethodCacheKeys.Part({name}.GetType().ToString()), global::MethodCache.MethodCacheKeys.Separator, {sequence})";
-                            pieces.Add(param.Type.TypeKind == TypeKind.Class && !param.Type.IsAbstract
+                            pieces.Add(param.Type is IArrayTypeSymbol || (param.Type.TypeKind == TypeKind.Class && !param.Type.IsAbstract)
                                 ? $"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}) ? {sequence} : {typed})"
                                 : $"({name} is null ? global::MethodCache.MethodCacheKeys.Null : {typed})");
                         }
@@ -723,9 +723,19 @@ namespace MethodCache.SourceGenerator
                 return $"            __mcKeyBuilder.AppendPart({expression});";
             }
 
+            /// <summary>
+            /// A class or struct that implements <c>ICacheKeyProvider</c>, or that interface or one derived from it.
+            /// </summary>
             private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
-                => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
-                   type.AllInterfaces.Any(i => i.ToDisplayString() == "MethodCache.ICacheKeyProvider");
+                => type.TypeKind switch
+                {
+                    TypeKind.Class or TypeKind.Struct => type.AllInterfaces.Any(IsCacheKeyProvider),
+                    TypeKind.Interface => IsCacheKeyProvider(type) || type.AllInterfaces.Any(IsCacheKeyProvider),
+                    _ => false,
+                };
+
+            private static bool IsCacheKeyProvider(ITypeSymbol type)
+                => type is { Name: "ICacheKeyProvider", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } };
 
             /// <summary>
             /// Collects the public instance properties and fields of a concrete class or struct, the same members

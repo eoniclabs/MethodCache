@@ -29,6 +29,13 @@ namespace KeyFormat
     public record NamedRange(string? From, int To, string Name) : Range(From, To);
     public readonly record struct Point(int X, int Y);
     public sealed class IdList : System.Collections.Generic.List<int> { }
+    public interface IScope : ICacheKeyProvider { }
+    public sealed class Scope : IScope
+    {
+        public Scope(string name) => Name = name;
+        public string Name { get; }
+        public string CacheKeyPart => Name;
+    }
     public sealed class Tenant : ICacheKeyProvider
     {
         public Tenant(string id) => Id = id;
@@ -97,6 +104,9 @@ namespace KeyFormat
 
         [Cache(Duration = ""00:10:00"")]
         Task<int> ListAsync(System.Collections.Generic.List<int> values);
+
+        [Cache(Duration = ""00:10:00"")]
+        Task<int> ScopesAsync(IScope[] scopes, ICacheKeyProvider? single);
     }
 
     public interface IOrderService
@@ -123,6 +133,7 @@ namespace KeyFormat
         public Task<int> RangesAsync(Range[] ranges) { Calls++; return Task.FromResult(Calls); }
         public Task<int> SequenceAsync(System.Collections.Generic.IEnumerable<int> values) { Calls++; return Task.FromResult(Calls); }
         public Task<int> ListAsync(System.Collections.Generic.List<int> values) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> ScopesAsync(IScope[] scopes, ICacheKeyProvider? single) { Calls++; return Task.FromResult(Calls); }
         public Task<string> PointAsync(Point point, Tenant tenant) { Calls++; return Task.FromResult(""point-"" + point.X + "","" + point.Y + ""-"" + tenant.Id); }
     }
 
@@ -357,6 +368,22 @@ namespace KeyFormat
         Assert.NotEqual(plain, derived);
         Assert.Equal(plain, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ListAsync", "[2:1:2]")));
         Assert.Equal(derived, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ListAsync", "KeyFormat.IdList", "[2:1:2]")));
+    }
+
+    [Fact]
+    public async Task KeyProviderInterfaces_AreWrittenInline_AlsoAsElements()
+    {
+        var (provider, assembly) = await BuildAsync();
+        var users = Resolve(provider, assembly, "KeyFormat.IUserService");
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var userType = assembly.GetType("KeyFormat.IUserService")!;
+        var scopeType = assembly.GetType("KeyFormat.Scope")!;
+        var scopes = Array.CreateInstance(assembly.GetType("KeyFormat.IScope")!, 2);
+        scopes.SetValue(Activator.CreateInstance(scopeType, "eu"), 0);
+
+        var result = await Call<int>(users, "ScopesAsync", scopes, Activator.CreateInstance(scopeType, "us"));
+
+        Assert.Equal(result, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ScopesAsync", "[2:eu:\\\\0]", "us")));
     }
 
     [Fact]
