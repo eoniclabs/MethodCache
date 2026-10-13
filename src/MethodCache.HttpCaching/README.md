@@ -28,7 +28,10 @@ That is all. Your typed client keeps calling `GetAsync` as before.
   after a write.
 - Cached responses carry an `Age` header, as the standard requires.
 - `Set-Cookie` is never stored: the caller the server answered gets it, nobody served from the cache does.
-- Each HttpClient has its own settings and its own entries.
+- Each HttpClient has its own settings and its own entries, also when caching is added to every client with
+  `ConfigureHttpClientDefaults`.
+- Redirects the transport follows are not stored under the URL you asked for, and a retry of the same request gets a
+  full response, not the cache's own 304. A `GET` with a body goes to the origin.
 - Request directives are honored: `no-cache` (revalidates and stores the answer), `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
 - `Range` requests go to the origin, and `206 Partial Content` is never stored.
 - Requests that carry their own `If-None-Match` or `If-Modified-Since` go to the origin, so your `304` reaches you.

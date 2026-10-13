@@ -62,7 +62,7 @@ public class ContentOwnershipTests
     }
 
     [Fact]
-    public async Task RevalidationStorageFailure_DisposesNotModifiedResponse()
+    public async Task RevalidationStorageFailure_ServesTheRevalidatedBodyAndDisposesNotModifiedResponse()
     {
         var clock = new FakeTimeProvider();
         var backing = HttpCacheTestFactory.CreateInMemoryStorage(timeProvider: clock);
@@ -85,8 +85,10 @@ public class ContentOwnershipTests
         clock.Advance(TimeSpan.FromSeconds(2));
         fail = true;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetAsync("https://example.test/content"));
+        // The origin answered; a cache that can't be updated must not fail the request
+        using var revalidated = await client.GetAsync("https://example.test/content");
 
+        Assert.Equal("cached", await revalidated.Content.ReadAsStringAsync());
         Assert.Equal(1, original.Disposals);
     }
 

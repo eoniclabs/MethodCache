@@ -155,7 +155,7 @@ public sealed record HttpCacheEntry
             Content = content,
             Headers = SerializeHeaders(response.Headers, StorableHeaders(response.Headers)),
             ContentHeaders = contentHeaders,
-            ETag = response.Headers.ETag?.Tag,
+            ETag = response.Headers.ETag?.ToString(), // with W/ for a weak validator
             LastModified = response.Content.Headers.LastModified,
             CacheControl = response.Headers.CacheControl,
             Expires = response.Content.Headers.Expires,
@@ -231,7 +231,7 @@ public sealed record HttpCacheEntry
         {
             Headers = mergedHeaders,
             ContentHeaders = mergedContentHeaders,
-            ETag = notModifiedResponse.Headers.ETag?.Tag ?? ETag,
+            ETag = notModifiedResponse.Headers.ETag?.ToString() ?? ETag,
             LastModified = notModifiedResponse.Content?.Headers.LastModified ?? LastModified,
             CacheControl = notModifiedResponse.Headers.CacheControl ?? CacheControl,
             Expires = notModifiedResponse.Content?.Headers.Expires ?? Expires,

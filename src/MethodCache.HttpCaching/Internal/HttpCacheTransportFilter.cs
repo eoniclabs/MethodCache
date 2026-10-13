@@ -14,10 +14,13 @@ internal sealed class HttpCacheTransportFilter : IHttpMessageHandlerBuilderFilte
         {
             builder.AdditionalHandlers.Remove(cache);
             builder.AdditionalHandlers.Add(cache);
+            // Caching added for every client (ConfigureHttpClientDefaults) keeps each client's entries apart
+            if (!string.IsNullOrEmpty(builder.Name)) cache.UseClientName(builder.Name);
         }
         HttpMessageHandler? transport = builder.PrimaryHandler;
         while (transport is DelegatingHandler delegating) transport = delegating.InnerHandler;
-        if (transport is SocketsHttpHandler sockets) sockets.UseCookies = false;
-        else if (transport is HttpClientHandler client) client.UseCookies = false;
+        // Only when it changes anything: a handler shared between clients may already have sent requests
+        if (transport is SocketsHttpHandler { UseCookies: true } sockets) sockets.UseCookies = false;
+        else if (transport is HttpClientHandler { UseCookies: true } client) client.UseCookies = false;
     };
 }

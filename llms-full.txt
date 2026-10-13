@@ -1099,13 +1099,30 @@ limits and metrics. This page covers the rules the cache follows and how to writ
 - A 304 updates the stored response's headers and whether it may be stored. If it changes to `no-store`, `Vary: *`, or
   `private` in a shared cache, the stored response is removed. This applies to background revalidation too. A 304
   without `Vary` keeps the original variant selection.
+- A `Cache-Control` or `Vary` header that doesn't parse (such as `private; max-age=600` or `max-age=-1`) is not
+  read as absent: the response is not stored, because the header may have said `private` or `no-store`.
+- An entry is kept at most a year, even when `Expires` is far in the future (`31 Dec 9999`).
+- Weak ETags (`W/"abc"`) are sent back as weak validators.
 - `only-if-cached` never contacts the origin, including for range requests, requests with their own validators,
   `no-store`, methods that aren't cached and background revalidation. When no stored response can be used, the
   answer is 504.
 
+## Redirects, retries and request bodies
+
+- A redirect the transport follows (`AllowAutoRedirect`, the default) answers a different URL, so it is not stored
+  under the URL you requested. The transport also drops `Authorization` on a redirect, so storing it could hand one
+  caller's response to another. Requests that end at the redirect target are cached under that URL as usual.
+- The cache stores responses for the request as you sent it, before the transport adds headers such as
+  `Accept-Encoding` for automatic decompression. `Vary: Accept-Encoding` therefore works with `AutomaticDecompression`.
+- The `If-None-Match` / `If-Modified-Since` headers the cache adds are removed again before the response is
+  returned, so a retry handler (Polly, standard resilience) that sends the same message again gets a full response.
+- A `GET` or `HEAD` with a body (search APIs such as Elasticsearch) goes to the origin: its URL doesn't identify it.
+- The URL fragment (`#top`) is not part of the key; it never reaches the origin.
+
 ## Writes and invalidation
 
-A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. A GET or
+A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. That is
+the URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A GET or
 background revalidation that was already in flight can still complete, but it stores its response under the old
 generation, so later requests fetch the updated response. With `UseDistributedCache` the generation is shared by
 every instance.
@@ -1186,6 +1203,9 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 `AddHttpCaching()` turns off automatic cookies on the client's `SocketsHttpHandler` or `HttpClientHandler`, after all
 other configuration of that handler, so the default registration caches at once. Other named clients are unaffected.
+A handler that already has cookies off is left alone, so a cookie-free handler shared between clients keeps working.
+`ConfigureHttpClientDefaults(b => b.AddHttpCaching())` caches every client, each under its own name: two clients
+never share entries, and they all use the settings given there.
 Send caller cookies as request headers; a handler that keeps a hidden cookie jar belongs on a client without HTTP
 caching.
 
@@ -1747,6 +1767,9 @@ authorization too.
 | Responses that vary by a header (tenant, language) get mixed | `Vary` and `KeyHeaders` keep one response per value. `Vary: *` is never served from the cache. |
 | A write leaves another caller's stale copy, or serves one caller's copy to another after it | A successful `POST`, `PUT`, `PATCH` or `DELETE` changes the publication generation for every caller. Older in-flight responses write into an obsolete namespace. Shared generation records must be retained and protected from eviction; invalidation failures propagate to the caller. |
 | Two URLs share an entry | The key is the method and the full URL, with reserved characters kept escaped (`%2F`, `%3F` and `/`, `?` are different URLs). |
+| A followed redirect hands one caller's response to another | The transport drops `Authorization` on a redirect and changes the URL on the same message. A response that ended at another URL or method is never stored under the URL that was requested, and entries are keyed on the request as the caller sent it, before the transport changed it. |
+| A malformed `Cache-Control` hides `private` or `no-store` | A `Cache-Control` or `Vary` the parser rejects makes the response not storable, instead of being read as absent. |
+| Clients that get caching from `ConfigureHttpClientDefaults` share entries | Each client's handler gets its own name, so clients (often one per tenant or API key) never read each other's entries. |
 | Crafted entries in the distributed HTTP cache | Read as a miss, with every length checked against the data. As above, whoever can write that cache can store any response. |
 
 Not guaranteed, by design:
@@ -1782,8 +1805,8 @@ results and symlinked exit files cannot become a passing status. The regression 
 tests these protections. Build jobs still execute repository code as the build-server user; the collector is
 not a sandbox for malicious pull requests.
 
-Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests` and
-`UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
+Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
+`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).
 
 MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
@@ -2510,7 +2533,10 @@ That is all. Your typed client keeps calling `GetAsync` as before.
   after a write.
 - Cached responses carry an `Age` header, as the standard requires.
 - `Set-Cookie` is never stored: the caller the server answered gets it, nobody served from the cache does.
-- Each HttpClient has its own settings and its own entries.
+- Each HttpClient has its own settings and its own entries, also when caching is added to every client with
+  `ConfigureHttpClientDefaults`.
+- Redirects the transport follows are not stored under the URL you asked for, and a retry of the same request gets a
+  full response, not the cache's own 304. A `GET` with a body goes to the origin.
 - Request directives are honored: `no-cache` (revalidates and stores the answer), `no-store`, `max-age`, `max-stale`, `min-fresh` and `only-if-cached`.
 - `Range` requests go to the origin, and `206 Partial Content` is never stored.
 - Requests that carry their own `If-None-Match` or `If-Modified-Since` go to the origin, so your `304` reaches you.
@@ -2686,6 +2712,16 @@ price updates in SQLite, and the memory benchmark measures an uncached baseline.
 MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements.
 Earlier keys for these arguments become cold misses. Overloaded generic methods include generic arity in their
 policy ids and key prefixes, keeping different overloads distinct; earlier keys become cold misses.
+
+### Third review fixes
+
+- **HTTP caching** no longer stores a redirect the transport followed under the original URL (the transport drops
+  `Authorization`, so one caller's response could reach another), invalidates the URL a `POST` was sent to also when
+  it answers `303`, and removes its own validators so a retry of the same request gets a full response.
+  `Vary: Accept-Encoding` works with automatic decompression, a `GET` with a body bypasses the cache, a
+  `Cache-Control` or `Vary` that doesn't parse is not stored, clients that get caching from
+  `ConfigureHttpClientDefaults` keep their own entries, far-future `Expires` no longer overflows, weak ETags stay weak,
+  and the URL fragment is not part of the key. HTTP cache keys change, so entries from an earlier build are misses.
 
 ### If you used a pre-release build from GitHub Packages
 
