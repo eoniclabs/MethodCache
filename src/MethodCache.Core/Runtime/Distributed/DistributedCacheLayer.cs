@@ -277,7 +277,7 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             // Shutdown waits for writes in flight (each bounded by the timeout), so the removal a write that times
             // out or fails leaves behind is flushed with the rest of the queue
-            Interlocked.Increment(ref _writesInFlight);
+            BeginWrite();
             try
             {
                 // Counted before this check, and Dispose sets the flag before shutdown reads the count: so either
@@ -297,10 +297,17 @@ namespace MethodCache.Core.Runtime.Distributed
             }
             finally
             {
-                if (Interlocked.Decrement(ref _writesInFlight) == 0 && Volatile.Read(ref _disposed) != 0)
-                {
-                    _writesDrained.TrySetResult();
-                }
+                EndWrite();
+            }
+        }
+
+        private void BeginWrite() => Interlocked.Increment(ref _writesInFlight);
+
+        private void EndWrite()
+        {
+            if (Interlocked.Decrement(ref _writesInFlight) == 0 && Volatile.Read(ref _disposed) != 0)
+            {
+                _writesDrained.TrySetResult();
             }
         }
 
@@ -611,6 +618,22 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 return;
             }
+
+            // Like a write, waited for at shutdown, so what the cache refuses is flushed with the queue (a removal
+            // after a late write, say, that started just before shutdown)
+            BeginWrite();
+            try
+            {
+                await InvalidateCoreAsync(keys, tags).ConfigureAwait(false);
+            }
+            finally
+            {
+                EndWrite();
+            }
+        }
+
+        private async Task InvalidateCoreAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags)
+        {
 
             // Stamps are remembered at once, so this node's reads respect the invalidation whatever the cache says
             var now = Now;

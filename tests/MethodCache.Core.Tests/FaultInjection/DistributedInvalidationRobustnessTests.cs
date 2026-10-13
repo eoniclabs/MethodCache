@@ -397,6 +397,34 @@ public class DistributedInvalidationRobustnessTests
     }
 
     [Fact]
+    public async Task ShutdownDuringALateRemoval_WaitsForIt_AndStoresWhatItGaveBack()
+    {
+        var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
+        {
+            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+        });
+        var (node, layer) = CreateNode(chaos);
+        var big = Get(node, "big", () => "large value");
+        _time.Advance(Timeout);
+        await big.WaitAsync(RealTimeLimit);
+
+        // The removal after the timed-out write starts, and its stamp write hangs once
+        chaos.Inject(ChaosOperations.Set, ChaosFault.HangUntilCancelled() with
+        {
+            Keys = key => key == "methodcache:r:big",
+            Times = 1,
+        });
+        var started = chaos.FaultsStarted;
+        _time.Advance(BreakDuration);
+        await WaitUntil(() => chaos.FaultsStarted > started);
+
+        var shutdown = layer.DisposeAsync().AsTask();
+        await AdvanceUntilDone(shutdown, Timeout);
+
+        _shared.Get("methodcache:r:big").Should().NotBeNull("shutdown waited for the removal and stored what it gave back");
+    }
+
+    [Fact]
     public async Task WriteThatStartsAfterShutdown_StoresNothing()
     {
         var (_, layer) = CreateNode();
