@@ -65,6 +65,18 @@ public class DistributedInvalidationRobustnessTests
     private static Task<string> Get(ICacheManager node, string key, Func<string> value, params string[] tags) =>
         node.GetOrCreateFastAsync(key, "M", () => Task.FromResult(value()), Policy(tags));
 
+    private async Task AdvanceUntilDone(Task task, TimeSpan step)
+    {
+        var deadline = DateTime.UtcNow + RealTimeLimit;
+        while (!task.IsCompleted)
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("The task did not complete while time advanced.");
+            _time.Advance(step);
+            await Task.WhenAny(task, Task.Delay(10));
+        }
+        await task;
+    }
+
     private static async Task WaitUntil(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + RealTimeLimit;
@@ -330,10 +342,10 @@ public class DistributedInvalidationRobustnessTests
 
         var shutdown = layer.DisposeAsync().AsTask();
         var started = chaos.FaultsStarted;
-        _time.Advance(Timeout); // the retry gives up
-        await WaitUntil(() => chaos.FaultsStarted > started);
-        _time.Advance(Timeout); // and so does shutdown's own try
-        await shutdown.WaitAsync(RealTimeLimit);
+        // The retry gives up, and so does shutdown's own try. Keep advancing rather than once per try: shutdown's
+        // try may start its timeout just after a single advance, which would then wait for real time.
+        await AdvanceUntilDone(shutdown, Timeout);
+        chaos.FaultsStarted.Should().BeGreaterThan(started, "shutdown tried the store itself after the retry gave up");
 
         logger.Messages.Should().ContainSingle(m => m.Level == LogLevel.Warning && m.Message.Contains("shutting down with 1 invalidations", StringComparison.Ordinal));
     }

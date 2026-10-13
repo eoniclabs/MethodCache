@@ -106,6 +106,8 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
         await SubscribeAsync(subscription, connection, failed).ConfigureAwait(false);
     }
 
+    /// <param name="subscription">The subscription to attach to the channel.</param>
+    /// <param name="connection">The connection to subscribe on.</param>
     /// <param name="missed">Whether earlier attempts failed, so invalidations sent meanwhile never arrived.</param>
     private async Task SubscribeAsync(Subscription subscription, IConnectionMultiplexer connection, bool missed)
     {
