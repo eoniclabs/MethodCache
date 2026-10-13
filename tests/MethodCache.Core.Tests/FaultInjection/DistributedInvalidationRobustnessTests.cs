@@ -293,9 +293,10 @@ public class DistributedInvalidationRobustnessTests
         await invalidation.WaitAsync(RealTimeLimit);
         layer.IsAvailable.Should().BeFalse();
 
-        var blocked = chaos.Blocked;
+        // Counted when a fault starts: Blocked also drops as the timed-out call above unwinds, which can hide the new one
+        var started = chaos.FaultsStarted;
         var shutdown = layer.DisposeAsync().AsTask();
-        await WaitUntil(() => chaos.Blocked > blocked);
+        await WaitUntil(() => chaos.FaultsStarted > started);
         _time.Advance(Timeout);
         await shutdown.WaitAsync(RealTimeLimit);
     }
@@ -314,9 +315,10 @@ public class DistributedInvalidationRobustnessTests
         await invalidation.WaitAsync(RealTimeLimit);
         layer.IsAvailable.Should().BeFalse();
 
-        var blocked = chaos.Blocked;
+        // Counted when a fault starts: Blocked also drops as the timed-out call above unwinds, which can hide the new one
+        var started = chaos.FaultsStarted;
         _time.Advance(BreakDuration); // the retry timer fires
-        await WaitUntil(() => chaos.Blocked > blocked);
+        await WaitUntil(() => chaos.FaultsStarted > started);
         return (chaos, layer);
     }
 
