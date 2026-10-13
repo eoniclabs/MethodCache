@@ -1115,6 +1115,7 @@ limits and metrics. This page covers the rules the cache follows and how to writ
   under the URL you requested. The transport also drops `Authorization` on a redirect, so storing it could hand one
   caller's response to another. Requests that end at the redirect target are cached under that URL as usual. If the
   target answers the cache's own validators with 304, the request is sent again without them, so you get the full response.
+  A URL that was cached and now redirects has its stored response removed, also when background revalidation finds out.
 - The cache stores responses for the request as you sent it, before the transport adds headers such as
   `Accept-Encoding` for automatic decompression. `Vary: Accept-Encoding` therefore works with `AutomaticDecompression`.
 - The `If-None-Match` / `If-Modified-Since` headers the cache adds are removed again before the response is

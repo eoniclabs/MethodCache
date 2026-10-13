@@ -40,6 +40,23 @@ public class HttpRequestShapeTests
     }
 
     [Fact]
+    public async Task UrlThatStartsRedirecting_IsNoLongerServedFromTheCache()
+    {
+        using var origin = new Origin();
+        using var provider = Provider(origin);
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("api");
+        Assert.Equal("v1 /item", await client.GetStringAsync(Url));
+
+        // Still fresh, but a forced revalidation finds that the URL now redirects
+        origin.RedirectTo = new Uri("https://api.example.com/elsewhere");
+        origin.Version = "v2";
+        using var forced = new HttpRequestMessage(HttpMethod.Get, Url) { Headers = { CacheControl = new CacheControlHeaderValue { NoCache = true } } };
+        using (await client.SendAsync(forced)) { }
+
+        Assert.Equal("v2 /elsewhere", await client.GetStringAsync(Url));
+    }
+
+    [Fact]
     public async Task RetriedMessage_GetsAFullResponse()
     {
         using var origin = new Origin { MaxAge = TimeSpan.Zero, ETag = "\"v1\"" };

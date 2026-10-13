@@ -210,11 +210,25 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         // A followed redirect answered a different URL (or method): it says nothing about this one
         if (IsRedirected(sent, request))
         {
-            if (cachedEntry != null && upstreamResponse.StatusCode == HttpStatusCode.NotModified)
+            if (cachedEntry != null)
             {
-                // The target matched the validators the cache added for this URL; the caller asked for a full response
-                upstreamResponse.Dispose();
-                upstreamResponse = await base.SendAsync(CopyRequest(sent), cancellationToken).ConfigureAwait(false);
+                if (upstreamResponse.StatusCode == HttpStatusCode.NotModified)
+                {
+                    // The target matched the validators the cache added for this URL; the caller asked for a full response
+                    upstreamResponse.Dispose();
+                    upstreamResponse = await base.SendAsync(CopyRequest(sent), cancellationToken).ConfigureAwait(false);
+                }
+
+                // The URL redirects now, so its stored response is out of date
+                try
+                {
+                    await RemoveUrlAsync(urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    upstreamResponse.Dispose();
+                    throw;
+                }
             }
 
             return Record(Outcome.Bypass, request, upstreamResponse, startedAt);
@@ -683,7 +697,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
                 if (IsRedirected(sent, request))
                 {
-                    // Answered by another URL: nothing to store for this one
+                    // Answered by another URL: the stored response for this one is out of date
+                    await RemoveUrlAsync(urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
                 }
                 else if (response.StatusCode == HttpStatusCode.NotModified)
                 {
