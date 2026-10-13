@@ -2,6 +2,29 @@
 
 SQL Server as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache through a table that each instance polls.
 
+## Why this package
+
+- **One shared cache for every instance.** Results live in each instance's memory and in SQL Server, so a result one instance computed is a hit for the others, and survives restarts.
+- **Invalidation reaches every instance.** Invalidating a key or tag removes it from SQL Server, and every other instance drops its in-memory copy within one polling interval (1 second by default).
+- **Tags work across instances**, without tag tables: invalidating a tag stores when it happened, stored atomically so a late, older invalidation never undoes a newer one.
+- **No new infrastructure.** If you already run SQL Server, the schema and tables are created when the application starts.
+- **SQL Server never breaks your app.** Calls are capped at one second, a circuit breaker skips SQL Server while it is down, and invalidations are queued until it is back.
+
+Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used for this: it has no atomic invalidation timestamps, so MethodCache rejects it at startup, and it has no way to tell other instances to drop their in-memory copies. This package uses the same table layout, adds both, and keeps its own cache instance so your app's `IDistributedCache` is left alone.
+
+## SQL Server or Redis?
+
+| | SQL Server | Redis |
+|---|---|---|
+| Infrastructure | The SQL Server you already have | A Redis server |
+| Other instances drop their in-memory copy | Within one polling interval (1 second by default) | At once (pub/sub) |
+| Load when idle | Every instance polls the invalidations table | None |
+| An in-memory miss costs | A database query | A Redis lookup |
+
+Choose SQL Server when you already run it and a second's delay before other instances see an invalidation is fine; choose [Redis](../MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
+
+Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. A custom provider can implement `IAtomicInvalidationStore` and `IBackplane` (see [Custom distributed caches](../../docs/features/distributed-cache.md#custom-distributed-caches)).
+
 ## Usage
 
 <!-- snippet: sqlserver-basic -->
@@ -43,21 +66,6 @@ deploying. Rows without a scope are ignored, and each instance deletes them once
 written by an earlier build become misses and expire normally. Upgrade every instance that shares the tables
 together, and restart them with empty in-memory caches.
 
-## How it works
-
-- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows. Your app's `IDistributedCache` is left alone.
-- Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
-- MethodCache reads SQL Server on an in-memory miss and writes new results to both.
-- Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
-- Keys are stored hashed, so keys that SQL collation would treat as equal (casing, trailing spaces, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID.
-- Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
-- Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
-- A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table, along with rows an earlier build wrote without a prefix. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
-- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again for a few seconds; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
-- An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
-- Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
-
 ## When SQL Server is down
 
 MethodCache keeps answering from memory and your methods; SQL Server never fails or stalls a call.
@@ -91,6 +99,21 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
 | `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute |
+
+## Internals
+
+- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows. Your app's `IDistributedCache` is left alone.
+- Values are JSON written with System.Text.Json; add `MethodCache.Serialization.MessagePack` and call `AddMethodCacheMessagePack()` for MessagePack.
+- MethodCache reads SQL Server on an in-memory miss and writes new results to both.
+- Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
+- Keys are stored as `mc:` followed by a SHA-256 hash of the exact UTF-16 key, so keys that SQL collation would treat as equal (casing, trailing spaces, NULs, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID. Rows written unhashed by an earlier build become misses and expire normally.
+- Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
+- Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
+- A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
+- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table, along with rows an earlier build wrote without a prefix. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
+- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again for a few seconds; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
+- An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
+- Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
 
 ## Behavior and compatibility
 
