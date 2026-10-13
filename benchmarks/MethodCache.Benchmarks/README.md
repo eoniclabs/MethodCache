@@ -209,3 +209,5 @@ When adding new benchmarks:
 - Use consistent system configuration across runs
 
 For more information about BenchmarkDotNet configuration and best practices, visit: https://benchmarkdotnet.org/
+
+The memory benchmark no-caching baseline calls the uncached data source directly, so warmup and repeated invocations cannot turn it into a cache-hit benchmark.
