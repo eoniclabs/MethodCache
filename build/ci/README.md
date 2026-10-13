@@ -12,6 +12,7 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 | `Dockerfile` | | the Linux build image: .NET 10 SDK plus the .NET 8 and 9 SDKs, clang for Native AOT, Python |
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
+| `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
 | `publish.sh <tag>` | Megatron | publishes a release tag the build servers passed to GitHub Packages |
 
 Run all Linux jobs locally, the way the build server does:
@@ -126,8 +127,46 @@ Megatron in `~/.cache/methodcache-ci/runs/<run>`, and the coordinator's own log 
 
 Pull requests from forks never run automatically, because their code would run on our servers. Read the diff, then
 on Megatron run `~/.local/share/methodcache-ci/coordinator.sh --pr <number>`. The same command runs any pull request
-again, after waiting for a pass that is already running. A run that could not reach a server is retried by itself
-after 30 minutes.
+again, after waiting for a pass that is already running. Missing results or failed status publication trigger a
+retry after 30 minutes, then exponential backoff capped at six hours. Automatic attempts stop after five passes
+for the commit; a deliberate `--pr` run resets that budget and reruns every platform.
+
+Automatic retries reuse complete passing results for the exact full commit SHA, including their logs. They
+first try to recover Linux results from Nimbus when a finished job's archive did not arrive. Only platforms
+without reusable results are rebuilt. Every expected job needs a valid exit file: a `finished` marker alone
+does not count. Recovered test failures stay failures and end transport retries. Transfer errors are recorded
+in `linux/transfer.log`.
+
+### Checkout and log retention
+
+The collector accepts only local macOS clones from `macos/mirror.git` with a matching run ID/full SHA and
+complete macOS results. It preserves source changes, unexpected local data, unknown directories, symlinks
+and checkouts with open files/processes. Successful jobs lose their generated .NET `bin`/`obj` directories
+after the platform finishes; failed checkouts remain for 24 hours for diagnosis.
+
+Remaining eligible idle checkouts expire after three days. A 10 GiB budget removes the oldest completed
+eligible checkouts sooner. Active/protected checkouts and failures within their diagnostic window may exceed
+the budget rather than being deleted. Linux/Windows checkout age retention is unchanged. Result logs live
+separately under `runs/<run>/<platform>` and survive source-clone removal; they expire 14 days after the last
+report-directory update.
+Successful macOS output is collected immediately when that platform returns. Full retention/budget scans
+run at most once an hour, so the minute-by-minute coordinator does not repeatedly traverse all old clones.
+
+Settings in `~/.config/methodcache-ci/env`:
+
+| Setting | Default | Purpose |
+|---|---:|---|
+| `METHODCACHE_CI_KEEP_RUNS_DAYS` | 3 | completed checkout retention |
+| `METHODCACHE_CI_KEEP_FAILED_HOURS` | 24 | failed macOS checkout diagnostic window |
+| `METHODCACHE_CI_MAX_MACOS_MIB` | 10240 | eligible idle macOS checkout budget |
+| `METHODCACHE_CI_MAX_ATTEMPTS` | 5 | automatic passes per commit |
+
+Preview collection and run the regression tests (no GitHub/build-server access):
+
+```bash
+python3 build/ci/coordinator-state.py gc --state "$HOME/.cache/methodcache-ci" --dry-run
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
+```
 
 ### Installing or updating
 
@@ -136,11 +175,16 @@ On Megatron, from an up-to-date checkout of `main`:
 ```bash
 build/ci/install-coordinator.sh --check   # what each server has and lacks
 build/ci/install-coordinator.sh           # install (or update) and start
+build/ci/install-coordinator.sh --update-only  # atomic update, leave an active pass running
 ```
 
 The coordinator is copied out of the checkout, so a pull request cannot change how it is itself tested. Settings
 (server addresses, the shared lock) are in `~/.config/methodcache-ci/env`; a Linux run fails when the shared lock
 cannot be opened, and an empty `METHODCACHE_CI_NIMBUS_SHARED_LOCK=` runs without it. Stop it with `--remove`.
+The regular installer refuses to restart an active pass. `--update-only` leaves it on its original script
+and atomically installs the next version; content-versioned helpers keep an older running coordinator on
+its matching helper. Check `installed-from` and script hashes when diagnosing drift: committing a fix does
+not update the installed copy automatically.
 
 ## Publishing a release
 
