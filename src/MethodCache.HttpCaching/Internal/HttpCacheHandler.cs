@@ -210,6 +210,13 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         // A followed redirect answered a different URL (or method): it says nothing about this one
         if (IsRedirected(sent, request))
         {
+            if (cachedEntry != null && upstreamResponse.StatusCode == HttpStatusCode.NotModified)
+            {
+                // The target matched the validators the cache added for this URL; the caller asked for a full response
+                upstreamResponse.Dispose();
+                upstreamResponse = await base.SendAsync(CopyRequest(sent), cancellationToken).ConfigureAwait(false);
+            }
+
             return Record(Outcome.Bypass, request, upstreamResponse, startedAt);
         }
 

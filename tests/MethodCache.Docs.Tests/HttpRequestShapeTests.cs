@@ -25,6 +25,21 @@ public class HttpRequestShapeTests
     }
 
     [Fact]
+    public async Task UrlThatStartsRedirecting_StillGetsAFullResponse()
+    {
+        using var origin = new Origin { MaxAge = TimeSpan.Zero, ETag = "\"v1\"" };
+        using var provider = Provider(origin);
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("api");
+        Assert.Equal("v1 /item", await client.GetStringAsync(Url));
+
+        // The redirect target has the same ETag, so it answers the cache's validators with 304
+        origin.RedirectTo = new Uri("https://api.example.com/elsewhere");
+        using var response = await client.GetAsync(Url);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("v1 /elsewhere", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task RetriedMessage_GetsAFullResponse()
     {
         using var origin = new Origin { MaxAge = TimeSpan.Zero, ETag = "\"v1\"" };
