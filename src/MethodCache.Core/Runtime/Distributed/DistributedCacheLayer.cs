@@ -179,14 +179,15 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Reads an entry. Entries that expired, or whose tags were invalidated after they were created, count as
         /// missing, and so does everything while the distributed cache is unavailable.
         /// </summary>
-        public async ValueTask<DistributedEntry<T>> TryGetAsync<T>(string key)
+        public async ValueTask<DistributedEntry<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (_hasPending || !TryEnter(out var probe))
             {
                 return default;
             }
 
-            var read = await TryRunAsync(ReadAsync, key, "read", probe).ConfigureAwait(false);
+            var read = await TryRunAsync(ReadAsync, key, "read", probe, cancellationToken).ConfigureAwait(false);
             if (!read.Succeeded || read.Value is not { } data ||
                 !TryReadHeader(new ReadOnlySequence<byte>(data), _contentType, out var header, out var payload))
             {
@@ -199,7 +200,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return default;
             }
 
-            var invalidated = await TryRunAsync(static (layer, header, ct) => layer.IsInvalidatedAsync(header.CreatedAt, header.Tags, ct), header, "read tags", probe).ConfigureAwait(false);
+            var invalidated = await TryRunAsync(static (layer, header, ct) => layer.IsInvalidatedAsync(header.CreatedAt, header.Tags, ct), header, "read tags", probe, cancellationToken).ConfigureAwait(false);
             if (!invalidated.Succeeded || invalidated.Value)
             {
                 return default;
@@ -652,13 +653,18 @@ namespace MethodCache.Core.Runtime.Distributed
             Func<DistributedCacheLayer, TState, CancellationToken, Task<TResult>> operation,
             TState state,
             string description,
-            long probe)
+            long probe,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 using var timeout = new CancellationTokenSource(_timeout, _time);
-                // WaitAsync stops waiting even when the cache client ignores the token
-                var result = await operation(this, state, timeout.Token).WaitAsync(_timeout, _time).ConfigureAwait(false);
+                using var linked = cancellationToken.CanBeCanceled
+                    ? CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken)
+                    : null;
+                // Stop the provider as well as the wait; uncooperative clients are still bounded.
+                var result = await operation(this, state, linked?.Token ?? timeout.Token)
+                    .WaitAsync(_timeout, _time, linked?.Token ?? CancellationToken.None).ConfigureAwait(false);
 
                 // Only the probe may close the breaker: an operation let in before a failure tripped it says nothing
                 // about whether the cache is back
@@ -668,6 +674,18 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
 
                 return (true, result);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // A caller leaving says nothing about backend health. Free a half-open probe for the next reader.
+                lock (_breakerLock)
+                {
+                    if (probe != NotProbing && _trips == probe)
+                    {
+                        _probing = 0;
+                    }
+                }
+                throw;
             }
             catch (Exception ex)
             {
