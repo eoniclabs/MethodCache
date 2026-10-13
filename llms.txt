@@ -17,7 +17,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Manual caching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/manual-caching.md): `GetOrCreateAsync` with a key you choose.
 - [Caching third-party code](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/third-party.md): cache a client from a NuGet package.
 - [HTTP response caching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/http-caching.md): `HttpClient` caching with `Cache-Control` and `ETag`.
-- [Distributed cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/distributed-cache.md): Redis, SQL Server or any `IDistributedCache`.
+- [Distributed cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/distributed-cache.md): Redis, SQL Server, or your own `IDistributedCache` with atomic invalidation stamps.
 - [Monitoring](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/native-aot.md): what to register when you publish with Native AOT.

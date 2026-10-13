@@ -16,3 +16,8 @@ release.
   1.0.0 in either direction: a node ignores backplane messages from another MethodCache version and logs one warning,
   and entries written by a pre-release build are cache misses. Upgrade every node that shares a cache and backplane
   together, with a cache clear, or use a new cache namespace.
+- **SQL Server tables.** The invalidations table gets a nullable `Scope binary(32)` column and the indexes
+  `Index_Scope_Id (Scope, Id)` and `Index_Scope_CreatedAt (Scope, CreatedAt)`; with `CreateTablesIfMissing = false`,
+  add them in your migration before deploying. Rows without a scope are ignored and deleted once they are older than
+  `BackplaneRetention`. Cache rows written by a pre-release build (unhashed keys) become misses and expire normally.
+  Upgrade every instance that shares the tables together, and restart them with empty in-memory caches.
