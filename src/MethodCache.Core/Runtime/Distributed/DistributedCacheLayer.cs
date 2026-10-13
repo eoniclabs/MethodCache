@@ -325,9 +325,9 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             // A method whose values of this type can't be shared isn't serialized again
-            if (value is not null && _roundTrips.TryGetValue(RoundTripKey(methodName, value), out var shareable) && !shareable)
+            if (value is not null && _roundTrips.ContainsKey(RoundTripKey(methodName, value)))
             {
-                if (replaces)
+                if (MayHoldAnEarlierValue(replaces, methodName))
                 {
                     await RemoveAsync(new[] { key }).ConfigureAwait(false);
                 }
@@ -355,8 +355,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
                     _onError?.Invoke(ex);
 
-                    // Other nodes must not keep the value this set replaced
-                    if (replaces)
+                    // Other nodes must not keep the value this one replaced
+                    if (MayHoldAnEarlierValue(replaces, methodName))
                     {
                         await RemoveAsync(new[] { key }).ConfigureAwait(false);
                     }
@@ -368,16 +368,17 @@ namespace MethodCache.Core.Runtime.Distributed
                 if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))
                 {
                     // An earlier value of the method (an Animal before this Dog, say) may still be there for the key
-                    if (replaces || _sharedMethods.ContainsKey(methodName ?? string.Empty))
+                    if (MayHoldAnEarlierValue(replaces, methodName))
                     {
                         await RemoveAsync(new[] { key }).ConfigureAwait(false);
                     }
 
                     return;
                 }
-
-                _sharedMethods.TryAdd(methodName ?? string.Empty, 0);
             }
+
+            // A null is shared too, so a later value that can't be removes it
+            _sharedMethods.TryAdd(methodName ?? string.Empty, 0);
 
             if (!TryEnter(out var probe))
             {
@@ -487,6 +488,13 @@ namespace MethodCache.Core.Runtime.Distributed
 
             return false;
         }
+
+        /// <summary>
+        /// Whether the distributed cache may hold an earlier value for a key whose new value can't be shared: one
+        /// this set replaces, or one the method shared before (a null, or an <c>Animal</c> before this <c>Dog</c>).
+        /// </summary>
+        private bool MayHoldAnEarlierValue(bool replaces, string? methodName)
+            => replaces || _sharedMethods.ContainsKey(methodName ?? string.Empty);
 
         private static (string Method, Type Declared, Type Written) RoundTripKey<T>(string? methodName, T value)
             => (methodName ?? string.Empty, typeof(T), value!.GetType());

@@ -233,6 +233,35 @@ public class DistributedSerializationTests
     }
 
     [Fact]
+    public async Task DerivedValue_RejectedBefore_ForAKeyHoldingABaseValue_RemovesTheBaseValue()
+    {
+        var (_, layer) = CreateNode();
+        await layer.WriteAsync<Animal>("first", new Dog { Name = "d", Breed = "b" }, null, layer.Now, OneMinute, methodName: "M");
+        await layer.WriteAsync<Animal>("k", new Animal { Name = "old" }, null, layer.Now, OneMinute, methodName: "M");
+        _shared.Get("methodcache:e:k").Should().NotBeNull();
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+
+        // Dogs were already rejected, so this one isn't serialized; the Animal still must not stay behind
+        await layer.WriteAsync<Animal>("k", new Dog { Name = "new", Breed = "b" }, null, layer.Now, OneMinute, methodName: "M");
+
+        _shared.Get("methodcache:e:k").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ValueThatCantBeShared_ForAKeyHoldingANull_RemovesTheNull()
+    {
+        var (_, layer) = CreateNode();
+        await layer.WriteAsync<Entity?>("k", null, null, layer.Now, OneMinute, methodName: "M");
+        _shared.Get("methodcache:e:k").Should().NotBeNull("a null is shared");
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+
+        // A refresh that now finds the entity: other nodes must run the method rather than go on reading null
+        await layer.WriteAsync<Entity?>("k", Entity.Create(42), null, layer.Now, OneMinute, methodName: "M");
+
+        _shared.Get("methodcache:e:k").Should().BeNull();
+    }
+
+    [Fact]
     public async Task SetAsync_OfADerivedValue_AfterABaseValue_StaysInMemoryOnly()
     {
         var (a, _) = CreateNode();
