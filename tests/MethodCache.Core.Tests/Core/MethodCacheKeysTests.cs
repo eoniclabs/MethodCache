@@ -271,7 +271,11 @@ namespace MethodCache.Core.Tests.Core
         public void Sequence_WritesTheCountAndEachElement()
         {
             Assert.Equal("[3:1:2:3]", MethodCacheKeys.Sequence(new[] { 1, 2, 3 }, static id => MethodCacheKeys.Part(id)));
-            Assert.Equal("[2:a\\:b:\\0]", MethodCacheKeys.Sequence(new[] { "a:b", null }, static s => MethodCacheKeys.Part(s)));
+            // Each element's text is escaped again, so even a formatter that writes ':' can't split an element in two
+            Assert.Equal("[2:a\\\\\\:b:\\\\0]", MethodCacheKeys.Sequence(new[] { "a:b", null }, static s => MethodCacheKeys.Part(s)));
+            Assert.NotEqual(
+                MethodCacheKeys.Sequence(new[] { "a", "b:c" }, static s => s),
+                MethodCacheKeys.Sequence(new[] { "a:b", "c" }, static s => s));
             Assert.Equal("[0]", MethodCacheKeys.Sequence(Array.Empty<int>(), static id => MethodCacheKeys.Part(id)));
             Assert.Equal(MethodCacheKeys.Null, MethodCacheKeys.Sequence<int>(null, static id => MethodCacheKeys.Part(id)));
         }

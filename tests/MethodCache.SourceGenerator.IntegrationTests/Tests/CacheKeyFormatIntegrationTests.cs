@@ -301,9 +301,9 @@ namespace KeyFormat
 
         Assert.Equal(ids, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", "[3:1:2:3]")));
         Assert.Equal(noIds, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", MethodCacheKeys.Null)));
-        Assert.Equal(names, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "NamesAsync", "[2:a\\:b:\\0]", "2")));
-        Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "PointsAsync", "[1:(1:2)]", "[2:acme:\\0]")));
-        Assert.Equal(queriesResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "QueriesAsync", "[1:(x:1)]")));
+        Assert.Equal(names, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "NamesAsync", "[2:a\\\\\\:b:\\\\0]", "2")));
+        Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "PointsAsync", "[1:(1\\:2)]", "[2:acme:\\\\0]")));
+        Assert.Equal(queriesResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "QueriesAsync", "[1:(x\\:1)]")));
     }
 
     [Fact]
@@ -337,7 +337,7 @@ namespace KeyFormat
         var result = await Call<int>(users, "RangesAsync", ranges);
 
         // A Range[] can hold a NamedRange, whose extra member an inline key would miss
-        Assert.Equal(0, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "RangesAsync", "[1:(a:1)]")));
+        Assert.Equal(0, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "RangesAsync", "[1:(a\\:1)]")));
         var prefix = MethodCacheKeys.Prefix(userType, "RangesAsync");
         var policy = CacheRuntimePolicy.FromPolicy("RangesAsync", CachePolicy.Empty, CachePolicyFields.None);
         var key = provider.GetRequiredService<ICacheKeyGenerator>().GenerateKey(prefix, new object[] { ranges }, policy);

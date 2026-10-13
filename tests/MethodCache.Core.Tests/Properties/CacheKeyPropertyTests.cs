@@ -162,6 +162,25 @@ public class CacheKeyPropertyTests
     }
 
     [Fact]
+    public void Sequences_ShareAKeyExactlyWhenTheElementsAndTheNextArgumentAreTheSame()
+    {
+        // A collection followed by a string argument: an element's text must not run into the next element or the next
+        // argument, whether the formatter escapes (as generated code does) or writes ':' and ']' as they are
+        var genList = GenText.List[0, 3].Null(0.2);
+        Gen.Select(genList, GenNullableText, genList, GenNullableText).Sample((l1, t1, l2, t2) =>
+        {
+            var same = (l1 is null ? l2 is null : l2 is not null && l1.SequenceEqual(l2, StringComparer.Ordinal)) &&
+                       string.Equals(t1, t2, StringComparison.Ordinal);
+
+            Assert.Equal(same, Key(l1, t1, static s => MethodCacheKeys.Part(s)) == Key(l2, t2, static s => MethodCacheKeys.Part(s)));
+            Assert.Equal(same, Key(l1, t1, static s => s) == Key(l2, t2, static s => s));
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+
+        static string Key(List<string>? list, string? tail, Func<string, string> part)
+            => MethodCacheKeys.For(typeof(CacheKeyPropertyTests), "M", MethodCacheKeys.Sequence(list, part), MethodCacheKeys.Part(tail));
+    }
+
+    [Fact]
     public void FastHash_GivesDistinctStringsDistinctKeys()
     {
         // Strings alone, from a tiny alphabet, so that near misses are frequent: separators, escapes, NUL, a

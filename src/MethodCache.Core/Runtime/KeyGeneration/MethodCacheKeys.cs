@@ -132,9 +132,9 @@ public static class MethodCacheKeys
     public static string Part(DateTimeOffset value) => value.ToString("O", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Formats a collection argument as <c>[{count}:{element}:{element}...]</c>, with <paramref name="part"/>
-    /// formatting each element, and <c>null</c> as <see cref="Null"/>. The count keeps an element's text from being
-    /// read as the next argument, so no two argument lists share a key.
+    /// Formats a collection argument as <c>[{count}:{element}:{element}...]</c>, and <c>null</c> as <see cref="Null"/>.
+    /// <paramref name="part"/> formats each element, and its text is escaped like a string part, so an element can't
+    /// read as two; the count keeps the last element apart from the next argument. No two argument lists share a key.
     /// </summary>
     /// <example>
     /// <code>
@@ -154,7 +154,7 @@ public static class MethodCacheKeys
         var count = 0;
         foreach (var value in values)
         {
-            builder.Append(Separator).Append(part(value));
+            builder.Append(Separator).Append(Part(part(value)));
             count++;
         }
 
