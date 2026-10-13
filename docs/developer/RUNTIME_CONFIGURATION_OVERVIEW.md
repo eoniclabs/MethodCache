@@ -13,9 +13,17 @@ Each source implements `IPolicySource` and is registered with a priority from `P
 | 40 | `StartupFluent` | `FluentPolicySource` (`startup-fluent`) | `AddMethodCache(config => ...)` | No |
 | 10 | `Attributes` | Policies emitted by the source generator (`attributes`) | Each generated decorator | No |
 
+The code is in `src/MethodCache.Core/PolicyPipeline`: `Sources/` (the sources above), `Model/` (`CachePolicyBuilder`, `MethodIds`, `PolicySourceIds`, `PolicySourcePriority`), `Resolution/` (`PolicyResolver`, `PolicyRegistry`) and `Diagnostics/` (`PolicyDiagnosticsService`). The `CachePolicy` record is in `Abstractions/Policies`.
+
 ## Resolution
 
-`PolicyResolver` merges the snapshots of all sources for a method field by field (`CachePolicyFields`): for each field, the source with the highest priority that set it wins. Every contribution is kept as a `PolicyContribution`, so diagnostics can show where each value came from.
+`PolicyResolver` merges the snapshots of all sources for a method field by field. A `CachePolicy` has `Duration`, `SlidingExpiration`, `RefreshAhead`, `CacheWhen`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `Version` and `Metadata`, and each source says which of them it set with `CachePolicyFields` flags. For each field, the source with the highest priority that set it wins. Two sources with the same priority, such as two `AddMethodCache(config => ...)` calls, each keep their own layer, and the one registered later wins where both set a field. `Metadata` is merged key by key, with the same order. Every contribution is kept as a `PolicyContribution`, so diagnostics can show where each value came from.
+
+A method id is the full name of the interface that declares the method, a dot and the method name, for example `MyApp.IUserService.GetUserAsync`. A generic interface is named by its definition, so one id covers every closed type, and an overloaded method adds its parameter types, for example `MyApp.IUsers.Find(int)` (`MethodIds`).
+
+### Defaults and groups
+
+Policies can also be registered for two kinds of default ids: `*` for every cached method (`DefaultPolicy` in startup code, `Defaults` and `FailSafe` in the configuration section) and `group:<name>` for the methods in a group (`ForGroup`). A method is in a group when its resolved `Metadata` has a `group` entry, set by `[Cache("name")]` or `WithGroup`. Each field comes from the method's own layers first, whatever their priority, then from its group's defaults, then from the defaults for every method; within each of these the priority rule above applies. So `[Cache(Duration = "00:10:00")]` (priority 10) beats a default duration in appsettings.json (priority 50). A change to a default re-resolves every method.
 
 `PolicyRegistry` (`IPolicyRegistry`) holds the resolved policy of every method and publishes changes to a `PolicyHandle` per method. Every decorator for the method shares that handle and reads `PolicyHandle.Current` on each call, with one volatile read and no lock. A change replaces the whole policy, so a call never sees half of an update, and it reaches services that already exist, including singletons.
 

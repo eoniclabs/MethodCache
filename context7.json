@@ -17,7 +17,6 @@
   "excludeFiles": [
     "AGENTS.md",
     "CLAUDE.md",
-    "RELEASE.md",
     "NUGET_README.md",
     "llms-full.txt"
   ],
