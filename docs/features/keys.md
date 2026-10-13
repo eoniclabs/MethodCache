@@ -11,7 +11,8 @@ public interface IUserService
 {
     [Cache] Task<User> GetAsync(int id);                     // MyApp.IUserService.GetAsync:42
     [Cache] Task<List<User>> SearchAsync(UserQuery query);   // MyApp.IUserService.SearchAsync:(alice:2)
-    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:3f2a… (hashed)
+    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:[3:1:2:3]
+    [Cache] Task<int> CountAsync(Dictionary<string, int[]> filters); // MyApp.IUserService.CountAsync:fc08ab0d… (hashed)
 }
 ```
 <!-- endSnippet -->
@@ -22,8 +23,13 @@ public interface IUserService
 - **Records, classes and structs** whose public properties and fields are simple values are written field by field:
   `SearchAsync:(alice:2)`. Two records with equal values give the same key.
 - **Types that implement `ICacheKeyProvider`** contribute their `CacheKeyPart`.
-- **Everything else**, such as arrays and collections, goes through the key generator. The default,
-  `FastHashKeyGenerator`, hashes the arguments into a key such as `ByIdsAsync:11b474c4…`.
+- **Arrays and collections** of those values are written with their count and then each element in order:
+  `ByIdsAsync:[3:1:2:3]`. Records and classes inside a collection must be sealed, since an unsealed element type
+  could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
+  collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
+  starts with that type, so an array and a list with the same elements stay two entries.
+- **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
+  generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.
@@ -66,7 +72,7 @@ builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, JsonKey
 ```
 <!-- endSnippet -->
 
-The JSON is followed by a short hash of the arguments' runtime types (`[42,"alice"]:3f2a…`), so arguments that
+The JSON is followed by a short hash of the arguments' runtime types (`[42,"alice"]:9c41…`), so arguments that
 write the same JSON, such as `1` and `1L` or two classes with the same properties, still get different keys. A value
 inside an argument whose type differs from its declared type is written with its type, for example
 `[{"\uFFFFt":"System.Int64","v":1}]` for `new object[] { 1L }`.
@@ -74,10 +80,30 @@ inside an argument whose type differs from its declared type is written with its
 Both generators are in `MethodCache.Extensibility`. Keys built by the decorator itself (simple values, records,
 `ICacheKeyProvider`) don't change with the generator.
 
+## Using an argument as the key
+
+`[CacheKey(UseAsRawKey = true)]` on a parameter makes that argument the whole key. The interface, the method name, the
+`Version` and the other arguments are not part of it:
+
+<!-- snippet: keys-raw -->
+```cs
+public interface IDocumentStore
+{
+    // The argument is the whole key: GetAsync("doc:2026/report.pdf") is stored as "doc:2026/report.pdf"
+    [Cache] Task<byte[]> GetAsync([CacheKey(UseAsRawKey = true)] string key);
+}
+```
+<!-- endSnippet -->
+
+Strings are used as they are. Numbers, dates and other formattable values are written in the invariant culture;
+any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
+prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
+your own code builds, never for text a caller controls; see [Security](../security.md).
+
 ## Building a key yourself
 
-`MethodCacheKeys` builds the same key the decorator uses, so you can invalidate or inspect one entry without guessing
-the format:
+`MethodCacheKeys` builds the key the decorator uses, so you can invalidate or inspect one entry without guessing the
+format:
 
 <!-- snippet: invalidation-by-key -->
 ```cs
@@ -86,35 +112,35 @@ await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.Ge
 ```
 <!-- endSnippet -->
 
+For a method with a `Version`, use `MethodCacheKeys.ForVersion`. For an overloaded method, pass its
+[method id](configuration.md#appsettingsjson) as the name, such as `FindAsync(string)`:
+
+<!-- snippet: keys-versioned-and-overloaded -->
+```cs
+// A method with a Version: "MyApp.IInvoiceService.GetAsync:v2:42"
+var versioned = MethodCacheKeys.ForVersion(
+    typeof(IInvoiceService), nameof(IInvoiceService.GetAsync), 2, MethodCacheKeys.Part(42));
+
+// An overloaded method: pass its method id. "MyApp.IInvoiceService.FindAsync(string):INV-7"
+var overload = MethodCacheKeys.For(
+    typeof(IInvoiceService), "FindAsync(string)", MethodCacheKeys.Part("INV-7"));
+```
+<!-- endSnippet -->
+
+`MethodCacheKeys.Prefix(type, name, version)` returns the start that every key of one method shares, for example for
+`ICacheAdministrator.ListEntries(keyPrefix: ...)`. `MethodCacheKeys.Pattern` returns the same followed by `*`.
+
 ## Things to know
 
 - **Keys contain the arguments.** Don't cache methods that take secrets such as passwords or tokens as arguments; pass
   an identifier instead. Hashed keys are not encryption. No argument, whatever characters it contains, can produce
   another call's key; see [Security](../security.md).
-- **Keys from the key generators changed** for arguments that hold values in `object`, base-class or interface slots,
-  when the runtime types above became part of the key. Entries cached under the earlier keys are not found again and
-  expire on their own.
 - **`Version` changes every key** of a method, so values cached by an earlier version are ignored. See
   [Expiration](expiration.md#versions).
+- **Overloaded methods** have their parameter types in their keys, so overloads never share entries. See
+  [method ids](configuration.md#appsettingsjson).
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](monitoring.md)).
-
-Overloaded methods use namespace-qualified parameter types in their method ids and key prefixes.
-For example, overloads accepting `A.Request` and `B.Request` have separate cache entries even when their
-argument members have the same values. Configuration and runtime policy updates use those same qualified ids.
-
-An `ICacheKeyProvider.CacheKeyPart` getter may generate another key: hash buffers are owned by one
-invocation at a time, including when JSON property getters generate keys or a nested call throws.
-
-## Behavior and compatibility
-
-All built-in key generators preserve exact UTF-16 string identity, including lone surrogates in `ICacheKeyProvider.CacheKeyPart` and nested arguments. MessagePack key strings use a dedicated lossless representation.
-
-Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
-
-Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.
-
-Unversioned fluent keys that begin with NUL are escaped too. Use `CacheManagerExtensions.GetCacheKey(logicalKey)` for direct invalidation or administration of those entries, just as you use the overload with a version for versioned entries.
 
 MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
 

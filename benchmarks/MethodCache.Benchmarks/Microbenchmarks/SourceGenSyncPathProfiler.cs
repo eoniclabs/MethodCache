@@ -27,6 +27,8 @@ public class SourceGenSyncPathProfiler
         // Set up the full SourceGen pipeline exactly like UnifiedCacheComparisonBenchmarks
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<MethodCacheBenchmarkService>();
+        services.AddSingleton<IMethodCacheBenchmarkService>(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
@@ -38,10 +40,6 @@ public class SourceGenSyncPathProfiler
             opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;
         });
 
-
-        services.AddSingleton<MethodCacheBenchmarkService>();
-        services.AddIMethodCacheBenchmarkServiceWithCaching(sp =>
-            sp.GetRequiredService<MethodCacheBenchmarkService>());
 
         var serviceProvider = services.BuildServiceProvider();
         _cacheManager = serviceProvider.GetRequiredService<ICacheManager>();

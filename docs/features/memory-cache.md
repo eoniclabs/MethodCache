@@ -1,7 +1,8 @@
 # Memory cache
 
-The in-memory cache is a W-TinyLFU cache: when it is full, it keeps the entries that are read often and evicts the
-rest, so a burst of one-off reads doesn't push out your hot data. Configure it with `MethodCacheMemoryOptions`:
+The in-memory cache uses W-TinyLFU eviction by default: when it is full, it keeps the entries that are read often and
+evicts the rest, so a burst of one-off reads doesn't push out your hot data. Configure it with
+`MethodCacheMemoryOptions`:
 
 <!-- snippet: memory-options -->
 ```cs
@@ -18,13 +19,18 @@ builder.Services.Configure<MethodCacheMemoryOptions>(o =>
 | Option | Default | What it does |
 |--------|---------|--------------|
 | `MaxItems` | 10,000 | The most entries kept |
-| `MaxMemoryBytes` | | The most total weight kept when a `Weigher` is set |
+| `MaxMemoryBytes` | 1000 MB | The most total weight kept; used only with a `Weigher` |
 | `Weigher` | none | Returns an entry's cost, for example its size in bytes |
+| `EvictionPolicy` | `TinyLfu` | What to evict when full: `TinyLfu`, `Lru` (least recently read) or `Fifo` (oldest stored) |
 | `DefaultExpiration` | 5 minutes | The duration of methods with none of their own and no `DefaultPolicy` |
 | `MaxExpiration` | 7 days | No entry lives longer, whatever its duration |
 | `JitterMaxDuration` | zero | Adds a random extra lifetime up to this value, so entries created together don't expire together |
 | `CacheNullValues` | `true` | Caches `null` results like any other value |
 | `EnableStatistics` | `true` | Counts hits, misses and evictions for the [statistics](monitoring.md) |
+| `EnableFastPath` | `true` | Generated decorators answer hits from a lookup that allocates nothing; turning it off only makes hits slower |
+| `EnableBackgroundCleanup` | `true` | Removes expired entries on a timer, not only when they are read |
+| `CleanupInterval` | 1 minute | How often the background cleanup runs; 10 seconds to 24 hours |
+| `MemoryCalculationMode` | `Fast` | How `MemoryUsage` in the statistics is estimated; see [Memory statistics](#memory-statistics) |
 
 ## Bounding by size
 
@@ -44,17 +50,35 @@ The weigher must be fast, thread-safe and return a non-negative value. Without o
 
 ## Memory statistics
 
-Without a weigher, `GetStatsAsync().MemoryUsage` is a rough estimate. Fast mode samples cached payloads, including
-current string, array and collection lengths; replacing a small byte array with a large one changes the estimate.
-It does not measure complete object graphs, shared references or the GC heap. Accurate mode uses serialized size
-as a proxy, and its intermediate fast estimates also sample payloads. Sampling uses a reservoir sample in one pass, with no full-cache sort. `SamplingPercentage` sets the target
-fraction, capped by `SamplingMaxEntries` (default 1024). `SamplingRecalculationInterval` (default 100 statistics
-reads; 1 means every read) controls how often the sample is replaced. Between samples the previous average is
-scaled by the current entry count. Concurrent or reentrant reads during a calculation use the previous average
-or a fast estimate, so payload serialization does not block another statistics read.
+With a `Weigher`, `GetStatsAsync().MemoryUsage` is the total weight of the entries, the same number that is checked
+against `MaxMemoryBytes`. Without one, it is a rough estimate, chosen with `MemoryCalculationMode`:
 
-With a configured weigher, `MemoryUsage` reports the engine's total weight. This is the value used for the
-`MaxMemoryBytes` bound; the statistical estimate is not used to enforce that bound.
+<!-- snippet: memory-statistics -->
+```cs
+builder.Services.Configure<MethodCacheMemoryOptions>(o =>
+{
+    o.MemoryCalculationMode = MemoryUsageCalculationMode.Sampling;   // default Fast
+    o.SamplingPercentage = 0.05;                                     // default 0.1 (10% of entries)
+});
+```
+<!-- endSnippet -->
+
+| Mode | How `MemoryUsage` is estimated |
+|------|--------------------------------|
+| `Fast` (default) | From the entry count and the types and lengths of a sample of the values (strings, arrays, collections) |
+| `Sampling` | Serializes a sample of the values to JSON and scales the average size by the entry count |
+| `Accurate` | Serializes every value to JSON. Despite the name, this is an estimate too |
+| `Disabled` | Always 0 |
+
+None of the modes measures the real memory of object graphs, shared references or the GC heap; use the number to see
+trends. The sampling options:
+
+- `SamplingPercentage` (default 0.1) is the share of entries in one sample, at most `SamplingMaxEntries` (default
+  1024).
+- `SamplingRecalculationInterval` (default 100) is the number of statistics reads before a new sample is taken; 1
+  samples on every read. In between, the previous average is scaled by the current entry count.
+- `AccurateModeRecalculationInterval` (default 1000) is the number of statistics reads between full calculations in
+  `Accurate` mode; reads in between get a `Fast` estimate.
 
 ## How strict the bound is
 

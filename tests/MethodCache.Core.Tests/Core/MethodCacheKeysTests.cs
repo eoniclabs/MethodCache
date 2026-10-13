@@ -268,6 +268,33 @@ namespace MethodCache.Core.Tests.Core
             => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join("\n", typeNames))), 0, 8).ToLowerInvariant();
 
         [Fact]
+        public void Sequence_WritesTheCountAndEachElement()
+        {
+            Assert.Equal("[3:1:2:3]", MethodCacheKeys.Sequence(new[] { 1, 2, 3 }, static id => MethodCacheKeys.Part(id)));
+            // Each element's text is escaped again, so even a formatter that writes ':' can't split an element in two
+            Assert.Equal("[2:a\\\\\\:b:\\\\0]", MethodCacheKeys.Sequence(new[] { "a:b", null }, static s => MethodCacheKeys.Part(s)));
+            Assert.NotEqual(
+                MethodCacheKeys.Sequence(new[] { "a", "b:c" }, static s => s),
+                MethodCacheKeys.Sequence(new[] { "a:b", "c" }, static s => s));
+            Assert.Equal("[0]", MethodCacheKeys.Sequence(Array.Empty<int>(), static id => MethodCacheKeys.Part(id)));
+            Assert.Equal(MethodCacheKeys.Null, MethodCacheKeys.Sequence<int>(null, static id => MethodCacheKeys.Part(id)));
+        }
+
+        [Fact]
+        public void Sequence_KeepsLookAlikeArgumentListsApart()
+        {
+            static string Strings(params string?[]? values) => MethodCacheKeys.Sequence(values, static s => MethodCacheKeys.Part(s));
+
+            // An empty list and a list holding one empty string
+            Assert.NotEqual(Strings(), Strings(""));
+            // An element ending in "]" followed by another argument, and a shorter list followed by that text
+            Assert.NotEqual(
+                MethodCacheKeys.For(typeof(IUserService), "M", Strings("a]", "b")),
+                MethodCacheKeys.For(typeof(IUserService), "M", Strings("a"), MethodCacheKeys.Part("b]")));
+            Assert.NotEqual(Strings((string?)null), Strings("\\0"));
+        }
+
+        [Fact]
         public void JsonKeyGenerator_HashesLongArgumentLists()
         {
             var generator = new JsonKeyGenerator();

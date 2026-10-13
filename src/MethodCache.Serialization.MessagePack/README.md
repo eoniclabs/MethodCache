@@ -1,7 +1,57 @@
 # MethodCache.Serialization.MessagePack
 
-All built-in key generators preserve exact UTF-16 string identity, including lone surrogates in `ICacheKeyProvider.CacheKeyPart` and nested arguments. MessagePack key strings use a dedicated lossless representation.
+Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack
+instead of the default System.Text.Json: smaller entries and faster reads.
 
-Register `AddMethodCacheMessagePack()` to store distributed cache values with MessagePack. Use `MessagePackKeyGenerator` when argument types require MessagePack serialization. See [distributed caching](../../docs/features/distributed-cache.md) and [cache keys](../../docs/features/keys.md).
+## Install
+
+```bash
+dotnet add package MethodCache.Serialization.MessagePack
+```
+
+## Register
+
+<!-- snippet: distributed-messagepack -->
+```cs
+builder.Services.AddMethodCache();
+builder.Services.AddMethodCacheRedis("localhost:6379");
+builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
+```
+<!-- endSnippet -->
+
+Call `AddMethodCacheMessagePack()` with `AddMethodCacheRedis()`, `AddMethodCacheSqlServer()` or
+`AddMethodCacheDistributedCache()`, in any order. Entries written in the other format read as misses and are replaced,
+so switching needs no flush.
+
+## When to use it
+
+- Values are large or read often from the distributed cache. It has no effect on the in-memory cache, which stores
+  your objects as they are.
+- Types serialize without attributes (contractless resolver). The defaults use LZ4 compression, keep `DateTime`
+  values as they are, and read stored data with `MessagePackSecurity.UntrustedData`.
+- Pass your own `MessagePackSerializerOptions` to `AddMethodCacheMessagePack(options)` to change them. Keep
+  `UntrustedData` and don't enable typeless payloads: the distributed cache must not choose which types get created
+  (see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md#distributed-cache-redis-sql-server)).
+
+## Key generator (optional)
+
+`MessagePackKeyGenerator` builds keys from a SHA-256 hash of the arguments' MessagePack form. Use it when your argument
+types serialize with MessagePack but not with System.Text.Json, which the default key generator uses:
+
+<!-- snippet: messagepack-key-generator -->
+```cs
+builder.Services.AddMethodCache();
+builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, MessagePackKeyGenerator>());
+```
+<!-- endSnippet -->
+
+Keys keep the usual form (`{method}:{hash}`), so invalidating all of a method's entries works the same way. They
+include the arguments' assembly-qualified type names, so they change when those assemblies' versions change.
+
+## More
+
+The [distributed cache guide](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md)
+covers how the distributed cache works, outages and options. [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)
+covers the other key generators.
 
 MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
