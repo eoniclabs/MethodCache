@@ -208,7 +208,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
 
         // A followed redirect answered a different URL (or method): it says nothing about this one
-        if (IsRedirected(sent, request))
+        if (IsRedirected(sent, request, upstreamResponse))
         {
             if (cachedEntry != null)
             {
@@ -406,7 +406,17 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     // generation, so a response another request fetched earlier cannot be published afterwards.
     private async ValueTask RemoveUrlAsync(string urlKey, string cacheKey, CancellationToken cancellationToken)
     {
-        await _storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // The new generation alone makes the old entry unreachable: publish it anyway, then report the failure
+            await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
+            throw;
+        }
+
         await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
     }
 
@@ -637,7 +647,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
-    private static bool IsRedirected(HttpRequestMessage sent, HttpRequestMessage request)
+    // SocketsHttpHandler rewrites the message it follows a redirect with; other handlers may send a new one,
+    // which the response names
+    private static bool IsRedirected(HttpRequestMessage sent, HttpRequestMessage request, HttpResponseMessage response)
+        => Differs(sent, request) || (response.RequestMessage is { } final && Differs(sent, final));
+
+    private static bool Differs(HttpRequestMessage sent, HttpRequestMessage request)
         => request.Method != sent.Method || request.RequestUri != sent.RequestUri;
 
     /// <summary>Copies a request's method, URL, version, options and headers; never its content.</summary>
@@ -695,7 +710,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 using var response = await base.SendAsync(request, timeout.Token).ConfigureAwait(false);
                 var freshness = new FreshnessCalculator(options, _timeProvider);
 
-                if (IsRedirected(sent, request))
+                if (IsRedirected(sent, request, response))
                 {
                     // Answered by another URL: the stored response for this one is out of date
                     await RemoveUrlAsync(urlKey, cacheKey, timeout.Token).ConfigureAwait(false);

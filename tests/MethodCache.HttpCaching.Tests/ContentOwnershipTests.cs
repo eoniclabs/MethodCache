@@ -119,6 +119,8 @@ public class ContentOwnershipTests
 
         // The stored response may no longer be used; if it can't be removed, the caller must know
         await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetAsync("https://example.test/content"));
+        // The new generation is published anyway, so the entry is unreachable even though it wasn't deleted
+        await storage.Received(1).InvalidateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]

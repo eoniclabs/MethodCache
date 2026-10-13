@@ -25,6 +25,18 @@ public class HttpRequestShapeTests
     }
 
     [Fact]
+    public async Task RedirectFollowedWithANewMessage_IsNotStoredUnderTheRequestedUrl()
+    {
+        using var origin = new Origin { RedirectTo = new Uri("https://api.example.com/elsewhere"), RedirectWithNewMessage = true };
+        using var provider = Provider(origin);
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("api");
+
+        Assert.Equal("v1 /elsewhere", await client.GetStringAsync(Url));
+        origin.Version = "v2";
+        Assert.Equal("v2 /elsewhere", await client.GetStringAsync(Url));
+    }
+
+    [Fact]
     public async Task UrlThatStartsRedirecting_StillGetsAFullResponse()
     {
         using var origin = new Origin { MaxAge = TimeSpan.Zero, ETag = "\"v1\"" };
@@ -134,20 +146,24 @@ public class HttpRequestShapeTests
         public string? ETag { get; set; }
         public TimeSpan MaxAge { get; set; } = TimeSpan.FromMinutes(5);
         public Uri? RedirectTo { get; set; }
+        public bool RedirectWithNewMessage { get; set; }
         public int Requests => Volatile.Read(ref _requests);
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _requests);
-            // What SocketsHttpHandler does when it follows a redirect
-            if (RedirectTo != null) request.RequestUri = RedirectTo;
+            // What SocketsHttpHandler does when it follows a redirect; other handlers send a new message
+            var final = request;
+            if (RedirectTo != null && RedirectWithNewMessage) final = new HttpRequestMessage(request.Method, RedirectTo);
+            else if (RedirectTo != null) request.RequestUri = RedirectTo;
             if (ETag != null && request.Headers.IfNoneMatch.Any(tag => tag.Tag == ETag))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified) { Headers = { ETag = new EntityTagHeaderValue(ETag) } });
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified) { RequestMessage = final, Headers = { ETag = new EntityTagHeaderValue(ETag) } });
             }
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(Version + " " + request.RequestUri!.AbsolutePath),
+                RequestMessage = final,
+                Content = new StringContent(Version + " " + final.RequestUri!.AbsolutePath),
                 Headers = { CacheControl = new CacheControlHeaderValue { MaxAge = MaxAge } }
             };
             if (ETag != null) response.Headers.ETag = new EntityTagHeaderValue(ETag);

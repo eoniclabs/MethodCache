@@ -77,4 +77,56 @@ public class HttpCacheEdgeCaseTests
 
         Assert.Null(exception);
     }
+
+    // A real SocketsHttpHandler following a redirect: /latest must not be pinned to the long-lived /v1 response
+    [Fact]
+    public async Task FollowedRedirect_RealTransport_IsNotStoredUnderTheRequestedUrl()
+    {
+        using var listener = new HttpListener();
+        var probe = new TcpListener(IPAddress.Loopback, 0);
+        probe.Start();
+        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+        var prefix = $"http://127.0.0.1:{port}/";
+        listener.Prefixes.Add(prefix);
+        listener.Start();
+        var latestHits = 0;
+        using var stop = new CancellationTokenSource();
+        var serve = Task.Run(async () =>
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                HttpListenerContext context;
+                try { context = await listener.GetContextAsync(); }
+                catch (HttpListenerException) { return; }
+                catch (ObjectDisposedException) { return; }
+                if (context.Request.Url!.AbsolutePath == "/latest")
+                {
+                    Interlocked.Increment(ref latestHits);
+                    context.Response.StatusCode = 302;
+                    context.Response.RedirectLocation = prefix + "v1";
+                    context.Response.Close();
+                    continue;
+                }
+                var bytes = Encoding.UTF8.GetBytes("v1");
+                context.Response.AddHeader("Cache-Control", "max-age=600");
+                context.Response.ContentLength64 = bytes.Length;
+                await context.Response.OutputStream.WriteAsync(bytes);
+                context.Response.Close();
+            }
+        });
+
+        var services = new ServiceCollection();
+        services.AddHttpClient("cached").ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false }).AddHttpCaching();
+        using var provider = services.BuildServiceProvider();
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("cached");
+
+        Assert.Equal("v1", await client.GetStringAsync(prefix + "latest"));
+        Assert.Equal("v1", await client.GetStringAsync(prefix + "latest"));
+
+        Assert.Equal(2, Volatile.Read(ref latestHits));
+        stop.Cancel();
+        listener.Stop();
+        await serve;
+    }
 }
