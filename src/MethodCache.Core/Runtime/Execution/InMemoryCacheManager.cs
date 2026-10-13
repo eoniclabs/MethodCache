@@ -55,6 +55,9 @@ namespace MethodCache.Extensibility
         private readonly DistributedCacheLayer? _distributed;
 
         /// <summary>Whether the distributed cache is in use now; null without one.</summary>
+        /// <summary>Whether removals also go to a distributed cache and, through it, to the other instances.</summary>
+        internal bool HasDistributedCache => _distributed != null;
+
         internal async ValueTask<bool?> CheckDistributedCacheAsync(CancellationToken cancellationToken) =>
             _distributed == null ? null : await _distributed.CheckAvailableAsync(cancellationToken).ConfigureAwait(false);
 
@@ -1130,10 +1133,10 @@ namespace MethodCache.Extensibility
             }
         }
 
-        /// <summary>Reports how long the cached method took to produce a value, in milliseconds.</summary>
+        /// <summary>Reports how long the cached method took to produce a value.</summary>
         private void RecordLoadLatency(string methodName, long elapsedNanos)
         {
-            _metricsProvider.CacheLatency(methodName, elapsedNanos / 1_000_000);
+            _metricsProvider.CacheLatency(methodName, TimeSpan.FromTicks(elapsedNanos / 100));
         }
 
         private void RecordMiss(string methodName)

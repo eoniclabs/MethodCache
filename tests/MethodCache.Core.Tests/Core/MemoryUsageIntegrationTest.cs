@@ -174,7 +174,7 @@ namespace MethodCache.Core.Tests.Core
             public void CacheHit(string methodName) { }
             public void CacheMiss(string methodName) { }
             public void CacheError(string methodName, string error) { }
-            public void CacheLatency(string methodName, long elapsedMilliseconds) { }
+            public void CacheLatency(string methodName, TimeSpan elapsed) { }
         }
     }
 }

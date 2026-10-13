@@ -74,7 +74,8 @@ With the default options, nothing that identifies a person or an argument leaves
 
 Cache spans copy the `http.*` and `url.*` attributes of the request span they belong to; turn off
 `EnableHttpCorrelation` if those hold data your traces shouldn't. Exception messages come from your own code; keep
-personal data out of them.
+personal data out of them. Setting the user or tenant id to `null` or an empty string removes it, so a worker that
+handles one message after another doesn't attribute a message without a user to the previous message's user.
 
 ## The tests
 
@@ -87,7 +88,7 @@ tests these protections. Build jobs still execute repository code as the build-s
 not a sandbox for malicious pull requests.
 
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
-`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
+`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` and `TelemetryPrivacyTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).
 
 MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.

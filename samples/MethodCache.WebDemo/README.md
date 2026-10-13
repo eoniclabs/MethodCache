@@ -33,8 +33,8 @@ dotnet run --project samples/MethodCache.WebDemo --launch-profile redis-b  # htt
 1. `GET :5081/products/3` runs the query and stores the result in memory and in Redis.
 2. `GET :5082/products/3` is answered from Redis, without querying the database.
 3. `PUT :5081/products/3/price` invalidates the product everywhere: instance B drops its in-memory copy too.
-4. Open the dashboard at http://localhost:18888 to see a trace for every request, with MethodCache's hits and
-   misses inside it, and the cache metrics.
+4. Open the dashboard at http://localhost:18888 to see a trace for every request, with MethodCache's misses and
+   Redis reads inside it, and the cache metrics. Hits served from memory have no span; the metrics count them.
 
 ## Admin endpoints
 

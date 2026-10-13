@@ -112,6 +112,13 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   call count. appsettings now rejects unknown setting names, a single value for `Tags`, an object for a method's
   `FailSafe` and time spans without `:` (`"300"` was 300 days). The resolved policy of a method keeps the newest
   version when two sources change it concurrently. The `MethodId` property for environment variables is documented.
+- **OpenTelemetry and admin.** `ICacheMetricsProvider.CacheLatency` takes a `TimeSpan`, and `load_duration` keeps
+  sub-millisecond precision. `EnableMetrics = false` keeps the app's own metrics provider, and options from several
+  calls or `Configure<OpenTelemetryOptions>` compose instead of resetting. A hit no longer writes a shared counter
+  when nothing listens; the hit ratio comes from the cache's statistics. `SetCacheUserId(null)` and
+  `SetCacheTenantId(null)` clear the value. Admin `DELETE entry` answers 204 with a distributed cache, since the
+  removal reached it and the other instances. The web demo's `.http` walkthrough loads product 2 before showing it
+  is still cached.
 
 ### If you used a pre-release build from GitHub Packages
 

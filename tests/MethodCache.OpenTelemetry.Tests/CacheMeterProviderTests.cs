@@ -116,12 +116,12 @@ public class CacheMeterProviderTests
         // Arrange
         var methodName = "TestMethod";
         var errorMessage = "Test error";
-        var latencyMs = 50L;
+        var latency = TimeSpan.FromMilliseconds(50);
 
         // Act & Assert - Should not throw
         ((ICacheMetricsProvider)_meterProvider).CacheHit(methodName);
         ((ICacheMetricsProvider)_meterProvider).CacheMiss(methodName);
         ((ICacheMetricsProvider)_meterProvider).CacheError(methodName, errorMessage);
-        ((ICacheMetricsProvider)_meterProvider).CacheLatency(methodName, latencyMs);
+        ((ICacheMetricsProvider)_meterProvider).CacheLatency(methodName, latency);
     }
 }

@@ -70,6 +70,10 @@ builder.Services.AddMethodCache();                               // after your r
 - Cached objects are shared between callers: return immutable types such as records.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
+- In library code that registers its own cached interfaces, call `AddMethodCache(null, typeof(SomeLibraryType).Assembly)`
+  so the library's assembly is used, not the caller's.
+- In `appsettings.json`, write durations as `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known
+  setting names; anything else fails startup.
 - For a client from a NuGet package with an interface, use
   `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` instead of a wrapper.
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,
@@ -174,6 +178,15 @@ lifetime you chose. Call it after your own registrations: a service registered l
 register an implementation at all, `AddMethodCache()` registers it as a singleton when it lives in the same project as
 the interface. To do the same for interfaces in other projects, pass those projects' assemblies:
 `AddMethodCache(null, typeof(ProductService).Assembly)`.
+
+Library code that calls `AddMethodCache()` for its own interfaces, for example in an `AddMyLibrary()` extension
+method, should pass its assembly the same way. Without it, MethodCache asks the runtime for the calling assembly,
+and when the JIT inlines a short wrapper into the application, that is the application's, so the library's
+unregistered interfaces are not registered.
+
+Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
+key; an interface registered only keyed is not also registered without a key. Cache keys don't include the service
+key, so two keyed registrations of one interface share their entries.
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
@@ -817,17 +830,31 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
   list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`,
   `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Metadata` and `Notes` are recorded for
-  diagnostics and don't change caching.
+  diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
+  `"Durration"` is reported instead of ignored.
+- Time spans are written `"hh:mm:ss"` (or `"d.hh:mm:ss"`); a bare number such as `"300"` is rejected, since .NET
+  would read it as 300 days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+  `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section.
+- A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
+  `(` or `<`, so this is how environment variables, Kubernetes `env` or Linux App Service configure a method:
+
+  ```bash
+  MethodCache__Services__0__MethodId="MyApp.IUserService.FindAsync(int)"
+  MethodCache__Services__0__Duration="00:02:00"
+  ```
 - `Defaults` applies to every cached method; the top-level `FailSafe` section is described in [Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md).
 - Pass a section name as the second argument to read another section. Environment files such as
-  `appsettings.Production.json` work as usual.
+  `appsettings.Production.json` work as usual. The section is read when the host starts, so configuration sources
+  added after `AddMethodCacheFromConfiguration`, such as a later `AddJsonFile` or a `WebApplicationFactory`'s test
+  settings, apply from the first call.
 - Changes apply while the application runs, as soon as the configuration reloads (`appsettings.json` reloads on save
   by default).
 - Only methods with `[Cache]` (or listed in `[assembly: CacheInterface]`) have a decorator, so the file can change
   their policy but can't make other methods cached. A method id that matches no cached method, such as a misspelled
   name, is logged as a warning at startup.
-- An invalid value, such as a `Duration` that isn't a positive time span, makes `AddMethodCacheFromConfiguration`
-  throw at startup. If a reloaded file has one, the reload is logged as an error and the previous policies stay.
+- An invalid value, such as a `Duration` that isn't a positive time span, makes the host fail to start with an
+  `InvalidOperationException` naming the setting (without a generic host, the first cached call throws). If a
+  reloaded file has one, the reload is logged as an error and the previous policies stay.
 
 ## Runtime overrides
 
@@ -896,7 +923,9 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative value means "not set" (the default is -1) |
 
 `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to [manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md); configuring them for a
-`[Cache]` method throws `InvalidOperationException` at startup instead of being silently ignored. To decide per result
+`[Cache]` method throws `InvalidOperationException` at startup instead of being silently ignored. "At startup" means
+when the generic host starts (`app.Run()`, `host.StartAsync()`), which loads every policy source; with a plain
+`BuildServiceProvider()`, the first cached call loads them and throws. To decide per result
 whether a `[Cache]` method stores it, use [`CacheWhen`](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md#cachewhen).
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
@@ -1073,6 +1102,10 @@ builder.Services.AddMethodCache(config => config
   every loaded assembly that references MethodCache, even when none of the library's code has run yet. The runtime
   loads a library when code that uses one of its types runs, so a library your application never uses in code is
   not searched; registering one of its types, or `typeof` of one, is enough.
+- When a library you use lists the same interface too, each assembly has its own decorator and policies.
+  `AddMethodCache()` uses the one generated in the assemblies passed to it (by default the calling one, usually your
+  application), then the one in the entry assembly. If neither has one, it throws `InvalidOperationException` naming
+  both; pass the assembly whose policies should apply: `AddMethodCache(null, typeof(Program).Assembly)`.
 - Mistakes are build errors: [MCG010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
   static abstract or non-public abstract members), [MCG011](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg011) (a method that is
   missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg012) (an
@@ -1578,7 +1611,7 @@ public sealed class CountingMetrics : ICacheMetricsProvider
     public void CacheHit(string methodName) => Interlocked.Increment(ref _hits);
     public void CacheMiss(string methodName) => Interlocked.Increment(ref _misses);
     public void CacheError(string methodName, string errorMessage) => Interlocked.Increment(ref _errors);
-    public void CacheLatency(string methodName, long elapsedMilliseconds) { }   // load time after a miss
+    public void CacheLatency(string methodName, TimeSpan elapsed) { }   // load time after a miss
 }
 ```
 
@@ -1588,7 +1621,7 @@ builder.Services.AddSingleton<ICacheMetricsProvider, CountingMetrics>();
 ```
 
 One provider receives the events: the last one registered. `AddMethodCacheOpenTelemetry()` registers its own, so use
-it or a provider of your own, not both. A custom `ICacheManager` reports its own hits and misses. If you wrap
+it or a provider of your own, not both; with `EnableMetrics = false` it leaves yours in place and adds only spans. A custom `ICacheManager` reports its own hits and misses. If you wrap
 `ICacheManager` in a decorator of your own, implement `ICacheManagerDecorator` so `GetOrCreateManyAsync` still reads
 the distributed cache through it.
 
@@ -1896,7 +1929,8 @@ With the default options, nothing that identifies a person or an argument leaves
 
 Cache spans copy the `http.*` and `url.*` attributes of the request span they belong to; turn off
 `EnableHttpCorrelation` if those hold data your traces shouldn't. Exception messages come from your own code; keep
-personal data out of them.
+personal data out of them. Setting the user or tenant id to `null` or an empty string removes it, so a worker that
+handles one message after another doesn't attribute a message without a user to the previous message's user.
 
 ## The tests
 
@@ -1909,7 +1943,7 @@ tests these protections. Build jobs still execute repository code as the build-s
 not a sandbox for malicious pull requests.
 
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
-`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
+`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` and `TelemetryPrivacyTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).
 
 MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
@@ -1985,10 +2019,11 @@ a key.
 | Exception | Cause |
 |-----------|-------|
 | `InvalidOperationException` when building a key | An argument type has only private state, so every value would get the same key. Implement `ICacheKeyProvider` ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private)) |
-| `InvalidOperationException` at startup | `OnHit`, `OnMiss`, `WithMetrics` or `When` configured for a `[Cache]` method. They apply to `GetOrCreateAsync` only |
+| `InvalidOperationException` at startup | `OnHit`, `OnMiss`, `WithMetrics` or `When` configured for a `[Cache]` method. They apply to `GetOrCreateAsync` only. Without a generic host, the first cached call throws |
+| `InvalidOperationException` from `AddMethodCache` naming two assemblies | Two assemblies list the same interface in `[assembly: CacheInterface]`; pass the one whose policies apply ([Caching third-party code](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md)) |
 | `NotSupportedException` from `InvalidateByTagPatternAsync` | Pattern invalidation doesn't work with a distributed cache. Invalidate exact tags |
 | `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. An override can't turn caching off; invalidate instead |
-| An exception from `AddMethodCacheFromConfiguration` | An invalid value in the `MethodCache` section at startup |
+| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name, a single value for `Tags` or a time span without `:` in the `MethodCache` section |
 
 ## A caller changed a cached object, and others see the change
 
@@ -2513,11 +2548,11 @@ maps them under `/ops/cache` instead.
 
 | Method | Path | What it does |
 |--------|------|--------------|
-| `GET` | `stats` | Hits, misses, hit ratio, evictions, entries and estimated memory |
+| `GET` | `stats` | Hits, misses, hit ratio, evictions, entries and estimated memory, of the instance that answers |
 | `GET` | `methods` | The effective policy of every cached method and where it came from |
-| `GET` | `entries?prefix=&tag=&limit=` | Live entries ordered by key (default limit 100, max 1000). Values are not returned |
-| `GET` | `entry?key=` | One entry, or 404 |
-| `DELETE` | `entry?key=` | Removes one entry, or 404 |
+| `GET` | `entries?prefix=&tag=&limit=` | Live entries in the memory of the instance that answers, ordered by key (default limit 100, max 1000). Values are not returned |
+| `GET` | `entry?key=` | One entry in the memory of the instance that answers, or 404 |
+| `DELETE` | `entry?key=` | Removes one entry, also from Redis or SQL Server and the other instances when configured. 404 only without a distributed cache, when the key isn't in memory |
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `DELETE` | `entries` | Removes every entry |
 
@@ -2591,7 +2626,10 @@ Sampling, export intervals and the service name are set on the OpenTelemetry SDK
 
 ## Options
 
-Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => o.RecordCacheKeys = true)`.
+Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => o.RecordCacheKeys = true)`, or bind
+them with `services.Configure<OpenTelemetryOptions>(...)`. Each call sets only what its delegate sets, so a second
+call or an earlier `Configure` keeps the other values. With `EnableMetrics = false`, an `ICacheMetricsProvider` you
+registered yourself keeps receiving hits and misses.
 
 | Option | Default | What it does |
 |--------|---------|--------------|
@@ -2609,7 +2647,8 @@ Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => 
 `IBaggagePropagator` carries a correlation id, an invalidation id, a user id and a tenant id along the async flow,
 and puts them into the baggage of cache spans, which travels to downstream services. The user and tenant ids
 identify people, so they are left out unless `ExportSensitiveData` is on. A value set in a child task stays in that
-task.
+task. Setting `null` or an empty string removes the value, so a worker that handles messages one after another can
+clear the previous message's user with `SetCacheUserId(msg.UserId)` even when a message has none.
 
 ```cs
 _baggagePropagator.SetCacheCorrelationId(Guid.NewGuid().ToString());
@@ -2652,12 +2691,12 @@ as `user:42` never becomes a time series of its own. `method` is the method id t
 | `methodcache.hits_total` | Counter | Cache hits, including fast-path hits | method |
 | `methodcache.misses_total` | Counter | Cache misses | method |
 | `methodcache.errors_total` | Counter | Errors: `error.type` is `load_failed` when the cached method throws, otherwise the exception type name | method, error.type |
-| `methodcache.load_duration` | Histogram (ms) | Time the cached method took on a miss or refresh | method |
+| `methodcache.load_duration` | Histogram (ms) | Time the cached method took on a miss or refresh, with sub-millisecond precision | method |
 | `methodcache.operation_duration` | Histogram (ms) | Duration of instrumented operations (misses, invalidations) | method, group, version |
 | `methodcache.key_generation_duration` | Histogram (ms) | Key generation on instrumented operations | method |
 | `methodcache.entries_count` | Gauge | Entries in the in-memory cache | |
 | `methodcache.memory_bytes` | Gauge | Estimated memory of the in-memory cache | |
-| `methodcache.hit_ratio` | Gauge | Hits / (hits + misses) | |
+| `methodcache.hit_ratio` | Gauge | Hits / (hits + misses), from the in-memory cache's statistics | |
 
 ## Troubleshooting
 
@@ -2978,6 +3017,26 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   only.
 - **`[assembly: CacheInterface]` in a class library** decorates the client even when none of the library's code has
   run before `AddMethodCache()`, also when several threads resolve services while the library's initializer runs.
+- **Dependency injection.** Generated decorators implement `IDisposable`/`IAsyncDisposable` only when the interface
+  does, so the container no longer keeps every transient decorator resolved from the root (their `ownsDecorated`
+  constructor parameter is gone). Keyed registrations are decorated under their own key, and an interface registered
+  only keyed no longer gets an extra unkeyed singleton. When two assemblies generate a decorator for the same
+  interface (`[assembly: CacheInterface]` in a library and in the app), the one in the assemblies passed to
+  `AddMethodCache` (by default the caller's) or else the entry assembly's is used, instead of whichever module
+  initializer ran last; otherwise `AddMethodCache` throws naming both.
+- **Startup validation.** The generic host loads every policy source when it starts, so startup-code
+  misconfiguration and invalid appsettings fail `StartAsync` and unknown method ids are logged then, not on the first
+  call. `AddMethodCacheFromConfiguration` reads its section at that point, so configuration sources added after the
+  call count. appsettings now rejects unknown setting names, a single value for `Tags`, an object for a method's
+  `FailSafe` and time spans without `:` (`"300"` was 300 days). The resolved policy of a method keeps the newest
+  version when two sources change it concurrently. The `MethodId` property for environment variables is documented.
+- **OpenTelemetry and admin.** `ICacheMetricsProvider.CacheLatency` takes a `TimeSpan`, and `load_duration` keeps
+  sub-millisecond precision. `EnableMetrics = false` keeps the app's own metrics provider, and options from several
+  calls or `Configure<OpenTelemetryOptions>` compose instead of resetting. A hit no longer writes a shared counter
+  when nothing listens; the hit ratio comes from the cache's statistics. `SetCacheUserId(null)` and
+  `SetCacheTenantId(null)` clear the value. Admin `DELETE entry` answers 204 with a distributed cache, since the
+  removal reached it and the other instances. The web demo's `.http` walkthrough loads product 2 before showing it
+  is still cached.
 
 ### If you used a pre-release build from GitHub Packages
 

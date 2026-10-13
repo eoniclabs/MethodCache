@@ -4,6 +4,7 @@ using MethodCache;
 using MethodCache.Extensibility;
 using MethodCache.OpenTelemetry;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -14,7 +15,10 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
 {
     /// <summary>
     /// Adds tracing and metrics to MethodCache. Call this after <c>AddMethodCache()</c>, which registers the cache
-    /// manager that this method instruments. Calling it more than once instruments the cache manager only once.
+    /// manager that this method instruments. Calling it more than once instruments the cache manager only once, and
+    /// the options of every call, and of <c>Configure&lt;OpenTelemetryOptions&gt;</c>, apply in order. With
+    /// <see cref="OpenTelemetryOptions.EnableMetrics"/> off, an <see cref="ICacheMetricsProvider"/> the application
+    /// registered keeps receiving the cache's hits and misses.
     /// </summary>
     /// <exception cref="InvalidOperationException">No cache manager is registered yet.</exception>
     public static IServiceCollection AddMethodCacheOpenTelemetry(
@@ -31,28 +35,16 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
 
         var alreadyInstrumented = services.Any(s => s.ServiceType == typeof(OpenTelemetryInstrumentationMarker));
 
-        var options = new OpenTelemetryOptions();
-        configure?.Invoke(options);
-
-        services.Configure<OpenTelemetryOptions>(opt =>
+        // Only the values the caller sets, so earlier calls and Configure<OpenTelemetryOptions> keep theirs
+        var options = services.AddOptions<OpenTelemetryOptions>();
+        if (configure != null)
         {
-            opt.EnableTracing = options.EnableTracing;
-            opt.EnableMetrics = options.EnableMetrics;
-            opt.RecordCacheKeys = options.RecordCacheKeys;
-            opt.HashCacheKeys = options.HashCacheKeys;
-            opt.RecordCacheTags = options.RecordCacheTags;
-            opt.ExportSensitiveData = options.ExportSensitiveData;
-            opt.EnableHttpCorrelation = options.EnableHttpCorrelation;
-            opt.EnableBaggagePropagation = options.EnableBaggagePropagation;
-        });
+            options.Configure(configure);
+        }
 
         services.TryAddSingleton<ICacheActivitySource, CacheActivitySource>();
         services.TryAddSingleton<ICacheMeterProvider, CacheMeterProvider>();
         services.TryAddSingleton<IBaggagePropagator, BaggagePropagator>();
-
-        services.AddSingleton<ICacheMetricsProvider>(provider =>
-            provider.GetRequiredService<ICacheMeterProvider>() as CacheMeterProvider
-            ?? throw new InvalidOperationException("CacheMeterProvider must implement ICacheMetricsProvider"));
 
         if (alreadyInstrumented)
         {
@@ -61,6 +53,13 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
         }
 
         services.AddSingleton<OpenTelemetryInstrumentationMarker>();
+
+        // With metrics off, the cache keeps reporting to the provider registered before, such as the application's own
+        services.Decorate<ICacheMetricsProvider>((inner, provider) =>
+            provider.GetRequiredService<IOptions<OpenTelemetryOptions>>().Value.EnableMetrics
+                ? provider.GetRequiredService<ICacheMeterProvider>() as CacheMeterProvider
+                  ?? throw new InvalidOperationException("CacheMeterProvider must implement ICacheMetricsProvider")
+                : inner());
 
         services.Decorate<ICacheManager>((inner, provider) =>
         {
@@ -74,7 +73,7 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
                 cacheMeterProvider.ObserveCache(administrator);
             }
 
-            return new TelemetryCacheManager(inner, activitySource, meterProvider, baggagePropagator);
+            return new TelemetryCacheManager(inner(), activitySource, meterProvider, baggagePropagator);
         });
 
         return services;
@@ -87,7 +86,7 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
 
     private static void Decorate<TInterface>(
         this IServiceCollection services,
-        Func<TInterface, IServiceProvider, TInterface> decorator)
+        Func<Func<TInterface>, IServiceProvider, TInterface> decorator)
         where TInterface : class
     {
         var existingRegistrations = services.Where(s => !s.IsKeyedService && s.ServiceType == typeof(TInterface)).ToList();
@@ -113,7 +112,8 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
                     registration.ImplementationType!, registration.Lifetime));
             }
 
-            object Factory(IServiceProvider provider) => decorator(provider.GetRequiredKeyedService<TInterface>(originalKey), provider);
+            // The inner service is resolved only when the decorator asks for it
+            object Factory(IServiceProvider provider) => decorator(() => provider.GetRequiredKeyedService<TInterface>(originalKey), provider);
 
             services.Add(new ServiceDescriptor(
                 typeof(TInterface),
