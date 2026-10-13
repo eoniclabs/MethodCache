@@ -39,7 +39,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
         _cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();
         _memoryCache = (IMemoryCache)_cacheManager;
 
-        // Pre-generate all cache keys ONCE (this is what the source generator does at compile time)
+        // Generate a storage-key prefix once during setup.
         var keyGenerator = _serviceProvider.GetRequiredService<ICacheKeyGenerator>();
         var defaultPolicy = CacheRuntimePolicy.FromPolicy(
             "default",
@@ -55,7 +55,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
         Func<Task<TValue>> factory,
         TimeSpan duration)
     {
-        // Use pre-generated key + user key (simulates what source generator does)
+        // Append the user key to the precomputed prefix.
         var cacheKey = $"{_keyPrefix}:{key}";
 
         if (_cacheManager.TryGetFast<TValue>(cacheKey, out var cached))
@@ -93,7 +93,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
 
     public void Set<TValue>(string key, TValue value, TimeSpan duration)
     {
-        // Pre-generated key - no allocation overhead
+        // Construct the storage key from the precomputed prefix.
         var cacheKey = $"{_keyPrefix}:{key}";
 
         var valueTask = _memoryCache.SetAsync(cacheKey, value, duration);

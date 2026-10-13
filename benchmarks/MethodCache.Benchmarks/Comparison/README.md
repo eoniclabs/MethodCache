@@ -31,15 +31,16 @@ BitFaster.Caching appears only in the `engine` and `hitratio` benchmarks, not in
 MethodCache uses **compile-time source generation** to create optimized caching code, while other frameworks use **runtime abstractions** (proxies, interceptors, decorators). This fundamental difference creates a measurement challenge:
 
 **Through Adapter Interface** (`ICacheAdapter`): every library, MethodCache included, goes through the same generic
-`string key` interface, so MethodCache pays for runtime key and policy handling that generated code does at compile
-time. Its adapter numbers are higher than in real use.
+`string key` interface. The runtime-key adapter builds policies and generates keys per operation; the manual-key
+adapter uses storage keys directly. The SourceGen adapter uses generated get-or-create methods, while ordinary
+lookup reads warmed storage directly.
 
 **Real Usage** (source-generated code): MethodCache runs the decorator the source generator writes for the method.
 This is what an application gets; [docs/benchmarks.md](../../../docs/benchmarks.md) has the measured numbers.
 
 ### The Root Cause: Key and Policy Handling at Run Time
 
-Through an adapter, MethodCache builds a runtime policy and passes the key through `ICacheManager` on every
+The runtime-key adapter builds a runtime policy and passes the key through `ICacheManager` on every
 operation. A generated decorator has the method's policy and key layout fixed at compile time, writes the key into a
 stack buffer and looks it up without making a string.
 
@@ -71,7 +72,7 @@ Each library has a dedicated adapter that translates between the common interfac
 
 - `MethodCacheSourceGenAdapter` - A source-generated decorator (`MethodCache_SourceGen_*`)
 - `DirectApiMethodCacheAdapter` - `ICacheManager` with keys the caller supplies (`MethodCache_ManualKey_*`)
-- `MethodCacheAdapter` - `ICacheManager` with keys generated at run time on every call (`MethodCache_Legacy_*`)
+- `RuntimeKeyMethodCacheAdapter` - `ICacheManager` with keys generated at run time on every call (`MethodCache_RuntimeKey_*`)
 - `OptimizedMethodCacheAdapter` - `ICacheManager` with a cached policy and fewer allocations
 - `StaticKeyMethodCacheAdapter` - a key prefix built once in setup, with the caller's key appended
 - `FusionCacheAdapter` - Wraps FusionCache
@@ -152,7 +153,7 @@ We acknowledge both comparisons are valuable but serve different purposes:
 - **Academic interest** - Analyzing design tradeoffs
 
 ### ❌ Never:
-- Use adapter-based results to claim MethodCache is slower than other frameworks
+- Treat different cache access paths as equivalent application workloads
 - Compare real-usage MethodCache numbers to adapter-based other framework numbers
 - Mix results from both comparison types in the same analysis
 

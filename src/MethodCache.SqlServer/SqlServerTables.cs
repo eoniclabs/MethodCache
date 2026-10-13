@@ -12,11 +12,13 @@ namespace MethodCache.SqlServer;
 internal sealed class SqlServerTables(
     SqlServerOptions options,
     ILogger<SqlServerTables>? logger = null,
-    Func<SqlServerOptions, CancellationToken, Task>? createTables = null) : IHostedService, IDisposable
+    Func<SqlServerOptions, CancellationToken, Task>? createTables = null,
+    TimeProvider? timeProvider = null) : IHostedService, IDisposable
 {
     internal static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(10);
     internal static readonly TimeSpan StartupWait = TimeSpan.FromSeconds(3);
 
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private readonly CancellationTokenSource _stopping = new();
     private Task? _creating;
 
@@ -31,7 +33,7 @@ internal sealed class SqlServerTables(
         _creating = Task.Run(() => CreateWithRetriesAsync(stopping), CancellationToken.None);
         try
         {
-            await _creating.WaitAsync(StartupWait, cancellationToken).ConfigureAwait(false);
+            await _creating.WaitAsync(StartupWait, _timeProvider, cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
@@ -68,6 +70,12 @@ internal sealed class SqlServerTables(
             {
                 return;
             }
+            catch (SqlException ex) when (ex.Number == 50001)
+            {
+                // Report errors even when initialization finishes after the bounded startup wait.
+                logger?.LogError(ex, "MethodCache SQL Server backplane scope column is incompatible; table initialization stopped. Use the current table schema.");
+                throw;
+            }
             catch (Exception ex)
             {
                 if (!logged)
@@ -79,7 +87,7 @@ internal sealed class SqlServerTables(
 
             try
             {
-                await Task.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(RetryInterval, _timeProvider, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -117,12 +125,13 @@ internal sealed class SqlServerTables(
                     [CreatedAt] datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
             END
 
-            -- Earlier versions did not isolate messages by prefix. Preserve those rows, but leave their
-            -- scope NULL so no application treats an ambiguous legacy message as its own invalidation.
-            IF COL_LENGTH(@invalidations, 'Scope') IS NULL
-                ALTER TABLE {options.QualifiedInvalidationsTableName} ADD [Scope] binary(32) NULL;
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID(@invalidations) AND name = 'Scope'
+                    AND system_type_id = TYPE_ID('binary') AND max_length = 32 AND is_nullable = 0)
+                THROW 50001, 'MethodCache invalidations table must contain a non-nullable binary(32) Scope column. Create the table using the current MethodCache schema.', 1;
 
-            -- Dynamic SQL compiles after the optional ALTER, including on an existing old table.
+            -- Compile index creation only after validating the columns of an existing table.
             IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(@invalidations) AND name = 'Index_Scope_Id')
                 EXEC(N'CREATE NONCLUSTERED INDEX [Index_Scope_Id] ON {options.QualifiedInvalidationsTableName.Replace("'", "''", StringComparison.Ordinal)} ([Scope], [Id]);');
             IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(@invalidations) AND name = 'Index_Scope_CreatedAt')

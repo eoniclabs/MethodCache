@@ -72,6 +72,47 @@ namespace QuickStart
     private readonly SourceGeneratorTestEngine _engine = new();
 
     [Theory]
+    [InlineData("Singleton", ServiceLifetime.Singleton)]
+    [InlineData("Scoped", ServiceLifetime.Scoped)]
+    [InlineData("Transient", ServiceLifetime.Transient)]
+    public async Task FactoryRegistration_ExplicitLifetime_IsPreserved(string suffix, ServiceLifetime lifetime)
+    {
+        var source = QuickStartSource.Replace(
+            "public static class Startup",
+            $$"""
+            public static class ExplicitRegistration
+            {
+                public static void Register(IServiceCollection services)
+                {
+                    services.Add{{suffix}}<IUserService>(_ => new UserService());
+                    services.AddMethodCache();
+                }
+            }
+            public static class Startup
+            """);
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(source, $"ExplicitRegistration_{suffix}");
+        var assembly = testAssembly.Assembly;
+        var interfaceType = assembly.GetType("QuickStart.IUserService")!;
+        var services = new ServiceCollection();
+        assembly.GetType("QuickStart.ExplicitRegistration")!.GetMethod("Register")!.Invoke(null, new object[] { services });
+        Assert.Equal(lifetime, services.Last(d => d.ServiceType == interfaceType).Lifetime);
+
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var firstScope = provider.CreateScope();
+        using var secondScope = provider.CreateScope();
+        var first = firstScope.ServiceProvider.GetRequiredService(interfaceType);
+        var repeated = firstScope.ServiceProvider.GetRequiredService(interfaceType);
+        var otherScope = secondScope.ServiceProvider.GetRequiredService(interfaceType);
+        Assert.Equal(lifetime != ServiceLifetime.Transient, ReferenceEquals(first, repeated));
+        Assert.Equal(lifetime == ServiceLifetime.Singleton, ReferenceEquals(first, otherScope));
+
+        Assert.Null(assembly.GetType("Microsoft.Extensions.DependencyInjection.GeneratedCachingServiceCollectionExtensions"));
+        var get = interfaceType.GetMethod("GetUserAsync")!;
+        Assert.Equal("user-7", await (Task<string>)get.Invoke(first, new object[] { 7 })!);
+        Assert.Equal("user-7", await (Task<string>)get.Invoke(first, new object[] { 7 })!);
+    }
+
+    [Theory]
     [InlineData("WithConfiguration")]
     [InlineData("WithoutConfiguration")]
     [InlineData("WithExplicitAssembly")]

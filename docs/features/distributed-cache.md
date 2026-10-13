@@ -144,3 +144,6 @@ The SQL Server guide also compares the two and has the schema migration for an e
 An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision removes the previous distributed value instead of leaving it readable. If the backend is unavailable, the removal follows the normal invalidation retry path.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
+
+SQL Server backplane initialization requires a non-nullable `binary(32)` `Scope` column. Incompatible scope columns
+are reported without automatic schema upgrades; see the [SQL Server guide](../../src/MethodCache.SqlServer/README.md#required-backplane-schema).

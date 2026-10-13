@@ -57,6 +57,13 @@ By default the schema and two tables are created when the application starts, if
 
 If the application's login may not create tables, set `CreateTablesIfMissing = false` and create them in a migration instead.
 
+### Required backplane schema
+
+The invalidations table requires `Scope binary(32) NOT NULL` and the indexes `Index_Scope_Id (Scope, Id)` and
+`Index_Scope_CreatedAt (Scope, CreatedAt)`. Automatic initialization rejects incompatible scope columns with a
+logged schema error and does not convert tables or rewrite their rows. An error detected during the bounded
+startup wait also fails startup. With `CreateTablesIfMissing = false`, provision the current schema yourself.
+
 ## When SQL Server is down
 
 MethodCache keeps answering from memory and your methods; SQL Server never fails or stalls a call.

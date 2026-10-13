@@ -121,7 +121,7 @@ public class AdapterContractTests
         if (kind != 8)
             return new AdapterScope(kind switch
             {
-                0 => new MethodCacheAdapter(timeProvider),
+                0 => new RuntimeKeyMethodCacheAdapter(timeProvider),
                 1 => new OptimizedMethodCacheAdapter(timeProvider),
                 2 => new StaticKeyMethodCacheAdapter(timeProvider),
                 3 => new DirectApiMethodCacheAdapter(timeProvider),
