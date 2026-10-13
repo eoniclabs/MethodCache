@@ -17,6 +17,16 @@ MessagePack keys preserve derived member data in nested base-class/interface slo
 Earlier keys for these arguments become cold misses. Overloaded generic methods include generic arity in their
 policy ids and key prefixes, keeping different overloads distinct; earlier keys become cold misses.
 
+### Third review fixes
+
+- **HTTP caching** no longer stores a redirect the transport followed under the original URL (the transport drops
+  `Authorization`, so one caller's response could reach another), invalidates the URL a `POST` was sent to also when
+  it answers `303`, and removes its own validators so a retry of the same request gets a full response.
+  `Vary: Accept-Encoding` works with automatic decompression, a `GET` with a body bypasses the cache, a
+  `Cache-Control` or `Vary` that doesn't parse is not stored, clients that get caching from
+  `ConfigureHttpClientDefaults` keep their own entries, far-future `Expires` no longer overflows, weak ETags stay weak,
+  and the URL fragment is not part of the key. HTTP cache keys change, so entries from an earlier build are misses.
+
 ### If you used a pre-release build from GitHub Packages
 
 - **Generated `Add{Interface}WithCaching` methods are gone.** Combined with `AddMethodCache()` they registered the

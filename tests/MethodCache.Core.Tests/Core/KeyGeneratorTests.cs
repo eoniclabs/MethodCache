@@ -461,6 +461,9 @@ namespace MethodCache.Core.Tests.Core
 
             foreach (var generator in generators)
             {
+                // Time a warm call: the first one pays for JIT and serializer metadata, which on a busy machine
+                // running the rest of the suite in parallel can take over a second by itself
+                generator.GenerateKey("LargeObjectMethod", new object[] { largeOrder }, descriptor);
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var key1 = generator.GenerateKey("LargeObjectMethod", new object[] { largeOrder }, descriptor);
                 stopwatch.Stop();

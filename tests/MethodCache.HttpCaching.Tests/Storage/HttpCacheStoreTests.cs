@@ -65,11 +65,12 @@ public class HttpCacheStoreTests
     }
 
     [Fact]
-    public async Task FailingDistributedCache_DoesNotFailTheRequest()
+    public async Task FailingDistributedCache_ReportsWritesAndIgnoresReadsAndRemovals()
     {
         using var store = CreateStore(distributed: new ThrowingDistributedCache());
 
-        await store.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1));
+        // The handler decides what a failed write means (log it, or remove the entry it would have replaced)
+        await Assert.ThrowsAnyAsync<Exception>(() => store.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1)).AsTask());
         await store.RemoveAsync("k");
 
         Assert.Null(await store.GetAsync("k"));
