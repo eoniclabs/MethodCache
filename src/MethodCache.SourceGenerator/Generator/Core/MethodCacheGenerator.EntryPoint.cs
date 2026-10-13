@@ -107,8 +107,6 @@ namespace MethodCache.SourceGenerator
             {
                 context.AddSource("GeneratedPolicyRegistrations.g.cs", policyRegistrationsCode);
             }
-
-            context.AddSource("GeneratedCachingServiceCollectionExtensions.g.cs", DIExtensionsEmitter.Emit(interfaces));
         }
 
         private static void EmitRegistrations(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes)

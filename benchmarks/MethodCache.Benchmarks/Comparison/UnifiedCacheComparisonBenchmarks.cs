@@ -63,10 +63,14 @@ public class UnifiedCacheComparisonBenchmarks
         // Source-generated MethodCache with the default in-memory engine
         var services = new ServiceCollection();
         services.AddLogging();
+
+        // AddMethodCache wraps the interface registration in the generated decorator
+        services.AddSingleton<MethodCacheBenchmarkService>();
+        services.AddSingleton<IMethodCacheBenchmarkService>(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
         services.AddMethodCache(config =>
         {
             config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }); // Don't auto-scan assembly - we register explicitly below
+        });
 
         // PERFORMANCE OPTIMIZATION: Configure cache options for benchmarking
         services.Configure<MethodCache.MethodCacheMemoryOptions>(opts =>
@@ -75,14 +79,6 @@ public class UnifiedCacheComparisonBenchmarks
             opts.EvictionPolicy = MethodCache.MemoryCacheEvictionPolicy.Lru;  // Use lazy LRU
         });
 
-
-        // Register the base implementation
-        services.AddSingleton<MethodCacheBenchmarkService>();
-
-        // Use the source-generated decorator registration extension method
-        // This properly wraps the implementation with the caching decorator
-        services.AddIMethodCacheBenchmarkServiceWithCaching(sp =>
-            sp.GetRequiredService<MethodCacheBenchmarkService>());
 
         var serviceProvider = services.BuildServiceProvider();
         _sourceGenProvider = serviceProvider;

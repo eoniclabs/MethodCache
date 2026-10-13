@@ -15,7 +15,8 @@ namespace MyApp
     {
         [Cache] Task<User> GetAsync(int id);                     // MyApp.IUserService.GetAsync:42
         [Cache] Task<List<User>> SearchAsync(UserQuery query);   // MyApp.IUserService.SearchAsync:(alice:2)
-        [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:11b474c4… (hashed)
+        [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:[3:1:2:3]
+        [Cache] Task<int> CountAsync(Dictionary<string, int[]> filters); // MyApp.IUserService.CountAsync:fc08ab0d… (hashed)
     }
     // end-snippet
 

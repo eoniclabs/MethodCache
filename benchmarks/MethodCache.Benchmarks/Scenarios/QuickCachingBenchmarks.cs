@@ -21,7 +21,7 @@ public class QuickCachingBenchmarks : SimpleBenchmarkBase
     protected override void ConfigureBenchmarkServices(IServiceCollection services)
     {
         services.AddSingleton<BasicCacheService>();
-        services.AddIBasicCacheServiceWithCaching(sp => sp.GetRequiredService<BasicCacheService>());
+        services.AddSingleton<IBasicCacheService>(sp => sp.GetRequiredService<BasicCacheService>());
     }
 
     protected override void OnSetupComplete()
