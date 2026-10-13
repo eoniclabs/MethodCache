@@ -14,6 +14,8 @@ correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/RE
 
 <!-- snippet: getting-started-interface -->
 ```cs
+using MethodCache;
+
 public interface IProductService
 {
     [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
@@ -69,25 +71,17 @@ builder.Services.AddMethodCache();                               // after your r
 - Fix every `MC` and `MCG` build diagnostic; each links to its explanation, and many have a code fix.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
   caching off.
+- To invalidate a `GetOrCreateAsync` entry that has a version, pass `CacheManagerExtensions.GetCacheKey(key, version)`
+  to `InvalidateByKeysAsync`.
+- For a distributed cache, use `AddMethodCacheRedis` or `AddMethodCacheSqlServer`. A custom `IDistributedCache` must
+  also implement `IAtomicInvalidationStore` (`MethodCache.Extensibility`), or the app fails at startup.
+- With `AddHttpCaching()`, send cookies as explicit `Cookie` headers; it turns automatic cookies off.
 
 ## Namespaces
 
 - `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
   `IRuntimeCacheConfigurator`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`, `ICacheKeyProvider`.
 - `MethodCache.Extensibility`: `ISerializer`, `JsonCacheSerializer`, `ICacheKeyGenerator`, `JsonKeyGenerator`,
-  `NoOpCacheManager`.
+  `NoOpCacheManager`, `IAtomicInvalidationStore`.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
-
-Custom distributed method-result caches must implement `MethodCache.Extensibility.IAtomicInvalidationStore`,
-including backend-atomic maximum timestamps and retention preservation. A plain `IDistributedCache` is
-rejected when the host starts (`ValidateOnStart`), or without a generic host when the method cache manager is
-resolved. Redis and SQL Server supply this contract.
-
-`AddHttpCaching()` disables automatic cookies on the named client’s `SocketsHttpHandler` or `HttpClientHandler` after handler configuration. Send caller cookies explicitly before the cache handler. Unknown transports bypass caching with a warning unless `AllowUnverifiedTransport` is enabled after verifying that the entire transport has no automatic cookies or hidden caller identity.
-
-For direct invalidation or administration of versioned fluent entries, use `CacheManagerExtensions.GetCacheKey(logicalKey, version)`. Treat the returned identity as opaque; callback `CacheContext.Key` remains the logical key.
-
-`AddHttpCaching()` runs the cache after all additional handlers, so injected caller identity and rewritten requests are visible before lookup. Delegating handlers inside the primary transport, or below a directly constructed cache handler, are unverified and bypass caching unless the entire chain is explicitly trusted.
-
-Unversioned fluent keys that begin with NUL are escaped too. Use `CacheManagerExtensions.GetCacheKey(logicalKey)` for direct invalidation or administration of those entries, just as you use the overload with a version for versioned entries.

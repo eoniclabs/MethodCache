@@ -44,6 +44,5 @@ pages is compiled and tested in CI.
 
 [Redis](../src/MethodCache.Redis/README.md), [SQL Server](../src/MethodCache.SqlServer/README.md),
 [ASP.NET Core](../src/MethodCache.AspNetCore/README.md), [OpenTelemetry](../src/MethodCache.OpenTelemetry/README.md),
-[HTTP caching](../src/MethodCache.HttpCaching/README.md). [Benchmarks](benchmarks.md) has the measured performance.
-
-- [Release compatibility notes](developer/RELEASE_NOTES.md): cache key and distributed invalidation formats.
+[HTTP caching](../src/MethodCache.HttpCaching/README.md), [MessagePack](../src/MethodCache.Serialization.MessagePack/README.md).
+[Benchmarks](benchmarks.md) has the measured performance.
