@@ -504,7 +504,7 @@ namespace MethodCache.SourceGenerator
                 var parameters = string.Concat(method.Parameters.Select(p => $", {Utils.GetReturnTypeForSignature(p.Type)} {Utils.ParameterIdentifier(p)}"));
                 // A refresh-ahead or fail-safe load that outlives its caller gets a scoped or transient service
                 // from its own scope (DecoratorServices.ForLoad); otherwise this is the decorated instance
-                var call = BuildMethodCall(method, "global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)");
+                var call = BuildMethodCall(method, $"global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_{safeFieldName}, this._decorated)");
 
                 // The decorated method's own task is the factory, so a miss doesn't add an async state machine
                 var factory = kind switch

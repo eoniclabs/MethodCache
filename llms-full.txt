@@ -185,8 +185,9 @@ and when the JIT inlines a short wrapper into the application, that is the appli
 unregistered interfaces are not registered.
 
 Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
-key; an interface registered only keyed is not also registered without a key. Cache keys don't include the service
-key, so two keyed registrations of one interface share their entries.
+key; an interface registered only keyed is not also registered without a key. The service key is part of the cache
+keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
+integer or `Guid` ([Keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#things-to-know)).
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
@@ -452,6 +453,13 @@ var overload = MethodCacheKeys.For(
   signature, the declaring interface is added too: for `IC : IA, IB` that both declare `Get(int)`, the keys are
   `MyApp.IC.MyApp.IA.Get(int):1` and `MyApp.IC.MyApp.IB.Get(int):1`. Policy ids don't change; each
   method keeps the id of the interface that declares it.
+- **Keyed registrations** have their service key after the method name, so `AddKeyedScoped<IRates, EcbRates>("ecb")`
+  and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `MyApp.IRates.Get@ecb:1` and
+  `MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
+  `Prefix` or `Pattern`. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
+  throws for a keyed registration of a cached interface with any other key. `MethodCacheKeys.Pattern(type, "Get")`
+  matches the entries of every registration. Tags don't include the service key, so a `[CacheInvalidate]` tag, on any
+  registration, removes the matching entries of all of them.
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
@@ -524,8 +532,10 @@ shorter `Duration` from configuration, the reload starts halfway through the ent
 The reload outlives the request that triggered it. For a service registered as scoped or transient (a repository
 with a scoped `DbContext`, say), it runs on a new instance from a new DI scope, which is disposed when the reload ends,
 never on the request's instance, whose scope may already be gone. That instance has none of the request's state: no
-`HttpContext`, and no values the request set on the instance or in `AsyncLocal`. Singletons reload on their one
-instance. A `CancellationToken` parameter of the method still cancels the reload.
+`HttpContext`, and no values the request set on the instance or in `AsyncLocal`. Each scoped or transient cached
+service the reload calls gets an instance this way, also from a manual `GetOrCreateAsync` factory, and every scope is
+disposed when the reload ends; a call the factory leaves running after it returned keeps the instance it was given.
+Singletons reload on their one instance. A `CancellationToken` parameter of the method still cancels the reload.
 
 ## Versions
 
@@ -3045,8 +3055,10 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   run before `AddMethodCache()`, also when several threads resolve services while the library's initializer runs.
 - **Dependency injection.** Generated decorators implement `IDisposable`/`IAsyncDisposable` only when the interface
   does, so the container no longer keeps every transient decorator resolved from the root (their `ownsDecorated`
-  constructor parameter is gone). Keyed registrations are decorated under their own key, and an interface registered
-  only keyed no longer gets an extra unkeyed singleton. When two assemblies generate a decorator for the same
+  constructor parameter is gone). Keyed registrations are decorated under their own key, with the service key in
+  their cache keys (`MyApp.IRates.Get@ecb:1`, see `MethodCacheKeys.KeyedMethodName`), so two registrations of one
+  interface never share entries; a key that isn't a string, enum, bool, char, integer or `Guid` makes
+  `AddMethodCache()` throw. An interface registered only keyed no longer gets an extra unkeyed singleton. When two assemblies generate a decorator for the same
   interface (`[assembly: CacheInterface]` in a library and in the app), the one in the assemblies passed to
   `AddMethodCache` (by default the caller's) or else the entry assembly's is used, instead of whichever module
   initializer ran last; otherwise `AddMethodCache` throws naming both.
@@ -3073,7 +3085,8 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
 - **Background loads of scoped services.** A refresh-ahead, and a fail-safe call that goes on after its caller got
   the expired value, now run a scoped or transient service on a new instance from a new DI scope (keyed services
   keep their key), disposed when the load ends, instead of on the request's instance after its scope was disposed.
-  Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
+  Every scoped or transient cached service the load calls gets its own scope, and a call left running after the load
+  ended gets none. The scope factory comes from the root container. Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
   that generate them together with the new MethodCache.Core.
 
 ### If you used a pre-release build from GitHub Packages

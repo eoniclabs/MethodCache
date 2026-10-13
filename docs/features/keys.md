@@ -173,6 +173,13 @@ var overload = MethodCacheKeys.For(
   signature, the declaring interface is added too: for `IC : IA, IB` that both declare `Get(int)`, the keys are
   `MyApp.IC.MyApp.IA.Get(int):1` and `MyApp.IC.MyApp.IB.Get(int):1`. Policy ids don't change; each
   method keeps the id of the interface that declares it.
+- **Keyed registrations** have their service key after the method name, so `AddKeyedScoped<IRates, EcbRates>("ecb")`
+  and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `MyApp.IRates.Get@ecb:1` and
+  `MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
+  `Prefix` or `Pattern`. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
+  throws for a keyed registration of a cached interface with any other key. `MethodCacheKeys.Pattern(type, "Get")`
+  matches the entries of every registration. Tags don't include the service key, so a `[CacheInvalidate]` tag, on any
+  registration, removes the matching entries of all of them.
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](monitoring.md)).
 

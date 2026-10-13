@@ -15,6 +15,9 @@ namespace MethodCache.Infrastructure
     {
         private readonly ConcurrentDictionary<Type, object> _sites = new();
 
+        // The registry the decorators' methods are created with: the container's, or one registration's
+        private readonly IPolicyRegistry _sitesRegistry;
+
         /// <summary>
         /// Creates the services a generated decorator takes in its constructor. Public only for generated code.
         /// </summary>
@@ -32,7 +35,25 @@ namespace MethodCache.Infrastructure
             PolicyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));
             KeyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
             MetricsProvider = metricsProvider;
+            _sitesRegistry = policyRegistry;
         }
+
+        private DecoratorServices(DecoratorServices container, RegistrationPolicyRegistry registration)
+        {
+            CacheManager = container.CacheManager;
+            PolicyRegistry = container.PolicyRegistry;
+            KeyGenerator = container.KeyGenerator;
+            MetricsProvider = container.MetricsProvider;
+            _sitesRegistry = registration;
+        }
+
+        /// <summary>
+        /// The services of one registration of an interface, with its own methods: a keyed registration has its
+        /// service key in its cache keys, and a scoped or transient one gets a new scope for background loads.
+        /// Created once per registration and container.
+        /// </summary>
+        internal DecoratorServices ForRegistration(string? keySuffix, BackgroundLoadTarget? background)
+            => new(this, new RegistrationPolicyRegistry(PolicyRegistry, keySuffix, background));
 
         /// <summary>
         /// The container's shared instance, which <c>AddMethodCache</c> registers. Containers set up without it
@@ -69,11 +90,14 @@ namespace MethodCache.Infrastructure
         /// on after its caller got the stale value, a scoped or transient service is resolved again from a new scope
         /// instead, which is disposed when the load ends, so the load never uses an instance whose scope ended.
         /// </remarks>
-        /// <param name="decorator">The generated decorator.</param>
-        /// <param name="service">The instance it decorates.</param>
-        public static TService ForLoad<TService>(object decorator, TService service)
+        /// <param name="method">The cached method being loaded.</param>
+        /// <param name="service">The instance the decorator decorates.</param>
+        public static TService ForLoad<TService>(CachedMethod method, TService service)
             where TService : class
-            => BackgroundLoadScope.ForLoad(decorator, service);
+        {
+            if (method == null) throw new ArgumentNullException(nameof(method));
+            return BackgroundLoadScope.ForLoad(method.Background, service);
+        }
 
         /// <summary>
         /// Returns a decorator's methods, creating them on first use, so each decorator type resolves its policies
@@ -89,7 +113,7 @@ namespace MethodCache.Infrastructure
                 return (TSites)existing;
             }
 
-            return (TSites)_sites.GetOrAdd(typeof(TSites), static (_, state) => state.factory(state.registry), (factory, registry: PolicyRegistry));
+            return (TSites)_sites.GetOrAdd(typeof(TSites), static (_, state) => state.factory(state.registry), (factory, registry: _sitesRegistry));
         }
     }
 }

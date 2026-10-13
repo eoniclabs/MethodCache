@@ -296,7 +296,7 @@ namespace TestApp
             // Sync methods with simple parameters use the ultra-fast path with GetOrCreateFastAsync
             AssertContainsIgnoreWhitespace(decoratorSource, "_cacheManager.GetOrCreateFastAsync<string>");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValue\"");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => global::System.Threading.Tasks.Task.FromResult(((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetValue(__mcArgument0))!");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => global::System.Threading.Tasks.Task.FromResult(((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).GetValue(__mcArgument0))!");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcSnapshot.Policy");
             AssertContainsIgnoreWhitespace(decoratorSource, ".GetAwaiter().GetResult()");
         }
@@ -374,7 +374,7 @@ namespace TestApp
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync");
             AssertContainsIgnoreWhitespace(decoratorSource, "\"GetValueAsync\"");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetValueAsync(__mcArgument0)!");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).GetValueAsync(__mcArgument0)!");
             Assert.DoesNotContain("async () =>", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcSnapshot.Policy");
             // Ultra-fast path returns Task.FromResult or createdTask directly, no async/await on the method
@@ -524,8 +524,8 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "List<int> __mcArgument2)");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcTypeArgument0 global::TestApp.ITestService.GetGeneric");
             // Note: Generic constraints are not currently preserved by the source generator
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetValue(__mcArgument0, __mcArgument1, __mcArgument2)");
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetGeneric");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).GetValue(__mcArgument0, __mcArgument1, __mcArgument2)");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method1, this._decorated)).GetGeneric");
         }
 
         [Fact]
@@ -560,7 +560,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearAll()");
             // Zero-parameter methods use the key prefix as the whole key
             AssertContainsIgnoreWhitespace(decoratorSource, "var __mcKey = __mcSnapshot.KeyPrefix;");
-            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetConstantValue()");
+            AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)this._decorated).ClearAll()");
         }
 
@@ -676,7 +676,7 @@ namespace TestApp
             // The cache manager reports misses; the decorator reporting them too would count each miss twice.
             Assert.DoesNotContain("_metricsProvider?.CacheMiss", decoratorSource);
             AssertContainsIgnoreWhitespace(decoratorSource, "GetOrCreateFastAsync<string>");
-            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).GetValueAsync(__mcArgument0)!");
+            AssertContainsIgnoreWhitespace(decoratorSource, "() => ((global::TestApp.ITestService)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).GetValueAsync(__mcArgument0)!");
             Assert.DoesNotContain("async () =>", decoratorSource);
         }
 

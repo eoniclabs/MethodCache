@@ -90,7 +90,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<decimal> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string __mcArgument0, int __mcArgument1)
-            => this._cacheManager.GetOrCreateFastAsync<decimal>(__cacheKey, this._method_Method0.Name, () => global::System.Threading.Tasks.Task.FromResult(((global::App.IPricing)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).Price(__mcArgument0, __mcArgument1))!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<decimal>(__cacheKey, this._method_Method0.Name, () => global::System.Threading.Tasks.Task.FromResult(((global::App.IPricing)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).Price(__mcArgument0, __mcArgument1))!, __policy);
 
         global::System.Threading.Tasks.ValueTask<string?> global::App.IPricing.FindAsync(string? __mcArgument0)
         {
@@ -125,7 +125,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<string?> __Load_Method1(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string? __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<string?>(__cacheKey, this._method_Method1.Name, () => ((global::App.IPricing)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this, this._decorated)).FindAsync(__mcArgument0).AsTask()!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<string?>(__cacheKey, this._method_Method1.Name, () => ((global::App.IPricing)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method1, this._decorated)).FindAsync(__mcArgument0).AsTask()!, __policy);
 
     }
 }

@@ -62,8 +62,10 @@ shorter `Duration` from configuration, the reload starts halfway through the ent
 The reload outlives the request that triggered it. For a service registered as scoped or transient (a repository
 with a scoped `DbContext`, say), it runs on a new instance from a new DI scope, which is disposed when the reload ends,
 never on the request's instance, whose scope may already be gone. That instance has none of the request's state: no
-`HttpContext`, and no values the request set on the instance or in `AsyncLocal`. Singletons reload on their one
-instance. A `CancellationToken` parameter of the method still cancels the reload.
+`HttpContext`, and no values the request set on the instance or in `AsyncLocal`. Each scoped or transient cached
+service the reload calls gets an instance this way, also from a manual `GetOrCreateAsync` factory, and every scope is
+disposed when the reload ends; a call the factory leaves running after it returned keeps the instance it was given.
+Singletons reload on their one instance. A `CancellationToken` parameter of the method still cancels the reload.
 
 ## Versions
 

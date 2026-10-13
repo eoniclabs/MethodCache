@@ -289,28 +289,56 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
 
                 var innerKey = new DecoratedServiceKey(serviceType, descriptor.ServiceKey);
+                var decorator = DescribeDecorator(services, descriptor, registration, innerKey);
                 services.Add(CreateKeyedCopy(descriptor, innerKey));
-
-                // A load that outlives the request (refresh-ahead, fail-safe after the timeout) gets its own
-                // instance of a scoped or transient service from a new scope; a singleton keeps its one instance
-                var decorate = descriptor.Lifetime == ServiceLifetime.Singleton
-                    ? (Func<IServiceProvider, object>)(provider => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)))
-                    : provider =>
-                    {
-                        var created = registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey));
-                        BackgroundLoadScope.Register(created, provider.GetRequiredService<IServiceScopeFactory>(), serviceType, innerKey);
-                        return created;
-                    };
-
-                var decorator = descriptor.IsKeyedService
-                    ? ServiceDescriptor.DescribeKeyed(serviceType, descriptor.ServiceKey, (provider, _) => decorate(provider), descriptor.Lifetime)
-                    : ServiceDescriptor.Describe(serviceType, decorate, descriptor.Lifetime);
 
                 // Replacing the original slot keeps registration order, and therefore IEnumerable<T> order
                 services[index] = decorator;
                 decorated.Add(decorator);
                 registration.AddPolicies?.Invoke(services);
             }
+        }
+
+        /// <summary>
+        /// The decorator registration that takes the place of <paramref name="descriptor"/>. An unkeyed singleton
+        /// uses the container's decorator services. A keyed registration puts its service key in its cache keys, so
+        /// two registrations of one interface never share entries, and a scoped or transient one lets background
+        /// loads create a new instance in a new scope; those get decorator services of their own, created once per
+        /// container from the root provider.
+        /// </summary>
+        private static ServiceDescriptor DescribeDecorator(IServiceCollection services, ServiceDescriptor descriptor, DecoratorRegistration registration, DecoratedServiceKey innerKey)
+        {
+            var serviceType = descriptor.ServiceType;
+            string? keySuffix = null;
+            if (descriptor.IsKeyedService)
+            {
+                keySuffix = "@" + (MethodCacheKeys.ServiceKeyPart(descriptor.ServiceKey!) ?? throw new InvalidOperationException(
+                    $"The keyed registration of {serviceType} has a service key of type {descriptor.ServiceKey!.GetType()}. MethodCache puts the " +
+                    "service key in the cache keys, so each registration caches its own results, and needs a key with a stable string form: " +
+                    "a string, enum, bool, char, integer or Guid. Use such a key, or register this service after AddMethodCache() to leave it uncached."));
+            }
+
+            var background = descriptor.Lifetime != ServiceLifetime.Singleton;
+            Func<IServiceProvider, object> decorate;
+            if (keySuffix == null && !background)
+            {
+                decorate = provider => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey));
+            }
+            else
+            {
+                // A singleton is created from the root provider, so its scope factory outlives every request scope
+                var slot = new RegistrationServicesKey();
+                decorate = provider => registration.Decorate(
+                    new RegistrationServiceProvider(provider, provider.GetRequiredKeyedService<DecoratorServices>(slot)),
+                    provider.GetRequiredKeyedService(serviceType, innerKey));
+                services.AddKeyedSingleton(slot, (root, _) => DecoratorServices.From(root).ForRegistration(
+                    keySuffix,
+                    background ? new BackgroundLoadTarget(root.GetRequiredService<IServiceScopeFactory>(), serviceType, innerKey) : null));
+            }
+
+            return descriptor.IsKeyedService
+                ? ServiceDescriptor.DescribeKeyed(serviceType, descriptor.ServiceKey, (provider, _) => decorate(provider), descriptor.Lifetime)
+                : ServiceDescriptor.Describe(serviceType, decorate, descriptor.Lifetime);
         }
 
         /// <summary>
@@ -406,6 +434,21 @@ namespace Microsoft.Extensions.DependencyInjection
 
         // Compared by reference, so two registrations of the same interface each keep their own inner service.
         // Holds the application's own service key, if any, for diagnostics.
+        /// <summary>The private key of one registration's <see cref="DecoratorServices"/>.</summary>
+        private sealed class RegistrationServicesKey
+        {
+        }
+
+        /// <summary>
+        /// The provider a generated decorator is created with: the requesting one, except that it returns the
+        /// registration's own <see cref="DecoratorServices"/>.
+        /// </summary>
+        private sealed class RegistrationServiceProvider(IServiceProvider provider, DecoratorServices services) : IServiceProvider
+        {
+            public object? GetService(Type serviceType)
+                => serviceType == typeof(DecoratorServices) ? services : provider.GetService(serviceType);
+        }
+
         private sealed class DecoratedServiceKey
         {
             public DecoratedServiceKey(Type serviceType, object? serviceKey)

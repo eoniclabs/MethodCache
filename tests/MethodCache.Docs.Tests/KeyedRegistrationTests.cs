@@ -20,7 +20,7 @@ public class KeyedRegistrationTests
         Assert.Null(provider.GetService<IKeyedRates>());
     }
 
-    // Keys don't include the service key, so both registrations share entries: "fed" is asked for another id
+    // The service key is part of the cache key, so each registration caches its own results
     [Fact]
     public void KeyedRegistrations_AreEachDecorated_AndFactoriesSeeTheirOwnKey()
     {
@@ -40,9 +40,64 @@ public class KeyedRegistrationTests
 
         var second = scope.ServiceProvider.GetRequiredKeyedService<IKeyedRates>("fed");
         Assert.Contains("Decorator", second.GetType().Name);
-        Assert.Equal(2, second.Get(2));
-        Assert.Equal(2, second.Get(2));
+        Assert.Equal(2, second.Get(1));
+        Assert.Equal(2, second.Get(1));
         Assert.Equal(1, fed.Calls);
+    }
+
+    [Fact]
+    public void KeyedScopedRegistrations_WithTheSameArguments_EachReturnTheirOwnValue()
+    {
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IKeyedRates>("ecb", (_, _) => new KeyedRates(1));
+        services.AddKeyedScoped<IKeyedRates>("fed", (_, _) => new KeyedRates(2));
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        using (var scope = provider.CreateScope())
+        {
+            Assert.Equal(1, scope.ServiceProvider.GetRequiredKeyedService<IKeyedRates>("ecb").Get(1));
+            Assert.Equal(2, scope.ServiceProvider.GetRequiredKeyedService<IKeyedRates>("fed").Get(1));
+        }
+
+        using (var scope = provider.CreateScope())
+        {
+            Assert.Equal(1, scope.ServiceProvider.GetRequiredKeyedService<IKeyedRates>("ecb").Get(1));
+            Assert.Equal(2, scope.ServiceProvider.GetRequiredKeyedService<IKeyedRates>("fed").Get(1));
+        }
+    }
+
+    [Fact]
+    public void KeyedEntries_HaveTheServiceKeyInTheirCacheKey()
+    {
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IKeyedRates>("ecb", new KeyedRates(1));
+        services.AddKeyedSingleton<IKeyedRates>(KeyedRegion.Eu, new KeyedRates(2));
+        services.AddKeyedSingleton<IKeyedRates>(7, new KeyedRates(3));
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+        var cache = (MethodCache.Extensibility.InMemoryCacheManager)provider.GetRequiredService<ICacheManager>();
+
+        provider.GetRequiredKeyedService<IKeyedRates>("ecb").Get(5);
+        provider.GetRequiredKeyedService<IKeyedRates>(KeyedRegion.Eu).Get(5);
+        provider.GetRequiredKeyedService<IKeyedRates>(7).Get(5);
+
+        foreach (var key in new object[] { "ecb", KeyedRegion.Eu, 7 })
+        {
+            var expected = MethodCacheKeys.For(typeof(IKeyedRates), MethodCacheKeys.KeyedMethodName(nameof(IKeyedRates.Get), key), MethodCacheKeys.Part(5));
+            Assert.True(cache.TryGetFast<int>(expected, out _), $"No entry under {expected}");
+        }
+    }
+
+    [Fact]
+    public void KeyedRegistration_WithAKeyThatHasNoStableStringForm_IsRejected()
+    {
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IKeyedRates>(new object(), new KeyedRates(1));
+
+        var error = Assert.Throws<InvalidOperationException>(() => services.AddMethodCache());
+        Assert.Contains(nameof(IKeyedRates), error.Message);
+        Assert.Contains("service key", error.Message);
     }
 
     // Review G7: a keyed registration next to an unkeyed one of the same interface is cached too
@@ -57,10 +112,10 @@ public class KeyedRegistrationTests
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
 
-        provider.GetRequiredKeyedService<IKeyedRates>("k").Get(10);
-        provider.GetRequiredKeyedService<IKeyedRates>("k").Get(10);
-        provider.GetRequiredService<IKeyedRates>().Get(20);
-        provider.GetRequiredService<IKeyedRates>().Get(20);
+        Assert.Equal(1, provider.GetRequiredKeyedService<IKeyedRates>("k").Get(10));
+        Assert.Equal(1, provider.GetRequiredKeyedService<IKeyedRates>("k").Get(10));
+        Assert.Equal(2, provider.GetRequiredService<IKeyedRates>().Get(10));
+        Assert.Equal(2, provider.GetRequiredService<IKeyedRates>().Get(10));
 
         Assert.Equal(1, keyed.Calls);
         Assert.Equal(1, unkeyed.Calls);
@@ -86,6 +141,8 @@ public class KeyedRegistrationTests
 }
 
 public interface IKeyedRates { [Cache] int Get(int id); }
+
+public enum KeyedRegion { Eu, Us }
 
 public sealed class KeyedRates : IKeyedRates
 {

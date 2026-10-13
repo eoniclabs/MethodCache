@@ -88,8 +88,9 @@ and when the JIT inlines a short wrapper into the application, that is the appli
 unregistered interfaces are not registered.
 
 Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
-key; an interface registered only keyed is not also registered without a key. Cache keys don't include the service
-key, so two keyed registrations of one interface share their entries.
+key; an interface registered only keyed is not also registered without a key. The service key is part of the cache
+keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
+integer or `Guid` ([Keys](features/keys.md#things-to-know)).
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as

@@ -621,4 +621,5 @@ static MethodCache.CacheManagerExtensions.GetCacheKey(string! key, int? version 
 MethodCache.CacheEntryOptions.Builder.ClearTags() -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.ClearsTags.get -> bool
 MethodCache.Policies.CachePolicyFields.ClearTags = 1024 -> MethodCache.Policies.CachePolicyFields
-static MethodCache.Infrastructure.DecoratorServices.ForLoad<TService>(object! decorator, TService! service) -> TService!
+static MethodCache.Infrastructure.DecoratorServices.ForLoad<TService>(MethodCache.Infrastructure.CachedMethod! method, TService! service) -> TService!
+static MethodCache.MethodCacheKeys.KeyedMethodName(string! methodName, object! serviceKey) -> string!

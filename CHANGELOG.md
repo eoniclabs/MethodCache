@@ -101,8 +101,10 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   run before `AddMethodCache()`, also when several threads resolve services while the library's initializer runs.
 - **Dependency injection.** Generated decorators implement `IDisposable`/`IAsyncDisposable` only when the interface
   does, so the container no longer keeps every transient decorator resolved from the root (their `ownsDecorated`
-  constructor parameter is gone). Keyed registrations are decorated under their own key, and an interface registered
-  only keyed no longer gets an extra unkeyed singleton. When two assemblies generate a decorator for the same
+  constructor parameter is gone). Keyed registrations are decorated under their own key, with the service key in
+  their cache keys (`MyApp.IRates.Get@ecb:1`, see `MethodCacheKeys.KeyedMethodName`), so two registrations of one
+  interface never share entries; a key that isn't a string, enum, bool, char, integer or `Guid` makes
+  `AddMethodCache()` throw. An interface registered only keyed no longer gets an extra unkeyed singleton. When two assemblies generate a decorator for the same
   interface (`[assembly: CacheInterface]` in a library and in the app), the one in the assemblies passed to
   `AddMethodCache` (by default the caller's) or else the entry assembly's is used, instead of whichever module
   initializer ran last; otherwise `AddMethodCache` throws naming both.
@@ -129,7 +131,8 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
 - **Background loads of scoped services.** A refresh-ahead, and a fail-safe call that goes on after its caller got
   the expired value, now run a scoped or transient service on a new instance from a new DI scope (keyed services
   keep their key), disposed when the load ends, instead of on the request's instance after its scope was disposed.
-  Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
+  Every scoped or transient cached service the load calls gets its own scope, and a call left running after the load
+  ended gets none. The scope factory comes from the root container. Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
   that generate them together with the new MethodCache.Core.
 
 ### If you used a pre-release build from GitHub Packages
