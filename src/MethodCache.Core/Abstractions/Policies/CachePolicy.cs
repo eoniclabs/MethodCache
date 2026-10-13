@@ -9,6 +9,7 @@ namespace MethodCache.Policies;
 /// </summary>
 public sealed record CachePolicy
 {
+    private readonly IReadOnlyList<string> _tags = Array.Empty<string>();
     private static readonly IReadOnlyDictionary<string, string?> EmptyMetadata = new Dictionary<string, string?>(StringComparer.Ordinal);
 
     /// <summary>
@@ -23,7 +24,15 @@ public sealed record CachePolicy
     /// <summary>
     /// Tags attached to stored entries, so related entries can be invalidated together.
     /// </summary>
-    public IReadOnlyList<string> Tags { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Tags
+    {
+        get => _tags;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _tags = value.Count == 0 ? Array.Empty<string>() : Array.AsReadOnly(value.ToArray());
+        }
+    }
     /// <summary>
     /// How long an entry may go unread before it expires; each read resets the window.
     /// </summary>
