@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using Xunit;
 using NSubstitute;
 using Microsoft.Extensions.Time.Testing;
+using MethodCache.HttpCaching.Internal;
 
 namespace MethodCache.HttpCaching.Tests;
 
@@ -163,6 +164,50 @@ public class ContentOwnershipTests
         using (await client.SendAsync(forced)) { }
         // The old entry, with the old Vary rules, is gone
         Assert.Equal("new", await client.GetStringAsync("https://example.test/content"));
+    }
+
+    [Fact]
+    public async Task ForcedRevalidation_DistributedWriteFails_RemovesTheOldEntry()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var backend = new FailingDistributedCache();
+        using var storage = new HttpCacheStore(
+            Microsoft.Extensions.Options.Options.Create(new HttpCacheStorageOptions()),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<HttpCacheStore>.Instance, clock, backend);
+        var first = Fresh(new StringContent("cached"));
+        first.Headers.ETag = new EntityTagHeaderValue("\"version\"");
+        var notModified = new HttpResponseMessage(HttpStatusCode.NotModified);
+        notModified.Headers.Vary.Add("Authorization");
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions { IsSharedCache = true },
+            new Origin(first, notModified, Fresh(new StringContent("new"))), storage, clock));
+        using (await client.GetAsync("https://example.test/content")) { }
+        backend.FailWrites = true;
+        using var forced = new HttpRequestMessage(HttpMethod.Get, "https://example.test/content");
+        forced.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+
+        using (await client.SendAsync(forced)) { }
+        backend.FailWrites = false;
+
+        // The built-in distributed storage reports the failed write, so the entry with the old Vary rules is gone
+        Assert.Equal("new", await client.GetStringAsync("https://example.test/content"));
+    }
+
+    private sealed class FailingDistributedCache : Microsoft.Extensions.Caching.Distributed.IDistributedCache
+    {
+        private readonly Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache _inner =
+            new(Microsoft.Extensions.Options.Options.Create(new Microsoft.Extensions.Caching.Memory.MemoryDistributedCacheOptions()));
+        public bool FailWrites { get; set; }
+        // Generation records are written with a fixed key; let them through so only entry writes fail
+        private bool Fails(string key) => FailWrites && !key.Contains("$generation:", StringComparison.Ordinal);
+        public byte[]? Get(string key) => _inner.Get(key);
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => _inner.GetAsync(key, token);
+        public void Refresh(string key) => _inner.Refresh(key);
+        public Task RefreshAsync(string key, CancellationToken token = default) => _inner.RefreshAsync(key, token);
+        public void Remove(string key) => _inner.Remove(key);
+        public Task RemoveAsync(string key, CancellationToken token = default) => _inner.RemoveAsync(key, token);
+        public void Set(string key, byte[] value, Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions options) => _inner.Set(key, value, options);
+        public Task SetAsync(string key, byte[] value, Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions options, CancellationToken token = default)
+            => Fails(key) ? Task.FromException(new InvalidOperationException("backend down")) : _inner.SetAsync(key, value, options, token);
     }
 
     private static HttpResponseMessage Fresh(HttpContent content) => new(HttpStatusCode.OK)
