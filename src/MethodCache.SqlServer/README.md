@@ -19,7 +19,7 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 | Infrastructure | The SQL Server you already have | A Redis server |
 | Other instances drop their in-memory copy | On their next poll (every second by default) | At once (pub/sub) |
 | Load when idle | Every instance polls the invalidations table | None |
-| An in-memory miss costs | A database query | A Redis lookup |
+| Each distributed cache read or write | A SQL Server query | A Redis command |
 
 Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](../MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
