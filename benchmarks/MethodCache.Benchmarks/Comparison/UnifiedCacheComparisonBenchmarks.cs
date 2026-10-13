@@ -29,7 +29,7 @@ namespace MethodCache.Benchmarks.Comparison;
 /// - Not recommended for decision-making
 ///
 /// Key Insight: Compare MethodCache_SourceGen against other frameworks - that's the real comparison!
-/// See Comparison/README.md and BENCHMARKING_GUIDE.md for full explanation.
+/// See Comparison/README.md and the benchmarks README.md for full explanation.
 /// </summary>
 [MemoryDiagnoser]
 [RankColumn]

@@ -1,8 +1,9 @@
 # Native AOT
 
-MethodCache works in Native AOT and trimmed applications. The source generator writes the decorators, their
-registration and the cache keys at build time, so nothing is found or built with reflection at runtime. CI publishes a
-test application with Native AOT on every change and checks that caching, the automatic registration and
+MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
+write into the key itself (see [Keys](#keys) below). The source generator writes the decorators, their registration
+and those keys at build time. CI publishes a test application with Native AOT on every change and checks that
+caching (with simple, record and `ICacheKeyProvider` arguments), the automatic registration and
 `[assembly: CacheInterface]` work.
 
 ## In-memory caching
@@ -35,5 +36,14 @@ for you, because one source generator can't see another generator's output.
 
 ## Keys
 
-Keys built by the decorator (simple values, records, `ICacheKeyProvider`) need no reflection. Arguments that go
-through the key generator, such as collections, are hashed by `FastHashKeyGenerator`. See [Cache keys](keys.md).
+Under Native AOT, give cached methods arguments that the decorator writes into the key itself:
+
+- simple values (strings, numbers, `bool`, `Guid`, dates, enums),
+- records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
+  type (a sealed type is safest: an instance of a derived class goes through the key generator),
+- types that implement `ICacheKeyProvider`.
+
+Other arguments, such as arrays, lists and dictionaries, go through the key generator, which serializes them with
+reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026, IL3050) from
+`MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
+implements `ICacheKeyProvider`, as `TenantId` does in [Cache keys](keys.md#types-whose-state-is-private).

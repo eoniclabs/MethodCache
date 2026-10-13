@@ -25,7 +25,8 @@ signed-in user without the policy gets 403.
 
 ## Endpoints
 
-All paths are relative to the prefix (`/methodcache` by default).
+All paths are relative to the prefix, `/methodcache` by default. `MapMethodCacheAdmin("CacheAdmins", "/ops/cache")`
+maps them under `/ops/cache` instead.
 
 | Method | Path | What it does |
 |--------|------|--------------|
@@ -37,7 +38,8 @@ All paths are relative to the prefix (`/methodcache` by default).
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `DELETE` | `entries` | Removes every entry |
 
-The same operations are available in code through `ICacheAdministrator` in the `MethodCache` namespace.
+The same operations are available in code through `ICacheAdministrator` in the `MethodCache` namespace (see
+[Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
 ## Health check
 

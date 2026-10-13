@@ -38,7 +38,8 @@ or in `appsettings.json`:
 
 ## Per method
 
-A method or group can change any of it, and its own setting wins over the central one:
+A method or group can change any of it, and its own setting wins over the central one. The retry interval can be set
+in code or `appsettings.json` only, not on `[Cache]`:
 
 <!-- snippet: failsafe-per-method -->
 ```cs
@@ -62,8 +63,3 @@ turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `
 The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
 once.
 
-## Behavior and compatibility
-
-`ExistsAsync` reports an entry only while it is both logically fresh and physically retained. A fail-safe retry window never makes existence extend beyond the physical fail-safe lifetime.
-
-Fail-safe retry throttling is capped at physical expiration. Administration lists, entry details and removal results never report physically expired entries as live.

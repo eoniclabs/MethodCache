@@ -19,6 +19,17 @@ namespace Docs.MemoryCache
             // end-snippet
         }
 
+        public static void Statistics(WebApplicationBuilder builder)
+        {
+            // begin-snippet: memory-statistics
+            builder.Services.Configure<MethodCacheMemoryOptions>(o =>
+            {
+                o.MemoryCalculationMode = MemoryUsageCalculationMode.Sampling;   // default Fast
+                o.SamplingPercentage = 0.05;                                     // default 0.1 (10% of entries)
+            });
+            // end-snippet
+        }
+
         public static void Weigher(WebApplicationBuilder builder)
         {
             // begin-snippet: memory-weigher
