@@ -5,7 +5,7 @@ SQL Server as MethodCache's distributed cache. Results are shared between applic
 ## Why this package
 
 - **One shared cache for every instance.** Results live in each instance's memory and in SQL Server, so a result one instance computed is a hit for the others, and survives restarts.
-- **Invalidation reaches every instance.** Invalidating a key or tag removes it from SQL Server, and every other instance drops its in-memory copy within one polling interval (1 second by default).
+- **Invalidation reaches every instance.** Invalidating a key or tag removes it from SQL Server, and every other instance drops its in-memory copy on its next poll (every second by default).
 - **Tags work across instances**, without tag tables: invalidating a tag stores when it happened, stored atomically so a late, older invalidation never undoes a newer one.
 - **No new infrastructure.** If you already run SQL Server, the schema and tables are created when the application starts.
 - **SQL Server never breaks your app.** Calls are capped at one second, a circuit breaker skips SQL Server while it is down, and invalidations are queued until it is back.
@@ -17,11 +17,11 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 | | SQL Server | Redis |
 |---|---|---|
 | Infrastructure | The SQL Server you already have | A Redis server |
-| Other instances drop their in-memory copy | Within one polling interval (1 second by default) | At once (pub/sub) |
+| Other instances drop their in-memory copy | On their next poll (every second by default) | At once (pub/sub) |
 | Load when idle | Every instance polls the invalidations table | None |
 | An in-memory miss costs | A database query | A Redis lookup |
 
-Choose SQL Server when you already run it and a second's delay before other instances see an invalidation is fine; choose [Redis](../MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
+Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](../MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
 Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. A custom provider can implement `IAtomicInvalidationStore` and `IBackplane` (see [Custom distributed caches](../../docs/features/distributed-cache.md#custom-distributed-caches)).
 
