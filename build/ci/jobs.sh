@@ -12,10 +12,10 @@
 #                               METHODCACHE_SQLSERVER_CONNECTION), and build the Quick Start with the .NET 8 SDK
 #   build/ci/jobs.sh docs       the docs snippets and llms.txt match their sources
 #   build/ci/jobs.sh diffcoverage  at least 80% of the lines a change adds under src/ are covered by tests
-#
-# Longer checks, not in the default linux.sh list (build/ci/README.md gives their run time):
 #   build/ci/jobs.sh properties  the CsCheck properties from random seeds, PROPERTY_SECONDS (5) each
 #   build/ci/jobs.sh soak        the soak tests for METHODCACHE_SOAK_SECONDS (30)
+#
+# Not in the default linux.sh list, because it takes about an hour (build/ci/README.md gives run times):
 #   build/ci/jobs.sh mutation    Stryker.NET on MethodCache.Core, a report in artifacts/mutation; never fails on
 #                                the score
 #

@@ -30,8 +30,8 @@ builder.Services.AddMethodCache();
 - The listed methods behave like methods with `[Cache]`: keys from the arguments, tag templates with the method's
   parameter names, zero-allocation hits on .NET 9 and later. Methods you don't list always reach the client, so writes
   are never cached by accident.
-- The attribute's settings (`Duration`, `Tags`, `Group`, `SlidingExpiration`, `RefreshAhead`, `Version`) apply to
-  every listed method. Give one method its own settings like any cached method:
+- The attribute's settings (`Duration`, `Tags`, `Group`, `SlidingExpiration`, `RefreshAhead`, `Version`, `FailSafe`,
+  `FailSafeTimeout`) apply to every listed method. Give one method its own settings like any cached method:
 
 <!-- snippet: third-party-per-method -->
 ```cs
@@ -46,9 +46,10 @@ builder.Services.AddMethodCache(config => config
   for example `FxVendor.IFxRatesClient.GetRateAsync`.
 - List each interface once. It must be non-generic and come from another assembly; for your own interfaces, put
   `[Cache]` on the methods. A method with overloads can't be listed yet.
-- Mistakes are build errors: [MCG010](../user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache),
-  [MCG011](../user-guide/DIAGNOSTICS.md#mcg011) (a missing, overloaded or result-less method) and
-  [MCG012](../user-guide/DIAGNOSTICS.md#mcg012) (an interface listed twice).
+- Mistakes are build errors: [MCG010](../user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
+  static abstract or non-public abstract members), [MCG011](../user-guide/DIAGNOSTICS.md#mcg011) (a method that is
+  missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](../user-guide/DIAGNOSTICS.md#mcg012) (an
+  interface listed twice).
 
 ## A wrapper interface
 

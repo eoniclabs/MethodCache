@@ -1,7 +1,5 @@
 # MethodCache.OpenTelemetry
 
-[![NuGet Version](https://img.shields.io/nuget/v/MethodCache.OpenTelemetry)](https://www.nuget.org/packages/MethodCache.OpenTelemetry)
-
 OpenTelemetry metrics and traces for MethodCache.
 
 The package depends only on the OpenTelemetry API, as instrumentation libraries should, so it works the same in
@@ -18,6 +16,9 @@ console apps, workers and ASP.NET Core. Your app brings the SDK and exporters. F
   - Each span has the method, hit or miss, TTL, group and version. Keys and tags only when you turn them on, since they contain argument values.
   - Spans are children of the current request span and copy its `http.*` and `url.*` attributes.
 - **Hits stay allocation-free**: generated decorators answer hits from the cache's fast path, which has no span. Hits still count in `methodcache.hits_total`.
+
+A cached `null` counts as a hit. On `TryGetAsync` spans, `cache.hit` means found in memory: `TryGetAsync` never reads
+the distributed cache.
 
 ## Installation
 
@@ -44,16 +45,19 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
+`AddMethodCacheOpenTelemetry()` throws `InvalidOperationException` when it is called before `AddMethodCache()`.
 Sampling, export intervals and the service name are set on the OpenTelemetry SDK as for any other library.
 
 ## Options
+
+Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => o.RecordCacheKeys = true)`.
 
 | Option | Default | What it does |
 |--------|---------|--------------|
 | `EnableTracing` | `true` | Creates spans |
 | `EnableMetrics` | `true` | Records metrics |
 | `RecordCacheKeys` | `false` | Puts the cache key on spans. Keys can contain argument values |
-| `HashCacheKeys` | `true` | With `RecordCacheKeys`, records a hash of the key instead of the key |
+| `HashCacheKeys` | `true` | With `RecordCacheKeys`, records a SHA-256 hash of the key instead of the key |
 | `RecordCacheTags` | `false` | Puts the cache tags and invalidation patterns on spans. Tags such as `user:{userId}` contain argument values |
 | `ExportSensitiveData` | `false` | Puts the user and tenant ids from `IBaggagePropagator` into span baggage |
 | `EnableHttpCorrelation` | `true` | Copies the request's `http.*` and `url.*` attributes onto cache spans |
@@ -75,16 +79,27 @@ _baggagePropagator.SetCacheTenantId(tenantId); // exported only with ExportSensi
 
 ## Span attributes
 
+Spans come from the `MethodCache` activity source. Lookups and misses are named `MethodCache.cache.get`, invalidations
+`MethodCache.cache.delete`.
+
 | Attribute | Description | Example |
 |-----------|-------------|---------|
-| `cache.method` | Method name | `IUserService.GetUserAsync` |
+| `cache.operation` | `cache.get` or `cache.delete` | `cache.get` |
+| `cache.method` | Method name, or the invalidation call | `MyApp.IUserService.GetUserAsync` |
 | `cache.hit` | Whether the value came from the cache | `true` |
-| `cache.key` / `cache.key_hash` | The key, with `RecordCacheKeys` | `a1b2c3d4` |
+| `cache.key` | The key, with `RecordCacheKeys` and `HashCacheKeys = false` | `MyApp.IUserService.GetUserAsync:42` |
+| `cache.key_hash` | Base64 SHA-256 of the key, with `RecordCacheKeys` | `3q2+7w...=` |
 | `cache.ttl_seconds` | Time-to-live | `600` |
 | `cache.tags` | Cache tags, with `RecordCacheTags` | `user,profile` |
+| `cache.pattern` | Invalidation pattern, with `RecordCacheTags` | `user:*` |
 | `cache.group` | Group | `users` |
 | `cache.version` | Version | `2` |
 | `cache.keys_count` | Number of keys invalidated | `3` |
+| `cache.error` | Set when the operation failed | `true` |
+| `cache.error_type` | Exception type name | `TimeoutException` |
+
+A failed operation also sets the span status to Error and adds an `exception` event with `exception.type`,
+`exception.message` and `exception.stacktrace`.
 
 ## Metrics
 
@@ -95,7 +110,7 @@ as `user:42` never becomes a time series of its own.
 |--------|------|-------------|------------|
 | `methodcache.hits_total` | Counter | Cache hits, including fast-path hits | method |
 | `methodcache.misses_total` | Counter | Cache misses | method |
-| `methodcache.errors_total` | Counter | Errors (`load_failed` when the cached method throws) | method, error.type |
+| `methodcache.errors_total` | Counter | Errors: `error.type` is `load_failed` when the cached method throws, otherwise the exception type name | method, error.type |
 | `methodcache.load_duration` | Histogram (ms) | Time the cached method took on a miss or refresh | method |
 | `methodcache.operation_duration` | Histogram (ms) | Duration of instrumented operations (misses, invalidations) | method, group, version |
 | `methodcache.key_generation_duration` | Histogram (ms) | Key generation on instrumented operations | method |
@@ -113,10 +128,4 @@ instrumentation: `.WithTracing(t => t.AddAspNetCoreInstrumentation().AddMethodCa
 
 ## License
 
-MIT License - see LICENSE file for details.
-
-## Behavior and compatibility
-
-Tracing counts cached `null` values as hits, including nullable value types.
-
-Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
+MIT. See [LICENSE](https://github.com/eoniclabs/MethodCache/blob/main/LICENSE).

@@ -55,7 +55,3 @@ The cache reads the time from the `TimeProvider` registered in the container, if
 `TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
 This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
 eviction and the background revalidation timeout.
-
-## Behavior and compatibility
-
-## Testing your service

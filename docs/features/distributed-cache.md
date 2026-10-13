@@ -21,24 +21,21 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 
 - Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before
   running your method, and a new result is written to both.
-- Invalidating a key or tag removes it from the distributed cache, and a backplane tells every other instance to drop
-  its in-memory copy: at once with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
+- Invalidating a key removes it from the distributed cache. Invalidating a tag records when it happened, so older
+  entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
+  with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
 - Only Redis and Microsoft SQL Server have packages. Another store, such as PostgreSQL, needs a
   [custom provider](#custom-distributed-caches).
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
-- A buffer-capable distributed cache fills an owned entry buffer which the deserializer reads directly, without an
-  additional full entry copy. The buffer remains valid across awaited metadata checks and is not returned to a pool.
 
-Disposing the cache manager disables its backplane callbacks and starts unsubscribing. Asynchronous service-provider
-disposal waits for cleanup; a stalled custom backplane is bounded by `OperationTimeout` for the subscription wait
-and again for the unsubscribe wait. If its subscription later finishes despite cancellation, MethodCache attempts
-to unsubscribe again. Redis removes only its own handlers and preserves a connection supplied by the application.
+Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
+are ignored with one warning.
 
 ## When the distributed cache is down
 
 Calls keep working from memory and your methods; the distributed cache never fails or stalls a call. Each call to it
-is capped at one second, a circuit breaker skips it until it is back, and invalidations are queued and retried
+is capped at `OperationTimeout` (one second), a circuit breaker skips it until it is back, and invalidations are queued and retried
 instead of throwing. Until they are stored, the instance doesn't read entries from it, so an invalidated value can't
 come back. The [health check](monitoring.md#health-check) reports Degraded while this lasts.
 
@@ -50,6 +47,29 @@ The timeout caps each call to the distributed cache, not a whole cache miss. A c
 one timeout, after which the circuit breaker skips it. One that answers just within the timeout costs a miss up to
 three: reading the entry, writing your method's result and checking that no removal raced the write (and a fourth for
 the backplane message).
+
+## Options
+
+`DistributedCacheOptions` apply to Redis, SQL Server and custom distributed caches alike:
+
+<!-- snippet: distributed-outage-options -->
+```cs
+builder.Services.Configure<DistributedCacheOptions>(options =>
+{
+    options.OperationTimeout = TimeSpan.FromMilliseconds(500);
+    options.CircuitBreakerDuration = TimeSpan.FromSeconds(30);
+});
+```
+<!-- endSnippet -->
+
+| Option | Default | |
+|---|---|---|
+| `OperationTimeout` | 1 second | The longest one call to the distributed cache may take. A slower call is abandoned and counts as a failure |
+| `CircuitBreakerDuration` | 10 seconds | How long the distributed cache is skipped after a failure or timeout. Invalidations it didn't accept are retried at this interval |
+| `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it |
+| `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
+| `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails |
+| `KeyPrefix` | `methodcache:` | Prefix of every key MethodCache writes. `AddMethodCacheRedis` and `AddMethodCacheSqlServer` set it from their own `KeyPrefix`; give each application its own |
 
 ## What other instances see
 
@@ -72,12 +92,14 @@ smaller and faster to read:
 
 <!-- snippet: distributed-messagepack -->
 ```cs
+builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
 builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
 ```
 <!-- endSnippet -->
 
-Each entry records its format, so after a switch older entries count as misses. Under Native AOT, register your
+Entries written in the other format read as misses and are replaced, so switching needs no flush. See the
+[MessagePack package guide](../../src/MethodCache.Serialization.MessagePack/README.md). Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](native-aot.md)).
 
 ## Custom distributed caches
@@ -101,12 +123,11 @@ stamp’s retention. Expired stamps can be replaced. A process-local lock or a r
 insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
 transaction with a key/range update lock. This applies to tag, clear and key-removal stamps.
 
-Upgrade all instances that share a prefix together: older unconditional stamp writers do not obey this
-contract. Timestamp metadata keeps its existing binary format. The HTTP response cache has its own
-generation contract and still accepts a plain `IDistributedCache` for response storage.
+The [HTTP response cache](http-caching.md) has its own contract and works with a plain `IDistributedCache`.
 
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
-`IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them.
+`IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them. Disposing the service provider
+unsubscribes from the backplane; a backplane that stalls delays disposal by at most twice `OperationTimeout`.
 
 ## Limits
 
@@ -120,16 +141,3 @@ The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/Me
 cover their options, shared connections, table creation, outage settings and how each stores keys and invalidations.
 The SQL Server guide also compares the two and has the schema migration for an existing invalidations table.
 
-## Behavior and compatibility
-
-L2 entries expire before their tag/clear markers can be forgotten. Their maximum shared lifetime is the effective `TagRetention - ClockSkewTolerance` measured from the source read, so slow loads reduce the remaining L2 lifetime; a load that exceeds this window stays in its loading node only.
-
-Distributed tags and backplane keys/tags preserve exact UTF-16 code units, including lone surrogates. Envelope version 4 and backplane frames use lossless representations; older envelopes are cache misses. Deploy the same MethodCache version across nodes sharing a cache and backplane.
-
-Redis escapes unpaired UTF-16 surrogates and backslashes in physical keys, keeping distinct logical keys separate in every data and invalidation operation. Ordinary keys and their prefixes stay unchanged.
-
-Backplane invalidations do not cross wire versions in either direction. Deploy the same MethodCache version on all nodes sharing a cache/backplane; a rolling upgrade needs a new cache namespace or a coordinated cache clear. New message type numbers prevent legacy keys from being mistaken for encoded frames. Rejected frames emit one warning per backplane instance without logging their contents.
-
-`TagRetention` must exceed `ClockSkewTolerance`; invalid settings fail startup or direct layer construction. L2 entries live at most `TagRetention - ClockSkewTolerance` from their source read, capped further by their policy duration.
-
-L2 timestamps have millisecond precision: `TagRetention` and `ClockSkewTolerance` are each truncated to whole milliseconds before validation and lifetime calculation. Their effective difference must be at least one millisecond; settings that collapse to zero fail startup or direct construction.
