@@ -397,6 +397,18 @@ public class DistributedInvalidationRobustnessTests
     }
 
     [Fact]
+    public async Task WriteThatStartsAfterShutdown_StoresNothing()
+    {
+        var (_, layer) = CreateNode();
+        await layer.DisposeAsync().AsTask().WaitAsync(RealTimeLimit);
+
+        // A load that finished after shutdown (a factory that was still running, say) stays in memory
+        await layer.WriteAsync("late", "value", null, layer.Now, TimeSpan.FromMinutes(1)).WaitAsync(RealTimeLimit);
+
+        _shared.Get("methodcache:e:late").Should().BeNull("nothing would remove it again if the write failed");
+    }
+
+    [Fact]
     public async Task SlowWrite_PendingRemoval_IsDoneAtShutdownInsteadOfAfterIt()
     {
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with

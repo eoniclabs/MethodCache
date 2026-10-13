@@ -277,6 +277,19 @@ namespace MethodCache.Core.Runtime.Distributed
             Interlocked.Increment(ref _writesInFlight);
             try
             {
+                // Counted before this check, and Dispose sets the flag before shutdown reads the count: so either
+                // shutdown waits for this write, or the write sees it is shutting down and stores nothing
+                if (Volatile.Read(ref _disposed) != 0)
+                {
+                    if (replaces)
+                    {
+                        // Removed with the queue if shutdown hasn't flushed it yet, else logged as lost
+                        Queue(new[] { key }, Array.Empty<string>());
+                    }
+
+                    return;
+                }
+
                 await WriteCoreAsync(key, value, tags, createdAt, lifetime, invalidated, replaces, methodName).ConfigureAwait(false);
             }
             finally
