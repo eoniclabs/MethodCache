@@ -191,6 +191,22 @@ public interface IUserService
             return directory?.FullName ?? throw new InvalidOperationException("MethodCache.sln not found");
         }
 
+        [Theory]
+        [InlineData("using Cached = MethodCache.CacheAttribute;", "[Cached]", false)]
+        [InlineData("using MethodCache;", "[Cache(Duration = Duration)]", false)]
+        [InlineData("using MethodCache; using Text = System.String;", "[Cache(Tags = new Text[] { Duration })]", false)]
+        [InlineData("using Cached = MethodCache.CacheAttribute;", "[Cached]", true)]
+        [InlineData("using MethodCache;", "[Cache(Duration = Duration)]", true)]
+        [InlineData("using MethodCache; using Text = System.String;", "[Cache(Tags = new Text[] { Duration })]", true)]
+        public async Task MoveAttributeReview_PreservesBindingAcrossDocuments(string usings, string attribute, bool sameDocument)
+        {
+            var service = usings + " public class Svc : ISvc { private const string Duration = \"00:01:00\"; " + attribute + " public int Get(int id) => id; }";
+            var contract = "public interface ISvc { int Get(int id); }";
+            var (_, changed) = await FixAsync(new MoveAttributeToInterfaceCodeFixProvider(), "MC0001", sameDocument ? [service + contract] : [service, contract]);
+            var compilation = CSharpCompilation.Create("Fixed", changed.Select(text => CSharpSyntaxTree.ParseText(text)), References(), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+        }
+
         /// <summary>Finds the diagnostic, applies the provider's first fix and returns every document's new text.</summary>
         private static async Task<(string Title, string[] Sources)> FixAsync(CodeFixProvider provider, string diagnosticId, params string[] sources)
         {
