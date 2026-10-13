@@ -806,8 +806,9 @@ namespace MethodCache.Core.Runtime.Distributed
         }
 
         /// <summary>
-        /// Tries once, for about one operation timeout, to store invalidations still queued, whatever the breaker
-        /// says: a queue doesn't outlive the process, and every instance would read the invalidated values again.
+        /// Tries once to store invalidations still queued, whatever the breaker says, each step (stamp, removal,
+        /// publish) bounded by the operation timeout: a queue doesn't outlive the process, and every instance would
+        /// read the invalidated values again.
         /// </summary>
         private async Task FlushBeforeShutdownAsync()
         {

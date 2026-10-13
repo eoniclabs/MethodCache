@@ -1289,8 +1289,8 @@ come back. The [health check](https://github.com/eoniclabs/MethodCache/blob/main
 Queued invalidations are stored a batch at a time once the cache answers, so a long outage's backlog drains at the
 pace the cache can take. More than 10,000 are replaced by one clear of the distributed cache (logged as a warning),
 and so is an invalidation the cache keeps refusing while it answers everything else, so neither holds up the rest.
-The queue lives in memory: when the instance shuts down, it tries once more to store what is queued, for about one
-`OperationTimeout`, and logs a warning with the number it had to drop. Other instances can read those invalidated
+The queue lives in memory: when the instance shuts down, it waits for writes still running, then tries once more to store
+what is queued, each step (stamp, removal, publish) capped by `OperationTimeout`, and logs a warning with the number it had to drop. Other instances can read those invalidated
 values from the distributed cache until they expire.
 
 A value set directly while the distributed cache is down stays in that instance's memory, and the value it replaced is
