@@ -1734,6 +1734,14 @@ personal data out of them.
 
 ## The tests
 
+CI checkout collection and result reuse have a separate boundary from application caching. The collector only
+removes coordinator-owned idle macOS clones with verified origin/full commit, terminal job results, and no
+source changes or unexpected local data. It refuses redirected roots/results and keeps active checkouts and
+unknown directories. Reuse requires the full SHA and all expected valid job exits; partial archives, failed
+results and symlinked exit files cannot become a passing status. The regression suite under `build/ci/tests`
+tests these protections. Build jobs still execute repository code as the build-server user; the collector is
+not a sandbox for malicious pull requests.
+
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests` and
 `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).

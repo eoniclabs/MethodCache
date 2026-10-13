@@ -62,3 +62,6 @@ artifacts/
 
 # Verify snapshot mismatches
 *.received.*
+
+# Python CI regression tests
+__pycache__/
