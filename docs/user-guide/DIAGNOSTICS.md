@@ -23,6 +23,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
 | [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
 | [MCG016](#mcg016) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
+| [MCG017](#mcg017) | Warning | `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member | |
 
 ## MC0001
 
@@ -149,3 +150,11 @@ attribute.
 The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for
 parameters `name` and `Name`. Use the intended parameter's exact spelling. Until corrected, the placeholder remains
 literal in both cached tags and invalidation.
+
+## MCG017
+
+`[Cache]` or `[CacheInvalidate]` is on an interface member the decorator can't intercept: a `static` member, a
+`private` or other non-public member with a body, or a `sealed` one. The decorator implements the interface for a
+class, and a class can't implement those members, so calls to them never reach the cache and the attribute does
+nothing. Put the attribute on a public interface method without `static`, `private` or `sealed` (one without a body,
+or a public default method), or remove it.

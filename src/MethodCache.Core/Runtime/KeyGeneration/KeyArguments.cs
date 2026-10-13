@@ -16,10 +16,12 @@ internal static class KeyArguments
     // Fields count too, so two values that differ only in a public field don't share a key. JSON writes every lone
     // surrogate as U+FFFD, so strings and chars that hold one are written in a form no valid text can take. A value
     // whose runtime type differs from the type it is declared as is written with that type (see RuntimeTypeResolver).
-    // JSON has no converter for nint and nuint, so they are written as the 64-bit numbers they widen to.
+    // JSON has no converter for nint and nuint, so they are written as the 64-bit numbers they widen to. NaN and
+    // infinities, such as a "no limit" double.PositiveInfinity, are written as their names instead of failing.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerOptions.Default)
     {
         IncludeFields = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
         Converters = { new LosslessStringConverter(), new LosslessCharConverter(), new NativeIntConverter(), new NativeUIntConverter() },
         TypeInfoResolver = new RuntimeTypeResolver(),
     };

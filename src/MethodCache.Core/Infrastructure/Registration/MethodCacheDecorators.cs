@@ -17,6 +17,11 @@ namespace MethodCache.Infrastructure
     {
         private static readonly ConcurrentDictionary<Type, DecoratorRegistration> Registrations = new();
 
+        // Loaded assemblies whose module initializer TryGet has already run (or that don't use MethodCache)
+        private static readonly ConcurrentDictionary<Assembly, bool> InitializedAssemblies = new();
+
+        private static readonly string CoreAssemblyName = typeof(MethodCacheDecorators).Assembly.GetName().Name!;
+
         /// <summary>
         /// Registers a generated decorator. Called by generated code; a later registration for the same
         /// service type replaces the earlier one.
@@ -30,7 +35,9 @@ namespace MethodCache.Infrastructure
         /// <summary>
         /// Returns the generated decorator for <paramref name="serviceType"/>, running the module initializer
         /// of the assembly that declares it first, so its decorators are registered even if nothing in that
-        /// assembly has run yet.
+        /// assembly has run yet. The decorator of another assembly's interface, from
+        /// <c>[assembly: CacheInterface]</c>, lives in the assembly with the attribute, so on a miss the module
+        /// initializers of the loaded assemblies that use MethodCache run too.
         /// </summary>
         public static bool TryGet(Type serviceType, [NotNullWhen(true)] out DecoratorRegistration? registration)
         {
@@ -42,7 +49,42 @@ namespace MethodCache.Infrastructure
             }
 
             RuntimeHelpers.RunModuleConstructor(serviceType.Module.ModuleHandle);
+            if (Registrations.TryGetValue(serviceType, out registration))
+            {
+                return true;
+            }
+
+            InitializeLoadedAssemblies();
             return Registrations.TryGetValue(serviceType, out registration);
+        }
+
+        /// <summary>
+        /// Runs the module initializer of each loaded assembly that references MethodCache and has not been seen
+        /// before. An assembly is loaded once code that uses one of its types is
+        /// compiled, so a library the startup code calls into is covered even if none of its code has run yet.
+        /// Native AOT runs every module initializer at startup, so there is nothing to do there.
+        /// </summary>
+        private static void InitializeLoadedAssemblies()
+        {
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+            {
+                return;
+            }
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly.IsDynamic || InitializedAssemblies.ContainsKey(assembly))
+                {
+                    continue;
+                }
+
+                // Only assemblies that use MethodCache can hold decorators; other libraries' initializers stay untouched
+                var usesMethodCache = assembly.GetReferencedAssemblies().Any(name => name.Name == CoreAssemblyName);
+                if (InitializedAssemblies.TryAdd(assembly, usesMethodCache) && usesMethodCache)
+                {
+                    RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+                }
+            }
         }
 
         /// <summary>

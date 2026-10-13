@@ -245,6 +245,26 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
         Assert.All(warnings, d => Assert.True(d.Location.IsInSource));
     }
 
+    [Fact]
+    public async Task AttributeInALibraryWhoseCodeHasNotRun_StillDecoratesTheClient()
+    {
+        // A library (think Infrastructure.dll) that only holds [assembly: CacheInterface] for a vendor interface. It is
+        // loaded, but nothing in it has run, so its module initializer has not registered the decorator yet.
+        var library = await _engine.CompileWithSourceGeneratorAsync("""
+            [assembly: MethodCache.CacheInterface(typeof(MethodCache.SourceGenerator.IntegrationTests.Vendor.IClockVendorClient), "Get")]
+            namespace Infrastructure { public static class Marker { } }
+            """, "VendorLibrary_" + Guid.NewGuid().ToString("N"));
+        Assert.Contains(library.GeneratedSources.Values, s => s.Contains("IClockVendorClient", StringComparison.Ordinal));
+
+        // The application registers the vendor client and calls AddMethodCache() itself
+        var services = new ServiceCollection();
+        services.AddSingleton<IClockVendorClient, ClockVendorClient>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.IsNotType<ClockVendorClient>(provider.GetRequiredService<IClockVendorClient>());
+    }
+
     private async Task<string> GeneratorErrorsAsync(string source, string assemblyName)
     {
         var result = await _engine.CompileWithSourceGeneratorAsync(source, assemblyName);

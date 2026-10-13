@@ -407,6 +407,51 @@ namespace KeyFormat
         Assert.Equal(result, await cache.TryGetFastAsync<int>(key));
     }
 
+    [Fact]
+    public async Task MethodNamesTwoInterfacesOfAHierarchyDeclare_GetTheDocumentedKeys()
+    {
+        const string source = @"
+using System.Threading.Tasks;
+using MethodCache;
+
+namespace KeyFormat
+{
+    public interface ILookup { [Cache] Task<string> Find(int id); }
+    public interface ICatalog : ILookup { [Cache] Task<string> Find(string code); }
+    public class Catalog : ICatalog
+    {
+        public Task<string> Find(int id) => Task.FromResult(""id"" + id);
+        public Task<string> Find(string code) => Task.FromResult(""code"" + code);
+    }
+
+    public interface IA { [Cache] Task<string> Get(int id); }
+    public interface IB { [Cache] Task<string> Get(int id); }
+    public interface IC : IA, IB { }
+    public class Both : IC
+    {
+        Task<string> IA.Get(int id) => Task.FromResult(""a"" + id);
+        Task<string> IB.Get(int id) => Task.FromResult(""b"" + id);
+    }
+}";
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "KeyFormatHierarchy");
+        var provider = _engine.CreateTestServiceProvider(compiled, logger: _output.WriteLine);
+        var cache = provider.GetRequiredService<ICacheManager>();
+        Type Type(string name) => compiled.Assembly.GetType("KeyFormat." + name)!;
+
+        var catalog = provider.GetRequiredService(Type("ICatalog"));
+        await (Task<string>)Type("ILookup").GetMethod("Find")!.Invoke(catalog, new object[] { 7 })!;
+        await (Task<string>)Type("ICatalog").GetMethod("Find")!.Invoke(catalog, new object[] { "7" })!;
+        var both = provider.GetRequiredService(Type("IC"));
+        await (Task<string>)Type("IA").GetMethod("Get")!.Invoke(both, new object[] { 1 })!;
+        await (Task<string>)Type("IB").GetMethod("Get")!.Invoke(both, new object[] { 1 })!;
+
+        // The keys docs/features/keys.md shows
+        Assert.Equal("id7", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("ICatalog"), "Find(int)", MethodCacheKeys.Part(7))));
+        Assert.Equal("code7", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("ICatalog"), "Find(string)", MethodCacheKeys.Part("7"))));
+        Assert.Equal("a1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "KeyFormat.IA.Get(int)", MethodCacheKeys.Part(1))));
+        Assert.Equal("b1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "KeyFormat.IB.Get(int)", MethodCacheKeys.Part(1))));
+    }
+
     private async Task<(IServiceProvider Provider, Assembly Assembly)> BuildAsync()
     {
         var compiled = await _engine.CompileWithSourceGeneratorAsync(Source);

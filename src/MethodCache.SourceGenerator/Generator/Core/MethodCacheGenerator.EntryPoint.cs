@@ -40,7 +40,7 @@ namespace MethodCache.SourceGenerator
                 .CreateSyntaxProvider(
                     predicate: static (node, _) => node is InterfaceDeclarationSyntax { BaseList: not null },
                     transform: static (ctx, ct) => ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, ct) is INamedTypeSymbol symbol
-                        ? GetGeneratedInterface(symbol)
+                        ? GetDerivedInterface(symbol)
                         : null)
                 .Where(static info => info != null)
                 .Collect();

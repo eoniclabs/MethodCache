@@ -55,3 +55,14 @@ public sealed class SessionVendorClient : SdkOne.IClient, SdkTwo.IClient
         return Task.FromResult(id * 10);
     }
 }
+
+/// <summary>A vendor client that only a library's [assembly: CacheInterface] caches, in a test of its own.</summary>
+public interface IClockVendorClient
+{
+    int Get(int id);
+}
+
+public sealed class ClockVendorClient : IClockVendorClient
+{
+    public int Get(int id) => id;
+}

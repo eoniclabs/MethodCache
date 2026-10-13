@@ -24,9 +24,22 @@ namespace MethodCache.SourceGenerator
                     return string.Empty;
                 }
 
+                var policies = new StringBuilder();
+                AppendGeneratedClass(policies, definitions);
+
+                // Nested in the registrations class, which is the only code that uses it. A namespace-level type would
+                // clash (CS0436) with the one of an assembly whose internals this one can see through InternalsVisibleTo.
                 var sb = new StringBuilder();
                 AppendHeader(sb);
-                AppendGeneratedClass(sb, definitions);
+                sb.AppendLine("    internal static partial class MethodCacheDecoratorRegistrations");
+                sb.AppendLine("    {");
+                foreach (var line in policies.ToString().Split(new[] { "\r\n", "\n" }, StringSplitOptions.None))
+                {
+                    sb.AppendLine(line.Length == 0 ? line : "    " + line);
+                }
+
+                sb.AppendLine("    }");
+                sb.AppendLine("}");
                 return sb.ToString();
             }
 
@@ -50,7 +63,8 @@ namespace MethodCache.SourceGenerator
 
             private static void AppendGeneratedClass(StringBuilder sb, List<PolicyDefinition> definitions)
             {
-                sb.AppendLine("    internal static class GeneratedPolicyRegistrations");
+                sb.AppendLine("    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
+                sb.AppendLine("    private static class GeneratedPolicyRegistrations");
                 sb.AppendLine("    {");
                 sb.AppendLine("        public static void AddPolicies(global::System.Collections.Generic.ICollection<global::MethodCache.Policies.PolicySourceRegistration> registrations)");
                 sb.AppendLine("        {");
@@ -130,8 +144,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine();
                 }
 
-                sb.AppendLine("    }");
-                sb.AppendLine("}");
+                sb.Append("    }");
             }
 
             private static List<PolicyDefinition> BuildDefinitions(IReadOnlyList<InterfaceSummary> interfaces)
@@ -264,51 +277,8 @@ namespace MethodCache.SourceGenerator
                 return false;
             }
 
-            private static string ToLiteral(string? value)
-            {
-                if (value == null)
-                {
-                    return "null";
-                }
-
-                var builder = new StringBuilder(value.Length + 2);
-                builder.Append('"');
-
-                foreach (var ch in value)
-                {
-                    switch (ch)
-                    {
-                        case '\\':
-                            builder.Append("\\\\");
-                            break;
-                        case '"':
-                            builder.Append("\\\"");
-                            break;
-                        case '\n':
-                            builder.Append("\\n");
-                            break;
-                        case '\r':
-                            builder.Append("\\r");
-                            break;
-                        case '\t':
-                            builder.Append("\\t");
-                            break;
-                        default:
-                            if (char.IsControl(ch))
-                            {
-                                builder.AppendFormat("\\u{0:x4}", (int)ch);
-                            }
-                            else
-                            {
-                                builder.Append(ch);
-                            }
-                            break;
-                    }
-                }
-
-                builder.Append('"');
-                return builder.ToString();
-            }
+            // Escapes line terminators such as U+2028 too, which would end a C# string literal
+            private static string ToLiteral(string? value) => value == null ? "null" : Utils.Literal(value);
 
             private sealed class PolicyDefinition
             {

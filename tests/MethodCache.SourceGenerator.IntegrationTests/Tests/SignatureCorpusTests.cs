@@ -197,6 +197,15 @@ public class SignatureCorpusTests
     }
 
     [Fact]
+    public async Task RefStructAllowanceReview_KeepsTheAntiConstraintOnACachedTaskMethod()
+    {
+        var source = new Shape("public interface ISvc { [Cache] Task<string> Get<T>(int id) where T : allows ref struct; } public class Svc : ISvc { public Task<string> Get<T>(int id) where T : allows ref struct { Counter.Hit(); return Task.FromResult(typeof(T).Name); } }", "ISvc", "await s.Get<Span<int>>(1)", "await s.Get<Span<int>>(2)").ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RefStructTaskAllowance", LanguageVersion.Latest);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
+    }
+
+    [Fact]
     public async Task RefStructAllowanceReview_HandlesAnInterfaceWithAnUnusedRefStructTypeArgument()
     {
         var source = new Shape("public interface ISvc<T> where T : allows ref struct { [Cache] int Get(int id); } public class Svc : ISvc<Span<int>> { public int Get(int id) { Counter.Hit(); return id; } }", "ISvc<Span<int>>", "s.Get(1)", "s.Get(2)").ToSource();
@@ -265,6 +274,56 @@ public class SignatureCorpusTests
         Assert.NotEqual(name.Invoke(null, new object[] { a }), name.Invoke(null, new object[] { b }));
     }
 
+    [Fact]
+    public async Task FileLocalImplementation_IsNotAutoRegistered_AndTheProjectCompiles()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync("""
+            using MethodCache;
+            namespace Corpus {
+                public interface IClock { [Cache] int Now(int id); }
+                file sealed class Clock : IClock { public int Now(int id) => id; }
+            }
+            """, "FileLocalImplementation", LanguageVersion.CSharp12);
+
+        Assert.DoesNotContain("Corpus.Clock", compiled.GeneratedSources["MethodCacheDecoratorRegistrations.g.cs"], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReferencedAssemblyWithGeneratedCode_AndInternalsVisibleTo_HasNoTypeConflicts()
+    {
+        var parse = new CSharpParseOptions(LanguageVersion.CSharp12);
+        var refs = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path)).ToArray();
+        var app = Generate(CSharpCompilation.Create("VisibleApp", new[] { CSharpSyntaxTree.ParseText("""
+            [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("VisibleApp.Tests")]
+            namespace App {
+                public interface IA { [MethodCache.Cache] int Get(int id); }
+                public class A : IA { public int Get(int id) => id; }
+            }
+            """, parse) }, refs, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)), parse);
+        using var image = new MemoryStream();
+        var emitted = app.Emit(image);
+        Assert.True(emitted.Success, string.Join("; ", emitted.Diagnostics));
+
+        var tests = Generate(CSharpCompilation.Create("VisibleApp.Tests", new[] { CSharpSyntaxTree.ParseText("""
+            namespace AppTests {
+                public interface IB { [MethodCache.Cache] int Get(int id); }
+                public class B : IB { public int Get(int id) => id; }
+            }
+            """, parse) }, refs.Append(MetadataReference.CreateFromImage(image.ToArray())), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)), parse);
+
+        // CS0436: a type in this project conflicts with the referenced one; an error with TreatWarningsAsErrors
+        var problems = tests.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error || d.Id is "CS0436" or "CS0433").ToList();
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+
+        static Compilation Generate(CSharpCompilation compilation, CSharpParseOptions parse)
+        {
+            CSharpGeneratorDriver.Create(new[] { new MethodCacheGenerator().AsSourceGenerator() }, parseOptions: parse)
+                .RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
+            return output;
+        }
+    }
+
     [Theory]
     [InlineData("Task", "Task.CompletedTask")]
     [InlineData("ValueTask", "default")]
@@ -330,6 +389,9 @@ public class SignatureCorpusTests
         ["pointer array result"] = ("unsafe int*[] Get(int id)", "unsafe int*[] Get(int id) => new int*[1];", "MCG006"),
         ["function pointer array parameter"] = ("unsafe string Get(delegate*<int>[] f)", "unsafe string Get(delegate*<int>[] f) => \"v\";", "MCG006"),
         ["pointer to pointer parameter"] = ("unsafe string Get(int** p)", "unsafe string Get(int** p) => \"v\";", "MCG006"),
+        ["static interface member"] = ("static int Parse(string s) => 1", "int Other() => 0;", "MCG017"),
+        ["private interface member"] = ("private int Helper() => 42", "int Other() => 0;", "MCG017"),
+        ["sealed interface member"] = ("sealed int Fixed() => 1", "int Other() => 0;", "MCG017"),
         ["IEnumerable result"] = ("IEnumerable<int> Get(int id)", "IEnumerable<int> Get(int id) { yield return id; }", "MCG014"),
         ["IAsyncEnumerable result"] = ("IAsyncEnumerable<int> Get(int id)", "async IAsyncEnumerable<int> Get(int id) { await Task.Yield(); yield return id; }", "MCG014"),
     };
@@ -625,6 +687,12 @@ public class SignatureCorpusTests
         ["Guid"] = Member("Task<string> Get(Guid id)", "Task<string> Get(Guid id) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new Guid(\"11111111-1111-1111-1111-111111111111\"))", "await s.Get(new Guid(\"11111111-1111-1111-1111-111111111112\"))"),
         ["DateTime ticks"] = Member("Task<string> Get(DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(1))"),
         ["DateTimeOffset ticks"] = Member("Task<string> Get(DateTimeOffset at)", "Task<string> Get(DateTimeOffset at) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero))", "await s.Get(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero).AddTicks(1))"),
+        ["raw key DateTime sub-second apart"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(at.ToString(\"O\")); }",
+            "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc).AddMilliseconds(250))"),
+        ["raw key DateTime UTC and local"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(at.ToString(\"O\")); }",
+            "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Local))"),
+        ["raw key DateTimeOffset sub-second apart"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTimeOffset? at)", "Task<string> Get(DateTimeOffset? at) { Counter.Hit(); return Task.FromResult(\"v\"); }",
+            "await s.Get(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero))", "await s.Get(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero).AddMilliseconds(250))"),
         ["TimeSpan"] = Member("Task<string> Get(TimeSpan window)", "Task<string> Get(TimeSpan window) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(TimeSpan.FromSeconds(1))", "await s.Get(TimeSpan.FromSeconds(2))"),
         ["double"] = Member("Task<string> Get(double x)", "Task<string> Get(double x) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(0.1 + 0.2)", "await s.Get(0.3)"),
         ["decimal"] = Member("Task<string> Get(decimal x)", "Task<string> Get(decimal x) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1.5m)", "await s.Get(2.5m)"),
@@ -723,6 +791,23 @@ public class SignatureCorpusTests
                 }
             """, "ISvc<int>", "await s.Get(1)", "await s.Get(2)"),
         ["generic method with interface constraint"] = Member("Task<string> Get<T>(T value) where T : IComparable<T>", "Task<string> Get<T>(T value) where T : IComparable<T> { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1)", "await s.Get(2)"),
+        ["generic method with base class constraint"] = new("""
+                public abstract class Entity { }
+                public sealed class User : Entity { }
+                public sealed class Order : Entity { }
+                public interface ISvc { [Cache] Task<string> Get<T>(int id) where T : Entity; }
+                public class Svc : ISvc { public Task<string> Get<T>(int id) where T : Entity { Counter.Hit(); return Task.FromResult(typeof(T).Name); } }
+            """, "ISvc", "await s.Get<User>(1)", "await s.Get<Order>(1)"),
+        ["uncached generic method with base class constraint"] = new("""
+                public abstract class Entity { }
+                public interface ISvc { [Cache] int Get(int id); T? Find<T>(int id) where T : Entity; T? First<T>() where T : Exception; }
+                public class Svc : ISvc
+                {
+                    public int Get(int id) { Counter.Hit(); return id; }
+                    public T? Find<T>(int id) where T : Entity => null;
+                    public T? First<T>() where T : Exception => null;
+                }
+            """, "ISvc", "s.Get(1)", "s.Get(2)"),
         ["generic constraint from another namespace"] = new("""
                 public interface ISvc
                 {
@@ -900,6 +985,52 @@ public class SignatureCorpusTests
                     public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult("v"); }
                 }
             """, "ISvc", "await ((IReader)s).Get(1)", "await ((IReader)s).Get(2)"),
+        ["same method name in base and derived interface"] = new("""
+                public interface ILookup { [Cache] Task<string> Find(int id); }
+                public interface ICatalog : ILookup { [Cache] Task<string> Find(string code); }
+                public class Svc : ICatalog
+                {
+                    public Task<string> Find(int id) { Counter.Hit(); return Task.FromResult("id" + id); }
+                    public Task<string> Find(string code) { Counter.Hit(); return Task.FromResult("code" + code); }
+                }
+            """, "ICatalog", "await ((ILookup)s).Find(7)", "await s.Find(\"7\")"),
+        ["same signature cached in two base interfaces"] = new("""
+                public interface IA { [Cache] Task<string> Get(int id); }
+                public interface IB { [Cache] Task<string> Get(int id); }
+                public interface IC : IA, IB { }
+                public class Svc : IC
+                {
+                    Task<string> IA.Get(int id) { Counter.Hit(); return Task.FromResult("a" + id); }
+                    Task<string> IB.Get(int id) { Counter.Hit(); return Task.FromResult("b" + id); }
+                }
+            """, "IC", "await ((IA)s).Get(1)", "await ((IB)s).Get(1)"),
+        ["same signature cached in two closed base interfaces"] = new("""
+                public sealed class A { }
+                public sealed class B { }
+                public interface IRepo<T> { [Cache] Task<string> Get(int id); }
+                public interface IBoth : IRepo<A>, IRepo<B> { }
+                public class Svc : IBoth
+                {
+                    Task<string> IRepo<A>.Get(int id) { Counter.Hit(); return Task.FromResult("a" + id); }
+                    Task<string> IRepo<B>.Get(int id) { Counter.Hit(); return Task.FromResult("b" + id); }
+                }
+            """, "IBoth", "await ((IRepo<A>)s).Get(1)", "await ((IRepo<B>)s).Get(1)"),
+        ["scoped span member next to a cached method"] = new("""
+                public interface ISvc
+                {
+                    [Cache] int Get(int id);
+                    ReadOnlySpan<char> Trim(scoped ReadOnlySpan<char> text);
+                    int Count(scoped ref int value);
+                    int this[scoped ReadOnlySpan<char> name] { get; }
+                }
+                public class Svc : ISvc
+                {
+                    public int Get(int id) { Counter.Hit(); return id; }
+                    public ReadOnlySpan<char> Trim(scoped ReadOnlySpan<char> text) => default;
+                    public int Count(scoped ref int value) => value;
+                    public int this[scoped ReadOnlySpan<char> name] => name.Length;
+                }
+            """, "ISvc", "s.Get(1)", "s.Get(2)"),
         ["interface with properties, events and uncached members"] = new("""
                 public interface ISvc
                 {
@@ -976,6 +1107,10 @@ public class SignatureCorpusTests
                     public Task Clear() => Task.CompletedTask;
                 }
             """, "ISvc", "await s.Get(1)", "await s.Clear(); await s.Get(1)"),
+        ["tags with line separator characters"] = new(
+            "    public interface ISvc { [Cache(\"g\\u2028\", Tags = new[] { \"a\\u2028b\", \"c\\u2029d\", \"e\\u0085f\" })] int Get(int id); }\n" +
+            "    public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }",
+            "ISvc", "s.Get(1)", "s.Get(2)"),
         ["dynamic tags"] = new("""
                 public interface ISvc
                 {

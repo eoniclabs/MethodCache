@@ -135,9 +135,9 @@ namespace TestApp
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
             // Should generate the policy registrations file
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
-            Assert.Contains("internal static class GeneratedPolicyRegistrations", registrySource);
+            Assert.Contains("private static class GeneratedPolicyRegistrations", registrySource);
             Assert.Contains("public static void AddPolicies", registrySource);
             Assert.Contains("PolicySourceRegistration", registrySource);
         }
@@ -185,7 +185,7 @@ namespace TestApp
 
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            var registrations = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class MethodCacheDecoratorRegistrations"));
+            var registrations = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("ModuleInitializer"));
             Assert.NotNull(registrations);
             AssertContainsIgnoreWhitespace(registrations, "[global::System.Runtime.CompilerServices.ModuleInitializer]");
             AssertContainsIgnoreWhitespace(registrations, "global::MethodCache.Infrastructure.MethodCacheDecorators.Register(new global::MethodCache.Infrastructure.DecoratorRegistration( typeof(global::TestApp.IUserService),");
@@ -227,7 +227,7 @@ public class GlobalService : IGlobalService
             Assert.Contains("namespace MethodCache.Generated", decoratorSource);
             Assert.DoesNotContain("<global namespace>", string.Concat(result.GeneratedSources.Values));
 
-            var registrations = result.GeneratedSources.Values.Single(s => s.Contains("class MethodCacheDecoratorRegistrations"));
+            var registrations = result.GeneratedSources.Values.Single(s => s.Contains("ModuleInitializer"));
             AssertContainsIgnoreWhitespace(registrations, "new global::MethodCache.Generated.IGlobalServiceDecorator(");
         }
 
@@ -252,7 +252,7 @@ namespace TestApp
 }";
 
             var result = await GetGeneratedSources(source);
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
 
             // New policy-based generation checks
@@ -408,7 +408,7 @@ namespace TestApp
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
             // Should generate policy registrations with both cached methods
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
             Assert.Contains("GeneratedAttributePolicySource", registrySource);
             Assert.Contains("PolicySnapshot", registrySource);
@@ -453,7 +453,7 @@ namespace TestApp
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
             // Should generate policy registrations with both interfaces
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
             Assert.Contains("GeneratedAttributePolicySource", registrySource);
             Assert.Contains("PolicySnapshot", registrySource);
@@ -485,7 +485,7 @@ namespace TestApp
 
             Assert.DoesNotContain(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("GeneratedPolicyRegistrations"));
+            var registrySource = result.GeneratedSources.Values.FirstOrDefault(s => s.Contains("class GeneratedPolicyRegistrations"));
             Assert.NotNull(registrySource);
             Assert.Contains("GeneratedAttributePolicySource", registrySource);
             Assert.Contains("PolicySnapshot", registrySource);

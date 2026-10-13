@@ -137,6 +137,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MCG014"));
 
+            internal static readonly DiagnosticDescriptor NotInterceptableMember = new(
+                id: "MCG017",
+                title: "Cache attribute on a member the decorator can't intercept",
+                messageFormat: "[{0}] on '{1}' does nothing: the decorator only implements public, non-static members that a class can implement, and this one is {2}. Make it a public interface method without 'static', 'private' or 'sealed', or remove the attribute.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG017"));
+
             internal static readonly DiagnosticDescriptor UnsupportedInterface = new(
                 id: "MCG013",
                 title: "Interface cannot be cached",

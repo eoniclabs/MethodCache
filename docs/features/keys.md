@@ -39,6 +39,8 @@ public interface IUserService
   different keys, and so do two `Circle`s behind a `Shape` property that differ only in `Radius`.
 - A `CancellationToken` parameter is never part of the key.
 - Keys don't depend on the current culture: `-1`, `1.5` and dates are written the same under every culture.
+- `0.0` and `-0.0` are two keys in every key form (`1 / x` tells them apart). `NaN` and the infinities work anywhere,
+  also inside a hashed argument, such as `double.PositiveInfinity` as a "no limit" value in a filter record.
 
 On .NET 9 and later the decorator writes simple keys into a stack buffer and looks them up without allocating.
 
@@ -95,7 +97,8 @@ public interface IDocumentStore
 ```
 <!-- endSnippet -->
 
-Strings are used as they are. Numbers, dates and other formattable values are written in the invariant culture;
+Strings are used as they are. Dates are written in the round-trip format (`2026-01-01T12:00:00.2500000Z`), so
+fractions of a second and the `Kind` or offset are part of the key. Numbers and other formattable values are written in the invariant culture;
 any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
 prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
 your own code builds, never for text a caller controls; see [Security](../security.md).
@@ -139,6 +142,12 @@ var overload = MethodCacheKeys.For(
   [Expiration](expiration.md#versions).
 - **Overloaded methods** have their parameter types in their keys, so overloads never share entries. See
   [method ids](configuration.md#appsettingsjson).
+- **A method name that another interface in the hierarchy also declares** gets the same treatment. Keys start with
+  the decorated interface, so for `ICatalog : ILookup` with `ILookup.Find(int)` and `ICatalog.Find(string)` the keys
+  are `MyApp.ICatalog.Find(int):7` and `MyApp.ICatalog.Find(string):7`. When two base interfaces declare the same
+  signature, the declaring interface is added too: for `IC : IA, IB` that both declare `Get(int)`, the keys are
+  `MyApp.IC.MyApp.IA.Get(int):1` and `MyApp.IC.MyApp.IB.Get(int):1`. Policy ids don't change; each
+  method keeps the id of the interface that declares it.
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](monitoring.md)).
 
