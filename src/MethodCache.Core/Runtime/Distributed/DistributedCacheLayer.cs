@@ -116,6 +116,9 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // Keys whose write timed out, and when (in TimeProvider timestamps) to remove them; one removal per key
         private readonly ConcurrentDictionary<string, long> _lateRemovals = new(StringComparer.Ordinal);
+
+        /// <summary>Keys whose removal after a timed-out write is still waiting for its delay.</summary>
+        internal int ScheduledLateRemovals => _lateRemovals.Count;
         private readonly CancellationTokenSource _disposing = new();
 
         // Writes running now; shutdown waits for them before it flushes the queue

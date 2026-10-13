@@ -424,10 +424,7 @@ public class DistributedInvalidationRobustnessTests
         _shared.Get("methodcache:r:big").Should().NotBeNull("shutdown removes the key rather than leave a delay running");
 
         // Nothing waits on the removal's delay any more, so nothing reaches the store after shutdown
-        var calls = chaos.Calls;
-        _time.Advance(BreakDuration);
-        await Task.Delay(50);
-        chaos.Calls.Should().Be(calls);
+        layer.ScheduledLateRemovals.Should().Be(0);
     }
 
     [Fact]
@@ -451,11 +448,10 @@ public class DistributedInvalidationRobustnessTests
         var oneRemoval = chaos.Calls - before;
 
         var calls = chaos.Calls;
+        layer.ScheduledLateRemovals.Should().Be(1, "the later writes pushed the one removal back instead of adding their own");
         _time.Advance(BreakDuration);
-        await WaitUntil(() => _shared.Get("methodcache:r:big") != null);
-        _time.Advance(BreakDuration);
-        await Task.Delay(50);
-        chaos.Calls.Should().Be(calls + oneRemoval, "the later writes pushed the one removal back instead of adding their own");
+        await WaitUntil(() => _shared.Get("methodcache:r:big") != null && chaos.Calls == calls + oneRemoval);
+        layer.ScheduledLateRemovals.Should().Be(0, "nothing is left to remove the key again");
     }
 
     // ---------- A node whose clock runs ahead ----------
