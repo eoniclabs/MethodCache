@@ -79,3 +79,5 @@ registrations, warmed caches) on .NET 8, 9 and 10. Run it after changing a bench
 ```bash
 dotnet test tests/MethodCache.Benchmarks.Tests -c Release
 ```
+
+The memory benchmark no-caching baseline calls the uncached data source directly, so warmup and repeated invocations cannot turn it into a cache-hit benchmark.
