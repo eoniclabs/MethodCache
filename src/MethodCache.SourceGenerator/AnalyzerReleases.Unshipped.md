@@ -7,7 +7,7 @@ MCG003 | MethodCacheGenerator | Error | Reports [Cache] usage with reference par
 MCG004 | MethodCacheGenerator | Error | Reports conflicting [Cache] and [CacheInvalidate] attributes.
 MCG005 | MethodCacheGenerator | Warning | Reports missing tags for [CacheInvalidate].
 MCG006 | MethodCacheGenerator | Error | Reports [Cache] usage with pointer or function pointer parameters or returns, including arrays of them.
-MCG007 | MethodCacheGenerator | Error | Reports [Cache] usage with ref struct parameters or returns.
+MCG007 | MethodCacheGenerator | Error | Reports [Cache] usage with ref struct or potentially ref-like generic parameters or returns.
 MCG009 | MethodCacheGenerator | Warning | Reports dynamic tags on [Cache] or [CacheInvalidate] referencing unknown parameters.
 MCG010 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] on a type it cannot cache, such as one with static abstract or non-public abstract members.
 MCG011 | MethodCacheGenerator | Error | Reports [assembly: CacheInterface] listing a method it cannot cache: missing, overloaded, static, or one [Cache] would reject.

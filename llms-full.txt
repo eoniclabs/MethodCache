@@ -256,6 +256,10 @@ yourself open. Factory registrations are wrapped the same way ([Getting started]
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
 
+The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
+
+On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MCG007 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
+
 
 ---
 
@@ -392,6 +396,10 @@ var overload = MethodCacheKeys.For(
   [method ids](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson).
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
+
+MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
+
+Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 
 
 ---
@@ -620,6 +628,8 @@ turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `
 The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
 once.
 
+Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
+
 
 ---
 
@@ -837,6 +847,12 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 `[Cache]` method throws `InvalidOperationException` at startup instead of being silently ignored. To decide per result
 whether a `[Cache]` method stores it, use [`CacheWhen`](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md#cachewhen).
 
+Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
+
+Policy tags are owned, read-only snapshots in both `CachePolicy` and `CacheRuntimePolicy`. Mutating the collection supplied by application code cannot change a published policy or bypass its version/change notifications.
+
+A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
+
 
 ---
 
@@ -945,6 +961,12 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
 - `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
   `NoOpCacheManager` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
+
+Manual `TryGetAsync` reads a fresh entry, including a cached null, even when the fast path is disabled or refresh-ahead is due. This lookup does not start a factory or background refresh.
+
+An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision removes the previous distributed value instead of leaving it readable. If the backend is unavailable, the removal follows the normal invalidation retry path.
+
+Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
 
 
 ---
@@ -1176,6 +1198,10 @@ per named client, unless you set `AllowUnverifiedTransport`. Set it only when yo
 transport sends no automatic cookies or hidden caller identity. A known transport with automatic cookies turned on
 always bypasses.
 
+HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
+
+Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
+
 
 ---
 
@@ -1314,6 +1340,10 @@ The [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.R
 cover their options, shared connections, table creation, outage settings and how each stores keys and invalidations.
 The SQL Server guide also compares the two and has the schema migration for an existing invalidations table.
 
+An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision removes the previous distributed value instead of leaving it readable. If the backend is unavailable, the removal follows the normal invalidation retry path.
+
+Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
+
 
 ---
 
@@ -1440,6 +1470,12 @@ it or a provider of your own, not both. A custom `ICacheManager` reports its own
 `ICacheManager` in a decorator of your own, implement `ICacheManagerDecorator` so `GetOrCreateManyAsync` still reads
 the distributed cache through it.
 
+OpenTelemetry instruments the unkeyed `ICacheManager` registration and leaves unrelated keyed managers untouched. A keyed-only registration does not satisfy its requirement for a default manager.
+
+OpenTelemetry preserves the original cache manager registration lifetime and DI disposal ownership. Type/factory-created managers remain container-owned; supplied instances remain caller-owned, including asynchronous disposal.
+
+An instrumented cache lookup generates the application cache key once and reuses it for tracing and the presence-aware inner lookup, preserving the original method and arguments without a second serialization/hash pass.
+
 
 ---
 
@@ -1542,6 +1578,8 @@ Moments after the writes stop, the cache is back within the bound.
 
 The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
 object; return immutable types such as records, or copies.
+
+Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
 
 
 ---
@@ -1653,6 +1691,8 @@ The cache reads the time from the `TimeProvider` registered in the container, if
 This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
 eviction and the background revalidation timeout.
 
+The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.
+
 
 ---
 
@@ -1745,6 +1785,10 @@ not a sandbox for malicious pull requests.
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests` and
 `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).
+
+MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
+
+HTTP age arithmetic saturates during response correction and resident-time accumulation, so an extreme upstream Age value cannot overflow the freshness calculation. `ResponseDelayReviewTests` covers these input boundaries.
 
 
 ---
@@ -1840,7 +1884,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG004](#mcg004) | Error | `[Cache]` and `[CacheInvalidate]` on the same method | |
 | [MCG005](#mcg005) | Warning | `[CacheInvalidate]` without tags | |
 | [MCG006](#mcg006) | Error | `[Cache]` with pointer or function pointer parameters or returns, including arrays of them | Remove `[Cache]` |
-| [MCG007](#mcg007) | Error | `[Cache]` with ref struct parameters or returns | Remove `[Cache]` |
+| [MCG007](#mcg007) | Error | `[Cache]` with ref struct or potentially ref-like parameters or returns | Remove `[Cache]` |
 | [MCG009](#mcg009) | Warning | A tag names a parameter the method does not have | Use the closest parameter |
 | [MCG010](#mcg010) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
 | [MCG011](#mcg011) | Error | `[assembly: CacheInterface]` lists a method it can't cache | |
@@ -1919,7 +1963,7 @@ any other member of the interface that uses a pointer, are still forwarded throu
 ## MCG007
 
 `[Cache]` on a method with `Span<T>`, `ReadOnlySpan<T>` or other ref struct parameters or returns. These cannot be
-stored in a cache; use an array, `Memory<T>` or a string.
+stored in a cache; use an array, `Memory<T>` or a string. This also applies to a type parameter with `allows ref struct` when that parameter is used as an argument or return value.
 
 ## MCG009
 
@@ -2427,6 +2471,12 @@ instrumentation: `.WithTracing(t => t.AddAspNetCoreInstrumentation().AddMethodCa
 
 MIT. See [LICENSE](https://github.com/eoniclabs/MethodCache/blob/main/LICENSE).
 
+OpenTelemetry instruments the unkeyed `ICacheManager` registration and leaves unrelated keyed managers untouched. A keyed-only registration does not satisfy its requirement for a default manager.
+
+OpenTelemetry preserves the original cache manager registration lifetime and DI disposal ownership. Type/factory-created managers remain container-owned; supplied instances remain caller-owned, including asynchronous disposal.
+
+An instrumented cache lookup generates the application cache key once and reuses it for tracing and the presence-aware inner lookup, preserving the original method and arguments without a second serialization/hash pass.
+
 
 ---
 
@@ -2550,6 +2600,10 @@ MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
 | `methodcache.http.requests_total` | `client`, `outcome` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error` when the request threw) |
 | `methodcache.http.request_duration` (ms) | `client`, `outcome` |
 
+HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
+
+Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
+
 
 ---
 
@@ -2607,6 +2661,8 @@ The [distributed cache guide](https://github.com/eoniclabs/MethodCache/blob/main
 covers how the distributed cache works, outages and options. [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)
 covers the other key generators.
 
+MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
+
 
 ---
 
@@ -2619,6 +2675,17 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+### Release audit fixes
+
+The release audit fixes presence-aware manual reads, caller cancellation during loads, immutable policy tags,
+HTTP response age and background request metadata, keyed registrations and OpenTelemetry ownership, generic
+method constraints and attribute code fixes, and weighted capacity overflow. The web demo now stores atomic
+price updates in SQLite, and the memory benchmark measures an uncached baseline.
+
+MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements.
+Earlier keys for these arguments become cold misses. Overloaded generic methods include generic arity in their
+policy ids and key prefixes, keeping different overloads distinct; earlier keys become cold misses.
 
 ### If you used a pre-release build from GitHub Packages
 

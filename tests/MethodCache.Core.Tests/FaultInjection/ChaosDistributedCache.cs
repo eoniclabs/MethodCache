@@ -99,6 +99,8 @@ public sealed class ChaosDistributedCache : MethodCache.Extensibility.IAtomicInv
     private readonly TimeProvider _time;
     private readonly Dictionary<ChaosOperations, Rule> _rules = new();
     private TaskCompletionSource _release = NewGate();
+    private readonly TaskCompletionSource _blockStarted = NewGate();
+    private readonly TaskCompletionSource _blockCompleted = NewGate();
     private int _faultsStarted;
     private int _blocked;
     private int _held;
@@ -121,6 +123,10 @@ public sealed class ChaosDistributedCache : MethodCache.Extensibility.IAtomicInv
 
     /// <summary>Calls waiting right now in a hang or a delay.</summary>
     public int Blocked => Volatile.Read(ref _blocked);
+
+    public Task FirstBlockStarted => _blockStarted.Task;
+
+    public Task FirstBlockCompleted => _blockCompleted.Task;
 
     /// <summary>Calls waiting right now in <see cref="ChaosFaultKind.HangIgnoringToken"/>.</summary>
     public int Held => Volatile.Read(ref _held);
@@ -321,6 +327,7 @@ public sealed class ChaosDistributedCache : MethodCache.Extensibility.IAtomicInv
     private async Task Block(Task wait)
     {
         Interlocked.Increment(ref _blocked);
+        _blockStarted.TrySetResult();
         try
         {
             await wait.ConfigureAwait(false);
@@ -328,6 +335,7 @@ public sealed class ChaosDistributedCache : MethodCache.Extensibility.IAtomicInv
         finally
         {
             Interlocked.Decrement(ref _blocked);
+            _blockCompleted.TrySetResult();
         }
     }
 

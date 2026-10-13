@@ -16,7 +16,7 @@ namespace MethodCache.Benchmarks.Scenarios;
 public class MemoryUsageBenchmarks : BenchmarkBase
 {
     private IMemoryTestService _service = null!;
-    private IMemoryTestService _noCacheService = null!;
+    private MemoryTestService _noCacheService = null!;
 
     [Params(100, 1000, 10000)]
     public int CacheSize { get; set; }
@@ -41,7 +41,7 @@ public class MemoryUsageBenchmarks : BenchmarkBase
     {
         for (int i = 0; i < CacheSize; i++)
         {
-            await _noCacheService.GetDataAsync(i, DataType);
+            await _noCacheService.GetUncachedDataAsync(i, DataType);
         }
     }
 
@@ -117,7 +117,7 @@ public class MemoryUsageBenchmarks : BenchmarkBase
             {
                 await _service.GetShortLivedDataAsync(i);
             }
-            
+
             // Wait for expiration
             await Task.Delay(100);
         }
@@ -128,7 +128,7 @@ public class MemoryUsageBenchmarks : BenchmarkBase
     {
         // Create memory pressure to test GC behavior
         var tasks = new List<Task>();
-        
+
         for (int thread = 0; thread < 4; thread++)
         {
             int threadId = thread;
@@ -137,14 +137,14 @@ public class MemoryUsageBenchmarks : BenchmarkBase
                 for (int i = 0; i < CacheSize / 4; i++)
                 {
                     await _service.GetDataAsync(threadId * (CacheSize / 4) + i, DataType);
-                    
+
                     // Create additional memory pressure
                     var tempData = new byte[1024];
                     Random.Shared.NextBytes(tempData);
                 }
             }));
         }
-        
+
         await Task.WhenAll(tasks);
     }
 }
@@ -186,6 +186,9 @@ public class MemoryTestService : IMemoryTestService
             _keyGenerator);
     }
 
+    /// <summary>The uncached source used by the no-caching memory baseline.</summary>
+    public Task<object> GetUncachedDataAsync(int id, string dataType) => CreateDataAsync(id, dataType);
+
     public virtual async Task<LargeModel> GetLargeObjectAsync(int id)
     {
         var settings = _policyRegistry.GetSettingsFor<MemoryTestService>(nameof(GetLargeObjectAsync));
@@ -220,7 +223,7 @@ public class MemoryTestService : IMemoryTestService
     private async Task<object> CreateDataAsync(int id, string dataType)
     {
         await Task.Yield();
-        
+
         return dataType switch
         {
             "Small" => SmallModel.Create(id),

@@ -143,3 +143,5 @@ generator and a `ToString` key generator, on simple and complex arguments and on
 
 Follow the existing naming, add `[MemoryDiagnoser]`, include a baseline where one makes sense, and add the class to
 `Program.cs` and to the category table above. Run the setup checks afterwards.
+
+The memory benchmark no-caching baseline calls the uncached data source directly, so warmup and repeated invocations cannot turn it into a cache-hit benchmark.

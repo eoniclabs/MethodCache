@@ -129,3 +129,7 @@ transport or below a cache handler you construct yourself, can't be checked. The
 per named client, unless you set `AllowUnverifiedTransport`. Set it only when you have checked that the whole
 transport sends no automatic cookies or hidden caller identity. A known transport with automatic cookies turned on
 always bypasses.
+
+HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
+
+Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.

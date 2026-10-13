@@ -53,3 +53,5 @@ include the arguments' assembly-qualified type names, so they change when those 
 The [distributed cache guide](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md)
 covers how the distributed cache works, outages and options. [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)
 covers the other key generators.
+
+MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.

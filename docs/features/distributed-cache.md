@@ -141,3 +141,6 @@ The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/Me
 cover their options, shared connections, table creation, outage settings and how each stores keys and invalidations.
 The SQL Server guide also compares the two and has the schema migration for an existing invalidations table.
 
+An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision removes the previous distributed value instead of leaving it readable. If the backend is unavailable, the removal follows the normal invalidation retry path.
+
+Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.

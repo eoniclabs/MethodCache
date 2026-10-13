@@ -85,3 +85,7 @@ not a sandbox for malicious pull requests.
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests` and
 `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).
+
+MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
+
+HTTP age arithmetic saturates during response correction and resident-time accumulation, so an extreme upstream Age value cannot overflow the freshness calculation. `ResponseDelayReviewTests` covers these input boundaries.

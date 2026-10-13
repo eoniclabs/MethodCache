@@ -23,7 +23,7 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        if (!services.Any(s => s.ServiceType == typeof(ICacheManager)))
+        if (!services.Any(s => !s.IsKeyedService && s.ServiceType == typeof(ICacheManager)))
         {
             throw new InvalidOperationException(
                 "No MethodCache cache manager is registered. Call services.AddMethodCache() before services.AddMethodCacheOpenTelemetry().");
@@ -90,35 +90,30 @@ public static class MethodCacheOpenTelemetryServiceCollectionExtensions
         Func<TInterface, IServiceProvider, TInterface> decorator)
         where TInterface : class
     {
-        var existingRegistrations = services.Where(s => s.ServiceType == typeof(TInterface)).ToList();
+        var existingRegistrations = services.Where(s => !s.IsKeyedService && s.ServiceType == typeof(TInterface)).ToList();
 
         foreach (var registration in existingRegistrations)
         {
             services.Remove(registration);
-
-            object Factory(IServiceProvider provider)
+            // Resolve the original descriptor through DI, so its lifetime and disposal ownership
+            // survive decoration. An instance descriptor remains caller-owned.
+            var originalKey = new object();
+            if (registration.ImplementationFactory is { } factory)
             {
-                TInterface instance;
-
-                if (registration.ImplementationFactory != null)
-                {
-                    instance = (TInterface)registration.ImplementationFactory(provider);
-                }
-                else if (registration.ImplementationInstance != null)
-                {
-                    instance = (TInterface)registration.ImplementationInstance;
-                }
-                else if (registration.ImplementationType != null)
-                {
-                    instance = (TInterface)ActivatorUtilities.CreateInstance(provider, registration.ImplementationType);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Unable to resolve implementation for {typeof(TInterface)}");
-                }
-
-                return decorator(instance, provider);
+                services.Add(new ServiceDescriptor(typeof(TInterface), originalKey,
+                    (provider, _) => factory(provider), registration.Lifetime));
             }
+            else if (registration.ImplementationInstance is { } instance)
+            {
+                services.Add(new ServiceDescriptor(typeof(TInterface), originalKey, instance));
+            }
+            else
+            {
+                services.Add(new ServiceDescriptor(typeof(TInterface), originalKey,
+                    registration.ImplementationType!, registration.Lifetime));
+            }
+
+            object Factory(IServiceProvider provider) => decorator(provider.GetRequiredKeyedService<TInterface>(originalKey), provider);
 
             services.Add(new ServiceDescriptor(
                 typeof(TInterface),

@@ -163,6 +163,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
 
         HttpResponseMessage upstreamResponse;
+        var requestStartedAt = _timeProvider.GetTimestamp();
         try
         {
             upstreamResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -186,7 +187,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             if (upstreamResponse.StatusCode == HttpStatusCode.NotModified && cachedEntry != null)
             {
                 _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", request.RequestUri);
-                var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow());
+                var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow(), _timeProvider.GetElapsedTime(requestStartedAt));
                 await StoreRevalidatedEntryAsync(request, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
 
                 var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
@@ -201,7 +202,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 return Record(Outcome.Revalidated, request, revalidated, startedAt);
             }
 
-            await TryStoreResponseAsync(request, upstreamResponse, cacheKey, options, freshness, cancellationToken).ConfigureAwait(false);
+            await TryStoreResponseAsync(request, upstreamResponse, cacheKey, options, freshness, cancellationToken, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
 
             if (options.AddDiagnosticHeaders && !upstreamResponse.Headers.Contains("X-Cache"))
             {
@@ -286,7 +287,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         string cacheKey,
         HttpCacheOptions options,
         FreshnessCalculator freshness,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        TimeSpan responseDelay = default)
     {
         if (!IsStorable(request, response, options))
         {
@@ -295,7 +297,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         // Reading a response body is part of the HTTP request. A failed read cannot be treated as a cache miss:
         // the partially consumed response would reach the caller with missing bytes.
-        var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken).ConfigureAwait(false);
+        var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken, responseDelay: responseDelay).ConfigureAwait(false);
         if (entry == null)
         {
             return; // Larger than MaxResponseSize; the caller still reads all of it
@@ -513,7 +515,15 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private Task RevalidateInBackgroundAsync(HttpRequestMessage originalRequest, HttpCacheEntry cachedEntry, string urlKey, string cacheKey, HttpCacheOptions options)
     {
         // Copy the request now: the caller may dispose the original as soon as it has the stale response
-        var request = new HttpRequestMessage(originalRequest.Method, originalRequest.RequestUri);
+        var request = new HttpRequestMessage(originalRequest.Method, originalRequest.RequestUri)
+        {
+            Version = originalRequest.Version,
+            VersionPolicy = originalRequest.VersionPolicy
+        };
+        foreach (var option in originalRequest.Options)
+        {
+            request.Options.Set(new HttpRequestOptionsKey<object?>(option.Key), option.Value);
+        }
         foreach (var header in originalRequest.Headers)
         {
             request.Headers.TryAddWithoutValidation(header.Key, header.Value);
@@ -529,17 +539,18 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
             try
             {
+                var requestStartedAt = _timeProvider.GetTimestamp();
                 using var response = await base.SendAsync(request, timeout.Token).ConfigureAwait(false);
                 var freshness = new FreshnessCalculator(options, _timeProvider);
 
                 if (response.StatusCode == HttpStatusCode.NotModified)
                 {
-                    var updatedEntry = cachedEntry.WithUpdatedHeaders(response, _timeProvider.GetUtcNow());
+                    var updatedEntry = cachedEntry.WithUpdatedHeaders(response, _timeProvider.GetUtcNow(), _timeProvider.GetElapsedTime(requestStartedAt));
                     await StoreRevalidatedEntryAsync(request, urlKey, cacheKey, updatedEntry, options, freshness, timeout.Token).ConfigureAwait(false);
                 }
                 else
                 {
-                    await TryStoreResponseAsync(request, response, cacheKey, options, freshness, timeout.Token).ConfigureAwait(false);
+                    await TryStoreResponseAsync(request, response, cacheKey, options, freshness, timeout.Token, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (timeout.IsCancellationRequested)

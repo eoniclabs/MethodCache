@@ -101,3 +101,5 @@ Moments after the writes stop, the cache is back within the bound.
 
 The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
 object; return immutable types such as records, or copies.
+
+Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
