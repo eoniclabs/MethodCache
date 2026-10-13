@@ -158,16 +158,11 @@ internal sealed class HttpCacheStore : IHttpCacheStorage, IDisposable
             return;
         }
 
-        try
-        {
-            var data = HttpCacheEntrySerializer.Serialize(entry, _timeProvider.GetUtcNow() + timeToLive);
-            var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = timeToLive };
-            await _distributed.SetAsync(_keyPrefix + key, data, options, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "Writing the HTTP cache entry {Key} to the distributed cache failed", key);
-        }
+        // A failed write reaches the handler: it logs it, and after a revalidation it removes the old entry instead,
+        // whose freshness and Vary rules the origin has just replaced
+        var data = HttpCacheEntrySerializer.Serialize(entry, _timeProvider.GetUtcNow() + timeToLive);
+        var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = timeToLive };
+        await _distributed.SetAsync(_keyPrefix + key, data, options, cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)

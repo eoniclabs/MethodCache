@@ -26,14 +26,35 @@ limits and metrics. This page covers the rules the cache follows and how to writ
   shared cache) wins over `Expires`.
 - A 304 updates the stored response's headers and whether it may be stored. If it changes to `no-store`, `Vary: *`, or
   `private` in a shared cache, the stored response is removed. This applies to background revalidation too. A 304
-  without `Vary` keeps the original variant selection.
+  without `Vary` keeps the original variant selection. If the updated response can't be stored, the old one is
+  removed so its old rules are never used again; the caller still gets the response. If removing it fails too, the
+  error reaches the caller.
+- A `Cache-Control` or `Vary` field that doesn't parse (such as `private; max-age=600` or `max-age=-1`), also next to a valid one, is not
+  read as absent: the response is not stored, because the header may have said `private` or `no-store`.
+- An entry is kept at most a year, even when `Expires` is far in the future (`31 Dec 9999`).
+- Weak ETags (`W/"abc"`) are sent back as weak validators.
 - `only-if-cached` never contacts the origin, including for range requests, requests with their own validators,
   `no-store`, methods that aren't cached and background revalidation. When no stored response can be used, the
   answer is 504.
 
+## Redirects, retries and request bodies
+
+- A redirect the transport follows (`AllowAutoRedirect`, the default) answers a different URL, so it is not stored
+  under the URL you requested. The transport also drops `Authorization` on a redirect, so storing it could hand one
+  caller's response to another. Requests that end at the redirect target are cached under that URL as usual. If the
+  target answers the cache's own validators with 304, the request is sent again without them, so you get the full response.
+  A URL that was cached and now redirects has its stored response removed, also when background revalidation finds out.
+- The cache stores responses for the request as you sent it, before the transport adds headers such as
+  `Accept-Encoding` for automatic decompression. `Vary: Accept-Encoding` therefore works with `AutomaticDecompression`.
+- The `If-None-Match` / `If-Modified-Since` headers the cache adds are removed again before the response is
+  returned, so a retry handler (Polly, standard resilience) that sends the same message again gets a full response.
+- A `GET` or `HEAD` with a body (search APIs such as Elasticsearch) goes to the origin: its URL doesn't identify it.
+- The URL fragment (`#top`) is not part of the key; it never reaches the origin.
+
 ## Writes and invalidation
 
-A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. A GET or
+A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. That is
+the URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A GET or
 background revalidation that was already in flight can still complete, but it stores its response under the old
 generation, so later requests fetch the updated response. With `UseDistributedCache` the generation is shared by
 every instance.
@@ -118,6 +139,9 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 `AddHttpCaching()` turns off automatic cookies on the client's `SocketsHttpHandler` or `HttpClientHandler`, after all
 other configuration of that handler, so the default registration caches at once. Other named clients are unaffected.
+A handler that already has cookies off is left alone, so a cookie-free handler shared between clients keeps working.
+`ConfigureHttpClientDefaults(b => b.AddHttpCaching())` caches every client, each under its own name: two clients
+never share entries, and they all use the settings given there.
 Send caller cookies as request headers; a handler that keeps a hidden cookie jar belongs on a client without HTTP
 caching.
 

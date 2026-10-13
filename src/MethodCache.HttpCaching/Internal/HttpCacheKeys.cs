@@ -22,7 +22,8 @@ internal static class HttpCacheKeys
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         Append(hash, method.Method);
-        Append(hash, uri?.ToString() ?? string.Empty);
+        // The fragment never reaches the origin, so /x#top is the same resource as /x
+        Append(hash, uri == null ? string.Empty : uri.IsAbsoluteUri ? uri.GetComponents(UriComponents.HttpRequestUrl | UriComponents.UserInfo, UriFormat.UriEscaped) : uri.ToString());
         return clientName + ":" + Convert.ToBase64String(hash.GetHashAndReset());
     }
 
