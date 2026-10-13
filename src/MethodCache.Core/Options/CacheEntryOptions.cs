@@ -125,7 +125,8 @@ namespace MethodCache
                     throw new ArgumentOutOfRangeException(
                         nameof(duration),
                         $"Cache duration must be positive. Provided: {duration}. " +
-                        "For no expiration, omit the Duration property or use TimeSpan.MaxValue. " +
+                        "Without a duration, entries use MethodCacheMemoryOptions.DefaultExpiration (5 minutes unless configured); " +
+                        "no entry lives longer than MethodCacheMemoryOptions.MaxExpiration. " +
                         "Common durations: TimeSpan.FromMinutes(5), TimeSpan.FromHours(1). " +
                         "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#duration");
                 }
@@ -282,8 +283,18 @@ namespace MethodCache
             /// <summary>
             /// Builds an immutable <see cref="CacheEntryOptions"/> instance.
             /// </summary>
+            /// <exception cref="InvalidOperationException">The refresh window is not shorter than the duration or the sliding expiration.</exception>
             public CacheEntryOptions Build()
             {
+                // A window as long as the entry lives would reload the value on every hit
+                if (_refreshAhead >= _duration || _refreshAhead >= _slidingExpiration)
+                {
+                    var lifetime = _refreshAhead >= _duration ? $"Duration ({_duration})" : $"SlidingExpiration ({_slidingExpiration})";
+                    throw new InvalidOperationException(
+                        $"RefreshAhead ({_refreshAhead}) must be shorter than {lifetime}, or every hit would reload the value. " +
+                        "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead");
+                }
+
                 return new CacheEntryOptions(
                     _duration,
                     _slidingExpiration,

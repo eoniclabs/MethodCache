@@ -100,7 +100,7 @@ namespace MethodCache.Extensibility
 
             if (_options.EnableBackgroundCleanup)
             {
-                _maintenanceTimer = _timeProvider.CreateTimer(static state => ((MemoryCacheEngine)state!).Maintain(), _engine, _options.CleanupInterval, _options.CleanupInterval);
+                _maintenanceTimer = MaintenanceTimer.Start(_timeProvider, _engine, _options.CleanupInterval);
             }
 
             _distributed = distributed;
@@ -504,7 +504,15 @@ namespace MethodCache.Extensibility
                     break;
                 }
 
-                // Another caller is already loading this key: share its result.
+                // Another caller is already loading this key: share its result. A factory that asks for its own key
+                // would wait for itself forever, holding the key for every later caller, so it fails instead.
+                if (LoadingScope.Contains(existing))
+                {
+                    throw new InvalidOperationException(
+                        $"The factory of '{methodName}' requested the key it is loading, so it would wait for itself. " +
+                        "Call the underlying implementation instead of the cached one inside the factory.");
+                }
+
                 object? shared;
                 try
                 {
@@ -517,7 +525,7 @@ namespace MethodCache.Extensibility
                         }
                         catch (TimeoutException)
                         {
-                            if (TryServeStale<T>(previous, policy, out var stale))
+                            if (!existing.Invalidated && TryServeStale<T>(previous, policy, out var stale))
                             {
                                 RecordHit(methodName);
                                 return stale!;
@@ -605,7 +613,7 @@ namespace MethodCache.Extensibility
 
                 var loadStartedAt = _distributed?.Now ?? 0;
                 var start = StartTiming();
-                var result = await factory().ConfigureAwait(false);
+                var result = await LoadingScope.Run(flight, factory).ConfigureAwait(false);
                 var elapsed = ElapsedSince(start);
 
                 if (ShouldStore(result, policy, methodName))
@@ -745,7 +753,7 @@ namespace MethodCache.Extensibility
                 {
                     var loadStartedAt = _distributed?.Now ?? 0;
                     var start = StartTiming();
-                    var result = await factory().ConfigureAwait(false);
+                    var result = await LoadingScope.Run(flight, factory).ConfigureAwait(false);
                     var elapsed = ElapsedSince(start);
 
                     // Replace only the node being refreshed, so a write or removal that slipped in before this
@@ -776,10 +784,10 @@ namespace MethodCache.Extensibility
                     // value, exactly as they would from a foreground load.
                     var now = _engine.Now;
                     T? stale = default;
-                    var served = policy.FailSafe > 0 && (node.IsLogicallyExpired(now)
+                    var served = policy.FailSafe > 0 && !flight.Invalidated && (node.IsLogicallyExpired(now)
                         // Joined callers get a stale value, so hold it for the throttle period like a foreground load.
                         ? TryServeStale(node, policy, out stale)
-                        : !node.IsPhysicallyExpired(now) && TryRead(node, out stale));
+                        : node.IsAlive && !node.IsPhysicallyExpired(now) && TryRead(node, out stale));
 
                     if (served)
                     {
@@ -812,6 +820,46 @@ namespace MethodCache.Extensibility
             using (ExecutionContext.SuppressFlow())
             {
                 _ = Task.Run(work);
+            }
+        }
+
+        /// <summary>
+        /// Runs the engine's periodic maintenance. A scheduled timer is rooted by the runtime, so it holds the engine
+        /// only weakly and stops itself once the engine is gone: a manager nobody disposed doesn't keep its values
+        /// alive. It is created without the caller's execution context, which would otherwise stay alive with it.
+        /// </summary>
+        private sealed class MaintenanceTimer
+        {
+            private readonly WeakReference<MemoryCacheEngine> _engine;
+            private ITimer? _timer;
+
+            private MaintenanceTimer(MemoryCacheEngine engine) => _engine = new WeakReference<MemoryCacheEngine>(engine);
+
+            public static ITimer Start(TimeProvider timeProvider, MemoryCacheEngine engine, TimeSpan interval)
+            {
+                var state = new MaintenanceTimer(engine);
+                if (ExecutionContext.IsFlowSuppressed())
+                {
+                    return state._timer = timeProvider.CreateTimer(Tick, state, interval, interval);
+                }
+
+                using (ExecutionContext.SuppressFlow())
+                {
+                    return state._timer = timeProvider.CreateTimer(Tick, state, interval, interval);
+                }
+            }
+
+            private static void Tick(object? state)
+            {
+                var timer = (MaintenanceTimer)state!;
+                if (timer._engine.TryGetTarget(out var engine))
+                {
+                    engine.Maintain();
+                }
+                else
+                {
+                    timer._timer?.Dispose();
+                }
             }
         }
 
@@ -954,15 +1002,18 @@ namespace MethodCache.Extensibility
 
         private bool TryServeStale<T>(Node node, EntryPolicy policy, out T? value)
         {
+            // Only the entry still cached under the key: one removed, invalidated or replaced since it was looked up
+            // must never come back as a fallback
             var now = _engine.Now;
-            if (!node.IsPhysicallyExpired(now) && TryRead(node, out value))
+            if (node.IsAlive && !node.IsPhysicallyExpired(now) && TryRead(node, out value))
             {
                 // Serve the stale value for a short while before trying the factory again. Reads must not extend it
-                // with sliding expiration, or the factory would never be tried again.
+                // with sliding expiration, or the factory would never be tried again, and no early refresh may start
+                // before then either (the refresh state stays set).
                 var retryUntil = Math.Min(now + policy.FailSafeRetryAfter, Volatile.Read(ref node.PhysicalExpiresAt));
                 Volatile.Write(ref node.AbsoluteExpiresAt, retryUntil);
                 Volatile.Write(ref node.LogicalExpiresAt, retryUntil);
-                Interlocked.Exchange(ref node.RefreshState, 0);
+                Interlocked.Exchange(ref node.RefreshState, 1);
                 return true;
             }
 
@@ -972,14 +1023,17 @@ namespace MethodCache.Extensibility
 
         private static bool IsRefreshDue(Node node, EntryPolicy policy, long now)
         {
-            var expiresAt = Volatile.Read(ref node.LogicalExpiresAt);
-
-            if (policy.RefreshWindow > 0 && now >= expiresAt - policy.RefreshWindow)
+            if (policy.RefreshWindow <= 0)
             {
-                return true;
+                return false;
             }
 
-            return false;
+            // A window as long as the entry's lifetime would refresh on every hit; such a window (from policies
+            // combined at runtime, which can't be rejected up front) covers the second half of the lifetime instead
+            var expiresAt = Volatile.Read(ref node.LogicalExpiresAt);
+            var lifetime = expiresAt - node.CreatedAt;
+            var window = policy.RefreshWindow < lifetime ? policy.RefreshWindow : lifetime / 2;
+            return now >= expiresAt - window;
         }
 
         private static bool TryRead<T>(Node node, out T? value)
@@ -1204,6 +1258,54 @@ namespace MethodCache.Extensibility
                     FailSafeRetryAfter = Positive(policy.FailSafeRetryAfter) is > 0 and var retryAfter ? retryAfter : DefaultFailSafeRetryAfter,
                     Tags = policy.Tags.Count > 0 ? policy.Tags.Distinct(StringComparer.Ordinal).ToArray() : null
                 };
+            }
+        }
+
+        /// <summary>
+        /// The loads whose factories the current asynchronous call runs inside, innermost first, so a factory that
+        /// requests a key it is itself loading is recognized instead of waiting for itself.
+        /// </summary>
+        private sealed class LoadingScope
+        {
+            private static readonly AsyncLocal<LoadingScope?> Current = new();
+
+            private readonly Flight _flight;
+            private readonly LoadingScope? _outer;
+
+            private LoadingScope(Flight flight, LoadingScope? outer)
+            {
+                _flight = flight;
+                _outer = outer;
+            }
+
+            /// <summary>Calls <paramref name="factory"/> as part of <paramref name="flight"/>.</summary>
+            public static Task<T> Run<T>(Flight flight, Func<Task<T>> factory)
+            {
+                var outer = Current.Value;
+                Current.Value = new LoadingScope(flight, outer);
+                try
+                {
+                    // The factory's continuations keep the scope; the caller gets its own back once the call returns
+                    return factory();
+                }
+                finally
+                {
+                    Current.Value = outer;
+                }
+            }
+
+            /// <summary>Whether the current call runs inside a factory of <paramref name="flight"/>.</summary>
+            public static bool Contains(Flight flight)
+            {
+                for (var scope = Current.Value; scope != null; scope = scope._outer)
+                {
+                    if (ReferenceEquals(scope._flight, flight))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
             }
         }
 

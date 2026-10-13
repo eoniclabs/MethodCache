@@ -190,6 +190,22 @@ public sealed class JsonPolicySourceTests
         Assert.Contains($"MethodCache:Services:Sample.Type.Method:{key}", exception.Message);
     }
 
+    [Theory]
+    [InlineData("Duration", "00:01:00")]
+    [InlineData("SlidingExpiration", "00:00:30")]
+    public void AddMethodCacheFromConfiguration_Throws_ForARefreshWindowAsLongAsTheEntryLives(string lifetime, string value)
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            [$"MethodCache:Services:Sample.Type.Method:{lifetime}"] = value,
+            ["MethodCache:Services:Sample.Type.Method:RefreshAhead"] = "00:01:00"
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddMethodCacheFromConfiguration(configuration));
+
+        Assert.Contains("MethodCache:Services:Sample.Type.Method:RefreshAhead", exception.Message);
+    }
+
     private static IConfigurationRoot BuildConfiguration(Dictionary<string, string?> data)
         => new ConfigurationBuilder().AddInMemoryCollection(data).Build();
 
