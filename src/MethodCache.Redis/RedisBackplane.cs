@@ -70,6 +70,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     {
         // Until Redis answers (it may be down when the app starts), try again, waiting longer each time
         var delay = FirstRetryDelay;
+        var failed = false;
         IConnectionMultiplexer connection;
         while (true)
         {
@@ -86,6 +87,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "MethodCache could not connect its Redis backplane; it tries again in {Delay}. Until then other instances' invalidations don't reach this instance's memory.", delay);
+                failed = true;
             }
 
             try
@@ -101,10 +103,11 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, MaxRetryDelay.Ticks));
         }
 
-        await SubscribeAsync(subscription, connection).ConfigureAwait(false);
+        await SubscribeAsync(subscription, connection, failed).ConfigureAwait(false);
     }
 
-    private async Task SubscribeAsync(Subscription subscription, IConnectionMultiplexer connection)
+    /// <param name="missed">Whether earlier attempts failed, so invalidations sent meanwhile never arrived.</param>
+    private async Task SubscribeAsync(Subscription subscription, IConnectionMultiplexer connection, bool missed)
     {
         try
         {
@@ -132,8 +135,18 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             }
             catch (RedisConnectionException)
             {
-                // The multiplexer retains the registration and subscribes again when it reconnects.
+                // The multiplexer retains the registration and subscribes again when it reconnects, and then
+                // Restored clears.
+                missed = false;
             }
+
+            // Invalidations other instances sent while this one couldn't subscribe never arrived, so what it
+            // cached meanwhile may be stale, as after a reconnect
+            if (missed && !subscription.Cancellation.IsCancellationRequested && Volatile.Read(ref subscription.Callback) is { } clear)
+            {
+                Observe(clear(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }));
+            }
+
             subscription.Completion.TrySetResult();
         }
         catch (OperationCanceledException) when (subscription.Cancellation.IsCancellationRequested)

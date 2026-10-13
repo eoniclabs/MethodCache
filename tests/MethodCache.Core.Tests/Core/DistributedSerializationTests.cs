@@ -170,15 +170,120 @@ public class DistributedSerializationTests
         (await Load<object>(c, "k", () => "loaded")).Should().Be("loaded", "the replaced value must not stay shared");
     }
 
+    // ---------- Collections declared as interfaces ----------
+
+    [Fact]
+    public async Task ReadOnlyListBackedByAnArray_IsShared()
+    {
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+
+        await Load<IReadOnlyList<int>>(a, "k", () => new[] { 1, 2, 3 });
+
+        var fromL2 = await b.GetOrCreateFastAsync<IReadOnlyList<int>>(
+            "k", "M", () => throw new InvalidOperationException("B must read A's list from L2"), Policy());
+        fromL2.Should().Equal(1, 2, 3);
+        Warnings.Should().Be(0, "a list comes back as another list with the same elements");
+    }
+
+    [Fact]
+    public async Task EnumerableFromLinq_IsShared()
+    {
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+
+        await Load<IEnumerable<int>>(a, "k", () => Enumerable.Range(1, 3).Select(i => i * 2));
+
+        var fromL2 = await b.GetOrCreateFastAsync<IEnumerable<int>>(
+            "k", "M", () => throw new InvalidOperationException("B must read A's sequence from L2"), Policy());
+        fromL2.Should().Equal(2, 4, 6);
+        Warnings.Should().Be(0);
+    }
+
+    // ---------- A method returning more than one type ----------
+
+    [Fact]
+    public async Task DerivedValue_AfterABaseValueWasShared_StaysInMemoryOnly()
+    {
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+
+        await Load<Animal>(a, "plain", () => new Animal { Name = "a" });
+        _shared.Get("methodcache:e:plain").Should().NotBeNull("a plain Animal comes back as it was");
+
+        (await Load<Animal>(a, "dog", () => new Dog { Name = "d", Breed = "b" })).Should().BeOfType<Dog>();
+        _shared.Get("methodcache:e:dog").Should().BeNull("a Dog would come back as a plain Animal");
+        Warnings.Should().Be(1);
+
+        (await Load<Animal>(b, "dog", () => new Dog { Name = "d", Breed = "b" })).Should().BeOfType<Dog>("B ran its method");
+    }
+
+    [Fact]
+    public async Task DerivedValue_ForAKeyHoldingABaseValue_RemovesTheBaseValue()
+    {
+        var (_, layer) = CreateNode();
+        await layer.WriteAsync<Animal>("k", new Animal { Name = "old" }, null, layer.Now, OneMinute, methodName: "M");
+        _shared.Get("methodcache:e:k").Should().NotBeNull();
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+
+        // A refresh, say, that now returns a Dog: other nodes must not go on reading the old Animal
+        await layer.WriteAsync<Animal>("k", new Dog { Name = "new", Breed = "b" }, null, layer.Now, OneMinute, methodName: "M");
+
+        _shared.Get("methodcache:e:k").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetAsync_OfADerivedValue_AfterABaseValue_StaysInMemoryOnly()
+    {
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+
+        await a.SetAsync<Animal>("plain", new Animal { Name = "a" }, OneMinute);
+        await a.SetAsync<Animal>("dog", new Dog { Name = "d", Breed = "b" }, OneMinute);
+
+        _shared.Get("methodcache:e:plain").Should().NotBeNull();
+        _shared.Get("methodcache:e:dog").Should().BeNull();
+        _logger.Messages.Should().ContainSingle(m => m.Message.Contains("SetAsync", StringComparison.Ordinal) && m.Message.Contains("Dog", StringComparison.Ordinal));
+        (await Load<Animal>(b, "dog", () => new Dog { Name = "d", Breed = "b" })).Should().BeOfType<Dog>();
+    }
+
+    public class Cyclic
+    {
+        public Cyclic? Next;
+    }
+
+    [Fact]
+    public async Task ValueTheSerializerThrowsOn_StaysInMemoryOnly_WithOneWarning()
+    {
+        var serializer = new CountingSerializer(new JsonCacheSerializer());
+        var (node, _) = CreateNode(serializer);
+
+        for (var i = 0; i < 3; i++)
+        {
+            var value = new Cyclic();
+            value.Next = value;
+            (await Load(node, "k" + i, () => value)).Next.Should().BeSameAs(value);
+        }
+
+        serializer.Writes.Should().Be(1, "once the type failed, the method's values of it aren't serialized again");
+        _logger.Messages.Count(m => m.Level == LogLevel.Warning).Should().Be(1);
+        _shared.Get("methodcache:e:k0").Should().BeNull();
+    }
+
     // ---------- The check runs once per method ----------
 
     private sealed class CountingSerializer(ISerializer inner) : ISerializer
     {
         public int Reads;
+        public int Writes;
 
         public string ContentType => inner.ContentType;
 
-        public void Serialize<T>(T value, IBufferWriter<byte> destination) => inner.Serialize(value, destination);
+        public void Serialize<T>(T value, IBufferWriter<byte> destination)
+        {
+            Interlocked.Increment(ref Writes);
+            inner.Serialize(value, destination);
+        }
 
         public T? Deserialize<T>(ReadOnlySequence<byte> source)
         {
@@ -204,22 +309,19 @@ public class DistributedSerializationTests
         serializer.Reads.Should().Be(2, "each method is checked on its own");
     }
 
-    private sealed class RecordingLogger : ILogger
+    [Fact]
+    public async Task RoundTripCheck_RunsOncePerRuntimeTypeOfAMethod()
     {
-        private readonly List<(LogLevel Level, string Message)> _messages = new();
+        var serializer = new CountingSerializer(new JsonCacheSerializer());
+        var (node, _) = CreateNode(serializer);
 
-        public IReadOnlyList<(LogLevel Level, string Message)> Messages
+        for (var i = 0; i < 3; i++)
         {
-            get { lock (_messages) return _messages.ToArray(); }
+            await Load<Animal>(node, "animal" + i, () => new Animal { Name = "a" });
+            await Load<Animal>(node, "dog" + i, () => new Dog { Name = "d" });
         }
 
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> formatter)
-        {
-            lock (_messages) _messages.Add((level, formatter(state, error)));
-        }
+        serializer.Reads.Should().Be(2, "an Animal and a Dog are each checked once");
+        Warnings.Should().Be(1, "the Dogs are kept in memory with one warning");
     }
 }

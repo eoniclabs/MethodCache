@@ -90,20 +90,26 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - A write that timed out (a large value, say) doesn't open the circuit breaker, since the cache may answer everything
   else: the instance logs a warning and keeps using it. Such a write may still land later, because a distributed cache
   has no compare-and-set, so its key is removed again after `CircuitBreakerDuration` (as after a write that failed,
-  once the cache answers). Until then the late value can replace a newer one, and a write that lands after that
-  removal stays until it expires.
+  once the cache answers). Further timed-out writes of the key push that one removal back, and an instance that shuts
+  down first removes the key while it shuts down. Until then the late value can replace a newer one, and a write that
+  lands after that removal stays until it expires.
 - Entries carry no checksum: damage that still reads as a valid value is served.
 
 ## Serialization
 
 Values are written as JSON with System.Text.Json, public fields included, so value tuples and structs with fields
-are shared as they are. The first value of each method that an instance writes is read back and written again; when
-that doesn't give the same bytes and type, the method's results stay in each instance's memory only, and one warning
-names the method and its return type. That happens with properties that have a private or protected setter, a derived
-type returned as its declared base type, and `object`, with JSON and MessagePack alike. Such results are never
-shared with missing data. To share them, register a serializer that reads them back, such as `JsonCacheSerializer`
-with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the setter, `[JsonDerivedType]`
-on the base type), or your own `ISerializer`. The `MethodCache.Serialization.MessagePack` package makes values
+are shared as they are. For each method and each type it returns, the first value an instance writes is read back and
+written again; when that doesn't give the same bytes and type, the method's values of that type stay in each
+instance's memory only, and one warning names the method and the type. That happens with properties that have a
+private or protected setter, public readonly fields of a type that also has a parameterless constructor, a derived
+type returned as its declared base type (an `Animal` method returning a `Dog`, even after it returned plain
+`Animal`s), and `object`, with JSON and MessagePack alike. A value the serializer throws on (a cycle, a delegate
+field) stays in memory the same way. A collection declared as an interface (`IReadOnlyList<int>`,
+`IEnumerable<int>`) may come back as another implementation, a `List<int>` for an array, and is still shared. The
+check looks at the type of the value itself, not of what it holds: a `Dog` inside a `List<Animal>` or in a property
+declared `Animal` is shared without its `Dog` data. To share such values, register a serializer that reads them back,
+such as `JsonCacheSerializer` with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the
+setter, `[JsonDerivedType]` on the base type), or your own `ISerializer`. The `MethodCache.Serialization.MessagePack` package makes values
 smaller and faster to read:
 
 <!-- snippet: distributed-messagepack -->

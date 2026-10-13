@@ -14,6 +14,16 @@ public class DistributedSerializationTests
         public static Account Create(int id) => new() { Id = id };
     }
 
+    public class Animal
+    {
+        public string Name { get; set; } = "";
+    }
+
+    public sealed class Dog : Animal
+    {
+        public string Breed { get; set; } = "";
+    }
+
     private readonly MethodCache.TestSupport.AtomicTestCache _shared = new();
     private readonly FakeTimeProvider _time = new();
 
@@ -52,5 +62,33 @@ public class DistributedSerializationTests
 
         Assert.Equal(1, calls);
         Assert.Equal(42, read.Id);
+    }
+
+    [Fact]
+    public async Task CollectionsDeclaredAsInterfaces_AreShared()
+    {
+        using var first = Instance();
+        using var second = Instance();
+        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync<IReadOnlyList<int>>("ids", (_, _) => ValueTask.FromResult<IReadOnlyList<int>>(new[] { 1, 2, 3 }));
+
+        var read = await second.GetRequiredService<ICacheManager>().GetOrCreateAsync<IReadOnlyList<int>>(
+            "ids", (_, _) => throw new InvalidOperationException("read from the distributed cache"));
+
+        Assert.Equal(new[] { 1, 2, 3 }, read);
+    }
+
+    [Fact]
+    public async Task DerivedValues_StayInMemory_EvenAfterBaseValuesWereShared()
+    {
+        using var first = Instance();
+        using var second = Instance();
+        var cache = first.GetRequiredService<ICacheManager>();
+        await cache.GetOrCreateAsync<Animal>("cat", (_, _) => ValueTask.FromResult(new Animal { Name = "cat" }));
+        await cache.GetOrCreateAsync<Animal>("rex", (_, _) => ValueTask.FromResult<Animal>(new Dog { Name = "rex", Breed = "collie" }));
+
+        var read = await second.GetRequiredService<ICacheManager>().GetOrCreateAsync<Animal>(
+            "rex", (_, _) => ValueTask.FromResult<Animal>(new Dog { Name = "rex", Breed = "collie" }));
+
+        Assert.Equal("collie", Assert.IsType<Dog>(read).Breed);
     }
 }

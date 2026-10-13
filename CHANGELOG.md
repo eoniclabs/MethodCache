@@ -41,17 +41,26 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
 - **Distributed cache**: a tag invalidation or clear another instance announces while a stamp read is on the wire is
   no longer forgotten (which promoted invalidated entries into memory). Invalidations queued during an outage are
   stored in batches, so a large backlog drains; more than 10,000, or one the cache keeps refusing, become one clear.
-  On shutdown the queue is tried once more and what is lost is logged. A write that times out no longer opens the
+  On shutdown the queue is tried once more, after a retry already running, and what is lost is logged. Keys whose
+  write timed out are removed at shutdown instead of after a delay nothing waits for, and further timed-out writes
+  of a key push its one removal back instead of adding another. A write that times out no longer opens the
   circuit breaker for the whole instance. A tag or clear stamp from a server whose clock runs ahead no longer turns
   every entry written since into a miss.
 - **Serialization**: the default `JsonCacheSerializer` includes public fields, so value tuples and structs with
-  fields are shared through the distributed cache instead of coming back empty. The first value each method writes
-  is read back; a method whose values don't survive that (private setters, a derived type returned as its base
-  type, `object`) stays in memory only, with one warning, instead of handing other instances a value with missing
-  data. Entries an earlier build wrote for types with public fields are read without those fields until they expire.
+  fields are shared through the distributed cache instead of coming back empty. For each method and each type it
+  returns, the first value written is read back; values that don't survive that (private setters, a derived type
+  returned as its base type, `object`) stay in memory only, with one warning, instead of handing other instances a
+  value with missing data. Collections declared as interfaces are still shared when they come back as another
+  implementation. A derived value nested in a collection or property isn't detected. Including fields changes two
+  things: a type with a public field the serializer can't write (a delegate, a reference back to the object) now
+  fails to serialize, and a public readonly field of a type with a parameterless constructor doesn't read back.
+  Both now stay in memory only with one warning; before, the field was left out and the rest was shared. A value the
+  serializer throws on now warns once per method and type instead of on every write. Entries an earlier build wrote
+  for types with public fields are read without those fields until they expire.
 - **Redis**: a connection factory that threw once (Redis down at first use) is asked again on the next call instead
   of failing until restart, and the backplane retries its subscription with backoff (1 s doubling to 30 s, a warning
-  per failure) instead of never subscribing. The docs now say to run Redis with `maxmemory-policy noeviction`: an evicted invalidation
+  per failure) instead of never subscribing. Once it subscribes after failing, it clears this instance's memory,
+  as after a reconnect, since invalidations sent meanwhile never arrived. The docs now say to run Redis with `maxmemory-policy noeviction`: an evicted invalidation
   stamp brings invalidated values back.
 - **SQL Server**: a `TagRetention` that ends after 9999-12-31 fails at startup instead of making every tag
   invalidation fail, and stamp expiry is capped there. Expired rows are deleted every 5 minutes instead of 30, so each

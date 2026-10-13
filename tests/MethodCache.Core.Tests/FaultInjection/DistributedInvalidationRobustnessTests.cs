@@ -3,6 +3,7 @@ using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -32,7 +33,7 @@ public class DistributedInvalidationRobustnessTests
     }
 
     private (InMemoryCacheManager Node, DistributedCacheLayer Layer) CreateNode(
-        IDistributedCache? cache = null, bool backplane = false, TimeProvider? time = null)
+        IDistributedCache? cache = null, bool backplane = false, TimeProvider? time = null, ILogger? logger = null)
     {
         time ??= _time;
         var layer = new DistributedCacheLayer(
@@ -45,7 +46,8 @@ public class DistributedInvalidationRobustnessTests
                 ClockSkewTolerance = TimeSpan.Zero,
             },
             backplane ? _hub.Join() : null,
-            time);
+            time,
+            logger);
 
         var node = new InMemoryCacheManager(
             new NullCacheMetricsProvider(),
@@ -286,6 +288,56 @@ public class DistributedInvalidationRobustnessTests
         await shutdown.WaitAsync(RealTimeLimit);
     }
 
+    /// <summary>A node whose invalidation of "key" was queued, and whose retry of it now hangs in the store.</summary>
+    private async Task<(ChaosDistributedCache Chaos, DistributedCacheLayer Layer)> RetryInFlight(RecordingLogger logger)
+    {
+        var (writer, _) = CreateNode();
+        (await Get(writer, "key", () => "old")).Should().Be("old");
+        _time.Advance(OneMillisecond);
+
+        var chaos = Chaos().Inject(ChaosOperations.Set | ChaosOperations.Remove, ChaosFault.HangUntilCancelled());
+        var (node, layer) = CreateNode(chaos, logger: logger);
+        var invalidation = node.InvalidateByKeysAsync("key");
+        _time.Advance(Timeout);
+        await invalidation.WaitAsync(RealTimeLimit);
+        layer.IsAvailable.Should().BeFalse();
+
+        var blocked = chaos.Blocked;
+        _time.Advance(BreakDuration); // the retry timer fires
+        await WaitUntil(() => chaos.Blocked > blocked);
+        return (chaos, layer);
+    }
+
+    [Fact]
+    public async Task ShutdownDuringARetry_WaitsForIt_AndStoresWhatItGaveBack()
+    {
+        var (chaos, layer) = await RetryInFlight(new RecordingLogger());
+        chaos.Heal();
+
+        var shutdown = layer.DisposeAsync().AsTask();
+        _time.Advance(Timeout); // the retry gives up, and shutdown stores the invalidation itself
+        await shutdown.WaitAsync(RealTimeLimit);
+
+        var (fresh, _) = CreateNode();
+        (await Get(fresh, "key", () => "new")).Should().Be("new", "the removal the retry gave back was stored at shutdown");
+    }
+
+    [Fact]
+    public async Task ShutdownDuringARetry_WhileTheStoreStaysDown_CountsWhatTheRetryGaveBackAsLost()
+    {
+        var logger = new RecordingLogger();
+        var (chaos, layer) = await RetryInFlight(logger);
+
+        var shutdown = layer.DisposeAsync().AsTask();
+        var started = chaos.FaultsStarted;
+        _time.Advance(Timeout); // the retry gives up
+        await WaitUntil(() => chaos.FaultsStarted > started);
+        _time.Advance(Timeout); // and so does shutdown's own try
+        await shutdown.WaitAsync(RealTimeLimit);
+
+        logger.Messages.Should().ContainSingle(m => m.Level == LogLevel.Warning && m.Message.Contains("shutting down with 1 invalidations", StringComparison.Ordinal));
+    }
+
     // ---------- One write that times out ----------
 
     [Fact]
@@ -309,6 +361,56 @@ public class DistributedInvalidationRobustnessTests
         // The write may still land after a removal it never saw, so the key is removed once it had time to
         _time.Advance(BreakDuration);
         await WaitUntil(() => _shared.Get("methodcache:r:big") != null);
+    }
+
+    [Fact]
+    public async Task SlowWrite_PendingRemoval_IsDoneAtShutdownInsteadOfAfterIt()
+    {
+        var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
+        {
+            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+        });
+        var (node, layer) = CreateNode(chaos);
+        var big = Get(node, "big", () => "large value");
+        _time.Advance(Timeout);
+        await big.WaitAsync(RealTimeLimit);
+
+        await layer.DisposeAsync().AsTask().WaitAsync(RealTimeLimit);
+        _shared.Get("methodcache:r:big").Should().NotBeNull("shutdown removes the key rather than leave a delay running");
+
+        // Nothing waits on the removal's delay any more, so nothing reaches the store after shutdown
+        var calls = chaos.Calls;
+        _time.Advance(BreakDuration);
+        await Task.Delay(50);
+        chaos.Calls.Should().Be(calls);
+    }
+
+    [Fact]
+    public async Task SlowWrites_OfOneKey_ShareOneRemoval()
+    {
+        var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
+        {
+            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+        });
+        var (_, layer) = CreateNode(chaos);
+        for (var i = 0; i < 3; i++)
+        {
+            var write = layer.WriteAsync("big", "large value", null, layer.Now, OneMinute);
+            _time.Advance(Timeout);
+            await write.WaitAsync(RealTimeLimit);
+        }
+
+        // What one removal costs the store
+        var before = chaos.Calls;
+        await layer.RemoveAsync(new[] { "other" });
+        var oneRemoval = chaos.Calls - before;
+
+        var calls = chaos.Calls;
+        _time.Advance(BreakDuration);
+        await WaitUntil(() => _shared.Get("methodcache:r:big") != null);
+        _time.Advance(BreakDuration);
+        await Task.Delay(50);
+        chaos.Calls.Should().Be(calls + oneRemoval, "the later writes pushed the one removal back instead of adding their own");
     }
 
     // ---------- A node whose clock runs ahead ----------

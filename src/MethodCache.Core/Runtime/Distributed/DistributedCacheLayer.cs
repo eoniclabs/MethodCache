@@ -72,8 +72,12 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly TimeSpan _breakDuration;
         private readonly ConcurrentDictionary<string, TagStamp> _tagStamps = new(StringComparer.Ordinal);
 
-        // Whether a method's values survive the serializer, by method and result type; see RoundTrips
-        private readonly ConcurrentDictionary<(string Method, Type Type), bool> _roundTrips = new();
+        // Whether a method's values survive the serializer, by method, declared and runtime type; see RoundTrips
+        private readonly ConcurrentDictionary<(string Method, Type Declared, Type Written), bool> _roundTrips = new();
+
+        // Methods with a value shared through the distributed cache, so a later value that can't be shared must
+        // remove it there
+        private readonly ConcurrentDictionary<string, byte> _sharedMethods = new(StringComparer.Ordinal);
 
         // Tag invalidations and clears other nodes announced so far
         private long _remoteInvalidations;
@@ -92,8 +96,11 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly HashSet<string> _pendingKeys = new(StringComparer.Ordinal);
         private readonly HashSet<string> _pendingTags = new(StringComparer.Ordinal);
         private volatile bool _hasPending;
+        private bool _flushedForShutdown;
         private ITimer? _retryTimer;
-        private int _flushing;
+
+        // One flush at a time: the retry timer skips a flush while one runs, shutdown waits for it
+        private readonly SemaphoreSlim _flushGate = new(1, 1);
         private int _refusedFlushes;
 
         private Action<string>? _onRemoteKeyInvalidated;
@@ -106,6 +113,10 @@ namespace MethodCache.Core.Runtime.Distributed
         private Task _subscriptionTask = Task.CompletedTask;
         private Task? _shutdownTask;
         private volatile bool _subscriptionWaitTimedOut;
+
+        // Keys whose write timed out, and when (in TimeProvider timestamps) to remove them; one removal per key
+        private readonly ConcurrentDictionary<string, long> _lateRemovals = new(StringComparer.Ordinal);
+        private readonly CancellationTokenSource _disposing = new();
 
         public DistributedCacheLayer(
             IDistributedCache cache,
@@ -291,6 +302,17 @@ namespace MethodCache.Core.Runtime.Distributed
                 return;
             }
 
+            // A method whose values of this type can't be shared isn't serialized again
+            if (value is not null && _roundTrips.TryGetValue(RoundTripKey(methodName, value), out var shareable) && !shareable)
+            {
+                if (replaces)
+                {
+                    await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                }
+
+                return;
+            }
+
             var buffer = new ArrayBufferWriter<byte>(256);
             WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, expiresAt, Convert(tags, StoredTag));
             var payloadStart = buffer.WrittenCount;
@@ -302,8 +324,13 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
                 catch (Exception ex)
                 {
-                    // Only this value can't be shared; the cache itself is fine
-                    _logger.LogWarning(ex, "MethodCache could not serialize a value of type {Type} for the distributed cache; it is cached in memory only.", typeof(T));
+                    // Only these values can't be shared; the cache itself is fine. Said once, like a value that
+                    // doesn't read back, rather than on every write.
+                    if (_roundTrips.TryAdd(RoundTripKey(methodName, value), false))
+                    {
+                        _logger.LogWarning(ex, "MethodCache could not serialize a value of type {Type} from {Method} for the distributed cache; its values of this type are cached in memory only.", value.GetType(), methodName ?? "SetAsync");
+                    }
+
                     _onError?.Invoke(ex);
 
                     // Other nodes must not keep the value this set replaced
@@ -318,13 +345,16 @@ namespace MethodCache.Core.Runtime.Distributed
                 // A value the serializer can't read back as it was would be a different value on every other node
                 if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))
                 {
-                    if (replaces)
+                    // An earlier value of the method (an Animal before this Dog, say) may still be there for the key
+                    if (replaces || _sharedMethods.ContainsKey(methodName ?? string.Empty))
                     {
                         await RemoveAsync(new[] { key }).ConfigureAwait(false);
                     }
 
                     return;
                 }
+
+                _sharedMethods.TryAdd(methodName ?? string.Empty, 0);
             }
 
             if (!TryEnter(out var probe))
@@ -345,7 +375,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 // reach fine: the breaker stays closed and reads go on. The write may still land, after a removal it
                 // never saw, so the key is removed everywhere once that write has had time to finish.
                 _logger.LogWarning("MethodCache could not write a value of type {Type} to the distributed cache within {Timeout}; it is removed from there again in {Delay}.", typeof(T), _timeout, _breakDuration);
-                _ = RemoveAfterLateWriteAsync(key);
+                ScheduleLateRemoval(key);
                 return;
             }
 
@@ -387,13 +417,17 @@ namespace MethodCache.Core.Runtime.Distributed
 
         /// <summary>
         /// Whether values of <typeparamref name="T"/> from <paramref name="methodName"/> come back from the serializer
-        /// as they were written, judged once, by the first one: it is read back and written again, both writes must
-        /// match, and so must the value's type. A method whose value doesn't (private setters, a derived type
-        /// returned as its base type, <c>object</c>) is kept in memory only, with one warning.
+        /// as they were written, judged once for each runtime type the method returns, by the first such value: it is
+        /// read back and written again, both writes must match, and so must the value's type. A collection declared
+        /// as an interface or abstract type may come back as another implementation of it (an array as a
+        /// <c>List&lt;T&gt;</c>, say), since only its elements are written. A value that doesn't come back (private
+        /// setters, a derived type returned as its base type, <c>object</c>) is kept in memory only, with one warning
+        /// per method and runtime type.
         /// </summary>
         private bool RoundTrips<T>(string? methodName, T value, ReadOnlyMemory<byte> payload)
         {
-            var method = (methodName ?? string.Empty, typeof(T));
+            var written = value!.GetType();
+            var method = RoundTripKey(methodName, value);
             if (_roundTrips.TryGetValue(method, out var known))
             {
                 return known;
@@ -409,7 +443,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     _serializer.Serialize(read, again);
                 }
 
-                roundTrips = read is not null && read.GetType() == value!.GetType() && again.WrittenSpan.SequenceEqual(payload.Span);
+                roundTrips = read is not null && SameType(typeof(T), written, read.GetType()) && again.WrittenSpan.SequenceEqual(payload.Span);
             }
             catch (Exception)
             {
@@ -419,18 +453,79 @@ namespace MethodCache.Core.Runtime.Distributed
             if (_roundTrips.TryAdd(method, roundTrips) && !roundTrips)
             {
                 _logger.LogWarning(
-                    "MethodCache keeps the results of {Method} ({Type}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type returned as its base type, or object. To share them between instances, register a serializer that does: a JsonCacheSerializer with your own JsonSerializerOptions or JsonSerializerContext (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or your own ISerializer.",
-                    methodName ?? "SetAsync", typeof(T), _serializer.GetType().Name);
+                    "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type returned as its base type, or object. To share them between instances, register a serializer that does: a JsonCacheSerializer with your own JsonSerializerOptions or JsonSerializerContext (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or your own ISerializer.",
+                    methodName ?? "SetAsync", written, typeof(T), _serializer.GetType().Name);
             }
 
             return _roundTrips[method];
         }
 
-        /// <summary>Removes a key whose write timed out, once that write had time to land.</summary>
+        private static (string Method, Type Declared, Type Written) RoundTripKey<T>(string? methodName, T value)
+            => (methodName ?? string.Empty, typeof(T), value!.GetType());
+
+        /// <summary>
+        /// Whether a value read back as <paramref name="read"/> is the value written as <paramref name="written"/>: the
+        /// same type, or, for a collection declared as an interface or abstract type, any implementation of it, since
+        /// only its elements are written and identical bytes mean identical elements.
+        /// </summary>
+        private static bool SameType(Type declared, Type written, Type read)
+            => read == written ||
+               ((declared.IsInterface || declared.IsAbstract) && declared != typeof(object) &&
+                typeof(System.Collections.IEnumerable).IsAssignableFrom(declared) && declared.IsAssignableFrom(read));
+
+        /// <summary>
+        /// Removes a key whose write timed out once that write had time to land. Another timed-out write of the key
+        /// pushes the removal back instead of adding one, so a slow cache doesn't pile up a delay per write.
+        /// </summary>
+        private void ScheduleLateRemoval(string key)
+        {
+            var due = _time.GetTimestamp() + (long)(_breakDuration.TotalSeconds * _time.TimestampFrequency);
+            while (true)
+            {
+                if (_lateRemovals.TryAdd(key, due))
+                {
+                    _ = RemoveAfterLateWriteAsync(key);
+                    return;
+                }
+
+                if (_lateRemovals.TryGetValue(key, out var scheduled) && _lateRemovals.TryUpdate(key, Math.Max(due, scheduled), scheduled))
+                {
+                    return;
+                }
+            }
+        }
+
         private async Task RemoveAfterLateWriteAsync(string key)
         {
-            await Task.Delay(_breakDuration, _time).ConfigureAwait(false);
-            await RemoveAsync(new[] { key }).ConfigureAwait(false);
+            try
+            {
+                while (_lateRemovals.TryGetValue(key, out var due))
+                {
+                    var wait = due - _time.GetTimestamp();
+                    if (wait > 0)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds((double)wait / _time.TimestampFrequency), _time, _disposing.Token).ConfigureAwait(false);
+                    }
+                    else if (_lateRemovals.TryRemove(new KeyValuePair<string, long>(key, due)))
+                    {
+                        await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                        return;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Disposed: shutdown removes the key along with the other queued invalidations (Dispose moved the
+                // keys scheduled before it; this is one scheduled after)
+                lock (_pendingLock)
+                {
+                    if (_lateRemovals.TryRemove(key, out _))
+                    {
+                        AddPending(new[] { key }, Array.Empty<string>());
+                        _hasPending = true;
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -561,7 +656,17 @@ namespace MethodCache.Core.Runtime.Distributed
                 {
                     _retryTimer?.Dispose();
                     _retryTimer = null;
+
+                    // Keys whose write timed out are removed with the queue at shutdown rather than after a delay
+                    // nobody waits for
+                    if (!_lateRemovals.IsEmpty)
+                    {
+                        AddPending(_lateRemovals.Keys, Array.Empty<string>());
+                        _lateRemovals.Clear();
+                        _hasPending = true;
+                    }
                 }
+                _disposing.Cancel();
                 _shutdownTask = ShutdownAsync();
             }
         }
@@ -600,6 +705,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return;
             }
 
+            // A retry the timer started is awaited first, so what it re-queues is retried here, or counted as lost
             await FlushAsync(force: true).ConfigureAwait(false);
 
             int lost;
@@ -608,6 +714,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 lost = _pendingKeys.Count + _pendingTags.Count;
                 _pendingKeys.Clear();
                 _pendingTags.Clear();
+                _flushedForShutdown = true;
             }
 
             if (lost > 0)
@@ -932,6 +1039,18 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         private void AddPending(IEnumerable<string> keys, IEnumerable<string> tags)
         {
+            if (_flushedForShutdown)
+            {
+                // Nothing reads the queue any more
+                var count = keys.Count() + tags.Count();
+                if (count > 0)
+                {
+                    _logger.LogWarning("MethodCache is shutting down with {Count} invalidations the distributed cache didn't accept; they are lost, so other instances may read the invalidated values from it until they expire.", count);
+                }
+
+                return;
+            }
+
             if (_pendingTags.Contains(ClearTag))
             {
                 return;
@@ -964,7 +1083,11 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         internal async Task FlushAsync(bool force = false)
         {
-            if (Interlocked.Exchange(ref _flushing, 1) != 0)
+            if (force)
+            {
+                await _flushGate.WaitAsync().ConfigureAwait(false);
+            }
+            else if (!_flushGate.Wait(0))
             {
                 return;
             }
@@ -1035,7 +1158,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
             finally
             {
-                Volatile.Write(ref _flushing, 0);
+                _flushGate.Release();
             }
         }
 
