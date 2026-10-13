@@ -8,6 +8,12 @@ release.
 
 ### If you used a pre-release build from GitHub Packages
 
+- **Generated `Add{Interface}WithCaching` methods are gone.** Combined with `AddMethodCache()` they registered the
+  service twice. Register the interface the usual way (with a factory if you need one), before `AddMethodCache()`.
+- **Keys for array and collection arguments.** The decorator now writes them into the key itself
+  (`ByIdsAsync:[3:1:2:3]`) instead of hashing them, so they also work under Native AOT. Distributed cache entries
+  written by a pre-release build for such methods are misses and expire normally.
+
 - **HTTP cache keys.** Keys are now length-framed, so every HTTP response cache key changes, including for requests
   without `Vary` headers. Entries written by a pre-release build are not read again; this applies to the built-in and
   to custom HTTP cache storage. Let them expire, or clear the storage namespace when you deploy.

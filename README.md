@@ -152,8 +152,8 @@ await cache.InvalidateByTagPatternAsync("tenant:7:*");   // in-memory only
 ```
 <!-- endSnippet -->
 
-Generated keys look like `MyApp.IUserService.GetUserAsync:42`, and `MethodCacheKeys` builds the same keys, so you
-never guess the format.
+Generated keys look like `MyApp.IUserService.GetUserAsync:42` (a record argument as `(alice:2)`, an array or list as
+`[3:1:2:3]`), and `MethodCacheKeys` builds the same keys, so you never guess the format.
 
 ### Configuration without redeploying
 
@@ -271,8 +271,9 @@ The same operations are available in code through `ICacheAdministrator`.
 
 ### Native AOT
 
-Registration and keys use no reflection. Under Native AOT, register the JSON serializer with your
-`JsonSerializerContext` (`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`):
+Registration uses no reflection, and neither do keys built from simple values, records, `ICacheKeyProvider` types and
+collections of them ([Native AOT](docs/features/native-aot.md#keys) lists the rest). Register the JSON serializer with
+your `JsonSerializerContext` (`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`):
 
 <!-- snippet: readme-native-aot -->
 ```cs

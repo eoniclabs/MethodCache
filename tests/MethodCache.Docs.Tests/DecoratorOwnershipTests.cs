@@ -53,11 +53,11 @@ public class DecoratorOwnershipTests
     }
 
     [Fact]
-    public void GeneratedFactory_NewInstance_DisposesOwnedInstance()
+    public void FactoryRegistration_NewInstance_DisposesOwnedInstance()
     {
         var inner = new OwnedSync();
         var services = new ServiceCollection();
-        services.AddIOwnedSyncWithCachingScoped(_ => inner);
+        services.AddScoped<IOwnedSync>(_ => inner);
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
         using (var scope = provider.CreateScope()) scope.ServiceProvider.GetRequiredService<IOwnedSync>();

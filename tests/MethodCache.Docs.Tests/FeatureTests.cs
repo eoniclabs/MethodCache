@@ -18,6 +18,7 @@ public class FeatureTests(ITestOutputHelper output)
         public Task<MyApp.User> GetAsync(int id) => Task.FromResult(new MyApp.User(id, "a"));
         public Task<List<MyApp.User>> SearchAsync(UserQuery query) => Task.FromResult(new List<MyApp.User>());
         public Task<List<MyApp.User>> ByIdsAsync(int[] ids) => Task.FromResult(new List<MyApp.User>());
+        public Task<int> CountAsync(Dictionary<string, int[]> filters) => Task.FromResult(filters.Count);
     }
 
     [Fact]
@@ -32,6 +33,7 @@ public class FeatureTests(ITestOutputHelper output)
         await users.GetAsync(42);
         await users.SearchAsync(new UserQuery("alice", 2));
         await users.ByIdsAsync([1, 2, 3]);
+        await users.CountAsync(new Dictionary<string, int[]> { ["age"] = [30, 40] });
 
         var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "MyApp.").Select(e => e.Key).ToList();
         foreach (var key in keys)
@@ -41,7 +43,8 @@ public class FeatureTests(ITestOutputHelper output)
 
         Assert.Contains("MyApp.IUserService.GetAsync:42", keys);
         Assert.Contains("MyApp.IUserService.SearchAsync:(alice:2)", keys);
-        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.ByIdsAsync:11b474c4", StringComparison.Ordinal) && !k.Contains(','));
+        Assert.Contains("MyApp.IUserService.ByIdsAsync:[3:1:2:3]", keys);
+        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.CountAsync:fc08ab0d", StringComparison.Ordinal) && !k.Contains("age"));
     }
 
     [Fact]

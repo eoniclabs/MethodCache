@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace MethodCache;
 
@@ -13,7 +14,9 @@ namespace MethodCache;
 /// escape <c>\</c> and <c>:</c>, and <c>null</c> is written as <c>\0</c>, so no two argument lists share a key.
 /// A record, class or struct argument whose public properties and fields are simple values is written as
 /// <c>({member1}:{member2}...)</c> in declaration order, and an <see cref="ICacheKeyProvider"/> as its
-/// <see cref="ICacheKeyProvider.CacheKeyPart"/>. Methods with other arguments, or a subclass of a declared record
+/// <see cref="ICacheKeyProvider.CacheKeyPart"/>. An array or collection of such values (records and classes only when
+/// sealed) is written as <see cref="Sequence{T}"/> writes it, after its runtime type name when that differs from the
+/// declared type. Methods with other arguments, or a subclass of a declared record
 /// or class, use the registered <see cref="MethodCache.Extensibility.ICacheKeyGenerator"/>, which
 /// produces <c>{Service}.{Method}[:v{Version}]:{hash}</c>; <see cref="Pattern"/> matches both forms.
 /// </remarks>
@@ -128,6 +131,36 @@ public static class MethodCacheKeys
 
     /// <summary>Formats a <see cref="DateTimeOffset"/> argument with full precision and its offset.</summary>
     public static string Part(DateTimeOffset value) => value.ToString("O", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Formats a collection argument as <c>[{count}:{element}:{element}...]</c>, and <c>null</c> as <see cref="Null"/>.
+    /// <paramref name="part"/> formats each element, and its text is escaped like a string part, so an element can't
+    /// read as two; the count keeps the last element apart from the next argument. No two argument lists share a key.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var key = MethodCacheKeys.For(typeof(IProductService), nameof(IProductService.GetMany),
+    ///     MethodCacheKeys.Sequence(ids, static id => MethodCacheKeys.Part(id)));
+    /// </code>
+    /// </example>
+    public static string Sequence<T>(IEnumerable<T>? values, Func<T, string> part)
+    {
+        ArgumentNullException.ThrowIfNull(part);
+        if (values is null)
+        {
+            return Null;
+        }
+
+        var builder = new StringBuilder();
+        var count = 0;
+        foreach (var value in values)
+        {
+            builder.Append(Separator).Append(Part(part(value)));
+            count++;
+        }
+
+        return string.Concat("[", count.ToString(CultureInfo.InvariantCulture), builder.ToString(), "]");
+    }
 
     /// <summary>Formats an enum argument by its numeric value, so renaming a member keeps existing keys.</summary>
     public static string Part<TEnum>(TEnum value) where TEnum : struct, Enum => Type.GetTypeCode(typeof(TEnum)) switch

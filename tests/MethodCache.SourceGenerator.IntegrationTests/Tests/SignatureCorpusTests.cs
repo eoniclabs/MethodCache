@@ -170,8 +170,8 @@ public class SignatureCorpusTests
                 public static class Scenario {
                     public static async Task<int> RunAsync() {
                         var services = new ServiceCollection();
+                        services.AddSingleton<ISvc>(_ => new Svc());
                         services.AddMethodCache();
-                        services.AddISvcWithCaching(_ => new Svc());
                         await using (var provider = services.BuildServiceProvider()) {
                             provider.GetRequiredService<ISvc>().Get(1);
                         }
