@@ -149,6 +149,13 @@ class StateTests(unittest.TestCase):
         state_tools.collect(self.state, 3, 24, 10240, paths=set())
         self.assertTrue((checkout / 'bin' / 'user.db').exists())
 
+    def test_full_collection_is_throttled_between_scheduled_passes(self):
+        from unittest.mock import patch
+        marker = self.state / 'last-macos-collection'; marker.touch(); os.utime(marker, (1000, 1000))
+        args = [str(SCRIPT), 'gc', '--state', str(self.state), '--min-interval-seconds', '3600']
+        with patch('sys.argv', args), patch.object(state_tools.time, 'time', return_value=1200), patch.object(state_tools, 'collect') as collect:
+            self.assertEqual(0, state_tools.main()); collect.assert_not_called()
+
     def test_retry_backoff_and_limit(self):
         record = state_tools.schedule_retry(self.state, self.sha, 3, now=1000)
         self.assertEqual(1, record['attempts'])

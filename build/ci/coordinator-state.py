@@ -145,7 +145,7 @@ def build_directories(checkout):
     return result, blocked
 
 
-def collect(state, keep_days, keep_failed_hours, max_mib, dry_run=False, now=None, paths=None):
+def collect(state, keep_days, keep_failed_hours, max_mib, dry_run=False, now=None, paths=None, only_run=None):
     now = time.time() if now is None else now
     paths = open_paths() if paths is None else paths
     root = state / 'macos' / 'runs'
@@ -154,6 +154,8 @@ def collect(state, keep_days, keep_failed_hours, max_mib, dry_run=False, now=Non
     entries = []
     actions = []
     for checkout in sorted(root.iterdir()):
+        if only_run and checkout.name != only_run:
+            continue
         match = RUN.fullmatch(checkout.name)
         if not match or checkout.is_symlink() or not checkout.is_dir() or checkout.stat().st_uid != os.getuid():
             continue
@@ -256,6 +258,7 @@ def main():
         if name == 'gc':
             p.add_argument('--keep-days', type=int, default=3); p.add_argument('--keep-failed-hours', type=int, default=24)
             p.add_argument('--max-mib', type=int, default=10240); p.add_argument('--dry-run', action='store_true')
+            p.add_argument('--only-run'); p.add_argument('--min-interval-seconds', type=int, default=0)
     args = parser.parse_args()
     if args.command in ('complete', 'passed'):
         return 0 if complete(args.directory, passed=args.command == 'passed') else 1
@@ -276,8 +279,17 @@ def main():
     else:
         if min(args.keep_days, args.keep_failed_hours, args.max_mib) < 1:
             raise ValueError('retention and budget must be positive')
-        for action in collect(state, args.keep_days, args.keep_failed_hours, args.max_mib, args.dry_run):
+        if args.only_run and not RUN.fullmatch(args.only_run):
+            raise ValueError('invalid checkout run ID')
+        marker = state / 'last-macos-collection'
+        if marker.is_symlink():
+            raise ValueError('symlinked collection marker refused')
+        if not args.only_run and not args.dry_run and marker.exists() and time.time() - marker.stat().st_mtime < args.min_interval_seconds:
+            return 0
+        for action in collect(state, args.keep_days, args.keep_failed_hours, args.max_mib, args.dry_run, only_run=args.only_run):
             print(json.dumps(action))
+        if not args.only_run and not args.dry_run:
+            marker.touch()
     return 0
 
 

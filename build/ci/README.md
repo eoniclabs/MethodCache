@@ -149,6 +149,8 @@ eligible checkouts sooner. Active/protected checkouts and failures within their 
 the budget rather than being deleted. Linux/Windows checkout age retention is unchanged. Result logs live
 separately under `runs/<run>/<platform>` and survive source-clone removal; they expire 14 days after the last
 report-directory update.
+Successful macOS output is collected immediately when that platform returns. Full retention/budget scans
+run at most once an hour, so the minute-by-minute coordinator does not repeatedly traverse all old clones.
 
 Settings in `~/.config/methodcache-ci/env`:
 

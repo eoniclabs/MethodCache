@@ -214,6 +214,9 @@ $body"
 
 run_macos() { # sha run_id results_dir
   with_timeout "$timeout_seconds" run_macos_jobs "$@"
+  local code=$?
+  collect_macos "$2"
+  return "$code"
 }
 
 run_macos_jobs() { # sha run_id results_dir
@@ -319,7 +322,6 @@ run_commit() { # sha pr(optional)
 
   [ -n "$pr" ] && comment_on "$pr" "$sha" "$run_dir" "$all_ok" "$minutes" "$run_id"
   log "run $run_id finished: $([ "$all_ok" -eq 1 ] && echo passed || echo failed)"
-  collect_macos
 }
 
 run_platform() { # platform sha run_id results_dir
@@ -346,8 +348,10 @@ run_platform() { # platform sha run_id results_dir
 }
 
 collect_macos() {
+  local scope=(--min-interval-seconds 3600)
+  [ -n "${1:-}" ] && scope=(--only-run "$1")
   python3 "$here/coordinator-state.py" gc --state "$state" --keep-days "$keep_runs_days" \
-    --keep-failed-hours "$keep_failed_hours" --max-mib "$max_macos_mib" || log "macOS checkout collection failed"
+    --keep-failed-hours "$keep_failed_hours" --max-mib "$max_macos_mib" "${scope[@]}" || log "macOS checkout collection failed"
 }
 
 comment_on() { # pr sha run_dir all_ok minutes run_id
