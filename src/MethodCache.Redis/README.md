@@ -2,6 +2,8 @@
 
 Redis as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache over Redis pub/sub.
 
+Backplane publication honors its cancellation token before sending and while waiting for a connection or Redis acknowledgement. Cancellation after a publish was sent cannot recall that message.
+
 ## Usage
 
 <!-- snippet: redis-basic -->
@@ -35,7 +37,7 @@ builder.Services.AddMethodCacheRedis(options =>
 <!-- endSnippet -->
 
 MethodCache doesn't dispose a shared connection; disposing the service provider only removes MethodCache's own
-subscriptions (`DisposeAsync` waits for that).
+subscriptions (`DisposeAsync` waits for that). A cancelled Redis unsubscribe acknowledgement does not fail application shutdown; the handler has already been removed locally.
 
 ## How it works
 

@@ -54,4 +54,10 @@ internal readonly struct RequestCacheDirectives
 
         return staleAllowed && MaxStale is { } maxStale && remaining.Negate() <= maxStale;
     }
+
+    /// <summary>The server's stale extensions cannot override the caller's explicit freshness limits.</summary>
+    public bool AcceptsStale(TimeSpan currentAge, TimeSpan freshnessLifetime)
+        => !NoCache && (MaxAge == null || currentAge <= MaxAge) &&
+           (MinFresh == null || freshnessLifetime - currentAge >= MinFresh) &&
+           (MaxStale == null || currentAge - freshnessLifetime <= MaxStale);
 }

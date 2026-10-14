@@ -558,6 +558,7 @@ static MethodCache.Infrastructure.CacheRuntimePolicy.Empty(string! methodId) -> 
 static MethodCache.Infrastructure.CacheRuntimePolicy.FromPolicy(string! methodId, MethodCache.Policies.CachePolicy! policy, MethodCache.Policies.CachePolicyFields fields, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> MethodCache.Infrastructure.CacheRuntimePolicy!
 static MethodCache.Infrastructure.CacheRuntimePolicy.FromResolverResult(MethodCache.Policies.PolicyResolutionResult! result) -> MethodCache.Infrastructure.CacheRuntimePolicy!
 static MethodCache.Infrastructure.CacheTagTemplates.Expand(MethodCache.Infrastructure.CacheRuntimePolicy! policy, string![]! parameterNames, string![]! values) -> MethodCache.Infrastructure.CacheRuntimePolicy!
+static MethodCache.Infrastructure.CacheTagTemplates.Expand(MethodCache.Infrastructure.CacheRuntimePolicy! policy, string![]! parameterNames, object?[]! values) -> MethodCache.Infrastructure.CacheRuntimePolicy!
 static MethodCache.Infrastructure.DecoratorServices.From(System.IServiceProvider! provider) -> MethodCache.Infrastructure.DecoratorServices!
 static MethodCache.Infrastructure.MethodCacheDecorators.All() -> System.Collections.Generic.IReadOnlyList<MethodCache.Infrastructure.DecoratorRegistration!>!
 static MethodCache.Infrastructure.MethodCacheDecorators.For(System.Reflection.Assembly! assembly) -> System.Collections.Generic.IReadOnlyList<MethodCache.Infrastructure.DecoratorRegistration!>!

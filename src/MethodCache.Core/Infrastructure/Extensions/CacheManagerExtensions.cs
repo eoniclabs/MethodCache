@@ -186,8 +186,11 @@ namespace MethodCache
             if (missingKeys.Count > 0)
             {
                 var bulkContext = new CacheContext(BulkMethodName, services);
-                var produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false);
                 var policy = CreateRuntimePolicy(FluentMethodName, options);
+                using var batch = FindMemoryManager(cacheManager)?.BeginBulkLoad(
+                    missingKeys.Where(key => skipCacheKeys == null || !skipCacheKeys.Contains(key))
+                        .Select(key => VersionedKey(key, options.Version)), policy);
+                var produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false);
 
                 foreach (var key in missingKeys)
                 {
@@ -203,12 +206,11 @@ namespace MethodCache
                     }
 
                     // A distributed hit or a concurrent publisher can win over this batch's candidate value.
-                    results[key] = await cacheManager.GetOrCreateFastAsync(
-                        VersionedKey(key, options.Version),
-                        FluentMethodName,
-                        () => Task.FromResult(value!),
-                        policy,
-                        cancellationToken).ConfigureAwait(false);
+                    var cacheKey = VersionedKey(key, options.Version);
+                    results[key] = await (batch != null
+                        ? batch.GetOrCreateAsync(cacheManager, cacheKey, () => Task.FromResult(value!), cancellationToken)
+                        : cacheManager.GetOrCreateFastAsync(cacheKey, FluentMethodName, () => Task.FromResult(value!), policy, cancellationToken))
+                        .ConfigureAwait(false);
                 }
             }
 
