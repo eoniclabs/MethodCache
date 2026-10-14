@@ -13,6 +13,8 @@ Copy this file into your project as agent instructions, for example as `.github/
 rule, a Claude Code skill or a section of `AGENTS.md`. It tells a coding agent how to add caching with MethodCache
 correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md
 
+Bulk source reads are guarded against key, tag and clear invalidation; invalidated candidates are not published. Collection subclasses with public state are hashed with both that state and their elements. Static tags do not format arguments, and templates format only the parameters they reference.
+
 ## Adding caching to a service
 
 1. The `MethodCache` package contains the library, the source generator and the analyzers. Nothing else is needed
@@ -318,7 +320,8 @@ public interface IUserService
   `ByIdsAsync:[3:1:2:3]`. Records and classes inside a collection must be sealed, since an unsealed element type
   could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
   collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
-  starts with that type, so an array and a list with the same elements stay two entries.
+  includes that type, so an array and a list with the same elements stay two entries. Unknown collection subclasses passed through a base class or interface use the key generator so their own runtime state is preserved.
+- **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the default, JSON and MessagePack key generators.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
   generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **Framework types** are written by their value wherever they appear, not by their public properties; see
@@ -607,6 +610,8 @@ the tag `order:{org}` on both the cached call and the invalidation.
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
 share one tag; it is reported as [MCG015](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md).
+
+Static tags never format method arguments. A template formats only the parameters it references, in the invariant culture; an unrelated argument's `ToString()` is not invoked.
 
 Tags set in startup code, `appsettings.json` or runtime overrides can use templates too, with any parameter of the
 method. They are added to the `[Cache]` attribute's tags, so the attribute's `[CacheInvalidate]` tags keep working;
@@ -1056,6 +1061,8 @@ version)` (leave out `version` for an unversioned entry) instead of building it 
 
 ## Many keys at once
 
+Key, tag and clear invalidation also guard the batch factory while it reads its source. Its caller can receive the in-flight result, but invalidated candidates are not published into memory or the distributed cache. Individual callers can still load and publish these keys during the batch; a fresh concurrent value wins.
+
 `GetOrCreateManyAsync` checks the local cache for every key, looks up the local misses in the distributed cache,
 and calls the factory once with the keys neither holds. Each key gets the value the cache selects: memory first, then
 the distributed cache, then the factory. A bulk read therefore agrees with individual reads of the same keys, even
@@ -1218,6 +1225,10 @@ The [package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/Metho
 limits and metrics. This page covers the rules the cache follows and how to write your own storage. See
 [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md#methodcachehttpcaching) for the threat model.
 
+A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
+
+Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch; the current response reaches its caller, and the next request fetches and stores the new schema.
+
 ## Freshness and validation
 
 - Stale-while-revalidate and stale-if-error are optional. Response `no-cache` requires successful validation before
@@ -1376,6 +1387,8 @@ builder.Services.AddMethodCacheRedis("localhost:6379");   // MethodCache.Redis
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.SqlServer
 ```
+
+Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: an older unresolved gap uses a locking read to distinguish commit from rollback. Query failures leave it available for retry.
 
 ## How it works
 
@@ -1824,6 +1837,9 @@ Under Native AOT, give cached methods arguments that the decorator writes into t
 - arrays, lists and sets of those (records and classes in them must be sealed), and dictionaries whose keys and values
   are simple values.
 
+Collection subclasses with their own public state also use the key generator; implement `ICacheKeyProvider` on
+these types when using Native AOT. Plain lists, arrays and sets keep their inline keys.
+
 Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
 serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,
 IL3050) from `MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
@@ -1911,7 +1927,7 @@ under the same OS user from local credential files.
 
 | Threat | What MethodCache does |
 |---|---|
-| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MCG018. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
+| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MCG018. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. Collection subclasses include their own public state alongside their elements in every key generator. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
 | An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id. |
 | A tag built from user text invalidates someone else's entries | **Not prevented.** Tags are plain text: `"user:{userId}"` with the id `"1:orders"` is the same tag that `"user:{userId}:orders"` gives user 1, so invalidating one also removes the other. This only ever removes entries (they are loaded again); it never serves one caller's value to another. Use ids that can't contain your separator (`int`, `Guid`) in tag templates. |
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
@@ -1946,7 +1962,7 @@ authorization too.
 | Threat | What MethodCache does |
 |---|---|
 | Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports; explicitly supplied cookie headers isolate callers. Unknown transports, and handlers inside the primary transport, bypass caching unless explicitly verified and opted in with `AllowUnverifiedTransport`. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
-| A 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` keeps its previous value. |
+| A 200 or 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` on a 304 keeps its previous value. Unstorable full replacements also retire the old body, and selection-rule changes retire its URL epoch. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
 | A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
@@ -1999,6 +2015,8 @@ Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core),
 MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
 
 HTTP age arithmetic saturates during response correction and resident-time accumulation, so an extreme upstream Age value cannot overflow the freshness calculation. `ResponseDelayReviewTests` covers these input boundaries.
+
+Bulk publication guards are tested during key, tag and clear invalidation; in-flight batch results cannot resurrect invalidated entries. Collection-state properties and the generator signature corpus cover tenant/scope state on collection subclasses.
 
 
 ---
@@ -2378,6 +2396,8 @@ Migrate one service at a time; both caches can run side by side.
 
 Redis as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache over Redis pub/sub.
 
+Backplane publication honors its cancellation token before sending and while waiting for a connection or Redis acknowledgement. Cancellation after a publish was sent cannot recall that message.
+
 ## Usage
 
 ```cs
@@ -2405,7 +2425,7 @@ builder.Services.AddMethodCacheRedis(options =>
 ```
 
 MethodCache doesn't dispose a shared connection; disposing the service provider only removes MethodCache's own
-subscriptions (`DisposeAsync` waits for that).
+subscriptions (`DisposeAsync` waits for that). A cancelled Redis unsubscribe acknowledgement does not fail application shutdown; the handler has already been removed locally.
 
 ## How it works
 
@@ -2556,7 +2576,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
-- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again for a few seconds; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
+- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again without blocking for five seconds. An older unresolved gap is checked with a locking read before it is forgotten: a commit delivers its invalidation, and a rollback proves its identity absent. A failed query preserves the gap for retry; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
 
@@ -2784,6 +2804,10 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 That is all. Your typed client keeps calling `GetAsync` as before.
 
+A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
+
+Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch; the current response reaches its caller, and the next request fetches and stores the new schema.
+
 ## What it does
 
 | The server sends | What happens on the next request |
@@ -2903,6 +2927,8 @@ Background HTTP revalidation preserves the request HTTP version, version policy 
 
 # MethodCache.Serialization.MessagePack
 
+When using `MessagePackKeyGenerator`, collection subclasses include their own public properties and fields as well as their elements in the key. Collections with different scope or tenant state cannot share a cached result.
+
 Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack
 instead of the default System.Text.Json: smaller entries and faster reads.
 
@@ -2973,6 +2999,16 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+### Project review fixes
+
+- Bulk factory results invalidated during their source read are not published; concurrent individual writes still win.
+- Collection subclasses keep their public state in default, JSON and MessagePack keys. Collection subtypes needing runtime-state serialization now use hashed keys; earlier inline keys for those subtypes become cold misses.
+- Static tags skip argument formatting, and dynamic tags format only referenced parameters.
+- Redis backplane publication honors cancellation, and cancelled unsubscribe acknowledgements no longer fail application shutdown. SQL backplane gaps survive slow transactions until a locking read confirms commit or rollback.
+- HTTP full replacement responses retire older entries when they cannot be stored. Stale-while-revalidate honors request freshness limits, and concurrent first variants share an index without hiding each other. Variant indexes outlive their bodies, and selection-rule changes retire the URL epoch.
+- Memory benchmarks measure fresh fills and real tag invalidations; short-lived entries use the intended duration.
+- SQL Server pins patched PKCS dependency versions for [CVE-2026-84008](https://github.com/advisories/GHSA-846f-f764-76mx), restoring the high-severity dependency audit gate.
 
 ### Remove retained compatibility code
 

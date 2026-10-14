@@ -32,7 +32,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [MethodCache.AspNetCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.AspNetCore/README.md): Admin endpoints and a health check for MethodCache's in-memory cache.
 - [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): OpenTelemetry metrics and traces for MethodCache.
 - [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`, revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached response.
-- [MethodCache.Serialization.MessagePack](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Serialization.MessagePack/README.md): Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack instead of the default System.Text.Json: smaller entries and faster reads.
+- [MethodCache.Serialization.MessagePack](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Serialization.MessagePack/README.md): When using `MessagePackKeyGenerator`, collection subclasses include their own public properties and fields as well as their elements in the key.
 - [Changelog](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/CHANGELOG.md): Changes that a user of the packages notices.
 
 ## Optional

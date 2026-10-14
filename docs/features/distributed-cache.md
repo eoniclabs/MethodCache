@@ -17,6 +17,8 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 ```
 <!-- endSnippet -->
 
+Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: an older unresolved gap uses a locking read to distinguish commit from rollback. Query failures leave it available for retry.
+
 ## How it works
 
 - Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before

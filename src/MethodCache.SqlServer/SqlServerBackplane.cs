@@ -14,7 +14,8 @@ namespace MethodCache.SqlServer;
 /// </summary>
 /// <remarks>
 /// Identity values are handed out before transactions commit, so a row can become visible after a row with a
-/// higher id was already read. Ids skipped that way are remembered as gaps and looked up again for a few seconds.
+/// higher id was already read. Skipped ids are remembered as gaps; after five seconds a locking read resolves
+/// commit or rollback before they can be forgotten. A failed query leaves them for retry.
 /// Ids taken by rows of other prefixes sharing the table are committed, so they are not kept as gaps.
 /// When this instance could not poll for longer than the table keeps rows, it may have missed invalidations, so it
 /// clears its in-memory cache.
@@ -273,7 +274,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         // All discovery state is staged. A query or callback failure cannot consume a cursor or a gap id.
         // READPAST skips rows that are still committing, as read committed snapshot does, so an open insert never
         // blocks the poll. A skipped row below a later one becomes a gap and arrives once it commits.
-        var gaps = _gaps.Where(gap => now - gap.SeenAt <= GapLifetime)
+        var gaps = _gaps
             .Select(gap => gap with { Delivered = new HashSet<long>(gap.Delivered) }).ToList();
         var sql = $"""
             SELECT TOP (@batch) [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
@@ -316,7 +317,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
             if (gaps.Count > 0)
             {
-                gaps = await ReadGapsAsync(connection, gaps, messages, cancellationToken).ConfigureAwait(false);
+                gaps = await ReadGapsAsync(connection, gaps, messages, now, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -331,23 +332,28 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     /// Applications with other prefixes share the identity column, so most skipped ids belong to their rows. Any
     /// committed row, whatever its scope, proves its id is no longer pending, so only ids absent from the table stay
     /// watched. The ids are read first: a row they show is committed, so the second query returns it if it is ours.
-    /// Locked rows are skipped, so another application's open transaction neither blocks this read nor hides a
-    /// pending id. Only ids leave the query for other scopes, never their content.
+    /// Locked rows are initially skipped; old gaps use a locking read to resolve commit or rollback before they
+    /// are forgotten. Only ids leave the query for other scopes, never their content.
     /// </remarks>
-    private async Task<List<GapRange>> ReadGapsAsync(SqlConnection connection, List<GapRange> gaps, List<BackplaneMessage> messages, CancellationToken cancellationToken)
+    private async Task<List<GapRange>> ReadGapsAsync(SqlConnection connection, List<GapRange> gaps, List<BackplaneMessage> messages, DateTime now, CancellationToken cancellationToken)
     {
+        // READPAST cannot distinguish a rolled-back identity from a transaction still holding its row. Before
+        // dropping an old gap, a locking read must resolve it. Commit delivers the row; rollback proves it absent.
+        // A timeout leaves all discovery state intact, so the next poll retries instead of losing the invalidation.
+        var resolvesOldGaps = gaps.Any(gap => now - gap.SeenAt > GapLifetime);
+        var hint = resolvesOldGaps ? "READCOMMITTEDLOCK" : "READPAST";
         var ranges = string.Join(" OR ", gaps.Select((_, i) => $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"));
         var sql = $"""
             SELECT MIN([Id]), MAX([Id])
             FROM (
                 SELECT [Id], [Id] - ROW_NUMBER() OVER (ORDER BY [Id]) AS [Island]
-                FROM {_options.QualifiedInvalidationsTableName} WITH (READPAST)
+                FROM {_options.QualifiedInvalidationsTableName} WITH ({hint})
                 WHERE {ranges}) AS [Taken]
             GROUP BY [Island]
             ORDER BY MIN([Id]);
 
             SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
-            FROM {_options.QualifiedInvalidationsTableName} WITH (READPAST)
+            FROM {_options.QualifiedInvalidationsTableName} WITH ({hint})
             WHERE [Scope] = @scope AND ({ranges});
             """;
 
@@ -381,7 +387,8 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             }
         }
 
-        return RemoveTaken(gaps, taken);
+        var remaining = RemoveTaken(gaps, taken);
+        return resolvesOldGaps ? remaining.Where(gap => now - gap.SeenAt <= GapLifetime).ToList() : remaining;
     }
 
     /// <summary>Splits <paramref name="gaps"/> around the sorted, disjoint <paramref name="taken"/> ranges.</summary>

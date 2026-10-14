@@ -50,6 +50,15 @@ internal static class HttpCacheKeys
         return headers.OrderBy(h => h, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
+    /// <summary>Concurrent first writers with the same selection rules share one namespace within the URL epoch.</summary>
+    public static string ForSelectingHeaders(string[] selectingHeaders)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var header in selectingHeaders.OrderBy(static h => h, StringComparer.OrdinalIgnoreCase))
+            Append(hash, header.ToLowerInvariant());
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
     /// <summary>
     /// The variant key starts with the URL key, so a variant is only found through its own URL and method.
     /// Returns <c>null</c> for <c>Vary: *</c>, which is never served from cache.

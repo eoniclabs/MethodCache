@@ -27,7 +27,8 @@ public interface IUserService
   `ByIdsAsync:[3:1:2:3]`. Records and classes inside a collection must be sealed, since an unsealed element type
   could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
   collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
-  starts with that type, so an array and a list with the same elements stay two entries.
+  includes that type, so an array and a list with the same elements stay two entries. Unknown collection subclasses passed through a base class or interface use the key generator so their own runtime state is preserved.
+- **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the default, JSON and MessagePack key generators.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
   generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **Framework types** are written by their value wherever they appear, not by their public properties; see

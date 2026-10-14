@@ -13,6 +13,10 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 That is all. Your typed client keeps calling `GetAsync` as before.
 
+A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
+
+Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch; the current response reaches its caller, and the next request fetches and stores the new schema.
+
 ## What it does
 
 | The server sends | What happens on the next request |

@@ -460,10 +460,10 @@ namespace MethodCache.SourceGenerator
                 {
                     // Tags such as "user:{userId}" get this call's arguments, matching what [CacheInvalidate] removes
                     var names = string.Join(", ", tagParameters.Select(p => $"\"{p}\""));
-                    var values = string.Join(", ", tagParameters.Select(p => FormatTagArgument(method, p)));
+                    var values = string.Join(", ", method.Parameters.Select(Utils.ParameterIdentifier));
                     sb.AppendLine($"            var __mcPolicy = {policy};");
-                    sb.AppendLine("            if (__mcPolicy.Tags.Count > 0)");
-                    sb.AppendLine($"                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] {{ {names} }}, new[] {{ {values} }});");
+                    sb.AppendLine("            if (global::System.Linq.Enumerable.Any(__mcPolicy.Tags, static __mcTag => __mcTag.Contains('{')))");
+                    sb.AppendLine($"                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] {{ {names} }}, new object?[] {{ {values} }});");
                     policy = "__mcPolicy";
                 }
 
@@ -579,6 +579,17 @@ namespace MethodCache.SourceGenerator
                         }
                         else
                         {
+                            // The runtime collection can add public state even if its declared base/interface
+                            // has none. Only exact concrete types and known plain framework collections inline.
+                            if (param.Type is INamedTypeSymbol { TypeKind: TypeKind.Interface } && GetSequenceElementType(param.Type) is { } element)
+                            {
+                                var elementType = Utils.GetFullyQualifiedName(element);
+                                exactTypeChecks.Add($"({name} is null || {name} is {elementType}[] || {name}.GetType() == typeof(global::System.Collections.Generic.List<{elementType}>) || {name}.GetType() == typeof(global::System.Collections.Generic.HashSet<{elementType}>))");
+                            }
+                            else
+                            {
+                                exactTypeChecks.Add($"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}))");
+                            }
                             // Another runtime type than the declared one (an array and a list behind IEnumerable<T>, a
                             // subclass of List<T>) is written before the elements, so equal elements in two collection
                             // types stay two arguments. A type name never starts like a sequence or null does.
@@ -609,7 +620,7 @@ namespace MethodCache.SourceGenerator
             {
                 expression = string.Empty;
                 var element = GetSequenceElementType(type);
-                if (element == null)
+                if (element == null || HasCollectionState(type))
                 {
                     return false;
                 }
@@ -638,6 +649,18 @@ namespace MethodCache.SourceGenerator
 
                 expression = $"global::MethodCache.MethodCacheKeys.Sequence({name}, static {item} => {part})";
                 return true;
+            }
+
+            private static bool HasCollectionState(ITypeSymbol type)
+            {
+                for (var current = type as INamedTypeSymbol; current != null && !IsFrameworkType(current); current = current.BaseType)
+                {
+                    if (current.GetMembers().Any(member => !member.IsStatic && member.DeclaredAccessibility == Accessibility.Public &&
+                        (member is IFieldSymbol || member is IPropertySymbol { IsIndexer: false, GetMethod.DeclaredAccessibility: Accessibility.Public }) &&
+                        !member.GetAttributes().Any(attribute => attribute.AttributeClass?.Name is "JsonIgnoreAttribute" or "IgnoreDataMemberAttribute" or "IgnoreMemberAttribute")))
+                        return true;
+                }
+                return false;
             }
 
             /// <summary>

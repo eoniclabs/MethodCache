@@ -6,6 +6,16 @@ release.
 
 ## Unreleased (1.0.0)
 
+### Project review fixes
+
+- Bulk factory results invalidated during their source read are not published; concurrent individual writes still win.
+- Collection subclasses keep their public state in default, JSON and MessagePack keys. Collection subtypes needing runtime-state serialization now use hashed keys; earlier inline keys for those subtypes become cold misses.
+- Static tags skip argument formatting, and dynamic tags format only referenced parameters.
+- Redis backplane publication honors cancellation, and cancelled unsubscribe acknowledgements no longer fail application shutdown. SQL backplane gaps survive slow transactions until a locking read confirms commit or rollback.
+- HTTP full replacement responses retire older entries when they cannot be stored. Stale-while-revalidate honors request freshness limits, and concurrent first variants share an index without hiding each other. Variant indexes outlive their bodies, and selection-rule changes retire the URL epoch.
+- Memory benchmarks measure fresh fills and real tag invalidations; short-lived entries use the intended duration.
+- SQL Server pins patched PKCS dependency versions for [CVE-2026-84008](https://github.com/advisories/GHSA-846f-f764-76mx), restoring the high-severity dependency audit gate.
+
 ### Remove retained compatibility code
 
 The previous memory engine benchmark baseline is removed, and current runtime-key benchmarks have descriptive

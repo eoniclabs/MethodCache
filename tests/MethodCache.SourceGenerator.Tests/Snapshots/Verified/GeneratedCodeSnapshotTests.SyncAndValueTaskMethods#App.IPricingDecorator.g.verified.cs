@@ -84,8 +84,8 @@ namespace App
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
             var __mcPolicy = __mcSnapshot.Policy;
-            if (__mcPolicy.Tags.Count > 0)
-                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku", "quantity" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null"), (global::System.Convert.ToString((object?)__mcArgument1, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
+            if (global::System.Linq.Enumerable.Any(__mcPolicy.Tags, static __mcTag => __mcTag.Contains('{')))
+                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku", "quantity" }, new object?[] { __mcArgument0, __mcArgument1 });
             return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0!, __mcArgument1).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
@@ -119,8 +119,8 @@ namespace App
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
             var __mcPolicy = __mcSnapshot.Policy;
-            if (__mcPolicy.Tags.Count > 0)
-                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
+            if (global::System.Linq.Enumerable.Any(__mcPolicy.Tags, static __mcTag => __mcTag.Contains('{')))
+                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku" }, new object?[] { __mcArgument0 });
             return new global::System.Threading.Tasks.ValueTask<string?>(__Load_Method1(__mcKey, __mcPolicy, __mcArgument0!));
         }
 

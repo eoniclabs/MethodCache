@@ -4,6 +4,8 @@ Copy this file into your project as agent instructions, for example as `.github/
 rule, a Claude Code skill or a section of `AGENTS.md`. It tells a coding agent how to add caching with MethodCache
 correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md
 
+Bulk source reads are guarded against key, tag and clear invalidation; invalidated candidates are not published. Collection subclasses with public state are hashed with both that state and their elements. Static tags do not format arguments, and templates format only the parameters they reference.
+
 ## Adding caching to a service
 
 1. The `MethodCache` package contains the library, the source generator and the analyzers. Nothing else is needed

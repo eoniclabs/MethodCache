@@ -85,11 +85,33 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
 
         private static class FormatterCache<T>
         {
-            internal static readonly IMessagePackFormatter<T>? Instance =
-                !typeof(T).IsValueType && !typeof(T).IsSealed && typeof(T) != typeof(Type)
+            internal static readonly IMessagePackFormatter<T>? Instance = KeyCollectionState.For(typeof(T)).Length > 0
+                ? new CollectionStateFormatter<T>()
+                : !typeof(T).IsValueType && !typeof(T).IsSealed && typeof(T) != typeof(Type)
                     ? new PolymorphicKeyFormatter<T>()
                     : TypelessContractlessStandardResolver.Instance.GetFormatter<T>();
         }
+    }
+
+    private sealed class CollectionStateFormatter<T> : IMessagePackFormatter<T>
+    {
+        public void Serialize(ref MessagePackWriter writer, T value, MessagePackSerializerOptions options)
+        {
+            if (value is null) { writer.WriteNil(); return; }
+            if (value.GetType() != typeof(T)) { ObjectFormatter.Serialize(ref writer, value, options); return; }
+            var members = KeyCollectionState.For(typeof(T));
+            writer.WriteArrayHeader(2);
+            writer.WriteMapHeader(members.Length);
+            foreach (var member in members)
+            {
+                writer.Write(member.Name);
+                ObjectFormatter.Serialize(ref writer, member.Read(value), options);
+            }
+            TypelessContractlessStandardResolver.Instance.GetFormatterWithVerify<T>().Serialize(ref writer, value, options);
+        }
+
+        public T Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+            => throw new NotSupportedException("Cache keys are hashed, never deserialized.");
     }
 
     private sealed class PolymorphicKeyFormatter<T> : IMessagePackFormatter<T>

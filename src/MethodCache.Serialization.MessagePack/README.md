@@ -1,5 +1,7 @@
 # MethodCache.Serialization.MessagePack
 
+When using `MessagePackKeyGenerator`, collection subclasses include their own public properties and fields as well as their elements in the key. Collections with different scope or tenant state cannot share a cached result.
+
 Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack
 instead of the default System.Text.Json: smaller entries and faster reads.
 

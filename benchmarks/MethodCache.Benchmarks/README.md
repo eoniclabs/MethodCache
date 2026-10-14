@@ -4,6 +4,8 @@ Which benchmark answers which question, and how to run it. Measured results, wit
 came from, are in [docs/benchmarks.md](../../docs/benchmarks.md); this page quotes no numbers, because they depend on
 the machine and are only meaningful next to the run that produced them.
 
+Memory scenarios use a fresh invocation identity for each `CacheFillUp` run, so warm-up cannot turn measured fills into hits. `FrequentInvalidation` reloads the tagged entries each batch. Short-lived entries have a 50 ms duration, and large/data entries carry the tags their invalidation removes.
+
 ## Which benchmark to use
 
 | Question | Benchmark | Command |
