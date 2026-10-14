@@ -46,6 +46,11 @@ cleanup() {
   local containers
   containers=$(docker ps --all --quiet --filter "label=$label")
   if [ -n "$containers" ]; then docker rm --force $containers > /dev/null; fi
+  # Results stay in artifacts/ci for transfer; only successful, closed build output is disposable.
+  if [ "${failed:-1}" -eq 0 ] && command -v python3 >/dev/null 2>&1; then
+    python3 "$repo_dir/build/ci/storage_gc.py" --completed-build "$repo_dir" --apply \
+      || echo "Build-output collection deferred; the host's scheduled collector will retry." >&2
+  fi
 }
 trap cleanup EXIT
 
