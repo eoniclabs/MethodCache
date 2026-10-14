@@ -114,10 +114,25 @@ class StorageTests(unittest.TestCase):
         subprocess.run(['git', '-C', str(p), '-c', 'user.name=test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'collector'], check=True)
         source = (SCRIPT.parent / 'linux.sh').read_text()
         cleanup = source[source.index('cleanup()'):source.index('trap cleanup EXIT')]
-        script = 'repo_dir=' + shlex.quote(str(p)) + '\nlabel=test; failed=0\ndocker() { :; }\n' + cleanup + '\ncleanup\n'
+        script = 'repo_dir=' + shlex.quote(str(p)) + '\nlabel=test; failed=0; collect_output=true\ndocker() { :; }\n' + cleanup + '\ncleanup\n'
         result = subprocess.run(['/bin/bash', '-c', script], capture_output=True, text=True, timeout=90)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse((p / 'bin').exists())
+
+    @unittest.skipIf(os.name == 'nt', 'Linux runner shell integration')
+    def test_partial_linux_invocation_keeps_outputs_for_later_no_build_jobs(self):
+        import shlex, shutil
+        p = self.project()
+        scripts = p / 'build/ci'; scripts.mkdir(parents=True)
+        shutil.copy2(SCRIPT, scripts / 'storage_gc.py')
+        subprocess.run(['git', '-C', str(p), 'add', 'build'], check=True)
+        subprocess.run(['git', '-C', str(p), '-c', 'user.name=test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'collector'], check=True)
+        source = (SCRIPT.parent / 'linux.sh').read_text()
+        cleanup = source[source.index('cleanup()'):source.index('trap cleanup EXIT')]
+        script = 'repo_dir=' + shlex.quote(str(p)) + '\nlabel=test; failed=0; collect_output=false\ndocker() { :; }\n' + cleanup + '\ncleanup\n'
+        result = subprocess.run(['/bin/bash', '-c', script], capture_output=True, text=True, timeout=90)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue((p / 'bin/app.dll').exists())
 
     def archive(self, age=100000):
         import datetime

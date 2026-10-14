@@ -177,6 +177,9 @@ The coordinator's age sweep alone cannot prevent a busy server filling its disk 
 `storage_gc.py` runs independently every 15 minutes, including when there are no new CI jobs. Linux
 also collects ignored generated output immediately after a successful `linux.sh` run. Failed jobs
 keep their generated output for 24 hours. Workstations use a 24-hour idle window for local output.
+Immediate collection defaults to the full Linux suite. Explicit subsets such as `linux.sh build`
+preserve outputs for a later `--no-build` test/demo invocation; opt in with
+`METHODCACHE_CI_COLLECT_BUILD_OUTPUT=true`, or set it to `false` to keep full-suite output for inspection.
 
 Install a separate private JSON configuration on each host. Paths must be absolute and must not
 contain symlinks/junctions. Do not configure a whole home directory as a disposable archive root.

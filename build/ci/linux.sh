@@ -14,14 +14,17 @@
 #   METHODCACHE_CI_CACHE        NuGet package cache kept between runs (default: ~/.cache/methodcache-ci)
 #   METHODCACHE_CI_SHARED_LOCK  a lock file to hold shared while running, e.g. a build server's capacity lease
 #   METHODCACHE_CI_DOCKER_ARGS  extra `docker run` arguments, e.g. proxy settings
+#   METHODCACHE_CI_COLLECT_BUILD_OUTPUT  true/false; default true for the full suite, false for explicit job subsets
 #   The jobs' own settings (FRAMEWORK, DIFF_COVERAGE_*, PROPERTY_*, METHODCACHE_SOAK_SECONDS, MUTATION_ARGS) are
 #   passed into the container when set.
 set -euo pipefail
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 jobs=("$@")
+collect_output="${METHODCACHE_CI_COLLECT_BUILD_OUTPUT:-false}"
 if [ ${#jobs[@]} -eq 0 ]; then
   jobs=(build demo tests diffcoverage properties soak cultures aot packages docs)
+  collect_output="${METHODCACHE_CI_COLLECT_BUILD_OUTPUT:-true}"
 fi
 
 run_id="${METHODCACHE_CI_RUN_ID:-local-$$}"
@@ -47,7 +50,7 @@ cleanup() {
   containers=$(docker ps --all --quiet --filter "label=$label")
   if [ -n "$containers" ]; then docker rm --force $containers > /dev/null; fi
   # Results stay in artifacts/ci for transfer; only successful, closed build output is disposable.
-  if [ "${failed:-1}" -eq 0 ] && command -v python3 >/dev/null 2>&1; then
+  if [ "${failed:-1}" -eq 0 ] && [ "${collect_output:-false}" = true ] && command -v python3 >/dev/null 2>&1; then
     python3 "$repo_dir/build/ci/storage_gc.py" --completed-build "$repo_dir" --apply \
       || echo "Build-output collection deferred; the host's scheduled collector will retry." >&2
   fi
