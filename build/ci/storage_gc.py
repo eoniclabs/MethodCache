@@ -234,7 +234,7 @@ def archive_info(path, cfg, now):
         report = Path(cfg['reports']) / path.name / 'macos' if cfg.get('reports') else path / 'artifacts/ci'
         if not plain(report):
             return None
-        if (report / 'finished').is_file():
+        if (report / 'finished').is_file() and plain(report / 'finished'):
             finished = (report / 'finished').stat().st_mtime
             exits = [report / (n + '.exit') for n in MC_JOBS[cfg.get('platform', 'macos' if cfg.get('reports') else 'linux')]]
             passed = (report / 'finished').read_text().strip() in ('', '0') and all(
@@ -257,7 +257,7 @@ def archive_info(path, cfg, now):
                    'skribera-media': ('result.json', 'source.iso'),
                    'skribera-upload': ('source.tar.gz',),
                    'skribera-log': ('external-ci.log',)}
-        if kind not in markers or not any((path / m).is_file() for m in markers[kind]):
+        if kind not in markers or not any((path / m).is_file() and plain(path / m) for m in markers[kind]):
             return None
         if (path / '.git').exists():
             if not clean_source(path):
@@ -265,6 +265,8 @@ def archive_info(path, cfg, now):
             snapshot = False
     metadata = path / '.ci-last-used.json'
     if metadata.exists():
+        if not plain(metadata):
+            return None
         try:
             record = json.loads(metadata.read_text())
             if kind == 'skribera-windows-workspace':
@@ -464,7 +466,7 @@ def run(config, apply):
                 continue
             for p in root.iterdir():
                 marker = p / 'collected-at'
-                if plain(p) and marker.is_file() and now - marker.stat().st_mtime >= config.get('log_keep_days', 14) * 86400 and not active(p, paths):
+                if plain(p) and plain(marker) and marker.is_file() and now - marker.stat().st_mtime >= config.get('log_keep_days', 14) * 86400 and not active(p, paths):
                     remove_tree(p)
                     emit('remove-retained-logs', p)
     if errors:
