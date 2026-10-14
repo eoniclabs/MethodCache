@@ -73,6 +73,10 @@ job_cultures() {
 job_aot() {
   dotnet publish tests/MethodCache.AotSmokeTest --configuration Release --runtime linux-x64 --output artifacts/aot-smoke
   artifacts/aot-smoke/MethodCache.AotSmokeTest
+  rm -rf artifacts/aot-corpus
+  dotnet run --project tests/MethodCache.SignatureCorpus.Export --configuration Release -- artifacts/aot-corpus
+  dotnet publish artifacts/aot-corpus/Corpus.csproj --configuration Release --runtime linux-x64 --output artifacts/aot-corpus-native
+  artifacts/aot-corpus-native/Corpus
 }
 
 job_packages() {

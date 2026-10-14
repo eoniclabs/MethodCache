@@ -15,6 +15,10 @@ public class VendorCompatibilityTests
     public void FrozenImages_MatchRecordedHashes()
     {
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1/manifest.json")));
+        Assert.Matches("^[0-9a-f]{40}$", manifest.RootElement.GetProperty("source_commit").GetString()!);
+        Assert.DoesNotContain("candidate", manifest.RootElement.GetProperty("package_version").GetString()!, StringComparison.OrdinalIgnoreCase);
+        Assert.Matches("^[0-9a-f]{64}$", manifest.RootElement.GetProperty("core_net8_sha256").GetString()!);
+        Assert.Matches("^[0-9a-f]{64}$", manifest.RootElement.GetProperty("generator_sha256").GetString()!);
         foreach (var image in manifest.RootElement.GetProperty("images").EnumerateArray())
         {
             var name = image.GetProperty("file").GetString()!;

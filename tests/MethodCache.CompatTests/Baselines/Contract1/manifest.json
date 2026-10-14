@@ -1,19 +1,29 @@
 {
   "contract": 1,
-  "source_commit": "candidate; freeze after implementation commit",
-  "package_version": "1.0.0-g41513d3566",
+  "source_commit": "9294adb3bd562b502d18a428d452b0bc40199515",
+  "package_version": "1.0.0-g9294adb3bd",
+  "core_net8_sha256": "1a70774afc8db825252060dbad0fae2d419f92c2179168e8e7eb4f8447d84200",
+  "generator_sha256": "faeb6f6a01eb9edecc2b0651ce2e482a0e89890210d2359311feca80d6211b38",
+  "sources": {
+    "source/Incompatible/Incompatible.csproj": "64ea7c21f356e4f7fcc77cf2d93904c4d37e889f3400e2d99a1fa0285b88438e",
+    "source/Incompatible/Module.cs": "a463f8060f86072acf36f1abe718eb1b848376dd63df2a0ab46a9e4388924327",
+    "source/ThirdParty/Client.cs": "a6acf749f8e114ce54bca4c5d6bd09579e5337710c1523c99168813565cc683a",
+    "source/ThirdParty/ThirdParty.csproj": "473ebbd7a12d1b46a6e2f3e8f3f61daf93ceb426433f123c517d0395a2650eed",
+    "source/Vendor/Services.cs": "4a92b56767b27e962fd31bbe668f9af5c40b860d960a4c0000e43e1cfbad90f8",
+    "source/Vendor/Vendor.csproj": "60a78830b57a9c0643b2c5d6a07e7b4f266a4d785ca6bb7282a6eccf03d0c603"
+  },
   "images": [
     {
-      "file": "FrozenVendor.Contract1.dll",
-      "sha256": "b3202d6eadbf923ecd39f9915ff4b1fc98253aa79cc3005700d6d82162fdb272"
+      "file": "FrozenVendor.ThirdParty.dll",
+      "sha256": "0c04fa60a407815d9d8ef573eda503f2ab53d2ecd10c6c31d24d6d88501ba186"
     },
     {
-      "file": "FrozenVendor.ThirdParty.dll",
-      "sha256": "8bbc0e0713470d075e97934d567f3dc199c24486f05c9fcfb433a6abc831f685"
+      "file": "FrozenVendor.Contract1.dll",
+      "sha256": "18a21d41a3f909334887f94c8389641f86e966b80b260970a220f8a22f126ec9"
     },
     {
       "file": "FrozenVendor.Contract99.dll",
-      "sha256": "66066a122b9fc1c14bf724fe5ddaeb884486f7d6bbca602cb71387f4152652c7"
+      "sha256": "7c34e96164d848ebbf02d70495ba50fdc5d24eddc4abedce9f52c9544b32ec05"
     }
   ]
 }

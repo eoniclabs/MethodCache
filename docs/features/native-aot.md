@@ -6,6 +6,9 @@ and those keys at build time. CI publishes a test application with Native AOT on
 caching (with simple, record, collection and `ICacheKeyProvider` arguments), explicit `AutoRegister(ServiceLifetime)` registration and
 `[assembly: CacheInterface]` work.
 
+CI also compiles the complete supported signature corpus with Native AOT. This checks generated signatures and
+ref safety across all key forms; reflection-based fallback cases retain the runtime limitations described below.
+
 ## In-memory caching
 
 Nothing to do: the in-memory cache stores your objects as they are, without serializing them.

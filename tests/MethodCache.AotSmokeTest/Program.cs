@@ -31,6 +31,8 @@ await using (var scope = provider.CreateAsyncScope())
 var prices = provider.GetRequiredService<IPriceService>();
 await prices.GetPriceAsync("ABC");
 await prices.GetPriceAsync("ABC");
+await prices.GenericAsync<int>(42);
+await prices.GenericAsync<int>(42);
 
 var rates = provider.GetRequiredService<IRatesClient>();
 await rates.GetRateAsync("EUR", "SEK");
@@ -62,9 +64,9 @@ if (UserService.Calls != 1)
     failures.Add($"IUserService implementation called {UserService.Calls} times, expected 1");
 }
 
-if (PriceService.Calls != 1)
+if (PriceService.Calls != 2)
 {
-    failures.Add($"IPriceService implementation called {PriceService.Calls} times, expected 1");
+    failures.Add($"IPriceService implementation called {PriceService.Calls} times, expected 2");
 }
 
 if (RatesClient.RateCalls != 1)
@@ -86,14 +88,25 @@ if (CatalogService.Calls != 4)
 var frozenServices = new ServiceCollection();
 var frozenInner = new FrozenVendor.Contract1.Service();
 frozenServices.AddSingleton<FrozenVendor.Contract1.IService>(frozenInner);
+frozenServices.AddSingleton<FrozenVendor.ThirdParty.IClient, FrozenVendor.ThirdParty.Client>();
+frozenServices.AddScoped<FrozenVendor.Contract1.IRepository<string>, FrozenVendor.Contract1.StringRepository>();
 frozenServices.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1.Marker>());
 await using (var frozenProvider = frozenServices.BuildServiceProvider())
 {
     var frozen = frozenProvider.GetRequiredService<FrozenVendor.Contract1.IService>();
     if (frozen.Read(42) != 1 || frozen.Read(42) != 1 || await frozen.ReadAsync(42) != 2 || await frozen.ReadAsync(42) != 2)
         failures.Add("Frozen vendor return shapes did not preserve caching.");
+    if (await frozen.ReadValueAsync(42) != 3 || await frozen.ReadValueAsync(42) != 3)
+        failures.Add("Frozen vendor ValueTask did not preserve caching.");
     await frozen.UpdateAsync(42);
-    if (frozen.Read(42) != 3) failures.Add("Frozen vendor tag invalidation failed.");
+    if (frozen.Read(42) != 4) failures.Add("Frozen vendor tag invalidation failed.");
+    var client = frozenProvider.GetRequiredService<FrozenVendor.ThirdParty.IClient>();
+    if (await client.ReadAsync(42) != 1 || await client.ReadAsync(42) != 1)
+        failures.Add("Frozen third-party CacheInterface did not preserve caching.");
+    await using var scope = frozenProvider.CreateAsyncScope();
+    var repository = scope.ServiceProvider.GetRequiredService<FrozenVendor.Contract1.IRepository<string>>();
+    if (await repository.ReadAsync(42) != "1" || await repository.ReadAsync(42) != "1")
+        failures.Add("Frozen closed generic interface did not preserve caching.");
 }
 
 foreach (var failure in failures)
@@ -127,6 +140,9 @@ public interface IPriceService
 {
     [Cache(Duration = "00:01:00")]
     Task<decimal> GetPriceAsync(string symbol);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> GenericAsync<T>(int id);
 }
 
 public sealed class PriceService : IPriceService
@@ -139,6 +155,12 @@ public sealed class PriceService : IPriceService
     {
         Interlocked.Increment(ref _calls);
         return Task.FromResult(42m);
+    }
+
+    public Task<int> GenericAsync<T>(int id)
+    {
+        Interlocked.Increment(ref _calls);
+        return Task.FromResult(id);
     }
 }
 
