@@ -277,7 +277,7 @@ def archive_info(path, cfg, now):
                 return None
             if kind == 'skribera-workspace' and (git(path, 'rev-parse', 'HEAD') or '')[:12] != record.get('shaPrefix'):
                 return None
-            finished = dt.datetime.fromisoformat(record['lastUsed']).timestamp()
+            finished = dt.datetime.fromisoformat(record['lastUsed'].replace('Z', '+00:00')).timestamp()
             passed = record.get('outcome') == 'success'
         except (ValueError, KeyError, TypeError):
             return None
