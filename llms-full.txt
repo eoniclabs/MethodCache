@@ -231,12 +231,14 @@ and routes cached calls through MethodCache. Your implementation stays ordinary 
 
 The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`, overloaded methods, generic
 interfaces and generic methods, including interfaces nested in generic containing types. Constraints on both
-the containing type and the interface, including `unmanaged`, are preserved. Each overload has its own
+the containing type and the interface, including `unmanaged` and base class constraints, are preserved, and so are
+`scoped` parameters on forwarded members. Each overload has its own
 [method id](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson) and its own cache entries.
 
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
-implement them. An interface with non-public abstract members is rejected with
+implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
+[MCG017](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg017). An interface with non-public abstract members is rejected with
 [MCG013](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg013), because the decorator can't call those members on the implementation.
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
@@ -304,6 +306,8 @@ public interface IUserService
   starts with that type, so an array and a list with the same elements stay two entries.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
   generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
+- **Framework types** are written by their value wherever they appear, not by their public properties; see
+  [Framework types](#framework-types). Other framework types are a build error.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.
@@ -313,6 +317,8 @@ public interface IUserService
   different keys, and so do two `Circle`s behind a `Shape` property that differ only in `Radius`.
 - A `CancellationToken` parameter is never part of the key.
 - Keys don't depend on the current culture: `-1`, `1.5` and dates are written the same under every culture.
+- `0.0` and `-0.0` are two keys in every key form (`1 / x` tells them apart). `NaN` and the infinities work anywhere,
+  also inside a hashed argument, such as `double.PositiveInfinity` as a "no limit" value in a filter record.
 
 On .NET 9 and later the decorator writes simple keys into a stack buffer and looks them up without allocating.
 
@@ -332,6 +338,27 @@ public sealed class TenantId(Guid value) : ICacheKeyProvider
     public string CacheKeyPart => _value.ToString("N");
 }
 ```
+
+## Framework types
+
+Types from .NET itself often keep their value out of their public properties (`BigInteger` has `IsZero` and
+`Sign`, `IPAddress.ScopeId` throws for IPv4), so writing those would give different values one key. These go through
+the key generator, which writes their value, in an argument of their own or inside a record, collection or tuple:
+
+- `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`, `DateOnly`, `TimeOnly`
+- `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`
+- `Uri`, `Version`, `IPAddress` (`IPAddress.Loopback` and `IPAddress.Parse("127.0.0.1")` share a key)
+- `JsonElement`, as its JSON, so `{"a":1}` and `{ "a": 1 }` share a key
+- `Index`, `Range`, `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane`, `Matrix3x2`, `Matrix4x4`
+- ASP.NET Core's `PathString`, `QueryString` and `HostString`
+- arrays, collections, `Memory<T>`, `Tuple`, `ValueTuple` and `KeyValuePair` of these
+
+Any other type from .NET itself, ASP.NET Core or Microsoft.Extensions in a key (one from an assembly named
+`System.*`, `Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`), such as `StringBuilder` (which can change after
+the call), `CultureInfo`, `Stream`, `Type` or a delegate, is build error
+[MCG018](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg018), also as a property of your own record. Pass a value that identifies
+it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`. Other libraries' models, such
+as an SDK's classes in a `Microsoft.*` namespace, are written by their public properties like your own types.
 
 ## Readable keys while debugging
 
@@ -363,7 +390,10 @@ public interface IDocumentStore
 }
 ```
 
-Strings are used as they are. Numbers, dates and other formattable values are written in the invariant culture;
+Strings are used as they are. Dates are written as in generated keys (`MethodCacheKeys.Part`), in the round-trip
+format (`2026-01-01T12:00:00.2500000Z`): fractions of a second and a `DateTimeOffset`'s offset are part of the key,
+and a local `DateTime` is written as UTC, so the key doesn't depend on the server's time zone and a local time and the
+UTC time of the same instant share an entry. Numbers and other formattable values are written in the invariant culture;
 any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
 prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
 your own code builds, never for text a caller controls; see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
@@ -403,6 +433,12 @@ var overload = MethodCacheKeys.For(
   [Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#versions).
 - **Overloaded methods** have their parameter types in their keys, so overloads never share entries. See
   [method ids](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson).
+- **A method name that another interface in the hierarchy also declares** gets the same treatment. Keys start with
+  the decorated interface, so for `ICatalog : ILookup` with `ILookup.Find(int)` and `ICatalog.Find(string)` the keys
+  are `MyApp.ICatalog.Find(int):7` and `MyApp.ICatalog.Find(string):7`. When two base interfaces declare the same
+  signature, the declaring interface is added too: for `IC : IA, IB` that both declare `Get(int)`, the keys are
+  `MyApp.IC.MyApp.IA.Get(int):1` and `MyApp.IC.MyApp.IB.Get(int):1`. Policy ids don't change; each
+  method keeps the id of the interface that declares it.
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
@@ -1033,6 +1069,10 @@ builder.Services.AddMethodCache(config => config
   for example `FxVendor.IFxRatesClient.GetRateAsync`.
 - List each interface once. It must be non-generic and come from another assembly; for your own interfaces, put
   `[Cache]` on the methods. A method with overloads can't be listed yet.
+- The attribute can live in a class library, such as your infrastructure project. `AddMethodCache()` finds it in
+  every loaded assembly that references MethodCache, even when none of the library's code has run yet. The runtime
+  loads a library when code that uses one of its types runs, so a library your application never uses in code is
+  not searched; registering one of its types, or `typeof` of one, is enough.
 - Mistakes are build errors: [MCG010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
   static abstract or non-public abstract members), [MCG011](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg011) (a method that is
   missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg012) (an
@@ -1523,7 +1563,8 @@ builder.Services.AddConsoleCacheMetrics();   // "Cache Hit: ...", "Cache Miss: .
 ```
 
 Or implement the interface. Each cached call is reported once, as a hit or a miss; errors and load times are reported
-when your method runs:
+when your method runs. `methodName` is the method id, such as `MyApp.IUserService.GetUserAsync`, the same id the admin
+endpoints list (a generic interface reports its closed type, such as `IRepository<User>.Get`):
 
 ```cs
 public sealed class CountingMetrics : ICacheMetricsProvider
@@ -1787,7 +1828,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 
 | Threat | What MethodCache does |
 |---|---|
-| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
+| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MCG018. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
 | An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id. |
 | A tag built from user text invalidates someone else's entries | **Not prevented.** Tags are plain text: `"user:{userId}"` with the id `"1:orders"` is the same tag that `"user:{userId}:orders"` gives user 1, so invalidating one also removes the other. This only ever removes entries (they are loaded again); it never serves one caller's value to another. Use ids that can't contain your separator (`int`, `Guid`) in tag templates. |
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
@@ -1849,7 +1890,7 @@ With the default options, nothing that identifies a person or an argument leaves
 
 | Signal | Recorded by default | Opt-in |
 |---|---|---|
-| Span attributes | method name, hit or miss, TTL, group, version, number of keys invalidated; on failure the exception type, message and stack trace | `RecordCacheKeys` (a SHA-256 hash of the key, or the key itself with `HashCacheKeys = false`); `RecordCacheTags` (tags and invalidation patterns, which contain argument values when built from templates) |
+| Span attributes | method id, hit or miss, TTL, group, version, number of keys invalidated; on failure the exception type, message and stack trace | `RecordCacheKeys` (a SHA-256 hash of the key, or the key itself with `HashCacheKeys = false`); `RecordCacheTags` (tags and invalidation patterns, which contain argument values when built from templates) |
 | Span baggage | the correlation and invalidation ids you set | `ExportSensitiveData` adds the user and tenant ids |
 | Metrics | dimensions `method`, `group`, `version`, `error.type`, and `client` and `outcome` for HTTP caching | none: tags, keys and URLs are never metric dimensions |
 
@@ -1896,6 +1937,9 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   class itself, or calling the method from inside the class (`this.GetAsync(...)`), skips it.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
   makes every key different. List the keys to check ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)).
+- **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error
+  [MCG018](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg018): its key would not follow its value. Pass a string or an id instead
+  ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, the result is `null` with
   `CacheNullValues = false`, or the call threw. Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
@@ -1914,6 +1958,13 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   [Redis or SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) so invalidations reach all of them. With a custom
   `IDistributedCache`, also register an `IBackplane`.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)).
+
+## Results stay out of the distributed cache
+
+A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
+warning [MCG019](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg019). The serializer can't tell which class to create when it reads
+such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
+only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
 
 ## Keys look different than expected
 
@@ -1978,6 +2029,9 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
 | [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
 | [MCG016](#mcg016) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
+| [MCG017](#mcg017) | Warning | `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member | |
+| [MCG018](#mcg018) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
+| [MCG019](#mcg019) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 
 ## MC0001
 
@@ -2069,7 +2123,8 @@ instead). It is also reported when the attribute lists no methods. See the [thir
 ## MCG011
 
 `[assembly: CacheInterface]` lists a method that is missing, overloaded or static, or one that `[Cache]` would reject:
-it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, or returns a lazy sequence. Use
+it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, a framework type without a key
+form ([MCG018](#mcg018)), or returns a lazy sequence. Use
 `nameof(IClient.Method)` so a rename is caught by the compiler. See the
 [third-party caching page](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md).
 
@@ -2104,6 +2159,48 @@ attribute.
 The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for
 parameters `name` and `Name`. Use the intended parameter's exact spelling. Until corrected, the placeholder remains
 literal in both cached tags and invalidation.
+
+## MCG017
+
+`[Cache]` or `[CacheInvalidate]` is on an interface member the decorator can't intercept: a `static` member, a
+`private` or other non-public member with a body, or a `sealed` one. The decorator implements the interface for a
+class, and a class can't implement those members, so calls to them never reach the cache and the attribute does
+nothing. Put the attribute on a public interface method without `static`, `private` or `sealed` (one without a body,
+or a public default method), or remove it.
+
+## MCG018
+
+A key argument has a type from .NET itself, ASP.NET Core or Microsoft.Extensions (an assembly named `System.*`,
+`Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`) that the cache key can't be written from: the
+argument itself, an element of a collection or tuple, or a public property or field of your own type, such as
+`StringBuilder`, `CultureInfo`, `Stream`, `Type` or a `Func<T>`. Their public properties don't hold their value, or the
+value can change after the call (a `StringBuilder`), so two different arguments could share a key and one caller
+would get another's result. The message names the value, such as `'note.Text' is a 'StringBuilder'`.
+
+Pass a value that identifies it instead, such as a string, an id or a culture name, or wrap it in a type that
+implements `ICacheKeyProvider` (see [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)). The key ignores the rest of the
+arguments when one has `[CacheKey(UseAsRawKey = true)]`, so the error is not reported then.
+
+Framework types with a key form are written by their value: `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`,
+`DateOnly`, `TimeOnly`, `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`, `Uri`, `Version`, `IPAddress` and
+`JsonElement` (as its JSON, so whitespace doesn't count), `Index`, `Range`, `Vector2`, `Vector3`, `Vector4`,
+`Quaternion`, `Plane`, `Matrix3x2`, `Matrix4x4`, and ASP.NET Core's `PathString`, `QueryString` and `HostString`, as
+well as arrays, collections, `Memory<T>`, tuples and `KeyValuePair` of those. Models from other libraries, such as
+an SDK's classes in a `Microsoft.*` namespace, are not framework types: they are written by their public properties
+like your own.
+
+## MCG019
+
+The cached method's result type, after `Task<T>` or `ValueTask<T>`, is `object`, an interface such as `IComparable` or
+`IShape`, or an abstract class, or has one as an element (`List<object>`). A distributed cache stores results as
+JSON or MessagePack of the declared type, which can't say which class to create when it reads them back. When a
+distributed cache is used, the default round-trip check finds that such a result doesn't read back, and keeps it in the
+in-memory cache only. Collection interfaces such as
+`IReadOnlyList<Product>` are fine; they are read back as a list.
+
+Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
+cache. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
+`#pragma warning disable MCG019` or `<NoWarn>` in the project.
 
 
 ---
@@ -2527,7 +2624,7 @@ Spans come from the `MethodCache` activity source. Lookups and misses are named 
 | Attribute | Description | Example |
 |-----------|-------------|---------|
 | `cache.operation` | `cache.get` or `cache.delete` | `cache.get` |
-| `cache.method` | Method name, or the invalidation call | `MyApp.IUserService.GetUserAsync` |
+| `cache.method` | Method id, or the invalidation call | `MyApp.IUserService.GetUserAsync` |
 | `cache.hit` | Whether the value came from the cache | `true` |
 | `cache.key` | The key, with `RecordCacheKeys` and `HashCacheKeys = false` | `MyApp.IUserService.GetUserAsync:42` |
 | `cache.key_hash` | Base64 SHA-256 of the key, with `RecordCacheKeys` | `3q2+7w...=` |
@@ -2546,7 +2643,9 @@ A failed operation also sets the span status to Error and adds an `exception` ev
 ## Metrics
 
 Metric dimensions are kept to values with few variants (`method`, `group`, `version`, `error.type`), so a tag such
-as `user:42` never becomes a time series of its own.
+as `user:42` never becomes a time series of its own. `method` is the method id that `GET /methodcache/methods` and
+`appsettings.json` use, such as `MyApp.IUserService.GetUserAsync`, so `IUserService.GetAsync` and
+`IOrderService.GetAsync` are two series; a generic interface reports its closed type, such as `IRepository<User>.Get`.
 
 | Metric | Type | Description | Dimensions |
 |--------|------|-------------|------------|
@@ -2770,6 +2869,9 @@ covers the other key generators.
 
 MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
 
+`IPAddress` and `JsonElement` arguments are written as their text (a `JsonElement` as its JSON), like the other key
+generators do, instead of their properties; keys of such arguments change.
+
 
 ---
 
@@ -2850,6 +2952,32 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
 - **SQL Server**: a `TagRetention` that ends after 9999-12-31 fails at startup instead of making every tag
   invalidation fail, and stamp expiry is capped there. Expired rows are deleted every 5 minutes instead of 30, so each
   delete stays small.
+- **Generated decorators** compile for generic methods constrained to a base class (`where T : Entity`), keep
+  `scoped` on forwarded parameters, escape U+2028/U+2029 in tag and group literals, skip `file` classes when picking
+  an implementation to register, and no longer clash (CS0436) with a referenced project's generated code through
+  `InternalsVisibleTo`. `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member is now
+  warning MCG017 instead of being ignored. The IDE builds each decorator once per edit, not once per cached method.
+- **Keys**: two cached methods with the same name on different interfaces of one hierarchy (`ICatalog : ILookup`, or
+  `IC : IA, IB`) no longer share entries; their keys add the parameter types, and the declaring interface when the
+  signatures are equal. `-0.0` and `0.0` are two keys in hashed keys too, `NaN` and infinities inside a hashed argument
+  no longer throw, and `[CacheKey(UseAsRawKey = true)]` dates are written like generated keys: they keep fractions of a second and
+  their offset, and a local time is written as UTC, so the key doesn't depend on the server's time zone. Keys of
+  these methods and arguments change, so their entries from an earlier build are misses.
+- **Metrics and spans** name a cached method by its id (`MyApp.IUserService.GetAsync`) instead of its bare name, so
+  same-named methods on different interfaces are separate series, as the OpenTelemetry README shows. A method
+  inherited from a generic interface reports the closed type it comes from, so `IUserRepo : IRepository<User>` and
+  `IOrderRepo : IRepository<Order>` report `IRepository<User>.Get` and `IRepository<Order>.Get`.
+- **Framework types in keys**: `BigInteger`, `Complex`, `IPAddress`, `JsonElement`, `Half`, `Int128`, `DateOnly`,
+  `Uri`, `Version` and other immutable .NET types are written by their value, in every key generator and inside
+  records and collections. Before, the decorator wrote `BigInteger`'s `IsZero` and `Sign`, so 3 and 5 shared one
+  entry, and `IPAddress` threw. Other types from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as
+  `StringBuilder` or `CultureInfo`, are now build error MCG018 instead of a key that ignores their value. Keys of arguments with these
+  types change, so their entries from an earlier build are misses.
+- **Result types a distributed cache can't restore** (`object`, an interface or an abstract class, also as an
+  element) get warning MCG019: with a distributed cache, the default round-trip check keeps those results in memory
+  only.
+- **`[assembly: CacheInterface]` in a class library** decorates the client even when none of the library's code has
+  run before `AddMethodCache()`, also when several threads resolve services while the library's initializer runs.
 
 ### If you used a pre-release build from GitHub Packages
 

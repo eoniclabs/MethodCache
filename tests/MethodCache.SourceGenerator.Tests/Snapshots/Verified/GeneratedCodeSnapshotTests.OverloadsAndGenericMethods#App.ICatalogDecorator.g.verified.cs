@@ -53,9 +53,9 @@ namespace App
 
             public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
             {
-                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Get(int)"), typeof(global::App.ICatalog), "Get(int)", "Get(int)");
-                Method1 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Get(string)"), typeof(global::App.ICatalog), "Get(string)", "Get(string)");
-                Method2 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Load"), typeof(global::App.ICatalog), "Load", "Load");
+                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Get(int)"), typeof(global::App.ICatalog), "Get(int)", "App.ICatalog.Get(int)");
+                Method1 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Get(string)"), typeof(global::App.ICatalog), "Get(string)", "App.ICatalog.Get(string)");
+                Method2 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.ICatalog.Load"), typeof(global::App.ICatalog), "Load", "App.ICatalog.Load");
             }
         }
 

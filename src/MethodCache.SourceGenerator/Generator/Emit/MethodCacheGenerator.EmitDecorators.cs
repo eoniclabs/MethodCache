@@ -157,7 +157,7 @@ namespace MethodCache.SourceGenerator
                     .Concat(info.Symbol.AllInterfaces.SelectMany(i => i.GetMembers().OfType<IMethodSymbol>()))
                     .Distinct(SymbolEqualityComparer.Default)
                     .Cast<IMethodSymbol>()
-                    .Where(m => m.MethodKind == MethodKind.Ordinary && !m.IsStatic && (m.IsAbstract || (m.IsVirtual && m.DeclaredAccessibility == Accessibility.Public)));
+                    .Where(m => m.MethodKind == MethodKind.Ordinary && Utils.IsInterceptable(m));
 
                 foreach (var method in allMethods)
                 {
@@ -234,15 +234,19 @@ namespace MethodCache.SourceGenerator
                 {
                     var methodId = Utils.GetMethodId(cached.Method);
                     var safeFieldName = SiteName(cached, cachedMethods);
-                    // Overloads add their parameter types, so Find(int) and Find(string) never share keys
-                    var methodName = Utils.GetMethodName(cached.Method);
+                    // Overloads, and names other interfaces in the hierarchy declare too, add their parameter types,
+                    // so Find(int) and Find(string) never share keys
+                    var keyMethodName = Utils.GetKeyMethodName(cached.Method, interfaceSymbol);
 
-                    // Generic interfaces report the closed type in their name, for example IRepository<User>.Get
-                    var displayName = interfaceSymbol.IsGenericType
-                        ? $"\"{interfaceSymbol.Name}<\" + string.Join(\",\", typeof({interfaceFqn}).GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\""
-                        : Utils.Literal(methodName);
+                    // Metrics and spans name the method by its id, such as MyApp.IUserService.GetAsync. A method of a
+                    // generic interface, also one inherited from IRepository<User> by IUserRepo, reports the closed
+                    // type instead, for example IRepository<User>.Get, so IRepository<Order>.Get is another series
+                    var owner = cached.Method.ContainingType.IsGenericType ? cached.Method.ContainingType : interfaceSymbol;
+                    var displayName = owner.IsGenericType
+                        ? $"{Utils.Literal(owner.Name + "<")} + string.Join(\",\", typeof({Utils.GetFullyQualifiedName(owner)}).GetGenericArguments().Select(t => t.Name)) + {Utils.Literal(">." + Utils.GetMethodName(cached.Method))}"
+                        : Utils.Literal(methodId);
 
-                    sb.AppendLine($"                {safeFieldName} = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, {Utils.Literal(methodId)}), typeof({interfaceFqn}), {Utils.Literal(methodName)}, {displayName});");
+                    sb.AppendLine($"                {safeFieldName} = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, {Utils.Literal(methodId)}), typeof({interfaceFqn}), {Utils.Literal(keyMethodName)}, {displayName});");
                 }
                 sb.AppendLine("            }");
                 sb.AppendLine("        }");
@@ -651,7 +655,7 @@ namespace MethodCache.SourceGenerator
             /// The element type of a one-dimensional array, or of a type that is or implements exactly one
             /// <c>IEnumerable&lt;T&gt;</c>; null for anything else.
             /// </summary>
-            private static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
+            internal static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
             {
                 if (type is IArrayTypeSymbol array)
                 {
@@ -726,7 +730,7 @@ namespace MethodCache.SourceGenerator
             /// <summary>
             /// A class or struct that implements <c>ICacheKeyProvider</c>, or that interface or one derived from it.
             /// </summary>
-            private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
+            internal static bool ImplementsCacheKeyProvider(ITypeSymbol type)
                 => type.TypeKind switch
                 {
                     TypeKind.Class or TypeKind.Struct => type.AllInterfaces.Any(IsCacheKeyProvider),
@@ -748,6 +752,7 @@ namespace MethodCache.SourceGenerator
                     named.TypeKind is not (TypeKind.Class or TypeKind.Struct) ||
                     named.IsAbstract ||
                     named.SpecialType != SpecialType.None ||
+                    (IsFrameworkType(named) && !FrameworkComposites.Contains(MetadataName(named.OriginalDefinition))) ||
                     named.AllInterfaces.Any(i => i.SpecialType == SpecialType.System_Collections_IEnumerable))
                 {
                     return false;
@@ -845,12 +850,21 @@ namespace MethodCache.SourceGenerator
                     var underlying = nullable.TypeArguments[0];
                     return underlying.TypeKind == TypeKind.Enum
                         ? $"({name} is null ? \"null\" : {GetRawEnumExpression($"{name}.Value")})"
-                        : $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
+                        : IsDateTime(underlying)
+                            ? $"({name} is null ? \"null\" : global::MethodCache.MethodCacheKeys.Part({name}.Value))"
+                            : $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
                 }
 
                 if (param.Type.TypeKind == TypeKind.Enum)
                 {
                     return GetRawEnumExpression(name);
+                }
+
+                // As in generated keys: fractions of a second and the offset are kept, and a local time is written as
+                // UTC, so the key doesn't depend on the server's time zone
+                if (IsDateTime(param.Type))
+                {
+                    return $"global::MethodCache.MethodCacheKeys.Part({name})";
                 }
 
                 if (param.Type.IsValueType)
@@ -876,6 +890,10 @@ namespace MethodCache.SourceGenerator
             private static string GetRawEnumExpression(string value)
                 => $"({value}.ToString() is var __rawEnumName && (char.IsLetter(__rawEnumName[0]) || __rawEnumName[0] == '_') ? __rawEnumName : global::MethodCache.MethodCacheKeys.Part({value}))";
 
+            private static bool IsDateTime(ITypeSymbol type)
+                => type.SpecialType == SpecialType.System_DateTime ||
+                   type is { Name: "DateTimeOffset", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } };
+
             private static bool IsFormattable(ITypeSymbol type)
                 => type.AllInterfaces.Any(i => i.ToDisplayString() == "System.IFormattable");
 
@@ -885,7 +903,7 @@ namespace MethodCache.SourceGenerator
                     m.Parameters[0].Type.SpecialType == SpecialType.System_String &&
                     m.Parameters[1].Type.ToDisplayString() == "System.IFormatProvider");
 
-            private static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
+            internal static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
             {
                 foreach (var param in keyParams)
                 {
@@ -1105,10 +1123,7 @@ namespace MethodCache.SourceGenerator
                 if (property.IsIndexer)
                 {
                     var parameters = string.Join(", ", property.Parameters.Select(p =>
-                    {
-                        var modifier = p.RefKind == RefKind.In ? "in " : string.Empty;
-                        return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.ParameterIdentifier(p)}";
-                    }));
+                        $"{ParameterModifier(p)}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.ParameterIdentifier(p)}"));
                     name = $"this[{parameters}]";
                     access = $"{target}[{string.Join(", ", property.Parameters.Select(p => Utils.ParameterIdentifier(p)))}]";
                 }
@@ -1167,22 +1182,33 @@ namespace MethodCache.SourceGenerator
                 var unsafeModifier = IsPointerType(method.ReturnType) || method.Parameters.Any(p => IsPointerType(p.Type)) ? "unsafe " : "";
                 sb.AppendLine($"        {modifiers}{unsafeModifier}{byRef}{returnType} {declaring}.{Utils.Identifier(method.Name)}{typeParams}({parameters})");
 
-                // An explicit implementation inherits the constraints; it may only say how T? reads
+                // An explicit implementation inherits the constraints; it may only say how T? reads. A type parameter
+                // constrained to a class type (where T : Entity) is a reference type, and C# rejects `default` for it.
                 foreach (var tp in method.TypeParameters)
                 {
-                    var clause = tp.HasReferenceTypeConstraint ? "class" : tp.HasValueTypeConstraint ? "struct" : "default";
+                    var clause = tp.HasReferenceTypeConstraint || tp.IsReferenceType ? "class"
+                        : tp.HasValueTypeConstraint || tp.IsValueType ? "struct"
+                        : "default";
                     sb.AppendLine($"            where {Utils.TypeParameterIdentifier(tp)} : {clause}");
                 }
             }
 
-            private static string ParameterModifier(IParameterSymbol parameter) => parameter.RefKind switch
+            /// <summary>
+            /// The parameter's modifiers as the interface declares them. <c>scoped</c> must match too, or the explicit
+            /// implementation doesn't compile (CS8987); an <c>out</c> parameter is scoped implicitly.
+            /// </summary>
+            private static string ParameterModifier(IParameterSymbol parameter)
             {
-                RefKind.Ref => "ref ",
-                RefKind.Out => "out ",
-                RefKind.In => "in ",
-                RefKind.RefReadOnlyParameter => "ref readonly ",
-                _ => string.Empty
-            };
+                var scoped = parameter.ScopedKind != ScopedKind.None && parameter.RefKind != RefKind.Out ? "scoped " : string.Empty;
+                return scoped + parameter.RefKind switch
+                {
+                    RefKind.Ref => "ref ",
+                    RefKind.Out => "out ",
+                    RefKind.In => "in ",
+                    RefKind.RefReadOnlyParameter => "ref readonly ",
+                    _ => string.Empty
+                };
+            }
 
             /// <summary>
             /// The call to the decorated instance, through the interface that declares the method, so a method two

@@ -5,12 +5,14 @@ and routes cached calls through MethodCache. Your implementation stays ordinary 
 
 The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`, overloaded methods, generic
 interfaces and generic methods, including interfaces nested in generic containing types. Constraints on both
-the containing type and the interface, including `unmanaged`, are preserved. Each overload has its own
+the containing type and the interface, including `unmanaged` and base class constraints, are preserved, and so are
+`scoped` parameters on forwarded members. Each overload has its own
 [method id](configuration.md#appsettingsjson) and its own cache entries.
 
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
-implement them. An interface with non-public abstract members is rejected with
+implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
+[MCG017](../user-guide/DIAGNOSTICS.md#mcg017). An interface with non-public abstract members is rejected with
 [MCG013](../user-guide/DIAGNOSTICS.md#mcg013), because the decorator can't call those members on the implementation.
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)

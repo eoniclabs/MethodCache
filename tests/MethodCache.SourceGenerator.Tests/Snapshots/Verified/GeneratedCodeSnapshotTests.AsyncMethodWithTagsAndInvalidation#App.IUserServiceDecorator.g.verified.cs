@@ -47,7 +47,7 @@ namespace App
 
             public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
             {
-                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IUserService.GetUserAsync"), typeof(global::App.IUserService), "GetUserAsync", "GetUserAsync");
+                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IUserService.GetUserAsync"), typeof(global::App.IUserService), "GetUserAsync", "App.IUserService.GetUserAsync");
             }
         }
 
