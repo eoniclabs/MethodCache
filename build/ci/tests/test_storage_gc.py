@@ -248,6 +248,18 @@ class StorageTests(unittest.TestCase):
         self.assertEqual([0, 1], starts)
         self.assertEqual({'next': 2}, json.loads(cfg.with_suffix('.progress.json').read_text()))
 
+    def test_git_timeout_and_missing_tracked_inventory_preserve_output(self):
+        from unittest.mock import patch
+        p = self.project()
+        with patch.object(gc.subprocess, 'run', side_effect=subprocess.TimeoutExpired('git', 30)):
+            self.assertIsNone(gc.git(p, 'status', '--porcelain'))
+        original = gc.git
+        def git(root, *args):
+            return None if args[0] == 'ls-files' else original(root, *args)
+        with patch.object(gc, 'git', side_effect=git):
+            gc.clean_builds(p, 0, self.now, set(), apply=True)
+        self.assertTrue((p / 'bin/app.dll').exists())
+
 
 if __name__ == '__main__':
     unittest.main()

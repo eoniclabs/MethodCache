@@ -50,8 +50,12 @@ def remove_tree(path):
 
 
 def git(root, *args):
-    r = subprocess.run(['git', '--no-optional-locks', '-c', 'safe.directory=' + str(root), '-C', str(root), *args],
-                       text=True, capture_output=True, timeout=30)
+    try:
+        r = subprocess.run(['git', '--no-optional-locks', '-c', 'safe.directory=' + str(root), '-C', str(root), *args],
+                           text=True, capture_output=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        emit('protected-inspection', root, reason='Git inspection timed out; retry on the next pass')
+        return None
     return r.stdout.strip() if r.returncode == 0 else None
 
 
@@ -160,7 +164,10 @@ def clean_source(root):
 
 
 def builds(root, snapshot=False):
-    tracked = [] if snapshot else (git(root, 'ls-files', '-z') or '').split('\0')
+    listed = '' if snapshot else git(root, 'ls-files', '-z')
+    if listed is None:
+        return
+    tracked = listed.split('\0')
     for base, directories, files in os.walk(root, followlinks=False):
         directories[:] = [d for d in directories if d not in SKIP and plain(Path(base, d))]
         node_build = False
