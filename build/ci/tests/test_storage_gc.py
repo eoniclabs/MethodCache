@@ -208,6 +208,31 @@ class StorageTests(unittest.TestCase):
         gc.collect_xcode(root, {}, self.now, {str(build / 'user.db')}, True, time.monotonic() + 30)
         self.assertTrue(logs.exists())
 
+    def test_time_limited_sweeps_rotate_roots_instead_of_starving_later_roots(self):
+        from unittest.mock import patch
+        roots = [{'root': str(self.root / n), 'kind': 'skribera-source'} for n in ('a', 'b', 'c')]
+        calls = []
+        with patch.object(gc, 'activity', return_value=set()), patch.object(gc.time, 'monotonic', return_value=0) as clock:
+            def collect(cfg, *args):
+                calls.append(cfg['root']); clock.return_value = 1000
+            with patch.object(gc, 'collect_archives', side_effect=collect):
+                config = {'archives': roots, 'max_seconds': 10, '_start': 1}
+                gc.run(config, False)
+        self.assertEqual([str(self.root / 'b')], calls)
+        self.assertEqual(2, config['_next_start'])
+
+    def test_scan_rotation_is_persisted_between_scheduled_invocations(self):
+        from unittest.mock import patch
+        cfg = self.root / 'config.json'; cfg.write_text('{}')
+        starts = []
+        def run(config, apply):
+            starts.append(config['_start'])
+            config['_next_start'] = config['_start'] + 1
+        with patch('sys.argv', [str(SCRIPT), '--config', str(cfg), '--apply']), patch.object(gc, 'run', side_effect=run):
+            gc.main(); gc.main()
+        self.assertEqual([0, 1], starts)
+        self.assertEqual({'next': 2}, json.loads(cfg.with_suffix('.progress.json').read_text()))
+
 
 if __name__ == '__main__':
     unittest.main()

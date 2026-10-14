@@ -216,7 +216,9 @@ data-protected entries can exceed the budget. Internal CI archive links are remo
 them; shared ISO/VM targets survive. VM disks, Docker volumes/images and package caches are outside
 this collector. Root-level job logs and `artifacts/ci`, `ci-results` and media diagnostics are copied
 to `retained` **before** a source archive is retired, then expire 14 days after collection. The collector's
-own log rotates at 10 MiB with five backups.
+own log rotates at 10 MiB with five backups. The first scan root rotates between passes, persisted in
+`config.progress.json`, so a large archive cannot repeatedly consume the time budget before local or
+later CI roots get their turn. The progress file is updated atomically only on apply.
 
 Preview before installing (the default is dry-run):
 

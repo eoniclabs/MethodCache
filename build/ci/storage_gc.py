@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 MC_RUN = re.compile(r'^\d{8}-\d{6}-([a-f0-9]{12})$')
@@ -424,32 +425,38 @@ def run(config, apply):
     deadline = time.monotonic() + config.get('max_seconds', 600)
     paths = activity()
     errors = 0
-    for cfg in config.get('archives', []):
+    seen = set()
+    jobs = [('archive', c) for c in config.get('archives', [])]
+    jobs += [('xcode', p) for p in config.get('xcode_roots', [])]
+    jobs += [('build', p) for p in config.get('build_roots', [])]
+    start = config.get('_start', 0) % max(1, len(jobs))
+    # Rotate the first root so bounded scans cannot starve later roots.
+    config['_next_start'] = (start + 1) % max(1, len(jobs))
+    for offset in range(len(jobs)):
+        kind, cfg = jobs[(start + offset) % len(jobs)]
+        root = cfg['root'] if kind == 'archive' else cfg
+        if time.monotonic() >= deadline:
+            emit('time-budget', root)
+            break
         try:
-            collect_archives(cfg, config, now, paths, apply, deadline)
+            if kind == 'archive':
+                collect_archives(cfg, config, now, paths, apply, deadline)
+            elif kind == 'xcode':
+                collect_xcode(Path(cfg), config, now, paths, apply, deadline)
+            else:
+                for p in repositories(Path(cfg)):
+                    if p in seen:
+                        continue
+                    seen.add(p)
+                    if time.monotonic() >= deadline:
+                        emit('time-budget', p)
+                        break
+                    clean_builds(p, config.get('build_idle_hours', 24) * 3600, now, paths, apply=apply, recheck=apply)
         except BlockingIOError:
-            emit('protected-lease', cfg['root'])
+            emit('protected-lease', root)
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as e:
             errors += 1
-            emit('error', cfg['root'], error=str(e))
-    seen = set()
-    for name in config.get('xcode_roots', []):
-        collect_xcode(Path(name), config, now, paths, apply, deadline)
-    for name in config.get('build_roots', []):
-        for p in repositories(Path(name)):
-            if p in seen:
-                continue
-            seen.add(p)
-            if time.monotonic() >= deadline:
-                emit('time-budget', p)
-                if errors:
-                    raise RuntimeError('collection errors occurred; see the collector log')
-                return
-            try:
-                clean_builds(p, config.get('build_idle_hours', 24) * 3600, now, paths, apply=apply, recheck=apply)
-            except (OSError, RuntimeError, subprocess.SubprocessError) as e:
-                errors += 1
-                emit('error', p, error=str(e))
+            emit('error', root, error=str(e))
     if apply:
         # Only directories previously written by this collector can expire as retained logs.
         for root in {Path(c['retained']) for c in config.get('archives', [])}:
@@ -477,7 +484,25 @@ def main():
         return
     config = json.loads(args.config.read_text())
     with leases([str(args.config.with_suffix('.lock'))]):
-        run(config, args.apply)
+        progress = args.config.with_suffix('.progress.json')
+        if not plain(progress):
+            raise RuntimeError('symlinked scan progress refused')
+        try:
+            config['_start'] = int(json.loads(progress.read_text())['next'])
+        except FileNotFoundError:
+            config['_start'] = 0
+        try:
+            run(config, args.apply)
+        finally:
+            if args.apply and '_next_start' in config:
+                fd, name = tempfile.mkstemp(dir=progress.parent, prefix='.storage-progress-')
+                try:
+                    with os.fdopen(fd, 'w') as stream:
+                        json.dump({'next': config['_next_start']}, stream)
+                    os.replace(name, progress)
+                finally:
+                    if os.path.exists(name):
+                        os.unlink(name)
 
 
 if __name__ == '__main__':
