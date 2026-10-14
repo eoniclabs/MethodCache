@@ -1,6 +1,6 @@
 {
   "base_commit": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
-  "change_revision": "PR 1 implementation, before source commit; frozen manifest identifies final implementation commit",
+  "change_revision": "9294adb3bd562b502d18a428d452b0bc40199515 (implementation source; subsequent changes freeze fixtures and extend validation only)",
   "gc": "Concurrent Workstation",
   "benchmark": "GeneratedContractBenchmarks",
   "order": [

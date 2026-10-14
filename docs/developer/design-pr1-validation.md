@@ -16,7 +16,7 @@ The specification is [design-spec.md](design-spec.md), PR 1 acceptance G01–G14
 | G09/G12 | GeneratedContractTests gates origin execution, retires captured generations, rejects foreign bindings and protects publication for both changed and unchanged key versions. |
 | G10 | Actual packed nuspecs require exact matching versions; check_package_restore.py installs both reference orders and rejects a higher direct Core version with strict NU1608 for all six add-ons. |
 | G11/G13 | SignatureCorpus, canonical key properties, Unicode/fallback vendor cases, buffer growth and exact dirty-buffer tests. |
-| G14 | SignatureCorpus across supported TFMs, compiler-version cases, frozen AOT vendor and GeneratedContractBenchmarks. |
+| G14 | SignatureCorpus across supported TFMs and compiler versions; all 172 supported corpus cases compile with Native AOT, plus executed frozen vendor/smoke shapes and GeneratedContractBenchmarks. |
 
 ## Contract and scope
 
@@ -87,4 +87,11 @@ portable product speed promises. README product benchmark numbers are unchanged.
 
 ## Final verification
 
-Final test, package, coverage and frozen baseline verification results follow when completed.
+- Complete .NET 8/9/10 solution test matrix: 6,413 passed, three opt-in soak skips; real Redis and SQL Server tests required and executed.
+- Turkish and Swedish culture runs passed. Random-seed properties passed on .NET 10 and .NET 8, five seconds per property. The 30-second soak run passed.
+- Diff coverage against the implementation base: 738/800 changed production lines, 92.2% (80% minimum).
+- Frozen vendor baseline records implementation source `9294adb3bd562b502d18a428d452b0bc40199515`, real package `1.0.0-g9294adb3bd`, Core/generator/source/image hashes. All four binary compatibility tests passed on all three TFMs after freezing; the manifest test rejects placeholder provenance.
+- Native AOT osx-arm64 smoke passed with synchronous, Task, ValueTask, generic method metadata, closed generic interfaces, CacheInterface, tags, invalidation, records, providers and collections. All 172 supported corpus cases were additionally published as Native AOT with every scenario call reachable to the native compiler. Reflection-based fallback retains its documented trim/AOT warnings and runtime limitations.
+- Demo passed. Generator snapshots, canonical Unicode/collection properties, binding and retirement race tests passed. Both telemetry sync caching and cross-shape recursion tests were observed failing before their respective fixes.
+- Python CI tests: 42 run, two SDK 10.0.300+ publishing tests skipped on local SDK 10.0.103. This PR does not alter publishing.
+- Actual seven NuGet packages packed and validated. Exact Core dependency ranges passed for all six add-ons; both matching reference orders restored, and all six direct Core mismatches failed strict NU1608 restore. Quick Start passed with SDK 10.0.103 and SDK 8.0.203. All six add-ons passed installed-package app tests on net8.0 and net10.0 with real Redis and SQL Server.

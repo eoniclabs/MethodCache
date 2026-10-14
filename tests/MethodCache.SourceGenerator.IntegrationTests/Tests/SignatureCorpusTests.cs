@@ -21,6 +21,46 @@ public class SignatureCorpusTests
 {
     private readonly SourceGeneratorTestEngine _engine = new();
 
+    internal static void ExportNativeAotSources(string outputDirectory)
+    {
+        Directory.CreateDirectory(outputDirectory);
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        // The exporter lives in tests/<project>/bin/Release/net10.0, just like the integration tests.
+        var core = Path.GetRelativePath(outputDirectory, Path.Combine(root, "src/MethodCache.Core/MethodCache.Core.csproj"));
+        var generator = Path.GetRelativePath(outputDirectory, Path.Combine(root, "src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj"));
+        var project = new System.Xml.Linq.XElement("Project", new System.Xml.Linq.XAttribute("Sdk", "Microsoft.NET.Sdk"),
+            new System.Xml.Linq.XElement("PropertyGroup",
+                new System.Xml.Linq.XElement("TargetFrameworks", ""),
+                new System.Xml.Linq.XElement("TargetFramework", "net10.0"),
+                new System.Xml.Linq.XElement("OutputType", "Exe"),
+                new System.Xml.Linq.XElement("PublishAot", "true"),
+                new System.Xml.Linq.XElement("AllowUnsafeBlocks", "true"),
+                new System.Xml.Linq.XElement("Nullable", "annotations"),
+                new System.Xml.Linq.XElement("IsPackable", "false"),
+                new System.Xml.Linq.XElement("LangVersion", "latest")),
+            new System.Xml.Linq.XElement("ItemGroup",
+                new System.Xml.Linq.XElement("ProjectReference", new System.Xml.Linq.XAttribute("Include", core)),
+                new System.Xml.Linq.XElement("ProjectReference", new System.Xml.Linq.XAttribute("Include", generator),
+                    new System.Xml.Linq.XAttribute("OutputItemType", "Analyzer"), new System.Xml.Linq.XAttribute("ReferenceOutputAssembly", "false")),
+                new System.Xml.Linq.XElement("PackageReference", new System.Xml.Linq.XAttribute("Include", "Microsoft.Extensions.DependencyInjection"),
+                    new System.Xml.Linq.XAttribute("Version", "9.0.9"))));
+        File.WriteAllText(Path.Combine(outputDirectory, "Corpus.csproj"), project.ToString());
+        var entry = new System.Text.StringBuilder("// All scenario calls remain reachable to the native compiler.\nif (args.Length > 0)\n{\n");
+        var index = 0;
+        foreach (var shape in Cases.Values)
+        {
+            var ns = "CorpusAot.Case" + index;
+            var source = System.Text.RegularExpressions.Regex.Replace(shape.ToSource(), @"\bCorpus\b", ns);
+            File.WriteAllText(Path.Combine(outputDirectory, "Case" + index + ".cs"), source);
+            entry.Append("    _ = await ").Append(ns).Append(".Scenario.RunAsync();\n");
+            index++;
+        }
+        // AOT execution is covered by the smoke app's supported inline shapes. Reflection-based JSON fallback
+        // cases are deliberately compiled here too, but remain unsupported at runtime as documented.
+        entry.Append("}\nSystem.Console.WriteLine(\"Native AOT compiled ").Append(index).Append(" signature corpus cases.\");\n");
+        File.WriteAllText(Path.Combine(outputDirectory, "Program.cs"), entry.ToString());
+    }
+
     public static TheoryData<string> CaseNames()
     {
         var data = new TheoryData<string>();
@@ -1311,6 +1351,13 @@ public class SignatureCorpusTests
             """, "ISvc", "await s.Get(new Microsoft.Graph.Models.User { Id = \"1\", DisplayName = \"a\" })", "await s.Get(new Microsoft.Graph.Models.User { Id = \"2\", DisplayName = \"a\" })"),
         ["read-only list result"] = Member("Task<IReadOnlyList<string>> Get(int id)", "Task<IReadOnlyList<string>> Get(int id) { Counter.Hit(); return Task.FromResult<IReadOnlyList<string>>(new[] { \"v\" }); }", "await s.Get(1)", "await s.Get(2)"),
     };
+}
+
+/// <summary>Exports the same signature cases used by the JIT tests for native compilation.</summary>
+public static class SignatureCorpusExporter
+{
+    /// <summary>Writes a standalone project whose scenario calls all remain reachable by the native compiler.</summary>
+    public static void Export(string outputDirectory) => SignatureCorpusTests.ExportNativeAotSources(outputDirectory);
 }
 
 /// <summary>An interface from another assembly, for <c>[assembly: CacheInterface]</c> cases.</summary>

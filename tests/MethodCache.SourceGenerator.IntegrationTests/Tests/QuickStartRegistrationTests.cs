@@ -94,7 +94,8 @@ namespace QuickStart
         var source = candidates == 0
             ? QuickStartSource.Replace("public class UserService : IUserService", "public class UserService")
             : QuickStartSource.Replace("public static class Startup", "public class OtherUserService : UserService { }\n    public static class Startup");
-        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "AutoCandidates" + candidates);
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(
+            source.Replace("ServiceLifetime.Singleton", "ServiceLifetime.Scoped"), "AutoCandidates" + candidates);
         var invocation = Assert.Throws<TargetInvocationException>(() => InvokeStartup(compiled.Assembly, "WithExplicitAssembly", new ServiceCollection()));
         var error = Assert.IsType<InvalidOperationException>(invocation.InnerException);
         Assert.Contains("IUserService", error.Message);
