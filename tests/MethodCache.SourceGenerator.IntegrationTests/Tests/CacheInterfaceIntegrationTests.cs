@@ -156,6 +156,25 @@ namespace VendorApp
         Assert.Equal(TimeSpan.FromHours(1), rate.Duration);
     }
 
+    // An assembly passed to AddMethodCache whose code hasn't run yet still has its decorator chosen, even when
+    // another assembly already registered one for the interface
+    [Fact]
+    public async Task NamedAssemblyNotYetInitialized_ItsDecoratorWins()
+    {
+        var registered = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("RegisteredFx", "00:00:30"), "SharedVendor_Registered");
+        var named = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("NamedFx", "01:00:00"), "SharedVendor_Named");
+        RuntimeHelpers.RunModuleConstructor(registered.Assembly.ManifestModule.ModuleHandle);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+        services.AddMethodCache(null, named.Assembly);
+        await using var provider = services.BuildServiceProvider();
+
+        var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+            m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromHours(1), rate.Duration);
+    }
+
     private static string SharedVendorSource(string ns, string duration) => $@"
 using MethodCache;
 using Microsoft.Extensions.DependencyInjection;

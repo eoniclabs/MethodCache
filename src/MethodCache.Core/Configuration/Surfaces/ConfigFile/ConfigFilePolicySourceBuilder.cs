@@ -16,6 +16,8 @@ internal static class ConfigFilePolicySourceBuilder
 
     private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId", "ClearTags" };
 
+    private static readonly HashSet<string> SectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Defaults", "FailSafe", "Services" };
+
     private static readonly HashSet<string> FailSafeSettings = new(StringComparer.OrdinalIgnoreCase) { "Duration", "Timeout", "RetryAfter" };
 
     public static ConfigFilePolicySource FromConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
@@ -40,6 +42,7 @@ internal static class ConfigFilePolicySourceBuilder
             return Array.Empty<PolicyDraft>();
         }
 
+        RejectUnknownSettings(root, SectionSettings);
         var descriptors = new List<PolicyDraft>();
 
         // Defaults reach every cached method, including ones configured only with [Cache], whose own values win

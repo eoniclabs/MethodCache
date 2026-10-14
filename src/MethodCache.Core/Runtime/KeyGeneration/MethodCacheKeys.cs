@@ -57,7 +57,7 @@ public static class MethodCacheKeys
     /// </summary>
     /// <param name="methodName">The method's name.</param>
     /// <param name="serviceKey">
-    /// The service key: a string (<c>Get@ecb</c>), an enum (<c>Get@Region.Eu</c>), or a bool, char, integer or
+    /// The service key: a string (<c>Get@ecb</c>), an enum (<c>Get@MyApp.Region.Eu</c>), or a bool, char, integer or
     /// <see cref="Guid"/> (<c>Get@Int32(7)</c>).
     /// </param>
     /// <exception cref="ArgumentException">The key is of another type, whose string form may not be stable.</exception>
@@ -72,11 +72,17 @@ public static class MethodCacheKeys
                 nameof(serviceKey)));
     }
 
-    /// <summary>The service key as it appears in cache keys, or null when its type has no stable string form.</summary>
+    /// <summary>
+    /// The service key as it appears in cache keys, or null when its type has no stable string form. Every other
+    /// type's form has a '.' or '(' in it, so a string with one, or with a quote, is written in quotes: no two keys
+    /// of any types share a form.
+    /// </summary>
     internal static string? ServiceKeyPart(object serviceKey) => serviceKey switch
     {
-        string text => Part(text),
-        Enum value => string.Concat(value.GetType().Name, ".", value.ToString()),
+        string text => text.AsSpan().IndexOfAny('.', '(', '"') < 0
+            ? Part(text)
+            : string.Concat("\"", Part(text).Replace("\"", "\\\""), "\""),
+        Enum value => string.Concat(value.GetType().FullName, ".", value.ToString()),
         bool value => string.Concat("Boolean(", Part(value), ")"),
         char value => string.Concat("Char(", Part(value), ")"),
         Guid value => string.Concat("Guid(", Part(value), ")"),

@@ -73,11 +73,18 @@ namespace MethodCache.Infrastructure
         /// <summary>
         /// Like <see cref="TryGet(Type, out DecoratorRegistration?)"/>, but when several assemblies generated a
         /// decorator for the type, the one generated in <paramref name="preferredAssemblies"/> (the assemblies passed
-        /// to <c>AddMethodCache</c>, by default the calling one) wins, then the entry assembly's.
+        /// to <c>AddMethodCache</c>, by default the calling one) wins, then the entry assembly's. Their module
+        /// initializers run first, so a named assembly none of whose code has run yet still counts.
         /// </summary>
         internal static bool TryGet(Type serviceType, Assembly[]? preferredAssemblies, [NotNullWhen(true)] out DecoratorRegistration? registration)
         {
             ArgumentNullException.ThrowIfNull(serviceType);
+
+            // A named assembly whose code hasn't run yet must still offer its decorator, even when another one is known
+            foreach (var assembly in preferredAssemblies ?? Array.Empty<Assembly>())
+            {
+                RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+            }
 
             if (!Registrations.ContainsKey(serviceType))
             {

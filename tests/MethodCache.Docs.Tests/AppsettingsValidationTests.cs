@@ -15,6 +15,8 @@ public class AppsettingsValidationTests
     [InlineData("MethodCache:Services:Sample.Type.Method:duration_seconds", "300", "not a setting")]
     [InlineData("MethodCache:Defaults:Ttl", "00:05:00", "not a setting")]
     [InlineData("MethodCache:FailSafe:Durration", "01:00:00", "not a setting")]
+    [InlineData("MethodCache:Defualts:Duration", "00:05:00", "not a setting")]
+    [InlineData("MethodCache:Servcies:Sample.Type.Method:Duration", "00:05:00", "not a setting")]
     [InlineData("MethodCache:Services:Sample.Type.Method:Tags", "users", "list")]
     [InlineData("MethodCache:Services:Sample.Type.Method:FailSafe:Duration", "01:00:00", "top of the section")]
     [InlineData("MethodCache:Defaults:FailSafe:Duration", "01:00:00", "top of the section")]

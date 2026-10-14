@@ -176,7 +176,8 @@ var overload = MethodCacheKeys.For(
 - **Keyed registrations** have their service key after the method name, so `AddKeyedScoped<IRates, EcbRates>("ecb")`
   and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `MyApp.IRates.Get@ecb:1` and
   `MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
-  `Prefix` or `Pattern`. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
+  `Prefix` or `Pattern`. Other keys carry their type (`Get@MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
+  `.`, `(` or `"` in it is written in quotes, so keys of different types never share entries. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
   throws for a keyed registration of a cached interface with any other key. `MethodCacheKeys.Pattern(type, "Get")`
   matches the entries of every registration. Tags don't include the service key, so a `[CacheInvalidate]` tag, on any
   registration, removes the matching entries of all of them.

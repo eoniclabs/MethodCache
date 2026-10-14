@@ -319,5 +319,26 @@ namespace MethodCache.Core.Tests.Core
                 generator.GenerateKey("At", new object[] { utc }, policy),
                 generator.GenerateKey("At", new object[] { utc.ToLocalTime() }, policy));
         }
+
+        [Fact]
+        public void KeyedMethodName_GivesEveryServiceKeyItsOwnName()
+        {
+            // Strings that look like another type's form, and enums of the same name, must not share a registration's entries
+            var guid = Guid.NewGuid();
+            var keys = new object[]
+            {
+                "ecb", "\"ecb\"", "Int32(7)", 7, 7L, (byte)7, "7", "Region.Eu", RegionA.Region.Eu, RegionB.Region.Eu,
+                "Boolean(true)", true, "x", 'x', "Char(x)", guid, $"Guid({guid:N})", "a.b", "a(b", "a\"b", "", ":", "\\",
+            };
+
+            var names = keys.Select(key => MethodCacheKeys.KeyedMethodName("Get", key)).ToList();
+
+            Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
+            Assert.Equal("Get@ecb", MethodCacheKeys.KeyedMethodName("Get", "ecb"));
+        }
+
+        private static class RegionA { public enum Region { Eu } }
+
+        private static class RegionB { public enum Region { Eu } }
     }
 }

@@ -89,7 +89,8 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
   `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
   method under `Services`: `true` makes its `Tags` replace the attribute's instead of adding to them. `Metadata` and `Notes` are recorded for
   diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
-  `"Durration"` is reported instead of ignored.
+  `"Durration"` is reported instead of ignored. The same goes for the section itself: it holds only `Defaults`,
+  `FailSafe` and `Services`.
 - Time spans are written `"hh:mm:ss"` (or `"d.hh:mm:ss"`); a bare number such as `"300"` is rejected, since .NET
   would read it as 300 days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
   `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section.

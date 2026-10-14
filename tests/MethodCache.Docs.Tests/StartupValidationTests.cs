@@ -11,10 +11,15 @@ namespace MethodCache.Docs.Tests;
 /// </summary>
 public class StartupValidationTests
 {
+    // Without the defaults, the machine's environment can't change what is tested: in Development the host also runs
+    // ValidateOnBuild, which fails first on this assembly's sample services, and environment variables add settings
+    private static HostApplicationBuilder NewHostBuilder() =>
+        Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { DisableDefaults = true });
+
     [Fact]
     public async Task GetOrCreateOnlySetting_OnCachedMethod_FailsHostStart()
     {
-        var builder = Host.CreateApplicationBuilder();
+        var builder = NewHostBuilder();
         builder.Services.AddSingleton<IStartupProbe, StartupProbe>();
         builder.Services.AddMethodCache(c => c.ForService<IStartupProbe>()
             .Method(s => s.Get(Any<int>.Value))
@@ -41,7 +46,7 @@ public class StartupValidationTests
     [Fact]
     public async Task InvalidAppsettingsValue_FailsHostStart()
     {
-        var builder = Host.CreateApplicationBuilder();
+        var builder = NewHostBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "soon"
@@ -57,7 +62,7 @@ public class StartupValidationTests
     [Fact]
     public async Task ConfigurationAddedAfterRegistration_AppliesFromTheStart()
     {
-        var builder = Host.CreateApplicationBuilder();
+        var builder = NewHostBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "01:00:00"
