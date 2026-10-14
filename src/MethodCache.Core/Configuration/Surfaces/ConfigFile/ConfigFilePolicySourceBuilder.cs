@@ -55,7 +55,9 @@ internal static class ConfigFilePolicySourceBuilder
             descriptors.Add(defaults.Build(MethodIds.AllMethods));
         }
 
-        foreach (var methodSection in root.GetSection("Services").GetChildren())
+        var services = root.GetSection("Services");
+        RejectSingleValue(services);
+        foreach (var methodSection in services.GetChildren())
         {
             var methodId = methodSection["MethodId"];
             if (string.IsNullOrWhiteSpace(methodId))
@@ -249,6 +251,7 @@ internal static class ConfigFilePolicySourceBuilder
 
     private static void RejectUnknownSettings(IConfigurationSection section, HashSet<string> settings)
     {
+        RejectSingleValue(section);
         foreach (var child in section.GetChildren())
         {
             if (!settings.Contains(child.Key))
@@ -257,6 +260,16 @@ internal static class ConfigFilePolicySourceBuilder
                     $"MethodCache configuration '{child.Path}' is not a setting MethodCache knows. " +
                     $"Use one of: {string.Join(", ", settings.OrderBy(static name => name, StringComparer.Ordinal))}.");
             }
+        }
+    }
+
+    /// <summary>Throws when a section that holds settings is written as one value, which would otherwise be ignored.</summary>
+    private static void RejectSingleValue(IConfigurationSection section)
+    {
+        if (!string.IsNullOrWhiteSpace(section.Value))
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{section.Path}' is a single value; write it as an object of settings, for example {{ \"Duration\": \"00:05:00\" }}.");
         }
     }
 
