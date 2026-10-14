@@ -1,5 +1,8 @@
 # MethodCache.OpenTelemetry
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 OpenTelemetry metrics and traces for MethodCache.
 
 The package depends only on the OpenTelemetry API, as instrumentation libraries should, so it works the same in

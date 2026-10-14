@@ -20,6 +20,7 @@ packages/
 *.nupkg
 *.snupkg
 *.dll
+!tests/MethodCache.CompatTests/Baselines/Contract1/*.dll
 *.exe
 
 # Rider

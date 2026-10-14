@@ -24,8 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Shared/LosslessUtf16.cs" Link="Internal/LosslessUtf16.cs" />
-    <Compile Include="../Shared/KeyCollectionState.cs" Link="Internal/KeyCollectionState.cs" />
   </ItemGroup>
 
 </Project>

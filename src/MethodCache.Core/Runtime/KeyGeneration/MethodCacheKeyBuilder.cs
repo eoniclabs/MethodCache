@@ -18,7 +18,7 @@ namespace MethodCache.Infrastructure;
 /// </code>
 /// </example>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public ref struct MethodCacheKeyBuilder
+internal ref struct MethodCacheKeyBuilder
 {
     /// <summary>A buffer size, in characters, that fits typical keys without growing.</summary>
     public const int StackBufferSize = 256;

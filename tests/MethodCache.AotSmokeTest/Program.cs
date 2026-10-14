@@ -10,7 +10,7 @@ using Vendor.Rates;
 var services = new ServiceCollection();
 services.AddScoped<IUserService, UserService>();
 services.AddSingleton<IRatesClient, RatesClient>();
-services.AddMethodCache();
+services.AddMethodCache(b => b.FromAssemblyOf<IPriceService>().AutoRegister(ServiceLifetime.Singleton));
 
 await using var provider = services.BuildServiceProvider();
 
@@ -27,7 +27,7 @@ await using (var scope = provider.CreateAsyncScope())
     await users.GetUserAsync(42);
 }
 
-// Registered by AddMethodCache() itself, since the application did not register it
+// Explicit auto-registration supplies the otherwise unregistered price and catalog services.
 var prices = provider.GetRequiredService<IPriceService>();
 await prices.GetPriceAsync("ABC");
 await prices.GetPriceAsync("ABC");
@@ -80,6 +80,20 @@ if (RatesClient.OrderCalls != 2)
 if (CatalogService.Calls != 4)
 {
     failures.Add($"ICatalogService implementation called {CatalogService.Calls} times, expected 4");
+}
+
+// Previously compiled vendor code links against the current facade under Native AOT too.
+var frozenServices = new ServiceCollection();
+var frozenInner = new FrozenVendor.Contract1.Service();
+frozenServices.AddSingleton<FrozenVendor.Contract1.IService>(frozenInner);
+frozenServices.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1.Marker>());
+await using (var frozenProvider = frozenServices.BuildServiceProvider())
+{
+    var frozen = frozenProvider.GetRequiredService<FrozenVendor.Contract1.IService>();
+    if (frozen.Read(42) != 1 || frozen.Read(42) != 1 || await frozen.ReadAsync(42) != 2 || await frozen.ReadAsync(42) != 2)
+        failures.Add("Frozen vendor return shapes did not preserve caching.");
+    await frozen.UpdateAsync(42);
+    if (frozen.Read(42) != 3) failures.Add("Frozen vendor tag invalidation failed.");
 }
 
 foreach (var failure in failures)

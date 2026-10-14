@@ -1,0 +1,19 @@
+{
+  "contract": 1,
+  "source_commit": "candidate; freeze after implementation commit",
+  "package_version": "1.0.0-g41513d3566",
+  "images": [
+    {
+      "file": "FrozenVendor.Contract1.dll",
+      "sha256": "b3202d6eadbf923ecd39f9915ff4b1fc98253aa79cc3005700d6d82162fdb272"
+    },
+    {
+      "file": "FrozenVendor.ThirdParty.dll",
+      "sha256": "8bbc0e0713470d075e97934d567f3dc199c24486f05c9fcfb433a6abc831f685"
+    },
+    {
+      "file": "FrozenVendor.Contract99.dll",
+      "sha256": "66066a122b9fc1c14bf724fe5ddaeb884486f7d6bbca602cb71387f4152652c7"
+    }
+  ]
+}

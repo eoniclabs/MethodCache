@@ -10,7 +10,7 @@ namespace MethodCache.Infrastructure
     /// </summary>
     /// <remarks>Called by generated decorators on a cache miss; not intended for application code.</remarks>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public static class CacheTagTemplates
+    internal static class CacheTagTemplates
     {
         /// <summary>
         /// Returns <paramref name="policy"/> with every <c>{name}</c> in its tags replaced by the matching value.
@@ -29,7 +29,7 @@ namespace MethodCache.Infrastructure
 
             if (parameterNames.Length != values.Length)
             {
-                throw new ArgumentException("Every parameter name needs exactly one value.", nameof(values));
+                throw new ArgumentException($"Every parameter name needs exactly one value ({parameterNames.Length} names, {values.Length} values).", nameof(values));
             }
 
             if (!policy.Tags.Any(tag => tag.Contains('{')))
@@ -57,7 +57,7 @@ namespace MethodCache.Infrastructure
             ArgumentNullException.ThrowIfNull(parameterNames);
             ArgumentNullException.ThrowIfNull(values);
             if (parameterNames.Length != values.Length)
-                throw new ArgumentException("Every parameter name needs exactly one value.", nameof(values));
+                throw new ArgumentException($"Every parameter name needs exactly one value ({parameterNames.Length} names, {values.Length} values).", nameof(values));
             if (!policy.Tags.Any(tag => tag.Contains('{'))) return policy;
 
             var formatted = new string?[values.Length];

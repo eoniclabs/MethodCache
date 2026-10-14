@@ -9,6 +9,21 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public static class MethodCacheMessagePackServiceCollectionExtensions
 {
+    /// <summary>Selects MessagePack value serialization with the package's defaults.</summary>
+    public static MethodCache.MethodCacheBuilder UseMessagePack(this MethodCache.MethodCacheBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddMethodCacheMessagePack();
+        return builder;
+    }
+    /// <summary>Selects MessagePack value serialization with explicit serializer options.</summary>
+    public static MethodCache.MethodCacheBuilder UseMessagePack(this MethodCache.MethodCacheBuilder builder, global::MessagePack.MessagePackSerializerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(options);
+        builder.Services.AddMethodCacheMessagePack(options);
+        return builder;
+    }
     /// <summary>
     /// Stores cached values in the distributed cache (Redis, SQL Server or any <c>IDistributedCache</c>) as
     /// MessagePack instead of JSON. Call it together with <c>AddMethodCacheRedis()</c>,

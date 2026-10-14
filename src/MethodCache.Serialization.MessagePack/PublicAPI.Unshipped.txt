@@ -9,3 +9,5 @@ MethodCache.Serialization.MessagePack.MessagePackKeyGenerator.GenerateKey(string
 MethodCache.Serialization.MessagePack.MessagePackKeyGenerator.MessagePackKeyGenerator() -> void
 Microsoft.Extensions.DependencyInjection.MethodCacheMessagePackServiceCollectionExtensions
 static Microsoft.Extensions.DependencyInjection.MethodCacheMessagePackServiceCollectionExtensions.AddMethodCacheMessagePack(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, MessagePack.MessagePackSerializerOptions? options = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.MethodCacheMessagePackServiceCollectionExtensions.UseMessagePack(this MethodCache.MethodCacheBuilder! builder) -> MethodCache.MethodCacheBuilder!
+static Microsoft.Extensions.DependencyInjection.MethodCacheMessagePackServiceCollectionExtensions.UseMessagePack(this MethodCache.MethodCacheBuilder! builder, MessagePack.MessagePackSerializerOptions! options) -> MethodCache.MethodCacheBuilder!

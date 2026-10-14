@@ -46,7 +46,7 @@ public class ReadmeComparisonBenchmarks
     {
         var services = new ServiceCollection();
         services.AddSingleton<IReadmeUserService, ReadmeUserService>();
-        services.AddMethodCache(configure: null, typeof(ReadmeComparisonBenchmarks).Assembly);
+        services.AddMethodCache(b => b.FromAssemblyOf<ReadmeComparisonBenchmarks>().AutoRegister(ServiceLifetime.Singleton));
         services.AddHybridCache();
         _provider = services.BuildServiceProvider();
 

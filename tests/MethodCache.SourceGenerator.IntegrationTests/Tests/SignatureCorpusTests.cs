@@ -223,7 +223,7 @@ public class SignatureCorpusTests
             public class Svc : ISvc { public int Get(int id) => id; public int Get<T>(int id) => id; }
             public static class Scenario {
                 public static int Run() {
-                    var services = new ServiceCollection(); services.AddMethodCache();
+                    var services = new ServiceCollection(); services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                     using var provider = services.BuildServiceProvider();
                     return provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies().Count(p => p.MethodId.Contains("ISvc.Get"));
                 }
@@ -298,7 +298,7 @@ public class SignatureCorpusTests
                     public static async Task<int> RunAsync() {
                         var services = new ServiceCollection();
                         services.AddSingleton<ISvc>(_ => new Svc());
-                        services.AddMethodCache();
+                        services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                         await using (var provider = services.BuildServiceProvider()) {
                             provider.GetRequiredService<ISvc>().Get(1);
                         }
@@ -411,7 +411,7 @@ public class SignatureCorpusTests
                         var manager = new CountingManager();
                         var services = new ServiceCollection();
                         services.AddSingleton<ICacheManager>(manager);
-                        services.AddMethodCache();
+                        services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                         await using var provider = services.BuildServiceProvider();
                         var service = provider.GetRequiredService<ISvc>();
                         var value = 1;
@@ -498,7 +498,7 @@ public class SignatureCorpusTests
                     {
                         var services = new ServiceCollection();
                         {{Registrations}}
-                        services.AddMethodCache();
+                        services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                         await using var provider = services.BuildServiceProvider();
                         var s = provider.GetRequiredService<{{Service}}>();
                         if (!s.GetType().Name.Contains("Decorator", StringComparison.Ordinal))
@@ -580,12 +580,12 @@ public class SignatureCorpusTests
             public interface ISvc { [Cache(Tags = new[] { "attribute:{a}" })] Task<int> Get(int a, int A); }
             public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }
             """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:2\"); await s.Get(1, 2)",
-            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
+            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
         ["runtime tags retain ambiguous placeholders"] = new("""
             public interface ISvc { [Cache(Tags = new[] { "attribute:{name}" })] Task<int> Get(int name, int Name); }
             public class Svc : ISvc { public Task<int> Get(int name, int Name) { Counter.Hit(); return Task.FromResult(name + Name); } }
             """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
-            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
+            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
 
         ["application types shadow framework and cache infrastructure"] = new("""
             public class Task { }

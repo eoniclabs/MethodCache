@@ -14,6 +14,20 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public static class MethodCacheSqlServerServiceCollectionExtensions
 {
+    /// <summary>Selects SQL Server for method results using the stated connection string.</summary>
+    public static MethodCache.MethodCacheBuilder UseSqlServer(this MethodCache.MethodCacheBuilder builder, string connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddMethodCacheSqlServer(connectionString);
+        return builder;
+    }
+    /// <summary>Selects SQL Server with explicit storage and backplane options.</summary>
+    public static MethodCache.MethodCacheBuilder UseSqlServer(this MethodCache.MethodCacheBuilder builder, Action<SqlServerOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddMethodCacheSqlServer(configure);
+        return builder;
+    }
     /// <summary>
     /// Uses SQL Server as MethodCache's distributed cache: results are shared between instances, and invalidations
     /// reach every instance's in-memory cache through a table they poll. Call <c>AddMethodCache()</c> as well.

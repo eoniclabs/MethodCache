@@ -35,9 +35,7 @@ builder.Services.AddMethodCache();
 
 <!-- snippet: third-party-per-method -->
 ```cs
-builder.Services.AddMethodCache(config => config
-    .ForService<IFxRatesClient>()
-    .Method(c => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
+builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
     .Configure(o => o.WithDuration(TimeSpan.FromSeconds(30))));
 ```
 <!-- endSnippet -->

@@ -1,5 +1,8 @@
 # MethodCache.Serialization.MessagePack
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 When using `MessagePackKeyGenerator`, collection subclasses include their own public properties and fields as well as their elements in the key. Collections with different scope or tenant state cannot share a cached result.
 
 Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack

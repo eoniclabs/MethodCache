@@ -14,6 +14,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\MethodCache.AotSmokeTest.Vendor\MethodCache.AotSmokeTest.Vendor.csproj" />
+    <Reference Include="FrozenVendor.Contract1" HintPath="../MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.Contract1.dll" />
+    <Reference Include="FrozenVendor.ThirdParty" HintPath="../MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.ThirdParty.dll" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
     <ProjectReference Include="..\..\src\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>

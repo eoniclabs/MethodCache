@@ -62,6 +62,7 @@ namespace MethodCache.SourceGenerator
                 GetAssemblyIdentity(symbol),
                 Utils.GetFullyQualifiedName(symbol),
                 Utils.GetFullyQualifiedName(symbol.OriginalDefinition),
+                Utils.GetFullyQualifiedName(symbol.IsGenericType ? symbol.ConstructUnboundGenericType() : symbol),
                 Utils.GetDecoratorFullName(symbol),
                 symbol.IsGenericType,
                 info.CachedMethods.Length > 0,

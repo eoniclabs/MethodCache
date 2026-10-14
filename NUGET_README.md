@@ -26,6 +26,8 @@ builder.Services.AddMethodCache();
 <!-- endSnippet -->
 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments, including records and collections (`GetAsync:42`, `ByIdsAsync:[3:1:2:3]`; values of different types never share a key, nested ones included); your service stays plain code.
+  Register services before `AddMethodCache`; missing registrations need explicit `AutoRegister(lifetime)` and an
+  unambiguous generated module. Startup configuration uses `MethodCacheBuilder`.
 - **Fast.** A hit with simple arguments allocates nothing on .NET 9 and later, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache.
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.

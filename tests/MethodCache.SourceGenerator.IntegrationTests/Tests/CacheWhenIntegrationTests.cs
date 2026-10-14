@@ -58,11 +58,10 @@ namespace CacheWhen
             services.AddSingleton<ICatalog, Catalog>();
             services.AddMethodCache(config =>
             {
-                var catalog = config.ForService<ICatalog>();
-                catalog.Method(c => c.SearchAsync(Any<string>.Value)).CacheWhen(r => r.Count > 0);
-                catalog.Method(c => c.Count(Any<string>.Value)).CacheWhen(r => r > 0);
-                catalog.Method(c => c.FindAsync(Any<int>.Value)).CacheWhen(r => r is not null);
-                catalog.Method(c => c.FragileAsync(Any<int>.Value))
+                config.Method((ICatalog c) => c.SearchAsync(Any<string>.Value)).CacheWhen(r => r.Count > 0);
+                config.Method((ICatalog c) => c.Count(Any<string>.Value)).CacheWhen(r => r > 0);
+                config.Method((ICatalog c) => c.FindAsync(Any<int>.Value)).CacheWhen(r => r is not null);
+                config.Method((ICatalog c) => c.FragileAsync(Any<int>.Value))
                     .Configure(o => o.WithDuration(TimeSpan.FromMinutes(1)))
                     .CacheWhen(r => throw new InvalidOperationException(""predicate bug""));
             });

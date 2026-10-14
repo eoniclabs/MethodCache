@@ -28,8 +28,9 @@ public class SourceGenOptimizationBenchmarks
         services.AddSingleton<IMethodCacheBenchmarkService>(_ => new MethodCacheBenchmarkService(_testPayload));
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(SourceGenOptimizationBenchmarks).Assembly);
+            config.FromAssembly(typeof(SourceGenOptimizationBenchmarks).Assembly);
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        });
 
         // Also setup raw MemoryCache for comparison
         services.AddMemoryCache(options =>

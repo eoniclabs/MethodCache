@@ -89,21 +89,17 @@ public class KeyedRegistrationTests
         }
     }
 
-    // The docs say a KeyedService.AnyKey registration is left uncached: its implementation gets the requested key
+    // A cacheable AnyKey registration must fail instead of silently bypassing its generated binding.
     [Fact]
-    public void AnyKeyRegistration_IsNotCached()
+    public void AnyKeyRegistration_ReportsUnsupportedBinding()
     {
         var rates = new KeyedRates(1);
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IKeyedRates>(KeyedService.AnyKey, rates);
-        services.AddMethodCache();
-        using var provider = services.BuildServiceProvider();
-
-        var service = provider.GetRequiredKeyedService<IKeyedRates>("any");
-        service.Get(1);
-        service.Get(1);
-        Assert.Same(rates, service);
-        Assert.Equal(2, rates.Calls);
+        var error = Assert.Throws<InvalidOperationException>(() => services.AddMethodCache());
+        Assert.Contains("AnyKey", error.Message);
+        Assert.Contains(nameof(IKeyedRates), error.Message);
+        Assert.Equal(0, rates.Calls);
     }
 
     // A null service key makes an unkeyed registration, cached like one

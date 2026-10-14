@@ -26,6 +26,11 @@ interface is cacheable. See [keys](keys.md) for argument identity and
 
 ## Registration
 
+Generated runtime calls use the versioned `MethodCache.Generated` facade. Module initializers record descriptors
+only; `AddMethodCache` validates contract versions before executing descriptors or factories. Each invocation
+captures one immutable policy/prefix/publication generation, including keyed registration and background-scope
+binding. A retired invocation may finish its origin call but cannot publish into the current generation.
+
 `AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
 yourself open. Factory registrations are wrapped the same way ([Getting started](../getting-started.md#registering-with-a-factory)).
@@ -42,6 +47,19 @@ builder.Services.AddMethodCache();
 
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
+It checks semantic runtime references as well. Frozen vendor binaries exercise contract compatibility without
+regenerating source during ordinary tests, including under Native AOT.
+
+`AddMethodCache` decorates explicit registrations. Missing services require explicit `AutoRegister(lifetime)`
+with exactly one accessible implementation in the selected module. Use `FromAssemblyOf<T>()` when multiple
+modules offer the same interface. Cacheable late, open generic, AnyKey and unsupported closed bindings fail explicitly.
+
+Built-in synchronous methods run a synchronous factory with synchronous single-flight. They never wait on an
+async loader or async refresh. Async callers can join a synchronous load. A custom async-only manager bypasses
+synchronous caching and emits a diagnostic once per method/container. Current distributed adapters do not expose
+bounded native synchronous operations through this path, so these calls use L1/origin and report unavailable L2;
+use async methods to share results through L2. Synchronous distributed tag mutations report unsupported invalidation
+after the origin/local mutation; use async mutation methods for distributed invalidation.
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 

@@ -27,8 +27,9 @@ public abstract class SimpleBenchmarkBase
 
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(SimpleBenchmarkBase).Assembly);
+            config.FromAssembly(typeof(SimpleBenchmarkBase).Assembly);
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        });
 
         ServiceProvider = services.BuildServiceProvider();
         CacheManager = ServiceProvider.GetRequiredService<ICacheManager>();

@@ -118,6 +118,92 @@ namespace MethodCache.Extensibility
 
         /// <summary>The underlying engine; exposed to tests that need deterministic policy behavior.</summary>
         internal MemoryCacheEngine Engine => _engine;
+        private readonly ConcurrentDictionary<string, SyncFlight> _syncFlights = new(StringComparer.Ordinal);
+
+        internal T GetOrCreateSynchronously<T>(string key, string name, Func<T> factory, CacheRuntimePolicy source, CancellationToken token)
+        {
+            var policy = GetEntryPolicy(source);
+            if (source.Generation?.IsCurrent == false) return factory();
+            if (TryGetFresh<T>(key, _engine.Now, out var hit, out var node, out var refresh))
+            {
+                if (refresh) StartBackgroundRefresh(key, name, () => Task.FromResult(factory()), policy, node!, token);
+                RecordHit(name);
+                return hit!;
+            }
+            token.ThrowIfCancellationRequested();
+            var own = new SyncFlight(policy.Tags, source.Generation);
+            SyncFlight flight;
+            while (true)
+            {
+                flight = _syncFlights.GetOrAdd(key, own);
+                if (ReferenceEquals(flight, own)) break;
+                if (flight.Invalidated)
+                {
+                    if (_syncFlights.TryUpdate(key, own, flight)) { flight = own; break; }
+                    continue;
+                }
+                if (flight.OwnerThread == Environment.CurrentManagedThreadId || LoadingScope.Contains(flight))
+                    throw new InvalidOperationException($"The factory of '{name}' recursively requested its own key.");
+                flight.Ready.Wait(token);
+                if (flight.CancelledByCaller && !token.IsCancellationRequested) continue;
+                flight.Error?.Throw();
+                if (flight.Value is T joined) { RecordHit(name); return joined; }
+                if (flight.Value == null && default(T) == null) { RecordHit(name); return default!; }
+                return factory();
+            }
+            Node? previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
+            try
+            {
+                if (TryGetFresh<T>(key, _engine.Now, out hit, out _, out _))
+                {
+                    flight.Value = hit;
+                    flight.Complete(hit);
+                    RecordHit(name);
+                    return hit!;
+                }
+                RecordMiss(name);
+                var start = StartTiming();
+                var value = LoadingScope.Run(flight, factory);
+                if (ShouldStore(value, policy, name)) StoreLoaded(key, value, policy, flight);
+                flight.Value = value;
+                flight.Complete(value);
+                RecordLoadLatency(name, ElapsedSince(start));
+                return value;
+            }
+            catch (Exception exception)
+            {
+                if (exception is OperationCanceledException cancelled && token.IsCancellationRequested)
+                {
+                    flight.Error = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+                    flight.CancelByCaller(cancelled);
+                    throw;
+                }
+                _metricsProvider.CacheError(name, exception.Message);
+                if (exception is not OperationCanceledException && previous != null && !flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
+                {
+                    flight.Value = stale;
+                    flight.Complete(stale);
+                    return stale!;
+                }
+                flight.Error = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+                flight.Fail(exception);
+                throw;
+            }
+            finally
+            {
+                _syncFlights.TryRemove(new KeyValuePair<string, SyncFlight>(key, flight));
+                flight.Ready.Set();
+            }
+        }
+
+        internal void InvalidateTagsSynchronously(string[] tags)
+        {
+            foreach (var tag in tags) RemoveLocalTag(tag);
+            if (_distributed != null)
+                throw new NotSupportedException("This distributed provider has no bounded native synchronous invalidation. Use an async mutation method.");
+        }
+
+
 
         /// <summary>Whether a load or background refresh for <paramref name="key"/> is still running; lets tests wait for one to finish.</summary>
         internal bool IsLoading(string key) => _flights.ContainsKey(key);
@@ -248,9 +334,60 @@ namespace MethodCache.Extensibility
             return AcceptFastNode(_options.EnableFastPath && _engine.TryGet(cacheKey, now, out var found) ? found : null, now, out value, out node);
         }
 
-        private bool AcceptFastNode<T>(Node? found, long now, out T? value, out Node? node)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetGeneratedTask<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, [NotNullWhen(true)] out Task<T>? task)
         {
-            if (TryAcceptFresh(found, now, out value, out node, out var refreshDue)
+            if (TryGetGeneratedNode<T>(ref key, generation, out var value, out var node))
+            {
+                task = node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
+                return true;
+            }
+            task = null;
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetGeneratedTextTask<T>(string key, PolicyGeneration generation, [NotNullWhen(true)] out Task<T>? task)
+        {
+            var now = _engine.Now;
+            if (AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
+                now, out T? value, out var node, generation))
+            {
+                task = node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
+                return true;
+            }
+            task = null;
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetGeneratedTextValue<T>(string key, PolicyGeneration generation, out T? value)
+        {
+            var now = _engine.Now;
+            return AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
+                now, out value, out _, generation);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetGeneratedValue<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, out T? value)
+            => TryGetGeneratedNode(ref key, generation, out value, out _);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool TryGetGeneratedNode<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, out T? value, out Node? node)
+        {
+            var now = _engine.Now;
+            Node? found = null;
+            if (_options.EnableFastPath)
+            {
+                if (key.StoredText is { } text) _engine.TryGet(text, now, out found);
+                else _engine.TryGet(key.AsSpan(), now, out found);
+            }
+            return AcceptFastNode(found, now, out value, out node, generation);
+        }
+
+        private bool AcceptFastNode<T>(Node? found, long now, out T? value, out Node? node, PolicyGeneration? generation = null)
+        {
+            if (TryAcceptFresh(found, now, out value, out node, out var refreshDue, generation)
                 && !(refreshDue && Volatile.Read(ref node!.RefreshState) == 0))
             {
                 if (_options.EnableStatistics)
@@ -463,6 +600,7 @@ namespace MethodCache.Extensibility
         private Task<T> GetOrCreateCoreAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken, Flight? publication = null)
         {
             ArgumentNullException.ThrowIfNull(factory);
+            if (policy.Source?.Generation?.IsCurrent == false) return factory();
 
             if (TryGetFresh<T>(key, _engine.Now, out var value, out var node, out var refreshDue))
             {
@@ -500,7 +638,7 @@ namespace MethodCache.Extensibility
                 // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
                 previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
 
-                flight = new Flight(policy.Tags, publication);
+                flight = new Flight(policy.Tags, publication) { Generation = policy.Source?.Generation };
                 var existing = JoinOrStartFlight(key, flight);
                 if (ReferenceEquals(existing, flight))
                 {
@@ -620,7 +758,7 @@ namespace MethodCache.Extensibility
         {
             try
             {
-                if (_distributed != null)
+                if (_distributed != null && !flight.Invalidated)
                 {
                     var stored = await ReadDistributedAsync<T>(key, cancellationToken).ConfigureAwait(false);
                     if (stored.Found)
@@ -738,6 +876,16 @@ namespace MethodCache.Extensibility
         /// <summary>Registers <paramref name="flight"/> for the key, or returns the load already running for it.</summary>
         private Flight JoinOrStartFlight(string key, Flight flight)
         {
+            if (flight.Generation?.IsCurrent == false) return flight;
+            var existing = JoinOrStartCurrentFlight(key, flight);
+            // Retirement may race dictionary admission. A retired owner becomes Invalidated and is replaceable;
+            // a retired joiner must not join a newer generation. Publication still holds the generation gate.
+            return !ReferenceEquals(existing, flight) && flight.Generation?.IsCurrent == false ? flight : existing;
+        }
+
+        private Flight JoinOrStartCurrentFlight(string key, Flight flight)
+        {
+            if (_syncFlights.TryGetValue(key, out var synchronous) && !synchronous.Invalidated) return synchronous;
             while (true)
             {
                 var existing = _flights.GetOrAdd(key, flight);
@@ -762,7 +910,7 @@ namespace MethodCache.Extensibility
                 return;
             }
 
-            var flight = new Flight(policy.Tags);
+            var flight = new Flight(policy.Tags) { Generation = policy.Source?.Generation };
             if (!_flights.TryAdd(key, flight))
             {
                 // A load for this key is already running. Let a later hit try again if this node outlives it.
@@ -922,10 +1070,13 @@ namespace MethodCache.Extensibility
             {
                 lock (flight.Gate)
                 {
-                    if (flight.Invalidated) return;
-                    var current = replacing;
-                    if (current == null && !_engine.TryPeek(key, out current)) return;
-                    _engine.RemoveNode(current);
+                    lock (policy.Source?.Generation?.Gate ?? flight.Gate)
+                    {
+                        if (flight.Invalidated) return;
+                        var current = replacing;
+                        if (current == null && !_engine.TryPeek(key, out current)) return;
+                        _engine.RemoveNode(current);
+                    }
                 }
                 return;
             }
@@ -975,6 +1126,9 @@ namespace MethodCache.Extensibility
             if (flight == null) return Publish(node, replacing);
             lock (flight.Gate)
             {
+                if (policy.Source?.Generation is { } generation)
+                    lock (generation.Gate)
+                        return flight.Invalidated ? null : Publish(node, replacing);
                 return flight.Invalidated ? null : Publish(node, replacing);
             }
         }
@@ -996,11 +1150,17 @@ namespace MethodCache.Extensibility
         private bool TryGetFresh<T>(string key, long now, out T? value, out Node? node, out bool refreshDue)
             => TryAcceptFresh(_engine.TryGet(key, now, out var found) ? found : null, now, out value, out node, out refreshDue);
 
-        private bool TryAcceptFresh<T>(Node? found, long now, out T? value, out Node? node, out bool refreshDue)
+        private bool TryAcceptFresh<T>(Node? found, long now, out T? value, out Node? node, out bool refreshDue, PolicyGeneration? generation = null)
         {
             refreshDue = false;
-
-            if (found is null || found.IsLogicallyExpired(now) || !TryRead(found, out value))
+            var policy = found?.Policy as EntryPolicy;
+            // A generated caller already checked its captured generation. Compare the entry's identity rather
+            // than reading its retirement flag again. Unbound public lookups still check retirement directly.
+            var entryGeneration = policy?.Generation;
+            var retired = generation == null ? entryGeneration?.IsCurrent == false
+                : entryGeneration != null && !ReferenceEquals(entryGeneration, generation);
+            if (found is null || found.IsLogicallyExpired(now) ||
+                retired || !TryRead(found, out value))
             {
                 value = default;
                 node = null;
@@ -1008,7 +1168,7 @@ namespace MethodCache.Extensibility
             }
 
             node = found;
-            if (found.Policy is EntryPolicy { NeedsReadCheck: true } policy)
+            if (policy is { NeedsReadCheck: true })
             {
                 if (policy.Sliding > 0)
                 {
@@ -1031,7 +1191,8 @@ namespace MethodCache.Extensibility
             // Only the entry still cached under the key: one removed, invalidated or replaced since it was looked up
             // must never come back as a fallback
             var now = _engine.Now;
-            if (node.IsAlive && !node.IsPhysicallyExpired(now) && TryRead(node, out value))
+            if (node.IsAlive && !node.IsPhysicallyExpired(now) &&
+                node.Policy is not EntryPolicy { Generation.IsCurrent: false } && TryRead(node, out value))
             {
                 // Serve the stale value for a short while before trying the factory again. Reads must not extend it
                 // with sliding expiration, or the factory would never be tried again, and no early refresh may start
@@ -1118,14 +1279,13 @@ namespace MethodCache.Extensibility
         private void InvalidateFlights(Func<string, bool> tagMatches, bool includeUntagged = false)
         {
             foreach (var batch in _bulkLoads) batch.Key.InvalidateTags(tagMatches, includeUntagged);
-            if (_flights.IsEmpty)
+            if (_flights.IsEmpty && _syncFlights.IsEmpty)
             {
                 return;
             }
 
-            foreach (var pair in _flights)
+            foreach (var flight in _flights.Values.Concat(_syncFlights.Values))
             {
-                var flight = pair.Value;
                 if (includeUntagged)
                 {
                     flight.Invalidated = true;
@@ -1205,6 +1365,7 @@ namespace MethodCache.Extensibility
 
         private void InvalidateFlight(string key)
         {
+            if (_syncFlights.TryGetValue(key, out var synchronous)) synchronous.Invalidated = true;
             foreach (var batch in _bulkLoads) batch.Key.InvalidateKey(key);
             if (_flights.TryGetValue(key, out var flight))
             {
@@ -1261,6 +1422,7 @@ namespace MethodCache.Extensibility
 
             /// <summary>The policy this was built from. The weak table does not let this back-reference keep the key alive.</summary>
             public CacheRuntimePolicy? Source { get; init; }
+            public PolicyGeneration? Generation { get; init; }
 
             public bool NeedsReadCheck => Sliding > 0 || RefreshWindow > 0;
 
@@ -1277,6 +1439,7 @@ namespace MethodCache.Extensibility
                 return new EntryPolicy
                 {
                     Source = policy,
+                    Generation = policy.Generation,
                     Duration = policy.Duration is { } duration && duration > TimeSpan.Zero ? ToNanos(duration) : null,
                     Sliding = policy.SlidingExpiration is { } sliding && sliding > TimeSpan.Zero ? ToNanos(sliding) : 0,
                     RefreshWindow = refreshWindow,
@@ -1307,7 +1470,7 @@ namespace MethodCache.Extensibility
             }
 
             /// <summary>Calls <paramref name="factory"/> as part of <paramref name="flight"/>.</summary>
-            public static Task<T> Run<T>(Flight flight, Func<Task<T>> factory)
+            public static T Run<T>(Flight flight, Func<T> factory)
             {
                 var outer = Current.Value;
                 Current.Value = new LoadingScope(flight, outer);
@@ -1340,8 +1503,9 @@ namespace MethodCache.Extensibility
         /// One running load that other callers of the same key join. It is its own completion source, so a load
         /// allocates one object less.
         /// </summary>
-        private sealed class Flight : TaskCompletionSource<object?>
+        private class Flight : TaskCompletionSource<object?>
         {
+            internal PolicyGeneration? Generation { get; init; }
             private volatile bool _invalidated;
             private readonly Flight? _publication;
             public object Gate { get; }
@@ -1361,7 +1525,7 @@ namespace MethodCache.Extensibility
             /// <summary>Set when the key or one of its tags is invalidated while loading; the result is then not stored.</summary>
             public bool Invalidated
             {
-                get => _invalidated || _publication?.Invalidated == true;
+                get => _invalidated || _publication?.Invalidated == true || Generation?.IsCurrent == false;
                 set { lock (Gate) _invalidated = value; }
             }
 
@@ -1383,6 +1547,15 @@ namespace MethodCache.Extensibility
                     _ = Task.Exception; // observed: no UnobservedTaskException when nobody joined
                 }
             }
+        }
+
+        private sealed class SyncFlight : Flight
+        {
+            internal SyncFlight(string[]? tags, PolicyGeneration? generation) : base(tags) => Generation = generation;
+            internal int OwnerThread { get; } = Environment.CurrentManagedThreadId;
+            internal ManualResetEventSlim Ready { get; } = new(false);
+            internal object? Value { get; set; }
+            internal System.Runtime.ExceptionServices.ExceptionDispatchInfo? Error { get; set; }
         }
 
         /// <summary>A batch's publication guards. Individual loads remain free to populate its keys while the batch reads.</summary>
