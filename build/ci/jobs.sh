@@ -37,6 +37,7 @@ solution=MethodCache.sln
 without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
 
 job_build() {
+  PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
   dotnet restore "$solution"
   dotnet build "$solution" --configuration Release --no-restore
 }
