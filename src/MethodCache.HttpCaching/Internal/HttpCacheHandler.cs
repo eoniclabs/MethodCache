@@ -369,13 +369,14 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             return StoreResult.NotStored; // Larger than MaxResponseSize; the caller still reads all of it
         }
 
+        var attempt = new StoreAttempt();
         try
         {
-            var stored = await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
+            var stored = await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken, attempt).ConfigureAwait(false);
             if (stored == StoreResult.Stored) _logger.LogDebug("Cached response for {Uri}, size: {Size} bytes", request.RequestUri, entry.Content.Length);
             return stored;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException && !attempt.Retired)
         {
             _logger.LogWarning(ex, "Failed to cache response for {Uri}", request.RequestUri);
             return StoreResult.NotStored;
@@ -392,6 +393,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         CancellationToken cancellationToken)
     {
         // Check the complete representation: a 304 can replace its storage and privacy policy.
+        var attempt = new StoreAttempt();
         using var mergedResponse = entry.ToHttpResponse(request);
         if (IsStorable(request, mergedResponse, options))
         {
@@ -400,12 +402,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             try
             {
                 // Nothing written (no lifetime left) leaves the old entry, with its old rules: remove it below
-                if (await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false) != StoreResult.NotStored)
+                if (await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken, attempt).ConfigureAwait(false) != StoreResult.NotStored)
                 {
                     return;
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException && !attempt.Retired)
             {
                 _logger.LogWarning(ex, "Failed to update the cached response for {Uri}; removing it", request.RequestUri);
             }
@@ -416,7 +418,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     // Remove the URL index too, so previously stored variants cannot be reused, and start a new
     // generation, so a response another request fetched earlier cannot be published afterwards.
-    private async ValueTask RemoveUrlAsync(string urlKey, string cacheKey, CancellationToken cancellationToken)
+    private async ValueTask RemoveUrlAsync(string urlKey, string cacheKey, CancellationToken cancellationToken, StoreAttempt? attempt = null)
     {
         try
         {
@@ -426,11 +428,15 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         {
             // The new generation alone makes the old entry unreachable: publish it anyway, then report the failure
             await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
+            if (attempt != null) attempt.Retired = true;
             throw;
         }
 
         await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
+        if (attempt != null) attempt.Retired = true;
     }
+
+    private sealed class StoreAttempt { public bool Retired; }
 
     private enum StoreResult { NotStored, Stored, Retired }
 
@@ -442,7 +448,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         HttpCacheEntry entry,
         HttpCacheOptions options,
         FreshnessCalculator freshness,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, StoreAttempt attempt)
     {
         var timeToLive = GetTimeToLive(entry, options, freshness);
         if (timeToLive <= TimeSpan.Zero)
@@ -456,7 +462,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         {
             // Retire the entire old schema, including concurrent writers. This response was fetched in that
             // epoch, so it cannot move into the new one; the next request fetches and stores the new schema.
-            await RemoveUrlAsync(urlKey, baseKey, cancellationToken).ConfigureAwait(false);
+            await RemoveUrlAsync(urlKey, baseKey, cancellationToken, attempt).ConfigureAwait(false);
             return StoreResult.Retired;
         }
         if (selectingHeaders.Length == 0)

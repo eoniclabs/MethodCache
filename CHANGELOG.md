@@ -12,7 +12,8 @@ release.
 - Collection subclasses keep their public state in default, JSON and MessagePack keys. Collection subtypes needing runtime-state serialization now use hashed keys; earlier inline keys for those subtypes become cold misses.
 - Static tags skip argument formatting, and dynamic tags format only referenced parameters.
 - Redis backplane publication honors cancellation, and cancelled unsubscribe acknowledgements no longer fail application shutdown. SQL backplane gaps survive slow transactions; a separate non-waiting probe retires confirmed absent identities while newer invalidations and other committed gaps keep arriving.
-- HTTP full replacement responses retire older entries when they cannot be stored. Stale-while-revalidate honors request freshness limits, and concurrent first variants share an index without hiding each other. Variant indexes outlive their bodies, and selection-rule changes retire the URL epoch once, preserving concurrent publications in the new epoch.
+- HTTP full replacement responses retire older entries when they cannot be stored. Stale-while-revalidate honors request freshness limits, and concurrent first variants share an index without hiding each other. Variant indexes outlive their bodies, and selection-rule changes retire the URL epoch once, preserving concurrent publications in the new epoch even when deleting the old entry fails after rotation.
+- Backplane gap failure coverage runs without infrastructure in the Core fault-injection suite; real SQL lock checks supplement it.
 - Memory benchmarks measure fresh fills and real tag invalidations; short-lived entries use the intended duration.
 - SQL Server pins patched PKCS dependency versions for [CVE-2026-84008](https://github.com/advisories/GHSA-846f-f764-76mx), restoring the high-severity dependency audit gate.
 

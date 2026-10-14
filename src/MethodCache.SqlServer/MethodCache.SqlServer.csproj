@@ -34,6 +34,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.SqlServer.Tests" />
     <InternalsVisibleTo Include="MethodCache.SqlServer.IntegrationTests" />
+    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>

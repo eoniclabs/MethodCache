@@ -318,8 +318,9 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
             if (gaps.Count > 0)
             {
-                gaps = await ReadGapsAsync(connection, gaps, messages, cancellationToken).ConfigureAwait(false);
-                await RetireResolvedGapsAsync(connection, gaps, now, cancellationToken).ConfigureAwait(false);
+                gaps = await ReadGapSnapshotAsync(gaps, messages, now,
+                    (pending, ready, token) => ReadGapsAsync(connection, pending, ready, token),
+                    (old, token) => AreGapsAbsentAsync(connection, old, token), cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -382,11 +383,20 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         return RemoveTaken(gaps, taken);
     }
 
-    private async Task RetireResolvedGapsAsync(SqlConnection connection, List<GapRange> gaps, DateTime now, CancellationToken cancellationToken)
+    /// <summary>Stages gap discovery and retirement separately; transport failures can leave gaps watched without losing ready messages.</summary>
+    internal static async Task<List<GapRange>> ReadGapSnapshotAsync(List<GapRange> gaps, List<BackplaneMessage> messages, DateTime now,
+        Func<List<GapRange>, List<BackplaneMessage>, CancellationToken, Task<List<GapRange>>> discover,
+        Func<List<GapRange>, CancellationToken, Task<bool>> areAbsent, CancellationToken cancellationToken)
     {
+        gaps = await discover(gaps, messages, cancellationToken).ConfigureAwait(false);
         var old = gaps.Where(gap => now - gap.SeenAt > GapLifetime).ToList();
-        if (old.Count == 0) return;
+        if (old.Count > 0 && await areAbsent(old, cancellationToken).ConfigureAwait(false))
+            gaps.RemoveAll(gap => now - gap.SeenAt > GapLifetime);
+        return gaps;
+    }
 
+    private async Task<bool> AreGapsAbsentAsync(SqlConnection connection, List<GapRange> old, CancellationToken cancellationToken)
+    {
         // READPAST already collected committed gap messages. A separate probe may forget only ranges proven
         // absent without skipping locks. NOWAIT turns an open transaction into an immediate retry, never a
         // stalled poll. A row committed since READPAST makes the count nonzero and is delivered next time.
@@ -396,13 +406,13 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         AddGapParameters(command, old);
         try
         {
-            if ((long)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))! == 0)
-                gaps.RemoveAll(gap => now - gap.SeenAt > GapLifetime);
+            return (long)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))! == 0;
         }
         catch (SqlException ex) when (!cancellationToken.IsCancellationRequested && ex.Number is 1222 or -2)
         {
             // Lock/query timeout affects only retirement; keep every gap and deliver the messages already read.
             _logger.LogDebug(ex, "MethodCache keeps unresolved SQL backplane gaps for another poll.");
+            return false;
         }
     }
 

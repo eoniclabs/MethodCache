@@ -98,7 +98,7 @@ builder.Services.AddMethodCache();                               // after your r
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
 
-SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications.
+SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
 
 
 ---
@@ -1229,7 +1229,7 @@ limits and metrics. This page covers the rules the cache follows and how to writ
 
 A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
 
-Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema.
+Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema. If deleting the old entry fails after the epoch was rotated, foreground validation reports that error without rotating again; background validation logs it. A concurrent publication in the new epoch remains reachable.
 
 ## Freshness and validation
 
@@ -1964,7 +1964,7 @@ authorization too.
 | Threat | What MethodCache does |
 |---|---|
 | Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports; explicitly supplied cookie headers isolate callers. Unknown transports, and handlers inside the primary transport, bypass caching unless explicitly verified and opted in with `AllowUnverifiedTransport`. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
-| A 200 or 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` on a 304 keeps its previous value. Unstorable full replacements also retire the old body, and selection-rule changes retire its URL epoch once so a newer concurrent publication remains reachable. |
+| A 200 or 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` on a 304 keeps its previous value. Unstorable full replacements also retire the old body, and selection-rule changes retire its URL epoch once so a newer concurrent publication remains reachable, including when old-entry deletion fails after a successful rotation. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
 | A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
@@ -2020,7 +2020,7 @@ HTTP age arithmetic saturates during response correction and resident-time accum
 
 Bulk publication guards are tested during key, tag and clear invalidation; in-flight batch results cannot resurrect invalidated entries. Collection-state properties and the generator signature corpus cover tenant/scope state on collection subclasses.
 
-Persistent SQL insert locks, including other scopes sharing the table, cannot hold back newer invalidations or other committed gaps. `LockedGapReviewTests` injects such locks through repeated polls and verifies late commit/rollback recovery.
+Persistent SQL insert locks, including other scopes sharing the table, cannot hold back newer invalidations or other committed gaps. The non-skipping `LongTransactionReviewTests` and `LockedGapReviewTests` in `MethodCache.Core.Tests/FaultInjection` exercise the production gap-discovery protocol without a database. Linked SQL integration variants additionally inject real locks through repeated polls and verify late commit/rollback recovery.
 
 
 ---
@@ -2810,7 +2810,7 @@ That is all. Your typed client keeps calling `GetAsync` as before.
 
 A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
 
-Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema.
+Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema. If deleting the old entry fails after the epoch was rotated, foreground validation reports that error without rotating again; background validation logs it. A concurrent publication in the new epoch remains reachable.
 
 ## What it does
 
@@ -3010,7 +3010,8 @@ release.
 - Collection subclasses keep their public state in default, JSON and MessagePack keys. Collection subtypes needing runtime-state serialization now use hashed keys; earlier inline keys for those subtypes become cold misses.
 - Static tags skip argument formatting, and dynamic tags format only referenced parameters.
 - Redis backplane publication honors cancellation, and cancelled unsubscribe acknowledgements no longer fail application shutdown. SQL backplane gaps survive slow transactions; a separate non-waiting probe retires confirmed absent identities while newer invalidations and other committed gaps keep arriving.
-- HTTP full replacement responses retire older entries when they cannot be stored. Stale-while-revalidate honors request freshness limits, and concurrent first variants share an index without hiding each other. Variant indexes outlive their bodies, and selection-rule changes retire the URL epoch once, preserving concurrent publications in the new epoch.
+- HTTP full replacement responses retire older entries when they cannot be stored. Stale-while-revalidate honors request freshness limits, and concurrent first variants share an index without hiding each other. Variant indexes outlive their bodies, and selection-rule changes retire the URL epoch once, preserving concurrent publications in the new epoch even when deleting the old entry fails after rotation.
+- Backplane gap failure coverage runs without infrastructure in the Core fault-injection suite; real SQL lock checks supplement it.
 - Memory benchmarks measure fresh fills and real tag invalidations; short-lived entries use the intended duration.
 - SQL Server pins patched PKCS dependency versions for [CVE-2026-84008](https://github.com/advisories/GHSA-846f-f764-76mx), restoring the high-severity dependency audit gate.
 

@@ -10,11 +10,15 @@ public class SchemaRetirementReviewTests
     private const string Url = "https://example.com/schema";
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public async Task Revalidation_ChangesSchema_RetiresOnceAndKeepsConcurrentNewPublication(bool notModified, bool background)
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public async Task Revalidation_ChangesSchema_RetiresOnceAndKeepsConcurrentNewPublication(bool notModified, bool background, bool removalFails)
     {
         var clock = new ManualTimeProvider();
         using var origin = new SchemaOrigin(notModified);
@@ -25,9 +29,11 @@ public class SchemaRetirementReviewTests
         using var concurrent = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), origin, storage, clock));
         Assert.Equal("old", await ReadAsync(client));
         clock.Advance(TimeSpan.FromSeconds(2));
+        storage.FailRemoval = removalFails;
         storage.AfterFirstRetirement = async () => Assert.Equal("fresh", await ReadAsync(concurrent));
 
-        await ReadAsync(client);
+        if (removalFails && !background) await Assert.ThrowsAsync<InvalidOperationException>(() => ReadAsync(client));
+        else await ReadAsync(client);
         await WaitForBackgroundAsync().WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.Equal("fresh", await ReadAsync(concurrent));
@@ -75,11 +81,12 @@ public class SchemaRetirementReviewTests
     {
         private int _retirements;
         public int Retirements => Volatile.Read(ref _retirements);
+        public bool FailRemoval { get; set; }
         public Func<Task>? AfterFirstRetirement { get; set; }
         public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default) => inner.GetGenerationAsync(key, cancellationToken);
         public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) => inner.GetAsync(key, cancellationToken);
         public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan ttl, CancellationToken cancellationToken = default) => inner.SetAsync(key, entry, ttl, cancellationToken);
-        public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => inner.RemoveAsync(key, cancellationToken);
+        public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => FailRemoval ? ValueTask.FromException(new InvalidOperationException("removal failed")) : inner.RemoveAsync(key, cancellationToken);
         public ValueTask ClearAsync(CancellationToken cancellationToken = default) => inner.ClearAsync(cancellationToken);
         public async ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
         {
