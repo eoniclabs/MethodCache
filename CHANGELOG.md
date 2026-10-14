@@ -6,6 +6,13 @@ release.
 
 ## Unreleased (1.0.0)
 
+### Remove retained compatibility code
+
+The previous memory engine benchmark baseline is removed, and current runtime-key benchmarks have descriptive
+names. SQL Server backplane initialization requires `Scope binary(32) NOT NULL`; automatic migration and cleanup
+of unscoped rows are removed. Schema errors are logged, and table initialization uses the registered
+`TimeProvider` for its startup deadline and retry interval. Benchmark `--list` commands no longer throw.
+
 ### Release audit fixes
 
 The release audit fixes presence-aware manual reads, caller cancellation during loads, immutable policy tags,

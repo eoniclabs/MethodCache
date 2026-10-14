@@ -502,10 +502,8 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         }
 
         _nextCleanup = now + CleanupInterval;
-        // Rows without a scope come from an earlier build and no instance of this one reads them. That build deleted
-        // every row older than its own retention, so removing them after this instance's retention changes nothing
-        // for anyone. Other prefixes may keep their rows longer, so their rows are left to them.
-        var sql = $"DELETE TOP (@batch) FROM {_options.QualifiedInvalidationsTableName} WHERE ([Scope] = @scope OR [Scope] IS NULL) AND [CreatedAt] < DATEADD(second, -@retention, SYSUTCDATETIME());";
+        // Other prefixes may retain their rows longer, so each instance cleans only its own scope.
+        var sql = $"DELETE TOP (@batch) FROM {_options.QualifiedInvalidationsTableName} WHERE [Scope] = @scope AND [CreatedAt] < DATEADD(second, -@retention, SYSUTCDATETIME());";
 
         var connection = new SqlConnection(_options.ConnectionString);
         await using var connectionScope = connection.ConfigureAwait(false);

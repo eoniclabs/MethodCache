@@ -138,6 +138,9 @@ dotnet add package MethodCache
 
 Details: [Getting started](docs/getting-started.md).
 
+SQL Server backplane tables require a non-nullable `binary(32)` `Scope` column. Automatic initialization reports
+incompatible schemas without upgrading them; see the [SQL Server guide](src/MethodCache.SqlServer/README.md#required-backplane-schema).
+
 ## Features
 
 ### Invalidation

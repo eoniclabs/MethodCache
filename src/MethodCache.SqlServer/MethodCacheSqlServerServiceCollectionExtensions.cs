@@ -49,7 +49,7 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
 
         if (options.CreateTablesIfMissing)
         {
-            services.AddSingleton<IHostedService>(sp => new SqlServerTables(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>()));
+            services.AddSingleton<IHostedService>(sp => new SqlServerTables(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>(), timeProvider: sp.GetService<TimeProvider>()));
         }
 
         if (options.EnableBackplane)

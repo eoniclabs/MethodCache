@@ -254,6 +254,14 @@ interface is cacheable. See [keys](https://github.com/eoniclabs/MethodCache/blob
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
 yourself open. Factory registrations are wrapped the same way ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#registering-with-a-factory)).
 
+A factory registration for the README's `IUserService`, once `IUserDatabase` is registered:
+
+```cs
+builder.Services.AddScoped<IUserService>(sp =>
+    new UserService(sp.GetRequiredService<IUserDatabase>()));
+builder.Services.AddMethodCache();
+```
+
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
 
@@ -1414,6 +1422,9 @@ An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision rem
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
 
+SQL Server backplane initialization requires a non-nullable `binary(32)` `Scope` column. Incompatible scope columns
+are reported without automatic schema upgrades; see the [SQL Server guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md#required-backplane-schema).
+
 
 ---
 
@@ -1790,7 +1801,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 |---|---|
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
-| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. |
+| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic initialization rejects missing, nullable or incorrectly typed scope columns; it requires `binary(32) NOT NULL`. |
 | Invalidations evicted from the store | A store that evicts a tag or removal stamp under memory pressure makes the entries it invalidated valid again (for example data cached before a permission change). Run Redis with `maxmemory-policy noeviction` or a Redis of its own; see [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted). |
 | Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Messages from another MethodCache version are rejected with one warning, without logging their contents. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
@@ -2313,6 +2324,13 @@ By default the schema and two tables are created when the application starts, if
 
 If the application's login may not create tables, set `CreateTablesIfMissing = false` and create them in a migration instead.
 
+### Required backplane schema
+
+The invalidations table requires `Scope binary(32) NOT NULL` and the indexes `Index_Scope_Id (Scope, Id)` and
+`Index_Scope_CreatedAt (Scope, CreatedAt)`. Automatic initialization rejects incompatible scope columns with a
+logged schema error and does not convert tables or rewrite their rows. An error detected during the bounded
+startup wait also fails startup. With `CreateTablesIfMissing = false`, provision the current schema yourself.
+
 ## When SQL Server is down
 
 MethodCache keeps answering from memory and your methods; SQL Server never fails or stalls a call.
@@ -2764,6 +2782,13 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+### Remove retained compatibility code
+
+The previous memory engine benchmark baseline is removed, and current runtime-key benchmarks have descriptive
+names. SQL Server backplane initialization requires `Scope binary(32) NOT NULL`; automatic migration and cleanup
+of unscoped rows are removed. Schema errors are logged, and table initialization uses the registered
+`TimeProvider` for its startup deadline and retry interval. Benchmark `--list` commands no longer throw.
 
 ### Release audit fixes
 
