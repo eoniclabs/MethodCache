@@ -423,12 +423,14 @@ def run(config, apply):
     now = time.time()
     deadline = time.monotonic() + config.get('max_seconds', 600)
     paths = activity()
+    errors = 0
     for cfg in config.get('archives', []):
         try:
             collect_archives(cfg, config, now, paths, apply, deadline)
         except BlockingIOError:
             emit('protected-lease', cfg['root'])
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as e:
+            errors += 1
             emit('error', cfg['root'], error=str(e))
     seen = set()
     for name in config.get('xcode_roots', []):
@@ -440,10 +442,13 @@ def run(config, apply):
             seen.add(p)
             if time.monotonic() >= deadline:
                 emit('time-budget', p)
+                if errors:
+                    raise RuntimeError('collection errors occurred; see the collector log')
                 return
             try:
                 clean_builds(p, config.get('build_idle_hours', 24) * 3600, now, paths, apply=apply, recheck=apply)
             except (OSError, RuntimeError, subprocess.SubprocessError) as e:
+                errors += 1
                 emit('error', p, error=str(e))
     if apply:
         # Only directories previously written by this collector can expire as retained logs.
@@ -455,6 +460,8 @@ def run(config, apply):
                 if plain(p) and marker.is_file() and now - marker.stat().st_mtime >= config.get('log_keep_days', 14) * 86400 and not active(p, paths):
                     remove_tree(p)
                     emit('remove-retained-logs', p)
+    if errors:
+        raise RuntimeError('collection errors occurred; see the collector log')
 
 
 def main():
