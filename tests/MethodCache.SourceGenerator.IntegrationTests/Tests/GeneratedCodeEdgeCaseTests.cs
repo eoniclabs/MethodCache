@@ -260,7 +260,7 @@ public static class Probe { public static async Task<string> Go(ISvc s, Svc impl
 } }
 }", nameof(CallerCancellingASharedLoad_DoesNotFailTheOtherCaller), load: true);
         AssertCompiles(r);
-        Assert.Contains(r.Sources.Values, source => source.Contains("__policy, __mcArgument1);"));
+        Assert.Contains(r.Sources.Values, source => source.Contains("global::System.Array.Empty<object?>()), __mcArgument1);"));
         var svc = Resolve(r.Assembly!, "App.ISvc", out var sp);
         var impl = sp.GetRequiredService(r.Assembly!.GetType("App.Svc")!);
         var text = await (Task<string>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
@@ -527,8 +527,7 @@ public class Svc : ISvc {
 public static class Startup { public static void Configure(IServiceCollection s) {
   s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>());
   s.AddMethodCache(config => {
-    var svc = config.ForService<ISvc>();
-    svc.Method(x => x.Find(Any<(int Id, string Name)>.Value)).CacheWhen(v => false);
+    config.Method((ISvc x) => x.Find(Any<(int Id, string Name)>.Value)).CacheWhen(v => false);
   });
 } }
 public static class Probe { public static async Task<int> Go(ISvc s, Svc impl) {

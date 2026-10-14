@@ -55,11 +55,11 @@ namespace MethodCache.Core.Tests.Core
             var services = new ServiceCollection();
 
             // Act
-            services.AddMethodCache(null, Assembly.GetExecutingAssembly());
+            services.AddMethodCache(b => b.FromAssembly(Assembly.GetExecutingAssembly()));
 
             // Assert
             var serviceProvider = services.BuildServiceProvider();
-            
+
             // Verify core services are registered
             Assert.NotNull(serviceProvider.GetService<IPolicyRegistry>());
             Assert.NotNull(serviceProvider.GetService<IRuntimeCacheConfigurator>());
@@ -72,7 +72,7 @@ namespace MethodCache.Core.Tests.Core
         public void AddMethodCache_ExposesTheCacheManagerAsMemoryCache()
         {
             var services = new ServiceCollection();
-            services.AddMethodCache(null, Assembly.GetExecutingAssembly());
+            services.AddMethodCache(b => b.FromAssembly(Assembly.GetExecutingAssembly()));
 
             using var serviceProvider = services.BuildServiceProvider();
 
@@ -87,7 +87,7 @@ namespace MethodCache.Core.Tests.Core
             var services = new ServiceCollection();
             var custom = NSubstitute.Substitute.For<ICacheManager>();
             services.AddSingleton(custom);
-            services.AddMethodCache(null, Assembly.GetExecutingAssembly());
+            services.AddMethodCache(b => b.FromAssembly(Assembly.GetExecutingAssembly()));
 
             using var serviceProvider = services.BuildServiceProvider();
 

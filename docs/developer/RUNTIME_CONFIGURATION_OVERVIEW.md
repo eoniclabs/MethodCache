@@ -25,7 +25,12 @@ A method id is the full name of the interface that declares the method, a dot an
 
 Policies can also be registered for two kinds of default ids: `*` for every cached method (`DefaultPolicy` in startup code, `Defaults` and `FailSafe` in the configuration section) and `group:<name>` for the methods in a group (`ForGroup`). A method is in a group when its resolved `Metadata` has a `group` entry, set by `[Cache("name")]` or `WithGroup`. Each field comes from the method's own layers first, whatever their priority, then from its group's defaults, then from the defaults for every method; within each of these the priority rule above applies. So `[Cache(Duration = "00:10:00")]` (priority 10) beats a default duration in appsettings.json (priority 50). A change to a default re-resolves every method.
 
-`PolicyRegistry` (`IPolicyRegistry`) holds the resolved policy of every method and publishes changes to a `PolicyHandle` per method. Every decorator for the method shares that handle and reads `PolicyHandle.Current` on each call, with one volatile read and no lock. A change replaces the whole policy, so a call never sees half of an update, and it reaches services that already exist, including singletons.
+`PolicyRegistry` (`IPolicyRegistry`) holds the resolved policy of every method and publishes changes to an internal
+`PolicyHandle`. Bound `MethodCache.Generated.CachedMethod` slots receive these updates and publish immutable
+invocation snapshots. A decorator reads `Capture()` once; the resulting `MethodCall` owns policy, prefix,
+local publication generation, keyed registration and background-scope target. It starts the bound key builder,
+probes and loads using that same snapshot. A retired snapshot bypasses caching; publication and retirement use
+the same generation guard. Existing singleton decorators receive updates without being recreated.
 
 ## Runtime Overrides
 

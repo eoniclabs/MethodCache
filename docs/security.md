@@ -108,3 +108,12 @@ HTTP age arithmetic saturates during response correction and resident-time accum
 Bulk publication guards are tested during key, tag and clear invalidation; in-flight batch results cannot resurrect invalidated entries. Collection-state properties and the generator signature corpus cover tenant/scope state on collection subclasses.
 
 Persistent SQL insert locks, including other scopes sharing the table, cannot hold back newer invalidations or other committed gaps. The non-skipping `LongTransactionReviewTests` and `LockedGapReviewTests` in `MethodCache.Core.Tests/FaultInjection` exercise the production gap-discovery protocol without a database. Linked SQL integration variants additionally inject real locks through repeated polls and verify late commit/rollback recovery.
+
+## Generated contract and registration boundaries
+
+Generated code uses a versioned facade and captures policy, prefix and local publication generation together.
+A key builder from another binding/snapshot is rejected before lookup. Retired loads cannot publish or serve
+an old-generation fail-safe value. Descriptor/module state is separate from each container's live policy,
+keyed binding and background scope. Unknown contracts fail before descriptor/factory execution; ambiguous
+modules, candidates and unsupported cacheable bindings fail instead of choosing an implementation implicitly.
+The corresponding tests are GeneratedContractTests, QuickStartRegistrationTests and the semantic signature corpus.

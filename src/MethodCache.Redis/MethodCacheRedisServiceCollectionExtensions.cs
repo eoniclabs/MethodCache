@@ -1,4 +1,5 @@
 using MethodCache.Extensibility;
+using MethodCache;
 using MethodCache.Redis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -10,6 +11,20 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public static class MethodCacheRedisServiceCollectionExtensions
 {
+    /// <summary>Selects Redis for method results using the stated connection configuration.</summary>
+    public static MethodCacheBuilder UseRedis(this MethodCacheBuilder builder, string configuration)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddMethodCacheRedis(configuration);
+        return builder;
+    }
+    /// <summary>Selects Redis with explicit connection and backplane options.</summary>
+    public static MethodCacheBuilder UseRedis(this MethodCacheBuilder builder, Action<RedisOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddMethodCacheRedis(configure);
+        return builder;
+    }
     /// <summary>
     /// Uses Redis as MethodCache's distributed cache: results are shared between instances, and invalidations
     /// reach every instance's in-memory cache over Redis pub/sub. Call <c>AddMethodCache()</c> as well.

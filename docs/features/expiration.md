@@ -36,7 +36,7 @@ value that isn't a positive time span is a build error ([MC0004](../user-guide/D
 <!-- snippet: expiration-default -->
 ```cs
 builder.Services.AddMethodCache(config =>
-    config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(15))));
+    config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15))));
 ```
 <!-- endSnippet -->
 

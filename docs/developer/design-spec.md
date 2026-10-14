@@ -90,7 +90,8 @@ och lokal generation. Samma MethodCall används för nyckelbygge, uppslag, tags,
 | GeneratedServices.InvalidateTagsAsync | Tar tags och caller-token. Samma återhämtningskontrakt som användar-API:t. |
 | CachedMethod.Capture | Returnerar MethodCall; inga oberoende läsningar av KeyPrefix/Enabled/policy får göras. |
 | MethodCall.StartKey | Tar anroparens stackbuffer och returnerar en KeyBuilder bunden till anropets snapshot. Runtime skriver hela det fasta prefixet och äger gränsen mot argumentdelen. |
-| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
+| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder eller in TextKey och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
+| MethodCall.BindTextKey / TextKey | Binder redan ägd strängtext till samma snapshot. En readonly TextKey bär bara text och bindning, utan oanvänd skrivbar span; samma felbindnings- och stale-regler gäller. |
 | MethodCall.LoadAsync / LoadValueAsync | Tar strängnyckel, generiskt state, statisk loader, taggvärden och token. Snapshoten följer laddningen. |
 | MethodCall.Load | Verklig synkron exekveringsväg för synkrona metoder; se §4.3. |
 | MethodCall.ServiceForLoad | Återanvänder inner-instansen eller löser rätt registrering i ett nytt scope för arbete som outlever anroparen. |
@@ -99,7 +100,7 @@ och lokal generation. Samma MethodCall används för nyckelbygge, uppslag, tags,
 
 Exakta C#-signaturer fastställs och kompileras i PR 1 innan kompatibilitetsbaslinjen skapas. De ska uppfylla
 tabellen, ha fullständiga nullable-kontrakt och inga läckor av interna typer. De ursprungliga separata
-KeyPrefix/Enabled-properties är ersatta av MethodCall, och span-uppslaget av en bunden KeyBuilder.
+KeyPrefix/Enabled-properties är ersatta av MethodCall, och span-uppslaget av en bunden KeyBuilder; befintlig strängtext använder en bunden TextKey.
 Formen får justeras för att uppfylla kontraktet och
 prestandagrinden; en ofullständig skiss ska inte låsas som API.
 
@@ -131,7 +132,10 @@ i refresh-ahead. Refresh får inte dubbelregistrera eller dubbelavsluta samma an
 
 Alla sex tilläggspaket, inklusive MethodCache.Serialization.MessagePack, når interna Core-API:er genom
 InternalsVisibleTo och kräver exakt samma MethodCache-paketversion i nuspec, exempelvis intervallet [1.2.3].
-Pakettestet installerar olika ordningar och nekas vid blandade tillägg/Core-versioner. Stöd för vendor-DLL mot
+Pakettestet installerar olika ordningar och kör strikt restore (NU1608 som error) för blandade tillägg/Core-versioner.
+[NuGets direct-dependency-wins](https://learn.microsoft.com/en-us/nuget/concepts/dependency-resolution#direct-dependency-wins)
+kan annars överstyra även ett exakt transitivt beroende med en varning;
+applikationer får inte undertrycka eller kringgå versionskravet. Stöd för vendor-DLL mot
 senare Core är separat från detta krav.
 
 CompatTests kör färdigkompilerade vendor-DLL:er med källkod, full commit/paketversion och SHA-256 i ett manifest.
@@ -632,7 +636,7 @@ Properties gäller för typer/Unicode/framing. Docs-löften har även en Docs.Te
 | G07 | Samma fixture under JIT och Native AOT; inkluderar modul i refererat hjälpbibliotek och explicit modulval. | Samma kandidater och dekoratorer, ingen assemblynamnsbaserad gissning. |
 | G08 | Två keyed scoped registreringar av samma interface med olika resultat; generiska closed instanser och bakgrundsrefresh. | Isolerade nycklar/resultat; rätt inner/service key i ny scope; ingen användning efter dispose. |
 | G09 | Stoppa anrop efter Capture av v1; byt till v2; fortsätt key-build/probe/load. | Ingen v2-policy skrivs under v1-nyckeln; stale snapshot bypass/retry enligt §2.2. |
-| G10 | Packa/installera alla sex tillägg och Core; försök blandade versioner. | Exakt nuspec-intervall för varje tillägg; matchade versioner fungerar, mismatch nekas av restore. |
+| G10 | Packa/installera alla sex tillägg och Core; försök blandade versioner. | Exakt nuspec-intervall för varje tillägg; matchade versioner fungerar, mismatch nekas av strikt restore (NU1608 som error). |
 | G11 | Reservnycklar, sealed/provider/record/samling och Unicode-surrogates med samma typade data. | Samma deterministiska identitet som helper; olika data/typer aliasar inte. |
 | G12 | Capture A; starta inline-/reservbyggare; byt policy till B före uppslag och försök även byggaren med en annan MethodCall/container. | A använder bara A:s prefix och stale-regel; felbindning avvisas före cacheåtkomst. Ingen extra policy-läsning döljer racen. |
 | G13 | Tom/liten/exakt full stackbuffer, långt prefix, långa escaped strängar, provider-parts och Unicode; styr heap-growth och miss följd av load. | Exakt samma text som helper vid alla storlekar; miss lämnar nyckeln användbar; bara skrivna tecken läses och async-arbete äger sin materialiserade nyckel. |

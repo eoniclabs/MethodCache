@@ -50,8 +50,8 @@ namespace DefaultPolicy
             services.AddSingleton<IPrices, Prices>();
             services.AddMethodCache(config =>
             {
-                config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1)));
-                config.ForGroup(""short"").Configure(o => o.WithDuration(TimeSpan.FromSeconds(10)));
+                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1)));
+                config.Group(""short"", o => o.WithDuration(TimeSpan.FromSeconds(10)));
             });
         }
     }

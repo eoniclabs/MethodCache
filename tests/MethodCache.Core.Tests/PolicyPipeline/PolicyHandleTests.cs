@@ -100,9 +100,11 @@ public class PolicyHandleTests
     private static ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
-        services.AddMethodCache(
-            config => config.ForService<IOrders>().Method(o => o.Get(default)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(5))),
-            Assembly.GetExecutingAssembly());
+        services.AddMethodCache(config =>
+        {
+            config.FromAssembly(Assembly.GetExecutingAssembly());
+            config.Method((IOrders o) => o.Get(default)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(5)));
+        });
         return services.BuildServiceProvider();
     }
 

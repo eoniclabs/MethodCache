@@ -12,13 +12,11 @@ response that says "try again later".
 builder.Services.AddMethodCache(config =>
 {
     // Don't remember empty search results: the next search asks the database again
-    config.ForService<IProductService>()
-          .Method(s => s.SearchAsync(Any<string>.Value))
+    config.Method((IProductService s) => s.SearchAsync(Any<string>.Value))
           .CacheWhen(results => results.Count > 0);
 
     // A product that doesn't exist yet may be created any moment
-    config.ForService<IProductService>()
-          .Method(s => s.FindAsync(Any<int>.Value))
+    config.Method((IProductService s) => s.FindAsync(Any<int>.Value))
           .CacheWhen(product => product is not null);
 });
 ```

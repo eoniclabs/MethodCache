@@ -59,16 +59,19 @@ public abstract class BenchmarkBase
             .SetMinimumLevel(LogLevel.Warning)
             .AddConsole());
 
-        services.AddMethodCache(config =>
-        {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(BenchmarkBase).Assembly);
 
         // Configure specific cache providers
         ConfigureCacheProviders(services);
 
         // Configure benchmark-specific services
         ConfigureBenchmarkServices(services);
+
+        services.AddMethodCache(config =>
+        {
+            config.FromAssembly(typeof(BenchmarkBase).Assembly);
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        });
+
     }
 
     protected virtual void ConfigureCacheProviders(IServiceCollection services)

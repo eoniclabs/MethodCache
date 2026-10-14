@@ -3,7 +3,7 @@
 MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
 write into the key itself (see [Keys](#keys) below). The source generator writes the decorators, their registration
 and those keys at build time. CI publishes a test application with Native AOT on every change and checks that
-caching (with simple, record, collection and `ICacheKeyProvider` arguments), the automatic registration and
+caching (with simple, record, collection and `ICacheKeyProvider` arguments), explicit `AutoRegister(ServiceLifetime)` registration and
 `[assembly: CacheInterface]` work.
 
 ## In-memory caching

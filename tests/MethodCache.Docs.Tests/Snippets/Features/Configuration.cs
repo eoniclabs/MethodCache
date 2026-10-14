@@ -29,15 +29,13 @@ namespace Docs.Configuration
             builder.Services.AddMethodCache(config =>
             {
                 // Every cached method: fills in what the method leaves unset
-                config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(15)));
+                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15)));
 
                 // Methods in the "user-data" group: [Cache("user-data")] or WithGroup("user-data")
-                config.ForGroup("user-data")
-                      .Configure(o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
+                config.Group("user-data", o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
 
                 // One method
-                config.ForService<IUserService>()
-                      .Method(s => s.GetProfileAsync(Any<int>.Value))
+                config.Method((IUserService s) => s.GetProfileAsync(Any<int>.Value))
                       .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).RefreshAhead(TimeSpan.FromMinutes(5)));
             });
             // end-snippet

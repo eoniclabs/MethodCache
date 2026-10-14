@@ -31,7 +31,7 @@ try
     services.AddSingleton<IUserProfiles, UserProfiles>();
     services.AddSingleton<IProductCatalog, ProductCatalog>();
 
-    services.AddMethodCache(config => config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(10))));
+    services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
     services.AddMethodCacheFromConfiguration(configuration);
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -149,7 +149,7 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
 {
     Ui.Chapter(4, "Change policies without touching code", "Durations can come from the attribute, a global default, appsettings.json (reloaded live) or a runtime override.");
     Ui.Code("""
-        services.AddMethodCache(config => config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(10))));
+        services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
         services.AddMethodCacheFromConfiguration(configuration);   // the "MethodCache" section
         """);
 
@@ -167,9 +167,7 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
     Ui.Check(reloaded, "appsettings.json was reloaded while the app was running");
 
     // An operator shortens the duration during an incident.
-    await runtime.ApplyAsync(config => config
-        .ForService<IProductCatalog>()
-        .Method(c => c.GetProductAsync(default!))
+    await runtime.ApplyAsync(config => config.ForService<IProductCatalog>().Method(c => c.GetProductAsync(default!))
         .Configure(o => o.WithDuration(TimeSpan.FromMinutes(1))));
 
     var catalog = provider.GetRequiredService<IProductCatalog>();

@@ -21,7 +21,12 @@ Bulk source reads are guarded against key, tag and clear invalidation; invalidat
    for in-memory caching.
 2. Put `[Cache]` on the **interface** method, never on the class. Put `[CacheInvalidate(Tags = [...])]` on the
    interface methods that change the data. Don't change the implementation.
-3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them.
+3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them. Later cacheable
+   registrations fail at host startup or first generated binding. Missing services require explicit
+   `AutoRegister(lifetime)` and exactly one accessible implementation in the selected generated module.
+4. Use `MethodCacheBuilder` for startup: `Defaults`, `Group`, typed `Method`, `Memory`, `FromConfiguration`,
+   `FromAssemblyOf<T>()` and the integrations' `UseRedis` / `UseSqlServer` / `UseMessagePack`. Choose a module
+   explicitly when multiple assemblies generate the same interface. Keep all add-on/Core versions identical.
 
 ```cs
 using MethodCache;
@@ -178,21 +183,25 @@ builder.Services.AddMethodCache();                               // after your r
 ```
 
 `AddMethodCache()` wraps every registered interface that has cached methods in its generated decorator and keeps the
-lifetime you chose. Call it after your own registrations: a service registered later is not cached. If you don't
-register an implementation at all, `AddMethodCache()` registers it as a singleton when it lives in the same project as
-the interface. To do the same for interfaces in other projects, pass those projects' assemblies:
-`AddMethodCache(null, typeof(ProductService).Assembly)`.
+lifetime you chose. Register cacheable services before this call. A later cacheable registration fails at host
+startup, or when a generated decorator first binds without a host. Unrelated services may be registered later.
+Calling `AddMethodCache` again decorates newly added services and keeps existing decorators intact.
 
-Library code that calls `AddMethodCache()` for its own interfaces, for example in an `AddMyLibrary()` extension
-method, should pass its assembly the same way. Without it, MethodCache asks the runtime for the calling assembly,
-and when the JIT inlines a short wrapper into the application, that is the application's, so the library's
-unregistered interfaces are not registered.
+Missing implementations are registered only with explicit `AutoRegister(ServiceLifetime.Scoped)` (or another
+lifetime). Select the generated module with `FromAssemblyOf<ProductService>()`; exactly one accessible concrete
+implementation must exist for each missing service. Zero or multiple candidates give an error naming the service,
+module and candidates. Explicit DI registrations always retain their implementation and lifetime.
+
+When multiple assemblies generate decorators for the same interface, select one module with
+`FromAssemblyOf<SomeTypeInThatAssembly>()`. No entry-assembly or alphabetical preference is applied. The same
+module selection and candidate data work under JIT and Native AOT.
 
 Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
 key; an interface registered only keyed is not also registered without a key. The service key is part of the cache
 keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
 integer or `Guid` ([Keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#things-to-know)). A catch-all registration with `KeyedService.AnyKey` is
-not cached, since its implementation is created for whichever key is requested; register the keys you use instead.
+rejected, since its implementation is created for whichever key is requested; register concrete keys instead.
+Open generic registrations and closed types without a generated binding also give a named startup error.
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
@@ -222,6 +231,8 @@ builder.Services.AddMethodCache();
   cache, so `[Cache]` on it is a build error ([MCG001](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg001),
   [MCG002](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg002)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
   ([MCG014](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg014)): return a list.
+  Synchronous methods use L1/origin when the distributed adapter has no bounded native synchronous capability.
+  Custom async-only managers bypass their synchronous caching path; see [Generated decorators](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/source-generator.md).
 - Exceptions are never cached: the next call runs the method again.
 - Concurrent calls with the same arguments share one call to your method (stampede protection). A caller that cancels
   only stops its own wait.
@@ -271,6 +282,11 @@ interface is cacheable. See [keys](https://github.com/eoniclabs/MethodCache/blob
 
 ## Registration
 
+Generated runtime calls use the versioned `MethodCache.Generated` facade. Module initializers record descriptors
+only; `AddMethodCache` validates contract versions before executing descriptors or factories. Each invocation
+captures one immutable policy/prefix/publication generation, including keyed registration and background-scope
+binding. A retired invocation may finish its origin call but cannot publish into the current generation.
+
 `AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
 yourself open. Factory registrations are wrapped the same way ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#registering-with-a-factory)).
@@ -285,6 +301,19 @@ builder.Services.AddMethodCache();
 
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
+It checks semantic runtime references as well. Frozen vendor binaries exercise contract compatibility without
+regenerating source during ordinary tests, including under Native AOT.
+
+`AddMethodCache` decorates explicit registrations. Missing services require explicit `AutoRegister(lifetime)`
+with exactly one accessible implementation in the selected module. Use `FromAssemblyOf<T>()` when multiple
+modules offer the same interface. Cacheable late, open generic, AnyKey and unsupported closed bindings fail explicitly.
+
+Built-in synchronous methods run a synchronous factory with synchronous single-flight. They never wait on an
+async loader or async refresh. Async callers can join a synchronous load. A custom async-only manager bypasses
+synchronous caching and emits a diagnostic once per method/container. Current distributed adapters do not expose
+bounded native synchronous operations through this path, so these calls use L1/origin and report unavailable L2;
+use async methods to share results through L2. Synchronous distributed tag mutations report unsupported invalidation
+after the origin/local mutation; use async mutation methods for distributed invalidation.
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
@@ -515,7 +544,7 @@ value that isn't a positive time span is a build error ([MC0004](https://github.
 
 ```cs
 builder.Services.AddMethodCache(config =>
-    config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(15))));
+    config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15))));
 ```
 
 Without any default, entries live for `MethodCacheMemoryOptions.DefaultExpiration` (five minutes). No entry lives
@@ -669,10 +698,10 @@ outage shows slightly old data instead of errors. It is off by default.
 For every cached method at once:
 
 ```cs
-builder.Services.AddMethodCache(config => config.FailSafe(
+builder.Services.AddMethodCache(config => config.Defaults(o => o.FailSafe(
     duration: TimeSpan.FromHours(1),              // how long an expired value is kept as a fallback
     timeout: TimeSpan.FromMilliseconds(200),      // optional: don't wait longer than this when a fallback exists
-    retryAfter: TimeSpan.FromSeconds(30)));       // optional: reuse the fallback this long before trying again
+    retryAfter: TimeSpan.FromSeconds(30))));       // optional: reuse the fallback this long before trying again
 ```
 
 or in `appsettings.json`:
@@ -746,13 +775,11 @@ response that says "try again later".
 builder.Services.AddMethodCache(config =>
 {
     // Don't remember empty search results: the next search asks the database again
-    config.ForService<IProductService>()
-          .Method(s => s.SearchAsync(Any<string>.Value))
+    config.Method((IProductService s) => s.SearchAsync(Any<string>.Value))
           .CacheWhen(results => results.Count > 0);
 
     // A product that doesn't exist yet may be created any moment
-    config.ForService<IProductService>()
-          .Method(s => s.FindAsync(Any<int>.Value))
+    config.Method((IProductService s) => s.FindAsync(Any<int>.Value))
           .CacheWhen(product => product is not null);
 });
 ```
@@ -816,23 +843,28 @@ then the defaults.
 builder.Services.AddMethodCache(config =>
 {
     // Every cached method: fills in what the method leaves unset
-    config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(15)));
+    config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15)));
 
     // Methods in the "user-data" group: [Cache("user-data")] or WithGroup("user-data")
-    config.ForGroup("user-data")
-          .Configure(o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
+    config.Group("user-data", o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
 
     // One method
-    config.ForService<IUserService>()
-          .Method(s => s.GetProfileAsync(Any<int>.Value))
+    config.Method((IUserService s) => s.GetProfileAsync(Any<int>.Value))
           .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).RefreshAhead(TimeSpan.FromMinutes(5)));
 });
 ```
 
-- `DefaultPolicy` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
+- `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
   keeps its ten minutes while the defaults fill in what it leaves out.
 - A method joins a group with `[Cache("name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
 - `Any<T>.Value` stands for any argument when you point at a method.
+
+Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`,
+`FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server and MessagePack
+packages add `UseRedis`, `UseSqlServer` and `UseMessagePack`; Core provides `UseJson`.
+All integration packages require the exact same Core package version; do not override this bound.
+CI uses strict restore (NU1608 as an error) to reject direct-version overrides. Configure services before `AddMethodCache`.
+Runtime override methods retain their separate policy API; the builder configures startup only.
 
 ## appsettings.json
 
@@ -1137,9 +1169,7 @@ builder.Services.AddMethodCache();
   `FailSafeTimeout`) apply to every listed method. Give one method its own settings like any cached method:
 
 ```cs
-builder.Services.AddMethodCache(config => config
-    .ForService<IFxRatesClient>()
-    .Method(c => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
+builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
     .Configure(o => o.WithDuration(TimeSpan.FromSeconds(30))));
 ```
 
@@ -1801,7 +1831,7 @@ Weighted capacity accounting remains nonnegative even for valid weights near `lo
 MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
 write into the key itself (see [Keys](#keys) below). The source generator writes the decorators, their registration
 and those keys at build time. CI publishes a test application with Native AOT on every change and checks that
-caching (with simple, record, collection and `ICacheKeyProvider` arguments), the automatic registration and
+caching (with simple, record, collection and `ICacheKeyProvider` arguments), explicit `AutoRegister(ServiceLifetime)` registration and
 `[assembly: CacheInterface]` work.
 
 ## In-memory caching
@@ -2021,6 +2051,15 @@ HTTP age arithmetic saturates during response correction and resident-time accum
 Bulk publication guards are tested during key, tag and clear invalidation; in-flight batch results cannot resurrect invalidated entries. Collection-state properties and the generator signature corpus cover tenant/scope state on collection subclasses.
 
 Persistent SQL insert locks, including other scopes sharing the table, cannot hold back newer invalidations or other committed gaps. The non-skipping `LongTransactionReviewTests` and `LockedGapReviewTests` in `MethodCache.Core.Tests/FaultInjection` exercise the production gap-discovery protocol without a database. Linked SQL integration variants additionally inject real locks through repeated polls and verify late commit/rollback recovery.
+
+## Generated contract and registration boundaries
+
+Generated code uses a versioned facade and captures policy, prefix and local publication generation together.
+A key builder from another binding/snapshot is rejected before lookup. Retired loads cannot publish or serve
+an old-generation fail-safe value. Descriptor/module state is separate from each container's live policy,
+keyed binding and background scope. Unknown contracts fail before descriptor/factory execution; ambiguous
+modules, candidates and unsupported cacheable bindings fail instead of choosing an implementation implicitly.
+The corresponding tests are GeneratedContractTests, QuickStartRegistrationTests and the semantic signature corpus.
 
 
 ---
@@ -2398,6 +2437,9 @@ Migrate one service at a time; both caches can run side by side.
 
 # MethodCache.Redis
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 Redis as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache over Redis pub/sub.
 
 Backplane publication honors its cancellation token before sending and while waiting for a connection or Redis acknowledgement. Cancellation after a publish was sent cannot recall that message.
@@ -2476,6 +2518,9 @@ that tune all of this.
 <!-- source: src/MethodCache.SqlServer/README.md -->
 
 # MethodCache.SqlServer
+
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
 SQL Server as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache through a table that each instance polls.
 
@@ -2594,6 +2639,9 @@ are ignored with one warning.
 
 # MethodCache.AspNetCore
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 Admin endpoints and a health check for MethodCache's in-memory cache.
 
 ## Setup
@@ -2651,6 +2699,9 @@ Each check asks the distributed cache once, waiting at most its operation timeou
 <!-- source: src/MethodCache.OpenTelemetry/README.md -->
 
 # MethodCache.OpenTelemetry
+
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
 OpenTelemetry metrics and traces for MethodCache.
 
@@ -2797,6 +2848,9 @@ An instrumented cache lookup generates the application cache key once and reuses
 
 # MethodCache.HttpCaching
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
 response. It follows RFC 9111.
@@ -2931,6 +2985,9 @@ Background HTTP revalidation preserves the request HTTP version, version policy 
 
 # MethodCache.Serialization.MessagePack
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 When using `MessagePackKeyGenerator`, collection subclasses include their own public properties and fields as well as their elements in the key. Collections with different scope or tenant state cannot share a cached result.
 
 Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack
@@ -3003,6 +3060,19 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+### Generated contract and explicit startup registration
+
+- Generated decorators use the versioned `MethodCache.Generated` facade. Each invocation captures one immutable
+  policy/key snapshot; retired snapshots bypass caching and cannot publish into the current generation.
+- Startup uses `MethodCacheBuilder`, with `Defaults`, `Group`, typed `Method` expressions and explicit module
+  selection. Missing services require `AutoRegister(lifetime)` and exactly one accessible implementation.
+  Cacheable late, open generic, catch-all keyed and unsupported bindings produce named errors.
+- Built-in synchronous methods use a synchronous factory and single-flight path. Async-only custom managers
+  bypass synchronous caching with a diagnostic. Distributed adapters without bounded native synchronous
+  operations are unavailable for these calls; use async methods for L2 and distributed mutation invalidation.
+- All six add-on packages require the exact matching Core package version. Frozen vendor binaries are tested
+  under the current runtime and Native AOT without rebuilding their source during ordinary tests.
 
 ### Project review fixes
 

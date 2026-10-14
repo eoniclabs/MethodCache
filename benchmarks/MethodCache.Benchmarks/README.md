@@ -10,7 +10,8 @@ Memory scenarios use a fresh invocation identity for each `CacheFillUp` run, so 
 
 | Question | Benchmark | Command |
 |---|---|---|
-| How fast is a `[Cache]` hit compared with other libraries, used the way each documents? | `ReadmeComparisonBenchmarks` | `readme` |
+| How fast is a `[Cache]` hit compared with other libraries, used the way each documents? | `ReadmeComparisonBenchmarks` | `contract` | `GeneratedContractBenchmarks`: sync/Task/ValueTask hits and misses, record/collection/fallback keys |
+| `readme` |
 | How do libraries compare behind one interface (hits, misses, concurrency, stampedes)? | `UnifiedCacheComparisonBenchmarks` | `comparison` |
 | How fast is the in-memory engine on its own? | `MemoryEngineBenchmarks` | `engine` |
 | What hit ratio does the eviction policy reach on skewed workloads? | `HitRatioSimulation` (a simulation, not BenchmarkDotNet) | `hitratio` |
@@ -47,7 +48,7 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> 
 | `profile` | `SourceGenSyncPathProfiler`: the generated decorator's sync and async hit paths |
 | `all` | `basic`, `providers`, `concurrent`, `memory`, `realworld`, `generic` and `serialization` in turn |
 
-`readme`, `comparison` and `engine` pass the remaining arguments to BenchmarkDotNet, so `--filter` works there:
+`contract`, `readme`, `comparison` and `engine` pass the remaining arguments to BenchmarkDotNet, so `--filter` works there:
 
 ```bash
 # The README numbers (cache hits only)

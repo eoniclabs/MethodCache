@@ -57,6 +57,12 @@
     <InternalsVisibleTo Include="MethodCache.Benchmarks" />
     <InternalsVisibleTo Include="MethodCache.Benchmarks.Tests" />
     <InternalsVisibleTo Include="MethodCache.SourceGenerator.IntegrationTests" />
+    <InternalsVisibleTo Include="MethodCache.Redis" />
+    <InternalsVisibleTo Include="MethodCache.SqlServer" />
+    <InternalsVisibleTo Include="MethodCache.AspNetCore" />
+    <InternalsVisibleTo Include="MethodCache.OpenTelemetry" />
+    <InternalsVisibleTo Include="MethodCache.HttpCaching" />
+    <InternalsVisibleTo Include="MethodCache.Serialization.MessagePack" />
   </ItemGroup>
 
   <!--

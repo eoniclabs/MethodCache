@@ -37,7 +37,7 @@ namespace Docs.Expiration
         {
             // begin-snippet: expiration-default
             builder.Services.AddMethodCache(config =>
-                config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(15))));
+                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15))));
             // end-snippet
         }
     }

@@ -6,6 +6,19 @@ release.
 
 ## Unreleased (1.0.0)
 
+### Generated contract and explicit startup registration
+
+- Generated decorators use the versioned `MethodCache.Generated` facade. Each invocation captures one immutable
+  policy/key snapshot; retired snapshots bypass caching and cannot publish into the current generation.
+- Startup uses `MethodCacheBuilder`, with `Defaults`, `Group`, typed `Method` expressions and explicit module
+  selection. Missing services require `AutoRegister(lifetime)` and exactly one accessible implementation.
+  Cacheable late, open generic, catch-all keyed and unsupported bindings produce named errors.
+- Built-in synchronous methods use a synchronous factory and single-flight path. Async-only custom managers
+  bypass synchronous caching with a diagnostic. Distributed adapters without bounded native synchronous
+  operations are unavailable for these calls; use async methods for L2 and distributed mutation invalidation.
+- All six add-on packages require the exact matching Core package version. Frozen vendor binaries are tested
+  under the current runtime and Native AOT without rebuilding their source during ordinary tests.
+
 ### Project review fixes
 
 - Bulk factory results invalidated during their source read are not published; concurrent individual writes still win.

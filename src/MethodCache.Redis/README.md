@@ -1,5 +1,8 @@
 # MethodCache.Redis
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 Redis as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache over Redis pub/sub.
 
 Backplane publication honors its cancellation token before sending and while waiting for a connection or Redis acknowledgement. Cancellation after a publish was sent cannot recall that message.

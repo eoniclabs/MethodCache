@@ -30,24 +30,29 @@ then the defaults.
 builder.Services.AddMethodCache(config =>
 {
     // Every cached method: fills in what the method leaves unset
-    config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(15)));
+    config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15)));
 
     // Methods in the "user-data" group: [Cache("user-data")] or WithGroup("user-data")
-    config.ForGroup("user-data")
-          .Configure(o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
+    config.Group("user-data", o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
 
     // One method
-    config.ForService<IUserService>()
-          .Method(s => s.GetProfileAsync(Any<int>.Value))
+    config.Method((IUserService s) => s.GetProfileAsync(Any<int>.Value))
           .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).RefreshAhead(TimeSpan.FromMinutes(5)));
 });
 ```
 <!-- endSnippet -->
 
-- `DefaultPolicy` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
+- `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
   keeps its ten minutes while the defaults fill in what it leaves out.
 - A method joins a group with `[Cache("name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
 - `Any<T>.Value` stands for any argument when you point at a method.
+
+Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`,
+`FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server and MessagePack
+packages add `UseRedis`, `UseSqlServer` and `UseMessagePack`; Core provides `UseJson`.
+All integration packages require the exact same Core package version; do not override this bound.
+CI uses strict restore (NU1608 as an error) to reject direct-version overrides. Configure services before `AddMethodCache`.
+Runtime override methods retain their separate policy API; the builder configures startup only.
 
 ## appsettings.json
 

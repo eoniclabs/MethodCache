@@ -77,21 +77,25 @@ builder.Services.AddMethodCache();                               // after your r
 <!-- endSnippet -->
 
 `AddMethodCache()` wraps every registered interface that has cached methods in its generated decorator and keeps the
-lifetime you chose. Call it after your own registrations: a service registered later is not cached. If you don't
-register an implementation at all, `AddMethodCache()` registers it as a singleton when it lives in the same project as
-the interface. To do the same for interfaces in other projects, pass those projects' assemblies:
-`AddMethodCache(null, typeof(ProductService).Assembly)`.
+lifetime you chose. Register cacheable services before this call. A later cacheable registration fails at host
+startup, or when a generated decorator first binds without a host. Unrelated services may be registered later.
+Calling `AddMethodCache` again decorates newly added services and keeps existing decorators intact.
 
-Library code that calls `AddMethodCache()` for its own interfaces, for example in an `AddMyLibrary()` extension
-method, should pass its assembly the same way. Without it, MethodCache asks the runtime for the calling assembly,
-and when the JIT inlines a short wrapper into the application, that is the application's, so the library's
-unregistered interfaces are not registered.
+Missing implementations are registered only with explicit `AutoRegister(ServiceLifetime.Scoped)` (or another
+lifetime). Select the generated module with `FromAssemblyOf<ProductService>()`; exactly one accessible concrete
+implementation must exist for each missing service. Zero or multiple candidates give an error naming the service,
+module and candidates. Explicit DI registrations always retain their implementation and lifetime.
+
+When multiple assemblies generate decorators for the same interface, select one module with
+`FromAssemblyOf<SomeTypeInThatAssembly>()`. No entry-assembly or alphabetical preference is applied. The same
+module selection and candidate data work under JIT and Native AOT.
 
 Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
 key; an interface registered only keyed is not also registered without a key. The service key is part of the cache
 keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
 integer or `Guid` ([Keys](features/keys.md#things-to-know)). A catch-all registration with `KeyedService.AnyKey` is
-not cached, since its implementation is created for whichever key is requested; register the keys you use instead.
+rejected, since its implementation is created for whichever key is requested; register concrete keys instead.
+Open generic registrations and closed types without a generated binding also give a named startup error.
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
@@ -125,6 +129,8 @@ builder.Services.AddMethodCache();
   cache, so `[Cache]` on it is a build error ([MCG001](user-guide/DIAGNOSTICS.md#mcg001),
   [MCG002](user-guide/DIAGNOSTICS.md#mcg002)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
   ([MCG014](user-guide/DIAGNOSTICS.md#mcg014)): return a list.
+  Synchronous methods use L1/origin when the distributed adapter has no bounded native synchronous capability.
+  Custom async-only managers bypass their synchronous caching path; see [Generated decorators](features/source-generator.md).
 - Exceptions are never cached: the next call runs the method again.
 - Concurrent calls with the same arguments share one call to your method (stampede protection). A caller that cancels
   only stops its own wait.

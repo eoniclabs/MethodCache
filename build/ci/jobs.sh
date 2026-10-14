@@ -80,6 +80,8 @@ job_packages() {
   : "${METHODCACHE_SQLSERVER_CONNECTION:?set METHODCACHE_SQLSERVER_CONNECTION to a SQL Server the add-on apps can use}"
   rm -rf artifacts/packages
   dotnet pack "$solution" --configuration Release --output artifacts/packages
+  python3 build/ci/check_package_contracts.py artifacts/packages
+  python3 build/ci/check_package_restore.py artifacts/packages
 
   echo "== All 7 packages were packed"
   for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.Serialization.MessagePack \

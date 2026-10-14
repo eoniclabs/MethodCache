@@ -32,8 +32,9 @@ public class OptimizedMethodCacheAdapter : ICacheAdapter
         if (timeProvider != null) services.AddSingleton(timeProvider);
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(OptimizedMethodCacheAdapter).Assembly);
+            config.FromAssembly(typeof(OptimizedMethodCacheAdapter).Assembly);
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        });
 
         _serviceProvider = services.BuildServiceProvider();
         _cacheManager = _serviceProvider.GetRequiredService<ICacheManager>();

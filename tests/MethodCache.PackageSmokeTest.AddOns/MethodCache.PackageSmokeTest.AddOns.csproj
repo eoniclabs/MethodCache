@@ -16,6 +16,7 @@
     <IsPackable>false</IsPackable>
     <MethodCachePackageVersion Condition="'$(MethodCachePackageVersion)' == ''">*-*</MethodCachePackageVersion>
     <RestorePackagesPath>$(MSBuildProjectDirectory)/obj/packages</RestorePackagesPath>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1608</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
