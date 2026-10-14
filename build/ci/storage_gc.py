@@ -193,8 +193,7 @@ def builds(root, snapshot=False):
             relative = p.relative_to(root).as_posix()
             if any(t == relative or t.startswith(relative + '/') for t in tracked):
                 continue
-            if not snapshot and subprocess.run(['git', '-c', 'safe.directory=' + str(root), '-C', str(root), 'check-ignore', '-q', '--', relative + '/'],
-                                               timeout=15).returncode != 0:
+            if not snapshot and git(root, 'check-ignore', '-q', '--', relative + '/') is None:
                 continue
             yield p
 
