@@ -92,3 +92,5 @@ builder.Services.AddMethodCache();                               // after your r
   `NoOpCacheManager`, `IAtomicInvalidationStore`.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
+
+SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications.

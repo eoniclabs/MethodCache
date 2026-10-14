@@ -14,8 +14,9 @@ namespace MethodCache.SqlServer;
 /// </summary>
 /// <remarks>
 /// Identity values are handed out before transactions commit, so a row can become visible after a row with a
-/// higher id was already read. Skipped ids are remembered as gaps; after five seconds a locking read resolves
-/// commit or rollback before they can be forgotten. A failed query leaves them for retry.
+/// higher id was already read. Skipped ids are remembered as gaps; after five seconds a non-waiting locking
+/// probe confirms their absence before they can be forgotten. Locked gaps stay watched without delaying newer
+/// invalidations. A failed query leaves them for retry.
 /// Ids taken by rows of other prefixes sharing the table are committed, so they are not kept as gaps.
 /// When this instance could not poll for longer than the table keeps rows, it may have missed invalidations, so it
 /// clears its in-memory cache.
@@ -317,7 +318,8 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
             if (gaps.Count > 0)
             {
-                gaps = await ReadGapsAsync(connection, gaps, messages, now, cancellationToken).ConfigureAwait(false);
+                gaps = await ReadGapsAsync(connection, gaps, messages, cancellationToken).ConfigureAwait(false);
+                await RetireResolvedGapsAsync(connection, gaps, now, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -332,28 +334,23 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     /// Applications with other prefixes share the identity column, so most skipped ids belong to their rows. Any
     /// committed row, whatever its scope, proves its id is no longer pending, so only ids absent from the table stay
     /// watched. The ids are read first: a row they show is committed, so the second query returns it if it is ours.
-    /// Locked rows are initially skipped; old gaps use a locking read to resolve commit or rollback before they
-    /// are forgotten. Only ids leave the query for other scopes, never their content.
+    /// Locked rows are skipped, including in old gaps, so one open transaction cannot hide another gap's committed
+    /// invalidation or delay newer messages. Only ids leave the query for other scopes, never their content.
     /// </remarks>
-    private async Task<List<GapRange>> ReadGapsAsync(SqlConnection connection, List<GapRange> gaps, List<BackplaneMessage> messages, DateTime now, CancellationToken cancellationToken)
+    private async Task<List<GapRange>> ReadGapsAsync(SqlConnection connection, List<GapRange> gaps, List<BackplaneMessage> messages, CancellationToken cancellationToken)
     {
-        // READPAST cannot distinguish a rolled-back identity from a transaction still holding its row. Before
-        // dropping an old gap, a locking read must resolve it. Commit delivers the row; rollback proves it absent.
-        // A timeout leaves all discovery state intact, so the next poll retries instead of losing the invalidation.
-        var resolvesOldGaps = gaps.Any(gap => now - gap.SeenAt > GapLifetime);
-        var hint = resolvesOldGaps ? "READCOMMITTEDLOCK" : "READPAST";
-        var ranges = string.Join(" OR ", gaps.Select((_, i) => $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"));
+        var ranges = GapPredicate(gaps);
         var sql = $"""
             SELECT MIN([Id]), MAX([Id])
             FROM (
                 SELECT [Id], [Id] - ROW_NUMBER() OVER (ORDER BY [Id]) AS [Island]
-                FROM {_options.QualifiedInvalidationsTableName} WITH ({hint})
+                FROM {_options.QualifiedInvalidationsTableName} WITH (READPAST)
                 WHERE {ranges}) AS [Taken]
             GROUP BY [Island]
             ORDER BY MIN([Id]);
 
             SELECT [Id], [InstanceId], [MessageType], [Target], [CreatedAt]
-            FROM {_options.QualifiedInvalidationsTableName} WITH ({hint})
+            FROM {_options.QualifiedInvalidationsTableName} WITH (READPAST)
             WHERE [Scope] = @scope AND ({ranges});
             """;
 
@@ -361,12 +358,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         var command = new SqlCommand(sql, connection);
         await using var commandScope = command.ConfigureAwait(false);
         AddScope(command);
-        for (var i = 0; i < gaps.Count; i++)
-        {
-            var index = i.ToString(CultureInfo.InvariantCulture);
-            command.Parameters.Add(new SqlParameter("@gapFrom" + index, SqlDbType.BigInt) { Value = gaps[i].From });
-            command.Parameters.Add(new SqlParameter("@gapTo" + index, SqlDbType.BigInt) { Value = gaps[i].To });
-        }
+        AddGapParameters(command, gaps);
 
         var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         await using (reader.ConfigureAwait(false))
@@ -387,8 +379,44 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             }
         }
 
-        var remaining = RemoveTaken(gaps, taken);
-        return resolvesOldGaps ? remaining.Where(gap => now - gap.SeenAt <= GapLifetime).ToList() : remaining;
+        return RemoveTaken(gaps, taken);
+    }
+
+    private async Task RetireResolvedGapsAsync(SqlConnection connection, List<GapRange> gaps, DateTime now, CancellationToken cancellationToken)
+    {
+        var old = gaps.Where(gap => now - gap.SeenAt > GapLifetime).ToList();
+        if (old.Count == 0) return;
+
+        // READPAST already collected committed gap messages. A separate probe may forget only ranges proven
+        // absent without skipping locks. NOWAIT turns an open transaction into an immediate retry, never a
+        // stalled poll. A row committed since READPAST makes the count nonzero and is delivered next time.
+        var sql = $"SELECT COUNT_BIG(*) FROM {_options.QualifiedInvalidationsTableName} WITH (READCOMMITTEDLOCK, NOWAIT) WHERE {GapPredicate(old)};";
+        var command = new SqlCommand(sql, connection);
+        await using var commandScope = command.ConfigureAwait(false);
+        AddGapParameters(command, old);
+        try
+        {
+            if ((long)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))! == 0)
+                gaps.RemoveAll(gap => now - gap.SeenAt > GapLifetime);
+        }
+        catch (SqlException ex) when (!cancellationToken.IsCancellationRequested && ex.Number is 1222 or -2)
+        {
+            // Lock/query timeout affects only retirement; keep every gap and deliver the messages already read.
+            _logger.LogDebug(ex, "MethodCache keeps unresolved SQL backplane gaps for another poll.");
+        }
+    }
+
+    private static string GapPredicate(List<GapRange> gaps) => string.Join(" OR ", gaps.Select((_, i) =>
+        $"[Id] BETWEEN @gapFrom{i.ToString(CultureInfo.InvariantCulture)} AND @gapTo{i.ToString(CultureInfo.InvariantCulture)}"));
+
+    private static void AddGapParameters(SqlCommand command, List<GapRange> gaps)
+    {
+        for (var i = 0; i < gaps.Count; i++)
+        {
+            var index = i.ToString(CultureInfo.InvariantCulture);
+            command.Parameters.Add(new SqlParameter("@gapFrom" + index, SqlDbType.BigInt) { Value = gaps[i].From });
+            command.Parameters.Add(new SqlParameter("@gapTo" + index, SqlDbType.BigInt) { Value = gaps[i].To });
+        }
     }
 
     /// <summary>Splits <paramref name="gaps"/> around the sorted, disjoint <paramref name="taken"/> ranges.</summary>

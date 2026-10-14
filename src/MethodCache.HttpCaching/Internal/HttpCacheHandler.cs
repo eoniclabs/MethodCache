@@ -262,7 +262,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             }
 
             var stored = await TryStoreResponseAsync(sent, upstreamResponse, urlKey, cacheKey, options, freshness, cancellationToken, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
-            if (!stored && cachedEntry != null && (int)upstreamResponse.StatusCode < 500)
+            if (stored == StoreResult.NotStored && cachedEntry != null && (int)upstreamResponse.StatusCode < 500)
             {
                 // The origin replaced the representation. Its older body and storage policy must not survive
                 // a no-store/private response, a body too large to cache, or a failed replacement write.
@@ -346,7 +346,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         return variantKey == null ? null : await _storage.GetAsync(variantKey, cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask<bool> TryStoreResponseAsync(
+    private async ValueTask<StoreResult> TryStoreResponseAsync(
         HttpRequestMessage request,
         HttpResponseMessage response,
         string urlKey,
@@ -358,7 +358,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     {
         if (!IsStorable(request, response, options))
         {
-            return false;
+            return StoreResult.NotStored;
         }
 
         // Reading a response body is part of the HTTP request. A failed read cannot be treated as a cache miss:
@@ -366,19 +366,19 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken, responseDelay: responseDelay).ConfigureAwait(false);
         if (entry == null)
         {
-            return false; // Larger than MaxResponseSize; the caller still reads all of it
+            return StoreResult.NotStored; // Larger than MaxResponseSize; the caller still reads all of it
         }
 
         try
         {
             var stored = await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false);
-            if (stored) _logger.LogDebug("Cached response for {Uri}, size: {Size} bytes", request.RequestUri, entry.Content.Length);
+            if (stored == StoreResult.Stored) _logger.LogDebug("Cached response for {Uri}, size: {Size} bytes", request.RequestUri, entry.Content.Length);
             return stored;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to cache response for {Uri}", request.RequestUri);
-            return false;
+            return StoreResult.NotStored;
         }
     }
 
@@ -400,7 +400,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             try
             {
                 // Nothing written (no lifetime left) leaves the old entry, with its old rules: remove it below
-                if (await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false))
+                if (await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken).ConfigureAwait(false) != StoreResult.NotStored)
                 {
                     return;
                 }
@@ -432,8 +432,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <returns>Whether a response was written; false when it may not be kept at all.</returns>
-    private async ValueTask<bool> StoreAsync(
+    private enum StoreResult { NotStored, Stored, Retired }
+
+    /// <returns>Whether the entry was stored, rejected, or its old schema was already retired.</returns>
+    private async ValueTask<StoreResult> StoreAsync(
         HttpRequestMessage request,
         string urlKey,
         string baseKey,
@@ -445,7 +447,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var timeToLive = GetTimeToLive(entry, options, freshness);
         if (timeToLive <= TimeSpan.Zero)
         {
-            return false;
+            return StoreResult.NotStored;
         }
 
         var selectingHeaders = HttpCacheKeys.SelectingHeaders(options, entry.VaryHeaders);
@@ -455,12 +457,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             // Retire the entire old schema, including concurrent writers. This response was fetched in that
             // epoch, so it cannot move into the new one; the next request fetches and stores the new schema.
             await RemoveUrlAsync(urlKey, baseKey, cancellationToken).ConfigureAwait(false);
-            return false;
+            return StoreResult.Retired;
         }
         if (selectingHeaders.Length == 0)
         {
             await _storage.SetAsync(baseKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
-            return true;
+            return StoreResult.Stored;
         }
 
         // A request that sends none of the selecting headers (an anonymous call in a private cache) shares its
@@ -470,7 +472,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             !HttpCacheKeys.SendsAny(request, selectingHeaders))
         {
             await _storage.SetAsync(baseKey, entry with { VariantGeneration = null, VaryHeaders = selectingHeaders }, timeToLive, cancellationToken).ConfigureAwait(false);
-            return true;
+            return StoreResult.Stored;
         }
 
         // A deterministic schema inside the non-reusable URL epoch lets concurrent first writers, including
@@ -480,7 +482,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var variantKey = HttpCacheKeys.ForVariant(baseKey, generation, request, selectingHeaders);
         if (variantKey == null)
         {
-            return false;
+            return StoreResult.NotStored;
         }
 
         // The index holds no body. Keep it for the maximum supported variant lifetime so a concurrent short-lived
@@ -499,7 +501,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         await _storage.SetAsync(variantKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
         await _storage.SetAsync(baseKey, urlEntry, urlTimeToLive, cancellationToken).ConfigureAwait(false);
-        return true;
+        return StoreResult.Stored;
     }
 
     /// <summary>
@@ -739,7 +741,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 else
                 {
                     var stored = await TryStoreResponseAsync(sent, response, urlKey, cacheKey, options, freshness, timeout.Token, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
-                    if (!stored && (int)response.StatusCode < 500)
+                    if (stored == StoreResult.NotStored && (int)response.StatusCode < 500)
                         await RemoveUrlAsync(urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
                 }
             }
