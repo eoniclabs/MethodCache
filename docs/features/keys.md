@@ -178,7 +178,8 @@ var overload = MethodCacheKeys.For(
   `MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
   `Prefix` or `Pattern`. Other keys carry their type (`Get@MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
   `.`, `(` or `"` in it is written in quotes, so keys of different types never share entries. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
-  throws for a keyed registration of a cached interface with any other key. `MethodCacheKeys.Pattern(type, "Get")`
+  throws for a keyed registration of a cached interface with any other key. A `KeyedService.AnyKey` registration is
+  left uncached. `MethodCacheKeys.Pattern(type, "Get")`
   matches the entries of every registration. Tags don't include the service key, so a `[CacheInvalidate]` tag, on any
   registration, removes the matching entries of all of them.
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin

@@ -90,7 +90,8 @@ unregistered interfaces are not registered.
 Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
 key; an interface registered only keyed is not also registered without a key. The service key is part of the cache
 keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
-integer or `Guid` ([Keys](features/keys.md#things-to-know)).
+integer or `Guid` ([Keys](features/keys.md#things-to-know)). A catch-all registration with `KeyedService.AnyKey` is
+not cached, since its implementation is created for whichever key is requested; register the keys you use instead.
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
