@@ -352,6 +352,39 @@ public class DistributedInvalidationRobustnessTests
         logger.Messages.Should().ContainSingle(m => m.Level == LogLevel.Warning && m.Message.Contains("shutting down with 1 invalidations", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task ShutdownDuringALongSlowRetry_StopsItAfterTheBatchInFlight()
+    {
+        var logger = new RecordingLogger();
+        var chaos = Chaos().Inject(ChaosOperations.Set | ChaosOperations.Remove, ChaosFault.Throw());
+        var (_, layer) = CreateNode(chaos, logger: logger);
+        await layer.RemoveAsync(Enumerable.Range(0, 2000).Select(i => "k" + i).ToArray()); // 40 batches queued
+        layer.IsAvailable.Should().BeFalse();
+
+        // The store answers again, but each operation takes almost the whole timeout: nothing fails, the breaker
+        // stays closed, and the retry would take its time over every batch
+        chaos.Heal();
+        chaos.Inject(ChaosOperations.Set | ChaosOperations.Remove, ChaosFault.Slow(Timeout - TimeSpan.FromMilliseconds(100)));
+        var started = chaos.FaultsStarted;
+        _time.Advance(BreakDuration); // the retry timer fires
+        await WaitUntil(() => chaos.FaultsStarted > started);
+
+        var shutdown = layer.DisposeAsync().AsTask();
+        var advanced = TimeSpan.Zero;
+        var deadline = DateTime.UtcNow + RealTimeLimit;
+        while (!shutdown.IsCompleted)
+        {
+            advanced.Should().BeLessThan(TimeSpan.FromSeconds(5), "shutdown stops the retry after the batch in flight instead of waiting for all 40");
+            DateTime.UtcNow.Should().BeBefore(deadline);
+            _time.Advance(TimeSpan.FromMilliseconds(100));
+            advanced += TimeSpan.FromMilliseconds(100);
+            await Task.WhenAny(shutdown, Task.Delay(10));
+        }
+
+        await shutdown;
+        logger.Messages.Should().ContainSingle(m => m.Level == LogLevel.Warning && m.Message.Contains("shutting down with", StringComparison.Ordinal));
+    }
+
     // ---------- One write that times out ----------
 
     [Fact]

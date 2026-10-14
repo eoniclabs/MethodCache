@@ -48,7 +48,7 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
 - **Distributed cache**: a tag invalidation or clear another instance announces while a stamp read is on the wire is
   no longer forgotten (which promoted invalidated entries into memory). Invalidations queued during an outage are
   stored in batches, so a large backlog drains; more than 10,000, or one the cache keeps refusing, become one clear.
-  On shutdown the queue is tried once more, after a retry already running, and what is lost is logged. Keys whose
+  On shutdown the queue is tried once more, after a retry already running (which stops after the batch it is storing), and what is lost is logged. Keys whose
   write timed out are removed at shutdown instead of after a delay nothing waits for, and further timed-out writes
   of a key push its one removal back instead of adding another. Shutdown also waits for writes still running (each capped
   by the operation timeout), so the removal one of them leaves behind is stored with the rest of the queue. A write that times out no longer opens the

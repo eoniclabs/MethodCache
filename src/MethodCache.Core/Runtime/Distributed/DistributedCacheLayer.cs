@@ -578,10 +578,23 @@ namespace MethodCache.Core.Runtime.Distributed
                     {
                         await Task.Delay(TimeSpan.FromSeconds((double)wait / _time.TimestampFrequency), _time, _disposing.Token).ConfigureAwait(false);
                     }
-                    else if (_lateRemovals.TryRemove(new KeyValuePair<string, long>(key, due)))
+                    else
                     {
-                        await RemoveAsync(new[] { key }).ConfigureAwait(false);
-                        return;
+                        // Counted before the marker goes, so shutdown either moves the key to its queue or waits
+                        // for this removal and flushes what it gives back
+                        BeginWrite();
+                        try
+                        {
+                            if (_lateRemovals.TryRemove(new KeyValuePair<string, long>(key, due)))
+                            {
+                                await InvalidateCoreAsync(new[] { key }, Array.Empty<string>()).ConfigureAwait(false);
+                                return;
+                            }
+                        }
+                        finally
+                        {
+                            EndWrite();
+                        }
                     }
                 }
             }
@@ -658,8 +671,9 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>
         /// Stores removal and tag stamps, then removes the entries and tells other nodes. Works in batches, so a
         /// large backlog never sends the cache more at once than it can do within the timeout; stops at the first
-        /// batch the cache refused part of, and when the breaker opened meanwhile. <paramref name="force"/> ignores
-        /// the breaker and starts no batch after one operation timeout (at shutdown). Returns what wasn't stored.
+        /// batch the cache refused part of, when the breaker opened meanwhile, and once shutdown starts (which then
+        /// stores the rest itself, within its deadline). <paramref name="force"/> ignores the breaker and starts no
+        /// batch after one operation timeout (at shutdown). Returns what wasn't stored.
         /// </summary>
         private async Task<Refused> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe, bool force)
         {
@@ -669,7 +683,7 @@ namespace MethodCache.Core.Runtime.Distributed
             for (var start = 0; start < items.Count; start += InvalidationBatchSize)
             {
                 var batch = items.GetRange(start, Math.Min(InvalidationBatchSize, items.Count - start));
-                if (refused.Count > 0 || (start > 0 && (force ? Now >= deadline : !TryEnter(out probe))))
+                if (refused.Count > 0 || (start > 0 && (force ? Now >= deadline : _disposing.IsCancellationRequested || !TryEnter(out probe))))
                 {
                     refused.AddRange(batch);
                     continue;
@@ -1230,7 +1244,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     refused = await StoreInvalidationsAsync(keys, tags, Now, probe, force).ConfigureAwait(false);
 
                     // Refused while the cache still answers a read: it refuses these invalidations, not everything
-                    if (refused.Count > 0 && !refused.Answered && !force)
+                    if (refused.Count > 0 && !refused.Answered && !force && !_disposing.IsCancellationRequested)
                     {
                         refused.Answered = (await TryRunAsync(ReadRemovalAsync, HealthCheckKey, "answer a health check", NotProbing).ConfigureAwait(false)).Succeeded;
                     }
