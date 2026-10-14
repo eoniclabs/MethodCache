@@ -52,7 +52,7 @@ Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressio
 packages add `UseRedis`, `UseSqlServer` and `UseMessagePack`; Core provides `UseJson`.
 All integration packages require the exact same Core package version; do not override this bound.
 CI uses strict restore (NU1608 as an error) to reject direct-version overrides. Configure services before `AddMethodCache`.
-Runtime override methods retain their separate policy API; the builder configures startup only.
+Runtime overrides use the same immutable options builder as startup and manual cache calls.
 
 ## appsettings.json
 
@@ -149,35 +149,37 @@ await configurator.ClearAsync();
 | Method | What it does |
 |--------|--------------|
 | `UpsertAsync` | Adds or replaces the override for one method, by expression or method id |
-| `UpsertBatchAsync` | Several overrides in one call |
-| `ApplyAsync` | Overrides for the methods listed with `ForService<T>().Method(...)`, as in startup code |
 | `RemoveAsync` / `ClearAsync` | Removes one override, or all of them |
-| `GetOverridesAsync` / `GetOverrideAsync` | Returns the active overrides |
-| `WatchAsync` | Streams override changes |
+| `GetOverridesAsync` | Returns immutable active overrides and their audit metadata |
 
-- Runtime defaults, `DefaultPolicy` or `ForGroup` inside `ApplyAsync`, are defaults like the ones in startup code:
-  they fill in what a method leaves unset, and a method's own values, such as `[Cache(Duration = "01:00:00")]`, still
-  win over them. To change one method, override that method.
-- Tags in an override are added to the method's other tags; call `ClearTags()` first to replace them (see above).
-- `RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is kept with the override for auditing. An override stops
-  applying when its `ExpiresAt` passes.
-- Overrides are held in memory. They are lost on restart and not shared between instances.
-- Concurrent changes apply in order: the latest one wins, also for removal, clearing and expiry.
-- An override can't turn caching off: `WithDuration` requires a positive duration. To get rid of stale data,
-  [invalidate](invalidation.md) it.
+All async operations take cancellation last. An unknown method id is rejected before storing anything.
+Runtime configuration changes methods; group and global defaults are configured at startup or through configuration files.
+Tags remain additive unless `ClearTags()` is used. `WithEnabled(false)` disables caching; `WithDistributed(false)`
+disables L2 reads and writes. Re-enabling or changing behavior retires the previous generation.
+
+An effective behavior change immediately retires local cached values and in-flight publication guards.
+Already running callers may finish with their earlier result. Audit-only updates and equal effective options retain
+values. Overrides are private to the container, use a fresh private L2 namespace when behavior changes, and disappear
+on restart. Removing an override restores the current shared declarative namespace after method invalidation.
+Invalidation messages retire data on other nodes; they never distribute policy.
+
+`RuntimeOverrideMetadata` retains owner, reason, ticket and expiry. Expired overrides stop applying.
+Configuration reload publishes local policy and generation changes before its notification returns. Other nodes reload
+their own configuration; the library does not distribute files. See [distributed guarantees](distributed-cache.md#policy-isolation).
 
 ## Seeing the effective policy
 
-`PolicyDiagnosticsService` (in `MethodCache.Policies`) shows each method's merged policy and which layers contributed:
+`ICacheAdministrator.GetMethods()` shows effective immutable options, contributing sources, the source for each setting,
+and whether the L2 namespace is shared or private:
 
 <!-- snippet: configuration-diagnostics -->
 ```cs
-var diagnostics = app.Services.GetRequiredService<PolicyDiagnosticsService>();
+var diagnostics = app.Services.GetRequiredService<ICacheAdministrator>();
 
-foreach (var report in diagnostics.GetAllPolicies())
+foreach (var report in diagnostics.GetMethods())
 {
-    var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
-    Console.WriteLine($"{report.MethodId}: Duration={report.Policy.Duration}, from {sources}");
+    var sources = string.Join(", ", report.Sources);
+    Console.WriteLine($"{report.MethodId}: Duration={report.Duration}, from {sources}");
 }
 ```
 <!-- endSnippet -->
@@ -195,14 +197,11 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 | `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` only): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative value means "not set" (the default is -1) |
 
-`OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to [manual caching](manual-caching.md); configuring them for a
-`[Cache]` method throws `InvalidOperationException` at startup instead of being silently ignored. "At startup" means
-when the generic host starts (`app.Run()`, `host.StartAsync()`), which loads every policy source; with a plain
-`BuildServiceProvider()`, the first cached call loads them and throws. To decide per result
-whether a `[Cache]` method stores it, use [`CacheWhen`](conditional-caching.md#cachewhen).
+`CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. `CacheWhen<T>` is
+configured in code. Cache callbacks, context predicates and a service provider in `CacheContext` are no longer supported.
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 
-Policy tags are owned, read-only snapshots in both `CachePolicy` and `CacheRuntimePolicy`. Mutating the collection supplied by application code cannot change a published policy or bypass its version/change notifications.
+Published options and policy tags are owned, read-only snapshots. Mutating a collection supplied by application code cannot change an existing policy or bypass its change notifications.
 
 A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.

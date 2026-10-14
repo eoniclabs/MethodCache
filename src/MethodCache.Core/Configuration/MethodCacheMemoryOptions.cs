@@ -31,15 +31,25 @@ namespace MethodCache
         /// Maximum total weight of the cache when a <see cref="Weigher"/> is configured (typically bytes).
         /// Ignored without a weigher, since object sizes cannot be measured reliably at runtime.
         /// </summary>
-        public long MaxMemoryBytes
+        public long SizeLimit
         {
             get => _maxMemoryBytes;
             set
             {
                 if (value <= 0)
-                    throw new ArgumentOutOfRangeException(nameof(MaxMemoryBytes), value, "MaxMemoryBytes must be greater than zero.");
+                    throw new ArgumentOutOfRangeException(nameof(SizeLimit), value, "SizeLimit must be greater than zero.");
                 _maxMemoryBytes = value;
             }
+        }
+
+        internal long MaxMemoryBytes { get => SizeLimit; set => SizeLimit = value; }
+        private long _maxHttpBytes = 32 * 1024 * 1024;
+        /// <summary>Maximum resident HTTP response bytes reserved for the separate HTTP cache.
+        /// The current HTTP storage path does not yet consume this setting.</summary>
+        public long MaxHttpBytes
+        {
+            get => _maxHttpBytes;
+            set { if (value <= 0) throw new ArgumentOutOfRangeException(nameof(MaxHttpBytes)); _maxHttpBytes = value; }
         }
 
         private TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
@@ -47,7 +57,7 @@ namespace MethodCache
         /// <summary>
         /// Default expiration time for cache entries.
         /// </summary>
-        public TimeSpan DefaultExpiration
+        internal TimeSpan DefaultExpiration
         {
             get => _defaultExpiration;
             set
@@ -81,7 +91,7 @@ namespace MethodCache
         /// <summary>
         /// Eviction policy when the cache reaches capacity. Defaults to <see cref="MemoryCacheEvictionPolicy.TinyLfu"/>.
         /// </summary>
-        public MemoryCacheEvictionPolicy EvictionPolicy { get; set; } = MemoryCacheEvictionPolicy.TinyLfu;
+        internal MemoryCacheEvictionPolicy EvictionPolicy { get; set; } = MemoryCacheEvictionPolicy.TinyLfu;
 
         /// <summary>
         /// Optional function returning the cost of an entry (for example its size in bytes). When set, the
@@ -119,7 +129,7 @@ namespace MethodCache
         /// <summary>
         /// Interval for background cleanup of expired entries.
         /// </summary>
-        public TimeSpan CleanupInterval
+        internal TimeSpan CleanupInterval
         {
             get => _cleanupInterval;
             set
@@ -135,32 +145,32 @@ namespace MethodCache
         /// <summary>
         /// Whether to enable background cleanup timer.
         /// </summary>
-        public bool EnableBackgroundCleanup { get; set; } = true;
+        internal bool EnableBackgroundCleanup { get; set; } = true;
 
         /// <summary>
         /// Whether to count hits, misses and evictions, including hits on the fast path. Each count is a striped
         /// counter increment; turn it off only if you never read the statistics.
         /// </summary>
-        public bool EnableStatistics { get; set; } = true;
+        internal bool EnableStatistics { get; set; } = true;
 
         /// <summary>
         /// Whether generated decorators answer cache hits from a lock-free lookup that allocates nothing. Expiration,
         /// sliding expiration and refresh-ahead still apply; misses always take the full path. Default true; turning
         /// it off only makes hits slower.
         /// </summary>
-        public bool EnableFastPath { get; set; } = true;
+        internal bool EnableFastPath { get; set; } = true;
 
         /// <summary>
         /// Memory usage calculation mode.
         /// </summary>
-        public MemoryUsageCalculationMode MemoryCalculationMode { get; set; } = MemoryUsageCalculationMode.Fast;
+        internal MemoryUsageCalculationMode MemoryCalculationMode { get; set; } = MemoryUsageCalculationMode.Fast;
 
         private double _samplingPercentage = 0.1; // 10%
 
         /// <summary>
         /// Target sample size for sampling mode (fraction of entries), bounded by <see cref="SamplingMaxEntries"/>.
         /// </summary>
-        public double SamplingPercentage
+        internal double SamplingPercentage
         {
             get => _samplingPercentage;
             set
@@ -174,7 +184,7 @@ namespace MethodCache
         private int _samplingMaxEntries = 1024;
 
         /// <summary>Maximum entries serialized by one sampling estimate. Default 1024; must be positive.</summary>
-        public int SamplingMaxEntries
+        internal int SamplingMaxEntries
         {
             get => _samplingMaxEntries;
             set
@@ -190,7 +200,7 @@ namespace MethodCache
         /// Statistics reads between new samples. Default 100; 1 resamples every read. Between samples the previous
         /// average entry estimate is scaled by the current entry count. Must be positive.
         /// </summary>
-        public int SamplingRecalculationInterval
+        internal int SamplingRecalculationInterval
         {
             get => _samplingRecalculationInterval;
             set
@@ -205,7 +215,7 @@ namespace MethodCache
         /// <summary>
         /// How often to recalculate memory usage in accurate mode (in statistics reads).
         /// </summary>
-        public int AccurateModeRecalculationInterval
+        internal int AccurateModeRecalculationInterval
         {
             get => _accurateModeRecalculationInterval;
             set
@@ -220,7 +230,7 @@ namespace MethodCache
     /// <summary>
     /// Eviction policies for the memory cache.
     /// </summary>
-    public enum MemoryCacheEvictionPolicy
+    internal enum MemoryCacheEvictionPolicy
     {
         /// <summary>
         /// W-TinyLFU (the default): a small LRU admission window in front of a segmented LRU, where a

@@ -87,24 +87,17 @@ the call), `CultureInfo`, `Stream`, `Type` or a delegate, is build error
 it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`. Other libraries' models, such
 as an SDK's classes in a `Microsoft.*` namespace, are written by their public properties like your own types.
 
-## Readable keys while debugging
+## Key construction and value serialization
 
-`JsonKeyGenerator` writes the arguments it handles as JSON (for example `[42,"alice"]`) instead of a hash:
+Key construction belongs to the runtime. Complex arguments use the internal canonical encoder; custom key parts use
+`ICacheKeyProvider`. JSON and MessagePack settings select distributed **value** serialization and do not replace the
+key generator.
 
 <!-- snippet: keys-json-generator -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, JsonKeyGenerator>());
+builder.Services.AddMethodCache(cache => cache.UseJson());
 ```
 <!-- endSnippet -->
-
-The JSON is followed by a short hash of the arguments' runtime types (`[42,"alice"]:9c41…`), so arguments that
-write the same JSON, such as `1` and `1L` or two classes with the same properties, still get different keys. A value
-inside an argument whose type differs from its declared type is written with its type, for example
-`[{"\uFFFFt":"System.Int64","v":1}]` for `new object[] { 1L }`.
-
-Both generators are in `MethodCache.Extensibility`. Keys built by the decorator itself (simple values, records,
-`ICacheKeyProvider`) don't change with the generator.
 
 ## Using an argument as the key
 
@@ -137,7 +130,7 @@ format:
 <!-- snippet: invalidation-by-key -->
 ```cs
 var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
-await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
+await cache.InvalidateKeyAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
 ```
 <!-- endSnippet -->
 

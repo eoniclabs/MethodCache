@@ -9,10 +9,14 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     private readonly PolicyResolver _resolver;
     private readonly ConcurrentDictionary<string, PolicyHandle> _handles = new(StringComparer.Ordinal);
     private int _disposed;
+    private readonly Func<string, Task>? _invalidate;
+    private readonly ConcurrentDictionary<string, Task> _invalidations = new(StringComparer.Ordinal);
+    internal Task Invalidation(string methodId) => _invalidations.GetValueOrDefault(methodId) ?? Task.CompletedTask;
 
-    public PolicyRegistry(PolicyResolver resolver)
+    public PolicyRegistry(PolicyResolver resolver, Func<string, Task>? invalidate = null)
     {
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        _invalidate = invalidate;
 
         // Subscribed before any handle exists, so no change can slip between creating a handle and watching it
         _resolver.Changed += OnPolicyChanged;
@@ -59,8 +63,13 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
 
         // A change raised after the handle's policy was resolved but before the handle was published went
         // unseen; re-reading is safe because the handle ignores versions it already has
-        handle.Update(GetPolicy(methodId));
+        OnPolicyChanged(GetPolicy(methodId));
         return handle;
+    }
+
+    internal void InvalidateGeneration(string methodId)
+    {
+        if (_handles.TryGetValue(methodId, out var handle)) handle.InvalidateGeneration();
     }
 
     public void Dispose()
@@ -79,7 +88,19 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     {
         if (_handles.TryGetValue(result.MethodId, out var handle))
         {
-            handle.Update(result);
+            if (handle.Update(result, awaitInvalidation: _invalidate != null) && _invalidate != null)
+            {
+                var pending = CompleteInvalidationAsync(result.MethodId, handle.Current.Generation!);
+                _invalidations[result.MethodId] = pending;
+                _ = pending.ContinueWith(static task => _ = task.Exception, CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
         }
     }
+    private async Task CompleteInvalidationAsync(string methodId, PolicyGeneration generation)
+    {
+        await _invalidate!(methodId).ConfigureAwait(false);
+        generation.DistributedReady = true;
+    }
+
 }

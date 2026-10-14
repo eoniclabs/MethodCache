@@ -53,6 +53,16 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.Core.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    <InternalsVisibleTo Include="MethodCache.AspNetCore.Tests" />
+    <InternalsVisibleTo Include="MethodCache.OpenTelemetry.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Redis.Tests" />
+    <InternalsVisibleTo Include="MethodCache.SqlServer.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Redis.IntegrationTests" />
+    <InternalsVisibleTo Include="MethodCache.SqlServer.IntegrationTests" />
+    <InternalsVisibleTo Include="MethodCache.HttpCaching.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Serialization.MessagePack.Tests" />
+
     <InternalsVisibleTo Include="MethodCache.SourceGenerator" />
     <InternalsVisibleTo Include="MethodCache.Benchmarks" />
     <InternalsVisibleTo Include="MethodCache.Benchmarks.Tests" />

@@ -34,6 +34,35 @@ Redis backplane publication stops waiting when its token is cancelled. A cancell
 Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
 are ignored with one warning.
 
+## Policy isolation
+
+Declared methods with equal effective startup/configuration options share a stable L2 namespace. A behavior-changing
+runtime override uses a private namespace for that method and container. Equal overrides on different nodes cannot
+share private values. Removing an override invalidates the declared method before allowing shared L2 reads again.
+The logical key from `MethodCacheKeys` remains suitable for invalidation across policy variants.
+
+A received method invalidation retires data for all closed generic and keyed registrations, without changing the
+receiver's policy. Dissemination is best effort: a missed message can leave remote L1 values until expiry or reconnect.
+L2 metadata rejects values loaded before invalidation, including writes that land after a timeout and retry.
+
+Entries retain load start, first publication time and an absolute deadline. L2 reads apply the receiver's null policy
+and result predicate, and cap remaining lifetime by the stored deadline, its own duration from first publication and
+`MaxExpiration`. A slow factory does not consume the value's duration; it reduces the remaining metadata-retention margin.
+Synchronous methods currently use L1 and the origin when these providers cannot offer a bounded native synchronous
+operation. This emits a diagnostic once per method/container. Synchronous invalidation retires local data immediately
+and leaves L2 recovery owned by the cache.
+
+## Invalidation results
+
+`InvalidateKeysAsync` and `InvalidateTagsAsync` validate the full batch and count distinct targets. `Requested` and
+`Local` count targets, including local no-ops. `Distributed` counts confirmed L2 metadata; `Queued` counts unconfirmed
+L2 targets. With L2 configured, their sum equals `Requested`. `Published` counts backplane sends and
+`PublicationQueued` counts confirmed L2 targets whose sends need retry. A send does not confirm receipt by every node.
+There are no distributed counters without L2 and no publication counters without a backplane.
+
+Cancellation before mutation leaves data untouched. Afterwards it cancels the caller's wait while owned recovery
+continues. Storage and publication have separate bounded queues, exposed through administration and health checks.
+
 ## When the distributed cache is down
 
 Calls keep working from memory and your methods; the distributed cache never fails or stalls a call. Each call to it
@@ -169,7 +198,7 @@ as down and answers from memory. SQL Server removes rows only once they expired.
 
 ## Limits
 
-- Pattern invalidation (`InvalidateByTagPatternAsync`) throws `NotSupportedException` with a distributed cache.
+- Invalidation matches exact keys and tags; common tags provide group invalidation.
 - [Fail-safe](fail-safe.md) values and [runtime overrides](configuration.md#runtime-overrides) live in each instance's
   memory.
 
@@ -178,8 +207,6 @@ as down and answers from memory. SQL Server removes rows only once they expired.
 The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/MethodCache.SqlServer/README.md) READMEs
 cover their options, shared connections, table creation, outage settings and how each stores keys and invalidations.
 The SQL Server guide also compares the two and has the schema migration for an existing invalidations table.
-
-An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision removes the previous distributed value instead of leaving it readable. If the backend is unavailable, the removal follows the normal invalidation retry path.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
 

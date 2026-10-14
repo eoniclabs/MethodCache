@@ -177,7 +177,7 @@ namespace TestNamespace
         metricsProvider.Reset();
 
         var priorityType = testAssembly.Assembly.GetType("TestNamespace.Priority");
-        
+
         // Test various primitive types
         var processIntMethod = serviceType!.GetMethod("ProcessIntAsync");
         var intTask1 = (Task)processIntMethod!.Invoke(service, new object[] { 42 })!;
@@ -206,13 +206,13 @@ namespace TestNamespace
         var enumResult2 = await GetTaskResult<string>(enumTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 4, expectedMisses: 4);
-        
+
         // Verify caching worked for all primitive types
         var intCallCount = (int)implType?.GetProperty("IntCallCount")?.GetValue(null)!;
         var stringCallCount = (int)implType?.GetProperty("StringCallCount")?.GetValue(null)!;
         var dateTimeCallCount = (int)implType?.GetProperty("DateTimeCallCount")?.GetValue(null)!;
         var enumCallCount = (int)implType?.GetProperty("EnumCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, intCallCount);
         Assert.Equal(1, stringCallCount);
         Assert.Equal(1, dateTimeCallCount);
@@ -366,7 +366,7 @@ namespace TestNamespace
 
         var personType = testAssembly.Assembly.GetType("TestNamespace.Person");
         var addressType = testAssembly.Assembly.GetType("TestNamespace.Address");
-        
+
         // Create test objects
         var address = Activator.CreateInstance(addressType!)!;
         addressType!.GetProperty("Street")!.SetValue(address, "123 Main St");
@@ -399,19 +399,19 @@ namespace TestNamespace
         addressType.GetProperty("Street")!.SetValue(workAddress, "456 Work St");
         addressType.GetProperty("City")!.SetValue(workAddress, "Business City");
         addressType.GetProperty("ZipCode")!.SetValue(workAddress, "67890");
-        
+
         var multipleTask1 = (Task)processMultipleMethod!.Invoke(service, new object[] { person, workAddress })!;
         var multipleResult1 = await GetTaskResult<string>(multipleTask1);
         var multipleTask2 = (Task)processMultipleMethod.Invoke(service, new object[] { person, workAddress })!;
         var multipleResult2 = await GetTaskResult<string>(multipleTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 3, expectedMisses: 3);
-        
+
         // Verify caching worked for complex types
         var personCallCount = (int)implType?.GetProperty("PersonCallCount")?.GetValue(null)!;
         var arrayCallCount = (int)implType?.GetProperty("ArrayCallCount")?.GetValue(null)!;
         var multipleCallCount = (int)implType?.GetProperty("MultipleCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, personCallCount);
         Assert.Equal(1, arrayCallCount);
         Assert.Equal(1, multipleCallCount);
@@ -505,7 +505,7 @@ namespace TestNamespace
 
         // Test optional parameters with different values
         var processOptionalMethod = serviceType!.GetMethod("ProcessWithOptionalAsync");
-        
+
         // Call with default parameter (should generate specific cache key)
         var optionalTask1 = (Task)processOptionalMethod!.Invoke(service, new object[] { 1, "default" })!;
         var optionalResult1 = await GetTaskResult<string>(optionalTask1);
@@ -524,11 +524,11 @@ namespace TestNamespace
         var nullableResult2 = await GetTaskResult<string>(nullableTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 3);
-        
+
         // Verify caching worked correctly with optional parameters
         var optionalCallCount = (int)implType?.GetProperty("OptionalCallCount")?.GetValue(null)!;
         var nullableCallCount = (int)implType?.GetProperty("NullableCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(2, optionalCallCount); // Two different parameter combinations
         Assert.Equal(1, nullableCallCount); // Same nullable parameter combination
 

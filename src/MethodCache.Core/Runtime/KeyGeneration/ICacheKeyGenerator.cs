@@ -23,7 +23,7 @@ namespace MethodCache.Extensibility
     /// <example>
     /// Implementing a custom key generator:
     /// <code>
-    /// public class CustomKeyGenerator : ICacheKeyGenerator
+    /// internal class CustomKeyGenerator : ICacheKeyGenerator
     /// {
     ///     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     ///     {
@@ -34,7 +34,7 @@ namespace MethodCache.Extensibility
     /// }
     /// </code>
     /// </example>
-    public interface ICacheKeyGenerator
+    internal interface ICacheKeyGenerator
     {
         /// <summary>
         /// Generates a unique cache key from method information and arguments using a runtime policy.

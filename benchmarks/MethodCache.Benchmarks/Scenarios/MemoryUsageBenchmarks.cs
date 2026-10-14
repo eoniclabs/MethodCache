@@ -159,7 +159,7 @@ public interface IMemoryTestService
     Task InvalidateAllAsync();
 }
 
-public class MemoryTestService : IMemoryTestService
+internal class MemoryTestService : IMemoryTestService
 {
     private readonly ICacheManager _cacheManager;
     private readonly IPolicyRegistry _policyRegistry;

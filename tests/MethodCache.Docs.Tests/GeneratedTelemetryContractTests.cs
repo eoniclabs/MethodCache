@@ -11,7 +11,7 @@ public class GeneratedTelemetryContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GeneratedSync_TelemetryWrapper_RecordsOriginAndInvalidationFailures(bool distributed)
+    public void GeneratedSync_TelemetryWrapper_RecordsOriginFailureOrOwnedInvalidation(bool distributed)
     {
         var spans = new ConcurrentQueue<Activity>();
         using var listener = new ActivityListener
@@ -32,11 +32,12 @@ public class GeneratedTelemetryContractTests
         if (distributed)
         {
             Assert.Equal(1, service.Sync(42));
-            Assert.Throws<NotSupportedException>(() => service.Update());
+            service.Update();
             Assert.Equal(2, service.Sync(42));
         }
         else Assert.Throws<InvalidOperationException>(() => service.Sync(42));
-        Assert.Contains(spans, activity => activity.Status == ActivityStatusCode.Error);
+        if (distributed) Assert.Contains(spans, activity => Equals(activity.GetTagItem("cache.operation"), TracingConstants.Operations.Delete) && activity.Status != ActivityStatusCode.Error);
+        else Assert.Contains(spans, activity => activity.Status == ActivityStatusCode.Error);
     }
 
     [Fact]

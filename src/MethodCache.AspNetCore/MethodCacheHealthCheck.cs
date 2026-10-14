@@ -33,14 +33,17 @@ public sealed class MethodCacheHealthCheck : IHealthCheck
                 ["memoryUsageBytes"] = stats.MemoryUsage
             };
 
+            var queues = _admin.GetInvalidationQueues();
+            data["invalidationQueued"] = queues.Distributed;
+            data["publicationQueued"] = queues.Publication;
             var distributed = await _admin.CheckDistributedCacheAsync(cancellationToken).ConfigureAwait(false);
             if (distributed.HasValue)
             {
                 data["distributedCacheAvailable"] = distributed.Value;
             }
 
-            return distributed == false
-                ? HealthCheckResult.Degraded("The distributed cache is unreachable; MethodCache serves from memory only.", data: data)
+            return distributed == false || queues.Distributed != 0 || queues.Publication != 0
+                ? HealthCheckResult.Degraded("Distributed invalidation is unavailable or recovering; inspect the recovery queue counters.", data: data)
                 : HealthCheckResult.Healthy("MethodCache is available.", data);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

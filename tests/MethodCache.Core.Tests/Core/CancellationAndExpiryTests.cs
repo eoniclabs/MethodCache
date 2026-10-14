@@ -261,15 +261,15 @@ public class CancellationAndExpiryTests
     }
 
     [Fact]
-    public async Task FluentHit_RunsHitCallbacks()
+    public async Task FluentHit_DoesNotRunFactory()
     {
         var manager = CreateManager();
-        var hits = 0;
+        var calls = 0;
         await manager.GetOrCreateAsync<string>("k", (_, _) => new ValueTask<string>("v"));
 
-        var value = await manager.GetOrCreateAsync<string>("k", (_, _) => new ValueTask<string>("other"), b => b.OnHit(_ => hits++));
+        var value = await manager.GetOrCreateAsync<string>("k", (_, _) => { calls++; return new ValueTask<string>("other"); });
 
         value.Should().Be("v");
-        hits.Should().Be(1);
+        calls.Should().Be(0);
     }
 }

@@ -50,6 +50,9 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         // calls to memory only; these tests are about two nodes that both reach Redis
         var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
         await WaitUntil(() => Task.FromResult(connection.IsConnected));
+        // Establish pub/sub before the manager attaches its reconnect clear callback. These assertions
+        // concern connected nodes, not a first pub/sub handshake retiring an in-flight initial load.
+        await connection.GetSubscriber().PingAsync();
 
         return provider.GetRequiredService<ICacheManager>();
     }

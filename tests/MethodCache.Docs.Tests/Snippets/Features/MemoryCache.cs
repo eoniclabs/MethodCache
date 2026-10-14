@@ -9,10 +9,10 @@ namespace Docs.MemoryCache
         public static void Options(WebApplicationBuilder builder)
         {
             // begin-snippet: memory-options
+            builder.Services.AddMethodCache(cache => cache.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
             builder.Services.Configure<MethodCacheMemoryOptions>(o =>
             {
                 o.MaxItems = 50_000;                              // default 10,000
-                o.DefaultExpiration = TimeSpan.FromMinutes(10);   // for methods without a Duration; default 5 minutes
                 o.JitterMaxDuration = TimeSpan.FromSeconds(30);   // spread out entries created together
                 o.CacheNullValues = false;                        // a null result means "try again next time"
             });
@@ -24,8 +24,7 @@ namespace Docs.MemoryCache
             // begin-snippet: memory-statistics
             builder.Services.Configure<MethodCacheMemoryOptions>(o =>
             {
-                o.MemoryCalculationMode = MemoryUsageCalculationMode.Sampling;   // default Fast
-                o.SamplingPercentage = 0.05;                                     // default 0.1 (10% of entries)
+                o.MaxItems = 50_000;   // bound method results by entry count
             });
             // end-snippet
         }
@@ -35,7 +34,7 @@ namespace Docs.MemoryCache
             // begin-snippet: memory-weigher
             builder.Services.Configure<MethodCacheMemoryOptions>(o =>
             {
-                o.MaxMemoryBytes = 256 * 1024 * 1024;   // bound the cache by size instead of by count
+                o.SizeLimit = 256 * 1024 * 1024;   // bound the cache by size instead of by count
                 o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
             });
             // end-snippet

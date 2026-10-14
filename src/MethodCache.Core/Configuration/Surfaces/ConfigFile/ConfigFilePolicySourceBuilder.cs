@@ -11,7 +11,7 @@ internal static class ConfigFilePolicySourceBuilder
     private static readonly HashSet<string> PolicySettings = new(StringComparer.OrdinalIgnoreCase)
     {
         "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "FailSafeRetryAfter",
-        "Tags", "Version", "Group", "Metadata", "Notes"
+        "Tags", "Version", "Group", "Metadata", "Notes", "Enabled", "Distributed"
     };
 
     private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId", "ClearTags" };
@@ -89,6 +89,14 @@ internal static class ConfigFilePolicySourceBuilder
         }
 
         RejectUnknownSettings(section, settings);
+
+        foreach (var name in new[] { "Enabled", "Distributed" })
+            if (ReadValue(section, name) is { } booleanText)
+            {
+                if (!bool.TryParse(booleanText, out var value)) throw InvalidValue(section, name, booleanText, "true or false");
+                if (name == "Enabled") builder.WithEnabled(value);
+                else builder.WithDistributed(value);
+            }
 
         var duration = ReadTimeSpan(section, "Duration");
         if (duration is { } durationValue)

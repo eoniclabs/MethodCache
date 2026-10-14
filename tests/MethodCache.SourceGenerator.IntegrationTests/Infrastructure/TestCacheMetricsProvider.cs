@@ -89,7 +89,7 @@ public class TestCacheMetricsProvider : ICacheMetricsProvider
         while (DateTime.UtcNow - start < timeout)
         {
             var current = Metrics;
-            
+
             if ((expectedHits == null || current.HitCount >= expectedHits) &&
                 (expectedMisses == null || current.MissCount >= expectedMisses))
             {

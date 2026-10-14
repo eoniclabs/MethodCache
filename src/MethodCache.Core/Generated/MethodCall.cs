@@ -43,7 +43,7 @@ public readonly struct MethodCall
     {
         if (!ReferenceEquals(key.Binding, _snapshot))
             throw new ArgumentException("The key belongs to a different MethodCache invocation snapshot.", nameof(key));
-        return _snapshot.Generation.IsCurrent;
+        return _snapshot.Policy.Enabled != false && _snapshot.Generation.IsCurrent;
     }
 
     /// <summary>Looks up a task from snapshot-bound owned key text.</summary>
@@ -106,7 +106,7 @@ public readonly struct MethodCall
     {
         if (!ReferenceEquals(key.Binding, _snapshot))
             throw new ArgumentException("The key builder belongs to a different MethodCache invocation snapshot.", nameof(key));
-        return _snapshot.Generation?.IsCurrent != false;
+        return _snapshot.Policy.Enabled != false && _snapshot.Generation?.IsCurrent != false;
     }
 
     /// <summary>Looks up a completed task without allocating a task or key on the built-in hit path.</summary>
@@ -159,8 +159,9 @@ public readonly struct MethodCall
         object?[] parameterValues, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(loader);
+        cancellationToken.ThrowIfCancellationRequested();
         var call = this;
-        if (_snapshot.Policy.Generation?.IsCurrent == false) return loader(call, state);
+        if (_snapshot.Policy.Enabled == false || _snapshot.Policy.Generation?.IsCurrent == false) return loader(call, state);
         var policy = _snapshot.HasParameterizedTags ? CacheTagTemplates.Expand(_snapshot.Policy, _snapshot.ParameterNames, parameterValues) : _snapshot.Policy;
         return _snapshot.Services.CacheManager.GetOrCreateFastAsync(key, _snapshot.Name,
             () => loader(call, state), policy, cancellationToken);
@@ -171,8 +172,9 @@ public readonly struct MethodCall
         object?[] parameterValues, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(loader);
+        cancellationToken.ThrowIfCancellationRequested();
         var call = this;
-        if (_snapshot.Policy.Generation?.IsCurrent == false) return loader(call, state);
+        if (_snapshot.Policy.Enabled == false || _snapshot.Policy.Generation?.IsCurrent == false) return loader(call, state);
         var policy = _snapshot.HasParameterizedTags ? CacheTagTemplates.Expand(_snapshot.Policy, _snapshot.ParameterNames, parameterValues) : _snapshot.Policy;
         return new ValueTask<T>(_snapshot.Services.CacheManager.GetOrCreateFastAsync(key, _snapshot.Name,
             () => loader(call, state).AsTask(), policy, cancellationToken));
@@ -185,7 +187,7 @@ public readonly struct MethodCall
         ArgumentNullException.ThrowIfNull(loader);
         cancellationToken.ThrowIfCancellationRequested();
         var call = this;
-        if (_snapshot.Policy.Generation?.IsCurrent == false) return loader(call, state);
+        if (_snapshot.Policy.Enabled == false || _snapshot.Policy.Generation?.IsCurrent == false) return loader(call, state);
         if (_snapshot.Services.FastMemory is not { } memory)
         {
             _snapshot.Services.Diagnostics.ReportSyncBypass(_snapshot.Name, "The configured custom manager has no synchronous caching capability.");

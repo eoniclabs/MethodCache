@@ -55,16 +55,7 @@ Overrides are not persisted and not shared between instances. `RuntimeOverrideMe
 
 ## Diagnostics
 
-`PolicyDiagnosticsService` reads the registry:
-
-```csharp
-var diagnostics = services.GetRequiredService<PolicyDiagnosticsService>();
-
-foreach (var report in diagnostics.GetAllPolicies())
-{
-    var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
-    Console.WriteLine($"{report.MethodId}: Duration={report.Policy.Duration}, Sources={sources}");
-}
-```
-
-`GetPolicy(methodId)`, `GetContributions(methodId, sourceId)` and `FindBySource(sourceId)` narrow the view. `ICacheAdministrator.GetMethods()` (and `GET /methodcache/methods` from `MethodCache.AspNetCore`) returns the effective policy of every cached method with its sources.
+Application code reads effective options, setting sources and the L2 namespace through
+`ICacheAdministrator.GetMethods()`. `PolicyDiagnosticsService` and the resolver records are internal
+implementation details. Runtime mutation uses `IRuntimeCacheConfigurator` and immutable options; see
+[configuration](../features/configuration.md#runtime-overrides).

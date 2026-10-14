@@ -6,6 +6,12 @@ release.
 
 ## Unreleased (1.0.0)
 
+### Cache API and policy isolation
+
+- Reduce ICacheManager to four async operations with immutable options and explicit invalidation results.
+- Retire local generations on effective policy changes, isolate runtime L2 namespaces and validate L2 lifetimes from first publication.
+- Internalize policy/key/backplane implementation APIs and remove public cache callbacks and memory tuning switches.
+
 ### Generated contract and explicit startup registration
 
 - Generated decorators use the versioned `MethodCache.Generated` facade. Each invocation captures one immutable

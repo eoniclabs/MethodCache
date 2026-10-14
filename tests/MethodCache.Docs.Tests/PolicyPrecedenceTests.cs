@@ -1,4 +1,3 @@
-using MethodCache.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -26,7 +25,7 @@ public class PolicyPrecedenceTests
         await orders.UpdateAsync(1);
         await orders.GetAsync(1);
 
-        Assert.Equal(new[] { "order:{id}", "incident" }, provider.GetRequiredService<IPolicyRegistry>().GetPolicy(GetId).Policy.Tags);
+        Assert.Equal(new[] { "order:{id}", "incident" }, provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == GetId).Options.Tags);
         Assert.Equal(2, provider.GetRequiredService<PrecedenceOrders>().Calls);
     }
 
@@ -42,7 +41,7 @@ public class PolicyPrecedenceTests
         await orders.UpdateAsync(1);
         await orders.GetAsync(1);
 
-        Assert.Equal(new[] { "incident" }, provider.GetRequiredService<IPolicyRegistry>().GetPolicy(GetId).Policy.Tags);
+        Assert.Equal(new[] { "incident" }, provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == GetId).Options.Tags);
         Assert.Equal(1, provider.GetRequiredService<PrecedenceOrders>().Calls);
     }
 
@@ -56,8 +55,8 @@ public class PolicyPrecedenceTests
             [$"MethodCache:Services:{GetId}:ClearTags"] = "true",
         });
 
-        Assert.Equal(new[] { "order:{id}", "orders" }, added.GetRequiredService<IPolicyRegistry>().GetPolicy(GetId).Policy.Tags);
-        Assert.Equal(new[] { "orders" }, cleared.GetRequiredService<IPolicyRegistry>().GetPolicy(GetId).Policy.Tags);
+        Assert.Equal(new[] { "order:{id}", "orders" }, added.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == GetId).Options.Tags);
+        Assert.Equal(new[] { "orders" }, cleared.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == GetId).Options.Tags);
     }
 
     [Fact]
@@ -65,22 +64,18 @@ public class PolicyPrecedenceTests
     {
         await using var provider = Build(new() { [$"MethodCache:Services:{GetId}:ClearTags"] = "yes" });
 
-        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetPolicy(GetId));
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == GetId));
         Assert.Contains("true or false", error.Message);
     }
 
     [Fact]
-    public async Task RuntimeDefaultPolicy_OnlyFillsInWhatTheAttributeDoesNotSet()
+    public async Task StartupDefaultPolicy_OnlyFillsInWhatTheAttributeDoesNotSet()
     {
         await using var provider = Build();
         provider.GetRequiredService<IPrecedenceOrders>();
-        var registry = provider.GetRequiredService<IPolicyRegistry>();
+        var admin = provider.GetRequiredService<ICacheAdministrator>();
 
-        await provider.GetRequiredService<IRuntimeCacheConfigurator>().ApplyAsync(c => c.DefaultPolicy(o => o
-            .WithDuration(TimeSpan.FromSeconds(30))
-            .WithSlidingExpiration(TimeSpan.FromSeconds(10))));
-
-        var policy = registry.GetPolicy(GetId).Policy;
+        var policy = admin.GetMethods().Single(m => m.MethodId == GetId).Options;
         Assert.Equal(TimeSpan.FromHours(1), policy.Duration);
         Assert.Equal(TimeSpan.FromSeconds(10), policy.SlidingExpiration);
     }
@@ -90,7 +85,7 @@ public class PolicyPrecedenceTests
         var services = new ServiceCollection();
         services.AddSingleton<PrecedenceOrders>();
         services.AddSingleton<IPrecedenceOrders>(sp => sp.GetRequiredService<PrecedenceOrders>());
-        services.AddMethodCache();
+        services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromSeconds(30)).WithSlidingExpiration(TimeSpan.FromSeconds(10))));
         if (settings != null)
         {
             services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());

@@ -148,9 +148,12 @@ public class HttpCachingRegistrationTests
         await client.GetStringAsync("https://api.example.com/metered");
         await Assert.ThrowsAsync<HttpRequestException>(() => factory.CreateClient("down").GetStringAsync("https://api.example.com/down"));
 
-        Assert.Contains("miss", outcomes);
-        Assert.Contains("hit", outcomes);
-        Assert.Contains("error", outcomes);
+        lock (outcomes)
+        {
+            Assert.Contains("miss", outcomes);
+            Assert.Contains("hit", outcomes);
+            Assert.Contains("error", outcomes);
+        }
     }
 
     private sealed class FailingOrigin : HttpMessageHandler

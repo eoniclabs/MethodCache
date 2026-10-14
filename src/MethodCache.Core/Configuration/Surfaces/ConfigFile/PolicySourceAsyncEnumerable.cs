@@ -8,7 +8,7 @@ namespace MethodCache.Infrastructure;
 /// Helpers for policy sources that never change while the application runs. Public only for generated code.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public static class PolicySourceAsyncEnumerable
+internal static class PolicySourceAsyncEnumerable
 {
     /// <summary>
     /// A change stream that completes without producing any changes.

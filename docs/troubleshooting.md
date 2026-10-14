@@ -30,7 +30,7 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
   not a template and stays literal ([MCG015](user-guide/DIAGNOSTICS.md#mcg015)); pass the id as a parameter.
 - **The update method threw.** Invalidation runs only after the method completes successfully.
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
-  code with `ICacheManager.InvalidateByTagsAsync` ([Invalidation](features/invalidation.md#from-code)).
+  code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](features/invalidation.md#from-code)).
 - **You run several instances** with only the in-memory cache. Each instance has its own cache; add
   [Redis or SQL Server](features/distributed-cache.md) so invalidations reach all of them. With a custom
   `IDistributedCache`, also register an `IBackplane`.
@@ -62,9 +62,7 @@ a key.
 | Exception | Cause |
 |-----------|-------|
 | `InvalidOperationException` when building a key | An argument type has only private state, so every value would get the same key. Implement `ICacheKeyProvider` ([Cache keys](features/keys.md#types-whose-state-is-private)) |
-| `InvalidOperationException` at startup | `OnHit`, `OnMiss`, `WithMetrics` or `When` configured for a `[Cache]` method. They apply to `GetOrCreateAsync` only. Without a generic host, the first cached call throws |
 | `InvalidOperationException` from `AddMethodCache` naming two assemblies | Two assemblies list the same interface in `[assembly: CacheInterface]`; pass the one whose policies apply ([Caching third-party code](features/third-party.md)) |
-| `NotSupportedException` from `InvalidateByTagPatternAsync` | Pattern invalidation doesn't work with a distributed cache. Invalidate exact tags |
 | `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. An override can't turn caching off; invalidate instead |
 | `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name, a single value for `Tags`, `Metadata` or a section that holds settings, nested settings under a single setting, or a time span without `:` in the `MethodCache` section |
 

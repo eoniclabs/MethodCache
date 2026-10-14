@@ -15,14 +15,16 @@ public class SqlServerBackplaneTests
         => Assert.Null(SqlServerBackplane.CreateWireMessage(type, "4:AAAA==", "other", CreatedAt));
 
     [Theory]
-    [InlineData(4, BackplaneMessageType.KeyInvalidation)]
-    [InlineData(5, BackplaneMessageType.TagInvalidation)]
-    public void CreateWireMessage_DecodesOnlyVersionedMessageTypes(byte type, BackplaneMessageType logical)
+    [InlineData(4, (int)BackplaneMessageType.KeyInvalidation)]
+    [InlineData(5, (int)BackplaneMessageType.TagInvalidation)]
+    [InlineData(6, (int)BackplaneMessageType.MethodInvalidation)]
+    public void CreateWireMessage_DecodesOnlyVersionedMessageTypes(byte type, int logicalValue)
     {
+        var logical = (BackplaneMessageType)logicalValue;
         var message = SqlServerBackplane.CreateWireMessage(type, "4:awBlAHkA", "other", CreatedAt);
         Assert.NotNull(message);
         Assert.Equal(logical, message.Type);
-        Assert.Equal("key", logical == BackplaneMessageType.KeyInvalidation ? message.Key : message.Tag);
+        Assert.Equal("key", logical == BackplaneMessageType.TagInvalidation ? message.Tag : message.Key);
         Assert.Null(SqlServerBackplane.CreateWireMessage(type, "invalid", "other", CreatedAt));
     }
 

@@ -22,7 +22,8 @@ await admin.InvalidateTagsAsync(["user:42"]);
 <!-- endSnippet -->
 
 - `GetStatsAsync()`: hits, misses, hit ratio, evictions, entries and estimated memory.
-- `GetMethods()`: every cached method with its method id and effective policy.
+- `GetMethods()`: every cached method with immutable effective options, setting sources and L2 namespace kind.
+- `GetInvalidationQueues()`: pending distributed targets and pending backplane publications.
 - `ListEntries(keyPrefix, tag, limit)` and `GetEntry(key)`: live entries, without their values.
 - `InvalidateTagsAsync(tags)`, `RemoveEntryAsync(key)` and `ClearAsync()`.
 
@@ -137,3 +138,6 @@ OpenTelemetry instruments the unkeyed `ICacheManager` registration and leaves un
 OpenTelemetry preserves the original cache manager registration lifetime and DI disposal ownership. Type/factory-created managers remain container-owned; supplied instances remain caller-owned, including asynchronous disposal.
 
 An instrumented cache lookup generates the application cache key once and reuses it for tracing and the presence-aware inner lookup, preserving the original method and arguments without a second serialization/hash pass.
+
+The health report includes `invalidationQueued` and `publicationQueued`, and reports Degraded while either recovery
+queue has work. Backplane delivery remains best effort; empty queues do not acknowledge receipt by all nodes.

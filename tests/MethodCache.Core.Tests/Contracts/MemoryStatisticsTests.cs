@@ -2,7 +2,7 @@ using MethodCache.Extensibility;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
-namespace MethodCache.Docs.Tests;
+namespace MethodCache.Core.Tests.Contracts;
 
 public class MemoryStatisticsTests
 {

@@ -40,7 +40,7 @@ namespace Docs.Conditional
                 $"search:{text}",
                 async (ctx, ct) => await search(),
                 o => o.WithDuration(TimeSpan.FromMinutes(10))
-                      .When(ctx => !preview));   // preview requests skip the cache entirely
+                      .WithEnabled(!preview));   // preview requests skip the cache entirely
             // end-snippet
             return results;
         }

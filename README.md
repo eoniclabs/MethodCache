@@ -153,9 +153,9 @@ Invalidate by tag with `[CacheInvalidate]`, or from code by tag, key or pattern:
 
 <!-- snippet: readme-invalidation -->
 ```cs
-await cache.InvalidateByTagsAsync("user:42");
-await cache.InvalidateByKeysAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
-await cache.InvalidateByTagPatternAsync("tenant:7:*");   // in-memory only
+await cache.InvalidateTagAsync("user:42");
+await cache.InvalidateKeyAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
+await cache.InvalidateTagAsync("tenant:7");   // add this tag to all tenant entries
 ```
 <!-- endSnippet -->
 
@@ -371,8 +371,6 @@ MessagePack keys preserve derived member data in nested base-class/interface slo
 
 Manual `TryGetAsync` reads a fresh entry, including a cached null, even when the fast path is disabled or refresh-ahead is due. This lookup does not start a factory or background refresh.
 
-An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision removes the previous distributed value instead of leaving it readable. If the backend is unavailable, the removal follows the normal invalidation retry path.
-
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
@@ -404,3 +402,9 @@ An instrumented cache lookup generates the application cache key once and reuses
 Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
 
 The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.
+
+The cache manager has four operations with cancellation last and immutable options. `WithEnabled(false)` bypasses
+caching; `WithDistributed(false)` uses only memory. Policy changes retire local generations. Declarative settings
+share a stable L2 namespace, while runtime overrides use private namespaces. Invalidation results distinguish local
+mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane sends. See
+[configuration](docs/features/configuration.md) and [distributed guarantees](docs/features/distributed-cache.md).

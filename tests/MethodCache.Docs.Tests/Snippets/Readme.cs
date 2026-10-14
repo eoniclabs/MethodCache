@@ -88,9 +88,9 @@ namespace Docs.Readme
         public static async Task FromCode(ICacheManager cache)
         {
             // begin-snippet: readme-invalidation
-            await cache.InvalidateByTagsAsync("user:42");
-            await cache.InvalidateByKeysAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
-            await cache.InvalidateByTagPatternAsync("tenant:7:*");   // in-memory only
+            await cache.InvalidateTagAsync("user:42");
+            await cache.InvalidateKeyAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
+            await cache.InvalidateTagAsync("tenant:7");   // add this tag to all tenant entries
             // end-snippet
         }
     }

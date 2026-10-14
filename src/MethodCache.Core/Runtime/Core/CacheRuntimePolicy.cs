@@ -11,9 +11,11 @@ namespace MethodCache.Infrastructure
     /// to cache managers and key generators. It packages together the resolved policy,
     /// runtime options, metadata, and precomputed indexes in an immutable record.
     /// </remarks>
-    public sealed record CacheRuntimePolicy
+    internal sealed record CacheRuntimePolicy
     {
         internal PolicyGeneration? Generation { get; init; }
+        internal string? Identity { get; init; }
+        internal bool PrivateIdentity { get; init; }
         private readonly IReadOnlyCollection<string> _tags = Array.Empty<string>();
         /// <summary>
         /// The unique identifier of the method this policy applies to.
@@ -26,6 +28,12 @@ namespace MethodCache.Infrastructure
         /// The duration for which cached values should be retained.
         /// </summary>
         public TimeSpan? Duration { get; init; }
+
+        /// <summary>Whether caching is enabled; unset inherits defaults.</summary>
+        public bool? Enabled { get; init; }
+
+        /// <summary>Whether this policy uses distributed storage; unset inherits defaults.</summary>
+        public bool? Distributed { get; init; }
 
         /// <summary>
         /// Tags associated with cache entries for bulk invalidation.
@@ -135,6 +143,8 @@ namespace MethodCache.Infrastructure
             {
                 MethodId = result.MethodId,
                 Duration = result.Policy.Duration,
+                Enabled = result.Policy.Enabled,
+                Distributed = result.Policy.Distributed,
                 Tags = result.Policy.Tags,
                 Version = result.Policy.Version,
                 SlidingExpiration = result.Policy.SlidingExpiration,
@@ -179,6 +189,8 @@ namespace MethodCache.Infrastructure
             {
                 MethodId = methodId,
                 Duration = policy.Duration,
+                Enabled = policy.Enabled,
+                Distributed = policy.Distributed,
                 Tags = policy.Tags,
                 Version = policy.Version,
                 SlidingExpiration = policy.SlidingExpiration,

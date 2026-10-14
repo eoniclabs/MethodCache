@@ -3,7 +3,7 @@ namespace MethodCache.Extensibility;
 /// <summary>
 /// Defines a backplane for coordinating cache invalidation across multiple instances.
 /// </summary>
-public interface IBackplane
+internal interface IBackplane
 {
     /// <summary>
     /// Publishes a cache invalidation message.
@@ -29,12 +29,16 @@ public interface IBackplane
     /// Gets the instance ID for this backplane.
     /// </summary>
     string InstanceId { get; }
+
+    /// <summary>Publishes a declared-method invalidation without changing the receiver's policy.</summary>
+    Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default)
+        => PublishTagInvalidationAsync(MethodCache.Core.Runtime.Distributed.DistributedCacheLayer.MethodTag(methodId), cancellationToken);
 }
 
 /// <summary>
 /// Represents a backplane message for cache invalidation.
 /// </summary>
-public class BackplaneMessage
+internal class BackplaneMessage
 {
     /// <summary>
     /// The type of invalidation.
@@ -65,7 +69,7 @@ public class BackplaneMessage
 /// <summary>
 /// Types of backplane messages.
 /// </summary>
-public enum BackplaneMessageType
+internal enum BackplaneMessageType
 {
     /// <summary>
     /// Invalidate a specific cache key.
@@ -80,5 +84,8 @@ public enum BackplaneMessageType
     /// <summary>
     /// Clear all cache entries.
     /// </summary>
-    ClearAll
+    ClearAll,
+
+    /// <summary>Invalidates a declared method across all registrations and policy identities.</summary>
+    MethodInvalidation
 }

@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
-namespace MethodCache.Docs.Tests;
+namespace MethodCache.Core.Tests.Contracts;
 
 public class ReviewFixContractTests
 {

@@ -8,7 +8,7 @@ namespace MethodCache.Policies;
 /// The effective policy for one method after merging all sources, and how it was built.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class PolicyResolutionResult
+internal sealed class PolicyResolutionResult
 {
     /// <summary>
     /// Creates a result.
@@ -54,4 +54,6 @@ public sealed class PolicyResolutionResult
     /// Used by decorators to detect when cached policies are stale.
     /// </summary>
     public long Version { get; }
+    internal CachePolicy? Declaration { get; init; }
+    internal IReadOnlyDictionary<string, string> FieldSources { get; init; } = new Dictionary<string, string>();
 }
