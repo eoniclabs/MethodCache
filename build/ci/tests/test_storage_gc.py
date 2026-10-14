@@ -260,6 +260,13 @@ class StorageTests(unittest.TestCase):
             gc.clean_builds(p, 0, self.now, set(), apply=True)
         self.assertTrue((p / 'bin/app.dll').exists())
 
+    def test_untracked_source_directory_protects_local_build_output(self):
+        p = self.project()
+        source = p / 'unsaved'; source.mkdir(); (source / 'New.cs').write_text('new source')
+        gc.clean_builds(p, 0, self.now, set(), apply=True)
+        self.assertTrue((p / 'bin/app.dll').exists())
+        self.assertTrue((source / 'New.cs').exists())
+
 
 if __name__ == '__main__':
     unittest.main()

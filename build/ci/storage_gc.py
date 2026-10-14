@@ -160,7 +160,9 @@ def clean_source(root):
     directory = git(root, 'rev-parse', '--absolute-git-dir')
     if directory is None or any((Path(directory) / n).exists() for n in ('index.lock', 'locked')):
         return False
-    return git(root, 'status', '--porcelain=v1', '-uall') == ''
+    # Directory-level untracked reporting is sufficient for a cleanliness guard;
+    # enumerating every file in a large untracked output tree is unnecessary.
+    return git(root, 'status', '--porcelain=v1', '-unormal') == ''
 
 
 def builds(root, snapshot=False):
