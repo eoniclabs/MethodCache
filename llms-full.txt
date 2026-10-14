@@ -1899,10 +1899,10 @@ What each package protects against, what it leaves to you, and the tests that ho
 
 ## Release publishing
 
-`build/ci/publish.sh <tag> --nuget` retrieves only the configured BWS publishing secret after packing. The
-NuGet API key goes to a .NET SDK 10.0.300+ CLI through `NUGET_API_KEY`, without appearing in command-line
+`build/ci/publish.sh <tag>` retrieves only the configured BWS publishing secret after packing. The
+NuGet API key goes to a .NET SDK 10.0.300+ CLI through `NUGET_API_KEY` and `NUGET_SYMBOL_API_KEY`, without appearing in command-line
 arguments or shell traces. The BWS token is removed from the upload process's environment; inherited BWS
-and NuGet publishing credentials are removed from build-step environments. The script refuses a release
+and both NuGet publishing credentials are removed from build-step environments. The script refuses a release
 whose `MethodCache CI` status is not green. `build/ci/tests/test_publish.py` covers these boundaries and
 failure paths. The host, release code and SDK remain trusted: this does not isolate malicious code running
 under the same OS user from local credential files.

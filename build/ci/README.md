@@ -13,7 +13,7 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
 | `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
-| `publish.sh <tag> [--nuget]` | Megatron | publishes a release tag the build servers passed; GitHub Packages by default, nuget.org via BWS with `--nuget` |
+| `publish.sh <tag> [--github]` | Megatron | publishes a release tag the build servers passed; nuget.org via BWS by default, GitHub Packages with `--github` |
 
 Run all Linux jobs locally, the way the build server does:
 
@@ -189,6 +189,6 @@ not update the installed copy automatically.
 ## Publishing a release
 
 `publish.sh <tag>` publishes a tag the build servers passed; [docs/developer/RELEASE.md](../../docs/developer/RELEASE.md)
-has the whole release procedure, including the BWS configuration and explicit `--nuget` destination.
+has the whole release procedure, including the BWS configuration and optional `--github` destination.
 The `build` job also runs the Python tests under `build/ci/tests`, including simulated publishing checks
 that never contact a package feed or use real secrets.

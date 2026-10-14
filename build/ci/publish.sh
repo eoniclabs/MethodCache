@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Publishes a release from its tag, once the build servers have passed that commit.
-# GitHub Packages is the default; --nuget explicitly selects nuget.org using BWS.
+# nuget.org via BWS is the default; --github selects GitHub Packages.
 #
 #   build/ci/publish.sh v1.2.0
-#   build/ci/publish.sh v1.3.0-beta
+#   build/ci/publish.sh v1.3.0-beta --github
 #   build/ci/publish.sh v1.0.0 --nuget
 #
 # Run it on Megatron (or any machine with the .NET 8, 9 and 10 SDKs). GitHub Packages needs gh logged in
@@ -20,10 +20,10 @@ unset BWS_ACCESS_TOKEN NUGET_API_KEY NUGET_SYMBOL_API_KEY
 # launchd and non-login SSH sessions on macOS do not see Homebrew (gh) or the .NET SDKs
 export PATH="/opt/homebrew/bin:/usr/local/share/dotnet:/usr/local/bin:$PATH"
 
-tag=${1:?usage: build/ci/publish.sh v<major>.<minor>.<patch>[-<prerelease>] [--nuget]}
-target=${2:-github}
-if [ "$#" -gt 2 ] || { [ "$target" != github ] && [ "$target" != --nuget ]; }; then
-  echo "usage: build/ci/publish.sh v<major>.<minor>.<patch>[-<prerelease>] [--nuget]" >&2
+tag=${1:?usage: build/ci/publish.sh v<major>.<minor>.<patch>[-<prerelease>] [--nuget|--github]}
+target=${2:---nuget}
+if [ "$#" -gt 2 ] || { [ "$target" != --github ] && [ "$target" != --nuget ]; }; then
+  echo "usage: build/ci/publish.sh v<major>.<minor>.<patch>[-<prerelease>] [--nuget|--github]" >&2
   exit 2
 fi
 if ! [[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
@@ -42,8 +42,12 @@ if [ "$state" != success ]; then
 fi
 
 if [ "$target" = --nuget ]; then
-  command -v bws > /dev/null
-  command -v jq > /dev/null
+  for tool in bws jq; do
+    if ! command -v "$tool" > /dev/null; then
+      echo "$tool is required for NuGet publishing. Install it and ensure it is on PATH." >&2
+      exit 1
+    fi
+  done
   secret_id=${METHODCACHE_NUGET_SECRET_ID:-}
   if [ -z "$secret_id" ] && [ -f "$HOME/.config/methodcache-publish/nuget-secret-id" ]; then
     secret_id=$(cat "$HOME/.config/methodcache-publish/nuget-secret-id")
@@ -91,6 +95,10 @@ for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.S
     ls "$work/packages" >&2
     exit 1
   fi
+  if [ "$target" = --nuget ] && [ ! -f "$work/packages/$package.$version.snupkg" ]; then
+    echo "Missing $package $version symbol package. Check IncludeSymbols and SymbolPackageFormat at $tag." >&2
+    exit 1
+  fi
   packages+=("$file")
 done
 
@@ -99,6 +107,7 @@ if [ "$target" = --nuget ]; then
     export BWS_ACCESS_TOKEN="${publish_bws_token:-$(cat "${BWS_TOKEN_FILE:-$HOME/.bws_token}")}"
     export NUGET_API_KEY
     NUGET_API_KEY=$(bws secret get "$secret_id" | jq -er 'select(.key == "METHODCACHE_NUGET_ORG_API_KEY") | .value | select(type == "string" and length > 0)')
+    export NUGET_SYMBOL_API_KEY="$NUGET_API_KEY"
     unset BWS_ACCESS_TOKEN
     cd "$work"
     for file in "${packages[@]}"; do

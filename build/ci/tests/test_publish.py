@@ -17,6 +17,7 @@ args = sys.argv[1:]
 with open(os.environ['TEST_LOG'], 'a') as log:
     log.write(json.dumps({'tool': name, 'args': args,
         'nuget_key': bool(os.environ.get('NUGET_API_KEY')),
+        'symbol_key': bool(os.environ.get('NUGET_SYMBOL_API_KEY')),
         'bws_token': bool(os.environ.get('BWS_ACCESS_TOKEN'))}) + '\\n')
 if name == 'gh':
     if args[:2] == ['auth', 'token']: print('github-test-key')
@@ -31,10 +32,16 @@ elif name == 'dotnet':
         dest = pathlib.Path(args[args.index('--output') + 1]); dest.mkdir()
         for package in os.environ['TEST_PACKAGES'].split(','):
             (dest / (package + '.1.0.0.nupkg')).touch()
+            if os.environ.get('TEST_MISSING_SYMBOL') != package:
+                (dest / (package + '.1.0.0.snupkg')).touch()
     elif args[:2] == ['nuget', 'push'] and 'api.nuget.org' in ' '.join(args):
         assert os.environ['NUGET_API_KEY'] == 'nuget-test-key'
         assert 'BWS_ACCESS_TOKEN' not in os.environ
         assert '--api-key' not in args
+        if pathlib.Path(args[2]).with_suffix('.snupkg').exists():
+            assert os.environ.get('NUGET_SYMBOL_API_KEY') == os.environ['NUGET_API_KEY']
+            assert pathlib.Path(args[2]).with_suffix('.snupkg').exists()
+            assert '--symbol-api-key' not in args
 elif name == 'bws':
     assert os.environ['BWS_ACCESS_TOKEN'] == 'bws-test-token'
     if os.environ.get('TEST_BWS_FAIL'): sys.exit(1)
@@ -56,6 +63,12 @@ class PublishTests(unittest.TestCase):
             script.write_text(SCRIPT.read_text().replace(
                 'export PATH="/opt/homebrew/bin:/usr/local/share/dotnet:/usr/local/bin:$PATH"',
                 'export PATH="$TEST_BIN:$PATH"'))
+            if settings.get('TEST_MISSING_TOOL'):
+                script.write_text(script.read_text().replace(
+                    'export PATH="$TEST_BIN:$PATH"',
+                    'export PATH="$TEST_BIN:$PATH"\n'
+                    'command() { if [ "$1" = -v ] && [ "$2" = "$TEST_MISSING_TOOL" ]; '
+                    'then return 1; fi; builtin command "$@"; }'))
             log = root / 'calls.jsonl'
             env = dict(os.environ, HOME=directory, TEST_BIN=str(tools), TEST_LOG=str(log),
                        TEST_PACKAGES=','.join(PACKAGES), BWS_ACCESS_TOKEN='bws-test-token',
@@ -94,6 +107,31 @@ class PublishTests(unittest.TestCase):
             self.assertIn('--skip-duplicate', push['args'])
         self.assertFalse(any(c['args'][:2] == ['auth', 'token'] for c in calls))
 
+    def test_default_is_nuget(self):
+        result, calls = self.run_publish(target=None)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(1, len([c for c in calls if c['tool'] == 'bws']))
+        pushes = [c for c in calls if c['args'][:2] == ['nuget', 'push']]
+        self.assertTrue(all('https://api.nuget.org/v3/index.json' in c['args'] for c in pushes))
+
+    def test_symbol_companions_receive_the_same_environment_key(self):
+        result, calls = self.run_publish()
+        self.assertEqual(0, result.returncode, result.stderr)
+        pack = next(c for c in calls if c['tool'] == 'dotnet' and c['args'][0] == 'pack')
+        self.assertFalse(pack['symbol_key'])
+        pushes = [c for c in calls if c['args'][:2] == ['nuget', 'push']]
+        self.assertEqual(7, len(pushes))
+        self.assertTrue(all(c['symbol_key'] for c in pushes))
+        self.assertTrue(all('--symbol-api-key' not in c['args'] for c in pushes))
+
+    def test_missing_dependencies_report_the_tool_and_never_build(self):
+        for tool in ('bws', 'jq'):
+            with self.subTest(tool=tool):
+                result, calls = self.run_publish(TEST_MISSING_TOOL=tool)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(tool + ' is required', result.stderr)
+                self.assertFalse(any(c['tool'] in ('git', 'bws', 'dotnet') for c in calls))
+
     def test_failed_ci_never_builds_or_fetches_secret(self):
         result, calls = self.run_publish(TEST_STATUS='failure')
         self.assertNotEqual(0, result.returncode)
@@ -127,13 +165,19 @@ class PublishTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertFalse(any(c['tool'] == 'bws' for c in calls))
 
+    def test_missing_symbol_companion_never_fetches_secret(self):
+        result, calls = self.run_publish(TEST_MISSING_SYMBOL=PACKAGES[-1])
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('Missing ' + PACKAGES[-1] + ' 1.0.0 symbol package', result.stderr)
+        self.assertFalse(any(c['tool'] == 'bws' for c in calls))
+
     def test_invalid_target_never_contacts_services(self):
         result, calls = self.run_publish(target='--typo')
         self.assertEqual(2, result.returncode)
         self.assertEqual([], calls)
 
-    def test_default_remains_github_packages(self):
-        result, calls = self.run_publish(target=None)
+    def test_explicit_github_packages(self):
+        result, calls = self.run_publish(target='--github')
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse(any(c['tool'] == 'bws' for c in calls))
         pushes = [c for c in calls if c['args'][:2] == ['nuget', 'push']]
