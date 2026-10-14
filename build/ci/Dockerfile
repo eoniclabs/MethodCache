@@ -1,5 +1,5 @@
 # The Linux build image for MethodCache CI: the .NET 10 SDK, plus the .NET 8 and 9 SDKs and runtimes the
-# tests target, clang for Native AOT and Python for the docs check. Tags are pinned by digest, so the image
+# tests target, clang for Native AOT, Python for docs/script checks, and jq/lsof for script tests. Tags are pinned by digest, so the image
 # only changes when this file does; update a digest with `docker pull <image>:<tag>` and copy RepoDigests.
 FROM mcr.microsoft.com/dotnet/sdk:8.0@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80 AS sdk8
 FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:1330d3c4144aec2695036a125d9a3b49a1fc555c9024c981248fa83d40fa8b23 AS sdk9
@@ -17,7 +17,7 @@ COPY --from=sdk9 /usr/share/dotnet/shared /usr/share/dotnet/shared
 COPY --from=sdk9 /usr/share/dotnet/packs /usr/share/dotnet/packs
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends clang zlib1g-dev python3 \
+ && apt-get install -y --no-install-recommends clang zlib1g-dev python3 jq lsof \
  && rm -rf /var/lib/apt/lists/*
 
 # The checkout is mounted from the host and owned by another user; NBGV and the docs check read its history
