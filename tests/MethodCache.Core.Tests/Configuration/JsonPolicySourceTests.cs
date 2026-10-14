@@ -195,15 +195,16 @@ public sealed class JsonPolicySourceTests
     [Theory]
     [InlineData("Duration", "00:01:00")]
     [InlineData("SlidingExpiration", "00:00:30")]
-    public void AddMethodCacheFromConfiguration_Throws_ForARefreshWindowAsLongAsTheEntryLives(string lifetime, string value)
+    public void RefreshWindowAsLongAsTheEntryLives_ThrowsWhenThePoliciesLoad(string lifetime, string value)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             [$"MethodCache:Services:Sample.Type.Method:{lifetime}"] = value,
             ["MethodCache:Services:Sample.Type.Method:RefreshAhead"] = "00:01:00"
         });
+        using var provider = BuildProvider(configuration);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddMethodCacheFromConfiguration(configuration));
+        var exception = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method"));
 
         Assert.Contains("MethodCache:Services:Sample.Type.Method:RefreshAhead", exception.Message);
     }
