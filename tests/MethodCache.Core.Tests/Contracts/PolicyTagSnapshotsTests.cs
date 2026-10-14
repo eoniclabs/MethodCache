@@ -2,7 +2,7 @@ using MethodCache.Infrastructure;
 using MethodCache.Policies;
 using Xunit;
 
-namespace MethodCache.Docs.Tests;
+namespace MethodCache.Core.Tests.Contracts;
 
 public class PolicyTagSnapshotsTests
 {

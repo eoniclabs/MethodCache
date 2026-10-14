@@ -19,14 +19,16 @@ namespace MethodCache.Infrastructure
         internal PolicyHandle(PolicyResolutionResult result)
         {
             MethodId = result.MethodId;
-            _current = CacheRuntimePolicy.FromResolverResult(result) with { Generation = new PolicyGeneration() };
+            var policy = CacheRuntimePolicy.FromResolverResult(result);
+            var isPrivate = PolicyIdentity.IsRuntime(result);
+            _current = policy with { Generation = new PolicyGeneration(), Identity = isPrivate ? PolicyIdentity.Private() : PolicyIdentity.Shared(policy), PrivateIdentity = isPrivate };
             _version = result.Version;
         }
 
         private PolicyHandle(CacheRuntimePolicy policy)
         {
             MethodId = policy.MethodId;
-            _current = policy with { Generation = new PolicyGeneration() };
+            _current = policy with { Generation = new PolicyGeneration(), Identity = policy.Identity ?? PolicyIdentity.Shared(policy) };
         }
 
         // The handle of one registration of an interface: the method's shared handle, plus what the registration adds
@@ -94,25 +96,52 @@ namespace MethodCache.Infrastructure
             }
         }
 
+        internal void InvalidateGeneration()
+        {
+            lock (_sync)
+                lock (_current.Generation!.Gate)
+                {
+                    _current.Generation.Retire();
+                    var next = _current with { Generation = new PolicyGeneration() };
+                    Volatile.Write(ref _current, next);
+                    _changed?.Invoke(next);
+                }
+        }
+
         /// <summary>
         /// Publishes a newly resolved policy unless the handle already holds the same or a newer version.
         /// </summary>
-        internal void Update(PolicyResolutionResult result)
+        internal bool Update(PolicyResolutionResult result, bool awaitInvalidation = false)
         {
             lock (_sync)
             {
                 if (result.Version <= _version)
                 {
-                    return;
+                    return false;
                 }
 
                 _version = result.Version;
-                var next = CacheRuntimePolicy.FromResolverResult(result) with { Generation = new PolicyGeneration() };
+                var resolved = CacheRuntimePolicy.FromResolverResult(result);
+                if (PolicyIdentity.SameBehavior(_current, resolved) && !(_current.PrivateIdentity && !PolicyIdentity.IsRuntime(result)))
+                {
+                    var audited = resolved with { Generation = _current.Generation, Identity = _current.Identity, PrivateIdentity = _current.PrivateIdentity };
+                    Volatile.Write(ref _current, audited);
+                    _changed?.Invoke(audited);
+                    return false;
+                }
+                var isPrivate = PolicyIdentity.IsRuntime(result);
+                var next = resolved with
+                {
+                    Generation = new PolicyGeneration { DistributedReady = !awaitInvalidation },
+                    Identity = isPrivate ? PolicyIdentity.Private() : PolicyIdentity.Shared(resolved),
+                    PrivateIdentity = isPrivate
+                };
                 lock (_current.Generation!.Gate)
                 {
                     _current.Generation.Retire();
                     Volatile.Write(ref _current, next);
                     _changed?.Invoke(next);
+                    return true;
                 }
             }
         }

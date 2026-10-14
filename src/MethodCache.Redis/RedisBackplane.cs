@@ -52,6 +52,11 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
         => PublishAsync(BackplaneMessageType.TagInvalidation, tag, cancellationToken);
 
     /// <inheritdoc />
+    public Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default)
+        => PublishAsync(BackplaneMessageType.MethodInvalidation, methodId, cancellationToken);
+
+
+    /// <inheritdoc />
     public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(onMessage);
@@ -281,6 +286,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
         message = logicalType switch
         {
             BackplaneMessageType.KeyInvalidation => new BackplaneMessage { Type = BackplaneMessageType.KeyInvalidation, Key = target, InstanceId = instanceId },
+            BackplaneMessageType.MethodInvalidation => new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = target, InstanceId = instanceId },
             BackplaneMessageType.TagInvalidation => new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, Tag = target, InstanceId = instanceId },
             _ => null!
         };

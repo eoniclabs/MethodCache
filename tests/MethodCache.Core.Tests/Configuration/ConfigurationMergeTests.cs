@@ -17,11 +17,12 @@ namespace MethodCache.Core.Tests.Configuration;
 
 public interface IConfigMergeService
 {
-    Task<int> Get(int id);
+    [Cache] Task<int> Get(int id);
 }
 
 public class ConfigurationMergeTests(ITestOutputHelper output)
 {
+    public sealed class ConfigMergeService : IConfigMergeService { public Task<int> Get(int id) => Task.FromResult(id); }
     private static readonly string Id = MethodIds.For(typeof(IConfigMergeService), nameof(IConfigMergeService.Get));
 
     // ---------- 1. RuntimePolicySource registered once per EnsureCoreServices call ----------
@@ -29,6 +30,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     public async Task RuntimeSource_IsRegisteredOnce_EvenWhenSeveralAddMethodsAreCalled()
     {
         var services = new ServiceCollection();
+        services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache();
         services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().Build());
@@ -56,6 +58,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var services = new ServiceCollection();
+        services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddSingleton<TimeProvider>(time);
         services.AddMethodCache();
         await using var sp = services.BuildServiceProvider();
@@ -81,6 +84,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     private static ServiceProvider GroupProvider()
     {
         var services = new ServiceCollection();
+        services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddMethodCache(c =>
         {
             c.Group("g", o => o.WithDuration(TimeSpan.FromMinutes(10)));
@@ -155,6 +159,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     public async Task TwoAddMethodCacheCalls_BothDefaultPoliciesApply()
     {
         var services = new ServiceCollection();
+        services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
         services.AddMethodCache(c => c.Defaults(o => o.WithTags("from-second-call")));
         services.AddMethodCache(c => c.Method((IConfigMergeService x) => x.Get(0)).WithVersion(1));
@@ -178,6 +183,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
             ["B:Defaults:Tags:0"] = "from-b",
         }).Build();
         var services = new ServiceCollection();
+        services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddMethodCache();
         services.AddMethodCacheFromConfiguration(a, "A");
         services.AddMethodCacheFromConfiguration(b, "B");
@@ -197,6 +203,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
             [$"MethodCache:Services:{Id}:Duration"] = "00:05:00",
         }).Build();
         var services = new ServiceCollection();
+        services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1))));
         services.AddMethodCacheFromConfiguration(config);

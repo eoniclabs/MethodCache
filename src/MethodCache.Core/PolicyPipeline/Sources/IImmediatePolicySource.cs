@@ -12,6 +12,8 @@ internal interface IImmediatePolicySource : IPolicySource
     /// <summary>The current policies.</summary>
     IReadOnlyCollection<PolicySnapshot> GetSnapshot();
 
+    (IReadOnlyCollection<PolicySnapshot> Snapshots, long Revision) CaptureSnapshots() => (GetSnapshot(), 0);
+
     /// <summary>Raised synchronously for every change, before the call that made it returns.</summary>
     event Action<PolicyChange>? Changed;
 }

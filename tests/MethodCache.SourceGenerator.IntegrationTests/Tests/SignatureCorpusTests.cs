@@ -265,7 +265,7 @@ public class SignatureCorpusTests
                 public static int Run() {
                     var services = new ServiceCollection(); services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                     using var provider = services.BuildServiceProvider();
-                    return provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies().Count(p => p.MethodId.Contains("ISvc.Get"));
+                    return provider.GetRequiredService<ICacheAdministrator>().GetMethods().Count(p => p.MethodId.Contains("ISvc.Get"));
                 }
             }
             """, "GenericArityReview", LanguageVersion.CSharp12);
@@ -444,7 +444,7 @@ public class SignatureCorpusTests
                 }
                 public class CountingManager : NoOpCacheManager, ICacheManager {
                     public int Calls;
-                    public new Task InvalidateByTagsAsync(params string[] tags) { Calls++; return Task.CompletedTask; }
+                    public override ValueTask<InvalidationResult> InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string> tags, System.Threading.CancellationToken token) { Calls++; return base.InvalidateTagsAsync(tags, token); }
                 }
                 public static class Scenario {
                     public static async Task<int> RunAsync() {
@@ -619,12 +619,12 @@ public class SignatureCorpusTests
         ["runtime tags see every case-distinct argument"] = new("""
             public interface ISvc { [Cache(Tags = new[] { "attribute:{a}" })] Task<int> Get(int a, int A); }
             public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }
-            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:2\"); await s.Get(1, 2)",
+            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateTagAsync(\"runtime:2\"); await s.Get(1, 2)",
             Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
         ["runtime tags retain ambiguous placeholders"] = new("""
             public interface ISvc { [Cache(Tags = new[] { "attribute:{name}" })] Task<int> Get(int name, int Name); }
             public class Svc : ISvc { public Task<int> Get(int name, int Name) { Counter.Hit(); return Task.FromResult(name + Name); } }
-            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
+            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateTagAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
             Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
 
         ["application types shadow framework and cache infrastructure"] = new("""

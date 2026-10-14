@@ -167,8 +167,8 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
     Ui.Check(reloaded, "appsettings.json was reloaded while the app was running");
 
     // An operator shortens the duration during an incident.
-    await runtime.ApplyAsync(config => config.ForService<IProductCatalog>().Method(c => c.GetProductAsync(default!))
-        .Configure(o => o.WithDuration(TimeSpan.FromMinutes(1))));
+    await runtime.UpsertAsync<IProductCatalog, Product>(c => c.GetProductAsync(default!),
+        o => o.WithDuration(TimeSpan.FromMinutes(1)));
 
     var catalog = provider.GetRequiredService<IProductCatalog>();
     await catalog.GetProductAsync("KB-1");

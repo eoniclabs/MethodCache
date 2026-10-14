@@ -13,11 +13,11 @@ public interface IOrderService
     [Cache(Duration = "00:10:00", Tags = ["orders", "order:{orderId}"])]
     Task<Order> GetAsync(int orderId);
 
-    [Cache(Duration = "00:05:00", Tags = ["orders", "customer:{customerId}:orders"])]
+    [Cache(Duration = "00:05:00", Tags = ["orders", "customer:{customerId}:orders", "customer:{customerId}"])]
     Task<List<Order>> ListForCustomerAsync(int customerId);
 
     // Removes this order and the customer's list, nothing else
-    [CacheInvalidate(Tags = ["order:{orderId}", "customer:{customerId}:orders"])]
+    [CacheInvalidate(Tags = ["order:{orderId}", "customer:{customerId}:orders", "customer:{customerId}"])]
     Task CancelAsync(int orderId, int customerId);
 
     // Removes every cached order
@@ -64,28 +64,26 @@ once the task has completed successfully.
 
 <!-- snippet: invalidation-from-code -->
 ```cs
-await cache.InvalidateByTagsAsync("order:42", "customer:7:orders");
+await cache.InvalidateTagsAsync(["order:42", "customer:7:orders"]);
 ```
 <!-- endSnippet -->
 
 <!-- snippet: invalidation-by-key -->
 ```cs
 var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
-await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
+await cache.InvalidateKeyAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
 ```
 <!-- endSnippet -->
 
 <!-- snippet: invalidation-pattern -->
 ```cs
-await cache.InvalidateByTagPatternAsync("customer:7:*");   // in-memory cache only
+await cache.InvalidateTagAsync("customer:7");   // add this tag to every customer entry
 ```
 <!-- endSnippet -->
 
 - `MethodCacheKeys.For` builds the key the generated decorator uses. Versioned and overloaded methods need a little
   more; see [Building a key yourself](keys.md#building-a-key-yourself).
-- Patterns match tags, with `*` for any number of characters and `?` for one. With a distributed cache configured,
-  `InvalidateByTagPatternAsync` throws `NotSupportedException`, because the distributed cache can't list its tags;
-  invalidate exact tags instead.
+- Invalidation matches exact tags. Attach a common tag to all entries in a group instead of using wildcard patterns.
 - The admin endpoints and `ICacheAdministrator` also invalidate by tag ([Monitoring](monitoring.md)).
 
 ## With several instances

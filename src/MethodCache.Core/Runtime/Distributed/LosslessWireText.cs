@@ -11,13 +11,14 @@ internal static class LosslessWireText
     {
         BackplaneMessageType.KeyInvalidation => 4,
         BackplaneMessageType.TagInvalidation => 5,
+        BackplaneMessageType.MethodInvalidation => 6,
         _ => throw new ArgumentOutOfRangeException(nameof(type))
     };
 
     internal static bool TryMessageType(int type, out BackplaneMessageType logical)
     {
-        logical = type == 5 ? BackplaneMessageType.TagInvalidation : BackplaneMessageType.KeyInvalidation;
-        return type is 4 or 5;
+        logical = type == 6 ? BackplaneMessageType.MethodInvalidation : type == 5 ? BackplaneMessageType.TagInvalidation : BackplaneMessageType.KeyInvalidation;
+        return type is 4 or 5 or 6;
     }
 
     internal static string Encode(string value)

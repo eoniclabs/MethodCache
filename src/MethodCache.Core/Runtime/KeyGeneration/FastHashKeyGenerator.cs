@@ -31,7 +31,7 @@ namespace MethodCache.Extensibility;
 /// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, FastHashKeyGenerator&gt;());
 /// </code>
 /// </example>
-public class FastHashKeyGenerator : ICacheKeyGenerator
+internal class FastHashKeyGenerator : ICacheKeyGenerator
 {
     [ThreadStatic]
     private static ArrayBufferWriter<byte>? t_writer;

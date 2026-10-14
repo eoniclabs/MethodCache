@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
-namespace MethodCache.Docs.Tests;
+namespace MethodCache.Core.Tests.Contracts;
 
 public class SamplingStatisticsTests
 {
@@ -11,7 +11,7 @@ public class SamplingStatisticsTests
     public async Task SamplingStatistics_BoundsSerialization_AndReusesTheSample()
     {
         var counter = new Counter();
-        using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), Options.Create(new MethodCacheMemoryOptions
+        using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions
         {
             MemoryCalculationMode = MemoryUsageCalculationMode.Sampling,
             SamplingPercentage = 1,

@@ -7,7 +7,7 @@ namespace MethodCache.Policies;
 /// <param name="Source">The policy source.</param>
 /// <param name="Priority">The source's priority; higher wins per field. The built-in sources use 10 (attributes), 40 (startup code), 50 (configuration files) and 100 (runtime overrides).</param>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public sealed record PolicySourceRegistration(IPolicySource Source, int Priority)
+internal sealed record PolicySourceRegistration(IPolicySource Source, int Priority)
 {
     /// <summary>
     /// The identifier of <see cref="Source"/>.

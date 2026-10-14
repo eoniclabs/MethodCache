@@ -1,3 +1,4 @@
+using MethodCache.Infrastructure;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Extensibility;
 using MethodCache.Policies;
@@ -109,6 +110,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         return _cache.ClearAsync();
     }
 
+    public InvalidationQueues GetInvalidationQueues() => _cache.GetInvalidationQueues();
+
     public IReadOnlyList<CachedMethodInfo> GetMethods()
     {
         if (_policies == null)
@@ -118,12 +121,18 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
         return _policies.GetAllPolicies()
             .OrderBy(static result => result.MethodId, StringComparer.Ordinal)
-            .Select(static result => new CachedMethodInfo(
+            .Select(result => new CachedMethodInfo(
                 result.MethodId,
                 result.Policy.Duration,
                 result.Policy.Tags,
                 result.Policy.Version,
-                result.Contributions.Select(static c => c.SourceId).Distinct(StringComparer.Ordinal).ToArray()))
+                result.Contributions.Select(static c => c.SourceId).Distinct(StringComparer.Ordinal).ToArray())
+            {
+                Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromResolverResult(result), preparedKey: false),
+                L2Namespace = PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity ? "private" : "shared",
+                SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
+                    new Dictionary<string, string>(result.FieldSources, StringComparer.Ordinal))
+            })
             .ToArray();
     }
 

@@ -76,7 +76,7 @@ public class KeyedRegistrationTests
         services.AddKeyedSingleton<IKeyedRates>(7, new KeyedRates(3));
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
-        var cache = (MethodCache.Extensibility.InMemoryCacheManager)provider.GetRequiredService<ICacheManager>();
+        var cache = provider.GetRequiredService<ICacheAdministrator>();
 
         provider.GetRequiredKeyedService<IKeyedRates>("ecb").Get(5);
         provider.GetRequiredKeyedService<IKeyedRates>(KeyedRegion.Eu).Get(5);
@@ -85,7 +85,7 @@ public class KeyedRegistrationTests
         foreach (var key in new object[] { "ecb", KeyedRegion.Eu, 7 })
         {
             var expected = MethodCacheKeys.For(typeof(IKeyedRates), MethodCacheKeys.KeyedMethodName(nameof(IKeyedRates.Get), key), MethodCacheKeys.Part(5));
-            Assert.True(cache.TryGetFast<int>(expected, out _), $"No entry under {expected}");
+            Assert.NotNull(cache.GetEntry(expected));
         }
     }
 

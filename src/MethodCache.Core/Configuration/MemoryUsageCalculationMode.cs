@@ -7,7 +7,7 @@ namespace MethodCache
     /// may vary significantly due to runtime optimizations, GC behavior, and
     /// object layout complexities. Use for trends and relative comparisons only.
     /// </summary>
-    public enum MemoryUsageCalculationMode
+    internal enum MemoryUsageCalculationMode
     {
         /// <summary>
         /// Fast estimation using fixed constants and type-based guesses.

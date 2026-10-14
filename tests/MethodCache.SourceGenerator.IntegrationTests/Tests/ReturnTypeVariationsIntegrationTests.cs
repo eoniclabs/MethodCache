@@ -116,7 +116,7 @@ namespace TestNamespace
         var productTask1 = getProductMethod!.Invoke(service, new object[] { 1 })!;
         // Use reflection to await ValueTask since we can't cast to ValueTask<object>
         var product1 = await AwaitValueTask(productTask1);
-        
+
         var productTask2 = getProductMethod.Invoke(service, new object[] { 1 })!;
         var product2 = await AwaitValueTask(productTask2);
 
@@ -124,16 +124,16 @@ namespace TestNamespace
         var getNameMethod = serviceType.GetMethod("GetProductNameAsync");
         var nameTask1 = getNameMethod!.Invoke(service, new object[] { 1 })!;
         var name1 = await AwaitValueTask(nameTask1);
-        
+
         var nameTask2 = getNameMethod.Invoke(service, new object[] { 1 })!;
         var name2 = await AwaitValueTask(nameTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
-        
+
         // Verify caching worked
         var productCallCount = (int)implType?.GetProperty("ProductCallCount")?.GetValue(null)!;
         var nameCallCount = (int)implType?.GetProperty("NameCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, productCallCount); // Caching is working!
         Assert.Equal(1, nameCallCount); // Caching is working!
         Assert.NotNull(product1);
@@ -270,11 +270,11 @@ namespace TestNamespace
         await arrayTask2;
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
-        
+
         // Verify caching worked for collections
         var listCallCount = (int)implType?.GetProperty("ListCallCount")?.GetValue(null)!;
         var arrayCallCount = (int)implType?.GetProperty("ArrayCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, listCallCount); // Caching is working!
         Assert.Equal(1, arrayCallCount); // Caching is working!
 
@@ -382,11 +382,11 @@ namespace TestNamespace
         await nicknameTask2;
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
-        
+
         // Verify caching worked for nullable types (adjusted for test infrastructure behavior)
         var userCallCount = (int)implType?.GetProperty("UserCallCount")?.GetValue(null)!;
         var nicknameCallCount = (int)implType?.GetProperty("NicknameCallCount")?.GetValue(null)!;
-        
+
         // Note: In simplified test infrastructure, some nullable scenarios may have different caching behavior
         Assert.True(userCallCount >= 1); // At least one call was made
         Assert.True(nicknameCallCount >= 1); // At least one call was made

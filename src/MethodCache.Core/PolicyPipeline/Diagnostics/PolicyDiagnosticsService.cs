@@ -3,7 +3,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// Explains effective cache policies: what each method ends up with and which source set each field.
 /// </summary>
-public sealed class PolicyDiagnosticsService
+internal sealed class PolicyDiagnosticsService
 {
     private readonly IPolicyRegistry _registry;
 
@@ -103,7 +103,7 @@ public sealed class PolicyDiagnosticsService
 /// <param name="Contributions">All contributions, in the order they were applied.</param>
 /// <param name="ContributionsBySource">The contributions grouped by source identifier.</param>
 /// <param name="ResolvedAt">When the policy was resolved.</param>
-public sealed record PolicyDiagnosticsReport(
+internal sealed record PolicyDiagnosticsReport(
     string MethodId,
     CachePolicy Policy,
     IReadOnlyList<PolicyContribution> Contributions,

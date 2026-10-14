@@ -134,7 +134,7 @@ builder.Services.AddMethodCache();
 - Exceptions are never cached: the next call runs the method again.
 - Concurrent calls with the same arguments share one call to your method (stampede protection). A caller that cancels
   only stops its own wait.
-- Without a `Duration`, entries live five minutes (`MethodCacheMemoryOptions.DefaultExpiration`) unless you set a
+- Without a `Duration`, entries live five minutes (the built-in default) unless you set a
   default ([Expiration](features/expiration.md#duration)).
 - `null` results are cached. Turn that off with `CacheNullValues` on the [memory cache](features/memory-cache.md), or
   per method with [conditional caching](features/conditional-caching.md).

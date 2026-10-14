@@ -84,7 +84,7 @@ builder.Services.AddMethodCache();                               // after your r
 - In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
   caching off.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass `CacheManagerExtensions.GetCacheKey(key, version)`
-  to `InvalidateByKeysAsync`.
+  to `InvalidateKeysAsync`.
 - For a distributed cache, use `AddMethodCacheRedis` or `AddMethodCacheSqlServer`. A custom `IDistributedCache` must
   also implement `IAtomicInvalidationStore` (`MethodCache.Extensibility`), or the app fails at startup.
 - With `AddHttpCaching()`, send cookies as explicit `Cookie` headers; it turns automatic cookies off.
@@ -93,9 +93,16 @@ builder.Services.AddMethodCache();                               // after your r
 
 - `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
   `IRuntimeCacheConfigurator`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`, `ICacheKeyProvider`.
-- `MethodCache.Extensibility`: `ISerializer`, `JsonCacheSerializer`, `ICacheKeyGenerator`, `JsonKeyGenerator`,
+- `MethodCache.Extensibility`: `ISerializer`, `JsonCacheSerializer`,
   `NoOpCacheManager`, `IAtomicInvalidationStore`.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
 
 SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
+
+The public ICacheManager contract is GetOrCreateAsync, TryGetAsync, InvalidateKeysAsync and InvalidateTagsAsync, all with
+the caller token last. CacheEntryOptions is immutable. Custom managers use GetCacheKey and CanCache helpers; generated
+synchronous calls bypass a custom manager. Runtime configurators expose only Upsert/Remove/Clear/GetOverrides. They
+reject unknown method ids and retire local policy generations. Declarative L2 namespaces are stable; runtime behavior
+changes use private random namespaces. Never reintroduce cache callbacks, CacheContext.Services, public policy pipelines,
+key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.

@@ -105,7 +105,7 @@ See [Manual caching](manual-caching.md).
   with `[CacheInvalidate(Tags = ...)]`.
 - **Exceptions are not cached.** With [fail-safe](fail-safe.md) on, the previous value is served while the client
   fails.
-- **Invalidate from a webhook** with `cache.InvalidateByTagsAsync("fx:EUR")` when the vendor tells you data changed.
+- **Invalidate from a webhook** with `cache.InvalidateTagAsync("fx:EUR")` when the vendor tells you data changed.
 - **Share results between instances** with a [distributed cache](distributed-cache.md) when every instance calls the
   same paid API.
 - **Start with short durations** and lengthen them once you know how fresh the data must be.
