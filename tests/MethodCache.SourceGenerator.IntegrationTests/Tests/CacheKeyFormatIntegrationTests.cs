@@ -97,6 +97,9 @@ namespace KeyFormat
         Task<int> QueriesAsync(Query[] queries);
 
         [Cache(Duration = ""00:10:00"")]
+        Task<int> FiltersAsync(System.Collections.Generic.Dictionary<string, int> filters);
+
+        [Cache(Duration = ""00:10:00"")]
         Task<int> RangesAsync(Range[] ranges);
 
         [Cache(Duration = ""00:10:00"")]
@@ -130,6 +133,7 @@ namespace KeyFormat
         public Task<int> NamesAsync(System.Collections.Generic.IReadOnlyList<string?> names, int page) { Calls++; return Task.FromResult(Calls); }
         public Task<int> PointsAsync(System.Collections.Generic.List<Point> points, System.Collections.Generic.IEnumerable<Tenant?> tenants) { Calls++; return Task.FromResult(Calls); }
         public Task<int> QueriesAsync(Query[] queries) { Calls++; return Task.FromResult(Calls); }
+        public Task<int> FiltersAsync(System.Collections.Generic.Dictionary<string, int> filters) { Calls++; return Task.FromResult(Calls); }
         public Task<int> RangesAsync(Range[] ranges) { Calls++; return Task.FromResult(Calls); }
         public Task<int> SequenceAsync(System.Collections.Generic.IEnumerable<int> values) { Calls++; return Task.FromResult(Calls); }
         public Task<int> ListAsync(System.Collections.Generic.List<int> values) { Calls++; return Task.FromResult(Calls); }
@@ -318,12 +322,14 @@ namespace KeyFormat
         var queries = Array.CreateInstance(queryType, 1);
         queries.SetValue(Activator.CreateInstance(queryType, "x", 1), 0);
         var queriesResult = await Call<int>(users, "QueriesAsync", queries);
+        var filters = await Call<int>(users, "FiltersAsync", new Dictionary<string, int> { ["a"] = 1 });
 
         Assert.Equal(ids, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", "[3:1:2:3]")));
         Assert.Equal(noIds, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", MethodCacheKeys.Null)));
         Assert.Equal(names, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "NamesAsync", "System.Collections.Generic.List`1[System.String]", "[2:a\\\\\\:b:\\\\0]", "2")));
         Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "PointsAsync", "[1:(1\\:2)]", "KeyFormat.Tenant[]", "[2:acme:\\\\0]")));
         Assert.Equal(queriesResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "QueriesAsync", "[1:(x\\:1)]")));
+        Assert.Equal(filters, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "FiltersAsync", "[1:(a\\:1)]")));
     }
 
     [Fact]

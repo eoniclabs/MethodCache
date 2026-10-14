@@ -752,7 +752,7 @@ namespace MethodCache.SourceGenerator
                     named.TypeKind is not (TypeKind.Class or TypeKind.Struct) ||
                     named.IsAbstract ||
                     named.SpecialType != SpecialType.None ||
-                    IsFrameworkType(named) ||
+                    (IsFrameworkType(named) && !FrameworkComposites.Contains(MetadataName(named.OriginalDefinition))) ||
                     named.AllInterfaces.Any(i => i.SpecialType == SpecialType.System_Collections_IEnumerable))
                 {
                     return false;
