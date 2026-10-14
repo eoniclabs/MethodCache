@@ -30,8 +30,8 @@ so switching needs no flush.
 - Types serialize without attributes (contractless resolver). The defaults use LZ4 compression, keep `DateTime`
   values as they are, and read stored data with `MessagePackSecurity.UntrustedData`.
 - Like JSON, the contractless resolver doesn't restore private setters or a derived type returned as its base type.
-  MethodCache reads the first value of each method and type back, and keeps values that don't survive that in
-  memory only, with one warning.
+  MethodCache reads every value back before sharing it, and keeps values that don't survive that in memory only,
+  with one warning per method and type.
 - Pass your own `MessagePackSerializerOptions` to `AddMethodCacheMessagePack(options)` to change them. Keep
   `UntrustedData` and don't enable typeless payloads: the distributed cache must not choose which types get created
   (see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md#distributed-cache-redis-sql-server)).
