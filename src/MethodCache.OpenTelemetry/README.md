@@ -50,7 +50,10 @@ Sampling, export intervals and the service name are set on the OpenTelemetry SDK
 
 ## Options
 
-Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => o.RecordCacheKeys = true)`.
+Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => o.RecordCacheKeys = true)`, or bind
+them with `services.Configure<OpenTelemetryOptions>(...)`. Each call sets only what its delegate sets, so a second
+call or an earlier `Configure` keeps the other values. With `EnableMetrics = false`, an `ICacheMetricsProvider` you
+registered yourself keeps receiving hits and misses.
 
 | Option | Default | What it does |
 |--------|---------|--------------|
@@ -68,7 +71,8 @@ Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => 
 `IBaggagePropagator` carries a correlation id, an invalidation id, a user id and a tenant id along the async flow,
 and puts them into the baggage of cache spans, which travels to downstream services. The user and tenant ids
 identify people, so they are left out unless `ExportSensitiveData` is on. A value set in a child task stays in that
-task.
+task. Setting `null` or an empty string removes the value, so a worker that handles messages one after another can
+clear the previous message's user with `SetCacheUserId(msg.UserId)` even when a message has none.
 
 <!-- snippet: otel-baggage -->
 ```cs
@@ -113,12 +117,12 @@ as `user:42` never becomes a time series of its own. `method` is the method id t
 | `methodcache.hits_total` | Counter | Cache hits, including fast-path hits | method |
 | `methodcache.misses_total` | Counter | Cache misses | method |
 | `methodcache.errors_total` | Counter | Errors: `error.type` is `load_failed` when the cached method throws, otherwise the exception type name | method, error.type |
-| `methodcache.load_duration` | Histogram (ms) | Time the cached method took on a miss or refresh | method |
+| `methodcache.load_duration` | Histogram (ms) | Time the cached method took on a miss or refresh, with sub-millisecond precision | method |
 | `methodcache.operation_duration` | Histogram (ms) | Duration of instrumented operations (misses, invalidations) | method, group, version |
 | `methodcache.key_generation_duration` | Histogram (ms) | Key generation on instrumented operations | method |
 | `methodcache.entries_count` | Gauge | Entries in the in-memory cache | |
 | `methodcache.memory_bytes` | Gauge | Estimated memory of the in-memory cache | |
-| `methodcache.hit_ratio` | Gauge | Hits / (hits + misses) | |
+| `methodcache.hit_ratio` | Gauge | Hits / (hits + misses), from the in-memory cache's statistics | |
 
 ## Troubleshooting
 

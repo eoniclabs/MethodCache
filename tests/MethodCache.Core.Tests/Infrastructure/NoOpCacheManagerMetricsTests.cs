@@ -19,6 +19,6 @@ public class NoOpCacheManagerMetricsTests
 
         metrics.Received(2).CacheMiss("NoOp");
         metrics.DidNotReceive().CacheHit(Arg.Any<string>());
-        metrics.Received(2).CacheLatency("NoOp", Arg.Any<long>());
+        metrics.Received(2).CacheLatency("NoOp", Arg.Any<TimeSpan>());
     }
 }

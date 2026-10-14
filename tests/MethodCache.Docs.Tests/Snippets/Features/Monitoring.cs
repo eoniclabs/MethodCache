@@ -52,7 +52,7 @@ namespace Docs.Monitoring
         public void CacheHit(string methodName) => Interlocked.Increment(ref _hits);
         public void CacheMiss(string methodName) => Interlocked.Increment(ref _misses);
         public void CacheError(string methodName, string errorMessage) => Interlocked.Increment(ref _errors);
-        public void CacheLatency(string methodName, long elapsedMilliseconds) { }   // load time after a miss
+        public void CacheLatency(string methodName, TimeSpan elapsed) { }   // load time after a miss
     }
     // end-snippet
 }

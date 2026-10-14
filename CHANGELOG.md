@@ -99,6 +99,41 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   only.
 - **`[assembly: CacheInterface]` in a class library** decorates the client even when none of the library's code has
   run before `AddMethodCache()`, also when several threads resolve services while the library's initializer runs.
+- **Dependency injection.** Generated decorators implement `IDisposable`/`IAsyncDisposable` only when the interface
+  does, so the container no longer keeps every transient decorator resolved from the root (their `ownsDecorated`
+  constructor parameter is gone). Keyed registrations are decorated under their own key, with the service key in
+  their cache keys (`MyApp.IRates.Get@ecb:1`, see `MethodCacheKeys.KeyedMethodName`), so two registrations of one
+  interface never share entries; a key that isn't a string, enum, bool, char, integer or `Guid` makes
+  `AddMethodCache()` throw. An interface registered only keyed no longer gets an extra unkeyed singleton. When two assemblies generate a decorator for the same
+  interface (`[assembly: CacheInterface]` in a library and in the app), the one in the assemblies passed to
+  `AddMethodCache` (by default the caller's) or else the entry assembly's is used, instead of whichever module
+  initializer ran last; otherwise `AddMethodCache` throws naming both.
+- **Startup validation.** The generic host loads every policy source when it starts, so startup-code
+  misconfiguration and invalid appsettings fail `StartAsync` and unknown method ids are logged then, not on the first
+  call. `AddMethodCacheFromConfiguration` reads its section at that point, so configuration sources added after the
+  call count. appsettings now rejects unknown setting names, a single value for `Tags`, an object for a method's
+  `FailSafe` and time spans without `:` (`"300"` was 300 days). The resolved policy of a method keeps the newest
+  version when two sources change it concurrently. The `MethodId` property for environment variables is documented.
+- **OpenTelemetry and admin.** `ICacheMetricsProvider.CacheLatency` takes a `TimeSpan`, and `load_duration` keeps
+  sub-millisecond precision. `EnableMetrics = false` keeps the app's own metrics provider, and options from several
+  calls or `Configure<OpenTelemetryOptions>` compose instead of resetting. A hit no longer writes a shared counter
+  when nothing listens; the hit ratio comes from the cache's statistics. `SetCacheUserId(null)` and
+  `SetCacheTenantId(null)` clear the value. Admin `DELETE entry` answers 204 with a distributed cache, since the
+  removal reached it and the other instances. The web demo's `.http` walkthrough loads product 2 before showing it
+  is still cached.
+- **Tags combine across policy layers.** Tags from startup code, `appsettings.json`, runtime overrides and the
+  defaults are added to the `[Cache]` attribute's tags instead of replacing them, so a `[CacheInvalidate]` on an
+  attribute tag always reaches the entry. To replace them, call the new `CacheEntryOptions.Builder.ClearTags()`
+  (`CachePolicyFields.ClearTags` for a raw policy) or set `"ClearTags": true` for a method in `appsettings.json`.
+  The docs no longer say runtime overrides win over everything: a method's own override wins over its other layers,
+  while runtime defaults (`DefaultPolicy`, `ForGroup` in `ApplyAsync`) only fill in what the method leaves unset, as
+  before.
+- **Background loads of scoped services.** A refresh-ahead, and a fail-safe call that goes on after its caller got
+  the expired value, now run a scoped or transient service on a new instance from a new DI scope (keyed services
+  keep their key), disposed when the load ends, instead of on the request's instance after its scope was disposed.
+  Every scoped or transient cached service the load calls gets its own scope, and a call left running after the load
+  ended gets none. The scope factory comes from the root container. Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
+  that generate them together with the new MethodCache.Core.
 
 ### If you used a pre-release build from GitHub Packages
 

@@ -88,10 +88,12 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         cancellationToken.ThrowIfCancellationRequested();
 
         // An expired entry still in the map is removed too, but it was not cached, so it reports false like GetEntry.
+        // With a distributed cache the key may live there or on another instance, which this one can't see; the
+        // removal reached them, so it reports true.
         var engine = _cache.Engine;
         var wasLive = engine.TryPeek(key, out var node) && IsLive(node, engine.Now);
         var removed = await _cache.RemoveAsync(key).ConfigureAwait(false);
-        return removed && wasLive;
+        return (removed && wasLive) || _cache.HasDistributedCache;
     }
 
     public Task InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken cancellationToken = default)

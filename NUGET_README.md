@@ -59,6 +59,10 @@ Policy tags are owned, read-only snapshots in both `CachePolicy` and `CacheRunti
 
 A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
 
+Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
+
+Misconfiguration fails when the generic host starts rather than on the first call: GetOrCreate-only settings on a `[Cache]` method, and in `appsettings.json` invalid values, unknown setting names, a single value for `Tags` or a time span without `:`. `AddMethodCacheFromConfiguration` reads its section then, so configuration sources added after it count from the first call.
+
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
 On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MCG007 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.

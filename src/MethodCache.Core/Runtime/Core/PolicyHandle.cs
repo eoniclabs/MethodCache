@@ -29,6 +29,25 @@ namespace MethodCache.Infrastructure
             _current = policy;
         }
 
+        // The handle of one registration of an interface: the method's shared handle, plus what the registration adds
+        private PolicyHandle(PolicyHandle shared, RegistrationPolicyRegistry registration)
+        {
+            MethodId = shared.MethodId;
+            _current = shared.Current;
+            Shared = shared;
+            KeySuffix = registration.KeySuffix;
+            Background = registration.Background;
+        }
+
+        /// <summary>For the handle of one registration, the method's shared handle; otherwise null.</summary>
+        internal PolicyHandle? Shared { get; }
+
+        /// <summary>The service key part of a keyed registration's cache keys (<c>@ecb</c>), else null.</summary>
+        internal string? KeySuffix { get; }
+
+        /// <summary>How a background load gets its own instance of a scoped or transient registration, else null.</summary>
+        internal BackgroundLoadTarget? Background { get; }
+
         /// <summary>
         /// The method the policy applies to.
         /// </summary>
@@ -37,7 +56,7 @@ namespace MethodCache.Infrastructure
         /// <summary>
         /// The method's policy as it is right now.
         /// </summary>
-        public CacheRuntimePolicy Current => Volatile.Read(ref _current);
+        public CacheRuntimePolicy Current => Shared?.Current ?? Volatile.Read(ref _current);
 
         /// <summary>
         /// Returns the shared handle for a method. Registries other than MethodCache's own cannot report changes,
@@ -46,6 +65,11 @@ namespace MethodCache.Infrastructure
         public static PolicyHandle For(IPolicyRegistry registry, string methodId)
         {
             if (registry == null) throw new ArgumentNullException(nameof(registry));
+
+            if (registry is RegistrationPolicyRegistry registration)
+            {
+                return new PolicyHandle(For(registration.Inner, methodId), registration);
+            }
 
             return registry is PolicyRegistry policyRegistry
                 ? policyRegistry.GetHandle(methodId)

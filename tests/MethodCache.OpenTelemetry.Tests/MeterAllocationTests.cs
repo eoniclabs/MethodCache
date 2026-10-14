@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MethodCache.Extensibility;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 using OpenTelemetry;
@@ -51,7 +52,7 @@ public class MeterAllocationTests(ITestOutputHelper output)
         metrics.CacheHit("M");
         metrics.CacheMiss("M");
         metrics.CacheError("M", "private");
-        metrics.CacheLatency("M", 1);
+        metrics.CacheLatency("M", TimeSpan.FromMilliseconds(1));
         Assert.Equal(0, count);
     }
 
@@ -141,10 +142,11 @@ public class MeterAllocationTests(ITestOutputHelper output)
     [Fact]
     public void AListenerAddedLater_HitRatio_IncludesCallsMadeWithoutListeners()
     {
+        // The cache counts every call itself, so the gauge reads its statistics instead of counting each hit
         using var provider = new CacheMeterProvider(Options.Create(new OpenTelemetryOptions()));
-        provider.RecordCacheHit("M");
-        provider.RecordCacheHit("M");
-        provider.RecordCacheMiss("M");
+        var cache = new Mock<ICacheAdministrator>();
+        cache.Setup(c => c.GetStatsAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<ICacheStats>(new CacheStats { Hits = 2, Misses = 1 }));
+        provider.ObserveCache(cache.Object);
         using var listener = new MeterListener();
         double? ratio = null;
         listener.InstrumentPublished = (instrument, active) =>

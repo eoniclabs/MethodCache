@@ -50,6 +50,10 @@ builder.Services.AddMethodCache(config => config
   every loaded assembly that references MethodCache, even when none of the library's code has run yet. The runtime
   loads a library when code that uses one of its types runs, so a library your application never uses in code is
   not searched; registering one of its types, or `typeof` of one, is enough.
+- When a library you use lists the same interface too, each assembly has its own decorator and policies.
+  `AddMethodCache()` uses the one generated in the assemblies passed to it (by default the calling one, usually your
+  application), then the one in the entry assembly. If neither has one, it throws `InvalidOperationException` naming
+  both; pass the assembly whose policies should apply: `AddMethodCache(null, typeof(Program).Assembly)`.
 - Mistakes are build errors: [MCG010](../user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
   static abstract or non-public abstract members), [MCG011](../user-guide/DIAGNOSTICS.md#mcg011) (a method that is
   missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](../user-guide/DIAGNOSTICS.md#mcg012) (an

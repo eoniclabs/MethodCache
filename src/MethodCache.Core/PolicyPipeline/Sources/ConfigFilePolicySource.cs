@@ -17,15 +17,12 @@ internal sealed class ConfigFilePolicySource : IPolicySource
 {
     private readonly IConfiguration _configuration;
     private readonly string _sectionName;
-    private Dictionary<string, PolicyDraft> _policies;
+    private Dictionary<string, PolicyDraft> _policies = new(StringComparer.Ordinal);
 
     public ConfigFilePolicySource(IConfiguration configuration, string sectionName)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _sectionName = sectionName ?? throw new ArgumentNullException(nameof(sectionName));
-
-        // Invalid values fail at startup; after a reload they are reported and the previous policies stay in place
-        _policies = Load();
     }
 
     public string SourceId => PolicySourceIds.ConfigurationFiles;
@@ -33,12 +30,19 @@ internal sealed class ConfigFilePolicySource : IPolicySource
     /// <summary>Raised when a reloaded configuration has invalid values; the previous policies stay in effect.</summary>
     internal event Action<Exception>? ReloadFailed;
 
+    /// <summary>
+    /// Reads the section as it is now, so configuration sources added after registration count. Invalid values
+    /// throw here, which fails startup; after a reload they are reported and the previous policies stay in place.
+    /// </summary>
     public Task<IReadOnlyCollection<PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var policies = Load();
+        Volatile.Write(ref _policies, policies);
+
         var timestamp = DateTimeOffset.UtcNow;
-        var snapshots = Volatile.Read(ref _policies).Values
+        var snapshots = policies.Values
             .Select(draft => PolicySnapshotBuilder.FromPolicy(
                 SourceId, draft.MethodId, draft.Policy, draft.Fields, timestamp, draft.Metadata, draft.Notes))
             .ToArray();

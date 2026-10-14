@@ -75,7 +75,7 @@ namespace MethodCache.Extensibility
             try
             {
                 var result = await factory().ConfigureAwait(false);
-                _metricsProvider.CacheLatency(methodName, (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+                _metricsProvider.CacheLatency(methodName, Stopwatch.GetElapsedTime(start));
                 return result;
             }
             catch (Exception ex)

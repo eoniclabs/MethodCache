@@ -17,10 +17,9 @@ namespace App
 {
     [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCode]
-    internal sealed class ICatalogDecorator : global::App.ICatalog, global::System.IDisposable, global::System.IAsyncDisposable
+    internal sealed class ICatalogDecorator : global::App.ICatalog
     {
         private readonly global::App.ICatalog _decorated;
-        private readonly bool _ownsDecorated;
         private readonly global::MethodCache.ICacheManager _cacheManager;
         private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;
         private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;
@@ -29,10 +28,9 @@ namespace App
         private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method1;
         private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method2;
 
-        public ICatalogDecorator(global::App.ICatalog decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
+        public ICatalogDecorator(global::App.ICatalog decorated, global::MethodCache.Infrastructure.DecoratorServices services)
         {
             _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
-            _ownsDecorated = ownsDecorated;
             if (services == null) throw new global::System.ArgumentNullException(nameof(services));
             _cacheManager = services.CacheManager;
             _keyGenerator = services.KeyGenerator;
@@ -92,7 +90,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<string> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method0.Name, () => ((global::App.ICatalog)this._decorated).Get(__mcArgument0)!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method0.Name, () => ((global::App.ICatalog)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).Get(__mcArgument0)!, __policy);
 
         global::System.Threading.Tasks.Task<string> global::App.ICatalog.Get(string __mcArgument0)
         {
@@ -127,7 +125,7 @@ namespace App
         }
 
         private global::System.Threading.Tasks.Task<string> __Load_Method1(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method1.Name, () => ((global::App.ICatalog)this._decorated).Get(__mcArgument0)!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<string>(__cacheKey, this._method_Method1.Name, () => ((global::App.ICatalog)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method1, this._decorated)).Get(__mcArgument0)!, __policy);
 
         global::System.Threading.Tasks.Task<__mcTypeArgument0?> global::App.ICatalog.Load<__mcTypeArgument0>(int __mcArgument0)
             where __mcTypeArgument0 : class
@@ -166,21 +164,8 @@ namespace App
 
         private global::System.Threading.Tasks.Task<__mcTypeArgument0?> __Load_Method2<__mcTypeArgument0>(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
             where __mcTypeArgument0 : class
-            => this._cacheManager.GetOrCreateFastAsync<__mcTypeArgument0?>(__cacheKey, this._method_Method2.Name, () => ((global::App.ICatalog)this._decorated).Load<__mcTypeArgument0>(__mcArgument0)!, __policy);
+            => this._cacheManager.GetOrCreateFastAsync<__mcTypeArgument0?>(__cacheKey, this._method_Method2.Name, () => ((global::App.ICatalog)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method2, this._decorated)).Load<__mcTypeArgument0>(__mcArgument0)!, __policy);
 
-        void global::System.IDisposable.Dispose()
-        {
-            if (!this._ownsDecorated) return;
-            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
-            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException("This owned implementation requires asynchronous disposal. Use DisposeAsync.");
-        }
-        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()
-        {
-            if (!this._ownsDecorated) return default;
-            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();
-            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
-            return default;
-        }
     }
 }
 #pragma warning restore CS8019

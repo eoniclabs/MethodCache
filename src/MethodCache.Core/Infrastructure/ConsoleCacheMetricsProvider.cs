@@ -19,9 +19,9 @@ namespace MethodCache.Core.Infrastructure
             Console.WriteLine($"Cache Error: {methodName} - {errorMessage}");
         }
 
-        public void CacheLatency(string methodName, long elapsedMilliseconds)
+        public void CacheLatency(string methodName, TimeSpan elapsed)
         {
-            Console.WriteLine($"Cache Latency: {methodName} - {elapsedMilliseconds}ms");
+            Console.WriteLine($"Cache Latency: {methodName} - {elapsed.TotalMilliseconds}ms");
         }
     }
 }

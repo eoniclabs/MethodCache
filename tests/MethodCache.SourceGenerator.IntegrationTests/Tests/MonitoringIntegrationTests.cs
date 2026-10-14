@@ -70,7 +70,7 @@ namespace Monitoring
         Assert.Equal(1, metrics.Hits);
         Assert.Equal(2, metrics.Misses);
         Assert.Equal(2, metrics.Latencies.Count);
-        Assert.All(metrics.Latencies, elapsed => Assert.True(elapsed >= 0));
+        Assert.All(metrics.Latencies, elapsed => Assert.True(elapsed >= TimeSpan.Zero));
 
         var stats = await provider.GetRequiredService<ICacheAdministrator>().GetStatsAsync();
         Assert.Equal(2, stats.Entries);
@@ -178,7 +178,7 @@ namespace Monitoring
 
         public int Misses => _misses;
 
-        public ConcurrentBag<long> Latencies { get; } = new();
+        public ConcurrentBag<TimeSpan> Latencies { get; } = new();
 
         public ConcurrentBag<string> Names { get; } = new();
 
@@ -198,6 +198,6 @@ namespace Monitoring
         {
         }
 
-        public void CacheLatency(string methodName, long elapsedMilliseconds) => Latencies.Add(elapsedMilliseconds);
+        public void CacheLatency(string methodName, TimeSpan elapsed) => Latencies.Add(elapsed);
     }
 }

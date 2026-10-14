@@ -171,7 +171,7 @@ MethodCache.Extensibility.ICacheMetrics.RecordMiss(string! key) -> void
 MethodCache.Extensibility.ICacheMetricsProvider
 MethodCache.Extensibility.ICacheMetricsProvider.CacheError(string! methodName, string! errorMessage) -> void
 MethodCache.Extensibility.ICacheMetricsProvider.CacheHit(string! methodName) -> void
-MethodCache.Extensibility.ICacheMetricsProvider.CacheLatency(string! methodName, long elapsedMilliseconds) -> void
+MethodCache.Extensibility.ICacheMetricsProvider.CacheLatency(string! methodName, System.TimeSpan elapsed) -> void
 MethodCache.Extensibility.ICacheMetricsProvider.CacheMiss(string! methodName) -> void
 MethodCache.Extensibility.InMemoryCacheManager
 MethodCache.Extensibility.InMemoryCacheManager.ClearAsync() -> System.Threading.Tasks.ValueTask
@@ -221,7 +221,7 @@ MethodCache.Extensibility.NoOpCacheManager.TryGetFastAsync<T>(string! cacheKey) 
 MethodCache.Extensibility.NullCacheMetricsProvider
 MethodCache.Extensibility.NullCacheMetricsProvider.CacheError(string! methodName, string! errorMessage) -> void
 MethodCache.Extensibility.NullCacheMetricsProvider.CacheHit(string! methodName) -> void
-MethodCache.Extensibility.NullCacheMetricsProvider.CacheLatency(string! methodName, long elapsedMilliseconds) -> void
+MethodCache.Extensibility.NullCacheMetricsProvider.CacheLatency(string! methodName, System.TimeSpan elapsed) -> void
 MethodCache.Extensibility.NullCacheMetricsProvider.CacheMiss(string! methodName) -> void
 MethodCache.Extensibility.NullCacheMetricsProvider.NullCacheMetricsProvider() -> void
 MethodCache.ICacheAdministrator
@@ -618,3 +618,8 @@ MethodCache.Extensibility.NoOpCacheManager.LookupAsync<T>(string! methodName, ob
 MethodCache.ICacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 
 static MethodCache.CacheManagerExtensions.GetCacheKey(string! key, int? version = null) -> string!
+MethodCache.CacheEntryOptions.Builder.ClearTags() -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.ClearsTags.get -> bool
+MethodCache.Policies.CachePolicyFields.ClearTags = 1024 -> MethodCache.Policies.CachePolicyFields
+static MethodCache.Infrastructure.DecoratorServices.ForLoad<TService>(MethodCache.Infrastructure.CachedMethod! method, TService! service) -> TService!
+static MethodCache.MethodCacheKeys.KeyedMethodName(string! methodName, object! serviceKey) -> string!
