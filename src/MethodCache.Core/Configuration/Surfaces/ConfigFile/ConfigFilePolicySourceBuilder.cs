@@ -70,9 +70,10 @@ internal static class ConfigFilePolicySourceBuilder
             return builder;
         }
 
-        if (ReadTimeSpan(section, "Duration") is { } duration)
+        var duration = ReadTimeSpan(section, "Duration");
+        if (duration is { } durationValue)
         {
-            builder.WithDuration(duration);
+            builder.WithDuration(durationValue);
         }
 
         var tags = ReadValues(section.GetSection("Tags")) ?? ReadValues(section.GetSection("tags"));
@@ -91,13 +92,20 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithVersion(version);
         }
 
-        if (ReadTimeSpan(section, "SlidingExpiration") is { } sliding)
+        var sliding = ReadTimeSpan(section, "SlidingExpiration");
+        if (sliding is { } slidingValue)
         {
-            builder.WithSlidingExpiration(sliding);
+            builder.WithSlidingExpiration(slidingValue);
         }
 
         if (ReadTimeSpan(section, "RefreshAhead") is { } refresh)
         {
+            // A window as long as the entry lives would reload the value on every hit
+            if (refresh >= duration || refresh >= sliding)
+            {
+                throw InvalidValue(section, "RefreshAhead", section["RefreshAhead"]!, "shorter than the section's Duration and SlidingExpiration");
+            }
+
             builder.WithRefreshAhead(refresh);
         }
 

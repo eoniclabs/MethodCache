@@ -39,6 +39,12 @@ Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/Meth
 
 ## Additional behavior
 
+With a distributed cache, values are JSON by default, public fields included, so value tuples and structs with
+fields are shared. Each value is read back before it is shared; a method whose values don't come back unchanged
+(private setters, a derived type returned as its base type, `object`) is cached in memory only for that type, with
+one warning. Entries an earlier build wrote for types with public fields are read without those fields until they
+expire.
+
 MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
 
 Manual `TryGetAsync` reads a fresh entry, including a cached null, even when the fast path is disabled or refresh-ahead is due. This lookup does not start a factory or background refresh.

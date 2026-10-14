@@ -23,7 +23,7 @@ builder.Services.AddMethodCacheRedis(options =>
 ```
 <!-- endSnippet -->
 
-MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
+MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again, and the backplane keeps trying to connect and subscribe (after 1 second, then twice as long each time, up to 30 seconds), logging a warning for each failure, until it succeeds or the application stops. Once subscribed after a failure, it clears this instance's in-memory cache, as after a reconnect, since invalidations other instances sent meanwhile never arrived.
 
 To share a connection your app already has instead:
 
@@ -46,6 +46,15 @@ subscriptions (`DisposeAsync` waits for that).
 - Every invalidation is also published on the backplane channel, so every instance drops its in-memory copies at once.
 - Pub/sub delivers nothing while a connection is down. When the connection comes back, the instance clears its in-memory cache and reads entries from Redis again.
 - Keys with unpaired UTF-16 surrogates or backslashes are escaped, so two different keys never share a Redis key. Other keys are stored unchanged.
+
+## Memory and eviction
+
+Invalidations are stored as expiring keys beside the entries. If Redis evicts one under memory pressure, the entries it
+invalidated are served again by every instance until they expire. Set `maxmemory-policy noeviction` on the Redis
+MethodCache uses (or give it a Redis of its own) and enough memory: every MethodCache key has a time to live, so
+`volatile-lru` and the other `volatile-*` policies, the default of some managed Redis services, can evict them too. A
+full Redis with `noeviction` refuses writes, which MethodCache handles like an outage. See
+[Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted).
 
 ## When Redis is down
 

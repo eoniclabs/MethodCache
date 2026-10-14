@@ -30,10 +30,12 @@ or in `appsettings.json`:
 
 - **When the method throws**, the caller gets the expired value if it is younger than `duration`. That value is then
   reused for `retryAfter` (default 30 seconds) before the method is called again, so a failing dependency isn't
-  hammered.
+  hammered; no [refresh-ahead](expiration.md#refresh-ahead) reload starts during that time either.
 - **When the method is slow** and `timeout` is set, the caller gets the expired value after `timeout` and the call
   finishes in the background; its result replaces the old value. Without an expired value the caller waits as usual.
 - A caller's own cancellation is never treated as a failure, so it doesn't trigger fail-safe.
+- A value that was invalidated (its key, a tag or a clear) or replaced is never a fallback, also when that happened
+  while the reload ran: callers then wait for the reload, or get its exception.
 - Without an expired value, the exception reaches the caller as usual.
 
 ## Per method

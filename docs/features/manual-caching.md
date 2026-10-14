@@ -106,6 +106,8 @@ var users = await cache.GetOrCreateManyAsync<User>(
 
 - Concurrent calls for the same key share one factory run. A caller's `cancellationToken` stops its own wait; if it
   cancels a run others joined, they run the factory again rather than fail.
+- A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
+  itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
 - `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
   `NoOpCacheManager` ([Testing](testing.md)).

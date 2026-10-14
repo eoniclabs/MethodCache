@@ -11,10 +11,8 @@ namespace MethodCache
     /// </summary>
     public static class CacheManagerExtensions
     {
-        private const string FluentMethodName = "MethodCache.Fluent";
+        private const string FluentMethodName = CacheKeyLookup.MethodName;
         private const string BulkMethodName = "MethodCache.Fluent.Bulk";
-        private static readonly CacheRuntimePolicy LookupPolicy = CacheRuntimePolicy.Empty(FluentMethodName);
-        private static readonly ICacheKeyGenerator LookupKeyGenerator = new ExplicitKeyGenerator();
 
         // Distributed lookups a bulk read runs at once, so a large batch doesn't exhaust the cache's connections
         private const int MaxConcurrentDistributedReads = 8;
@@ -121,12 +119,7 @@ namespace MethodCache
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return cacheManager.LookupAsync<T>(VersionedKey(key, version), Array.Empty<object>(), LookupPolicy, LookupKeyGenerator);
-        }
-
-        private sealed class ExplicitKeyGenerator : ICacheKeyGenerator
-        {
-            public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy) => methodName;
+            return CacheKeyLookup.LookupAsync<T>(cacheManager, VersionedKey(key, version));
         }
 
         /// <summary>
@@ -167,9 +160,12 @@ namespace MethodCache
                 var singleContext = new CacheContext(key, services);
                 if (options.Predicate == null || options.Predicate(singleContext))
                 {
-                    if (cacheManager.TryGetFast<T>(VersionedKey(key, options.Version), out var cached))
+                    // A real lookup: the fast path also reports entries due for an early refresh as missing,
+                    // and with EnableFastPath off every entry, which would send cached keys to the factory
+                    var cached = await CacheKeyLookup.LookupAsync<T>(cacheManager, VersionedKey(key, options.Version)).ConfigureAwait(false);
+                    if (cached.Found)
                     {
-                        results[key] = cached!;
+                        results[key] = cached.Value!;
                         InvokeCallbacks(options.OnHitCallbacks, singleContext);
                         continue;
                     }

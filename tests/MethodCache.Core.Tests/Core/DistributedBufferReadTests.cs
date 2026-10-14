@@ -56,13 +56,21 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
         await using var layer = new DistributedCacheLayer(cache, serializer, new DistributedCacheOptions(), timeProvider: new FakeTimeProvider());
         await layer.WriteAsync("key", (byte)42, null, layer.Now, TimeSpan.FromMinutes(1));
         await layer.TryGetAsync<byte>("key");
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var reading = layer.TryGetAsync<byte>("key");
-        Assert.True(reading.IsCompletedSuccessfully);
-        var result = await reading;
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        // The least of a few reads: anything else the runtime allocates on this thread meanwhile (seen once on
+        // macOS under a full parallel run) only adds, and a read that allocates more makes every one of them larger
+        var allocated = long.MaxValue;
+        for (var i = 0; i < 3; i++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var reading = layer.TryGetAsync<byte>("key");
+            Assert.True(reading.IsCompletedSuccessfully);
+            var result = await reading;
+            allocated = Math.Min(allocated, GC.GetAllocatedBytesForCurrentThread() - before);
+            Assert.True(result.Found);
+        }
+
         output.WriteLine($"One 1 MiB buffer read allocated {allocated:N0} bytes.");
-        Assert.True(result.Found);
         Assert.InRange(allocated, size, size + 8192L);
     }
 
@@ -75,6 +83,7 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
         var options = new DistributedCacheOptions { OperationTimeout = TimeSpan.FromSeconds(1) };
         await using var first = new DistributedCacheLayer(cache, serializer, options, timeProvider: clock);
         await first.WriteAsync("key", (byte)42, null, first.Now, TimeSpan.FromMinutes(1));
+        serializer.ReadCalls = 0; // the first write of a value type reads it back once to check it round-trips
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -90,6 +99,7 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
         cache.OnComplete = null;
         await using var second = new DistributedCacheLayer(cache, serializer, options, timeProvider: clock);
         await second.WriteAsync("key", (byte)7, null, second.Now, TimeSpan.FromMinutes(1));
+        serializer.ReadCalls = 0;
         Assert.Equal((byte)7, (await second.TryGetAsync<byte>("key")).Value);
         var validPayload = serializer.LastRead;
         release.SetResult();
