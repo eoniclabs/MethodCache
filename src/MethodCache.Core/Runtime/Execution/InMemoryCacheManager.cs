@@ -54,6 +54,9 @@ namespace MethodCache.Extensibility
         private readonly bool _highResolutionTiming;
         private readonly DistributedCacheLayer? _distributed;
 
+        /// <summary>Whether removals also go to a distributed cache and, through it, to the other instances.</summary>
+        internal bool HasDistributedCache => _distributed != null;
+
         /// <summary>Whether the distributed cache is in use now; null without one.</summary>
         internal async ValueTask<bool?> CheckDistributedCacheAsync(CancellationToken cancellationToken) =>
             _distributed == null ? null : await _distributed.CheckAvailableAsync(cancellationToken).ConfigureAwait(false);
@@ -560,7 +563,15 @@ namespace MethodCache.Extensibility
                 return await factory().ConfigureAwait(false);
             }
 
-            var load = RunLoadAsync(key, methodName, factory, policy, flight, previous, cancellationToken);
+            // A load that may go on after its caller got the fail-safe value runs in its own DI scope from the start
+            var load = RunLoadAsync(
+                key,
+                methodName,
+                policy.FailSafeTimeout > 0 && previous != null ? () => BackgroundLoadScope.RunAsync(factory) : factory,
+                policy,
+                flight,
+                previous,
+                cancellationToken);
             if (cancellationToken.CanBeCanceled && !load.IsCompleted)
             {
                 // This caller may stop waiting while an uncooperative factory still finishes later.
@@ -753,7 +764,10 @@ namespace MethodCache.Extensibility
                 {
                     var loadStartedAt = _distributed?.Now ?? 0;
                     var start = StartTiming();
-                    var result = await LoadingScope.Run(flight, factory).ConfigureAwait(false);
+
+                    // A scoped or transient service gets its own instance from a new scope: the request that found
+                    // the entry due may end, and dispose its own instance, before the refresh does
+                    var result = await LoadingScope.Run(flight, () => BackgroundLoadScope.RunAsync(factory)).ConfigureAwait(false);
                     var elapsed = ElapsedSince(start);
 
                     // Replace only the node being refreshed, so a write or removal that slipped in before this
@@ -1130,10 +1144,10 @@ namespace MethodCache.Extensibility
             }
         }
 
-        /// <summary>Reports how long the cached method took to produce a value, in milliseconds.</summary>
+        /// <summary>Reports how long the cached method took to produce a value.</summary>
         private void RecordLoadLatency(string methodName, long elapsedNanos)
         {
-            _metricsProvider.CacheLatency(methodName, elapsedNanos / 1_000_000);
+            _metricsProvider.CacheLatency(methodName, TimeSpan.FromTicks(elapsedNanos / 100));
         }
 
         private void RecordMiss(string methodName)

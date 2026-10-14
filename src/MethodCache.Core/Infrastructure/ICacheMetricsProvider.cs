@@ -20,6 +20,8 @@ namespace MethodCache.Extensibility
         void CacheError(string methodName, string errorMessage);
 
         /// <summary>How long the method took to produce a value after a miss or during a background refresh.</summary>
-        void CacheLatency(string methodName, long elapsedMilliseconds);
+        /// <param name="methodName">The cached method.</param>
+        /// <param name="elapsed">The load time, with sub-millisecond precision.</param>
+        void CacheLatency(string methodName, TimeSpan elapsed);
     }
 }

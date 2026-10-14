@@ -224,7 +224,7 @@ namespace TestNamespace
                 var userRepoImpl = Activator.CreateInstance(userRepoImplType)!;
                 return Activator.CreateInstance(userRepoDecoratorType,
                     userRepoImpl,
-                    DecoratorServices.From(sp), true)!;
+                    DecoratorServices.From(sp))!;
             });
 
             services.AddSingleton(productRepoInterfaceType, sp =>
@@ -234,7 +234,7 @@ namespace TestNamespace
                 var productRepoImpl = Activator.CreateInstance(productRepoImplType)!;
                 return Activator.CreateInstance(productRepoDecoratorType,
                     productRepoImpl,
-                    DecoratorServices.From(sp), true)!;
+                    DecoratorServices.From(sp))!;
             });
         });
 

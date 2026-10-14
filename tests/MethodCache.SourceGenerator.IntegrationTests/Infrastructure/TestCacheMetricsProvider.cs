@@ -52,7 +52,7 @@ public class TestCacheMetricsProvider : ICacheMetricsProvider
         }
     }
 
-    public void CacheLatency(string methodName, long elapsedMilliseconds)
+    public void CacheLatency(string methodName, TimeSpan elapsed)
     {
         // Not tracking latency in tests for now
     }

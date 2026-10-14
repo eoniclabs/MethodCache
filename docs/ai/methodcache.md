@@ -65,6 +65,10 @@ builder.Services.AddMethodCache();                               // after your r
 - Cached objects are shared between callers: return immutable types such as records.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
+- In library code that registers its own cached interfaces, call `AddMethodCache(null, typeof(SomeLibraryType).Assembly)`
+  so the library's assembly is used, not the caller's.
+- In `appsettings.json`, write durations as `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known
+  setting names; anything else fails startup.
 - For a client from a NuGet package with an interface, use
   `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` instead of a wrapper.
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,

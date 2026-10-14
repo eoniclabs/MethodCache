@@ -13,6 +13,6 @@ namespace MethodCache.Extensibility
         /// <inheritdoc />
         public void CacheError(string methodName, string errorMessage) { }
         /// <inheritdoc />
-        public void CacheLatency(string methodName, long elapsedMilliseconds) { }
+        public void CacheLatency(string methodName, TimeSpan elapsed) { }
     }
 }

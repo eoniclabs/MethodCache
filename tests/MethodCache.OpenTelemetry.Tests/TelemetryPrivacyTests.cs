@@ -19,6 +19,21 @@ namespace MethodCache.OpenTelemetry.Tests;
 /// <summary>Telemetry must not leak personal data or create a time series per argument value.</summary>
 public class TelemetryPrivacyTests
 {
+    // A worker handling one message after another must not label a message without a user with the previous one
+    [Fact]
+    public void SetCacheUserId_NullAfterAUser_ClearsThePreviousUser()
+    {
+        var propagator = new BaggagePropagator(Options.Create(new OpenTelemetryOptions { ExportSensitiveData = true }));
+
+        propagator.SetCacheUserId("alice");
+        propagator.SetCacheTenantId("acme");
+        propagator.SetCacheUserId(null);
+        propagator.SetCacheTenantId("");
+
+        propagator.GetCacheUserId().Should().BeNull();
+        propagator.GetCacheTenantId().Should().BeNull();
+    }
+
     [Fact]
     public async Task MetricDimensions_LeaveOutCacheTagsAndKeyCounts()
     {

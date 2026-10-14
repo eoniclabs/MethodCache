@@ -115,7 +115,7 @@ public sealed class CountingMetrics : ICacheMetricsProvider
     public void CacheHit(string methodName) => Interlocked.Increment(ref _hits);
     public void CacheMiss(string methodName) => Interlocked.Increment(ref _misses);
     public void CacheError(string methodName, string errorMessage) => Interlocked.Increment(ref _errors);
-    public void CacheLatency(string methodName, long elapsedMilliseconds) { }   // load time after a miss
+    public void CacheLatency(string methodName, TimeSpan elapsed) { }   // load time after a miss
 }
 ```
 <!-- endSnippet -->
@@ -128,7 +128,7 @@ builder.Services.AddSingleton<ICacheMetricsProvider, CountingMetrics>();
 <!-- endSnippet -->
 
 One provider receives the events: the last one registered. `AddMethodCacheOpenTelemetry()` registers its own, so use
-it or a provider of your own, not both. A custom `ICacheManager` reports its own hits and misses. If you wrap
+it or a provider of your own, not both; with `EnableMetrics = false` it leaves yours in place and adds only spans. A custom `ICacheManager` reports its own hits and misses. If you wrap
 `ICacheManager` in a decorator of your own, implement `ICacheManagerDecorator` so `GetOrCreateManyAsync` still reads
 the distributed cache through it.
 

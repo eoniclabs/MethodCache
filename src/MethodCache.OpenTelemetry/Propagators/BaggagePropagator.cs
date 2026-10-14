@@ -10,7 +10,8 @@ namespace MethodCache.OpenTelemetry;
 /// <summary>
 /// Carries cache correlation data (a correlation id, an invalidation id, a user id and a tenant id) along the async
 /// flow and puts it into the baggage of MethodCache's spans. Resolve it from dependency injection after
-/// <c>AddMethodCacheOpenTelemetry()</c>. Setting a null or empty value is ignored.
+/// <c>AddMethodCacheOpenTelemetry()</c>. Setting a null or empty value removes that value from the current async
+/// flow, so a worker that handles one message after another doesn't label a message without a user with the last one.
 /// </summary>
 public interface IBaggagePropagator
 {
@@ -43,14 +44,14 @@ public interface IBaggagePropagator
     /// Sets the user id for the current async flow. It identifies a person, so it reaches spans only with
     /// <see cref="OpenTelemetryOptions.ExportSensitiveData"/>.
     /// </summary>
-    /// <param name="userId">The user id.</param>
+    /// <param name="userId">The user id; null or empty removes it.</param>
     void SetCacheUserId(string? userId);
 
     /// <summary>
     /// Sets the tenant id for the current async flow. It reaches spans only with
     /// <see cref="OpenTelemetryOptions.ExportSensitiveData"/>.
     /// </summary>
-    /// <param name="tenantId">The tenant id.</param>
+    /// <param name="tenantId">The tenant id; null or empty removes it.</param>
     void SetCacheTenantId(string? tenantId);
 
     /// <summary>
@@ -150,11 +151,20 @@ internal class BaggagePropagator : IBaggagePropagator
 
     private void Set(string key, string? value)
     {
-        if (!_options.EnableBaggagePropagation || string.IsNullOrEmpty(value))
+        if (!_options.EnableBaggagePropagation)
             return;
 
         var updated = Copy();
-        updated[key] = value;
+        if (string.IsNullOrEmpty(value))
+        {
+            if (!updated.Remove(key))
+                return;
+        }
+        else
+        {
+            updated[key] = value;
+        }
+
         _localBaggage.Value = updated;
     }
 

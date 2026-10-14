@@ -50,6 +50,47 @@ public static class MethodCacheKeys
             : method;
     }
 
+    /// <summary>
+    /// Returns the method name used in the keys of a keyed registration (<c>AddKeyedScoped&lt;IRates, EcbRates&gt;("ecb")</c>),
+    /// such as <c>Get@ecb</c>, to pass as the method name to <see cref="For"/>, <see cref="Prefix"/> or
+    /// <see cref="Pattern"/>. Each registration of an interface then caches its own results.
+    /// </summary>
+    /// <param name="methodName">The method's name.</param>
+    /// <param name="serviceKey">
+    /// The service key: a string (<c>Get@ecb</c>), an enum (<c>Get@MyApp.Region.Eu</c>), or a bool, char, integer or
+    /// <see cref="Guid"/> (<c>Get@Int32(7)</c>).
+    /// </param>
+    /// <exception cref="ArgumentException">The key is of another type, whose string form may not be stable.</exception>
+    public static string KeyedMethodName(string methodName, object serviceKey)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(methodName);
+        ArgumentNullException.ThrowIfNull(serviceKey);
+
+        return string.Concat(methodName, "@", ServiceKeyPart(serviceKey)
+            ?? throw new ArgumentException(
+                $"A service key of type {serviceKey.GetType()} has no stable string form for cache keys; use a string, enum, bool, char, integer or Guid key.",
+                nameof(serviceKey)));
+    }
+
+    /// <summary>
+    /// The service key as it appears in cache keys, or null when its type has no stable string form. Every other
+    /// type's form has a '.' or '(' in it, so a string with one, or with a quote, is written in quotes: no two keys
+    /// of any types share a form.
+    /// </summary>
+    internal static string? ServiceKeyPart(object serviceKey) => serviceKey switch
+    {
+        string text => text.AsSpan().IndexOfAny('.', '(', '"') < 0
+            ? Part(text)
+            : string.Concat("\"", Part(text).Replace("\"", "\\\""), "\""),
+        Enum value => string.Concat(value.GetType().FullName, ".", value.ToString()),
+        bool value => string.Concat("Boolean(", Part(value), ")"),
+        char value => string.Concat("Char(", Part(value), ")"),
+        Guid value => string.Concat("Guid(", Part(value), ")"),
+        sbyte or byte or short or ushort or int or uint or long or ulong =>
+            string.Concat(serviceKey.GetType().Name, "(", ((IFormattable)serviceKey).ToString(null, CultureInfo.InvariantCulture), ")"),
+        _ => null
+    };
+
     /// <summary>Returns the key for a call with the given already formatted <paramref name="parts"/>.</summary>
     public static string For(Type serviceType, string methodName, params string[] parts)
         => ForVersion(serviceType, methodName, version: null, parts);

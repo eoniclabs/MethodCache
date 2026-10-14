@@ -33,6 +33,10 @@ or in `appsettings.json`:
   hammered; no [refresh-ahead](expiration.md#refresh-ahead) reload starts during that time either.
 - **When the method is slow** and `timeout` is set, the caller gets the expired value after `timeout` and the call
   finishes in the background; its result replaces the old value. Without an expired value the caller waits as usual.
+  Because the call may outlive the request, a scoped or transient service makes it on a new instance from a new DI
+  scope, disposed when the call ends, whenever a fallback exists and `timeout` is set (the instance has none of the
+  request's own state, such as values set on the instance). The caller's `HttpContext` and `AsyncLocal` values still
+  flow to it, as it starts on the caller's call. Singletons use their one instance.
 - A caller's own cancellation is never treated as a failure, so it doesn't trigger fail-safe.
 - A value that was invalidated (its key, a tag or a clear) or replaced is never a fallback, also when that happened
   while the reload ran: callers then wait for the reload, or get its exception.

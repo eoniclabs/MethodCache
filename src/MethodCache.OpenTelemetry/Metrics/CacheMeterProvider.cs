@@ -31,13 +31,14 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     private readonly Histogram<double> _operationDuration;
     private readonly Histogram<double> _loadDuration;
     private readonly Histogram<double> _keyGenerationDuration;
+    private readonly ObservableGauge<double>? _hitRatio;
 
     private ICacheAdministrator? _observedCache;
     private long _currentEntries;
     private long _currentMemoryBytes;
     private double _currentHitRatio;
 
-    // Aggregate counters for O(1) hit ratio calculation
+    // Totals for the hit ratio gauge, counted only while a listener reads it, so a hit writes no shared field otherwise
     private long _totalHits;
     private long _totalMisses;
 
@@ -101,9 +102,9 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
             MetricInstruments.Units.Bytes,
             MetricInstruments.Descriptions.MemoryBytes);
 
-        _meter.CreateObservableGauge(
+        _hitRatio = _meter.CreateObservableGauge(
             MetricInstruments.Names.HitRatio,
-            () => _currentHitRatio,
+            ReadHitRatio,
             MetricInstruments.Units.Ratio,
             MetricInstruments.Descriptions.HitRatio);
     }
@@ -122,30 +123,32 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
     {
         if (!_options.EnableMetrics) return;
 
-        Interlocked.Increment(ref _totalHits);
+        if (_hitRatio!.Enabled)
+        {
+            Interlocked.Increment(ref _totalHits);
+        }
 
         if (_hitsCounter.Enabled)
         {
             var tagList = CreateTagList(methodName, tags);
             _hitsCounter.Add(1, in tagList);
         }
-
-        UpdateHitRatioInternal();
     }
 
     public void RecordCacheMiss(string methodName, Dictionary<string, object?>? tags = null)
     {
         if (!_options.EnableMetrics) return;
 
-        Interlocked.Increment(ref _totalMisses);
+        if (_hitRatio!.Enabled)
+        {
+            Interlocked.Increment(ref _totalMisses);
+        }
 
         if (_missesCounter.Enabled)
         {
             var tagList = CreateTagList(methodName, tags);
             _missesCounter.Add(1, in tagList);
         }
-
-        UpdateHitRatioInternal();
     }
 
     public void RecordCacheError(string methodName, string errorType, Dictionary<string, object?>? tags = null)
@@ -204,11 +207,11 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
         RecordCacheError(methodName, "load_failed");
     }
 
-    void ICacheMetricsProvider.CacheLatency(string methodName, long elapsedMilliseconds)
+    void ICacheMetricsProvider.CacheLatency(string methodName, TimeSpan elapsed)
     {
         if (!_options.EnableMetrics) return;
 
-        _loadDuration.Record(elapsedMilliseconds, new KeyValuePair<string, object?>("method", methodName));
+        _loadDuration.Record(elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("method", methodName));
     }
 
     private ICacheStats? ReadObservedStats()
@@ -225,13 +228,20 @@ internal class CacheMeterProvider : ICacheMeterProvider, ICacheMetricsProvider, 
         return pending.IsCompletedSuccessfully ? pending.Result : null;
     }
 
-    private void UpdateHitRatioInternal()
+    /// <summary>
+    /// The observed cache's own hit ratio, which counts every call. Without one, the ratio of the hits and misses
+    /// counted since a listener started reading it, or the last value set.
+    /// </summary>
+    private double ReadHitRatio()
     {
-        var totalHits = Interlocked.Read(ref _totalHits);
-        var totalMisses = Interlocked.Read(ref _totalMisses);
+        if (ReadObservedStats() is { } stats && stats.Hits + stats.Misses > 0)
+        {
+            return stats.HitRatio;
+        }
 
-        var total = totalHits + totalMisses;
-        _currentHitRatio = total > 0 ? (double)totalHits / total : 0;
+        var totalHits = Interlocked.Read(ref _totalHits);
+        var total = totalHits + Interlocked.Read(ref _totalMisses);
+        return total > 0 ? (double)totalHits / total : _currentHitRatio;
     }
 
     private static TagList CreateTagList(string methodName, Dictionary<string, object?>? additionalTags)

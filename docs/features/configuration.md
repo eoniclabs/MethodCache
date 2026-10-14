@@ -13,6 +13,13 @@ four layers. Change it in `appsettings.json` or at runtime, and the next call us
 When several layers configure the same method, they are merged setting by setting, and the highest layer that sets a
 setting wins. A runtime override of `Duration` leaves the attribute's `Tags` in place.
 
+Tags are the exception: they are combined, not replaced. Tags from startup code, `appsettings.json`, runtime overrides
+and the defaults are added to the `[Cache]` attribute's tags (without duplicates), so a `[CacheInvalidate]` that
+lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `WithTags`
+(`o => o.ClearTags().WithTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
+`appsettings.json`. The tags of the lower layers and of the defaults are then dropped, and an entry without them is
+no longer removed by a `[CacheInvalidate]` that lists them.
+
 ## Defaults and groups
 
 Within the layers, each setting comes from the most specific place that sets it: the method itself, then its group,
@@ -79,23 +86,40 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
   `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
   list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](monitoring.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`,
-  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`. `Metadata` and `Notes` are recorded for
-  diagnostics and don't change caching.
+  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
+  method under `Services`: `true` makes its `Tags` replace the attribute's instead of adding to them. `Metadata` and `Notes` are recorded for
+  diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
+  `"Durration"` is reported instead of ignored. The same goes for the section itself: it holds only `Defaults`,
+  `FailSafe` and `Services`.
+- Time spans are written `"hh:mm:ss"` (or `"d.hh:mm:ss"`); a bare number such as `"300"` is rejected, since .NET
+  would read it as 300 days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+  `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section.
+- A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
+  `(` or `<`, so this is how environment variables, Kubernetes `env` or Linux App Service configure a method:
+
+  ```bash
+  MethodCache__Services__0__MethodId="MyApp.IUserService.FindAsync(int)"
+  MethodCache__Services__0__Duration="00:02:00"
+  ```
 - `Defaults` applies to every cached method; the top-level `FailSafe` section is described in [Fail-safe](fail-safe.md).
 - Pass a section name as the second argument to read another section. Environment files such as
-  `appsettings.Production.json` work as usual.
+  `appsettings.Production.json` work as usual. The section is read when the host starts, so configuration sources
+  added after `AddMethodCacheFromConfiguration`, such as a later `AddJsonFile` or a `WebApplicationFactory`'s test
+  settings, apply from the first call.
 - Changes apply while the application runs, as soon as the configuration reloads (`appsettings.json` reloads on save
   by default).
 - Only methods with `[Cache]` (or listed in `[assembly: CacheInterface]`) have a decorator, so the file can change
   their policy but can't make other methods cached. A method id that matches no cached method, such as a misspelled
   name, is logged as a warning at startup.
-- An invalid value, such as a `Duration` that isn't a positive time span, makes `AddMethodCacheFromConfiguration`
-  throw at startup. If a reloaded file has one, the reload is logged as an error and the previous policies stay.
+- An invalid value, such as a `Duration` that isn't a positive time span, makes the host fail to start with an
+  `InvalidOperationException` naming the setting (without a generic host, the first cached call throws). If a
+  reloaded file has one, the reload is logged as an error and the previous policies stay.
 
 ## Runtime overrides
 
-Runtime overrides win over everything else. Use them to change a policy without a deploy, for example to shorten a
-duration during an incident:
+A runtime override of a method wins over that method's other layers (its attribute, startup code and
+`appsettings.json`). Use them to change a policy without a deploy, for example to shorten a duration during an
+incident:
 
 <!-- snippet: configuration-runtime-overrides -->
 ```cs
@@ -126,6 +150,10 @@ await configurator.ClearAsync();
 | `GetOverridesAsync` / `GetOverrideAsync` | Returns the active overrides |
 | `WatchAsync` | Streams override changes |
 
+- Runtime defaults, `DefaultPolicy` or `ForGroup` inside `ApplyAsync`, are defaults like the ones in startup code:
+  they fill in what a method leaves unset, and a method's own values, such as `[Cache(Duration = "01:00:00")]`, still
+  win over them. To change one method, override that method.
+- Tags in an override are added to the method's other tags; call `ClearTags()` first to replace them (see above).
 - `RuntimeOverrideMetadata` (owner, reason, ticket, expiry) is kept with the override for auditing. An override stops
   applying when its `ExpiresAt` passes.
 - Overrides are held in memory. They are lost on restart and not shared between instances.
@@ -163,7 +191,9 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative value means "not set" (the default is -1) |
 
 `OnHit`, `OnMiss`, `WithMetrics` and `When` only apply to [manual caching](manual-caching.md); configuring them for a
-`[Cache]` method throws `InvalidOperationException` at startup instead of being silently ignored. To decide per result
+`[Cache]` method throws `InvalidOperationException` at startup instead of being silently ignored. "At startup" means
+when the generic host starts (`app.Run()`, `host.StartAsync()`), which loads every policy source; with a plain
+`BuildServiceProvider()`, the first cached call loads them and throws. To decide per result
 whether a `[Cache]` method stores it, use [`CacheWhen`](conditional-caching.md#cachewhen).
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.

@@ -22,8 +22,10 @@ namespace MethodCache
             Func<CacheContext, bool>? predicate,
             TimeSpan? failSafe,
             TimeSpan? failSafeTimeout,
-            TimeSpan? failSafeRetryAfter)
+            TimeSpan? failSafeRetryAfter,
+            bool clearsTags = false)
         {
+            ClearsTags = clearsTags;
             Duration = duration;
             SlidingExpiration = slidingExpiration;
             RefreshAhead = refreshAhead;
@@ -57,6 +59,12 @@ namespace MethodCache
         /// Gets the tags associated with the entry for downstream invalidation.
         /// </summary>
         public IReadOnlyList<string> Tags { get; }
+
+        /// <summary>
+        /// Gets whether <see cref="Builder.ClearTags"/> was called, so the policy of a cached method drops the tags
+        /// of its attribute and of the other lower layers instead of adding to them.
+        /// </summary>
+        public bool ClearsTags { get; }
 
         /// <summary>
         /// Gets callbacks executed when the cache entry is served from cache.
@@ -106,6 +114,7 @@ namespace MethodCache
             private TimeSpan? _slidingExpiration;
             private TimeSpan? _refreshAhead;
             private readonly List<string> _tags = new();
+            private bool _clearTags;
             private readonly List<Action<CacheContext>> _onHitCallbacks = new();
             private readonly List<Action<CacheContext>> _onMissCallbacks = new();
             private ICacheMetrics? _metrics;
@@ -136,7 +145,9 @@ namespace MethodCache
             }
 
             /// <summary>
-            /// Adds one or more tags to the cache entry.
+            /// Adds one or more tags to the cache entry. For a cached method (startup code or a runtime override),
+            /// they are added to the tags of its <c>[Cache]</c> attribute and of the other layers, so
+            /// <c>[CacheInvalidate]</c> still reaches the entry; call <see cref="ClearTags"/> first to replace them.
             /// </summary>
             public Builder WithTags(params string[] tags)
             {
@@ -153,6 +164,18 @@ namespace MethodCache
                     }
                 }
 
+                return this;
+            }
+
+            /// <summary>
+            /// Removes the tags added so far. For a cached method, it also drops the tags of its <c>[Cache]</c>
+            /// attribute, of appsettings and of the defaults, so only tags added after this call apply. An entry
+            /// without those tags is no longer removed by a <c>[CacheInvalidate]</c> that lists them.
+            /// </summary>
+            public Builder ClearTags()
+            {
+                _tags.Clear();
+                _clearTags = true;
                 return this;
             }
 
@@ -307,7 +330,8 @@ namespace MethodCache
                     _predicate,
                     _failSafe,
                     _failSafeTimeout,
-                    _failSafeRetryAfter);
+                    _failSafeRetryAfter,
+                    _clearTags);
             }
         }
     }

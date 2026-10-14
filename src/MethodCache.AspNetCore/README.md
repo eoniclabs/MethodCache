@@ -30,11 +30,11 @@ maps them under `/ops/cache` instead.
 
 | Method | Path | What it does |
 |--------|------|--------------|
-| `GET` | `stats` | Hits, misses, hit ratio, evictions, entries and estimated memory |
+| `GET` | `stats` | Hits, misses, hit ratio, evictions, entries and estimated memory, of the instance that answers |
 | `GET` | `methods` | The effective policy of every cached method and where it came from |
-| `GET` | `entries?prefix=&tag=&limit=` | Live entries ordered by key (default limit 100, max 1000). Values are not returned |
-| `GET` | `entry?key=` | One entry, or 404 |
-| `DELETE` | `entry?key=` | Removes one entry, or 404 |
+| `GET` | `entries?prefix=&tag=&limit=` | Live entries in the memory of the instance that answers, ordered by key (default limit 100, max 1000). Values are not returned |
+| `GET` | `entry?key=` | One entry in the memory of the instance that answers, or 404 |
+| `DELETE` | `entry?key=` | Removes one entry, also from Redis or SQL Server and the other instances when configured. 404 only without a distributed cache, when the key isn't in memory |
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `DELETE` | `entries` | Removes every entry |
 

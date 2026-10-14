@@ -7,6 +7,21 @@ namespace MethodCache.Core.Configuration.Surfaces.ConfigFile;
 
 internal static class ConfigFilePolicySourceBuilder
 {
+    // The setting names of a method or the Defaults section; configuration keys are case-insensitive
+    private static readonly HashSet<string> PolicySettings = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "FailSafeRetryAfter",
+        "Tags", "Version", "Group", "Metadata", "Notes"
+    };
+
+    private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId", "ClearTags" };
+
+    private static readonly HashSet<string> CollectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Tags", "Metadata" };
+
+    private static readonly HashSet<string> SectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Defaults", "FailSafe", "Services" };
+
+    private static readonly HashSet<string> FailSafeSettings = new(StringComparer.OrdinalIgnoreCase) { "Duration", "Timeout", "RetryAfter" };
+
     public static ConfigFilePolicySource FromConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
     {
         if (configuration == null)
@@ -29,10 +44,11 @@ internal static class ConfigFilePolicySourceBuilder
             return Array.Empty<PolicyDraft>();
         }
 
+        RejectUnknownSettings(root, SectionSettings);
         var descriptors = new List<PolicyDraft>();
 
         // Defaults reach every cached method, including ones configured only with [Cache], whose own values win
-        var defaults = ParseSection(root.GetSection("Defaults"));
+        var defaults = ParseSection(root.GetSection("Defaults"), PolicySettings);
 
         // "FailSafe": { "Duration", "Timeout", "RetryAfter" } turns fail-safe on for every cached method
         defaults.Apply(ParseFailSafeBlock(root.GetSection("FailSafe")), overwriteExisting: false);
@@ -41,7 +57,9 @@ internal static class ConfigFilePolicySourceBuilder
             descriptors.Add(defaults.Build(MethodIds.AllMethods));
         }
 
-        foreach (var methodSection in root.GetSection("Services").GetChildren())
+        var services = root.GetSection("Services");
+        RejectSingleValue(services);
+        foreach (var methodSection in services.GetChildren())
         {
             var methodId = methodSection["MethodId"];
             if (string.IsNullOrWhiteSpace(methodId))
@@ -54,14 +72,14 @@ internal static class ConfigFilePolicySourceBuilder
                 continue;
             }
 
-            var notes = methodSection["Notes"] ?? methodSection["notes"];
-            descriptors.Add(ParseSection(methodSection).Build(methodId, notes));
+            var notes = methodSection["Notes"];
+            descriptors.Add(ParseSection(methodSection, MethodSettings).Build(methodId, notes));
         }
 
         return descriptors;
     }
 
-    private static CachePolicyBuilder ParseSection(IConfigurationSection section)
+    private static CachePolicyBuilder ParseSection(IConfigurationSection section, HashSet<string> settings)
     {
         var builder = new CachePolicyBuilder();
 
@@ -70,13 +88,36 @@ internal static class ConfigFilePolicySourceBuilder
             return builder;
         }
 
+        RejectUnknownSettings(section, settings);
+
         var duration = ReadTimeSpan(section, "Duration");
         if (duration is { } durationValue)
         {
             builder.WithDuration(durationValue);
         }
 
-        var tags = ReadValues(section.GetSection("Tags")) ?? ReadValues(section.GetSection("tags"));
+        var tagsSection = section.GetSection("Tags");
+        if (!string.IsNullOrWhiteSpace(tagsSection.Value))
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{tagsSection.Path}' is a single value; write tags as a list, for example [\"users\"] (Tags__0 in environment variables).");
+        }
+
+        // "ClearTags": true makes the method's Tags replace those of its [Cache] attribute instead of adding to them
+        if (ReadValue(section, "ClearTags") is { } clearTagsValue)
+        {
+            if (!bool.TryParse(clearTagsValue, out var clearTags))
+            {
+                throw InvalidValue(section, "ClearTags", clearTagsValue, "true or false");
+            }
+
+            if (clearTags)
+            {
+                builder.ClearTags();
+            }
+        }
+
+        var tags = ReadValues(tagsSection);
         if (tags is { Count: > 0 })
         {
             builder.SetTags(tags);
@@ -109,6 +150,14 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithRefreshAhead(refresh);
         }
 
+        var failSafeSection = section.GetSection("FailSafe");
+        if (failSafeSection.GetChildren().Any())
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{failSafeSection.Path}' must be a time span such as \"01:00:00\" or \"off\". " +
+                "Set FailSafeTimeout and FailSafeRetryAfter next to it; the FailSafe block with Duration, Timeout and RetryAfter belongs at the top of the section.");
+        }
+
         if (ReadValue(section, "FailSafe") is { } failSafe)
         {
             builder.WithFailSafe(string.Equals(failSafe, "off", StringComparison.OrdinalIgnoreCase)
@@ -126,18 +175,13 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithFailSafeRetryAfter(failSafeRetryAfter);
         }
 
-        var groupValue = section["Group"] ?? section["group"];
+        var groupValue = section["Group"];
         if (!string.IsNullOrWhiteSpace(groupValue))
         {
             builder.AddMetadata("group", groupValue);
         }
 
         var metadataSection = section.GetSection("Metadata");
-        if (!metadataSection.Exists())
-        {
-            metadataSection = section.GetSection("metadata");
-        }
-
         if (metadataSection.Exists())
         {
             foreach (var child in metadataSection.GetChildren())
@@ -159,6 +203,8 @@ internal static class ConfigFilePolicySourceBuilder
         {
             return builder;
         }
+
+        RejectUnknownSettings(section, FailSafeSettings);
 
         if (ReadTimeSpan(section, "Duration") is not { } duration)
         {
@@ -194,12 +240,78 @@ internal static class ConfigFilePolicySourceBuilder
             return null;
         }
 
-        if (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero)
+        // A bare number such as "300" parses as days, so a value without ':' is rejected rather than misread
+        if (!text.Contains(':', StringComparison.Ordinal) ||
+            !TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) ||
+            value <= TimeSpan.Zero)
         {
             throw InvalidValue(section, name, text, "a positive time span such as \"00:05:00\"");
         }
 
         return value;
+    }
+
+    private static void RejectUnknownSettings(IConfigurationSection section, HashSet<string> settings)
+    {
+        RejectSingleValue(section);
+        foreach (var child in section.GetChildren())
+        {
+            if (!settings.Contains(child.Key))
+            {
+                throw new InvalidOperationException(
+                    $"MethodCache configuration '{child.Path}' is not a setting MethodCache knows. " +
+                    $"Use one of: {string.Join(", ", settings.OrderBy(static name => name, StringComparer.Ordinal))}.");
+            }
+
+            if (settings != SectionSettings)
+            {
+                RejectWrongShape(child);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Throws when a setting has a shape its parser would skip: Tags and Metadata hold single values, every other
+    /// setting is one (a FailSafe object reports its own error).
+    /// </summary>
+    private static void RejectWrongShape(IConfigurationSection setting)
+    {
+        if (CollectionSettings.Contains(setting.Key))
+        {
+            // A single value for Tags reports its own error
+            if (string.Equals(setting.Key, "Metadata", StringComparison.OrdinalIgnoreCase))
+            {
+                RejectSingleValue(setting, "{ \"Owner\": \"team-a\" }");
+            }
+
+            foreach (var item in setting.GetChildren())
+            {
+                RejectNested(item);
+            }
+        }
+        else if (!string.Equals(setting.Key, "FailSafe", StringComparison.OrdinalIgnoreCase))
+        {
+            RejectNested(setting);
+        }
+    }
+
+    private static void RejectNested(IConfigurationSection setting)
+    {
+        if (setting.GetChildren().Any())
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{setting.Path}' has nested settings; write it as a single value, such as \"00:05:00\" or \"users\".");
+        }
+    }
+
+    /// <summary>Throws when a section that holds settings is written as one value, which would otherwise be ignored.</summary>
+    private static void RejectSingleValue(IConfigurationSection section, string example = "{ \"Duration\": \"00:05:00\" }")
+    {
+        if (!string.IsNullOrWhiteSpace(section.Value))
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{section.Path}' is a single value; write it as an object, for example {example}.");
+        }
     }
 
     private static InvalidOperationException InvalidValue(IConfigurationSection section, string name, string value, string expected)
