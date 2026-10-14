@@ -1,7 +1,9 @@
 # PR 0: Designspecifikation för MethodCache före 1.0
 
-Revision 2, 2026-10-14. Baslinje för implementationen: main vid
-f43854dbcd3646893f490e78a0a1d9651e9c4521.
+Revision 3, 2026-10-14. Historisk gransknings- och prestandabaslinje:
+f43854dbcd3646893f490e78a0a1d9651e9c4521. PR 1 startar från main efter att
+[PR 122](https://github.com/eoniclabs/MethodCache/pull/122) blivit grön och mergad; exakt start-SHA
+registreras i implementations-PR:n. Regressionstesterna från PR 122 ska bevaras.
 
 Detta dokument ersätter designspecifikationen som Johan bifogade i designgranskningen och innehåller
 justeringarna från den efterföljande granskningen. Det är målbilden för PR 1–7, inte en beskrivning av
@@ -87,17 +89,33 @@ och lokal generation. Samma MethodCall används för nyckelbygge, uppslag, tags,
 | GeneratedServices.Method | Binder metod-id och deklarerande/closed service type till registreringskontexten. Context bär service key och inner-DI-slot. |
 | GeneratedServices.InvalidateTagsAsync | Tar tags och caller-token. Samma återhämtningskontrakt som användar-API:t. |
 | CachedMethod.Capture | Returnerar MethodCall; inga oberoende läsningar av KeyPrefix/Enabled/policy får göras. |
-| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar span-nyckel och out-resultat. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
+| MethodCall.StartKey | Tar anroparens stackbuffer och returnerar en KeyBuilder bunden till anropets snapshot. Runtime skriver hela det fasta prefixet och äger gränsen mot argumentdelen. |
+| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
 | MethodCall.LoadAsync / LoadValueAsync | Tar strängnyckel, generiskt state, statisk loader, taggvärden och token. Snapshoten följer laddningen. |
 | MethodCall.Load | Verklig synkron exekveringsväg för synkrona metoder; se §4.3. |
 | MethodCall.ServiceForLoad | Återanvänder inner-instansen eller löser rätt registrering i ett nytt scope för arbete som outlever anroparen. |
-| MethodCall.CreateFallbackKey | Kodar argument utan inline-form genom den interna FastHash-kodaren, med snapshotens prefix/version och registreringsidentitet. |
-| KeyBuilder | Span-baserat bygge med befintliga primitiver, records, samlingar och provider-parts; noll allokeringar på motsvarande träffvägar. |
+| MethodCall.CreateFallbackKey | Kodar argument utan inline-form genom den interna FastHash-kodaren, med snapshotens prefix/version och registreringsidentitet. Returnerar en bunden KeyBuilder för samma uppslagskontrakt; reservvägens befintliga allokeringar mäts separat. |
+| KeyBuilder | Ref struct med AppendPart för befintliga primitiver, records, samlingar och provider-parts. Nyckeltext, snapshotbindning och eventuell processlokal hash hanteras tillsammans; inga hashfält exponeras i generator-kontraktet. |
 
 Exakta C#-signaturer fastställs och kompileras i PR 1 innan kompatibilitetsbaslinjen skapas. De ska uppfylla
 tabellen, ha fullständiga nullable-kontrakt och inga läckor av interna typer. De ursprungliga separata
-KeyPrefix/Enabled-properties är ersatta av MethodCall. Formen får justeras för att uppfylla kontraktet och
+KeyPrefix/Enabled-properties är ersatta av MethodCall, och span-uppslaget av en bunden KeyBuilder.
+Formen får justeras för att uppfylla kontraktet och
 prestandagrinden; en ofullständig skiss ska inte låsas som API.
+
+Generatorn fångar först MethodCall, startar sedan byggaren från det anropet, lägger till argument och gör
+uppslaget med ref KeyBuilder. StartKey eller uppslaget får inte läsa om CachedMethod för att hämta ett nytt
+prefix eller en ny policy. En byggare från en annan metod, container eller snapshot avvisas med tydligt fel
+före cacheåtkomst; en rätt bunden men inaktuell snapshot följer bypass/retry-regeln nedan.
+Byggaren förbrukas inte av ett missat uppslag: samma nyckeltext kan materialiseras till Load/LoadAsync.
+Nyckeln och övrigt nödvändigt state materialiseras innan async-arbete lämnar den synkrona anropsdelen.
+Ingen stackbuffer eller ref struct får behållas av en Task, loader, bakgrundsrefresh eller lagrad cachepost.
+
+PR 1 väljer en liten, begränsad stackbuffer utifrån fasta delar och kända argumentformer. Ett stort prefix,
+en lång sträng eller oförutsedd provider-part växer säkert till heapen; ingen input bestämmer obegränsad
+stackalloc. Skrivning och hashning läser bara initialiserade tecken. Buffertstorleken får inte ändra
+nyckeltexten, escaping eller reservvägsvalet. Noll extra allokeringar krävs för motsvarande träffvägar;
+befintlig net8-fallback och reservnycklar jämförs mot sin egen baslinje.
 
 Publicering kontrollerar laddningens generation och invalidationsstatus under samma skydd som själva
 publiceringen. Att kontrollera generation före en separat skrivning är inte tillräckligt.
@@ -121,6 +139,34 @@ Baslinjerna får inte regenereras under en vanlig testkörning. PR 1 skapar för
 är komplett; 1.0.0 blir första publicerade baslinjen och varje minor lägger till en ny.
 Fixtures täcker sync/Task/ValueTask, keyed/scoped tjänster, generiska metoder, reservnycklar, tags och
 CacheInterface. Källkod och fixtures som provar den nya fasaden kompileras före baseline-frysningen.
+Fixtures inkluderar StartKey/ref KeyBuilder och reservvägen, så att senare prefixhashning kan införas
+utan ändrade generator-signaturer eller omkompilering av vendor-DLL:en.
+
+### 2.4 Prefixhashning efter PR 5
+
+En separat prestanda-PR efter PR 5 och före slutverifieringen i PR 7 kan återanvända hashtillståndet efter
+snapshotens fasta prefix. PR 1 inför kontraktsformen och buffertvalet; den behöver inte införa den nya
+motorjämföraren. Hashstate ligger i den oföränderliga snapshoten eller refererad oföränderlig data, aldrig
+som ett separat muterbart prefix på CachedMethod. Generatorn beräknar eller skickar ingen egen hash.
+
+Den interna ordboksjämföraren använder samma hashfunktion och seed för hela strängnycklar, span-nycklar,
+reservnycklar och nycklar byggda i delar. För samma seed och samma UTF-16-text måste hashen bli identisk
+oavsett delningspunkt, bufferttillväxt eller uppslags-/skriv-/borttagningsväg. Missar kan kräva hashning
+av hela texten, men får inte använda den gamla hashfunktionen om den nya jämföraren används.
+Equality jämför alltid hela nyckeltexten ordinalt; en hashkollision får aldrig vara en cacheträff.
+En ändring efter en beräknad hash måste göra eventuell cachad hash inaktuell.
+Detta följer även [BCL-kontraktet för alternativa jämförare](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ialternateequalitycomparer-2.gethashcode?view=net-10.0).
+
+Hash och seed är intern, processlokal metadata och ingår inte i nyckeltext, L2, wire-format, admin,
+MethodCacheKeys.For eller invalidationsmeddelanden. Restart eller en annan process får inte ändra dessa
+identiteter. Policy-/versionsbyten skapar prefixstate för den nya snapshoten och behåller dess isolering.
+
+En egen jämförare måste ha dokumenterat skydd mot avsiktliga kollisionsangrepp för det faktiska algoritm-
+och seedvalet. Ett slumpat seed och jämn fördelning över slumpdata räcker inte ensamma som säkerhetsbevis.
+[BCL:s automatiska omhashning](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs)
+för den inbyggda strängjämföraren får inte antas skydda en egen jämförare. Algoritm och hotmodell granskas
+innan jämföraren införs; säkerhetstester och docs/security.md uppdateras i samma PR.
+Utgångstid, frekvensspårning, eviction, typkontroll, refresh/sliding och träffräkning ska bevaras.
 
 ## 3. Registrering, konfiguration och livstid
 
@@ -558,6 +604,13 @@ L2 read/write och RoundTrip av/på; contention/single-flight/eviction/weighted p
 inklusive generations-I/O; cookie-disabled caching och KeepCookies-bypass; telemetri utan/med lyssnare.
 Befintliga benchmarkkontrakt för setup/nycklar/cleanup ska fortsatt vara gröna.
 
+Prefixhash-PR:n mäter även nyckelbygge, hash/uppslag och hela genererade träffvägen separat, med korta och
+långa prefix, växande buffertar, reservnycklar och både statistik/lyssnare av och på. IMemoryCache med
+färdig nyckel, IMemoryCache med nyckel byggd per anrop och sync kontra Task-resultat redovisas som skilda
+scenarier. Ett snabbare delbenchmark ersätter inte full-path-grinden. Uppskattningen 15–20 ns eller cirka
+20 procent från förslaget Snabbare cacheträffar är en hypotes tills full-path-resultaten verifierats enligt
+denna sektion; den förs inte in i README som ett uppmätt produktlöfte.
+
 ## 11. Konkreta acceptanstester
 
 Test-id:n nedan är stabila spårnings-id:n; metoderna följer repositoryts vanliga Method_State_Expected-namn.
@@ -581,6 +634,9 @@ Properties gäller för typer/Unicode/framing. Docs-löften har även en Docs.Te
 | G09 | Stoppa anrop efter Capture av v1; byt till v2; fortsätt key-build/probe/load. | Ingen v2-policy skrivs under v1-nyckeln; stale snapshot bypass/retry enligt §2.2. |
 | G10 | Packa/installera alla sex tillägg och Core; försök blandade versioner. | Exakt nuspec-intervall för varje tillägg; matchade versioner fungerar, mismatch nekas av restore. |
 | G11 | Reservnycklar, sealed/provider/record/samling och Unicode-surrogates med samma typade data. | Samma deterministiska identitet som helper; olika data/typer aliasar inte. |
+| G12 | Capture A; starta inline-/reservbyggare; byt policy till B före uppslag och försök även byggaren med en annan MethodCall/container. | A använder bara A:s prefix och stale-regel; felbindning avvisas före cacheåtkomst. Ingen extra policy-läsning döljer racen. |
+| G13 | Tom/liten/exakt full stackbuffer, långt prefix, långa escaped strängar, provider-parts och Unicode; styr heap-growth och miss följd av load. | Exakt samma text som helper vid alla storlekar; miss lämnar nyckeln användbar; bara skrivna tecken läses och async-arbete äger sin materialiserade nyckel. |
+| G14 | Kompilera hela SignatureCorpus för sync/Task/ValueTask samt generiska/provider/reservformer under stödda TFM och AOT; kör hit-benchmarks. | StartKey/ref KeyBuilder och reservbyggaren kompilerar utan ref-escape; inga extra hit-allokeringar mot respektive TFM/nyckelforms baslinje. |
 
 ### PR 2: användar-API och policyprimitiver
 
@@ -646,6 +702,16 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 | T04 | Storage queue och publication queue, L2 healthy men backplane disconnected/connecting/unknown. | Kötyper/status separata; failureStatus respekteras; healthy L2 döljer inte backplanefel. |
 | T05 | Stats med method vikter, HTTP local bodies och bara observerade L2-svar. | Rätt enheter och scope; observerade poster ökar inte resident entries/HTTP-bytes. |
 
+### Separat prefixhash-PR efter PR 5
+
+| ID | Arrangera/agera | Krävt utfall |
+|---|---|---|
+| F01 | CsCheck över slumpade seed, prefix/argument och alla delningspunkter; tomma delar, UTF-16-surrogates, escaping, olika buffertstorlekar, Append efter lookup och reservnycklar. | Delad hash är exakt samma som helsträngshash för samma sluttext/seed; growth och Append lämnar aldrig gammal hash aktiv. |
+| F02 | Tvinga hashkollisioner via en intern testhook; skriv/hämta/ersätt/ta bort genom string-, span- och builder-vägar, inklusive konkurrerande publicering och eviction. | Bara identisk ordinal nyckel är en träff; alla vägar hittar samma post; borttagning och frekvensspårning fungerar trots kollisioner. |
+| F03 | Två processer med olika seed delar Redis/SQL; MethodCacheKeys.For, key/tag/clear-invalidation, admin och restart. Byt även policy under ett fångat anrop. | Nyckeltext och L2-identitet oförändrade; samma data delas och invalidieras; inget processhashvärde lagras/sänds och snapshot-isoleringen består. |
+| F04 | Granska algoritm/seed/hotmodell; kör algoritmens referensvektorer och dokumenterade adversariala kollisionsfall med långa gemensamma prefix och kontrollerad arbetsmätning. | Dokumenterat skydd mot avsiktlig hashflooding; regressioner mäts utan sleeps eller sköra nanosekundasserts. Slumpmässig fördelning ensam räknas inte som godkännande. |
+| F05 | Kör fryst PR 1-vendor-DLL mot prefixhash-Core utan regenerering; hela hit/miss-vägen på net8/9/10 och AOT, med korta/långa prefix och lyssnare av/på. | Samma kontrakt och cachebeteende; manifest oförändrat; full-path-resultat och allokeringar klarar §10, ingen funktion tas bort för vinsten. |
+
 ### PR 6: HTTP och admin
 
 | ID | Arrangera/agera | Krävt utfall |
@@ -679,11 +745,12 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 | PR | Leverans | Testgrind |
 |---|---|---|
 | 0 | Detta versionshanterade dokument och länken från AGENTS.md. Ingen runtimeändring. | Markdown/länkar, contradictions/dependency-granskning, llms-regenerering utan drift. |
-| 1 | Komplett Generated-fasad, snapshots/bindning, startup-builder/modulval och compat-baslinje. | G01–G11, relevanta signature/scope/AOT/package-tester och hit-benchmarks. |
+| 1 | Komplett Generated-fasad, snapshots/bindning, StartKey/ref KeyBuilder och buffertval, startup-builder/modulval och compat-baslinje. | G01–G14, relevanta signature/scope/AOT/package-tester och hit-benchmarks. |
 | 2 | Smalt användar-API, options/policyprimitiver, identiteter, tombstones, overrides och InvalidationResult. | P01–P16 på en/två noder och båda providers. Befintliga adapters ändras nu där det behövs. |
 | 3 | Keys/attributes/parser/diagnostik. | K01–K08, mdsnippets och AOT/signature corpus. |
 | 4 | Owned options/providers, slutligt format/wire-v1, retention/schema och serialiseringskontroll. | D01–D10, P-regressionerna, packages och mixed-format-kompatibilitet. |
 | 5 | Core-instrumentering, OTel-förenkling och admin/health-resultattyper. | T01–T05, privacy/allocation-tester och §10. |
+| Efter 5, före 7 | Separat prefixhash-PR: oföränderligt prefixstate, intern motorjämförare, hitpath-benchmarks och verifierade docs-siffror. Kräver PR 1-kontraktet, inte ett nytt generator-kontrakt. | F01–F05, befintliga motor/security/property-tester och §10. |
 | 6 | HTTP-adapter, generationsvektor, budgets, cookies och observationsadmin. | H01–H14, befintliga HTTP/transport/ownership-regressioner och §10. |
 | 7 | Samlad releaseverifiering och slutlig dokumentationsgenomgång. | V01–V04 före Unshipped → Shipped. |
 
@@ -693,7 +760,12 @@ mdsnippets och llms-filer när den ändrar respektive kontrakt. Säkerhetsändri
 Varje PR mergas först på grön MethodCache CI enligt den arbetsordning Johan godkänner; detta dokument
 ger inte fristående tillåtelse att publicera paket eller skicka meddelanden till andra chattar.
 
-PR 1-baslinjen fryses först när stöd för keyed/scope/fallback/sync och snapshot-racen har verifierats.
+PR 1-baslinjen fryses först när stöd för keyed/scope/fallback/sync, den bundna byggaren och snapshot-racen
+har verifierats. PR 1 äger alla ändringar i Generated-kontraktet; prefixhash-PR:n äger den interna hashningen.
+Planen Snabbare cacheträffar som Johan delat införlivas genom §2.2, §2.4, §10, G12–G14 och F01–F05.
+Dess CachedMethod.StartKey/TryGet-skiss ersätts av snapshotbundna MethodCall-ingångar enligt §2.2.
+Ingen del väntar på att prefixhash-optimeringen ska vara färdig före PR 1. Kontraktet fryses däremot inte
+med oberoende prefix/policy-läsningar eller en byggare som kräver framtida ändrade signaturer.
 PR 2 får inte förlita sig på ej implementerade PR 4-primitiver. Transportförändringarna förläggs till PR 4,
 men de små identitets-/tombstoneändringarna som behövs för P-testerna görs i PR 2.
 S7 är avgränsat till senare release och ska inte smygas in som en prestandaförutsättning här.
