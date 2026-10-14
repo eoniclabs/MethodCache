@@ -50,7 +50,7 @@ public sealed class RedisToxiproxyTests : IAsyncLifetime
         }
     }
 
-    private async Task<ICacheManager> CreateNode()
+    private async Task<ICacheManager> CreateNode(bool enableBackplane = true)
     {
         var configuration = _proxy.RequireConfiguration();
         var services = new ServiceCollection();
@@ -59,6 +59,7 @@ public sealed class RedisToxiproxyTests : IAsyncLifetime
         {
             options.Configuration = configuration;
             options.KeyPrefix = _prefix;
+            options.EnableBackplane = enableBackplane;
         });
         services.Configure<DistributedCacheOptions>(options =>
         {
@@ -93,7 +94,9 @@ public sealed class RedisToxiproxyTests : IAsyncLifetime
     [InlineData("reset_peer", "timeout", 0)] // the connection is reset by the peer
     public async Task Miss_WhenRedisMisbehaves_TakesAtMostTheOperationTimeout_AndHitsAreUnaffected(string toxic, string attribute, int value)
     {
-        var node = await CreateNode();
+        // Measure the cache data path in isolation. A pub/sub reconnect intentionally clears L1 and can race
+        // warm-up, so it cannot promise a retained memory hit. The recovery test below keeps the backplane enabled.
+        var node = await CreateNode(enableBackplane: false);
         (await Get(node, "hot", "hot")).Should().Be("hot");
 
         await _proxy.AddToxicAsync(toxic, new Dictionary<string, int> { [attribute] = value });

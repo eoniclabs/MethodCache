@@ -110,7 +110,7 @@ public class RedisBackplaneShutdownTests
     }
 
     [Theory]
-    [InlineData(0), InlineData(1), InlineData(2)]
+    [InlineData(0), InlineData(1), InlineData(2), InlineData(3)]
     public async Task DisposeAsync_ServerUnreachable_DoesNotFailApplicationShutdown(int failure)
     {
         var connection = Substitute.For<IConnectionMultiplexer>();
@@ -121,7 +121,8 @@ public class RedisBackplaneShutdownTests
         {
             0 => new RedisConnectionException(ConnectionFailureType.UnableToConnect, "offline"),
             1 => new RedisTimeoutException("offline", CommandStatus.Sent),
-            _ => new ObjectDisposedException("connection")
+            2 => new ObjectDisposedException("connection"),
+            _ => new TaskCanceledException("unsubscribe acknowledgement cancelled")
         };
         subscriber.UnsubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>()).Returns(Task.FromException(error));
         var backplane = new RedisBackplane(() => Task.FromResult(connection), "channel");

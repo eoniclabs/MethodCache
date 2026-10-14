@@ -37,5 +37,6 @@
 
   <ItemGroup>
     <Compile Include="../TestSupport/InvalidationStampContract.cs" Link="TestSupport/InvalidationStampContract.cs" />
+    <Compile Include="../MethodCache.Core.Tests/FaultInjection/SqlServerIntegration/*.cs" Link="FaultInjection/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

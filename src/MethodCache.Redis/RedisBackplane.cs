@@ -45,11 +45,11 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
 
     /// <inheritdoc />
     public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default)
-        => PublishAsync(BackplaneMessageType.KeyInvalidation, key);
+        => PublishAsync(BackplaneMessageType.KeyInvalidation, key, cancellationToken);
 
     /// <inheritdoc />
     public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default)
-        => PublishAsync(BackplaneMessageType.TagInvalidation, tag);
+        => PublishAsync(BackplaneMessageType.TagInvalidation, tag, cancellationToken);
 
     /// <inheritdoc />
     public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
@@ -194,6 +194,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
                     catch (RedisConnectionException) { /* The client removes its local handler before sending UNSUBSCRIBE. */ }
                     catch (RedisTimeoutException) { /* A missing server acknowledgement cannot restore the removed handler. */ }
                     catch (ObjectDisposedException) { /* The application may already have closed its borrowed connection. */ }
+                    catch (OperationCanceledException) { /* A cancelled acknowledgement cannot restore the removed local handler. */ }
                 }
             }
         }
@@ -231,10 +232,12 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
         public EventHandler<ConnectionFailedEventArgs>? Restored;
     }
 
-    private async Task PublishAsync(BackplaneMessageType type, string value)
+    private async Task PublishAsync(BackplaneMessageType type, string value, CancellationToken cancellationToken)
     {
-        var connection = await _connect().ConfigureAwait(false);
-        await connection.GetSubscriber().PublishAsync(_channel, Format(type, InstanceId, value)).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var connection = await _connect().WaitAsync(cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await connection.GetSubscriber().PublishAsync(_channel, Format(type, InstanceId, value)).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     internal static string Format(BackplaneMessageType type, string instanceId, string value)

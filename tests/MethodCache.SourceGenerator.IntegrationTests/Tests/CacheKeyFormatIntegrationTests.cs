@@ -362,7 +362,7 @@ namespace KeyFormat
         Assert.Equal(array, sameArray);
         Assert.NotEqual(array, list);
 
-        // Declared as List<int>: a plain list keeps the short key, a subclass gets its type in front
+        // Declared as List<int>: a plain list keeps the short key; an unknown subclass is hashed with its runtime state.
         var cache = provider.GetRequiredService<ICacheManager>();
         var userType = assembly.GetType("KeyFormat.IUserService")!;
         var plain = await Call<int>(users, "ListAsync", new List<int> { 1, 2 });
@@ -373,7 +373,9 @@ namespace KeyFormat
 
         Assert.NotEqual(plain, derived);
         Assert.Equal(plain, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ListAsync", "[2:1:2]")));
-        Assert.Equal(derived, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ListAsync", "KeyFormat.IdList", "[2:1:2]")));
+        var derivedKey = provider.GetRequiredService<MethodCache.Extensibility.ICacheKeyGenerator>().GenerateKey(
+            MethodCacheKeys.Prefix(userType, "ListAsync"), [subclass], CacheRuntimePolicy.Empty("ListAsync"));
+        Assert.Equal(derived, await cache.TryGetFastAsync<int>(derivedKey));
     }
 
     [Fact]

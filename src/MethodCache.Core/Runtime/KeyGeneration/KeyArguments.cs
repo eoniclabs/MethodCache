@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using MethodCache.Infrastructure;
 
 namespace MethodCache.Core.Runtime.KeyGeneration;
 
@@ -188,11 +189,46 @@ internal static class KeyArguments
 
         public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options)
             => IsExact(type)
-                ? RefuseHiddenState(_default.GetTypeInfo(type, options))
+                ? ExactInfo(_default, type, options)
                 : (JsonTypeInfo)CreateInfoMethod.MakeGenericMethod(type).Invoke(null, [_default, options])!;
 
         private static JsonTypeInfo<T> CreateInfo<T>(DefaultJsonTypeInfoResolver resolver, JsonSerializerOptions options)
             => JsonMetadataServices.CreateValueInfo<T>(options, new RuntimeTypeConverter<T>(resolver));
+    }
+
+    private static JsonTypeInfo? ExactInfo(DefaultJsonTypeInfoResolver resolver, Type type, JsonSerializerOptions options)
+    {
+        var info = RefuseHiddenState(resolver.GetTypeInfo(type, options));
+        return KeyCollectionState.For(type).Length == 0 ? info
+            : (JsonTypeInfo)CreateCollectionInfoMethod.MakeGenericMethod(type).Invoke(null, [info, options])!;
+    }
+
+    private static readonly MethodInfo CreateCollectionInfoMethod = typeof(KeyArguments)
+        .GetMethod(nameof(CreateCollectionInfo), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static JsonTypeInfo<T> CreateCollectionInfo<T>(JsonTypeInfo<T> elements, JsonSerializerOptions options)
+        => JsonMetadataServices.CreateValueInfo<T>(options, new CollectionStateConverter<T>(elements));
+
+    private sealed class CollectionStateConverter<T>(JsonTypeInfo<T> elements) : JsonConverter<T>
+    {
+        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+        {
+            // Every instance of this runtime type has this envelope; state never aliases an element list.
+            writer.WriteStartObject();
+            writer.WriteStartObject("state");
+            foreach (var member in KeyCollectionState.For(typeof(T)))
+            {
+                writer.WritePropertyName(member.Name);
+                JsonSerializer.Serialize(writer, member.Read(value!), options.GetTypeInfo(member.Type));
+            }
+            writer.WriteEndObject();
+            writer.WritePropertyName("items");
+            JsonSerializer.Serialize(writer, value, elements);
+            writer.WriteEndObject();
+        }
     }
 
     /// <summary>
@@ -212,7 +248,7 @@ internal static class KeyArguments
             if (type == typeof(T))
             {
                 // The usual contract of T, built here because options resolve T to this converter
-                _exact ??= (JsonTypeInfo<T>)RefuseHiddenState(resolver.GetTypeInfo(typeof(T), options))!;
+                _exact ??= (JsonTypeInfo<T>)ExactInfo(resolver, typeof(T), options)!;
                 JsonSerializer.Serialize(writer, value, _exact);
                 return;
             }

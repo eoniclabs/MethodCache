@@ -45,6 +45,9 @@ Under Native AOT, give cached methods arguments that the decorator writes into t
 - arrays, lists and sets of those (records and classes in them must be sealed), and dictionaries whose keys and values
   are simple values.
 
+Collection subclasses with their own public state also use the key generator; implement `ICacheKeyProvider` on
+these types when using Native AOT. Plain lists, arrays and sets keep their inline keys.
+
 Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
 serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,
 IL3050) from `MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that

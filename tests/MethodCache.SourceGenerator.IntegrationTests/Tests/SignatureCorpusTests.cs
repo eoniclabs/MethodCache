@@ -537,6 +537,40 @@ public class SignatureCorpusTests
 
     private static readonly Dictionary<string, Shape> Cases = new()
     {
+        ["dynamic tag does not format unrelated argument"] = new("""
+            public sealed class Argument : ICacheKeyProvider {
+                public string CacheKeyPart { get; set; } = "";
+                public override string ToString() => throw new InvalidOperationException("No tag references this argument");
+            }
+            public interface ISvc { [Cache(Tags = new[] { "item:{id}" })] int Get(Argument value, int id); }
+            public sealed class Svc : ISvc {
+                public int Get(Argument value, int id) { Counter.Hit(); return id; }
+            }
+            """, "ISvc", "s.Get(new Argument { CacheKeyPart = \"a\" }, 1)", "s.Get(new Argument { CacheKeyPart = \"a\" }, 2)"),
+        ["review static tag does not format unrelated argument"] = new("""
+            public sealed class Argument : ICacheKeyProvider {
+                public string CacheKeyPart { get; set; } = "";
+                public override string ToString() => throw new InvalidOperationException("No tag references this argument");
+            }
+            public interface ISvc { [Cache(Tags = new[] { "static-tag" })] int Get(Argument value); }
+            public sealed class Svc : ISvc {
+                public int Get(Argument value) { Counter.Hit(); return value.CacheKeyPart.Length; }
+            }
+            """, "ISvc", "s.Get(new Argument { CacheKeyPart = \"a\" })", "s.Get(new Argument { CacheKeyPart = \"bb\" })"),
+        ["review collection subtype retains public state"] = Member(
+            "string Get(ScopedList values)",
+            "string Get(ScopedList values) { Counter.Hit(); return values.Scope; }",
+            "s.Get(new ScopedList(\"alice\") { 1, 2 })",
+            "s.Get(new ScopedList(\"bob\") { 1, 2 })",
+            "public sealed class ScopedList(string scope) : List<int> { public string Scope { get; } = scope; }"),
+        ["collection base slot retains runtime public state"] = Member(
+            "string Get(List<int> values)", "string Get(List<int> values) { Counter.Hit(); return ((ScopedList)values).Scope; }",
+            "s.Get(new ScopedList(\"alice\") { 1, 2 })", "s.Get(new ScopedList(\"bob\") { 1, 2 })",
+            "public sealed class ScopedList(string scope) : List<int> { public string Scope { get; } = scope; }"),
+        ["collection interface slot retains runtime public state"] = Member(
+            "string Get(IEnumerable<int> values)", "string Get(IEnumerable<int> values) { Counter.Hit(); return ((ScopedList)values).Scope; }",
+            "s.Get(new ScopedList(\"alice\") { 1, 2 })", "s.Get(new ScopedList(\"bob\") { 1, 2 })",
+            "public sealed class ScopedList(string scope) : List<int> { public string Scope { get; } = scope; }"),
         ["nested internal helper interface is not an abstract service member"] = new("""
             public interface ISvc { [Cache] int Get(int id); internal interface Helper { void Run(); } }
             public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }

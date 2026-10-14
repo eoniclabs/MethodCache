@@ -33,12 +33,14 @@ namespace MethodCache.Extensibility
         private const long MaxNanos = long.MaxValue / 4;
 
         private static readonly ConditionalWeakTable<CacheRuntimePolicy, EntryPolicy> PolicyCache = new();
+        private static readonly AsyncLocal<BulkPublication?> CurrentBulkPublication = new();
 
         [ThreadStatic]
         private static EntryPolicy? t_lastEntryPolicy;
 
         private readonly MemoryCacheEngine _engine;
         private readonly ConcurrentDictionary<string, Flight> _flights = new(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<BulkLoad, byte> _bulkLoads = new();
         private readonly ICacheMetricsProvider _metricsProvider;
         private readonly MethodCacheMemoryOptions _options;
         private readonly MemoryUsageCalculator _memoryCalculator;
@@ -120,6 +122,14 @@ namespace MethodCache.Extensibility
         /// <summary>Whether a load or background refresh for <paramref name="key"/> is still running; lets tests wait for one to finish.</summary>
         internal bool IsLoading(string key) => _flights.ContainsKey(key);
 
+        /// <summary>Guards publication during a batch source read without reserving its keys against other writers.</summary>
+        internal BulkLoad BeginBulkLoad(IEnumerable<string> keys, CacheRuntimePolicy policy)
+        {
+            var batch = new BulkLoad(this, keys, policy);
+            _bulkLoads.TryAdd(batch, 0);
+            return batch;
+        }
+
         #region ICacheManager
 
         /// <inheritdoc />
@@ -141,7 +151,9 @@ namespace MethodCache.Extensibility
             }
 
             ArgumentNullException.ThrowIfNull(policy);
-            return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken);
+            var bulk = CurrentBulkPublication.Value;
+            var publication = bulk != null && ReferenceEquals(bulk.Owner, this) && bulk.Key == cacheKey ? bulk.Guard : null;
+            return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken, publication);
         }
 
         /// <inheritdoc />
@@ -448,7 +460,7 @@ namespace MethodCache.Extensibility
 
         #region Loading
 
-        private Task<T> GetOrCreateCoreAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken)
+        private Task<T> GetOrCreateCoreAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken, Flight? publication = null)
         {
             ArgumentNullException.ThrowIfNull(factory);
 
@@ -468,7 +480,7 @@ namespace MethodCache.Extensibility
                 return Task.FromCanceled<T>(cancellationToken);
             }
 
-            return LoadAsync(key, methodName, factory, policy, cancellationToken);
+            return LoadAsync(key, methodName, factory, policy, cancellationToken, publication);
         }
 
         /// <summary>
@@ -479,7 +491,7 @@ namespace MethodCache.Extensibility
         /// the caller that started it. Callers that joined wait with their own token; when the load they joined was
         /// cancelled by its own caller, they load again instead of failing.
         /// </remarks>
-        private async Task<T> LoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken)
+        private async Task<T> LoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken, Flight? publication)
         {
             Flight flight;
             Node? previous;
@@ -488,7 +500,7 @@ namespace MethodCache.Extensibility
                 // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
                 previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
 
-                flight = new Flight(policy.Tags);
+                flight = new Flight(policy.Tags, publication);
                 var existing = JoinOrStartFlight(key, flight);
                 if (ReferenceEquals(existing, flight))
                 {
@@ -622,7 +634,7 @@ namespace MethodCache.Extensibility
 
                 RecordMiss(methodName);
 
-                var loadStartedAt = _distributed?.Now ?? 0;
+                var loadStartedAt = flight.SourceStartedAt ?? _distributed?.Now ?? 0;
                 var start = StartTiming();
                 var result = await LoadingScope.Run(flight, factory).ConfigureAwait(false);
                 var elapsed = ElapsedSince(start);
@@ -1105,6 +1117,7 @@ namespace MethodCache.Extensibility
 
         private void InvalidateFlights(Func<string, bool> tagMatches, bool includeUntagged = false)
         {
+            foreach (var batch in _bulkLoads) batch.Key.InvalidateTags(tagMatches, includeUntagged);
             if (_flights.IsEmpty)
             {
                 return;
@@ -1192,6 +1205,7 @@ namespace MethodCache.Extensibility
 
         private void InvalidateFlight(string key)
         {
+            foreach (var batch in _bulkLoads) batch.Key.InvalidateKey(key);
             if (_flights.TryGetValue(key, out var flight))
             {
                 flight.Invalidated = true;
@@ -1307,7 +1321,6 @@ namespace MethodCache.Extensibility
                     Current.Value = outer;
                 }
             }
-
             /// <summary>Whether the current call runs inside a factory of <paramref name="flight"/>.</summary>
             public static bool Contains(Flight flight)
             {
@@ -1330,12 +1343,17 @@ namespace MethodCache.Extensibility
         private sealed class Flight : TaskCompletionSource<object?>
         {
             private volatile bool _invalidated;
-            public object Gate { get; } = new();
+            private readonly Flight? _publication;
+            public object Gate { get; }
+            public long? SourceStartedAt { get; init; }
 
-            public Flight(string[]? tags)
+            public Flight(string[]? tags, Flight? publication = null)
                 : base(TaskCreationOptions.RunContinuationsAsynchronously)
             {
                 Tags = tags;
+                _publication = publication;
+                Gate = publication?.Gate ?? new object();
+                SourceStartedAt = publication?.SourceStartedAt;
             }
 
             public string[]? Tags { get; }
@@ -1343,7 +1361,7 @@ namespace MethodCache.Extensibility
             /// <summary>Set when the key or one of its tags is invalidated while loading; the result is then not stored.</summary>
             public bool Invalidated
             {
-                get => _invalidated;
+                get => _invalidated || _publication?.Invalidated == true;
                 set { lock (Gate) _invalidated = value; }
             }
 
@@ -1366,6 +1384,49 @@ namespace MethodCache.Extensibility
                 }
             }
         }
+
+        /// <summary>A batch's publication guards. Individual loads remain free to populate its keys while the batch reads.</summary>
+        internal sealed class BulkLoad : IDisposable
+        {
+            private readonly InMemoryCacheManager _owner;
+            private readonly EntryPolicy _policy;
+            private readonly Dictionary<string, Flight> _guards;
+
+            internal BulkLoad(InMemoryCacheManager owner, IEnumerable<string> keys, CacheRuntimePolicy policy)
+            {
+                _owner = owner;
+                _policy = GetEntryPolicy(policy);
+                var startedAt = owner._distributed?.Now ?? 0;
+                _guards = keys.Distinct(StringComparer.Ordinal).ToDictionary(static key => key,
+                    _ => new Flight(_policy.Tags) { SourceStartedAt = startedAt }, StringComparer.Ordinal);
+            }
+
+            internal Task<T> GetOrCreateAsync<T>(ICacheManager manager, string key, Func<Task<T>> factory, CancellationToken cancellationToken)
+            {
+                // Preserve the application's decorators (authorization, tracing, custom result processing) while
+                // the underlying memory manager adopts the batch's publication guard. Async decorators keep it
+                // in their captured context; the calling batch gets its previous context back immediately.
+                var previous = CurrentBulkPublication.Value;
+                CurrentBulkPublication.Value = new BulkPublication(_owner, key, _guards[key]);
+                try { return manager.GetOrCreateFastAsync(key, CacheKeyLookup.MethodName, factory, _policy.Source!, cancellationToken); }
+                finally { CurrentBulkPublication.Value = previous; }
+            }
+
+            internal void InvalidateKey(string key)
+            {
+                if (_guards.TryGetValue(key, out var guard)) guard.Invalidated = true;
+            }
+
+            internal void InvalidateTags(Func<string, bool> tagMatches, bool includeUntagged)
+            {
+                if (includeUntagged || (_policy.Tags?.Any(tagMatches) ?? false))
+                    foreach (var guard in _guards.Values) guard.Invalidated = true;
+            }
+
+            public void Dispose() => _owner._bulkLoads.TryRemove(this, out _);
+        }
+
+        private sealed record BulkPublication(InMemoryCacheManager Owner, string Key, Flight Guard);
 
         #endregion
     }

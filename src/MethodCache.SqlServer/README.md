@@ -109,7 +109,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
-- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again for a few seconds; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
+- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again without blocking. After five seconds, a separate `NOWAIT` locking probe can retire gaps proven absent. Still-locked gaps and timed-out probes are retried without holding back newer invalidations or other committed gap messages; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Pattern invalidation (`InvalidateByTagPatternAsync`) is not supported with a distributed cache and throws `NotSupportedException`.
 

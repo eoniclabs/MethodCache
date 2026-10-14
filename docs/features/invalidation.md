@@ -46,6 +46,8 @@ A template takes a parameter name only. `"{order.Id}"` is not a template and sta
 share one tag; it is reported as [MCG015](../user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](../getting-started.md).
 
+Static tags never format method arguments. A template formats only the parameters it references, in the invariant culture; an unrelated argument's `ToString()` is not invoked.
+
 Tags set in startup code, `appsettings.json` or runtime overrides can use templates too, with any parameter of the
 method. They are added to the `[Cache]` attribute's tags, so the attribute's `[CacheInvalidate]` tags keep working;
 only an explicit `ClearTags()` (or `"ClearTags": true` in `appsettings.json`) replaces them

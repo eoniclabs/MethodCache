@@ -81,6 +81,8 @@ version)` (leave out `version` for an unversioned entry) instead of building it 
 
 ## Many keys at once
 
+Key, tag and clear invalidation also guard the batch factory while it reads its source. Its caller can receive the in-flight result, but invalidated candidates are not published into memory or the distributed cache. Individual callers can still load and publish these keys during the batch; a fresh concurrent value wins.
+
 `GetOrCreateManyAsync` checks the local cache for every key, looks up the local misses in the distributed cache,
 and calls the factory once with the keys neither holds. Each key gets the value the cache selects: memory first, then
 the distributed cache, then the factory. A bulk read therefore agrees with individual reads of the same keys, even

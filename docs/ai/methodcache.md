@@ -4,6 +4,8 @@ Copy this file into your project as agent instructions, for example as `.github/
 rule, a Claude Code skill or a section of `AGENTS.md`. It tells a coding agent how to add caching with MethodCache
 correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md
 
+Bulk source reads are guarded against key, tag and clear invalidation; invalidated candidates are not published. Collection subclasses with public state are hashed with both that state and their elements. Static tags do not format arguments, and templates format only the parameters they reference.
+
 ## Adding caching to a service
 
 1. The `MethodCache` package contains the library, the source generator and the analyzers. Nothing else is needed
@@ -90,3 +92,5 @@ builder.Services.AddMethodCache();                               // after your r
   `NoOpCacheManager`, `IAtomicInvalidationStore`.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
+
+SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.

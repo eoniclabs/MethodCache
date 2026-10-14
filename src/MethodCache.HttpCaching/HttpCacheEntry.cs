@@ -85,8 +85,9 @@ public sealed record HttpCacheEntry
 
     /// <summary>
     /// Set on the entry for a URL whose responses are stored per variant (per <c>Vary</c>, key header or caller).
-    /// Variants are found through it, so replacing or removing this entry makes every older variant unreachable.
-    /// Storage implementations only need to keep it.
+    /// Concurrent writers with the same selecting headers share this schema namespace within a URL publication
+    /// generation. Invalidation or a change to selecting headers retires that URL generation and its variants.
+    /// Storage implementations keep this body-free index separately from each variant's lifetime.
     /// </summary>
     public string? VariantGeneration { get; init; }
 
