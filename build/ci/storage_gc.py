@@ -359,7 +359,7 @@ def collect_archives(cfg, config, now, paths, apply, deadline):
             if age < (600 if info['passed'] else config.get('failed_hours', 24) * 3600):
                 continue
             output_bytes = clean_builds(p, 600 if info['passed'] else 0, now, paths, apply=apply,
-                                       snapshot=info['snapshot'])
+                                       snapshot=info['snapshot'], recheck=apply)
             # rmtree removes internal links themselves, never their targets. CI
             # media commonly link to shared ISO files which must remain intact.
             size, newest, protected = tree(p, archive=True)

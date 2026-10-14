@@ -165,6 +165,16 @@ class StorageTests(unittest.TestCase):
             gc.collect_archives(cfg, {}, self.now, set(), True, time.monotonic() + 30)
         self.assertTrue(p.exists())
 
+    def test_ci_build_starting_after_inventory_preserves_generated_output(self):
+        from unittest.mock import patch
+        import time
+        p, cfg = self.archive()
+        (p / 'Test.csproj').write_text('<Project/>')
+        (p / 'bin').mkdir(); (p / 'bin/app.dll').write_text('in use')
+        with patch.object(gc, 'activity', return_value={str(p / 'bin/app.dll')}):
+            gc.collect_archives(cfg, {}, self.now, set(), True, time.monotonic() + 30)
+        self.assertTrue((p / 'bin/app.dll').exists())
+
     def test_windows_workspace_metadata_proves_last_run_and_pr(self):
         p = self.root / 'v3-pr-12'; p.mkdir()
         (p / 'Skribera.sln').touch()
