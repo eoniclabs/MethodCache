@@ -89,6 +89,22 @@ public class KeyedRegistrationTests
         }
     }
 
+    // A null service key makes an unkeyed registration, cached like one
+    [Fact]
+    public void NullServiceKey_IsAnUnkeyedRegistration()
+    {
+        var rates = new KeyedRates(1);
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IKeyedRates>(null, rates);
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        var service = provider.GetRequiredService<IKeyedRates>();
+        service.Get(1);
+        service.Get(1);
+        Assert.Equal(1, rates.Calls);
+    }
+
     [Fact]
     public void KeyedRegistration_WithAKeyThatHasNoStableStringForm_IsRejected()
     {
