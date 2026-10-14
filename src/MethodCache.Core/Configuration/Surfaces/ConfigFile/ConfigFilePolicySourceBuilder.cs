@@ -16,6 +16,8 @@ internal static class ConfigFilePolicySourceBuilder
 
     private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId", "ClearTags" };
 
+    private static readonly HashSet<string> CollectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Tags", "Metadata" };
+
     private static readonly HashSet<string> SectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Defaults", "FailSafe", "Services" };
 
     private static readonly HashSet<string> FailSafeSettings = new(StringComparer.OrdinalIgnoreCase) { "Duration", "Timeout", "RetryAfter" };
@@ -260,16 +262,55 @@ internal static class ConfigFilePolicySourceBuilder
                     $"MethodCache configuration '{child.Path}' is not a setting MethodCache knows. " +
                     $"Use one of: {string.Join(", ", settings.OrderBy(static name => name, StringComparer.Ordinal))}.");
             }
+
+            if (settings != SectionSettings)
+            {
+                RejectWrongShape(child);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Throws when a setting has a shape its parser would skip: Tags and Metadata hold single values, every other
+    /// setting is one (a FailSafe object reports its own error).
+    /// </summary>
+    private static void RejectWrongShape(IConfigurationSection setting)
+    {
+        if (CollectionSettings.Contains(setting.Key))
+        {
+            // A single value for Tags reports its own error
+            if (string.Equals(setting.Key, "Metadata", StringComparison.OrdinalIgnoreCase))
+            {
+                RejectSingleValue(setting, "{ \"Owner\": \"team-a\" }");
+            }
+
+            foreach (var item in setting.GetChildren())
+            {
+                RejectNested(item);
+            }
+        }
+        else if (!string.Equals(setting.Key, "FailSafe", StringComparison.OrdinalIgnoreCase))
+        {
+            RejectNested(setting);
+        }
+    }
+
+    private static void RejectNested(IConfigurationSection setting)
+    {
+        if (setting.GetChildren().Any())
+        {
+            throw new InvalidOperationException(
+                $"MethodCache configuration '{setting.Path}' has nested settings; write it as a single value, such as \"00:05:00\" or \"users\".");
         }
     }
 
     /// <summary>Throws when a section that holds settings is written as one value, which would otherwise be ignored.</summary>
-    private static void RejectSingleValue(IConfigurationSection section)
+    private static void RejectSingleValue(IConfigurationSection section, string example = "{ \"Duration\": \"00:05:00\" }")
     {
         if (!string.IsNullOrWhiteSpace(section.Value))
         {
             throw new InvalidOperationException(
-                $"MethodCache configuration '{section.Path}' is a single value; write it as an object of settings, for example {{ \"Duration\": \"00:05:00\" }}.");
+                $"MethodCache configuration '{section.Path}' is a single value; write it as an object, for example {example}.");
         }
     }
 
