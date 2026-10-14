@@ -760,12 +760,15 @@ namespace MethodCache.Core.Runtime.Distributed
                     _retryTimer = null;
 
                     // Keys whose write timed out are removed with the queue at shutdown rather than after a delay
-                    // nobody waits for
-                    if (!_lateRemovals.IsEmpty)
+                    // nobody waits for. Moved one at a time: a key scheduled meanwhile keeps its marker, and its
+                    // cancelled delay queues it instead
+                    foreach (var key in _lateRemovals.Keys)
                     {
-                        AddPending(_lateRemovals.Keys, Array.Empty<string>());
-                        _lateRemovals.Clear();
-                        _hasPending = true;
+                        if (_lateRemovals.TryRemove(key, out _))
+                        {
+                            AddPending(new[] { key }, Array.Empty<string>());
+                            _hasPending = true;
+                        }
                     }
                 }
                 _disposing.Cancel();
