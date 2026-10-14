@@ -52,7 +52,7 @@ public static class MethodCacheRedisServiceCollectionExtensions
         if (options.EnableBackplane)
         {
             services.TryAddSingleton<IBackplane>(sp =>
-                new RedisBackplane(sp.GetRequiredService<RedisConnection>().GetAsync, options.EffectiveBackplaneChannel, sp.GetService<ILogger<RedisBackplane>>()));
+                new RedisBackplane(sp.GetRequiredService<RedisConnection>().GetAsync, options.EffectiveBackplaneChannel, sp.GetService<ILogger<RedisBackplane>>(), sp.GetService<TimeProvider>()));
         }
 
         return services.AddMethodCacheDistributedCache(

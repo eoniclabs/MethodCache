@@ -54,6 +54,11 @@ past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
 gets the cached value at once, and the reload replaces it, so a popular entry never makes anyone wait. An entry that
 isn't read in the window simply expires.
 
+The window must be shorter than `Duration` and `SlidingExpiration`, or every read would reload the entry: in code
+(`Build()` throws an `InvalidOperationException`) and in `appsettings.json` (startup fails) a longer one is rejected.
+When settings from different places combine into such a window, for example an attribute's `RefreshAhead` with a
+shorter `Duration` from configuration, the reload starts halfway through the entry's life instead.
+
 ## Versions
 
 `Version` is part of every key the method produces. Raise it when the shape of the cached result changes, for example

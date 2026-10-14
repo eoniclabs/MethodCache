@@ -8,8 +8,8 @@ namespace MethodCache.Extensibility;
 /// Default serializer for values in the distributed cache: UTF-8 JSON written with System.Text.Json.
 /// </summary>
 /// <remarks>
-/// Without options it uses <see cref="JsonSerializerOptions.Default"/>, which reads each type's shape once by
-/// reflection. Under Native AOT, or to control the format, register one with options whose resolver includes your
+/// Without options it uses System.Text.Json's defaults with public fields included (so value tuples and structs
+/// with fields keep their data), reading each type's shape once by reflection. Under Native AOT, or to control the format, register one with options whose resolver includes your
 /// <c>JsonSerializerContext</c>:
 /// <code>
 /// [JsonSerializable(typeof(User))]
@@ -24,11 +24,25 @@ public sealed class JsonCacheSerializer : ISerializer
     private readonly JsonSerializerOptions _options;
 
     /// <summary>
-    /// Creates a serializer with the given <paramref name="options"/>, or <see cref="JsonSerializerOptions.Default"/>.
+    /// Creates a serializer with the given <paramref name="options"/>, or System.Text.Json's defaults with
+    /// <see cref="JsonSerializerOptions.IncludeFields"/> on.
     /// </summary>
     public JsonCacheSerializer(JsonSerializerOptions? options = null)
     {
-        _options = options ?? JsonSerializerOptions.Default;
+        _options = options ?? Defaults.Options;
+    }
+
+    /// <summary>Created on first use, so a serializer given its own options never builds these.</summary>
+    private static class Defaults
+    {
+        public static readonly JsonSerializerOptions Options = Create();
+
+        private static JsonSerializerOptions Create()
+        {
+            var options = new JsonSerializerOptions(JsonSerializerOptions.Default) { IncludeFields = true };
+            options.MakeReadOnly();
+            return options;
+        }
     }
 
     /// <inheritdoc />

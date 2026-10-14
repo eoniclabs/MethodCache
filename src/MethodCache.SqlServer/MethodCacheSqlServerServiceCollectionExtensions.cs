@@ -1,3 +1,4 @@
+using MethodCache;
 using MethodCache.Extensibility;
 using MethodCache.SqlServer;
 using Microsoft.Extensions.Caching.SqlServer;
@@ -56,6 +57,11 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
             services.TryAddSingleton<IBackplane>(sp => new SqlServerBackplane(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerBackplane>(), sp.GetService<TimeProvider>()));
         }
 
+        // Entries can't outlive the stamps that invalidate them, and SQL Server stores no time past 9999-12-31
+        services.AddOptions<DistributedCacheOptions>().Validate(
+            o => o.TagRetention < DateTimeOffset.MaxValue - DateTimeOffset.UtcNow,
+            "TagRetention must end before 9999-12-31, the latest time SQL Server stores.");
+
         // MethodCache's own cache instance, so the app's IDistributedCache and its settings are left alone
         return services.AddMethodCacheDistributedCache(
             _ => new SqlServerDistributedCache(options),
@@ -67,5 +73,12 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
         ConnectionString = options.ConnectionString,
         SchemaName = options.SchemaName,
         TableName = options.TableName,
+
+        // Every instance deletes the expired rows in one statement now and then. Often (the shortest interval
+        // allowed) keeps each delete small, so it doesn't lock the whole table and time out every instance at once.
+        ExpiredItemsDeletionInterval = ExpiredItemsDeletionInterval,
     };
+
+    /// <summary>How often each instance deletes expired rows from the cache table.</summary>
+    internal static readonly TimeSpan ExpiredItemsDeletionInterval = TimeSpan.FromMinutes(5);
 }

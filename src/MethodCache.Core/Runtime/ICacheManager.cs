@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
@@ -94,19 +93,19 @@ namespace MethodCache
         /// <param name="cacheKey">Pre-computed cache key</param>
         /// <param name="value">The cached value if found</param>
         /// <returns>True if the value exists and is not expired</returns>
+        /// <remarks>
+        /// The default implementation asks <see cref="LookupAsync{T}"/> with a key generator that returns
+        /// <paramref name="cacheKey"/> as the key, because <see cref="TryGetFastAsync{T}"/> can't tell a cached
+        /// <c>default(T)</c> (<c>0</c>, <c>false</c>, <c>null</c>) from a miss. It waits for that lookup to finish, so
+        /// a manager whose lookups are asynchronous should override this method with a synchronous one. Returning
+        /// false is always safe: the caller then takes the loading path, which still returns a cached value.
+        /// </remarks>
         bool TryGetFast<T>(string cacheKey, out T? value)
         {
-            var fast = TryGetFastAsync<T>(cacheKey);
-            if (!fast.IsCompletedSuccessfully)
-            {
-                value = fast.AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-            else
-            {
-                value = fast.Result;
-            }
-
-            return value != null && !EqualityComparer<T>.Default.Equals(value, default);
+            var lookup = CacheKeyLookup.LookupAsync<T>(this, cacheKey);
+            var result = lookup.IsCompletedSuccessfully ? lookup.Result : lookup.AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
+            value = result.Value;
+            return result.Found;
         }
 
         /// <summary>
