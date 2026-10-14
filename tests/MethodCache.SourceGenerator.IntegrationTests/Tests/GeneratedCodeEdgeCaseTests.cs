@@ -484,7 +484,7 @@ public interface IOrders {
   [Cache] string Find(int[][] jagged);
   [Cache] string Find(int?[] a, string? s, List<string?> l);
   [Cache] string Find<T>(List<T> list, T x);
-  [Cache] string Find(Func<int, string> f);
+  [Cache] string Find(Tuple<int, string> t);
   [Cache] string Find(KeyValuePair<Guid, DateTime?> pair);
 }
 public interface IRepo<T> {

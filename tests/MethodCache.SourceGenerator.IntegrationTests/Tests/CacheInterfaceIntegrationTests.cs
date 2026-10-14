@@ -1,6 +1,7 @@
 using System.Reflection;
 using MethodCache;
 using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 using Microsoft.Extensions.DependencyInjection;
@@ -243,6 +244,61 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
         var warnings = result.Diagnostics.Where(d => d.Id is "MCG009" or "MCG015").ToList();
         Assert.Equal(new[] { "MCG009", "MCG015" }, warnings.Select(d => d.Id).OrderBy(id => id));
         Assert.All(warnings, d => Assert.True(d.Location.IsInSource));
+    }
+
+    [Fact]
+    public async Task AttributeInALibraryWhoseCodeHasNotRun_StillDecoratesTheClient()
+    {
+        // A library (think Infrastructure.dll) that only holds [assembly: CacheInterface] for a vendor interface. It is
+        // loaded, but nothing in it has run, so its module initializer has not registered the decorator yet.
+        var library = await _engine.CompileWithSourceGeneratorAsync("""
+            [assembly: MethodCache.CacheInterface(typeof(MethodCache.SourceGenerator.IntegrationTests.Vendor.IClockVendorClient), "Get")]
+            namespace Infrastructure { public static class Marker { } }
+            """, "VendorLibrary_" + Guid.NewGuid().ToString("N"));
+        Assert.Contains(library.GeneratedSources.Values, s => s.Contains("IClockVendorClient", StringComparison.Ordinal));
+
+        // The application registers the vendor client and calls AddMethodCache() itself
+        var services = new ServiceCollection();
+        services.AddSingleton<IClockVendorClient, ClockVendorClient>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.IsNotType<ClockVendorClient>(provider.GetRequiredService<IClockVendorClient>());
+    }
+
+    [Fact]
+    public async Task LookupWhileAnotherThreadRunsTheLibrarysInitializer_WaitsForItAndFindsTheDecorator()
+    {
+        // The library's own module initializer runs before the generated one and holds until the test opens the gate
+        var library = await _engine.CompileWithSourceGeneratorAsync("""
+            [assembly: MethodCache.CacheInterface(typeof(MethodCache.SourceGenerator.IntegrationTests.Vendor.IGatedVendorClient), "Get")]
+            namespace Infrastructure
+            {
+                internal static class Gate
+                {
+                    [System.Runtime.CompilerServices.ModuleInitializer]
+                    internal static void Hold() => MethodCache.SourceGenerator.IntegrationTests.Vendor.ModuleInitializerGate.Wait();
+                }
+            }
+            """, "GatedLibrary_" + Guid.NewGuid().ToString("N"));
+        Assert.Contains(library.GeneratedSources.Values, s => s.Contains("IGatedVendorClient", StringComparison.Ordinal));
+
+        // The first lookup runs the library's initializer and is held inside it
+        var first = Task.Run(() => MethodCacheDecorators.TryGet(typeof(IGatedVendorClient), out _));
+        Assert.True(await ModuleInitializerGate.Entered.WaitAsync(TimeSpan.FromSeconds(30)), "the library's initializer did not run");
+
+        // A second lookup meanwhile must wait for the initializer, not skip the library as already handled
+        var open = Task.Run(async () =>
+        {
+            await Task.Delay(200);
+            ModuleInitializerGate.Open.Set();
+        });
+        var found = MethodCacheDecorators.TryGet(typeof(IGatedVendorClient), out var registration);
+        await open;
+
+        Assert.True(found, "the second lookup missed the decorator its library was registering");
+        Assert.Equal(typeof(IGatedVendorClient), registration!.ServiceType);
+        Assert.True(await first);
     }
 
     private async Task<string> GeneratorErrorsAsync(string source, string assemblyName)

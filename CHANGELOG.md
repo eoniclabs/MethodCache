@@ -73,6 +73,32 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
 - **SQL Server**: a `TagRetention` that ends after 9999-12-31 fails at startup instead of making every tag
   invalidation fail, and stamp expiry is capped there. Expired rows are deleted every 5 minutes instead of 30, so each
   delete stays small.
+- **Generated decorators** compile for generic methods constrained to a base class (`where T : Entity`), keep
+  `scoped` on forwarded parameters, escape U+2028/U+2029 in tag and group literals, skip `file` classes when picking
+  an implementation to register, and no longer clash (CS0436) with a referenced project's generated code through
+  `InternalsVisibleTo`. `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member is now
+  warning MCG017 instead of being ignored. The IDE builds each decorator once per edit, not once per cached method.
+- **Keys**: two cached methods with the same name on different interfaces of one hierarchy (`ICatalog : ILookup`, or
+  `IC : IA, IB`) no longer share entries; their keys add the parameter types, and the declaring interface when the
+  signatures are equal. `-0.0` and `0.0` are two keys in hashed keys too, `NaN` and infinities inside a hashed argument
+  no longer throw, and `[CacheKey(UseAsRawKey = true)]` dates are written like generated keys: they keep fractions of a second and
+  their offset, and a local time is written as UTC, so the key doesn't depend on the server's time zone. Keys of
+  these methods and arguments change, so their entries from an earlier build are misses.
+- **Metrics and spans** name a cached method by its id (`MyApp.IUserService.GetAsync`) instead of its bare name, so
+  same-named methods on different interfaces are separate series, as the OpenTelemetry README shows. A method
+  inherited from a generic interface reports the closed type it comes from, so `IUserRepo : IRepository<User>` and
+  `IOrderRepo : IRepository<Order>` report `IRepository<User>.Get` and `IRepository<Order>.Get`.
+- **Framework types in keys**: `BigInteger`, `Complex`, `IPAddress`, `JsonElement`, `Half`, `Int128`, `DateOnly`,
+  `Uri`, `Version` and other immutable .NET types are written by their value, in every key generator and inside
+  records and collections. Before, the decorator wrote `BigInteger`'s `IsZero` and `Sign`, so 3 and 5 shared one
+  entry, and `IPAddress` threw. Other types from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as
+  `StringBuilder` or `CultureInfo`, are now build error MCG018 instead of a key that ignores their value. Keys of arguments with these
+  types change, so their entries from an earlier build are misses.
+- **Result types a distributed cache can't restore** (`object`, an interface or an abstract class, also as an
+  element) get warning MCG019: with a distributed cache, the default round-trip check keeps those results in memory
+  only.
+- **`[assembly: CacheInterface]` in a class library** decorates the client even when none of the library's code has
+  run before `AddMethodCache()`, also when several threads resolve services while the library's initializer runs.
 
 ### If you used a pre-release build from GitHub Packages
 

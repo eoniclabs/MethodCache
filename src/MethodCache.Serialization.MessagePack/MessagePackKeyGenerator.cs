@@ -33,7 +33,7 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
     private static readonly KeyObjectFormatter ObjectFormatter = new();
     private static readonly MessagePackSerializerOptions KeyOptions = TypelessContractlessStandardResolver.Options
         .WithResolver(CompositeResolver.Create(
-            new IMessagePackFormatter[] { new KeyStringFormatter(), ObjectFormatter },
+            new IMessagePackFormatter[] { new KeyStringFormatter(), new KeyIPAddressFormatter(), new KeyJsonElementFormatter(), ObjectFormatter },
             new IFormatterResolver[] { new PolymorphicKeyResolver() }));
 
     /// <inheritdoc />
@@ -127,12 +127,36 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
             throw new NotSupportedException("Cache keys are hashed, never deserialized.");
     }
 
+    // MessagePack has no formatter for these; the contractless one would read IPAddress.ScopeId (which throws for IPv4)
+    // and JsonElement.ValueKind (the same for every object), so they are written as their text
+    internal sealed class KeyIPAddressFormatter : IMessagePackFormatter<System.Net.IPAddress?>
+    {
+        public void Serialize(ref MessagePackWriter writer, System.Net.IPAddress? value, MessagePackSerializerOptions options)
+        {
+            if (value is null) writer.WriteNil();
+            else writer.Write(value.ToString());
+        }
+        public System.Net.IPAddress? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) =>
+            throw new NotSupportedException("Cache keys are hashed, never deserialized.");
+    }
+
+    internal sealed class KeyJsonElementFormatter : IMessagePackFormatter<System.Text.Json.JsonElement>
+    {
+        public void Serialize(ref MessagePackWriter writer, System.Text.Json.JsonElement value, MessagePackSerializerOptions options)
+            => writer.Write(System.Text.Json.JsonSerializer.Serialize(value));
+        public System.Text.Json.JsonElement Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) =>
+            throw new NotSupportedException("Cache keys are hashed, never deserialized.");
+    }
+
     internal sealed class KeyObjectFormatter : IMessagePackFormatter<object?>
     {
         public void Serialize(ref MessagePackWriter writer, object? value, MessagePackSerializerOptions options)
         {
             if (value is string text)
                 options.Resolver.GetFormatterWithVerify<string?>().Serialize(ref writer, text, options);
+            else if (value is System.Net.IPAddress address && value.GetType() != typeof(System.Net.IPAddress))
+                // IPAddress.Loopback and the like are a framework subclass; write them as the IPAddress they equal
+                TypelessFormatter.Instance.Serialize(ref writer, System.Net.IPAddress.Parse(address.ToString()), options);
             else
                 TypelessFormatter.Instance.Serialize(ref writer, value, options);
         }

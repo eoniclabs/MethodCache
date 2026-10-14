@@ -50,8 +50,8 @@ namespace App
 
             public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
             {
-                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IPricing.Price"), typeof(global::App.IPricing), "Price", "Price");
-                Method1 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IPricing.FindAsync"), typeof(global::App.IPricing), "FindAsync", "FindAsync");
+                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IPricing.Price"), typeof(global::App.IPricing), "Price", "App.IPricing.Price");
+                Method1 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IPricing.FindAsync"), typeof(global::App.IPricing), "FindAsync", "App.IPricing.FindAsync");
             }
         }
 

@@ -137,6 +137,66 @@ public class SignatureCorpusTests
     }
 
     [Fact]
+    public async Task FrameworkTypeWithoutKeyForm_NamesTheValueAndItsType()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync("""
+            using System.Text;
+            using MethodCache;
+            public sealed record Note(int Id, StringBuilder Text);
+            public interface ISvc { [Cache] string Get(int id, Note note); }
+            public class Svc : ISvc { public string Get(int id, Note note) => "v"; }
+            """, "FrameworkTypeWithoutKeyFormMessage", LanguageVersion.CSharp12);
+
+        var diagnostic = Assert.Single(compiled.Diagnostics, d => d.Id == "MCG018");
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        var message = diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Contains("'note.Text' is a 'StringBuilder'", message, StringComparison.Ordinal);
+        Assert.Contains("ICacheKeyProvider", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task FrameworkTypeWithoutKeyForm_IsAllowedNextToARawKey()
+    {
+        var source = Member(
+            "Task<string> Get([CacheKey(UseAsRawKey = true)] string id, System.Text.StringBuilder log)",
+            "Task<string> Get(string id, System.Text.StringBuilder log) { Counter.Hit(); return Task.FromResult(id); }",
+            "await s.Get(\"a\", new System.Text.StringBuilder())", "await s.Get(\"b\", new System.Text.StringBuilder())").ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "FrameworkTypeNextToRawKey", LanguageVersion.CSharp12);
+
+        Assert.DoesNotContain(compiled.Diagnostics, d => d.Id == "MCG018");
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
+    }
+
+    [Fact]
+    public async Task FrameworkTypeWithoutKeyForm_OnACacheInterfaceMethod_IsReportedOnTheAttribute()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync("""
+            using MethodCache;
+            [assembly: CacheInterface(typeof(MethodCache.SourceGenerator.IntegrationTests.Tests.IExternalTextFormatter), "Format")]
+            """, "FrameworkTypeOnCacheInterface", LanguageVersion.CSharp12);
+
+        var diagnostic = Assert.Single(compiled.Diagnostics, d => d.Id == "MCG011");
+        Assert.Contains("'text' is a 'StringBuilder'", diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UnrestorableResultType_WarnsAndStillCaches()
+    {
+        var source = Member(
+            "Task<IComparable> Get(int id)",
+            "Task<IComparable> Get(int id) { Counter.Hit(); return Task.FromResult<IComparable>(id); }",
+            "await s.Get(1)", "await s.Get(2)").ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "UnrestorableResultType", LanguageVersion.CSharp12);
+
+        var diagnostic = Assert.Single(compiled.Diagnostics, d => d.Id == "MCG019");
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("when a distributed cache is used", diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
+    }
+
+    [Fact]
     public async Task AmbiguousPlaceholder_ReportsWarning_AndKeepsLiteralTag()
     {
         var compiled = await _engine.CompileWithSourceGeneratorAsync("""
@@ -194,6 +254,15 @@ public class SignatureCorpusTests
             """;
         var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RefStructValueAllowance", LanguageVersion.Latest);
         Assert.Contains(compiled.Diagnostics, d => d.Id == "MCG007");
+    }
+
+    [Fact]
+    public async Task RefStructAllowanceReview_KeepsTheAntiConstraintOnACachedTaskMethod()
+    {
+        var source = new Shape("public interface ISvc { [Cache] Task<string> Get<T>(int id) where T : allows ref struct; } public class Svc : ISvc { public Task<string> Get<T>(int id) where T : allows ref struct { Counter.Hit(); return Task.FromResult(typeof(T).Name); } }", "ISvc", "await s.Get<Span<int>>(1)", "await s.Get<Span<int>>(2)").ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RefStructTaskAllowance", LanguageVersion.Latest);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
     }
 
     [Fact]
@@ -265,6 +334,56 @@ public class SignatureCorpusTests
         Assert.NotEqual(name.Invoke(null, new object[] { a }), name.Invoke(null, new object[] { b }));
     }
 
+    [Fact]
+    public async Task FileLocalImplementation_IsNotAutoRegistered_AndTheProjectCompiles()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync("""
+            using MethodCache;
+            namespace Corpus {
+                public interface IClock { [Cache] int Now(int id); }
+                file sealed class Clock : IClock { public int Now(int id) => id; }
+            }
+            """, "FileLocalImplementation", LanguageVersion.CSharp12);
+
+        Assert.DoesNotContain("Corpus.Clock", compiled.GeneratedSources["MethodCacheDecoratorRegistrations.g.cs"], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReferencedAssemblyWithGeneratedCode_AndInternalsVisibleTo_HasNoTypeConflicts()
+    {
+        var parse = new CSharpParseOptions(LanguageVersion.CSharp12);
+        var refs = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path)).ToArray();
+        var app = Generate(CSharpCompilation.Create("VisibleApp", new[] { CSharpSyntaxTree.ParseText("""
+            [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("VisibleApp.Tests")]
+            namespace App {
+                public interface IA { [MethodCache.Cache] int Get(int id); }
+                public class A : IA { public int Get(int id) => id; }
+            }
+            """, parse) }, refs, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)), parse);
+        using var image = new MemoryStream();
+        var emitted = app.Emit(image);
+        Assert.True(emitted.Success, string.Join("; ", emitted.Diagnostics));
+
+        var tests = Generate(CSharpCompilation.Create("VisibleApp.Tests", new[] { CSharpSyntaxTree.ParseText("""
+            namespace AppTests {
+                public interface IB { [MethodCache.Cache] int Get(int id); }
+                public class B : IB { public int Get(int id) => id; }
+            }
+            """, parse) }, refs.Append(MetadataReference.CreateFromImage(image.ToArray())), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)), parse);
+
+        // CS0436: a type in this project conflicts with the referenced one; an error with TreatWarningsAsErrors
+        var problems = tests.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error || d.Id is "CS0436" or "CS0433").ToList();
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+
+        static Compilation Generate(CSharpCompilation compilation, CSharpParseOptions parse)
+        {
+            CSharpGeneratorDriver.Create(new[] { new MethodCacheGenerator().AsSourceGenerator() }, parseOptions: parse)
+                .RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
+            return output;
+        }
+    }
+
     [Theory]
     [InlineData("Task", "Task.CompletedTask")]
     [InlineData("ValueTask", "default")]
@@ -330,8 +449,20 @@ public class SignatureCorpusTests
         ["pointer array result"] = ("unsafe int*[] Get(int id)", "unsafe int*[] Get(int id) => new int*[1];", "MCG006"),
         ["function pointer array parameter"] = ("unsafe string Get(delegate*<int>[] f)", "unsafe string Get(delegate*<int>[] f) => \"v\";", "MCG006"),
         ["pointer to pointer parameter"] = ("unsafe string Get(int** p)", "unsafe string Get(int** p) => \"v\";", "MCG006"),
+        ["static interface member"] = ("static int Parse(string s) => 1", "int Other() => 0;", "MCG017"),
+        ["private interface member"] = ("private int Helper() => 42", "int Other() => 0;", "MCG017"),
+        ["sealed interface member"] = ("sealed int Fixed() => 1", "int Other() => 0;", "MCG017"),
         ["IEnumerable result"] = ("IEnumerable<int> Get(int id)", "IEnumerable<int> Get(int id) { yield return id; }", "MCG014"),
         ["IAsyncEnumerable result"] = ("IAsyncEnumerable<int> Get(int id)", "async IAsyncEnumerable<int> Get(int id) { await Task.Yield(); yield return id; }", "MCG014"),
+        ["StringBuilder parameter"] = ("Task<string> Get(System.Text.StringBuilder text)", "Task<string> Get(System.Text.StringBuilder text) => Task.FromResult(text.ToString());", "MCG018"),
+        ["StringBuilder list parameter"] = ("Task<string> Get(List<System.Text.StringBuilder> texts)", "Task<string> Get(List<System.Text.StringBuilder> texts) => Task.FromResult(\"v\");", "MCG018"),
+        ["StringBuilder in a tuple parameter"] = ("Task<string> Get((int Id, System.Text.StringBuilder Text) query)", "Task<string> Get((int Id, System.Text.StringBuilder Text) query) => Task.FromResult(\"v\");", "MCG018"),
+        ["record with a StringBuilder parameter"] = ("Task<string> Get(Svc.Note note)", "Task<string> Get(Note note) => Task.FromResult(\"v\"); public sealed record Note(int Id, System.Text.StringBuilder Text);", "MCG018"),
+        ["CultureInfo parameter"] = ("Task<string> Get(System.Globalization.CultureInfo culture)", "Task<string> Get(System.Globalization.CultureInfo culture) => Task.FromResult(\"v\");", "MCG018"),
+        ["object result"] = ("Task<object> Get(int id)", "Task<object> Get(int id) => Task.FromResult<object>(id);", "MCG019"),
+        ["interface result"] = ("ValueTask<IComparable> Get(int id)", "ValueTask<IComparable> Get(int id) => new(id);", "MCG019"),
+        ["abstract class result"] = ("System.IO.Stream Get(int id)", "System.IO.Stream Get(int id) => System.IO.Stream.Null;", "MCG019"),
+        ["list of objects result"] = ("Task<List<object>> Get(int id)", "Task<List<object>> Get(int id) => Task.FromResult(new List<object>());", "MCG019"),
     };
 
     private static string Sanitize(string name) => new(name.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());
@@ -625,6 +756,12 @@ public class SignatureCorpusTests
         ["Guid"] = Member("Task<string> Get(Guid id)", "Task<string> Get(Guid id) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new Guid(\"11111111-1111-1111-1111-111111111111\"))", "await s.Get(new Guid(\"11111111-1111-1111-1111-111111111112\"))"),
         ["DateTime ticks"] = Member("Task<string> Get(DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(1))"),
         ["DateTimeOffset ticks"] = Member("Task<string> Get(DateTimeOffset at)", "Task<string> Get(DateTimeOffset at) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero))", "await s.Get(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero).AddTicks(1))"),
+        ["raw key DateTime sub-second apart"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(at.ToString(\"O\")); }",
+            "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc).AddMilliseconds(250))"),
+        ["raw key DateTime UTC and unspecified"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTime at)", "Task<string> Get(DateTime at) { Counter.Hit(); return Task.FromResult(at.ToString(\"O\")); }",
+            "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc))", "await s.Get(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Unspecified))"),
+        ["raw key DateTimeOffset sub-second apart"] = Member("Task<string> Get([CacheKey(UseAsRawKey = true)] DateTimeOffset? at)", "Task<string> Get(DateTimeOffset? at) { Counter.Hit(); return Task.FromResult(\"v\"); }",
+            "await s.Get(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero))", "await s.Get(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero).AddMilliseconds(250))"),
         ["TimeSpan"] = Member("Task<string> Get(TimeSpan window)", "Task<string> Get(TimeSpan window) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(TimeSpan.FromSeconds(1))", "await s.Get(TimeSpan.FromSeconds(2))"),
         ["double"] = Member("Task<string> Get(double x)", "Task<string> Get(double x) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(0.1 + 0.2)", "await s.Get(0.3)"),
         ["decimal"] = Member("Task<string> Get(decimal x)", "Task<string> Get(decimal x) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1.5m)", "await s.Get(2.5m)"),
@@ -723,6 +860,23 @@ public class SignatureCorpusTests
                 }
             """, "ISvc<int>", "await s.Get(1)", "await s.Get(2)"),
         ["generic method with interface constraint"] = Member("Task<string> Get<T>(T value) where T : IComparable<T>", "Task<string> Get<T>(T value) where T : IComparable<T> { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1)", "await s.Get(2)"),
+        ["generic method with base class constraint"] = new("""
+                public abstract class Entity { }
+                public sealed class User : Entity { }
+                public sealed class Order : Entity { }
+                public interface ISvc { [Cache] Task<string> Get<T>(int id) where T : Entity; }
+                public class Svc : ISvc { public Task<string> Get<T>(int id) where T : Entity { Counter.Hit(); return Task.FromResult(typeof(T).Name); } }
+            """, "ISvc", "await s.Get<User>(1)", "await s.Get<Order>(1)"),
+        ["uncached generic method with base class constraint"] = new("""
+                public abstract class Entity { }
+                public interface ISvc { [Cache] int Get(int id); T? Find<T>(int id) where T : Entity; T? First<T>() where T : Exception; }
+                public class Svc : ISvc
+                {
+                    public int Get(int id) { Counter.Hit(); return id; }
+                    public T? Find<T>(int id) where T : Entity => null;
+                    public T? First<T>() where T : Exception => null;
+                }
+            """, "ISvc", "s.Get(1)", "s.Get(2)"),
         ["generic constraint from another namespace"] = new("""
                 public interface ISvc
                 {
@@ -900,6 +1054,52 @@ public class SignatureCorpusTests
                     public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult("v"); }
                 }
             """, "ISvc", "await ((IReader)s).Get(1)", "await ((IReader)s).Get(2)"),
+        ["same method name in base and derived interface"] = new("""
+                public interface ILookup { [Cache] Task<string> Find(int id); }
+                public interface ICatalog : ILookup { [Cache] Task<string> Find(string code); }
+                public class Svc : ICatalog
+                {
+                    public Task<string> Find(int id) { Counter.Hit(); return Task.FromResult("id" + id); }
+                    public Task<string> Find(string code) { Counter.Hit(); return Task.FromResult("code" + code); }
+                }
+            """, "ICatalog", "await ((ILookup)s).Find(7)", "await s.Find(\"7\")"),
+        ["same signature cached in two base interfaces"] = new("""
+                public interface IA { [Cache] Task<string> Get(int id); }
+                public interface IB { [Cache] Task<string> Get(int id); }
+                public interface IC : IA, IB { }
+                public class Svc : IC
+                {
+                    Task<string> IA.Get(int id) { Counter.Hit(); return Task.FromResult("a" + id); }
+                    Task<string> IB.Get(int id) { Counter.Hit(); return Task.FromResult("b" + id); }
+                }
+            """, "IC", "await ((IA)s).Get(1)", "await ((IB)s).Get(1)"),
+        ["same signature cached in two closed base interfaces"] = new("""
+                public sealed class A { }
+                public sealed class B { }
+                public interface IRepo<T> { [Cache] Task<string> Get(int id); }
+                public interface IBoth : IRepo<A>, IRepo<B> { }
+                public class Svc : IBoth
+                {
+                    Task<string> IRepo<A>.Get(int id) { Counter.Hit(); return Task.FromResult("a" + id); }
+                    Task<string> IRepo<B>.Get(int id) { Counter.Hit(); return Task.FromResult("b" + id); }
+                }
+            """, "IBoth", "await ((IRepo<A>)s).Get(1)", "await ((IRepo<B>)s).Get(1)"),
+        ["scoped span member next to a cached method"] = new("""
+                public interface ISvc
+                {
+                    [Cache] int Get(int id);
+                    ReadOnlySpan<char> Trim(scoped ReadOnlySpan<char> text);
+                    int Count(scoped ref int value);
+                    int this[scoped ReadOnlySpan<char> name] { get; }
+                }
+                public class Svc : ISvc
+                {
+                    public int Get(int id) { Counter.Hit(); return id; }
+                    public ReadOnlySpan<char> Trim(scoped ReadOnlySpan<char> text) => default;
+                    public int Count(scoped ref int value) => value;
+                    public int this[scoped ReadOnlySpan<char> name] => name.Length;
+                }
+            """, "ISvc", "s.Get(1)", "s.Get(2)"),
         ["interface with properties, events and uncached members"] = new("""
                 public interface ISvc
                 {
@@ -976,6 +1176,10 @@ public class SignatureCorpusTests
                     public Task Clear() => Task.CompletedTask;
                 }
             """, "ISvc", "await s.Get(1)", "await s.Clear(); await s.Get(1)"),
+        ["tags with line separator characters"] = new(
+            "    public interface ISvc { [Cache(\"g\\u2028\", Tags = new[] { \"a\\u2028b\", \"c\\u2029d\", \"e\\u0085f\" })] int Get(int id); }\n" +
+            "    public class Svc : ISvc { public int Get(int id) { Counter.Hit(); return id; } }",
+            "ISvc", "s.Get(1)", "s.Get(2)"),
         ["dynamic tags"] = new("""
                 public interface ISvc
                 {
@@ -1026,5 +1230,58 @@ public class SignatureCorpusTests
                     public Task<string> Get(int id) { Counter.Hit(); return Task.FromResult("v"); }
                 }
             """, "ISvc", "await s.Get(1)", "await s.Get(2)"),
+
+        // Framework types are written by their value, not their public properties (BigInteger has IsZero and Sign,
+        // IPAddress throws from ScopeId), so two values never share a key
+        ["BigInteger parameter"] = Member("Task<string> Get(BigInteger n)", "Task<string> Get(BigInteger n) { Counter.Hit(); return Task.FromResult(n.ToString()); }", "await s.Get(new BigInteger(3))", "await s.Get(new BigInteger(5))", usings: "using System.Numerics;"),
+        ["Complex parameter"] = Member("Task<string> Get(Complex c)", "Task<string> Get(Complex c) { Counter.Hit(); return Task.FromResult(c.ToString()); }", "await s.Get(new Complex(1, 2))", "await s.Get(new Complex(2, 1))", usings: "using System.Numerics;"),
+        ["IPAddress parameter"] = Member("Task<string> Get(IPAddress ip)", "Task<string> Get(IPAddress ip) { Counter.Hit(); return Task.FromResult(ip.ToString()); }", "await s.Get(IPAddress.Parse(\"10.0.0.1\"))", "await s.Get(IPAddress.Parse(\"10.0.0.2\"))", usings: "using System.Net;"),
+        ["JsonElement parameter"] = Member("Task<string> Get(JsonElement filter)", "Task<string> Get(JsonElement filter) { Counter.Hit(); return Task.FromResult(filter.GetRawText()); }", "await s.Get(JsonDocument.Parse(\"{\\\"a\\\":1}\").RootElement)", "await s.Get(JsonDocument.Parse(\"{ \\\"a\\\": 2 }\").RootElement)", usings: "using System.Text.Json;"),
+        ["Version parameter"] = Member("Task<string> Get(Version version)", "Task<string> Get(Version version) { Counter.Hit(); return Task.FromResult(version.ToString()); }", "await s.Get(new Version(1, 2, 3))", "await s.Get(new Version(1, 2, 4))"),
+        ["Uri parameter"] = Member("Task<string> Get(Uri uri)", "Task<string> Get(Uri uri) { Counter.Hit(); return Task.FromResult(uri.ToString()); }", "await s.Get(new Uri(\"https://example.com/a\"))", "await s.Get(new Uri(\"https://example.com/b\"))"),
+        ["DateOnly and TimeOnly parameters"] = Member("Task<string> Get(DateOnly day, TimeOnly time)", "Task<string> Get(DateOnly day, TimeOnly time) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new DateOnly(2026, 1, 1), new TimeOnly(12, 0))", "await s.Get(new DateOnly(2026, 1, 1), new TimeOnly(12, 1))"),
+        ["Int128 parameter"] = Member("Task<string> Get(Int128 id)", "Task<string> Get(Int128 id) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(Int128.MaxValue)", "await s.Get(Int128.MaxValue - 1)"),
+        ["ReadOnlyMemory parameter"] = Member("Task<string> Get(ReadOnlyMemory<int> ids)", "Task<string> Get(ReadOnlyMemory<int> ids) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new[] { 1, 2 })", "await s.Get(new[] { 1, 3 })"),
+        ["BigInteger list parameter"] = Member("Task<string> Get(List<BigInteger> ids)", "Task<string> Get(List<BigInteger> ids) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new List<BigInteger> { 3 })", "await s.Get(new List<BigInteger> { 5 })", usings: "using System.Numerics;"),
+        ["record with a BigInteger and an IPAddress"] = Member("Task<string> Get(Account account)", "Task<string> Get(Account account) { Counter.Hit(); return Task.FromResult(\"v\"); }",
+            "await s.Get(new Account(new BigInteger(3), IPAddress.Loopback))", "await s.Get(new Account(new BigInteger(5), IPAddress.Loopback))",
+            extraTypes: "public sealed record Account(BigInteger Balance, IPAddress Origin);", usings: "using System.Net;\nusing System.Numerics;"),
+        ["Index and Range parameters"] = Member("Task<string> Get(Index at, Range span)", "Task<string> Get(Index at, Range span) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1, 1..3)", "await s.Get(^1, 1..3)"),
+        ["Range parameter from the end"] = Member("Task<string> Get(Range span)", "Task<string> Get(Range span) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(1..3)", "await s.Get(1..^3)"),
+        ["Vector2 parameter"] = Member("Task<string> Get(Vector2 at)", "Task<string> Get(Vector2 at) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new Vector2(1, 2))", "await s.Get(new Vector2(2, 1))", usings: "using System.Numerics;"),
+        ["Quaternion parameter"] = Member("Task<string> Get(Quaternion rotation)", "Task<string> Get(Quaternion rotation) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(new Quaternion(1, 2, 3, 4))", "await s.Get(new Quaternion(1, 2, 3, 5))", usings: "using System.Numerics;"),
+        ["Matrix4x4 parameter"] = Member("Task<string> Get(Matrix4x4 transform)", "Task<string> Get(Matrix4x4 transform) { Counter.Hit(); return Task.FromResult(\"v\"); }", "await s.Get(Matrix4x4.CreateScale(2))", "await s.Get(Matrix4x4.CreateScale(3))", usings: "using System.Numerics;"),
+        ["SDK model in a Microsoft namespace"] = new("""
+            }
+
+            namespace Microsoft.Graph.Models
+            {
+                public sealed class User
+                {
+                    public string Id { get; set; } = "";
+                    public string DisplayName { get; set; } = "";
+                }
+            }
+
+            namespace Corpus
+            {
+                public interface ISvc
+                {
+                    [Cache] Task<string> Get(Microsoft.Graph.Models.User user);
+                }
+
+                public class Svc : ISvc
+                {
+                    public Task<string> Get(Microsoft.Graph.Models.User user) { Counter.Hit(); return Task.FromResult(user.DisplayName); }
+                }
+            """, "ISvc", "await s.Get(new Microsoft.Graph.Models.User { Id = \"1\", DisplayName = \"a\" })", "await s.Get(new Microsoft.Graph.Models.User { Id = \"2\", DisplayName = \"a\" })"),
+        ["read-only list result"] = Member("Task<IReadOnlyList<string>> Get(int id)", "Task<IReadOnlyList<string>> Get(int id) { Counter.Hit(); return Task.FromResult<IReadOnlyList<string>>(new[] { \"v\" }); }", "await s.Get(1)", "await s.Get(2)"),
     };
+}
+
+/// <summary>An interface from another assembly, for <c>[assembly: CacheInterface]</c> cases.</summary>
+public interface IExternalTextFormatter
+{
+    /// <summary>Formats the text.</summary>
+    string Format(System.Text.StringBuilder text);
 }

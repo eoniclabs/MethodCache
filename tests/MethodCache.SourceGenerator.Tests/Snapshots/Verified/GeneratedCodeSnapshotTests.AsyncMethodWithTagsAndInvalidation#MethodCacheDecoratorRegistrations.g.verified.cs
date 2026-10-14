@@ -10,7 +10,7 @@ using global::MethodCache.Policies;
 namespace MethodCache.Generated
 {
     [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
-    internal static class MethodCacheDecoratorRegistrations
+    internal static partial class MethodCacheDecoratorRegistrations
     {
         [global::System.Runtime.CompilerServices.ModuleInitializer]
         internal static void Register()

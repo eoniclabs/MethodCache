@@ -13,95 +13,99 @@ using global::Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Generated
 {
-    internal static class GeneratedPolicyRegistrations
+    internal static partial class MethodCacheDecoratorRegistrations
     {
-        public static void AddPolicies(global::System.Collections.Generic.ICollection<global::MethodCache.Policies.PolicySourceRegistration> registrations)
+        [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
+        private static class GeneratedPolicyRegistrations
         {
-            if (registrations == null)
+            public static void AddPolicies(global::System.Collections.Generic.ICollection<global::MethodCache.Policies.PolicySourceRegistration> registrations)
             {
-                throw new global::System.ArgumentNullException(nameof(registrations));
-            }
-            registrations.Add(new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));
-        }
-
-        public static void AddPolicies(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
-        {
-            if (services == null)
-            {
-                throw new global::System.ArgumentNullException(nameof(services));
-            }
-
-            // Every decorated interface calls this, so register the source only once per collection
-            foreach (var descriptor in services)
-            {
-                if (descriptor.ServiceType == typeof(RegistrationMarker))
+                if (registrations == null)
                 {
-                    return;
+                    throw new global::System.ArgumentNullException(nameof(registrations));
                 }
+                registrations.Add(new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));
             }
 
-            services.AddSingleton(new RegistrationMarker());
-            services.AddSingleton<global::MethodCache.Policies.PolicySourceRegistration>(_ => new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));
-        }
-
-        private sealed class RegistrationMarker
-        {
-        }
-
-        private sealed class GeneratedAttributePolicySource : global::MethodCache.Policies.IPolicySource
-        {
-            public string SourceId => "attributes";
-
-            public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>> GetSnapshotAsync(global::System.Threading.CancellationToken cancellationToken = default)
+            public static void AddPolicies(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var timestamp = global::System.DateTimeOffset.UtcNow;
-                var snapshots = new global::System.Collections.Generic.List<global::MethodCache.Policies.PolicySnapshot>(3);
-                snapshots.Add(BuildSnapshot_0(timestamp));
-                snapshots.Add(BuildSnapshot_1(timestamp));
-                snapshots.Add(BuildSnapshot_2(timestamp));
-                return global::System.Threading.Tasks.Task.FromResult<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>>(snapshots);
+                if (services == null)
+                {
+                    throw new global::System.ArgumentNullException(nameof(services));
+                }
+
+                // Every decorated interface calls this, so register the source only once per collection
+                foreach (var descriptor in services)
+                {
+                    if (descriptor.ServiceType == typeof(RegistrationMarker))
+                    {
+                        return;
+                    }
+                }
+
+                services.AddSingleton(new RegistrationMarker());
+                services.AddSingleton<global::MethodCache.Policies.PolicySourceRegistration>(_ => new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));
             }
 
-            public global::System.Collections.Generic.IAsyncEnumerable<global::MethodCache.Policies.PolicyChange> WatchAsync(global::System.Threading.CancellationToken cancellationToken = default)
-                => global::MethodCache.Infrastructure.PolicySourceAsyncEnumerable.Empty(cancellationToken);
-        }
-
-        private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_0(global::System.DateTimeOffset timestamp)
-        {
-            var policy = global::MethodCache.Policies.CachePolicy.Empty;
-            var fields = global::MethodCache.Policies.CachePolicyFields.None;
-            policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
-            var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
+            private sealed class RegistrationMarker
             {
-                ["priority"] = "10"
-            };
-            return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.ICatalog.Get(int)", policy, timestamp, metadata);
-        }
+            }
 
-        private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_1(global::System.DateTimeOffset timestamp)
-        {
-            var policy = global::MethodCache.Policies.CachePolicy.Empty;
-            var fields = global::MethodCache.Policies.CachePolicyFields.None;
-            policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
-            var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
+            private sealed class GeneratedAttributePolicySource : global::MethodCache.Policies.IPolicySource
             {
-                ["priority"] = "10"
-            };
-            return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.ICatalog.Get(string)", policy, timestamp, metadata);
-        }
+                public string SourceId => "attributes";
 
-        private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_2(global::System.DateTimeOffset timestamp)
-        {
-            var policy = global::MethodCache.Policies.CachePolicy.Empty;
-            var fields = global::MethodCache.Policies.CachePolicyFields.None;
-            policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
-            var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
+                public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>> GetSnapshotAsync(global::System.Threading.CancellationToken cancellationToken = default)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var timestamp = global::System.DateTimeOffset.UtcNow;
+                    var snapshots = new global::System.Collections.Generic.List<global::MethodCache.Policies.PolicySnapshot>(3);
+                    snapshots.Add(BuildSnapshot_0(timestamp));
+                    snapshots.Add(BuildSnapshot_1(timestamp));
+                    snapshots.Add(BuildSnapshot_2(timestamp));
+                    return global::System.Threading.Tasks.Task.FromResult<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>>(snapshots);
+                }
+
+                public global::System.Collections.Generic.IAsyncEnumerable<global::MethodCache.Policies.PolicyChange> WatchAsync(global::System.Threading.CancellationToken cancellationToken = default)
+                    => global::MethodCache.Infrastructure.PolicySourceAsyncEnumerable.Empty(cancellationToken);
+            }
+
+            private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_0(global::System.DateTimeOffset timestamp)
             {
-                ["priority"] = "10"
-            };
-            return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.ICatalog.Load", policy, timestamp, metadata);
-        }
+                var policy = global::MethodCache.Policies.CachePolicy.Empty;
+                var fields = global::MethodCache.Policies.CachePolicyFields.None;
+                policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
+                var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
+                {
+                    ["priority"] = "10"
+                };
+                return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.ICatalog.Get(int)", policy, timestamp, metadata);
+            }
 
+            private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_1(global::System.DateTimeOffset timestamp)
+            {
+                var policy = global::MethodCache.Policies.CachePolicy.Empty;
+                var fields = global::MethodCache.Policies.CachePolicyFields.None;
+                policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
+                var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
+                {
+                    ["priority"] = "10"
+                };
+                return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.ICatalog.Get(string)", policy, timestamp, metadata);
+            }
+
+            private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_2(global::System.DateTimeOffset timestamp)
+            {
+                var policy = global::MethodCache.Policies.CachePolicy.Empty;
+                var fields = global::MethodCache.Policies.CachePolicyFields.None;
+                policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
+                var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
+                {
+                    ["priority"] = "10"
+                };
+                return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.ICatalog.Load", policy, timestamp, metadata);
+            }
+
+        }
     }
 }

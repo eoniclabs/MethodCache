@@ -68,7 +68,8 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("namespace MethodCache.Generated");
                 sb.AppendLine("{");
                 sb.AppendLine("    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
-                sb.AppendLine("    internal static class MethodCacheDecoratorRegistrations");
+                // Partial: the policy registrations it refers to are nested in it, so they never clash across assemblies
+                sb.AppendLine("    internal static partial class MethodCacheDecoratorRegistrations");
                 sb.AppendLine("    {");
                 sb.AppendLine("        [global::System.Runtime.CompilerServices.ModuleInitializer]");
                 sb.AppendLine("        internal static void Register()");
@@ -153,11 +154,16 @@ namespace MethodCache.SourceGenerator
                 return true;
             }
 
+            /// <summary>
+            /// Whether generated code in the type's own assembly can name it. A <c>file</c> class reports internal
+            /// accessibility but can only be named from its own file.
+            /// </summary>
             internal static bool IsAccessibleFromAssembly(INamedTypeSymbol? type)
             {
                 for (var current = type; current != null; current = current.ContainingType)
                 {
-                    if (current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
+                    if (current.IsFileLocal ||
+                        current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
                     {
                         return false;
                     }

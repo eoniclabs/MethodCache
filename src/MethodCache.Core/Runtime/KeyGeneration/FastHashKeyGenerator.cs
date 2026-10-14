@@ -167,11 +167,12 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
                 break;
             case float f:
                 WriteTag(writer, Tag.Single);
-                WriteInt32(writer, BitConverter.SingleToInt32Bits(f == 0 ? 0f : f)); // -0 and 0 are one key
+                // -0 and 0 are different inputs (1 / x tells them apart), as on the inline key path; every NaN is one key
+                WriteInt32(writer, BitConverter.SingleToInt32Bits(float.IsNaN(f) ? float.NaN : f));
                 break;
             case double d:
                 WriteTag(writer, Tag.Double);
-                WriteInt64(writer, BitConverter.DoubleToInt64Bits(d == 0 ? 0d : d));
+                WriteInt64(writer, BitConverter.DoubleToInt64Bits(double.IsNaN(d) ? double.NaN : d));
                 break;
             case decimal dec:
                 // The string keeps the scale, so 1.0m and 1.00m are different keys, as decimal.ToString shows them
@@ -207,7 +208,7 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
                 break;
             default:
                 WriteTag(writer, Tag.Object);
-                WriteString(writer, TypeName(arg.GetType()));
+                WriteString(writer, TypeName(KeyArguments.KeyType(arg)));
                 WriteBytes(writer, KeyArguments.Serialize(arg));
                 break;
         }

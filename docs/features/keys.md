@@ -30,6 +30,8 @@ public interface IUserService
   starts with that type, so an array and a list with the same elements stay two entries.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
   generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
+- **Framework types** are written by their value wherever they appear, not by their public properties; see
+  [Framework types](#framework-types). Other framework types are a build error.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.
@@ -39,6 +41,8 @@ public interface IUserService
   different keys, and so do two `Circle`s behind a `Shape` property that differ only in `Radius`.
 - A `CancellationToken` parameter is never part of the key.
 - Keys don't depend on the current culture: `-1`, `1.5` and dates are written the same under every culture.
+- `0.0` and `-0.0` are two keys in every key form (`1 / x` tells them apart). `NaN` and the infinities work anywhere,
+  also inside a hashed argument, such as `double.PositiveInfinity` as a "no limit" value in a filter record.
 
 On .NET 9 and later the decorator writes simple keys into a stack buffer and looks them up without allocating.
 
@@ -60,6 +64,27 @@ public sealed class TenantId(Guid value) : ICacheKeyProvider
 }
 ```
 <!-- endSnippet -->
+
+## Framework types
+
+Types from .NET itself often keep their value out of their public properties (`BigInteger` has `IsZero` and
+`Sign`, `IPAddress.ScopeId` throws for IPv4), so writing those would give different values one key. These go through
+the key generator, which writes their value, in an argument of their own or inside a record, collection or tuple:
+
+- `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`, `DateOnly`, `TimeOnly`
+- `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`
+- `Uri`, `Version`, `IPAddress` (`IPAddress.Loopback` and `IPAddress.Parse("127.0.0.1")` share a key)
+- `JsonElement`, as its JSON, so `{"a":1}` and `{ "a": 1 }` share a key
+- `Index`, `Range`, `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane`, `Matrix3x2`, `Matrix4x4`
+- ASP.NET Core's `PathString`, `QueryString` and `HostString`
+- arrays, collections, `Memory<T>`, `Tuple`, `ValueTuple` and `KeyValuePair` of these
+
+Any other type from .NET itself, ASP.NET Core or Microsoft.Extensions in a key (one from an assembly named
+`System.*`, `Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`), such as `StringBuilder` (which can change after
+the call), `CultureInfo`, `Stream`, `Type` or a delegate, is build error
+[MCG018](../user-guide/DIAGNOSTICS.md#mcg018), also as a property of your own record. Pass a value that identifies
+it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`. Other libraries' models, such
+as an SDK's classes in a `Microsoft.*` namespace, are written by their public properties like your own types.
 
 ## Readable keys while debugging
 
@@ -95,7 +120,10 @@ public interface IDocumentStore
 ```
 <!-- endSnippet -->
 
-Strings are used as they are. Numbers, dates and other formattable values are written in the invariant culture;
+Strings are used as they are. Dates are written as in generated keys (`MethodCacheKeys.Part`), in the round-trip
+format (`2026-01-01T12:00:00.2500000Z`): fractions of a second and a `DateTimeOffset`'s offset are part of the key,
+and a local `DateTime` is written as UTC, so the key doesn't depend on the server's time zone and a local time and the
+UTC time of the same instant share an entry. Numbers and other formattable values are written in the invariant culture;
 any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
 prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
 your own code builds, never for text a caller controls; see [Security](../security.md).
@@ -139,6 +167,12 @@ var overload = MethodCacheKeys.For(
   [Expiration](expiration.md#versions).
 - **Overloaded methods** have their parameter types in their keys, so overloads never share entries. See
   [method ids](configuration.md#appsettingsjson).
+- **A method name that another interface in the hierarchy also declares** gets the same treatment. Keys start with
+  the decorated interface, so for `ICatalog : ILookup` with `ILookup.Find(int)` and `ICatalog.Find(string)` the keys
+  are `MyApp.ICatalog.Find(int):7` and `MyApp.ICatalog.Find(string):7`. When two base interfaces declare the same
+  signature, the declaring interface is added too: for `IC : IA, IB` that both declare `Get(int)`, the keys are
+  `MyApp.IC.MyApp.IA.Get(int):1` and `MyApp.IC.MyApp.IB.Get(int):1`. Policy ids don't change; each
+  method keeps the id of the interface that declares it.
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](monitoring.md)).
 

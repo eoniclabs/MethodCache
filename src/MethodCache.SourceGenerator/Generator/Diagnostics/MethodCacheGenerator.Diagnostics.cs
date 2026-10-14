@@ -137,6 +137,33 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MCG014"));
 
+            internal static readonly DiagnosticDescriptor NotInterceptableMember = new(
+                id: "MCG017",
+                title: "Cache attribute on a member the decorator can't intercept",
+                messageFormat: "[{0}] on '{1}' does nothing: the decorator only implements public, non-static members that a class can implement, and this one is {2}. Make it a public interface method without 'static', 'private' or 'sealed', or remove the attribute.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG017"));
+
+            internal static readonly DiagnosticDescriptor FrameworkTypeWithoutKeyForm = new(
+                id: "MCG018",
+                title: "Cache key argument has a framework type without a key form",
+                messageFormat: "[Cache] on '{0}' is not supported: '{1}' is a '{2}', a framework type the cache key can't be written from, so different values could share a key. Pass a value that identifies it, such as a string or an id, or wrap it in a type that implements ICacheKeyProvider.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG018"));
+
+            internal static readonly DiagnosticDescriptor UnrestorableResultType = new(
+                id: "MCG019",
+                title: "Cached result type can't be read back from a distributed cache",
+                messageFormat: "'{0}' returns '{1}', and '{2}' is not a concrete type: when a distributed cache is used, the serializer can't restore the runtime type from it, and with the default round-trip check these results are kept in memory only. Return a concrete type to share them through the distributed cache.",
+                category: "MethodCacheGenerator",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MCG019"));
+
             internal static readonly DiagnosticDescriptor UnsupportedInterface = new(
                 id: "MCG013",
                 title: "Interface cannot be cached",

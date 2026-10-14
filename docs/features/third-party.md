@@ -46,6 +46,10 @@ builder.Services.AddMethodCache(config => config
   for example `FxVendor.IFxRatesClient.GetRateAsync`.
 - List each interface once. It must be non-generic and come from another assembly; for your own interfaces, put
   `[Cache]` on the methods. A method with overloads can't be listed yet.
+- The attribute can live in a class library, such as your infrastructure project. `AddMethodCache()` finds it in
+  every loaded assembly that references MethodCache, even when none of the library's code has run yet. The runtime
+  loads a library when code that uses one of its types runs, so a library your application never uses in code is
+  not searched; registering one of its types, or `typeof` of one, is enough.
 - Mistakes are build errors: [MCG010](../user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
   static abstract or non-public abstract members), [MCG011](../user-guide/DIAGNOSTICS.md#mcg011) (a method that is
   missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](../user-guide/DIAGNOSTICS.md#mcg012) (an

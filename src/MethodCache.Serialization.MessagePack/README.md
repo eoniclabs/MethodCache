@@ -58,3 +58,6 @@ covers how the distributed cache works, outages and options. [Cache keys](https:
 covers the other key generators.
 
 MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
+
+`IPAddress` and `JsonElement` arguments are written as their text (a `JsonElement` as its JSON), like the other key
+generators do, instead of their properties; keys of such arguments change.

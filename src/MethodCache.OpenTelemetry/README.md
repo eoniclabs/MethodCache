@@ -85,7 +85,7 @@ Spans come from the `MethodCache` activity source. Lookups and misses are named 
 | Attribute | Description | Example |
 |-----------|-------------|---------|
 | `cache.operation` | `cache.get` or `cache.delete` | `cache.get` |
-| `cache.method` | Method name, or the invalidation call | `MyApp.IUserService.GetUserAsync` |
+| `cache.method` | Method id, or the invalidation call | `MyApp.IUserService.GetUserAsync` |
 | `cache.hit` | Whether the value came from the cache | `true` |
 | `cache.key` | The key, with `RecordCacheKeys` and `HashCacheKeys = false` | `MyApp.IUserService.GetUserAsync:42` |
 | `cache.key_hash` | Base64 SHA-256 of the key, with `RecordCacheKeys` | `3q2+7w...=` |
@@ -104,7 +104,9 @@ A failed operation also sets the span status to Error and adds an `exception` ev
 ## Metrics
 
 Metric dimensions are kept to values with few variants (`method`, `group`, `version`, `error.type`), so a tag such
-as `user:42` never becomes a time series of its own.
+as `user:42` never becomes a time series of its own. `method` is the method id that `GET /methodcache/methods` and
+`appsettings.json` use, such as `MyApp.IUserService.GetUserAsync`, so `IUserService.GetAsync` and
+`IOrderService.GetAsync` are two series; a generic interface reports its closed type, such as `IRepository<User>.Get`.
 
 | Metric | Type | Description | Dimensions |
 |--------|------|-------------|------------|

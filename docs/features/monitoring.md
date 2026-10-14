@@ -99,7 +99,8 @@ builder.Services.AddConsoleCacheMetrics();   // "Cache Hit: ...", "Cache Miss: .
 <!-- endSnippet -->
 
 Or implement the interface. Each cached call is reported once, as a hit or a miss; errors and load times are reported
-when your method runs:
+when your method runs. `methodName` is the method id, such as `MyApp.IUserService.GetUserAsync`, the same id the admin
+endpoints list (a generic interface reports its closed type, such as `IRepository<User>.Get`):
 
 <!-- snippet: monitoring-metrics-provider -->
 ```cs

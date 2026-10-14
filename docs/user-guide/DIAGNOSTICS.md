@@ -23,6 +23,9 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
 | [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
 | [MCG016](#mcg016) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
+| [MCG017](#mcg017) | Warning | `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member | |
+| [MCG018](#mcg018) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
+| [MCG019](#mcg019) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 
 ## MC0001
 
@@ -114,7 +117,8 @@ instead). It is also reported when the attribute lists no methods. See the [thir
 ## MCG011
 
 `[assembly: CacheInterface]` lists a method that is missing, overloaded or static, or one that `[Cache]` would reject:
-it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, or returns a lazy sequence. Use
+it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, a framework type without a key
+form ([MCG018](#mcg018)), or returns a lazy sequence. Use
 `nameof(IClient.Method)` so a rename is caught by the compiler. See the
 [third-party caching page](../features/third-party.md).
 
@@ -149,3 +153,45 @@ attribute.
 The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for
 parameters `name` and `Name`. Use the intended parameter's exact spelling. Until corrected, the placeholder remains
 literal in both cached tags and invalidation.
+
+## MCG017
+
+`[Cache]` or `[CacheInvalidate]` is on an interface member the decorator can't intercept: a `static` member, a
+`private` or other non-public member with a body, or a `sealed` one. The decorator implements the interface for a
+class, and a class can't implement those members, so calls to them never reach the cache and the attribute does
+nothing. Put the attribute on a public interface method without `static`, `private` or `sealed` (one without a body,
+or a public default method), or remove it.
+
+## MCG018
+
+A key argument has a type from .NET itself, ASP.NET Core or Microsoft.Extensions (an assembly named `System.*`,
+`Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`) that the cache key can't be written from: the
+argument itself, an element of a collection or tuple, or a public property or field of your own type, such as
+`StringBuilder`, `CultureInfo`, `Stream`, `Type` or a `Func<T>`. Their public properties don't hold their value, or the
+value can change after the call (a `StringBuilder`), so two different arguments could share a key and one caller
+would get another's result. The message names the value, such as `'note.Text' is a 'StringBuilder'`.
+
+Pass a value that identifies it instead, such as a string, an id or a culture name, or wrap it in a type that
+implements `ICacheKeyProvider` (see [Cache keys](../features/keys.md#framework-types)). The key ignores the rest of the
+arguments when one has `[CacheKey(UseAsRawKey = true)]`, so the error is not reported then.
+
+Framework types with a key form are written by their value: `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`,
+`DateOnly`, `TimeOnly`, `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`, `Uri`, `Version`, `IPAddress` and
+`JsonElement` (as its JSON, so whitespace doesn't count), `Index`, `Range`, `Vector2`, `Vector3`, `Vector4`,
+`Quaternion`, `Plane`, `Matrix3x2`, `Matrix4x4`, and ASP.NET Core's `PathString`, `QueryString` and `HostString`, as
+well as arrays, collections, `Memory<T>`, tuples and `KeyValuePair` of those. Models from other libraries, such as
+an SDK's classes in a `Microsoft.*` namespace, are not framework types: they are written by their public properties
+like your own.
+
+## MCG019
+
+The cached method's result type, after `Task<T>` or `ValueTask<T>`, is `object`, an interface such as `IComparable` or
+`IShape`, or an abstract class, or has one as an element (`List<object>`). A distributed cache stores results as
+JSON or MessagePack of the declared type, which can't say which class to create when it reads them back. When a
+distributed cache is used, the default round-trip check finds that such a result doesn't read back, and keeps it in the
+in-memory cache only. Collection interfaces such as
+`IReadOnlyList<Product>` are fine; they are read back as a list.
+
+Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
+cache. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
+`#pragma warning disable MCG019` or `<NoWarn>` in the project.
