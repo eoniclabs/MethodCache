@@ -70,6 +70,20 @@ The hash-only component varies both Int and canonical GUID argument text at ever
 this gives eighteen lookup cases, thirty-two facade/key-build cases and four references. Do not pool
 the earlier int-only hash-component results with the expanded matrix.
 
+`PrefixHitPathBenchmarks` controls facade calls and stack-buffer sizes by hand. It does not call the generated
+decorator. `GeneratedPrefixHitPathBenchmarks` separately calls actual generated short/long service interfaces,
+with both listener states and sync/Task/ValueTask hits and distinct-key misses. GUID workloads and explicit int
+regression controls have separate parameter labels; never pool their results. The real long namespace crosses
+256 key characters. Setup proves the declared key length, three initial populations, repeated resident hits
+without new origin calls, and thirty unique misses. The expanded component inventory has 102 cases:
+18 lookup, 36 facade/reference, and 48 generated-interface cases. Split those three families into separately
+bounded measurement batches, preserving every case and all three independent rounds.
+
+Use each PR's actual merge base. In particular, constructor PR132 starts at `9767fec`, not the newer HTTP/net10
+candidate, and SipHash PR133 starts at constructor `2b3cb93`. Measure the isolated SipHash head separately from
+the final combination; the latter also contains the HTTP header-copy change. The cumulative comparison stays
+`f43854d` against the final runtime. Flattening these branches into neighboring points would confound changes.
+
 ## Cold HTTP publication versus growing-cache pressure
 
 The original `HttpResponsePathBenchmarks.Miss` grows its resident set across iterations. The older

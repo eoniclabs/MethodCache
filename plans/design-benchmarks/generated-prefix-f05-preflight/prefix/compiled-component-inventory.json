@@ -1,0 +1,416 @@
+{
+  "lookup": [
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters: 4, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters: 4, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters: 4, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters: 4, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters: 4, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters: 4, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters: 80, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters: 80, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters: 80, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters: 80, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters: 80, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters: 80, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters: 256, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters: 256, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters: 256, ArgumentKind: \"Guid\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters: 256, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters: 256, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters: 256, ArgumentKind: \"Int\")",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks"
+    }
+  ],
+  "facade": [
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 4, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 4, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 4, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 4, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 4, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 4, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 4, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 4, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 4, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 4, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 4, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 4, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 4, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 4, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 4, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 4, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 256, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 256, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 256, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 256, BufferCharacters: 128, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 256, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 256, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 256, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 256, BufferCharacters: 128, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 256, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 256, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 256, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 256, BufferCharacters: 512, Listening: False)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit(MethodNameLength: 256, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit(MethodNameLength: 256, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength: 256, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild(MethodNameLength: 256, BufferCharacters: 512, Listening: True)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.ReadyKeySync",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.BuiltKeySync",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.ReadyKeyTask",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.BuiltKeyTask",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks"
+    }
+  ],
+  "generated": [
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: False, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: False, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: False, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: False, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: False, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: False, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: False, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: False, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: False, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: False, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: False, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: False, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: False, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: False, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: False, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: False, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: False, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: False, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: False, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: False, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: False, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: False, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: False, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: False, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: True, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: True, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: True, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: True, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: True, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: True, Listening: False, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: True, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: True, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: True, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: True, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: True, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: True, Listening: False, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: True, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: True, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: True, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: True, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: True, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: True, Listening: True, ArgumentKind: Int)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix: True, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix: True, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix: True, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix: True, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix: True, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    },
+    {
+      "full_name": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix: True, Listening: True, ArgumentKind: Guid)",
+      "report_type": "MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks"
+    }
+  ]
+}

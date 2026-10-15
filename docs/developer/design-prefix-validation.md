@@ -80,10 +80,10 @@ Author-reported comparison against #132 (Marvin), median of three runs per side:
 `ValueTask(int)` hit −13 %, `Sync(int)` hit +8 %, `Task(int)` hit +5 %, with no added allocations. Marvin's cost
 depended on the method name's length: with an even prefix length, its first 4-byte read of the suffix spans two
 separate stores and stalls on x64. SipHash packs a short tail such as an `int` from 2-byte loads, so short arguments
-have no such dependence. Longer arguments such as GUIDs are read in 8-byte words; the author's follow-up at
-4bddd4a notes that words spanning separate stores still depend on prefix length modulo four. The
-reported `int` median differences exceed 3 %. These medians do not supply section 10's required 95 %
-intervals over independent run means or its complete workload matrix. Algorithm selection and timing
-acceptance have separate proof requirements. PR135 supplies common GUID workloads; verify identical
-key types and workloads across compared revisions before the final series.
-Existing int diagnostics remain separate and do not become GUID before/after results.
+have no such dependence. The author's follow-up at 4f6cd73 reports no measurable full-path gain
+from reading every GUID word two bytes at a time, so longer arguments retain eight-byte reads.
+The reported `int` median differences exceed 3 %. These medians do not supply section 10's required
+95 % intervals over independent run means or its complete workload matrix. Algorithm selection and
+timing acceptance have separate proof requirements; no timing waiver is inferred from selecting GUID
+workloads. PR135 supplies common GUID workloads. Existing int diagnostics and new explicit int
+controls remain separate from GUID before/after results.
