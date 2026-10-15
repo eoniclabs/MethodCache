@@ -18,8 +18,9 @@ constructor/hash candidates and section-10 timing are excluded.
 [Exact current standalone head, exits and logs](../../plans/design-benchmarks/net10-functional-9767fec/).
 Earlier [e84a549](../../plans/design-benchmarks/net10-functional-e84a549/) and
 [b518139](../../plans/design-benchmarks/net10-functional-b518139/) receipts remain historical.
-The .NET-10-only #130 head befb50a also passes all three platform and aggregate
-statuses; #129 head 0dae335 still requires its current-head result.
+The earlier .NET-10-only #130 head befb50a also passes all three platform and aggregate
+statuses. Current #129 f793d0a and #130 1b43211 forward the existing final telemetry/null-key
+fixtures and require their own fresh statuses; the old 0dae335 macOS net9 failure is retained below.
 
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
@@ -470,3 +471,52 @@ exit 128, before build or tests started. The cause of the unreadable tree is unp
 this is neither a functional test failure nor a functional pass. Preserve the
 [original checkout output](../../plans/design-benchmarks/siphash-macos-checkout-observation/)
 and require fresh combined-head verification.
+
+## Allocation fixture follow-up in the lower stack
+
+HTTP head 0dae335 passes all Linux jobs and Windows build/unit jobs but fails its
+macOS unit job: the old no-listener telemetry probe observes 1,880 bytes instead of zero.
+The sole failed Core suite is net9.0; its net8/net10 Core suites each pass 1,022 facts.
+The original byte cause remains unproven. The already-verified final owned-thread,
+warmed NoInlining fixture and distinct null-key fact are now forwarded unchanged to
+#129 f793d0a and #130 1b43211. Complete local net10 Core suites pass 1,023 facts in
+both checkouts, with one intentional soak skip and no duplicate-ID warning.
+Shipped source is unchanged, .NET 10 remains the final supported target, and new-head
+CI remains required. The existing sensitivity failures remain preserved alongside
+[the original 1,880-byte failure and final local green outputs](../../plans/design-benchmarks/telemetry-allocation-probe/lower-stack-0dae/).
+
+## SipHash functional checkpoint
+
+Exact PR133 head 83b92c6 passes all ten Linux jobs and macOS/Windows build/unit jobs,
+with all three platform and aggregate statuses success. The main Linux job passes
+2,520 facts in 16 projects, zero failures and one intentional opt-in soak skip.
+Required Redis/SQL, 91 randomized properties, enabled soak, cultures, demo, AOT172,
+installed packages and docs pass; cumulative diff coverage is 3,467/3,690 (94.0%).
+This includes the constructor/SipHash runtime and final standalone fixtures. The fresh
+macOS pass does not explain the earlier unreadable-tree checkout failure. PR134's newer
+component harness, final GUID workloads, latest lower-stack heads and section-10 timing
+are separate gates. [Exact head, exits, original hashes and logs](../../plans/design-benchmarks/siphash-functional-83b92c6/).
+
+## Combined component-capability checkpoint
+
+Exact PR134 head 3700ade passes all 14 Linux/macOS/Windows jobs and all three platform
+and aggregate statuses. Linux passes 2,521 facts in 16 projects, zero failures and one
+intentional opt-in soak skip. Required native providers, 91 randomized properties,
+enabled soak, cultures, demo, AOT172, installed packages and docs pass; cumulative
+coverage is 3,467/3,690 (94.0%). This includes the published component-capability fix.
+It excludes the later workload-inventory tooling, final GUID workloads and timing.
+[Exact source, exits and complete selected logs](../../plans/design-benchmarks/combined-functional-3700ade/).
+
+## Compiled workload matrix preflight
+
+The old full-series count expected 46 local cases, but the existing GUID/string additions
+compile to 48 local cases plus 16 native cases. The actual inventory check failed before
+the count was replaced. The harness now obtains cases from BenchmarkDotNet's converter
+and exact filters, compares the complete names across revisions, and verifies every
+measured name once with twelve actual workload samples. Duplicate/substituted cases and
+warmup-only reports fail. The baseline f43854d and combined runtime compile identical
+preliminary inventories; six preserved completed contract reports pass the new verifier.
+All 40 validation tests and the CI Python suite pass (47 run, two SDK-specific skips).
+Separate HTTP, net10 and constructor comparison points remain in the planned twelve-point
+cohort. These checks do not freeze the final GUID source or prove timing/cache-hit behavior.
+[Original failure, compiled inventories, sources and verification outputs](../../plans/design-benchmarks/compiled-workload-inventory/).

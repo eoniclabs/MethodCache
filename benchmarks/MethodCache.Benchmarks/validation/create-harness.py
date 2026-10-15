@@ -47,10 +47,32 @@ references.append(f'<ProjectReference Include="{generator}" OutputItemType="Anal
 <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
 ''' + '\n'.join(references) + '</ItemGroup></Project>\n')
 (output / 'Program.cs').write_text('''using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Filters;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using MethodCache.Benchmarks.Comparison;
 using MethodCache.Benchmarks.Microbenchmarks;
+using System.Text.Json;
+var types = new[] { typeof(GeneratedContractBenchmarks), typeof(HttpResponsePathBenchmarks),
+    typeof(HttpColdMissBenchmarks), typeof(DesignMemoryWorkloadBenchmarks), typeof(DesignL2WorkloadBenchmarks), typeof(DesignHttpWorkloadBenchmarks) };
+var config = DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true));
+if (args.FirstOrDefault() == "--workload-inventory")
+{
+    var patterns = args.Skip(1).ToArray();
+    if (patterns.Length == 0) throw new ArgumentException("Supply the same filters as the timing launch.");
+    var filter = new GlobFilter(patterns);
+    var cases = new List<object>();
+    foreach (var type in types)
+    {
+        using var run = BenchmarkConverter.TypeToBenchmarks(type, config);
+        foreach (var benchmark in run.BenchmarksCases.Where(filter.Predicate))
+            cases.Add(new { full_name = FullNameProvider.GetBenchmarkName(benchmark),
+                report_type = benchmark.Descriptor.Type.FullName });
+    }
+    Console.WriteLine(JsonSerializer.Serialize(cases));
+    return;
+}
 if (args.Contains("--verify-native"))
 {
     foreach (var backend in new[] { "Redis", "SqlServer" })
@@ -83,15 +105,14 @@ if (args.Contains("--verify-native"))
     }
     return;
 }
-BenchmarkSwitcher.FromTypes(new[] { typeof(GeneratedContractBenchmarks), typeof(HttpResponsePathBenchmarks),
-    typeof(HttpColdMissBenchmarks), typeof(DesignMemoryWorkloadBenchmarks), typeof(DesignL2WorkloadBenchmarks), typeof(DesignHttpWorkloadBenchmarks) })
-    .Run(args, DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true)));
+BenchmarkSwitcher.FromTypes(types).Run(args, config);
 ''')
 metadata = {
     'runtime_root': str(runtime_root),
     'runtime_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=runtime_root, text=True).strip(),
     'workloads_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source_root, text=True).strip(),
     'source_sha256': checksums,
+    'harness_program_sha256': hashlib.sha256((output / 'Program.cs').read_bytes()).hexdigest(),
     'roundtrip_before_pr4': 'Feature absent; both labels retain the existing baseline behavior; report separately.',
     'keepcookies_before_pr6': 'HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature.',
 }

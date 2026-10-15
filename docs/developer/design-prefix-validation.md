@@ -76,8 +76,14 @@ a separately written reference pinned to those and the authors' SipHash-2-4 vect
 arbitrary keys, text, isolated surrogates and splits. The forced-collision, collision-family and builder tests
 run unchanged. The Marvin evidence above belongs to that candidate and is not attributed to this one.
 
-Section-10 against #132 (Marvin), median of three runs per side: GUID hit −2.8 %, string hit −5.3 %,
+Author-reported comparison against #132 (Marvin), median of three runs per side: GUID hit −2.8 %, string hit −5.3 %,
 `ValueTask(int)` hit −13 %, `Sync(int)` hit +8 %, `Task(int)` hit +5 %, with no added allocations. Marvin's cost
 depended on the method name's length: with an even prefix length, its first 4-byte read of the suffix spans two
-separate stores and stalls on x64. SipHash packs a short tail from 2-byte loads and has no such dependence. The
-`int` regressions exceed the 3 % gate; Johan accepted them because GUID and string keys are the common case.
+separate stores and stalls on x64. SipHash packs a short tail such as an `int` from 2-byte loads, so short arguments
+have no such dependence. Longer arguments such as GUIDs are read in 8-byte words; the author's follow-up at
+4bddd4a notes that words spanning separate stores still depend on prefix length modulo four. The
+reported `int` median differences exceed 3 %. These medians do not supply section 10's required 95 %
+intervals over independent run means or its complete workload matrix. Algorithm selection and timing
+acceptance have separate proof requirements. Claude is updating the common workloads to use GUID
+identifiers; verify identical key types and workloads across compared revisions before the final series.
+Existing int diagnostics remain separate and do not become GUID before/after results.

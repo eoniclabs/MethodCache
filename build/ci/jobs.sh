@@ -38,6 +38,7 @@ without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQual
 
 job_build() {
   PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
+  PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s benchmarks/MethodCache.Benchmarks/validation -v
   dotnet restore "$solution"
   dotnet build "$solution" --configuration Release --no-restore
 }

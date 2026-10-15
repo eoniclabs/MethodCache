@@ -10,17 +10,27 @@ its DLL with a working directory followed by the child executable and arguments.
 Server 2022 containers and credentials through the child's environment, checks its exit code and disposes its own
 containers. It does not print credentials or touch a production backend.
 
-`run-series.py` expects the nine prepared harnesses under `/tmp/methodcache-design-harness` and the built driver at
+`run-series.py` expects twelve prepared harnesses under `/tmp/methodcache-design-harness` and the built driver at
 `/tmp/methodcache-http-native-runner/bin/Release/net10.0/Runner.dll`. These paths are configurable as constants at the
 top of the script. Each manifest records absolute runtime roots, full SHAs and workload SHA256 checksums. Every
 revision must use identical workloads. The `pr1-base` harness is the actual post-PR122 merge-base
 of PR1 (`a023336088c0df4fe887ee336dabcbbdb41f5b26`); `base` remains the cumulative f43854d comparison.
 Do not substitute the cumulative baseline for the adjacent PR1 comparison. Source changes require rebuilding the relevant harness and a fresh evidence
-directory. The script runs 62 cases in three independent launches per revision, descending/ascending/descending,
-so adjacent base/change order alternates. Local families (46 cases) run without test containers; native families
-(16 cases) own fresh backends. This gives 54 family launches covering 27 complete revision rounds. Each uses concurrent workstation GC,
-16 warmups and 12 measured 500ms iterations. It checks every report for measured results; a zero host exit code alone
-does not establish successful benchmarks.
+directory. The revision list includes separate HTTP, .NET-10-only and constructor points before the final
+SipHash runtime, preserving every adjacent comparison. Three independent launches per revision run in
+descending/ascending/descending order. The twelve points give 72 family launches covering 36 revision rounds.
+Each uses concurrent workstation GC, 16 warmups and 12 measured 500ms iterations.
+
+The built harness accepts `--workload-inventory` followed by the exact timing filters. It uses
+BenchmarkDotNet's converter, parameter expansion, glob filter and exported full case names without
+running setup or timing. The script requires identical inventories and Program/workload checksums across
+all revisions, then freezes the selected case names in the series manifest. With the current preliminary
+sources the inventory contains 48 local cases and 16 native cases; the final GUID workload update must
+be integrated before freezing the final cohort. Case counts come from the compiled inventory, not a
+hard-coded total. Local groups run without test containers; native groups own fresh backends.
+Every measured report must contain the exact selected names once, the expected report families and
+twelve actual workload iterations per case. Duplicate, missing, substituted and warmup-only cases are
+rejected; a zero host exit code alone does not establish successful benchmarks.
 
 Builds/tests must finish before timing. A minute of observed quiet is required, and concurrent external
 build/test activity makes the affected launch inadmissible. The process guard recognizes .NET, Flutter/Dart and
@@ -64,8 +74,9 @@ batches are checked to retain every response below the default budget, with no c
 A BenchmarkDotNet conversion test verifies that iteration setup does not reduce the batch to one call.
 
 The validation harness selects fresh/variant/304 from HttpResponsePathBenchmarks and cold misses from
-HttpColdMissBenchmarks. This keeps 62 cases, with one additional report (three for the contract/HTTP
-family). Growing local/native pressure in DesignHttpWorkloadBenchmarks remains separately labelled.
+HttpColdMissBenchmarks. The compiled inventory records the selected cases and reports, while the
+growing-miss variant remains a separate diagnostic. Growing local/native pressure in
+DesignHttpWorkloadBenchmarks remains separately labelled.
 Changed workloads require all baseline/candidate harnesses to be rebuilt with the exact same sources;
 do not pool previous growing-miss data with this bounded publication case.
 
