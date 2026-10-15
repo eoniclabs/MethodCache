@@ -233,3 +233,33 @@ The native policy fixtures share a fake clock anchored ten minutes ahead of wall
 short-TTL rows therefore survive real setup delays, while explicit fake-time advances must expire
 the source envelope. This separates deterministic logical-expiry assertions from database wall-clock
 scheduling; server clocks and production behavior are unchanged.
+
+## Deadline fixture subscription confirmation
+
+The older net10-only head f0a492b passed Windows/macOS but failed Linux at the first manual deadline
+L2 read (expected stored1, actual factory2, PolicyBackendContract line82). The failure remains recorded;
+its root cause is not claimed. The timed section now owns two nodes and a fresh physical/backplane
+prefix, and native setup awaits real subscription acknowledgement/initial callback completion before
+returning a node. The previous policy scenarios and every deadline/sliding/fail-safe assertion remain.
+
+A controlled subscription/callback fact fails if readiness completes without awaiting the underlying
+operation. The restored barrier and native contracts pass on all three historical targets in the
+earlier HTTP snapshot (9 selected facts). After forwarding into the supported final .NET 10 stack,
+complete affected suites pass: **Core 1,034; Redis 27; SQL 63; zero failures, one intentional opt-in
+soak skip**. Native infrastructure is required. This changes test prerequisites, not production code.
+[Original failure, mutation and verification receipts](../../plans/design-benchmarks/policy-deadline-readiness/)
+are preserved. Latest-head full CI remains required.
+
+## Measurement precision review
+
+The three focused prefix baseline launches are complete. Their generated-hit 95% intervals over run
+means are broad: relative half-widths are about 14.6% sync, 39.7% generic, 7.9% Task and 24.5% ValueTask.
+These are insufficient for section-10 acceptance, and do not by themselves prove a source regression.
+The final comparison launch remains separate from the corrected cold-publication cohort.
+
+A separate precision pilot tests fixed benchmark-process affinity (mask4, observed logical CPU2/core2)
+with unchanged source/runtime/GC/JIT/features. No host governor, boost or service is changed. The first
+four-case launch completed, but the verifier parsed BDN's binary affinity display in the wrong radix;
+its original nonzero validation exit and complete diagnostic reports are retained. A fresh three-run
+pilot uses corrected parsing. No first-run timing is pooled into that pilot or claimed as acceptance.
+The untimed component controller was stopped before preparation to await a sufficiently precise protocol.

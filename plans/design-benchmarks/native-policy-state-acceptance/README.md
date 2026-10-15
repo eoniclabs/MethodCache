@@ -1,6 +1,6 @@
 # Native policy state acceptance
 
-Final local runs on .NET 10.0.3, SDK 10.0.103, macOS ARM64:
+Native state checkpoint cf4caa6, before the later subscription-barrier follow-up. Local runs on .NET 10.0.3, SDK 10.0.103, macOS ARM64:
 
 | Suite | Passed | Failed | Intentional skips |
 |---|---:|---:|---:|

@@ -24,10 +24,16 @@ public class PolicyContractTests(RedisFixture redis)
             services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
             services.Configure<DistributedCacheOptions>(o => { o.KeyPrefix = prefix; o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
             services.AddMethodCacheRedis(o => { o.Configuration = configuration; });
+            PolicySubscriptionBarrier.Decorate(services);
             var provider = services.BuildServiceProvider();
-            var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
-            await connection.GetSubscriber().PingAsync();
-            return provider;
+            try
+            {
+                var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
+                await connection.GetSubscriber().PingAsync();
+                await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
+                return provider;
+            }
+            catch { await provider.DisposeAsync(); throw; }
         }
         await PolicyBackendContract.RunAsync(Create, time);
     }

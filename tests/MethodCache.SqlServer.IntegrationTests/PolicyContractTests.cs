@@ -25,12 +25,18 @@ public class PolicyContractTests(SqlServerFixture sql)
             services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
             services.Configure<DistributedCacheOptions>(o => { o.OperationTimeout = TimeSpan.FromSeconds(5); o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
             services.AddMethodCacheSqlServer(o => { o.ConnectionString = connection; o.SchemaName = schema; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); });
+            PolicySubscriptionBarrier.Decorate(services);
             var provider = services.BuildServiceProvider();
-            var hosted = provider.GetServices<IHostedService>().ToArray();
-            foreach (var service in hosted) await service.StartAsync(CancellationToken.None);
-            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            await SqlServerFixture.WaitForTablesAsync(hosted, deadline.Token);
-            return provider;
+            try
+            {
+                var hosted = provider.GetServices<IHostedService>().ToArray();
+                foreach (var service in hosted) await service.StartAsync(CancellationToken.None);
+                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await SqlServerFixture.WaitForTablesAsync(hosted, deadline.Token);
+                await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
+                return provider;
+            }
+            catch { await provider.DisposeAsync(); throw; }
         }
         await PolicyBackendContract.RunAsync(Create, time);
     }
