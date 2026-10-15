@@ -22,6 +22,19 @@ internal static class PrefixBenchmarkSetup
 [MemoryDiagnoser]
 public class PrefixHitPathBenchmarks
 {
+    // Compile-time selection keeps the constructor in the benchmark's local, without a return-value copy.
+    public static bool UsesInPlaceKeyBuilder
+    {
+        get
+        {
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
     private ServiceProvider _provider = null!;
     private CachedMethod _method = null!;
     private MeterListener? _listener;
@@ -61,7 +74,11 @@ public class PrefixHitPathBenchmarks
     public int SyncHit()
     {
         var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
         key.AppendPart(42);
         if (call.TryGetValue<int>(ref key, out var value)) return value;
         return call.Load(key.ToString(), this, static (_, state) => { state.OriginLoads++; return 42; }, [], CancellationToken.None);
@@ -71,7 +88,11 @@ public class PrefixHitPathBenchmarks
     public Task<int> TaskHit()
     {
         var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
         key.AppendPart(42);
         if (call.TryGetTask<int>(ref key, out var value)) return value;
         return call.LoadAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return Task.FromResult(42); }, [], CancellationToken.None);
@@ -81,7 +102,11 @@ public class PrefixHitPathBenchmarks
     public ValueTask<int> ValueTaskHit()
     {
         var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
         key.AppendPart(42);
         if (call.TryGetValueTask<int>(ref key, out var value)) return value;
         return call.LoadValueAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return ValueTask.FromResult(42); }, [], CancellationToken.None);
@@ -91,7 +116,11 @@ public class PrefixHitPathBenchmarks
     public int KeyBuild()
     {
         var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
         key.AppendPart(42);
         return key.AsSpan().Length;
     }
