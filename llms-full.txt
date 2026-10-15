@@ -3089,6 +3089,9 @@ release.
 
 ### Core-owned HTTP storage
 
+- Merge 304 response headers directly into the replacement representation, avoiding a temporary dictionary
+  and per-response filter allocations when no Connection options are present.
+
 - Avoid constructing duplicate response/content/header objects during foreground 304 revalidation; validate
   the returned representation before adding caller-only headers, and preserve background/error ownership.
 
