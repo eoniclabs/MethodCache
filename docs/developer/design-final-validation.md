@@ -316,3 +316,10 @@ the candidate to measure. The complete older release receipt is not claimed for 
 
 [Failing timing, raw reports and candidate receipts](../../plans/design-benchmarks/http-304-revalidation/)
 retain all six launches, full source SHAs, actual per-report SDK/runtime/CPU and empty activity guards.
+
+The complete v2 affinity baseline pilot still has wide Sync/Generic/Task intervals (relative half-widths
+12.31%, 8.05%, 4.05%; ValueTask 1.73%). Raw three-launch evidence is retained under independent-run-precision.
+The unstarted Generic-only supplement was stopped without a child or any timing. Its replacement is a
+fixed nine-launch all-four-hit v3 study, with parent startup affinity and an explicit ProcessorCount/affinity
+probe required before timing. It is a controlled precision diagnostic; earlier samples are not pooled and
+no cause of the v2 variance is claimed. Full timing remains pending for the new 12bf99d HTTP candidate.

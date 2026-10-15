@@ -26,3 +26,25 @@ capability, not a shipped-runtime change or an accepted timing result.
 
 The statistical method/table is described by
 [NIST](https://www.itl.nist.gov/div898/handbook/eda/section3/eda3672.htm).
+
+
+## Completed pilot and replacement precision protocol
+
+The complete v2 three-launch baseline pilot is retained in the archive and
+summary. Relative 95% half-widths are Sync 12.31%, Generic 8.05%, Task 4.05% and
+ValueTask 1.73%, all at zero measured bytes. Fixed child-process affinity alone
+therefore did not provide adequate precision for several cases. No source
+regression or performance pass follows from this baseline-only study.
+
+The planned Generic-only supplement was stopped while its owned controller was
+sleeping without a child, before any timing. It is replaced by a fixed nine-launch
+study of all four hits. The v3 parent BDN host starts under `taskset --cpu-list 2`
+before .NET initializes; children inherit that CPU and also export mask 4.
+A setup probe must first confirm ProcessorCount=1 and Affinity=4 in the pinned
+image. This makes startup CPU availability explicit; it does not diagnose the
+cause of the v2 variance. All v2 samples remain separate and are not pooled.
+The new study still requires interval review and establishes no product speedup.
+
+[Microsoft documents](https://learn.microsoft.com/en-us/dotnet/api/system.environment.processorcount?view=net-10.0)
+that ProcessorCount reflects affinity and is fixed at runtime startup. This is
+why the parent launch setting and startup probe are part of the new protocol.
