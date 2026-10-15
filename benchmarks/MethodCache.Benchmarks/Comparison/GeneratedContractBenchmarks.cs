@@ -12,6 +12,7 @@ public class GeneratedContractBenchmarks
     private IContractService _service = null!;
     private readonly ContractQuery _query = new("a:\\b\ud800", 42);
     private readonly int[] _ids = [1, 2, 3];
+    private readonly Guid _guid = new("6f9619ff-8b86-d011-b42d-00cf4fc964ff");
     private readonly object _fallback = new ContractQuery("a:\\b\ud800", 42);
     private int _next;
     [GlobalSetup]
@@ -33,12 +34,16 @@ public class GeneratedContractBenchmarks
         _ = CollectionHit().GetAwaiter().GetResult();
         _ = FallbackHit().GetAwaiter().GetResult();
         _ = GenericHit().GetAwaiter().GetResult();
+        _ = GuidHit().GetAwaiter().GetResult();
+        _ = StringHit().GetAwaiter().GetResult();
     }
 
     [Benchmark] public int SyncHit() => _service.Sync(42);
     [Benchmark] public Task<int> GenericHit() => _service.Generic<int>(42);
     [Benchmark] public Task<int> TaskHit() => _service.Task(42);
     [Benchmark] public ValueTask<int> ValueTaskHit() => _service.ValueTask(42);
+    [Benchmark] public Task<int> GuidHit() => _service.ByGuid(_guid);
+    [Benchmark] public Task<int> StringHit() => _service.ByEmail("ada.lovelace@example.com");
     [Benchmark] public Task<int> RecordHit() => _service.Record(_query);
     [Benchmark] public Task<int> CollectionHit() => _service.Collection(_ids);
     [Benchmark] public Task<int> FallbackHit() => _service.Fallback(_fallback);
@@ -58,6 +63,8 @@ public interface IContractService
 {
     [Cache(Duration = "00:10:00")] Task<int> Generic<T>(int id);
     [Cache(Duration = "00:10:00")] int Sync(int id);
+    [Cache(Duration = "00:10:00")] Task<int> ByGuid(Guid id);
+    [Cache(Duration = "00:10:00")] Task<int> ByEmail(string email);
     [Cache(Duration = "00:10:00")] Task<int> Task(int id);
     [Cache(Duration = "00:10:00")] ValueTask<int> ValueTask(int id);
     [Cache(Duration = "00:10:00")] Task<int> Record(ContractQuery query);
@@ -70,6 +77,8 @@ public sealed class ContractService : IContractService
     public Task<int> Generic<T>(int id) => System.Threading.Tasks.Task.FromResult(id);
     public int Sync(int id) => id;
     public Task<int> Task(int id) => System.Threading.Tasks.Task.FromResult(id);
+    public Task<int> ByGuid(Guid id) => System.Threading.Tasks.Task.FromResult(1);
+    public Task<int> ByEmail(string email) => System.Threading.Tasks.Task.FromResult(email.Length);
     public ValueTask<int> ValueTask(int id) => new(id);
     public Task<int> Record(ContractQuery query) => System.Threading.Tasks.Task.FromResult(query.Page);
     public Task<int> Collection(int[] ids) => System.Threading.Tasks.Task.FromResult(ids.Length);
