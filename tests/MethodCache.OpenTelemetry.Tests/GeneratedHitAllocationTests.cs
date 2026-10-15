@@ -79,7 +79,7 @@ public class GeneratedHitAllocationTests
         listener.SetMeasurementEventCallback<long>((_, value, _, _) => Interlocked.Add(ref total, value));
         listener.Start();
         var allocated = MeasureWorkers(service);
-        Assert.Equal(40_000, total);
+        Assert.Equal(44_000, total);
         Assert.Equal(baseline, allocated);
     }
 
@@ -88,6 +88,9 @@ public class GeneratedHitAllocationTests
         var allocated = new long[4];
         Parallel.For(0, 4, worker =>
         {
+            // Every participating thread must initialize its own runtime/engine state before the probe.
+            // Warming only the calling thread leaves first-use allocations in arbitrary worker samples.
+            for (var i = 0; i < 1000; i++) _ = service.Read(42);
             var before = GC.GetAllocatedBytesForCurrentThread();
             for (var i = 0; i < 10_000; i++) _ = service.Read(42);
             allocated[worker] = GC.GetAllocatedBytesForCurrentThread() - before;
