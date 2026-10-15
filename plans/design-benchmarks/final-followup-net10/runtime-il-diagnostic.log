@@ -1,0 +1,28 @@
+Assembly: MethodCache.Core
+Compared 2854/2854 method bodies/signatures/locals/exception regions: 1 differences.
+.ThisAssembly..cctor:000001
+Diagnostic exit: 1
+Assembly: MethodCache.HttpCaching
+Compared 392/392 method bodies/signatures/locals/exception regions: 1 differences.
+.ThisAssembly..cctor:000001
+Diagnostic exit: 1
+Assembly: MethodCache.Redis
+Compared 128/128 method bodies/signatures/locals/exception regions: 1 differences.
+.ThisAssembly..cctor:000001
+Diagnostic exit: 1
+Assembly: MethodCache.SqlServer
+Compared 224/224 method bodies/signatures/locals/exception regions: 1 differences.
+.ThisAssembly..cctor:000001
+Diagnostic exit: 1
+Assembly: MethodCache.OpenTelemetry
+Compared 3/3 method bodies/signatures/locals/exception regions: 1 differences.
+.ThisAssembly..cctor:000001
+Diagnostic exit: 1
+Assembly: MethodCache.AspNetCore
+Compared 67/67 method bodies/signatures/locals/exception regions: 1 differences.
+.ThisAssembly..cctor:000001
+Diagnostic exit: 1
+Assembly: MethodCache.Serialization.MessagePack
+Compared 41/41 method bodies/signatures/locals/exception regions: 1 differences.
+.ThisAssembly..cctor:000001
+Diagnostic exit: 1
