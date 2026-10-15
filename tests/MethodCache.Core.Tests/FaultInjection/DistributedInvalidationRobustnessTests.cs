@@ -400,6 +400,7 @@ public class DistributedInvalidationRobustnessTests
         var (node, _) = CreateNode(chaos);
 
         var big = Get(node, "big", () => "large value");
+        await WaitUntil(() => chaos.FaultsStarted == 1);
         _time.Advance(Timeout);
         (await big.WaitAsync(RealTimeLimit)).Should().Be("large value");
 

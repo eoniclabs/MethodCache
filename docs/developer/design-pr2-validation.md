@@ -105,3 +105,7 @@ In particular, strict L2 removal validation adds a metadata read before admissio
 cost must be measured on Redis and SQL Server with the same backend conditions before merge. HTTP, pressure,
 contention and listener scenarios also remain part of that broader gate. The PR stays draft; the functional
 matrix and unchanged Generated ABI are not presented as proof that every section-10 scenario passed.
+
+The d4a150a external pass completed on Linux (all jobs) and Windows. macOS exposed a race in `OneSlowWrite_DoesNotTurnOffL2ReadsOfOtherKeys`: its fake clock advanced before the delayed write necessarily started, timing out at line 404. The test now waits for the fault-start barrier before advancing time, matching the neighboring shutdown test. The CI failure is the red-before-fix evidence; no production timeout or cache behavior is relaxed.
+
+A heavily loaded three-framework run during PR 3 also reproduced the existing cancellation test racing its 100 ms origin delay (`value|v1|1` instead of `cancelled|v1|2`). Its first origin is now held by an explicit completion-source barrier until cancellation; the surviving caller retries independently. This removes the wall-clock assumption without changing production cancellation behavior.
