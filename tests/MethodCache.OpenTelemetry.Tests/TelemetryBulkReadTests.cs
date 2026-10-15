@@ -1,3 +1,5 @@
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,9 +22,11 @@ public sealed class TelemetryBulkReadTests : IDisposable
 
     private readonly IDistributedCache _shared = new AtomicTestCache();
     private readonly List<ServiceProvider> _providers = new();
+    private readonly TracerProvider _instrumentation = Sdk.CreateTracerProviderBuilder().AddMethodCacheInstrumentation().Build();
 
     public void Dispose()
     {
+        _instrumentation.Dispose();
         foreach (var provider in _providers)
         {
             provider.Dispose();
@@ -34,12 +38,11 @@ public sealed class TelemetryBulkReadTests : IDisposable
         var services = new ServiceCollection();
         services.AddMethodCache();
         services.AddMethodCacheDistributedCache(_ => _shared, options => options.ClockSkewTolerance = TimeSpan.Zero);
-        services.AddMethodCacheOpenTelemetry();
 
         var provider = services.BuildServiceProvider();
         _providers.Add(provider);
         var manager = provider.GetRequiredService<ICacheManager>();
-        manager.Should().BeOfType<TelemetryCacheManager>();
+        manager.Should().BeOfType<MethodCache.Extensibility.InMemoryCacheManager>();
         return manager;
     }
 

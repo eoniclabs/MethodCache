@@ -65,7 +65,7 @@ namespace MethodCache.Core.Tests.Core
             Assert.NotNull(serviceProvider.GetService<IRuntimeCacheConfigurator>());
             Assert.NotNull(serviceProvider.GetService<ICacheManager>());
             Assert.NotNull(serviceProvider.GetService<ICacheKeyGenerator>());
-            Assert.NotNull(serviceProvider.GetService<ICacheMetricsProvider>());
+            Assert.NotNull(serviceProvider.GetService<System.Diagnostics.Metrics.IMeterFactory>());
         }
 
         [Fact]

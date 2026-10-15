@@ -11,7 +11,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task TryGetFastTask_ReturnsTheSameCompletedTask_ForEveryHit()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodTask") with { Duration = TimeSpan.FromMinutes(1) };
 
         manager.TryGetFastTask<string>("key", out _).Should().BeFalse();
@@ -28,7 +28,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task SpanLookups_FindTheEntryStoredUnderTheSameKey()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodSpan") with { Duration = TimeSpan.FromMinutes(1) };
         await manager.GetOrCreateFastAsync("Svc.Get:42", "MethodSpan", () => Task.FromResult("value"), policy);
         manager.TryGetFastTask<string>("Svc.Get:42", out var stringHit).Should().BeTrue();
@@ -46,7 +46,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task SpanLookup_DoesNotAllocateOnAHit()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodSpan") with { Duration = TimeSpan.FromMinutes(1) };
         await manager.GetOrCreateFastAsync("Svc.Get:42", "MethodSpan", () => Task.FromResult("value"), policy);
 
@@ -83,7 +83,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task GetOrCreateAsync_WithDefaultValueTypeResult_ExecutesFactoryOnMiss()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodA") with { Duration = TimeSpan.FromMinutes(1) };
         var keyGenerator = new FastHashKeyGenerator();
         var calls = 0;
@@ -105,7 +105,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task ClearAsync_RemovesEntriesAndAllowsReload()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodB") with
         {
             Duration = TimeSpan.FromMinutes(1)
@@ -119,7 +119,7 @@ public class InMemoryCacheManagerTests
 
         await manager.ClearAsync();
 
-        (await manager.GetStatsAsync()).Entries.Should().Be(0);
+        (await manager.GetStatsAsync()).LocalMethodEntries.Should().Be(0);
         (await manager.GetOrCreateAsync("MethodB", Array.Empty<object>(), Factory, policy, keyGenerator)).Should().Be("value2");
     }
 }

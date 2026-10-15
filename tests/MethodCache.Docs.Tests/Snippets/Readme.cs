@@ -118,7 +118,6 @@ namespace Docs.Readme
         {
             // begin-snippet: readme-monitoring
             builder.Services.AddHealthChecks().AddMethodCache();         // MethodCache.AspNetCore
-            builder.Services.AddMethodCacheOpenTelemetry();               // MethodCache.OpenTelemetry
             builder.Services.AddOpenTelemetry()
                 .WithTracing(t => t.AddMethodCacheInstrumentation())
                 .WithMetrics(m => m.AddMethodCacheInstrumentation());

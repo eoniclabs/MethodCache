@@ -120,16 +120,16 @@ namespace TestNamespace
         _output.WriteLine($"Total generated sources: {testAssembly.GeneratedSources.Count}");
 
         // Setup DI container with test metrics
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
             // Replace the default metrics provider with our test one
-            var existingService = services.FirstOrDefault(s => s.ServiceType == typeof(ICacheMetricsProvider));
+            var existingService = services.FirstOrDefault(s => s.ServiceType == typeof(TestCacheProbe));
             if (existingService != null)
             {
                 services.Remove(existingService);
             }
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         }, _output.WriteLine);
 
         // Get the generated cached service
@@ -289,10 +289,10 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var productServiceType = testAssembly.Assembly.GetType("TestNamespace.IProductService");

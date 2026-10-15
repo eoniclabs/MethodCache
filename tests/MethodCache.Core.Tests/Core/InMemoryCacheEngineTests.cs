@@ -26,7 +26,7 @@ public class InMemoryCacheEngineTests
     {
         var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
-        return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time);
+        return new InMemoryCacheManager(MsOptions.Create(options), _time);
     }
 
     private static CacheRuntimePolicy Policy(string method = "M", TimeSpan? duration = null) =>
@@ -578,7 +578,7 @@ public class InMemoryCacheEngineTests
         }
 
         var stats = await manager.GetStatsAsync();
-        stats.Entries.Should().BeLessThanOrEqualTo(100);
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(100);
         stats.Evictions.Should().BeGreaterThanOrEqualTo(900);
     }
 
@@ -643,8 +643,8 @@ public class InMemoryCacheEngineTests
         }
 
         var stats = await manager.GetStatsAsync();
-        stats.MemoryUsage.Should().BeLessThanOrEqualTo(1000);
-        stats.Entries.Should().BeLessThanOrEqualTo(10);
+        stats.TotalWeight.Should().BeLessThanOrEqualTo(1000);
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(10);
     }
 
     [Fact]
@@ -865,7 +865,7 @@ public class InMemoryCacheEngineTests
     [Fact]
     public async Task ConcurrentMixedOperations_KeepInvariants()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheMemoryOptions { MaxItems = 500 }));
+        var manager = new InMemoryCacheManager(MsOptions.Create(new MethodCacheMemoryOptions { MaxItems = 500 }));
         var tagged = Policy() with { Tags = new[] { "t1", "t2" } };
 
         var workers = Enumerable.Range(0, Environment.ProcessorCount).Select(worker => Task.Run(async () =>
@@ -910,7 +910,7 @@ public class InMemoryCacheEngineTests
         // bound is exact once they are applied
         manager.Engine.Maintain();
         var stats = await manager.GetStatsAsync();
-        stats.Entries.Should().BeLessThanOrEqualTo(500);
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(500);
     }
 }
 

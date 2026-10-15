@@ -1,5 +1,13 @@
 # Changelog
 
+- Move instrumentation into Core's container-owned Meter/ActivitySource; the OpenTelemetry package now only subscribes.
+  Replace provider/wrapper APIs with `MethodCacheTelemetryOptions`, one final request outcome and seconds histograms.
+  Spans/logs omit exception payloads and copied request identities; key/tag recording is explicit opt-in.
+- Replace object-memory estimates with local method/HTTP counts, HTTP bytes, observed distributed entries and
+  `TotalWeight` in configured units. Health checks honor `failureStatus` and distinguish L2 availability from actual
+  backplane connection state and the two recovery queues.
+
+
 - Unify duration parsing and generator errors; add named attribute groups, enabled/distributed flags and fail-safe retry delay. Remove raw-key attributes and consolidate diagnostic IDs. Dynamic tag placeholders now use canonical key parts while existing contract-1 binaries retain their formatting.
 
 Changes that a user of the packages notices. The release steps are in

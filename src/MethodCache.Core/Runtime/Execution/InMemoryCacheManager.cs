@@ -1,8 +1,8 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using MethodCache.Core.Telemetry;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using MethodCache.Core.Infrastructure.Utilities;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Core.Storage.Abstractions;
@@ -41,9 +41,8 @@ namespace MethodCache.Extensibility
         private readonly MemoryCacheEngine _engine;
         private readonly ConcurrentDictionary<string, Flight> _flights = new(StringComparer.Ordinal);
         private readonly ConcurrentDictionary<BulkLoad, byte> _bulkLoads = new();
-        private readonly ICacheMetricsProvider _metricsProvider;
+        private readonly CoreTelemetry? _telemetry;
         private readonly MethodCacheMemoryOptions _options;
-        private readonly MemoryUsageCalculator _memoryCalculator;
         private readonly Func<string, object?, long>? _weigher;
         private readonly ITimer? _maintenanceTimer;
         private readonly StripedCounter _hits = new();
@@ -53,7 +52,6 @@ namespace MethodCache.Extensibility
         private readonly long _maxDuration;
         private readonly TimeProvider _timeProvider;
         private readonly long _jitter;
-        private readonly bool _highResolutionTiming;
         private readonly DistributedCacheLayer? _distributed;
         private readonly Action<string>? _onMethodInvalidated;
         private readonly GeneratedDiagnostics _syncDiagnostics;
@@ -67,40 +65,19 @@ namespace MethodCache.Extensibility
 
         private int _disposed;
 
-        /// <summary>
-        /// Creates an in-memory cache manager.
-        /// </summary>
-        /// <param name="metricsProvider">Receives hit, miss, error and latency reports.</param>
-        /// <param name="options">Size limits, expiration defaults and eviction settings; defaults when null.</param>
-        public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options = null)
-            : this(metricsProvider, options, timeProvider: null)
+        /// <summary>Creates a cache manager with container-owned instrumentation and optional distributed storage.</summary>
+        internal InMemoryCacheManager(IOptions<MethodCacheMemoryOptions>? options = null, TimeProvider? timeProvider = null,
+            DistributedCacheLayer? distributed = null, Action<string>? onMethodInvalidated = null,
+            Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null)
         {
-        }
-
-        /// <summary>
-        /// Creates a cache manager that reads time from <paramref name="timeProvider"/> (useful for tests).
-        /// </summary>
-        public InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options, TimeProvider? timeProvider)
-            : this(metricsProvider, options, timeProvider, distributed: null)
-        {
-        }
-
-        /// <summary>
-        /// Creates a cache manager that keeps entries in memory and in <paramref name="distributed"/>, read on an
-        /// in-memory miss before the factory runs.
-        /// </summary>
-        internal InMemoryCacheManager(ICacheMetricsProvider metricsProvider, IOptions<MethodCacheMemoryOptions>? options, TimeProvider? timeProvider, DistributedCacheLayer? distributed, Action<string>? onMethodInvalidated = null, Microsoft.Extensions.Logging.ILogger? logger = null)
-        {
-            _metricsProvider = metricsProvider ?? throw new ArgumentNullException(nameof(metricsProvider));
+            _telemetry = telemetry;
             _options = options?.Value ?? new MethodCacheMemoryOptions();
-            _memoryCalculator = new MemoryUsageCalculator(_options);
             _weigher = _options.Weigher;
 
             _defaultDuration = ToNanos(_options.DefaultExpiration);
             _maxDuration = ToNanos(_options.MaxExpiration);
             _timeProvider = timeProvider ?? TimeProvider.System;
             _jitter = ToNanos(_options.JitterMaxDuration);
-            _highResolutionTiming = timeProvider == null || ReferenceEquals(timeProvider, TimeProvider.System);
 
             var maximum = _weigher != null ? _options.MaxMemoryBytes : _options.MaxItems;
             _engine = new MemoryCacheEngine(maximum, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)Math.Min(_options.MaxItems, int.MaxValue));
@@ -111,101 +88,126 @@ namespace MethodCache.Extensibility
             }
 
             _distributed = distributed;
+            _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight));
             _onMethodInvalidated = onMethodInvalidated;
             _syncDiagnostics = new GeneratedDiagnostics(logger);
             _distributed?.Attach(
                 onKeyInvalidated: key => RemoveLocal(key),
                 onTagInvalidated: RemoveLocalTag,
                 onCleared: ClearLocal,
-                onError: ex => _metricsProvider.CacheError("DistributedCache", ex.Message),
+                onError: static _ => { },
                 onMethodInvalidated: methodId => { _onMethodInvalidated?.Invoke(methodId); InvalidateMethodLocally(methodId); });
         }
 
         /// <summary>The underlying engine; exposed to tests that need deterministic policy behavior.</summary>
         internal MemoryCacheEngine Engine => _engine;
+        internal CoreTelemetry? Telemetry => _telemetry;
         private readonly ConcurrentDictionary<string, SyncFlight> _syncFlights = new(StringComparer.Ordinal);
 
         internal T GetOrCreateSynchronously<T>(string key, string name, Func<T> factory, CacheRuntimePolicy source, CancellationToken token)
         {
-            var policy = GetEntryPolicy(source);
-            if (source.Enabled == false || source.Generation?.IsCurrent == false) return factory();
-            if (TryGetFresh<T>(key, _engine.Now, out var hit, out var node, out var refresh))
-            {
-                if (refresh) StartBackgroundRefresh(key, name, () => Task.FromResult(factory()), policy, node!, token);
-                RecordHit(name);
-                return hit!;
-            }
-            token.ThrowIfCancellationRequested();
-            if (_distributed != null && source.Distributed != false)
-                _syncDiagnostics.ReportSyncBypass(name, "The provider offers no bounded native synchronous operation; only memory is used.");
-            var own = new SyncFlight(policy.Tags, source.Generation) { MethodId = source.MethodId };
-            SyncFlight flight;
-            while (true)
-            {
-                flight = _syncFlights.GetOrAdd(key, own);
-                if (ReferenceEquals(flight, own)) break;
-                if (flight.Invalidated)
-                {
-                    if (_syncFlights.TryUpdate(key, own, flight)) { flight = own; break; }
-                    continue;
-                }
-                if (flight.OwnerThread == Environment.CurrentManagedThreadId || LoadingScope.Contains(flight))
-                    throw new InvalidOperationException($"The factory of '{name}' recursively requested its own key.");
-                flight.Ready.Wait(token);
-                if (flight.CancelledByCaller && !token.IsCancellationRequested) continue;
-                flight.Error?.Throw();
-                if (flight.Value is T joined) { RecordHit(name); return joined; }
-                if (flight.Value == null && default(T) == null) { RecordHit(name); return default!; }
-                return factory();
-            }
-            Node? previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
+            name = source.MethodId;
+            var outcome = RequestResult.Error;
             try
             {
-                if (TryGetFresh<T>(key, _engine.Now, out hit, out _, out _))
+                var policy = GetEntryPolicy(source);
+                if (source.Enabled == false || source.Generation?.IsCurrent == false)
                 {
-                    flight.Value = hit;
-                    flight.Complete(hit);
+                    outcome = RequestResult.Bypass;
+                    using var bypass = _telemetry?.BeginLoad("method", name, key, source.Tags);
+                    try { return factory(); } catch (Exception error) { bypass?.Fail(error); throw; }
+                }
+                if (TryGetFresh<T>(key, _engine.Now, out var hit, out var node, out var refresh))
+                {
+                    if (refresh) StartBackgroundRefresh(key, name, () => Task.FromResult(factory()), policy, node!, token);
                     RecordHit(name);
+                    outcome = HitResult(node);
                     return hit!;
                 }
-                RecordMiss(name);
-                var start = StartTiming();
-                var value = LoadingScope.Run(flight, factory);
-                if (ShouldStore(value, policy, name)) StoreLoaded(key, value, policy, flight);
-                flight.Value = value;
-                flight.Complete(value);
-                RecordLoadLatency(name, ElapsedSince(start));
-                return value;
-            }
-            catch (Exception exception)
-            {
-                if (exception is OperationCanceledException cancelled && token.IsCancellationRequested)
+                token.ThrowIfCancellationRequested();
+                if (_distributed != null && source.Distributed != false)
+                    _syncDiagnostics.ReportSyncBypass(name, "The provider offers no bounded native synchronous operation; only memory is used.");
+                var own = new SyncFlight(policy.Tags, source.Generation) { MethodId = source.MethodId };
+                SyncFlight flight;
+                while (true)
                 {
+                    flight = _syncFlights.GetOrAdd(key, own);
+                    if (ReferenceEquals(flight, own)) break;
+                    if (flight.Invalidated)
+                    {
+                        if (_syncFlights.TryUpdate(key, own, flight)) { flight = own; break; }
+                        continue;
+                    }
+                    if (flight.OwnerThread == Environment.CurrentManagedThreadId || LoadingScope.Contains(flight))
+                        throw new InvalidOperationException($"The factory of '{name}' recursively requested its own key.");
+                    flight.Ready.Wait(token);
+                    if (flight.CancelledByCaller && !token.IsCancellationRequested) continue;
+                    flight.Error?.Throw();
+                    if (flight.Value is T joined) { RecordHit(name); outcome = flight.Outcome == RequestResult.Stale ? RequestResult.Stale : RequestResult.Hit; return joined; }
+                    if (flight.Value == null && default(T) == null) { RecordHit(name); outcome = flight.Outcome == RequestResult.Stale ? RequestResult.Stale : RequestResult.Hit; return default!; }
+                    outcome = RequestResult.Miss;
+                    using var independent = _telemetry?.BeginLoad("method", name, key, source.Tags);
+                    try { return factory(); } catch (Exception error) { independent?.Fail(error); throw; }
+                }
+                Node? previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
+                try
+                {
+                    if (TryGetFresh<T>(key, _engine.Now, out hit, out var racedNode, out _))
+                    {
+                        flight.Value = hit;
+                        flight.Complete(hit);
+                        RecordHit(name);
+                        outcome = HitResult(racedNode);
+                        return hit!;
+                    }
+                    RecordMiss(name);
+                    T value;
+                    using (var origin = _telemetry?.BeginLoad("method", name, key, policy.Tags))
+                    {
+                        try { value = LoadingScope.Run(flight, factory); }
+                        catch (Exception error) { origin?.Fail(error); throw; }
+                    }
+                    outcome = RequestResult.Miss;
+                    if (ShouldStore(value, policy, name)) StoreLoaded(key, value, policy, flight);
+                    flight.Value = value;
+                    flight.Complete(value);
+                    return value;
+                }
+                catch (Exception exception)
+                {
+                    if (exception is OperationCanceledException cancelled && token.IsCancellationRequested)
+                    {
+                        flight.Error = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+                        flight.CancelByCaller(cancelled);
+                        throw;
+                    }
+                    if (exception is not OperationCanceledException && previous != null && !flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
+                    {
+                        outcome = flight.Outcome = RequestResult.Stale;
+                        flight.Value = stale;
+                        flight.Complete(stale);
+                        return stale!;
+                    }
                     flight.Error = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
-                    flight.CancelByCaller(cancelled);
+                    flight.Fail(exception);
                     throw;
                 }
-                _metricsProvider.CacheError(name, exception.Message);
-                if (exception is not OperationCanceledException && previous != null && !flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
+                finally
                 {
-                    flight.Value = stale;
-                    flight.Complete(stale);
-                    return stale!;
+                    _syncFlights.TryRemove(new KeyValuePair<string, SyncFlight>(key, flight));
+                    flight.Ready.Set();
                 }
-                flight.Error = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
-                flight.Fail(exception);
-                throw;
             }
-            finally
-            {
-                _syncFlights.TryRemove(new KeyValuePair<string, SyncFlight>(key, flight));
-                flight.Ready.Set();
-            }
+            catch { outcome = RequestResult.Error; throw; }
+            finally { _telemetry?.Request("method", name, outcome); }
         }
 
         internal void InvalidateTagsSynchronously(string[] tags)
         {
+            tags = tags.Distinct(StringComparer.Ordinal).ToArray();
+            using var activity = _distributed == null ? _telemetry?.BeginInvalidation("tag", tags: tags) : null;
             foreach (var tag in tags) RemoveLocalTag(tag);
+            _telemetry?.Invalidations("tag", "local", tags.Length);
             if (_distributed != null)
             {
                 var recovery = _distributed.InvalidateTargetsAsync(tags, tags: true);
@@ -249,6 +251,7 @@ namespace MethodCache.Extensibility
             }
 
             ArgumentNullException.ThrowIfNull(policy);
+            methodName = policy.MethodId;
             var bulk = CurrentBulkPublication.Value;
             var publication = bulk != null && ReferenceEquals(bulk.Owner, this) && bulk.Key == cacheKey ? bulk.Guard : null;
             return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken, publication);
@@ -347,10 +350,11 @@ namespace MethodCache.Extensibility
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedTask<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, [NotNullWhen(true)] out Task<T>? task)
+        internal bool TryGetGeneratedTask<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, string name, [NotNullWhen(true)] out Task<T>? task)
         {
             if (TryGetGeneratedNode<T>(ref key, generation, out var value, out var node))
             {
+                RecordHitTelemetry(name, node);
                 task = node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
                 return true;
             }
@@ -359,12 +363,13 @@ namespace MethodCache.Extensibility
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedTextTask<T>(string key, PolicyGeneration generation, [NotNullWhen(true)] out Task<T>? task)
+        internal bool TryGetGeneratedTextTask<T>(string key, PolicyGeneration generation, string name, [NotNullWhen(true)] out Task<T>? task)
         {
             var now = _engine.Now;
             if (AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
                 now, out T? value, out var node, generation))
             {
+                RecordHitTelemetry(name, node);
                 task = node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
                 return true;
             }
@@ -373,16 +378,22 @@ namespace MethodCache.Extensibility
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedTextValue<T>(string key, PolicyGeneration generation, out T? value)
+        internal bool TryGetGeneratedTextValue<T>(string key, PolicyGeneration generation, string name, out T? value)
         {
             var now = _engine.Now;
-            return AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
-                now, out value, out _, generation);
+            if (!AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
+                now, out value, out var node, generation)) return false;
+            RecordHitTelemetry(name, node);
+            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedValue<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, out T? value)
-            => TryGetGeneratedNode(ref key, generation, out value, out _);
+        internal bool TryGetGeneratedValue<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, string name, out T? value)
+        {
+            if (!TryGetGeneratedNode(ref key, generation, out value, out var node)) return false;
+            RecordHitTelemetry(name, node);
+            return true;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool TryGetGeneratedNode<T>(ref MethodCache.Generated.KeyBuilder key, PolicyGeneration generation, out T? value, out Node? node)
@@ -423,6 +434,7 @@ namespace MethodCache.Extensibility
                 return Task.CompletedTask;
             }
 
+            using var activity = _distributed == null ? _telemetry?.BeginInvalidation("key", keys: keys) : null;
             foreach (var key in keys)
             {
                 if (!string.IsNullOrWhiteSpace(key))
@@ -431,6 +443,7 @@ namespace MethodCache.Extensibility
                 }
             }
 
+            _telemetry?.Invalidations("key", "local", keys.Where(static key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).Count());
             return _distributed == null
                 ? Task.CompletedTask
                 : _distributed.RemoveAsync(keys.Where(static key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).ToArray());
@@ -444,6 +457,7 @@ namespace MethodCache.Extensibility
                 return Task.CompletedTask;
             }
 
+            using var activity = _distributed == null ? _telemetry?.BeginInvalidation("tag", tags: tags) : null;
             // Flights are flagged before entries are removed; see StoreLoaded.
             InvalidateFlights(flightTag => Array.IndexOf(tags, flightTag) >= 0);
             foreach (var tag in tags)
@@ -454,6 +468,7 @@ namespace MethodCache.Extensibility
                 }
             }
 
+            _telemetry?.Invalidations("tag", "local", tags.Where(static tag => tag != null).Distinct(StringComparer.Ordinal).Count());
             return _distributed == null
                 ? Task.CompletedTask
                 : _distributed.InvalidateTagsAsync(tags.Where(static tag => tag != null).Distinct(StringComparer.Ordinal).ToArray());
@@ -568,24 +583,28 @@ namespace MethodCache.Extensibility
         /// <inheritdoc />
         public ValueTask ClearAsync()
         {
+            using var activity = _distributed == null ? _telemetry?.BeginInvalidation("tag") : null;
             ClearLocal();
             _hits.Reset();
             _misses.Reset();
+            _telemetry?.Invalidations("tag", "local", 1);
             return _distributed == null ? ValueTask.CompletedTask : new ValueTask(_distributed.ClearAsync());
         }
 
         /// <inheritdoc />
         public ValueTask<ICacheStats> GetStatsAsync()
         {
+            var external = _telemetry?.Observe() ?? default;
             var stats = new CacheStats
             {
                 Hits = _hits.Sum(),
                 Misses = _misses.Sum(),
                 Evictions = _options.EnableStatistics ? _engine.EvictionCount : 0,
-                Entries = _engine.Count,
-                MemoryUsage = _weigher != null
-                    ? _engine.TotalWeight
-                    : _memoryCalculator.CalculateMemoryUsage(_engine.Map, static node => node.BoxedValue!)
+                LocalMethodEntries = _engine.Count,
+                TotalWeight = _engine.TotalWeight,
+                LocalHttpEntries = external.LocalHttpEntries,
+                LocalHttpBytes = external.LocalHttpBytes,
+                ObservedDistributedEntries = external.ObservedDistributedEntries
             };
 
             return new ValueTask<ICacheStats>(stats);
@@ -612,7 +631,8 @@ namespace MethodCache.Extensibility
         private Task<T> GetOrCreateCoreAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken, Flight? publication = null)
         {
             ArgumentNullException.ThrowIfNull(factory);
-            if (policy.Source?.Enabled == false || policy.Source?.Generation?.IsCurrent == false) return factory();
+            if (policy.Source?.Enabled == false || policy.Source?.Generation?.IsCurrent == false)
+                return _telemetry?.Enabled == true ? _telemetry.BypassAsync(methodName, key, factory) : factory();
 
             if (TryGetFresh<T>(key, _engine.Now, out var value, out var node, out var refreshDue))
             {
@@ -622,6 +642,7 @@ namespace MethodCache.Extensibility
                 }
 
                 RecordHit(methodName);
+                if (publication == null) RecordHitTelemetry(methodName, node);
                 return node is ValueNode<T> typed ? typed.AsCompletedTask() : Task.FromResult(value!);
             }
 
@@ -643,123 +664,142 @@ namespace MethodCache.Extensibility
         /// </remarks>
         private async Task<T> LoadAsync<T>(string key, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken, Flight? publication)
         {
-            Flight flight;
-            Node? previous;
-            while (true)
+            var outcome = RequestResult.Error;
+            try
             {
-                // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
-                previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
-
-                flight = new Flight(policy.Tags, publication) { Generation = policy.Source?.Generation, MethodId = policy.Source?.MethodId };
-                var existing = JoinOrStartFlight(key, flight);
-                if (ReferenceEquals(existing, flight))
+                Flight flight;
+                Node? previous;
+                while (true)
                 {
-                    // A load that finished after this caller's miss (or after the load it joined was cancelled) stored
-                    // its value before it left: use that value instead of running the factory a second time. The flight
-                    // leaves before it completes, so a caller arriving after a concurrent invalidation of that value
-                    // starts its own load instead of joining a finished flight.
-                    if (TryGetFresh<T>(key, _engine.Now, out var loaded, out _, out _))
+                    // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
+                    previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
+
+                    flight = new Flight(policy.Tags, publication) { Generation = policy.Source?.Generation, MethodId = policy.Source?.MethodId };
+                    var existing = JoinOrStartFlight(key, flight);
+                    if (ReferenceEquals(existing, flight))
                     {
-                        _flights.TryRemove(new KeyValuePair<string, Flight>(key, flight));
-                        flight.Complete(loaded);
-                        RecordHit(methodName);
-                        return loaded!;
+                        // A load that finished after this caller's miss (or after the load it joined was cancelled) stored
+                        // its value before it left: use that value instead of running the factory a second time. The flight
+                        // leaves before it completes, so a caller arriving after a concurrent invalidation of that value
+                        // starts its own load instead of joining a finished flight.
+                        if (TryGetFresh<T>(key, _engine.Now, out var loaded, out var loadedNode, out _))
+                        {
+                            _flights.TryRemove(new KeyValuePair<string, Flight>(key, flight));
+                            flight.Complete(loaded);
+                            RecordHit(methodName);
+                            outcome = HitResult(loadedNode);
+                            return loaded!;
+                        }
+
+                        break;
                     }
 
-                    break;
-                }
-
-                // Another caller is already loading this key: share its result. A factory that asks for its own key
-                // would wait for itself forever, holding the key for every later caller, so it fails instead.
-                if (LoadingScope.Contains(existing))
-                {
-                    throw new InvalidOperationException(
-                        $"The factory of '{methodName}' requested the key it is loading, so it would wait for itself. " +
-                        "Call the underlying implementation instead of the cached one inside the factory.");
-                }
-
-                object? shared;
-                try
-                {
-                    if (policy.FailSafeTimeout > 0 && previous != null)
+                    // Another caller is already loading this key: share its result. A factory that asks for its own key
+                    // would wait for itself forever, holding the key for every later caller, so it fails instead.
+                    if (LoadingScope.Contains(existing))
                     {
-                        // Like the caller that started the load, don't wait past the timeout when a fail-safe value exists
-                        try
-                        {
-                            shared = await existing.Task.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (TimeoutException)
-                        {
-                            if (!existing.Invalidated && TryServeStale<T>(previous, policy, out var stale))
-                            {
-                                RecordHit(methodName);
-                                return stale!;
-                            }
+                        throw new InvalidOperationException(
+                            $"The factory of '{methodName}' requested the key it is loading, so it would wait for itself. " +
+                            "Call the underlying implementation instead of the cached one inside the factory.");
+                    }
 
+                    object? shared;
+                    try
+                    {
+                        if (policy.FailSafeTimeout > 0 && previous != null)
+                        {
+                            // Like the caller that started the load, don't wait past the timeout when a fail-safe value exists
+                            try
+                            {
+                                shared = await existing.Task.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider, cancellationToken).ConfigureAwait(false);
+                            }
+                            catch (TimeoutException)
+                            {
+                                if (!existing.Invalidated && TryServeStale<T>(previous, policy, out var stale))
+                                {
+                                    RecordHit(methodName);
+                                    outcome = RequestResult.Stale;
+                                    return stale!;
+                                }
+
+                                shared = await existing.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                            }
+                        }
+                        else
+                        {
                             shared = await existing.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
                         }
                     }
-                    else
+                    catch (OperationCanceledException) when (existing.CancelledByCaller && !cancellationToken.IsCancellationRequested)
                     {
-                        shared = await existing.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        // The caller that started the load cancelled it; this caller still wants the value
+                        continue;
+                    }
+
+                    RecordHit(methodName);
+                    outcome = existing.Outcome == RequestResult.Stale ? RequestResult.Stale : RequestResult.Hit;
+                    if (shared is T typed)
+                    {
+                        return typed;
+                    }
+
+                    if (shared == null && default(T) == null)
+                    {
+                        return default!;
+                    }
+
+                    // Same key used with a different result type: load independently.
+                    outcome = RequestResult.Miss;
+                    return await InvokeOriginAsync(key, methodName, factory, policy.Tags).ConfigureAwait(false);
+                }
+
+                // A load that may go on after its caller got the fail-safe value runs in its own DI scope from the start
+                var load = RunLoadAsync(
+                    key,
+                    methodName,
+                    policy.FailSafeTimeout > 0 && previous != null ? () => BackgroundLoadScope.RunAsync(factory) : factory,
+                    policy,
+                    flight,
+                    previous,
+                    cancellationToken);
+                if (cancellationToken.CanBeCanceled && !load.IsCompleted)
+                {
+                    // This caller may stop waiting while an uncooperative factory still finishes later.
+                    _ = load.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                }
+                if (policy.FailSafeTimeout > 0 && previous != null && !load.IsCompleted)
+                {
+                    try
+                    {
+                        var value = await load.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider, cancellationToken).ConfigureAwait(false);
+                        outcome = flight.Outcome;
+                        return value;
+                    }
+                    catch (TimeoutException)
+                    {
+                        // Too slow: this caller gets the fail-safe value now and the load finishes in the background,
+                        // storing its result (or serving the fail-safe value to callers that joined it) as usual.
+                        if (!flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
+                        {
+                            _ = load.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+                                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                            outcome = RequestResult.Stale;
+                            return stale!;
+                        }
                     }
                 }
-                catch (OperationCanceledException) when (existing.CancelledByCaller && !cancellationToken.IsCancellationRequested)
-                {
-                    // The caller that started the load cancelled it; this caller still wants the value
-                    continue;
-                }
 
-                RecordHit(methodName);
-                if (shared is T typed)
-                {
-                    return typed;
-                }
-
-                if (shared == null && default(T) == null)
-                {
-                    return default!;
-                }
-
-                // Same key used with a different result type: load independently.
-                return await factory().ConfigureAwait(false);
+                var result = await load.WaitAsync(cancellationToken).ConfigureAwait(false);
+                outcome = flight.Outcome;
+                return result;
             }
-
-            // A load that may go on after its caller got the fail-safe value runs in its own DI scope from the start
-            var load = RunLoadAsync(
-                key,
-                methodName,
-                policy.FailSafeTimeout > 0 && previous != null ? () => BackgroundLoadScope.RunAsync(factory) : factory,
-                policy,
-                flight,
-                previous,
-                cancellationToken);
-            if (cancellationToken.CanBeCanceled && !load.IsCompleted)
+            catch
             {
-                // This caller may stop waiting while an uncooperative factory still finishes later.
-                _ = load.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                outcome = RequestResult.Error;
+                throw;
             }
-            if (policy.FailSafeTimeout > 0 && previous != null && !load.IsCompleted)
-            {
-                try
-                {
-                    return await load.WaitAsync(FromNanos(policy.FailSafeTimeout), _timeProvider, cancellationToken).ConfigureAwait(false);
-                }
-                catch (TimeoutException)
-                {
-                    // Too slow: this caller gets the fail-safe value now and the load finishes in the background,
-                    // storing its result (or serving the fail-safe value to callers that joined it) as usual.
-                    if (!flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
-                    {
-                        _ = load.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
-                            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-                        return stale!;
-                    }
-                }
-            }
-
-            return await load.WaitAsync(cancellationToken).ConfigureAwait(false);
+            finally { if (publication == null) _telemetry?.Request("method", methodName, outcome); }
         }
 
         /// <summary>
@@ -776,6 +816,7 @@ namespace MethodCache.Extensibility
                     if (stored.Found && Remaining(stored, policy) is > 0 and var remaining && ShouldStore(stored.Value, policy, methodName))
                     {
                         StoreLoaded(key, stored.Value, policy, flight, duration: remaining);
+                        flight.Outcome = RequestResult.Hit;
                         flight.Complete(stored.Value);
                         RecordHit(methodName);
                         return stored.Value!;
@@ -783,11 +824,15 @@ namespace MethodCache.Extensibility
                 }
 
                 RecordMiss(methodName);
+                flight.Outcome = RequestResult.Miss;
 
                 var loadStartedAt = flight.SourceStartedAt ?? _distributed?.Now ?? 0;
-                var start = StartTiming();
-                var result = await LoadingScope.Run(flight, factory).ConfigureAwait(false);
-                var elapsed = ElapsedSince(start);
+                T result;
+                using (var origin = flight.IsBulkPublication ? null : _telemetry?.BeginLoad("method", methodName, key, policy.Tags))
+                {
+                    try { result = await LoadingScope.Run(flight, factory).ConfigureAwait(false); }
+                    catch (Exception error) { origin?.Fail(error); throw; }
+                }
 
                 if (ShouldStore(result, policy, methodName))
                 {
@@ -796,7 +841,6 @@ namespace MethodCache.Extensibility
                 }
 
                 flight.Complete(result);
-                RecordLoadLatency(methodName, elapsed);
                 return result;
             }
             catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
@@ -807,10 +851,10 @@ namespace MethodCache.Extensibility
             }
             catch (Exception ex)
             {
-                _metricsProvider.CacheError(methodName, ex.Message);
 
                 if (previous != null && !flight.Invalidated && TryServeStale<T>(previous, policy, out var stale))
                 {
+                    flight.Outcome = RequestResult.Stale;
                     flight.Complete(stale);
                     return stale!;
                 }
@@ -823,6 +867,9 @@ namespace MethodCache.Extensibility
                 _flights.TryRemove(new KeyValuePair<string, Flight>(key, flight));
             }
         }
+
+        private Task<T> InvokeOriginAsync<T>(string key, string name, Func<Task<T>> factory, string[]? tags)
+            => _telemetry?.Enabled == true ? _telemetry.OriginAsync(name, key, tags, factory) : factory();
 
         private ValueTask<DistributedEntry<T>> ReadDistributedAsync<T>(string key, EntryPolicy policy, CancellationToken cancellationToken)
             => _distributed!.TryGetAsync<T>(key, cancellationToken, policy.Source?.Identity);
@@ -861,7 +908,7 @@ namespace MethodCache.Extensibility
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // A load that finished since the caller's miss stored its value already
-                if (TryGetFresh<T>(key, _engine.Now, out var loaded, out _, out _))
+                if (TryGetFresh<T>(key, _engine.Now, out var loaded, out var loadedNode, out _))
                 {
                     flight.Complete(loaded);
                     completed = true;
@@ -943,12 +990,15 @@ namespace MethodCache.Extensibility
                 try
                 {
                     var loadStartedAt = _distributed?.Now ?? 0;
-                    var start = StartTiming();
 
                     // A scoped or transient service gets its own instance from a new scope: the request that found
                     // the entry due may end, and dispose its own instance, before the refresh does
-                    var result = await LoadingScope.Run(flight, () => BackgroundLoadScope.RunAsync(factory)).ConfigureAwait(false);
-                    var elapsed = ElapsedSince(start);
+                    T result;
+                    using (var origin = _telemetry?.BeginLoad("method", methodName, key, policy.Tags))
+                    {
+                        try { result = await LoadingScope.Run(flight, () => BackgroundLoadScope.RunAsync(factory)).ConfigureAwait(false); }
+                        catch (Exception error) { origin?.Fail(error); throw; }
+                    }
 
                     // Replace only the node being refreshed, so a write or removal that slipped in before this
                     // refresh registered its flight is never overwritten or resurrected.
@@ -961,7 +1011,6 @@ namespace MethodCache.Extensibility
                     }
 
                     flight.Complete(result);
-                    RecordLoadLatency(methodName, elapsed);
                 }
                 catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
                 {
@@ -973,19 +1022,20 @@ namespace MethodCache.Extensibility
                 catch (Exception ex)
                 {
                     // The current value stays until it expires; the next miss retries the factory.
-                    _metricsProvider.CacheError(methodName, $"Background refresh failed: {ex.Message}");
 
                     // Callers that joined this refresh after the entry went logically stale get the fail-safe
                     // value, exactly as they would from a foreground load.
                     var now = _engine.Now;
                     T? stale = default;
-                    var served = policy.FailSafe > 0 && !flight.Invalidated && (node.IsLogicallyExpired(now)
+                    var wasStale = node.IsLogicallyExpired(now);
+                    var served = policy.FailSafe > 0 && !flight.Invalidated && (wasStale
                         // Joined callers get a stale value, so hold it for the throttle period like a foreground load.
                         ? TryServeStale(node, policy, out stale)
                         : node.IsAlive && !node.IsPhysicallyExpired(now) && TryRead(node, out stale));
 
                     if (served)
                     {
+                        flight.Outcome = wasStale ? RequestResult.Stale : RequestResult.Hit;
                         flight.Complete(stale);
                     }
                     else
@@ -1074,9 +1124,8 @@ namespace MethodCache.Extensibility
             {
                 return cacheWhen(result);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _metricsProvider.CacheError(methodName, $"CacheWhen threw: {ex.Message}");
                 return false;
             }
         }
@@ -1231,6 +1280,7 @@ namespace MethodCache.Extensibility
                 // with sliding expiration, or the factory would never be tried again, and no early refresh may start
                 // before then either (the refresh state stays set).
                 var retryUntil = Math.Min(now + policy.FailSafeRetryAfter, Volatile.Read(ref node.PhysicalExpiresAt));
+                Volatile.Write(ref node.IsStaleFallback, true);
                 Volatile.Write(ref node.AbsoluteExpiresAt, retryUntil);
                 Volatile.Write(ref node.LogicalExpiresAt, retryUntil);
                 Interlocked.Exchange(ref node.RefreshState, 1);
@@ -1341,24 +1391,25 @@ namespace MethodCache.Extensibility
             }
         }
 
+        private static RequestResult HitResult(Node? node)
+            => node != null && Volatile.Read(ref node.IsStaleFallback) ? RequestResult.Stale : RequestResult.Hit;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RecordHitTelemetry(string name, Node? node)
+        {
+            if (_telemetry?.RequestsEnabled == true) _telemetry.Request("method", name, HitResult(node));
+        }
+
         private void RecordHit(string methodName)
         {
-            _metricsProvider.CacheHit(methodName);
             if (_options.EnableStatistics)
             {
                 _hits.Increment();
             }
         }
 
-        /// <summary>Reports how long the cached method took to produce a value.</summary>
-        private void RecordLoadLatency(string methodName, long elapsedNanos)
-        {
-            _metricsProvider.CacheLatency(methodName, TimeSpan.FromTicks(elapsedNanos / 100));
-        }
-
         private void RecordMiss(string methodName)
         {
-            _metricsProvider.CacheMiss(methodName);
             if (_options.EnableStatistics)
             {
                 _misses.Increment();
@@ -1385,16 +1436,6 @@ namespace MethodCache.Extensibility
         private static long ToNanos(TimeSpan value) => value.Ticks >= MaxNanos / NanosPerTick ? MaxNanos : value.Ticks * NanosPerTick;
 
         private static TimeSpan FromNanos(long nanos) => TimeSpan.FromTicks(nanos / NanosPerTick);
-
-        /// <summary>
-        /// Factory timings feed the load-latency metric, which needs sub-millisecond resolution. The default engine
-        /// clock ticks in milliseconds, so with the system clock a high-resolution timestamp is used instead.
-        /// </summary>
-        private long StartTiming() => _highResolutionTiming ? Stopwatch.GetTimestamp() : _engine.Now;
-
-        private long ElapsedSince(long start) => _highResolutionTiming
-            ? Stopwatch.GetElapsedTime(start).Ticks * NanosPerTick
-            : _engine.Now - start;
 
         private void InvalidateFlight(string key)
         {
@@ -1538,6 +1579,7 @@ namespace MethodCache.Extensibility
         /// </summary>
         private class Flight : TaskCompletionSource<object?>
         {
+            internal RequestResult Outcome { get; set; } = RequestResult.Miss;
             internal PolicyGeneration? Generation { get; init; }
             internal string? MethodId { get; init; }
             private volatile bool _invalidated;
@@ -1571,6 +1613,8 @@ namespace MethodCache.Extensibility
                 Gate = publication?.Gate ?? new object();
                 SourceStartedAt = publication?.SourceStartedAt;
             }
+
+            internal bool IsBulkPublication => _publication != null;
 
             public string[]? Tags { get; }
 

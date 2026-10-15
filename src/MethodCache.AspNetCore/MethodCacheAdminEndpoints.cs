@@ -59,7 +59,7 @@ public static class MethodCacheAdminEndpoints
     {
         var stats = await admin.GetStatsAsync(cancellationToken).ConfigureAwait(false);
         return TypedResults.Ok(new CacheStatsResponse(
-            stats.Hits, stats.Misses, stats.HitRatio, stats.Evictions, stats.Entries, stats.MemoryUsage));
+            stats.Hits, stats.Misses, stats.Evictions, stats.LocalMethodEntries, stats.LocalHttpEntries, stats.LocalHttpBytes, stats.ObservedDistributedEntries, stats.TotalWeight));
     }
 
     private static Results<Ok<IReadOnlyList<CacheEntryInfo>>, ValidationProblem> ListEntries(
@@ -107,7 +107,7 @@ public static class MethodCacheAdminEndpoints
 }
 
 /// <summary>Cache statistics as returned by the <c>stats</c> endpoint.</summary>
-public sealed record CacheStatsResponse(long Hits, long Misses, double HitRatio, long Evictions, long Entries, long MemoryUsage);
+public sealed record CacheStatsResponse(long Hits, long Misses, long Evictions, long LocalMethodEntries, long LocalHttpEntries, long LocalHttpBytes, long ObservedDistributedEntries, long TotalWeight);
 
 /// <summary>Body of the <c>invalidate</c> endpoint.</summary>
 public sealed record InvalidateRequest(IReadOnlyList<string>? Tags);

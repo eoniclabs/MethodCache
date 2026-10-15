@@ -96,15 +96,19 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static void EnsureCoreServices(IServiceCollection services)
         {
+            services.AddMetrics();
+            services.AddOptions<MethodCacheTelemetryOptions>();
+            services.TryAddSingleton(static sp => new MethodCache.Core.Telemetry.CoreTelemetry(
+                sp.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>(),
+                sp.GetRequiredService<IOptions<MethodCacheTelemetryOptions>>(), sp.GetService<TimeProvider>()));
             services.TryAddSingleton(new GeneratedParameters());
             AddDefaultCacheManager(services);
             services.TryAddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
-            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();
             services.TryAddSingleton(static sp => new DecoratorServices(
                 sp.GetRequiredService<ICacheManager>(),
                 sp.GetRequiredService<IPolicyRegistry>(),
                 sp.GetRequiredService<ICacheKeyGenerator>(),
-                sp.GetService<ICacheMetricsProvider>())
+                sp.GetService<MethodCache.Core.Telemetry.CoreTelemetry>())
             {
                 Diagnostics = new GeneratedDiagnostics(sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Generated")),
                 ParameterNames = new Dictionary<string, string[]>(sp.GetRequiredService<GeneratedParameters>().Names, StringComparer.Ordinal)
@@ -146,12 +150,11 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             services.TryAddSingleton(static sp => new InMemoryCacheManager(
-                sp.GetRequiredService<ICacheMetricsProvider>(),
                 sp.GetService<IOptions<MethodCacheMemoryOptions>>(),
                 sp.GetService<TimeProvider>(),
                 sp.GetService<DistributedCacheLayer>(),
                 methodId => (sp.GetRequiredService<MethodCache.Policies.IPolicyRegistry>() as MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistry)?.InvalidateGeneration(methodId),
-                sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>()));
+                sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>()));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<ICacheAdministrator>(static sp => new InMemoryCacheAdministrator(
@@ -216,7 +219,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetRequiredKeyedService<DistributedCacheOptions>(OwnDistributedCacheKey),
                 sp.GetKeyedService<IBackplane>(OwnDistributedCacheKey),
                 sp.GetService<TimeProvider>(),
-                sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>()));
+                sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>(), telemetry: sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>()));
 
             // A generic host checks the cache when it starts; without one, the layer above rejects it on first use
             services.AddOptions<DistributedCacheStoreValidation>().ValidateOnStart();

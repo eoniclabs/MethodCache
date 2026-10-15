@@ -17,7 +17,7 @@ public class CacheLookupTests
     {
         var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
-        return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time);
+        return new InMemoryCacheManager(MsOptions.Create(options), _time);
     }
 
     // ---------- Fluent TryGetAsync / bulk report Miss for cached entries ----------

@@ -73,7 +73,7 @@ internal sealed class SqlServerTables(
             catch (SqlException ex) when (ex.Number == 50001)
             {
                 // Report errors even when initialization finishes after the bounded startup wait.
-                logger?.LogError(ex, "MethodCache SQL Server schema is incompatible; table initialization stopped. Apply the explicit MethodCache migration script.");
+                logger?.LogError("MethodCache SQL Server schema is incompatible; table initialization stopped. Apply the explicit MethodCache migration script. Error type: {ErrorType}.", ex.GetType().FullName);
                 throw;
             }
             catch (Exception ex)
@@ -81,7 +81,7 @@ internal sealed class SqlServerTables(
                 if (!logged)
                 {
                     logged = true;
-                    logger?.LogWarning(ex, "MethodCache could not create its SQL Server tables; retrying every {Interval}.", RetryInterval);
+                    logger?.LogWarning("MethodCache could not create its SQL Server tables; retrying every {Interval}. Error type: {ErrorType}.", RetryInterval, ex.GetType().FullName);
                 }
             }
 

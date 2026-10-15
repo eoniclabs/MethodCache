@@ -64,8 +64,7 @@ public class DistributedSerializationTests
             _time,
             _logger);
         var node = new InMemoryCacheManager(
-            new NullCacheMetricsProvider(),
-            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             _time,
             layer);
         return (node, layer);

@@ -98,7 +98,7 @@ public class MemoryCacheModelTests
                 MaxExpiration = MaxExpiration,
                 JitterMaxDuration = TimeSpan.Zero,
             };
-            Cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), Time);
+            Cache = new InMemoryCacheManager(MsOptions.Create(options), Time);
         }
     }
 

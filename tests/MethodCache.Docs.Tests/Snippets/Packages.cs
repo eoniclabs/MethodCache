@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using MethodCache;
 using MethodCache.HttpCaching;
-using MethodCache.OpenTelemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -208,7 +207,6 @@ namespace Docs.Packages
         {
             // begin-snippet: otel-setup
             builder.Services.AddMethodCache();
-            builder.Services.AddMethodCacheOpenTelemetry(); // after AddMethodCache, which registers the cache it instruments
 
             builder.Services.AddOpenTelemetry()
                 .WithTracing(tracing => tracing
@@ -221,15 +219,16 @@ namespace Docs.Packages
             // end-snippet
         }
 
-        public sealed class Orders(IBaggagePropagator _baggagePropagator)
+        public static void IdentityOptions(WebApplicationBuilder builder)
         {
-            public void Start(string tenantId)
+            // begin-snippet: otel-baggage
+            builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
             {
-                // begin-snippet: otel-baggage
-                _baggagePropagator.SetCacheCorrelationId(Guid.NewGuid().ToString());
-                _baggagePropagator.SetCacheTenantId(tenantId); // exported only with ExportSensitiveData = true
-                // end-snippet
-            }
+                options.RecordCacheKeys = true; // hashes by default; raw keys can contain secrets
+                options.RecordCacheTags = false;
+            });
+            // end-snippet
         }
+
     }
 }

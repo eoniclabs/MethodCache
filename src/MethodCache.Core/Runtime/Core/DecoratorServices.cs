@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using MethodCache.Extensibility;
+using MethodCache.Core.Telemetry;
 using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,18 +28,18 @@ namespace MethodCache.Infrastructure
         /// <param name="cacheManager">The cache that stores method results.</param>
         /// <param name="policyRegistry">Resolves each method's cache policy.</param>
         /// <param name="keyGenerator">Builds cache keys from method arguments.</param>
-        /// <param name="metricsProvider">Receives hit, miss, error and latency reports; optional.</param>
+        /// <param name="telemetry">Container-owned Core instrumentation.</param>
         public DecoratorServices(
             ICacheManager cacheManager,
             IPolicyRegistry policyRegistry,
             ICacheKeyGenerator keyGenerator,
-            ICacheMetricsProvider? metricsProvider = null)
+            CoreTelemetry? telemetry = null)
         {
             CacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
-            FastMemory = cacheManager as InMemoryCacheManager ?? (cacheManager as IGeneratedMemoryCache)?.Memory;
+            FastMemory = cacheManager as InMemoryCacheManager;
             PolicyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));
             KeyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
-            MetricsProvider = metricsProvider;
+            Telemetry = telemetry ?? FastMemory?.Telemetry;
             _sitesRegistry = policyRegistry;
         }
 
@@ -50,7 +51,7 @@ namespace MethodCache.Infrastructure
             FastMemory = container.FastMemory;
             PolicyRegistry = container.PolicyRegistry;
             KeyGenerator = container.KeyGenerator;
-            MetricsProvider = container.MetricsProvider;
+            Telemetry = container.Telemetry;
             _sitesRegistry = registration;
         }
 
@@ -74,7 +75,7 @@ namespace MethodCache.Infrastructure
                 provider.GetRequiredService<ICacheManager>(),
                 provider.GetRequiredService<IPolicyRegistry>(),
                 provider.GetRequiredService<ICacheKeyGenerator>(),
-                provider.GetService<ICacheMetricsProvider>());
+                provider.GetService<CoreTelemetry>());
         }
 
         /// <summary>The cache that stores method results.</summary>
@@ -87,8 +88,8 @@ namespace MethodCache.Infrastructure
         /// <summary>Builds cache keys from method arguments.</summary>
         public ICacheKeyGenerator KeyGenerator { get; }
 
-        /// <summary>Receives hit, miss, error and latency reports; null when none is registered.</summary>
-        public ICacheMetricsProvider? MetricsProvider { get; }
+        /// <summary>Instrumentation owned by this container.</summary>
+        internal CoreTelemetry? Telemetry { get; }
 
         /// <summary>
         /// Returns the instance a generated loader calls. Public only for generated code.

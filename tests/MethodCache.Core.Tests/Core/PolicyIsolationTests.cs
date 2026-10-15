@@ -14,7 +14,7 @@ public class PolicyIsolationTests
     public PolicyIsolationTests() => _store = new MethodCache.TestSupport.AtomicTestCache(_time);
 
     private InMemoryCacheManager Node(bool cacheNull = true)
-        => new(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions
+        => new(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions
         { EnableBackgroundCleanup = false, CacheNullValues = cacheNull }), _time,
             new DistributedCacheLayer(_store, new JsonCacheSerializer(), new DistributedCacheOptions
             { ClockSkewTolerance = TimeSpan.Zero }, timeProvider: _time));

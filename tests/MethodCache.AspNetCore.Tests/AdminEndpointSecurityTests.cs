@@ -129,7 +129,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
             await SendAsync(method, path, user: "someone");
         }
 
-        Assert.Equal(2, (await Administrator.GetStatsAsync()).Entries);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
     }
 
     [Theory]
@@ -143,7 +143,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     public async Task BadQueries_AreRejected(string method, string path)
     {
         Assert.Equal(HttpStatusCode.BadRequest, await SendAsync(method, Prefix + path, user: "root", role: "Admin"));
-        Assert.Equal(2, (await Administrator.GetStatsAsync()).Entries);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
     }
 
     [Theory]
@@ -161,7 +161,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         var response = await client.PostAsync(Prefix + "/invalidate", new StringContent(body, Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(2, (await Administrator.GetStatsAsync()).Entries);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
     }
 
     [Theory]
@@ -178,7 +178,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         var response = await client.PostAsync(Prefix + "/invalidate", content);
 
         Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
-        Assert.Equal(2, (await Administrator.GetStatsAsync()).Entries);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         var response = await client.DeleteAsync(Prefix + "/entry?key=" + Uri.EscapeDataString(key));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(2, (await Administrator.GetStatsAsync()).Entries);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
     }
 
     [Fact]
@@ -220,7 +220,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         var response = await client.PostAsJsonAsync(Prefix + "/invalidate", new InvalidateRequest(new[] { "user*", "*" }));
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.Equal(2, (await Administrator.GetStatsAsync()).Entries);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
     }
 
     private ICacheAdministrator Administrator => _app.Services.GetRequiredService<ICacheAdministrator>();

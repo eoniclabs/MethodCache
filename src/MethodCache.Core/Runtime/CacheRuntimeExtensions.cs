@@ -7,7 +7,7 @@ internal static class CacheRuntimeExtensions
 {
     internal static Task<T> GetOrCreateFastAsync<T>(this ICacheManager manager, string key, string name,
         Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken token = default)
-        => manager is ICacheRuntime runtime && manager is MethodCache.Extensibility.InMemoryCacheManager or IGeneratedMemoryCache
+        => manager is ICacheRuntime runtime && manager is MethodCache.Extensibility.InMemoryCacheManager
             ? runtime.GetOrCreateFastAsync(key, name, factory, policy, token)
             : GetOrCreateCustomAsync(manager, key, factory, policy, token);
 

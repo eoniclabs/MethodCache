@@ -1,5 +1,5 @@
 using System;
-using MethodCache.OpenTelemetry;
+using MethodCache;
 
 namespace OpenTelemetry.Trace;
 
@@ -10,6 +10,6 @@ public static class MethodCacheTracerProviderBuilderExtensions
     public static TracerProviderBuilder AddMethodCacheInstrumentation(this TracerProviderBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        return builder.AddSource(TracingConstants.ActivitySourceName);
+        return builder.AddSource(MethodCacheTelemetry.Name);
     }
 }

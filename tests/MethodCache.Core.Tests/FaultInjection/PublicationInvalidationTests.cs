@@ -19,7 +19,7 @@ public class PublicationInvalidationTests
     {
         using var finishWeight = new ManualResetEventSlim();
         var weighing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheMemoryOptions
+        using var cache = new InMemoryCacheManager(MsOptions.Create(new MethodCacheMemoryOptions
         {
             EnableBackgroundCleanup = false,
             Weigher = (_, value) =>

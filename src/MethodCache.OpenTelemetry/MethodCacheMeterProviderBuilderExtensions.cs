@@ -1,5 +1,5 @@
 using System;
-using MethodCache.OpenTelemetry;
+using MethodCache;
 
 namespace OpenTelemetry.Metrics;
 
@@ -10,6 +10,6 @@ public static class MethodCacheMeterProviderBuilderExtensions
     public static MeterProviderBuilder AddMethodCacheInstrumentation(this MeterProviderBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        return builder.AddMeter(MetricInstruments.MeterName);
+        return builder.AddMeter(MethodCacheTelemetry.Name);
     }
 }
