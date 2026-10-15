@@ -5,6 +5,14 @@ m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class IndependentMeansTests(unittest.TestCase):
  def test_exact_three_independent_means(self):
   r=m.interval([10,11,12]);self.assertEqual(11,r['mean_ns']);self.assertAlmostEqual(4.302652729696142/math.sqrt(3),r['upper_ns']-11)
+ def test_six_and_nine_independent_means_use_correct_degrees_of_freedom(self):
+  six=m.interval([10,11,12,13,14,15]);nine=m.interval(list(range(10,19)))
+  self.assertEqual(5,six['degrees_of_freedom']);self.assertEqual(8,nine['degrees_of_freedom'])
+  self.assertAlmostEqual(2.570581835636305*math.sqrt(3.5/6),six['upper_ns']-12.5)
+  self.assertAlmostEqual(2.306004135204166*math.sqrt(7.5/9),nine['upper_ns']-14)
+ def test_base_change_launch_counts_must_match(self):
+  key=('N','T','Hit','')
+  with self.assertRaises(ValueError):m.compare({key:([100]*3,[0]*3)},{key:([100]*6,[0]*6)})
  def test_reject_missing_or_invalid_samples(self):
   for values in [[10,11], [10,11,12,13], [10,float('nan'),12], [10,0,12]]:
    with self.assertRaises(ValueError):m.interval(values)
@@ -36,6 +44,22 @@ class ReportIntegrityTests(unittest.TestCase):
  def test_three_complete_reports(self):
   row=m.collect(self.root,'base','local')[('N','T','Hit','')]
   self.assertEqual(([100,100,100],[0,0,0]),row)
+ def test_targeted_supplement_preserves_full_case_integrity(self):
+  for rnd in range(1,7):
+   stem=f'round-{rnd}-base-local';folder=self.root/stem/'results';folder.mkdir(parents=True,exist_ok=True)
+   (self.root/(stem+'-interference.json')).write_text('[]')
+   other={**self.case,'Method':'Other'}
+   cases=[self.case,other] if rnd<=3 else [self.case]
+   (folder/'T-report-full.json').write_text(json.dumps({'Benchmarks':cases}))
+  row=m.collect(self.root,'base','local',rounds=6,method='Hit')[('N','T','Hit','')]
+  self.assertEqual(([100]*6,[0]*6),row)
+  with self.assertRaises(ValueError):m.collect(self.root,'base','local',rounds=6)
+  (self.root/'round-6-base-local-interference.json').unlink()
+  with self.assertRaises(ValueError):m.collect(self.root,'base','local',rounds=6,method='Hit')
+ def test_requested_launch_count_requires_every_launch(self):
+  with self.assertRaises(ValueError):m.collect(self.root,'base','local',rounds=6)
+ def test_missing_targeted_method_is_not_empty_success(self):
+  with self.assertRaises(ValueError):m.collect(self.root,'base','local',method='Missing')
  def test_missing_guard_is_not_quiet(self):
   (self.root/'round-2-base-local-interference.json').unlink()
   with self.assertRaises(ValueError):m.collect(self.root,'base','local')

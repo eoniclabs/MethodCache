@@ -279,3 +279,20 @@ zero-byte requirement is unchanged. Replacing memoized identity reuse with a new
 revised test fail with 1,520,000 bytes. Restored source passes the complete 320-case HTTP suite on
 the historical three-target checkout. The original failure is retained without attributing its bytes
 to a proven cause: `plans/design-benchmarks/local-epoch-probe-isolation/`.
+
+## Independent-run precision follow-up
+
+The first two CPU2-affinity baseline GenericHit means imply that even the best possible positive
+third mean would leave a relative three-launch 95% interval half-width of at least 7.51%.
+A fixed nine-launch baseline precision study retains the initial three and adds six independent
+GenericHit launches with the same source/job/affinity, before examining source-change comparisons.
+It is diagnostic only; neither this calculation nor the new helper marks a performance gate passed.
+
+The statistical report now supports complete fixed series of three, six or nine independent
+launches, with the matching Student-t degrees of freedom. An explicit exact-method selector permits
+targeted supplementary evidence without claiming extra launches for unselected cases. Missing
+launches/guards/cases, differing launch counts and incomplete matrices are rejected. Default
+three-launch behavior and the regression/allocation criteria remain unchanged. New collection tests
+fail against the prior helper; all 25 statistical/activity guard tests pass. Evidence and the
+[NIST table reference](https://www.itl.nist.gov/div898/handbook/eda/section3/eda3672.htm) are linked from
+`plans/design-benchmarks/independent-run-precision/`.
