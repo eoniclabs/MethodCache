@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -24,9 +25,21 @@ public class TelemetryHitAllocationTests
         listener.SetMeasurementEventCallback<long>(static (_, _, _, _) => { });
         listener.Start();
         Func<CacheContext, CancellationToken, ValueTask<int>> factory = static (_, _) => ValueTask.FromResult(42);
-        for (var i = 0; i < 100; i++) await cache.GetOrCreateAsync("Docs", factory);
-        var before = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < 1000; i++) await cache.GetOrCreateAsync("Docs", factory);
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, MeasureHits(cache, factory));
+    }
+
+    // The probe returns before invoking assertions; initialization of assertion helpers is not cache work.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static long MeasureHits(ICacheManager cache, Func<CacheContext, CancellationToken, ValueTask<int>> factory)
+    {
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 1000; i++)
+        {
+            var hit = cache.GetOrCreateAsync("Docs", factory);
+            if (!hit.IsCompletedSuccessfully) throw new InvalidOperationException("A warmed local hit must complete synchronously.");
+            _ = hit.Result;
+        }
+        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 }
