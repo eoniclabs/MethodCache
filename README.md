@@ -247,6 +247,7 @@ When the API sends caching headers, let `HttpClient` use them instead of choosin
 
 <!-- snippet: http-basic -->
 ```cs
+builder.Services.AddMethodCache();
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
     .AddHttpCaching();
 ```
@@ -254,8 +255,11 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
-that URL. With `UseDistributedCache`, all instances share the responses through MethodCache's Redis or SQL Server
-cache (or the app's `IDistributedCache` when neither is registered). `AddHttpCaching()` turns off automatic cookies
+that URL. `AddHttpCaching` requires `AddMethodCache`. Configured native Redis or SQL Server stores HTTP responses
+exclusively in MethodCache's owned L2; otherwise Core uses its separate `MaxHttpBytes` budget (100 MiB by default).
+Shared atomic generations prevent late old responses becoming visible after a confirmed mutation, even without
+backplane delivery. `KeepCookies=true` preserves transport cookies and bypasses response caching; otherwise
+`AddHttpCaching()` turns off automatic cookies
 on the client's handler; send any cookie the API needs as an explicit `Cookie` header. Redirects the transport
 follows are not stored under the URL you asked for, retries (Polly, standard resilience) get full responses, and a
 `GET` with a body goes to the origin.

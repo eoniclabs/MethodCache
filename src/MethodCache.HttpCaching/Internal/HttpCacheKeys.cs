@@ -21,10 +21,19 @@ internal static class HttpCacheKeys
     public static string ForUri(string clientName, HttpMethod method, Uri? uri)
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        Append(hash, method.Method);
+
         // The fragment never reaches the origin, so /x#top is the same resource as /x
-        Append(hash, uri == null ? string.Empty : uri.IsAbsoluteUri ? uri.GetComponents(UriComponents.HttpRequestUrl | UriComponents.UserInfo, UriFormat.UriEscaped) : uri.ToString());
-        return clientName + ":" + Convert.ToBase64String(hash.GetHashAndReset());
+        var address = uri == null ? string.Empty : uri.IsAbsoluteUri ? uri.GetComponents(UriComponents.HttpRequestUrl | UriComponents.UserInfo, UriFormat.UriEscaped) : uri.ToString();
+        // URI epoch identity is independent of representation/header formats. Preserve its canonical UTF-8 frame.
+        AppendBytes(hash, Encoding.UTF8.GetBytes(address));
+        var client = Convert.ToHexString(SHA256.HashData(MethodCache.Infrastructure.LosslessUtf16.GetBytes(clientName)));
+        return client + ":" + Convert.ToBase64String(hash.GetHashAndReset()) + ":m:" + method.Method;
+    }
+
+    internal static string GenerationTarget(string key)
+    {
+        var method = key.IndexOf(":m:", StringComparison.Ordinal);
+        return method < 0 ? key : key[..method];
     }
 
     /// <summary>
@@ -117,8 +126,10 @@ internal static class HttpCacheKeys
     }
 
     private static void Append(IncrementalHash hash, string value)
+        => AppendBytes(hash, MethodCache.Infrastructure.LosslessUtf16.GetBytes(value));
+
+    private static void AppendBytes(IncrementalHash hash, ReadOnlySpan<byte> bytes)
     {
-        var bytes = Encoding.UTF8.GetBytes(value);
         Span<byte> length = stackalloc byte[sizeof(int)];
         BinaryPrimitives.WriteInt32LittleEndian(length, bytes.Length);
         hash.AppendData(length);

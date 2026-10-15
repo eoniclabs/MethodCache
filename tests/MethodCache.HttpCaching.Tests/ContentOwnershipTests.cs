@@ -9,6 +9,12 @@ namespace MethodCache.HttpCaching.Tests;
 
 public class ContentOwnershipTests
 {
+    private static async ValueTask<bool> StoreAcceptedAsync(IHttpCacheStorage storage, NSubstitute.Core.CallInfo call)
+    {
+        await storage.SetAsync(call.ArgAt<string>(0), call.ArgAt<HttpCacheEntry>(1), call.ArgAt<TimeSpan>(2), call.ArgAt<CancellationToken>(3));
+        return true;
+    }
+
     [Fact]
     public async Task OversizedBody_ContentOwnerDoesNotCloseStream_ClosesStreamExplicitly()
     {
@@ -68,6 +74,11 @@ public class ContentOwnershipTests
         var clock = new FakeTimeProvider();
         var backing = HttpCacheTestFactory.CreateInMemoryStorage(timeProvider: clock);
         var storage = Substitute.For<IHttpCacheStorage>();
+        storage.ForClient(Arg.Any<string>(), Arg.Any<HttpCacheOptions>()).Returns(storage);
+        storage.BodyBudget(Arg.Any<string>(), Arg.Any<HttpCacheEntry>()).Returns(long.MaxValue);
+        storage.TrySetAsync(Arg.Any<string>(), Arg.Any<HttpCacheEntry>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(c => StoreAcceptedAsync(storage, c));
+
         var fail = false;
         storage.GetGenerationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(c => backing.GetGenerationAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
@@ -99,6 +110,11 @@ public class ContentOwnershipTests
         var clock = new FakeTimeProvider();
         var backing = HttpCacheTestFactory.CreateInMemoryStorage(timeProvider: clock);
         var storage = Substitute.For<IHttpCacheStorage>();
+        storage.ForClient(Arg.Any<string>(), Arg.Any<HttpCacheOptions>()).Returns(storage);
+        storage.BodyBudget(Arg.Any<string>(), Arg.Any<HttpCacheEntry>()).Returns(long.MaxValue);
+        storage.TrySetAsync(Arg.Any<string>(), Arg.Any<HttpCacheEntry>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(c => StoreAcceptedAsync(storage, c));
+
         storage.GetGenerationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(c => backing.GetGenerationAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
         storage.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -131,6 +147,11 @@ public class ContentOwnershipTests
         var clock = new FakeTimeProvider();
         var backing = HttpCacheTestFactory.CreateInMemoryStorage(timeProvider: clock);
         var storage = Substitute.For<IHttpCacheStorage>();
+        storage.ForClient(Arg.Any<string>(), Arg.Any<HttpCacheOptions>()).Returns(storage);
+        storage.BodyBudget(Arg.Any<string>(), Arg.Any<HttpCacheEntry>()).Returns(long.MaxValue);
+        storage.TrySetAsync(Arg.Any<string>(), Arg.Any<HttpCacheEntry>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(c => StoreAcceptedAsync(storage, c));
+
         var fail = false;
         storage.GetGenerationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(c => backing.GetGenerationAsync(c.ArgAt<string>(0), c.ArgAt<CancellationToken>(1)));
@@ -173,9 +194,7 @@ public class ContentOwnershipTests
     {
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var backend = new FailingDistributedCache();
-        using var storage = new HttpCacheStore(
-            Microsoft.Extensions.Options.Options.Create(new HttpCacheStorageOptions()),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<HttpCacheStore>.Instance, clock, backend);
+        using var storage = new TestHttpStore(clock, backend);
         var first = Fresh(new StringContent("cached"));
         first.Headers.ETag = new EntityTagHeaderValue("\"version\"");
         var notModified = new HttpResponseMessage(HttpStatusCode.NotModified);

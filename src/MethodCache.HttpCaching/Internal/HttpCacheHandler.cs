@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using MethodCache.Core.Telemetry;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -12,11 +12,11 @@ namespace MethodCache.HttpCaching.Internal;
 /// </summary>
 internal sealed class HttpCacheHandler : DelegatingHandler
 {
-    private readonly HttpCacheClientState _state;
+    private HttpCacheClientState _state; // Bound once by the builder filter, before this handler is published.
     private readonly IHttpCacheStorage _storage;
     private readonly IOptionsMonitor<HttpCacheOptions> _optionsMonitor;
     private readonly TimeProvider _timeProvider;
-    private readonly HttpCacheMetrics? _metrics;
+    private readonly CoreTelemetry? _metrics;
     private readonly ILogger<HttpCacheHandler> _logger;
     private string _keyName;
 
@@ -26,7 +26,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         IOptionsMonitor<HttpCacheOptions> optionsMonitor,
         TimeProvider timeProvider,
         ILogger<HttpCacheHandler> logger,
-        HttpCacheMetrics? metrics = null)
+        CoreTelemetry? metrics = null)
     {
         _state = state;
         _storage = storage;
@@ -41,38 +41,27 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     /// Caching added through <c>ConfigureHttpClientDefaults</c> has no client name when it is registered. The handler
     /// filter gives each client's handler its own name, so clients never share entries.
     /// </summary>
-    internal void UseClientName(string clientName)
+    internal void UseClientName(string clientName, HttpCacheClientState state)
     {
         if (_state.Name.Length == 0)
         {
             _keyName = clientName;
+            _state = state;
         }
     }
 
     internal string ClientName => _keyName;
 
-    private enum Outcome
-    {
-        Hit,
-        Miss,
-        Stale,
-        Revalidated,
-        Bypass,
-        Error
-    }
-
-    private static readonly string[] OutcomeNames = ["hit", "miss", "stale", "revalidated", "bypass", "error"];
-
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var startedAt = _metrics != null ? Stopwatch.GetTimestamp() : 0;
         try
         {
-            return await SendThroughCacheAsync(request, startedAt, cancellationToken).ConfigureAwait(false);
+            return await SendThroughCacheAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception) when (RecordFailure(startedAt))
+        catch
         {
-            throw; // never reached: the filter records the failure and lets the exception through untouched
+            _metrics?.Request("http", _keyName, RequestResult.Error);
+            throw;
         }
     }
 
@@ -103,9 +92,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private static HttpResponseMessage CreateCacheUnavailableResponse(HttpRequestMessage request) =>
         new(HttpStatusCode.GatewayTimeout) { RequestMessage = request, ReasonPhrase = "Cache entry not available" };
 
-    private async Task<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, long startedAt, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var options = _optionsMonitor.Get(_state.Name);
+        var options = _optionsMonitor.Get(_keyName);
+        var storage = _storage.ForClient(_keyName, options);
         var requestDirectives = RequestCacheDirectives.Parse(request);
 
         var isUnsafe = IsUnsafeMethod(request.Method);
@@ -114,23 +104,23 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         // Range requests go to the origin: a partial response is never stored, and a stored full one isn't cut up.
         // So do requests with the caller's own validators: its 304 must reach it, not be replaced by the cache's.
         // A request with a body (a search sent as GET) is not identified by its URL alone.
-        if (isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
+        if (options.KeepCookies || isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
             request.Content != null || HasCallerConditionals(request) || HasUnsafeTransport(options))
         {
             if (requestDirectives.OnlyIfCached)
             {
-                return Record(Outcome.Bypass, request, CreateCacheUnavailableResponse(request), startedAt);
+                return Record(RequestResult.Bypass, CreateCacheUnavailableResponse(request));
             }
 
             // The transport follows redirects on the same message: the URL it ends at is not the one that was changed
             var target = request.RequestUri;
-            var bypassResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            var bypassResponse = await SendOriginAsync(request, cancellationToken).ConfigureAwait(false);
 
             if (isUnsafe && (int)bypassResponse.StatusCode is >= 200 and < 400)
             {
                 try
                 {
-                    await InvalidateAfterUnsafeRequestAsync(target, request, bypassResponse, options, cancellationToken).ConfigureAwait(false);
+                    await InvalidateAfterUnsafeRequestAsync(storage, target, request, bypassResponse, options, cancellationToken).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -139,14 +129,20 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 }
             }
 
-            return Record(Outcome.Bypass, request, bypassResponse, startedAt);
+            return Record(RequestResult.Bypass, bypassResponse);
         }
 
         var freshness = new FreshnessCalculator(options, _timeProvider);
         var urlKey = HttpCacheKeys.ForRequest(_keyName, request);
-        var generation = await _storage.GetGenerationAsync(urlKey, cancellationToken).ConfigureAwait(false);
+        var generation = await storage.GetGenerationAsync(urlKey, cancellationToken).ConfigureAwait(false);
+        if (generation.StartsWith("unavailable:", StringComparison.Ordinal))
+        {
+            return requestDirectives.OnlyIfCached
+                ? Record(RequestResult.Bypass, CreateCacheUnavailableResponse(request))
+                : Record(RequestResult.Bypass, await SendOriginAsync(request, cancellationToken).ConfigureAwait(false));
+        }
         var cacheKey = HttpCacheKeys.ForGeneration(urlKey, generation);
-        var cachedEntry = await GetCacheEntryAsync(request, cacheKey, cancellationToken).ConfigureAwait(false);
+        var cachedEntry = await GetCacheEntryAsync(storage, request, cacheKey, cancellationToken).ConfigureAwait(false);
 
         if (cachedEntry != null && freshness.GetFreshnessLifetime(cachedEntry) is { } freshnessLifetime)
         {
@@ -156,17 +152,17 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             if (cachedEntry.CacheControl?.NoCache != true && !requestDirectives.NoCache &&
                 requestDirectives.Accepts(currentAge, freshnessLifetime, freshness.MayServeStale(cachedEntry)))
             {
-                return Record(Outcome.Hit, request, CreateCachedResponse(request, cachedEntry, "HIT", options, freshness), startedAt);
+                return Record(RequestResult.Hit, CreateCachedResponse(request, cachedEntry, "HIT", options, freshness));
             }
 
             if (currentAge > freshnessLifetime && requestDirectives.AcceptsStale(currentAge, freshnessLifetime) && freshness.CanUseStaleWhileRevalidate(cachedEntry))
             {
                 if (!requestDirectives.OnlyIfCached && _state.RevalidationsInFlight.TryAdd(cacheKey, 0))
                 {
-                    _ = RevalidateInBackgroundAsync(request, cachedEntry, urlKey, cacheKey, options);
+                    _ = RevalidateInBackgroundAsync(storage, request, cachedEntry, urlKey, cacheKey, options);
                 }
 
-                return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE", options, freshness), startedAt);
+                return Record(RequestResult.Stale, CreateCachedResponse(request, cachedEntry, "STALE", options, freshness));
             }
         }
 
@@ -174,7 +170,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         if (requestDirectives.OnlyIfCached)
         {
             var timeout = CreateCacheUnavailableResponse(request);
-            return Record(Outcome.Bypass, request, timeout, startedAt);
+            return Record(RequestResult.Bypass, timeout);
         }
 
         // The transport changes the message it sends: it follows redirects (new URL and method, no Authorization) and adds
@@ -190,13 +186,13 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var requestStartedAt = _timeProvider.GetTimestamp();
         try
         {
-            upstreamResponse = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            upstreamResponse = await SendOriginAsync(request, cancellationToken).ConfigureAwait(false);
         }
         // An HttpClient timeout surfaces as TaskCanceledException; only the caller's own cancellation skips stale-if-error
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested && !requestDirectives.NoCache && cachedEntry != null && freshness.CanUseStaleIfError(cachedEntry))
         {
-            _logger.LogWarning(ex, "Request failed, serving stale content for {Uri}", sent.RequestUri);
-            return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness), startedAt);
+            _logger.LogWarning("HTTP origin failed; serving stale content. Error type: {ErrorType}", ex.GetType().FullName);
+            return Record(RequestResult.Stale, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness));
         }
         finally
         {
@@ -216,13 +212,13 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 {
                     // The target matched the validators the cache added for this URL; the caller asked for a full response
                     upstreamResponse.Dispose();
-                    upstreamResponse = await base.SendAsync(CopyRequest(sent), cancellationToken).ConfigureAwait(false);
+                    upstreamResponse = await SendOriginAsync(CopyRequest(sent), cancellationToken).ConfigureAwait(false);
                 }
 
                 // The URL redirects now, so its stored response is out of date
                 try
                 {
-                    await RemoveUrlAsync(urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
+                    await RemoveUrlAsync(storage, urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -231,23 +227,23 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 }
             }
 
-            return Record(Outcome.Bypass, request, upstreamResponse, startedAt);
+            return Record(RequestResult.Bypass, upstreamResponse);
         }
 
         try
         {
             if (cachedEntry != null && !requestDirectives.NoCache && (int)upstreamResponse.StatusCode >= 500 && freshness.CanUseStaleIfError(cachedEntry))
             {
-                _logger.LogWarning("Origin returned {StatusCode}, serving stale content for {Uri}", (int)upstreamResponse.StatusCode, sent.RequestUri);
+                _logger.LogWarning("HTTP origin returned {StatusCode}; serving stale content.", (int)upstreamResponse.StatusCode);
                 upstreamResponse.Dispose();
-                return Record(Outcome.Stale, request, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness), startedAt);
+                return Record(RequestResult.Stale, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness));
             }
 
             if (upstreamResponse.StatusCode == HttpStatusCode.NotModified && cachedEntry != null)
             {
-                _logger.LogDebug("Received 304 Not Modified for {Uri}, updating cache", sent.RequestUri);
+                _logger.LogDebug("HTTP origin returned 304; updating cache.");
                 var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow(), _timeProvider.GetElapsedTime(requestStartedAt));
-                await StoreRevalidatedEntryAsync(sent, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
+                await StoreRevalidatedEntryAsync(storage, sent, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
 
                 var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
 
@@ -258,15 +254,15 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 }
 
                 upstreamResponse.Dispose();
-                return Record(Outcome.Revalidated, request, revalidated, startedAt);
+                return Record(RequestResult.Revalidated, revalidated);
             }
 
-            var stored = await TryStoreResponseAsync(sent, upstreamResponse, urlKey, cacheKey, options, freshness, cancellationToken, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
+            var stored = await TryStoreResponseAsync(storage, sent, upstreamResponse, urlKey, cacheKey, options, freshness, cancellationToken, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
             if (stored == StoreResult.NotStored && cachedEntry != null && (int)upstreamResponse.StatusCode < 500)
             {
                 // The origin replaced the representation. Its older body and storage policy must not survive
                 // a no-store/private response, a body too large to cache, or a failed replacement write.
-                await RemoveUrlAsync(urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
+                await RemoveUrlAsync(storage, urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
             }
 
             if (options.AddDiagnosticHeaders && !upstreamResponse.Headers.Contains("X-Cache"))
@@ -274,7 +270,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
                 upstreamResponse.Headers.TryAddWithoutValidation("X-Cache", "MISS");
             }
 
-            return Record(Outcome.Miss, request, upstreamResponse, startedAt);
+            return Record(RequestResult.Miss, upstreamResponse);
         }
         catch
         {
@@ -292,7 +288,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     /// RFC 9111 section 4.4: a successful unsafe request invalidates the cached responses for its target URI and for
     /// same-origin <c>Location</c> and <c>Content-Location</c> URIs.
     /// </summary>
-    private async ValueTask InvalidateAfterUnsafeRequestAsync(Uri? requestUri, HttpRequestMessage request, HttpResponseMessage response, HttpCacheOptions options, CancellationToken cancellationToken)
+    private async ValueTask InvalidateAfterUnsafeRequestAsync(IHttpCacheStorage storage, Uri? requestUri, HttpRequestMessage request, HttpResponseMessage response, HttpCacheOptions options, CancellationToken cancellationToken)
     {
         if (requestUri is not { IsAbsoluteUri: true } target)
         {
@@ -303,16 +299,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         AddSameOrigin(uris, target, response.Headers.Location);
         AddSameOrigin(uris, target, response.Content?.Headers.ContentLocation);
 
-        // Rotate the publication namespace. Older requests can finish writing only to their orphaned namespace.
-        foreach (var uri in uris)
-        {
-            foreach (var method in options.CacheableMethods)
-            {
-                await _storage.InvalidateAsync(HttpCacheKeys.ForUri(_keyName, method, uri), cancellationToken).ConfigureAwait(false);
-            }
-        }
+        // Every target starts an owned advance before caller cancellation can stop waiting.
+        var targets = uris.Select(uri => HttpCacheKeys.ForUri(_keyName, HttpMethod.Get, uri)).ToArray();
+        try { await storage.InvalidateManyAsync(targets, cancellationToken).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch { throw new HttpCacheInvalidationException(); }
 
-        _logger.LogDebug("Invalidated cached responses for {Uri} after {Method}", target, request.Method);
     }
 
     private static void AddSameOrigin(List<Uri> uris, Uri target, Uri? candidate)
@@ -333,9 +325,9 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     /// <summary>
     /// RFC 9111 section 4.1: a stored response with <c>Vary</c> is only used for a request whose varying headers match.
     /// </summary>
-    private async ValueTask<HttpCacheEntry?> GetCacheEntryAsync(HttpRequestMessage request, string baseKey, CancellationToken cancellationToken)
+    private async ValueTask<HttpCacheEntry?> GetCacheEntryAsync(IHttpCacheStorage storage, HttpRequestMessage request, string baseKey, CancellationToken cancellationToken)
     {
-        var entry = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
+        var entry = await storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
         if (entry?.VariantGeneration is not { } generation)
         {
             // Stored in place for a request that sent none of its selecting headers: only such requests may use it
@@ -343,10 +335,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
 
         var variantKey = HttpCacheKeys.ForVariant(baseKey, generation, request, entry.VaryHeaders ?? []);
-        return variantKey == null ? null : await _storage.GetAsync(variantKey, cancellationToken).ConfigureAwait(false);
+        return variantKey == null ? null : await storage.GetAsync(variantKey, cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask<StoreResult> TryStoreResponseAsync(
+    private async ValueTask<StoreResult> TryStoreResponseAsync(IHttpCacheStorage storage,
         HttpRequestMessage request,
         HttpResponseMessage response,
         string urlKey,
@@ -363,7 +355,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         // Reading a response body is part of the HTTP request. A failed read cannot be treated as a cache miss:
         // the partially consumed response would reach the caller with missing bytes.
-        var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken, responseDelay: responseDelay).ConfigureAwait(false);
+        var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken, responseDelay: responseDelay, storage: storage, storageKey: cacheKey).ConfigureAwait(false);
         if (entry == null)
         {
             return StoreResult.NotStored; // Larger than MaxResponseSize; the caller still reads all of it
@@ -372,18 +364,18 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         var attempt = new StoreAttempt();
         try
         {
-            var stored = await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken, attempt).ConfigureAwait(false);
-            if (stored == StoreResult.Stored) _logger.LogDebug("Cached response for {Uri}, size: {Size} bytes", request.RequestUri, entry.Content.Length);
+            var stored = await StoreAsync(storage, request, urlKey, cacheKey, entry, options, freshness, cancellationToken, attempt).ConfigureAwait(false);
+            if (stored == StoreResult.Stored) _logger.LogDebug("Cached HTTP response, size: {Size} bytes.", entry.Content.Length);
             return stored;
         }
         catch (Exception ex) when (ex is not OperationCanceledException && !attempt.Retired)
         {
-            _logger.LogWarning(ex, "Failed to cache response for {Uri}", request.RequestUri);
+            _logger.LogWarning("Failed to cache HTTP response. Error type: {ErrorType}", ex.GetType().FullName);
             return StoreResult.NotStored;
         }
     }
 
-    private async ValueTask StoreRevalidatedEntryAsync(
+    private async ValueTask StoreRevalidatedEntryAsync(IHttpCacheStorage storage,
         HttpRequestMessage request,
         string urlKey,
         string cacheKey,
@@ -402,37 +394,37 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             try
             {
                 // Nothing written (no lifetime left) leaves the old entry, with its old rules: remove it below
-                if (await StoreAsync(request, urlKey, cacheKey, entry, options, freshness, cancellationToken, attempt).ConfigureAwait(false) != StoreResult.NotStored)
+                if (await StoreAsync(storage, request, urlKey, cacheKey, entry, options, freshness, cancellationToken, attempt).ConfigureAwait(false) != StoreResult.NotStored)
                 {
                     return;
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException && !attempt.Retired)
             {
-                _logger.LogWarning(ex, "Failed to update the cached response for {Uri}; removing it", request.RequestUri);
+                _logger.LogWarning("Failed to update HTTP response; removing it. Error type: {ErrorType}", ex.GetType().FullName);
             }
         }
 
-        await RemoveUrlAsync(urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
+        await RemoveUrlAsync(storage, urlKey, cacheKey, cancellationToken).ConfigureAwait(false);
     }
 
     // Remove the URL index too, so previously stored variants cannot be reused, and start a new
     // generation, so a response another request fetched earlier cannot be published afterwards.
-    private async ValueTask RemoveUrlAsync(string urlKey, string cacheKey, CancellationToken cancellationToken, StoreAttempt? attempt = null)
+    private async ValueTask RemoveUrlAsync(IHttpCacheStorage storage, string urlKey, string cacheKey, CancellationToken cancellationToken, StoreAttempt? attempt = null)
     {
         try
         {
-            await _storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+            await storage.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
         }
         catch
         {
             // The new generation alone makes the old entry unreachable: publish it anyway, then report the failure
-            await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
+            await storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
             if (attempt != null) attempt.Retired = true;
             throw;
         }
 
-        await _storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
+        await storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
         if (attempt != null) attempt.Retired = true;
     }
 
@@ -441,7 +433,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private enum StoreResult { NotStored, Stored, Retired }
 
     /// <returns>Whether the entry was stored, rejected, or its old schema was already retired.</returns>
-    private async ValueTask<StoreResult> StoreAsync(
+    private async ValueTask<StoreResult> StoreAsync(IHttpCacheStorage storage,
         HttpRequestMessage request,
         string urlKey,
         string baseKey,
@@ -457,18 +449,17 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
 
         var selectingHeaders = HttpCacheKeys.SelectingHeaders(options, entry.VaryHeaders);
-        var current = await _storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
+        var current = await storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
         if (current != null && !(current.VaryHeaders ?? []).SequenceEqual(selectingHeaders, StringComparer.OrdinalIgnoreCase))
         {
             // Retire the entire old schema, including concurrent writers. This response was fetched in that
             // epoch, so it cannot move into the new one; the next request fetches and stores the new schema.
-            await RemoveUrlAsync(urlKey, baseKey, cancellationToken, attempt).ConfigureAwait(false);
+            await RemoveUrlAsync(storage, urlKey, baseKey, cancellationToken, attempt).ConfigureAwait(false);
             return StoreResult.Retired;
         }
         if (selectingHeaders.Length == 0)
         {
-            await _storage.SetAsync(baseKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
-            return StoreResult.Stored;
+            return await storage.TrySetAsync(baseKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false) ? StoreResult.Stored : StoreResult.NotStored;
         }
 
         // A request that sends none of the selecting headers (an anonymous call in a private cache) shares its
@@ -477,8 +468,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             !selectingHeaders.Contains("*", StringComparer.Ordinal) &&
             !HttpCacheKeys.SendsAny(request, selectingHeaders))
         {
-            await _storage.SetAsync(baseKey, entry with { VariantGeneration = null, VaryHeaders = selectingHeaders }, timeToLive, cancellationToken).ConfigureAwait(false);
-            return StoreResult.Stored;
+            return await storage.TrySetAsync(baseKey, entry with { VariantGeneration = null, VaryHeaders = selectingHeaders }, timeToLive, cancellationToken).ConfigureAwait(false) ? StoreResult.Stored : StoreResult.NotStored;
         }
 
         // A deterministic schema inside the non-reusable URL epoch lets concurrent first writers, including
@@ -505,9 +495,8 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             VariantGeneration = generation
         };
 
-        await _storage.SetAsync(variantKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false);
-        await _storage.SetAsync(baseKey, urlEntry, urlTimeToLive, cancellationToken).ConfigureAwait(false);
-        return StoreResult.Stored;
+        if (!await storage.TrySetAsync(variantKey, entry with { VariantGeneration = null }, timeToLive, cancellationToken).ConfigureAwait(false)) return StoreResult.NotStored;
+        return await storage.TrySetAsync(baseKey, urlEntry, urlTimeToLive, cancellationToken).ConfigureAwait(false) ? StoreResult.Stored : StoreResult.NotStored;
     }
 
     /// <summary>
@@ -713,7 +702,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
     }
 
-    private Task RevalidateInBackgroundAsync(HttpRequestMessage originalRequest, HttpCacheEntry cachedEntry, string urlKey, string cacheKey, HttpCacheOptions options)
+    private Task RevalidateInBackgroundAsync(IHttpCacheStorage storage, HttpRequestMessage originalRequest, HttpCacheEntry cachedEntry, string urlKey, string cacheKey, HttpCacheOptions options)
     {
         // Copy the request now: the caller may dispose the original as soon as it has the stale response.
         // One copy is sent (the transport changes it), the other keys what is stored.
@@ -731,33 +720,33 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             try
             {
                 var requestStartedAt = _timeProvider.GetTimestamp();
-                using var response = await base.SendAsync(request, timeout.Token).ConfigureAwait(false);
+                using var response = await SendOriginAsync(request, timeout.Token).ConfigureAwait(false);
                 var freshness = new FreshnessCalculator(options, _timeProvider);
 
                 if (IsRedirected(sent, request, response))
                 {
                     // Answered by another URL: the stored response for this one is out of date
-                    await RemoveUrlAsync(urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
+                    await RemoveUrlAsync(storage, urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
                 }
                 else if (response.StatusCode == HttpStatusCode.NotModified)
                 {
                     var updatedEntry = cachedEntry.WithUpdatedHeaders(response, _timeProvider.GetUtcNow(), _timeProvider.GetElapsedTime(requestStartedAt));
-                    await StoreRevalidatedEntryAsync(sent, urlKey, cacheKey, updatedEntry, options, freshness, timeout.Token).ConfigureAwait(false);
+                    await StoreRevalidatedEntryAsync(storage, sent, urlKey, cacheKey, updatedEntry, options, freshness, timeout.Token).ConfigureAwait(false);
                 }
                 else
                 {
-                    var stored = await TryStoreResponseAsync(sent, response, urlKey, cacheKey, options, freshness, timeout.Token, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
+                    var stored = await TryStoreResponseAsync(storage, sent, response, urlKey, cacheKey, options, freshness, timeout.Token, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
                     if (stored == StoreResult.NotStored && (int)response.StatusCode < 500)
-                        await RemoveUrlAsync(urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
+                        await RemoveUrlAsync(storage, urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (timeout.IsCancellationRequested)
             {
-                _logger.LogDebug("Background revalidation timed out for {Uri}", request.RequestUri);
+                _logger.LogDebug("HTTP background revalidation timed out.");
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Background revalidation failed for {Uri}", request.RequestUri);
+                _logger.LogWarning("HTTP background revalidation failed. Error type: {ErrorType}", ex.GetType().FullName);
             }
             finally
             {
@@ -768,15 +757,18 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }, CancellationToken.None);
     }
 
-    private HttpResponseMessage Record(Outcome outcome, HttpRequestMessage request, HttpResponseMessage response, long startedAt)
+    internal bool ShouldWarnCookies() => Interlocked.Exchange(ref _state.CookieWarningLogged, 1) == 0;
+
+    private async Task<HttpResponseMessage> SendOriginAsync(HttpRequestMessage request, CancellationToken token)
     {
-        _metrics?.Record(_keyName, OutcomeNames[(int)outcome], Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
-        return response;
+        using var origin = _metrics?.BeginLoad("http", _keyName);
+        try { return await base.SendAsync(request, token).ConfigureAwait(false); }
+        catch (Exception error) { origin?.Fail(error); throw; }
     }
 
-    private bool RecordFailure(long startedAt)
+    private HttpResponseMessage Record(RequestResult outcome, HttpResponseMessage response)
     {
-        _metrics?.Record(_keyName, OutcomeNames[(int)Outcome.Error], Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
-        return false;
+        _metrics?.Request("http", _keyName, outcome);
+        return response;
     }
 }

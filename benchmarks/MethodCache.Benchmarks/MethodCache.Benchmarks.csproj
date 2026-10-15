@@ -42,4 +42,7 @@
     <ProjectReference Include="..\..\src\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+  </ItemGroup>
 </Project>

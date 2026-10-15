@@ -64,6 +64,7 @@
     <InternalsVisibleTo Include="MethodCache.Redis.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.SqlServer.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.HttpCaching.Tests" />
+    <InternalsVisibleTo Include="MethodCache.HttpCaching.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.Serialization.MessagePack.Tests" />
 
     <InternalsVisibleTo Include="MethodCache.SourceGenerator" />

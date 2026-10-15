@@ -1,3 +1,4 @@
+using MethodCache.Core.Runtime.Http;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,20 +24,26 @@ public sealed class MethodCacheHealthCheck : IHealthCheck
             var admin = _services.GetService<ICacheAdministrator>();
             var transport = _services.GetService<DistributedCacheLayer>();
             var builtIn = manager is InMemoryCacheManager;
+            var http = _services.GetService<HttpResponseStore>();
             var data = new Dictionary<string, object>
             {
                 ["managerCapability"] = builtIn ? "built_in" : manager.GetType() == typeof(NoOpCacheManager) ? "noop" : "custom",
-                ["statisticsAvailable"] = builtIn && admin != null
+                ["statisticsAvailable"] = (builtIn || http != null) && admin != null,
+                ["methodStatisticsAvailable"] = builtIn && admin != null,
+                ["httpCapability"] = http == null ? "not_configured" : http.Distributed ? "distributed" : "local"
             };
-            if (builtIn && admin != null)
+            if ((builtIn || http != null) && admin != null)
             {
                 var stats = await admin.GetStatsAsync(cancellationToken).ConfigureAwait(false);
-                data["localMethodEntries"] = stats.LocalMethodEntries;
+                if (builtIn)
+                {
+                    data["localMethodEntries"] = stats.LocalMethodEntries;
+                    data["totalWeight"] = stats.TotalWeight;
+                    data["evictions"] = stats.Evictions;
+                }
                 data["localHttpEntries"] = stats.LocalHttpEntries;
                 data["localHttpBytes"] = stats.LocalHttpBytes;
                 data["observedDistributedEntries"] = stats.ObservedDistributedEntries;
-                data["totalWeight"] = stats.TotalWeight;
-                data["evictions"] = stats.Evictions;
             }
             var queues = transport?.GetInvalidationQueues() ?? admin?.GetInvalidationQueues() ?? new InvalidationQueues(0, 0);
             data["invalidationQueued"] = queues.Distributed;

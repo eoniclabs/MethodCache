@@ -11,6 +11,7 @@ public class BenchmarkSetupTests
     [Theory]
     [InlineData("engine")]
     [InlineData("hitpath")]
+    [InlineData("httppath")]
     [InlineData("hashlookup")]
     [InlineData("readme")]
     [InlineData("comparison")]
@@ -58,6 +59,24 @@ public class BenchmarkSetupTests
                 Assert.True(benchmark.KeyBuild() > 0);
             }
             Assert.Equal(1, benchmark.OriginLoads);
+        }
+        finally { benchmark.Cleanup(); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HttpPath_ActualHitsNeverCallOrigin_And304AndMissDo(bool listening)
+    {
+        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks { Listening = listening };
+        await benchmark.Setup();
+        try
+        {
+            var loads = benchmark.OriginLoads;
+            for (var i = 0; i < 20; i++) { Assert.Equal(200, await benchmark.FreshHit()); Assert.Equal(200, await benchmark.VariantHit()); }
+            Assert.Equal(loads, benchmark.OriginLoads);
+            Assert.Equal(200, await benchmark.Revalidated()); Assert.Equal(loads + 1, benchmark.OriginLoads);
+            Assert.Equal(200, await benchmark.Miss()); Assert.Equal(loads + 2, benchmark.OriginLoads);
         }
         finally { benchmark.Cleanup(); }
     }

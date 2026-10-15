@@ -78,6 +78,32 @@ public class HealthCapabilityTests
         Assert.False(data.ContainsKey("totalWeight"));
     }
 
+    [Fact]
+    public async Task NoOpWithHttp_ReportsHttpStatisticsSeparatelyFromUnsupportedMethodStatistics()
+    {
+        var services = new ServiceCollection(); services.AddLogging();
+        services.AddSingleton<ICacheManager, NoOpCacheManager>(); services.AddMethodCache();
+        services.AddHttpClient("api").AddHttpCaching(o => o.AllowUnverifiedTransport = true)
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpOrigin());
+        services.AddHealthChecks().AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("api");
+        await client.GetStringAsync("https://example.test/a");
+        var result = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+        var data = Assert.Single(result.Entries).Value.Data;
+        Assert.Equal(HealthStatus.Healthy, result.Status); Assert.Equal("noop", data["managerCapability"]);
+        Assert.Equal(true, data["statisticsAvailable"]); Assert.Equal(false, data["methodStatisticsAvailable"]);
+        Assert.Equal("local", data["httpCapability"]); Assert.Equal(1L, data["localHttpEntries"]);
+        Assert.False(data.ContainsKey("localMethodEntries")); Assert.False(data.ContainsKey("totalWeight"));
+    }
+
+    private sealed class HttpOrigin : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+            => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            { Content = new StringContent("value"), Headers = { CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(1) } } });
+    }
+
     private sealed class CustomManager : ICacheManager
     {
         private readonly NoOpCacheManager _inner = new();

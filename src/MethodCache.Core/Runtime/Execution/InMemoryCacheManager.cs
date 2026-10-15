@@ -1,3 +1,4 @@
+using MethodCache.Core.Runtime.Http;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using MethodCache.Core.Telemetry;
@@ -42,6 +43,7 @@ namespace MethodCache.Extensibility
         private readonly ConcurrentDictionary<string, Flight> _flights = new(StringComparer.Ordinal);
         private readonly ConcurrentDictionary<BulkLoad, byte> _bulkLoads = new();
         private readonly CoreTelemetry? _telemetry;
+        private readonly HttpResponseStore? _http;
         private readonly MethodCacheMemoryOptions _options;
         private readonly Func<string, object?, long>? _weigher;
         private readonly ITimer? _maintenanceTimer;
@@ -68,9 +70,10 @@ namespace MethodCache.Extensibility
         /// <summary>Creates a cache manager with container-owned instrumentation and optional distributed storage.</summary>
         internal InMemoryCacheManager(IOptions<MethodCacheMemoryOptions>? options = null, TimeProvider? timeProvider = null,
             DistributedCacheLayer? distributed = null, Action<string>? onMethodInvalidated = null,
-            Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null)
+            Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null, HttpResponseStore? http = null)
         {
             _telemetry = telemetry;
+            _http = http;
             _options = options?.Value ?? new MethodCacheMemoryOptions();
             _weigher = _options.Weigher;
 
@@ -463,6 +466,7 @@ namespace MethodCache.Extensibility
             {
                 if (tag != null)
                 {
+                    _http?.InvalidateLocalTag(tag);
                     _engine.RemoveByTag(tag);
                 }
             }
@@ -1347,6 +1351,7 @@ namespace MethodCache.Extensibility
 
         private void RemoveLocalTag(string tag)
         {
+            _http?.InvalidateLocalTag(tag);
             // Flights are flagged before entries are removed; see StoreLoaded.
             InvalidateFlights(flightTag => string.Equals(flightTag, tag, StringComparison.Ordinal));
             _engine.RemoveByTag(tag);
@@ -1354,6 +1359,7 @@ namespace MethodCache.Extensibility
 
         private void ClearLocal()
         {
+            _http?.ClearLocal();
             InvalidateFlights(static _ => true, includeUntagged: true);
             _engine.Clear();
         }

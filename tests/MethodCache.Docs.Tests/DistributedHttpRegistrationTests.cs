@@ -9,55 +9,25 @@ namespace MethodCache.Docs.Tests;
 
 public class DistributedHttpRegistrationTests
 {
-    [Theory]
-    [InlineData("redis")]
-    [InlineData("sql")]
-    [InlineData("factory")]
-    public void OwnedDistributedCache_CreateClient_DoesNotRequireAnApplicationCache(string providerName)
+    [Fact]
+    public async Task ApplicationCache_WithoutOwnedTransport_IsNeverAnHttpFallback()
     {
-        var services = new ServiceCollection();
-        switch (providerName)
-        {
-            case "redis":
-                services.AddMethodCacheRedis("localhost:6379");
-                break;
-            case "sql":
-                services.AddMethodCacheSqlServer("Server=localhost;Database=MethodCache;Integrated Security=true;TrustServerCertificate=true");
-                break;
-            default:
-                services.AddMethodCacheDistributedCache(_ => new RecordingCache());
-                break;
-        }
-        services.Configure<HttpCacheStorageOptions>(options => options.UseDistributedCache = true);
-        services.AddHttpClient("owned").AddHttpCaching(options => options.AllowUnverifiedTransport = true);
-        using var provider = services.BuildServiceProvider();
-
-        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("owned");
-        Assert.Null(provider.GetService<IDistributedCache>());
+        var services = new ServiceCollection(); var application = new RecordingCache();
+        services.AddSingleton<IDistributedCache>(application); services.AddMethodCache();
+        services.AddHttpClient("selected").ConfigurePrimaryHttpMessageHandler(() => new Origin()).AddHttpCaching(o => o.AllowUnverifiedTransport = true);
+        await using var provider = services.BuildServiceProvider(); using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("selected");
+        await client.GetStringAsync("https://api.example.com/a"); await client.GetStringAsync("https://api.example.com/a");
+        Assert.Same(application, provider.GetRequiredService<IDistributedCache>()); Assert.Equal(0, application.Reads);
+        Assert.Equal(1, (await provider.GetRequiredService<ICacheAdministrator>().GetStatsAsync()).LocalHttpEntries);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task DistributedStorage_PrefersMethodCacheOwnedCache_AndFallsBackToApplicationCache(bool ownCacheRegistered)
+    [Fact]
+    public void CustomMethodTransport_WithoutNativeEpochs_CannotSilentlyBecomeHttpStorage()
     {
-        var services = new ServiceCollection();
-        var applicationCache = new RecordingCache();
-        var ownedCache = new RecordingCache();
-        services.AddSingleton<IDistributedCache>(applicationCache);
-        if (ownCacheRegistered)
-        {
-            services.AddMethodCacheDistributedCache(_ => ownedCache);
-        }
-        services.Configure<HttpCacheStorageOptions>(options => options.UseDistributedCache = true);
-        services.AddHttpClient("selected").ConfigurePrimaryHttpMessageHandler(() => new Origin()).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
-        using var provider = services.BuildServiceProvider();
-        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("selected");
-        using var response = await client.GetAsync("https://api.example.com/distributed");
-
-        Assert.Same(applicationCache, provider.GetRequiredService<IDistributedCache>());
-        Assert.True((ownCacheRegistered ? ownedCache : applicationCache).Reads > 0);
-        Assert.Equal(0, (ownCacheRegistered ? applicationCache : ownedCache).Reads);
+        var services = new ServiceCollection(); services.AddMethodCache();
+        services.AddMethodCacheDistributedCache(_ => new MethodCache.TestSupport.AtomicTestCache());
+        services.AddHttpClient("unsupported").AddHttpCaching(); using var provider = services.BuildServiceProvider();
+        Assert.Throws<NotSupportedException>(() => provider.GetRequiredService<IHttpClientFactory>().CreateClient("unsupported"));
     }
 
     private sealed class Origin : HttpMessageHandler

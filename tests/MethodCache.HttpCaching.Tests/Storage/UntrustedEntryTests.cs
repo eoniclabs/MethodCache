@@ -10,7 +10,7 @@ using Xunit;
 namespace MethodCache.HttpCaching.Tests.Storage;
 
 /// <summary>
-/// With <see cref="HttpCacheStorageOptions.UseDistributedCache"/>, entries are read back from Redis or SQL Server.
+/// With the native L2 transport, entries are read back from Redis or SQL Server.
 /// Whatever bytes are stored there, reading them must answer a miss or an entry: never throw out of the store and
 /// never allocate more than the stored data could hold. (Someone who can write the distributed cache can still
 /// store a well-formed response of their choosing; see docs/security.md.)
@@ -75,11 +75,8 @@ public class UntrustedEntryTests
     public async Task CraftedEntryInTheDistributedCache_IsAMiss()
     {
         var distributed = new MemoryDistributedCache(Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
-        using var store = new HttpCacheStore(
-            Microsoft.Extensions.Options.Options.Create(new HttpCacheStorageOptions { UseDistributedCache = true }),
-            NullLogger<HttpCacheStore>.Instance,
-            distributed: distributed);
-        await distributed.SetAsync("methodcache-http:k", Crafted(w => w.Write(256 * 1024 * 1024)));
+        using var store = new TestHttpStore(distributed: distributed);
+        await distributed.SetAsync("methodcache:http:e2:k", Crafted(w => w.Write(256 * 1024 * 1024)));
 
         // MemoryDistributedCache answers synchronously, so the read runs on this thread
         var before = GC.GetAllocatedBytesForCurrentThread();
