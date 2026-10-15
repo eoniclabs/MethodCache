@@ -43,3 +43,12 @@ proof, and are not presented as production findings.
 
 The ordinary Core soak skip remains opt-in. These three complete suites and 27 cases do not replace the full
 latest-head CI, package/AOT/culture/property/soak gates or the still-pending section-10 timing matrix.
+
+## Native clock separation
+
+The shared policy fixtures anchor the fake clock ten minutes ahead of wall time. All nodes in one
+scenario use that same clock. This keeps the database's physical 1-second TTL from expiring during
+real setup/CI scheduling before the assertion runs. Expiry is proved by the envelope/source deadline
+and explicit +2s fake-time advance while a physical native row can still exist. No server clock,
+provider behavior or production clock-skew setting is changed. The complete affected suites were rerun
+for this fixture change; the current green logs include it, and earlier logs remain in Git history.

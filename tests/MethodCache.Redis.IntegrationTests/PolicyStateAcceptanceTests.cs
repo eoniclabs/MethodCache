@@ -20,7 +20,8 @@ public class PolicyStateAcceptanceTests(RedisFixture redis)
     [InlineData("lost-message")]
     public async Task PolicyState_ConformsToSharedNativeContract(string scenario)
     {
-        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        // Keep physical native TTLs ahead of wall-clock setup; expiry assertions use source deadlines on this clock.
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
         var prefix = "policy-state:" + Guid.NewGuid().ToString("N") + ":";
         var configuration = redis.RequireConfiguration();
         async Task<ServiceProvider> Create(PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)

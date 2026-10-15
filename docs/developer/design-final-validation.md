@@ -228,3 +228,8 @@ demonstrating that the scenario depends on real delivery control. The original d
 specification's one-hour shared policy, one-second private override and +2 second fake-time expiry. All successful
 store operations still reach the supplied provider. Selected receipts and current full-suite counts are in
 `plans/design-benchmarks/native-policy-state-acceptance/`. No shipped runtime or measured workload source changes.
+
+The native policy fixtures share a fake clock anchored ten minutes ahead of wall time. Physical
+short-TTL rows therefore survive real setup delays, while explicit fake-time advances must expire
+the source envelope. This separates deterministic logical-expiry assertions from database wall-clock
+scheduling; server clocks and production behavior are unchanged.
