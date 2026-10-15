@@ -219,6 +219,7 @@ MethodCache.Generated.GeneratedServices.InvalidateTagsAsync(string![]! tags, Sys
 MethodCache.Generated.GeneratedServices.Method(string! methodId, System.Type! serviceType, string! methodName, string! displayName) -> MethodCache.Generated.CachedMethod!
 MethodCache.Generated.KeyBuilder
 MethodCache.Generated.KeyBuilder.Append(string! value) -> void
+MethodCache.Generated.KeyBuilder.KeyBuilder(MethodCache.Generated.MethodCall call, System.Span<char> buffer) -> void
 MethodCache.Generated.KeyBuilder.AppendNullPart() -> void
 MethodCache.Generated.KeyBuilder.AppendPart(System.DateTime value) -> void
 MethodCache.Generated.KeyBuilder.AppendPart(System.DateTimeOffset value) -> void
@@ -252,7 +253,6 @@ MethodCache.Generated.MethodCall.LoadValueAsync<T, TState>(string! key, TState s
 MethodCache.Generated.MethodCall.MethodCall() -> void
 MethodCache.Generated.MethodCall.NeedsTagArguments.get -> bool
 MethodCache.Generated.MethodCall.ServiceForLoad<TService>(TService! service) -> TService!
-MethodCache.Generated.MethodCall.StartKey(System.Span<char> buffer) -> MethodCache.Generated.KeyBuilder
 MethodCache.Generated.MethodCall.TryGetTask<T>(in MethodCache.Generated.TextKey key, out System.Threading.Tasks.Task<T>? task) -> bool
 MethodCache.Generated.MethodCall.TryGetTask<T>(ref MethodCache.Generated.KeyBuilder key, out System.Threading.Tasks.Task<T>? task) -> bool
 MethodCache.Generated.MethodCall.TryGetValue<T>(in MethodCache.Generated.TextKey key, out T? value) -> bool

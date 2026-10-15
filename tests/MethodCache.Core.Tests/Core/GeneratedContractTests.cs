@@ -50,12 +50,12 @@ public class GeneratedContractTests
     [InlineData(1)]
     [InlineData(32)]
     [InlineData(256)]
-    public void StartKey_GrowsFromCallerBuffer_PreservesEscapingAndUnicode(int capacity)
+    public void KeyBuilder_GrowsFromCallerBuffer_PreservesEscapingAndUnicode(int capacity)
     {
         var (method, _, memory) = Create(new string('x', 500));
         using var owned = memory;
         var call = method.Capture();
-        var key = call.StartKey(new char[capacity]);
+        var key = new KeyBuilder(call, new char[capacity]);
         key.AppendPart("a:\\b\0\ud800\udfff");
         key.AppendPart(int.MinValue);
         key.AppendNullPart();
@@ -77,7 +77,7 @@ public class GeneratedContractTests
         var secondCall = second.Capture();
         Assert.Throws<ArgumentException>(() =>
         {
-            var key = firstCall.StartKey(stackalloc char[64]);
+            var key = new KeyBuilder(firstCall, stackalloc char[64]);
             secondCall.TryGetValue<string>(ref key, out _);
         });
     }
@@ -94,7 +94,7 @@ public class GeneratedContractTests
         using var owned = memory;
         var old = method.Capture();
         Update(handle);
-        var key = old.StartKey(stackalloc char[64]);
+        var key = new KeyBuilder(old, stackalloc char[64]);
         key.AppendPart(42);
         Assert.False(old.TryGetTask<string>(ref key, out _));
         var text = key.ToString();
@@ -149,7 +149,7 @@ public class GeneratedContractTests
         Assert.Equal("new", await current.LoadAsync(current.KeyPrefix, 0, static (_, _) => Task.FromResult("new"), [], default));
         release.SetResult("old");
         Assert.Equal("old", await pending);
-        var key = current.StartKey(stackalloc char[256]);
+        var key = new KeyBuilder(current, stackalloc char[256]);
         Assert.True(current.TryGetValue<string>(ref key, out var value));
         Assert.Equal("new", value);
     }
@@ -165,7 +165,7 @@ public class GeneratedContractTests
             CachePolicy.Empty with { Version = 1, Duration = TimeSpan.FromMinutes(1) }, [], DateTimeOffset.UtcNow, version: 2));
         var current = method.Capture();
         Assert.Equal(old.KeyPrefix, current.KeyPrefix);
-        var key = current.StartKey(stackalloc char[256]);
+        var key = new KeyBuilder(current, stackalloc char[256]);
         Assert.False(current.TryGetValue<int>(ref key, out _));
         Assert.False(memory.TryGetFast<int>(old.KeyPrefix, out _));
         Assert.Equal(99, current.Load(current.KeyPrefix, 0, static (_, _) => 99, [], default));
@@ -184,7 +184,7 @@ public class GeneratedContractTests
         Update(firstHandle);
         firstMemory.Dispose();
         Assert.Contains(":v2", first.Capture().KeyPrefix);
-        var key = call.StartKey(stackalloc char[64]);
+        var key = new KeyBuilder(call, stackalloc char[64]);
         Assert.True(call.TryGetValue<int>(ref key, out var value));
         Assert.Equal(7, value);
     }
@@ -211,12 +211,12 @@ public class GeneratedContractTests
         var captured = method.Capture();
         var first = captured.WithTypeArguments("<System.Int32>");
         var repeated = captured.WithTypeArguments("<System.Int32>");
-        var key = first.StartKey(stackalloc char[256]);
+        var key = new KeyBuilder(first, stackalloc char[256]);
         Assert.False(repeated.TryGetTask<int>(ref key, out _));
         Assert.Throws<ArgumentException>(() =>
         {
             var different = captured.WithTypeArguments("<System.String>");
-            var original = first.StartKey(stackalloc char[256]);
+            var original = new KeyBuilder(first, stackalloc char[256]);
             different.TryGetTask<int>(ref original, out _);
         });
     }
@@ -263,7 +263,7 @@ public class GeneratedContractTests
         var services = new DecoratorServices(manager, Substitute.For<IPolicyRegistry>(), new FastHashKeyGenerator());
         var method = new BoundMethod(services, PolicyHandle.Fixed(CacheRuntimePolicy.Empty("Get")), typeof(IService), "Get", "Get");
         var call = method.Capture();
-        var key = call.StartKey(stackalloc char[256]);
+        var key = new KeyBuilder(call, stackalloc char[256]);
         Assert.False(call.TryGetValue<int>(ref key, out _));
         Assert.Equal(7, call.Load(key.ToString(), 0, static (_, _) => 7, [], default));
         Assert.Empty(manager.ReceivedCalls());
@@ -278,7 +278,7 @@ public class GeneratedContractTests
         var expected = MethodCacheKeys.ForVersion(typeof(IService), "Get", 1, MethodCacheKeys.Part(42));
         Span<char> buffer = stackalloc char[expected.Length];
         buffer.Fill('!');
-        var inline = call.StartKey(buffer);
+        var inline = new KeyBuilder(call, buffer);
         inline.AppendPart(42);
         Assert.Equal(expected, inline.ToString());
         var fallback = call.CreateFallbackKey([42]);

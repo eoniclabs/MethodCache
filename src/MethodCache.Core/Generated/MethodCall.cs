@@ -13,15 +13,7 @@ public readonly struct MethodCall
     private readonly CallSnapshot _snapshot;
     internal MethodCall(CallSnapshot snapshot) => _snapshot = snapshot;
 
-    /// <summary>Starts an inline key using this invocation's prefix.</summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public KeyBuilder StartKey(Span<char> buffer)
-    {
-        var builder = new KeyBuilder(buffer, _snapshot);
-        builder.Append(_snapshot.Prefix);
-        builder.UseSnapshotPrefix();
-        return builder;
-    }
+    internal CallSnapshot Snapshot => _snapshot;
 
     /// <summary>Binds already formatted key text to this invocation.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

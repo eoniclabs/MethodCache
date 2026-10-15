@@ -24,6 +24,23 @@ public ref struct KeyBuilder
     private int _length;
     private int _prefixLength;
 
+    /// <summary>
+    /// Starts an inline key in the caller's buffer, bound to <paramref name="call"/>'s snapshot and starting with its
+    /// prefix. A constructor rather than a factory method: a builder returned from a method is copied into the
+    /// caller's local, which on x64 stalls the hit path (about 12 ns per hit).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public KeyBuilder(MethodCall call, Span<char> buffer)
+    {
+        var binding = call.Snapshot;
+        _chars = buffer;
+        _length = 0;
+        _text = null;
+        Binding = binding;
+        Append(binding.Prefix.AsSpan());
+        _prefixLength = _length;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal KeyBuilder(Span<char> initialBuffer, CallSnapshot binding)
     {
@@ -43,8 +60,6 @@ public ref struct KeyBuilder
         _text = text;
         Binding = binding;
     }
-
-    internal void UseSnapshotPrefix() => _prefixLength = _length;
 
     // Always hash the current suffix. An Append after a lookup cannot reuse a stale final hash.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
