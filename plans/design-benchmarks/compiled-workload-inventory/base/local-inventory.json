@@ -1,0 +1,194 @@
+[
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.CollectionHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.FallbackHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.GenericHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.GuidHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.RecordHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.StringHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.SyncHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.SyncMiss",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.TaskHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.TaskMiss",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.ValueTaskHit",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.ValueTaskMiss",
+    "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Local\", KeepCookies: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Local\", KeepCookies: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Local\", KeepCookies: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Local\", KeepCookies: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: False, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: False, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: True, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: True, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: False, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: False, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: True, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: True, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: False, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: False, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: True, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: True, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: False, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: False, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: True, Weighted: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: True, Weighted: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: False, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: False, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: True, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: True, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: False, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: False, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: True, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: True, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: False, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: False, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: True, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: True, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: False, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: False, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: True, AfterInvalidation: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: True, AfterInvalidation: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+  }
+]

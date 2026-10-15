@@ -6,20 +6,19 @@ No credentials or environment variables are written to the manifest.
 from pathlib import Path
 import datetime, json, subprocess, sys, time
 from process_activity import ActivityMonitor
+from workload_inventory import compiled_inventory, require_same_inventory, verify_reports
 
 OUT = Path('/tmp/methodcache-design-series-timing')
 HARNESS = Path('/tmp/methodcache-design-harness')
 RUNNER = '/tmp/methodcache-http-native-runner/bin/Release/net10.0/Runner.dll'
-REVISIONS = ['base','pr1-base','pr1','pr2','pr3','pr4','pr5','prefix','final']
+REVISIONS = ['base','pr1-base','pr1','pr2','pr3','pr4','pr5','prefix','http','net10','constructor','final']
 GROUPS = {
     'local': {'filters': ['*GeneratedContractBenchmarks*', '*HttpResponsePathBenchmarks.FreshHit*',
                           '*HttpResponsePathBenchmarks.VariantHit*', '*HttpResponsePathBenchmarks.Revalidated*',
                           '*HttpColdMissBenchmarks*',
-                          '*DesignMemoryWorkloadBenchmarks*', '*DesignHttpWorkloadBenchmarks*Local*'],
-              'reports': 5, 'cases': 46},
+                          '*DesignMemoryWorkloadBenchmarks*', '*DesignHttpWorkloadBenchmarks*Local*']},
     'native': {'filters': ['*DesignL2WorkloadBenchmarks*', '*DesignHttpWorkloadBenchmarks*Redis*',
-                           '*DesignHttpWorkloadBenchmarks*SqlServer*'],
-               'reports': 2, 'cases': 16},
+                           '*DesignHttpWorkloadBenchmarks*SqlServer*']},
 }
 MONITOR = ActivityMonitor()
 
@@ -50,6 +49,8 @@ def idle():
 if len(sys.argv)>1 and sys.argv[1]=='worker':
     round_number,name,group=sys.argv[2:5]
     source=frozen(name)
+    expected=json.loads((OUT/'metadata.json').read_text())['workload_inventories'][group]
+    require_same_inventory(compiled_inventory(HARNESS/name, GROUPS[group]['filters']), expected)
     # The local child starts immediately after the parent's quiet minute. Native startup needs its own settling interval.
     if group == 'native' or activity(): idle()
     job=GROUPS[group]
@@ -70,29 +71,27 @@ if len(sys.argv)>1 and sys.argv[1]=='worker':
     if child.returncode: raise SystemExit(child.returncode)
     if interference:raise SystemExit('External build/test activity overlapped timing; this launch is not admissible evidence.')
     reports=list((target/'results').glob('*-report-full*.json'))
-    if len(reports)!=job['reports']: raise SystemExit('Unexpected workload report count: '+str(len(reports)))
-    count=0
-    for report in reports:
-        data=json.loads(report.read_text())
-        for case in data['Benchmarks']:
-            count+=1
-            if not case.get('Statistics') or not case.get('Measurements'):
-                raise SystemExit('Benchmark failed or has no measured samples: '+case.get('FullName','?'))
-    if count!=job['cases']: raise SystemExit('Unexpected matrix size: '+str(count))
+    count=verify_reports(reports, expected)
     frozen(name)
     print('Verified complete measured cases:',count,flush=True)
     raise SystemExit(0)
 
 OUT.mkdir(exist_ok=True)
 subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(Path(__file__).resolve().parent),
-                '-p', 'test_process_activity.py'], check=True)
+                '-p', 'test_*.py'], check=True)
 sources={name:frozen(name) for name in REVISIONS}
 checksums=[source['source_sha256'] for source in sources.values()]
 if any(value!=checksums[0] for value in checksums): raise SystemExit('Workload sources differ across revisions.')
+program_checksums=[source['harness_program_sha256'] for source in sources.values()]
+if any(value!=program_checksums[0] for value in program_checksums): raise SystemExit('Harness programs differ across revisions.')
+inventories={group:compiled_inventory(HARNESS/REVISIONS[0], GROUPS[group]['filters']) for group in GROUPS}
+for name in REVISIONS[1:]:
+    for group in GROUPS:require_same_inventory(compiled_inventory(HARNESS/name, GROUPS[group]['filters']), inventories[group])
 manifest_path=OUT/'metadata.json'
 if manifest_path.exists():
     manifest=json.loads(manifest_path.read_text())
     if manifest['sources']!=sources: raise SystemExit('Existing evidence belongs to different frozen sources.')
+    if manifest['workload_inventories']!=inventories: raise SystemExit('Existing evidence has a different compiled workload matrix.')
 else:
     manifest={'purpose':'Section 10: all adjacent PR comparisons and cumulative f43854d comparison',
               'started':utc(),'sources':sources,'sdk':subprocess.check_output(['dotnet','--info'],text=True),
@@ -101,7 +100,7 @@ else:
               'backend':'Local groups run without test containers. Native groups get fresh Redis 7 and SQL Server 2022 containers, same local images.',
               'order':'descending / ascending / descending; three independent launches per revision',
               'note':'Feature additions (RoundTrip before PR4, KeepCookies before HTTP) are classified separately, not comparable old behavior.',
-              'runs':[]}
+              'workload_inventories':inventories,'runs':[]}
     manifest_path.write_text(json.dumps(manifest,indent=2))
 for round_number,order in enumerate([list(reversed(REVISIONS)),REVISIONS,list(reversed(REVISIONS))],1):
     for name in order:
@@ -118,4 +117,4 @@ for round_number,order in enumerate([list(reversed(REVISIONS)),REVISIONS,list(re
             manifest_path.write_text(json.dumps(manifest,indent=2))
             print('finished',round_number,name,group,result.returncode,utc(),flush=True)
             if result.returncode: raise SystemExit(result.returncode)
-print('Completed all 54 family launches (27 complete revision rounds). Statistical acceptance still requires review.',flush=True)
+print(f'Completed all {3 * len(REVISIONS) * len(GROUPS)} family launches ({3 * len(REVISIONS)} complete revision rounds). Statistical acceptance still requires review.',flush=True)

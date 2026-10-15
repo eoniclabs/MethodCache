@@ -1,0 +1,5 @@
+current local 48 cases, 5 report types
+current native 16 cases, 2 report types
+base local 48 cases, 5 report types
+base native 16 cases, 2 report types
+Identical workload source bytes, setup/inventory Program bytes and filtered compiled cases across f43854d and combined 3700ade.

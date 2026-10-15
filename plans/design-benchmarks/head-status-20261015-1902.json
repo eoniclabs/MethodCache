@@ -1,0 +1,302 @@
+{
+  "heads": [
+    {
+      "pr": 123,
+      "sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-14T21:48:25Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-14T21:48:26Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-14T21:55:11Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 7 min",
+          "state": "success",
+          "updated_at": "2026-10-14T21:55:12Z"
+        }
+      ]
+    },
+    {
+      "pr": 124,
+      "sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T01:00:05Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T01:00:06Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T01:00:07Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 13 min",
+          "state": "success",
+          "updated_at": "2026-10-15T01:00:09Z"
+        }
+      ]
+    },
+    {
+      "pr": 125,
+      "sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T01:50:51Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T01:50:52Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T01:50:54Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 13 min",
+          "state": "success",
+          "updated_at": "2026-10-15T01:50:55Z"
+        }
+      ]
+    },
+    {
+      "pr": 126,
+      "sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T02:31:46Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T02:31:47Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T02:31:48Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 13 min",
+          "state": "success",
+          "updated_at": "2026-10-15T02:31:49Z"
+        }
+      ]
+    },
+    {
+      "pr": 127,
+      "sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T03:48:08Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T03:48:09Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T03:48:11Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 14 min",
+          "state": "success",
+          "updated_at": "2026-10-15T03:48:12Z"
+        }
+      ]
+    },
+    {
+      "pr": 128,
+      "sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T10:36:30Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T10:36:31Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T10:36:33Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 25 min",
+          "state": "success",
+          "updated_at": "2026-10-15T10:36:34Z"
+        }
+      ]
+    },
+    {
+      "pr": 129,
+      "sha": "f793d0a188618b03e490c37451ddbc06283d2f49",
+      "state": "pending",
+      "statuses": []
+    },
+    {
+      "pr": 130,
+      "sha": "1b4321149bd0dcf6263d62e2ea9a5169a258dd23",
+      "state": "pending",
+      "statuses": []
+    },
+    {
+      "pr": 131,
+      "sha": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T18:20:02Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T18:20:04Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T18:20:06Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 13 min",
+          "state": "success",
+          "updated_at": "2026-10-15T18:20:07Z"
+        }
+      ]
+    },
+    {
+      "pr": 132,
+      "sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "state": "success",
+      "statuses": [
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "aot ✓, build ✓, cultures ✓, demo ✓, diffcoverage ✓, docs ✓, packages ✓, properties ✓, soak ✓, tests ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T18:07:50Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T18:07:51Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "build ✓, unit ✓",
+          "state": "success",
+          "updated_at": "2026-10-15T18:07:52Z"
+        },
+        {
+          "context": "MethodCache CI",
+          "description": "All platforms passed in 13 min",
+          "state": "success",
+          "updated_at": "2026-10-15T18:07:53Z"
+        }
+      ]
+    },
+    {
+      "pr": 133,
+      "sha": "83b92c61f20bee738afd3a332e059fab44f6d8a1",
+      "state": "pending",
+      "statuses": [
+        {
+          "context": "MethodCache CI",
+          "description": "Running on the build servers",
+          "state": "pending",
+          "updated_at": "2026-10-15T18:51:07Z"
+        },
+        {
+          "context": "MethodCache CI (Linux)",
+          "description": "Running on the build servers",
+          "state": "pending",
+          "updated_at": "2026-10-15T18:51:08Z"
+        },
+        {
+          "context": "MethodCache CI (Windows)",
+          "description": "Running on the build servers",
+          "state": "pending",
+          "updated_at": "2026-10-15T18:51:09Z"
+        },
+        {
+          "context": "MethodCache CI (macOS)",
+          "description": "Running on the build servers",
+          "state": "pending",
+          "updated_at": "2026-10-15T18:51:10Z"
+        }
+      ]
+    },
+    {
+      "pr": 134,
+      "sha": "3700ade78a1450e16ad25cd90035268972e3e949",
+      "state": "pending",
+      "statuses": []
+    }
+  ],
+  "collected_utc": "2026-10-15T19:02:03.167918+00:00"
+}
