@@ -631,9 +631,9 @@ namespace TestApp
             var result = await GetGeneratedSources(source);
             LogGeneratedSources(result);
 
-            // A void method can't be cached: error MCG001 stops the build, and the interface gets no decorator
+            // A void method can't be cached: error MC0003 stops the build, and the interface gets no decorator
             var error = Assert.Single(result.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-            Assert.Equal("MCG001", error.Id);
+            Assert.Equal("MC0003", error.Id);
             Assert.DoesNotContain(result.GeneratedSources.Values, s => s.Contains("class ITestServiceDecorator"));
         }
 

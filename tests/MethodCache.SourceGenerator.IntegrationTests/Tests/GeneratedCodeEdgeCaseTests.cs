@@ -363,7 +363,7 @@ public interface ISvc {
   [Cache] IAsyncEnumerable<int> Stream(int n);
   [Cache] Task<IEnumerable<int>> Loaded(int n);
 }}", nameof(LazySequences_AreReportedAndNotCached));
-        Assert.Equal(2, r.GeneratorDiagnostics.Count(d => d.Id == "MCG014"));
+        Assert.Equal(2, r.GeneratorDiagnostics.Count(d => d.Id == "MC0015"));
         Assert.Empty(r.Errors);
     }
 
@@ -374,7 +374,7 @@ public interface ISvc {
 public interface ISvc { [Cache(Tags = new[] { ""user:{userid}"", ""order:{orderId}"" })] Task<string> Get(int userId); }
 }", nameof(UnknownParameterInCacheTag_IsReported));
         AssertCompiles(r);
-        var warning = Assert.Single(r.GeneratorDiagnostics, d => d.Id == "MCG009");
+        var warning = Assert.Single(r.GeneratorDiagnostics, d => d.Id == "MC0010");
         Assert.Contains("orderId", warning.GetMessage());
     }
 
@@ -389,14 +389,14 @@ public interface ISvc {
   [CacheInvalidate(Tags = new[] { ""product:{product?.Id}"" })] Task Update(Product product);
 }}", nameof(TagPlaceholderThatIsNotAParameterName_IsReported));
         AssertCompiles(r);
-        var placeholders = r.GeneratorDiagnostics.Where(d => d.Id == "MCG015").Select(d => d.GetMessage()).ToList();
+        var placeholders = r.GeneratorDiagnostics.Where(d => d.Id == "MC0016").Select(d => d.GetMessage()).ToList();
         Assert.Equal(5, placeholders.Count);
         Assert.Contains(placeholders, m => m.Contains("'{π.Id}'"));
         Assert.Contains(placeholders, m => m.Contains("'{product.Id}'"));
         Assert.Contains(placeholders, m => m.Contains("'{ userId }'"));
         Assert.Contains(placeholders, m => m.Contains("'{day:yyyy-MM-dd}'"));
         Assert.Contains(placeholders, m => m.Contains("'{product?.Id}'"));
-        Assert.DoesNotContain(r.GeneratorDiagnostics, d => d.Id == "MCG009");
+        Assert.DoesNotContain(r.GeneratorDiagnostics, d => d.Id == "MC0010");
     }
 
     [Fact]

@@ -18,6 +18,7 @@ namespace MethodCache.Generated
             {
                 builder.Method("App.IUserService.GetUserAsync", new string[] { "userId", "cancellationToken" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
+                    CanonicalTagParts = true,
                     Duration = global::System.TimeSpan.FromTicks(6000000000L),
                     Tags = new[] { "users", "user:{userId}" },
                 });

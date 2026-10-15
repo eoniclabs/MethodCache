@@ -63,7 +63,7 @@ builder.Services.AddMethodCache();                               // after your r
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter.
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
-  literal and gives warning MCG015; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
+  literal and gives warning MC0016; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Put ids (`int`, `Guid`) in tag templates, not free text from users: tags are plain text, so `"1:orders"` in
   `"user:{id}"` equals `"user:{id}:orders"` for id 1. Never pass passwords or tokens as arguments of cached methods.
 - Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`
@@ -106,3 +106,5 @@ synchronous calls bypass a custom manager. Runtime configurators expose only Ups
 reject unknown method ids and retire local policy generations. Declarative L2 namespaces are stable; runtime behavior
 changes use private random namespaces. Never reintroduce cache callbacks, CacheContext.Services, public policy pipelines,
 key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.
+
+Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); zero is only allowed via builder fail-safe off. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.

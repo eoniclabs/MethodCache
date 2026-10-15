@@ -366,7 +366,7 @@ Vid osäkerhet är det en miss, aldrig en förlängd gammal post.
   exakta UTF-16-kodpunkter och kulturinvariant värdeformat. Inline och reservväg får inte aliasa andra anrop.
 - Taggmallar för cache och CacheInvalidate använder samma Part-format som motsvarande värde i nyckeln,
   inklusive Guid, DateTime/offset, enum, null och escape. Egen literaltext för tags ändras inte.
-- Attributen är sealed med namngiven Group och parameterlös konstruktor. Enabled/Distributed anges som
+- Cache och CacheInvalidate är sealed med parameterlös konstruktor; Cache har namngiven Group. CacheInterface är sealed och behåller de obligatoriska konstruktorsargumenten för interface och metodnamn samt namngiven Group. Enabled/Distributed anges som
   bool-attributproperties, men generatorn använder förekomst i named arguments för att skilja unset från false.
   Version är en int-attributproperty där frånvaro är unset; explicit negativt värde är alltid ett fel.
   Nullable används i den interna datamodellen, inte som en otillåten nullable attributparameter.
@@ -375,7 +375,7 @@ Vid osäkerhet är det en miss, aldrig en förlängd gammal post.
   Whitespace runt värdet tillåts, suffix case-insensitive; multipla suffix, exponent, komma, NaN/infinity,
   overflow, negativa värden och ospecificerade rena tal avvisas. Upplösning är ticks; positivt värde som
   avrundas till noll avvisas. Även runtime/builders validerar positiva tidsfönster.
-- FailSafe är undantaget: text off (case-insensitive) stänger av; WithFailSafe(TimeSpan.Zero) är kodformen.
+- FailSafe är undantaget: text off (case-insensitive) stänger av; FailSafe(TimeSpan.Zero) på CacheEntryOptions.Builder är kodformen (den interna policybyggaren använder WithFailSafe).
   Zero är annars ogiltigt för duration, sliding, refresh, fail-safe-timeout och retry. FailSafeRetryAfter
   behåller default 30 sekunder. Unset följer defaults och är inte off.
 - Generatorn rapporterar fel själv och skriver aldrig en default som reserv för ogiltig explicit data.

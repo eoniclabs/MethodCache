@@ -12,8 +12,8 @@ the containing type and the interface, including `unmanaged` and base class cons
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
 implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
-[MCG017](../user-guide/DIAGNOSTICS.md#mcg017). An interface with non-public abstract members is rejected with
-[MCG013](../user-guide/DIAGNOSTICS.md#mcg013), because the decorator can't call those members on the implementation.
+[MC0018](../user-guide/DIAGNOSTICS.md#mc0018). An interface with non-public abstract members is rejected with
+[MC0014](../user-guide/DIAGNOSTICS.md#mc0014), because the decorator can't call those members on the implementation.
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
 don't clash with the generated code. You don't need to rename anything.
@@ -63,4 +63,4 @@ after the origin/local mutation; use async mutation methods for distributed inva
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
-On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MCG007 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
+On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.

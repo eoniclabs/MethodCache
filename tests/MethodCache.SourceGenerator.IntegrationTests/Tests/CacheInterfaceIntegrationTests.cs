@@ -272,9 +272,9 @@ namespace VendorApp
     }
 
     [Theory]
-    [InlineData("nameof(IFxVendorClient.GetMissingAsync)", "MCG011", "\"GetMissingAsync\"")]
-    [InlineData("nameof(IFxVendorClient.GetOverloadedAsync)", "MCG011", "overloads")]
-    [InlineData("nameof(IFxVendorClient.PingAsync)", "MCG011", "without a result")]
+    [InlineData("nameof(IFxVendorClient.GetMissingAsync)", "MC0012", "\"GetMissingAsync\"")]
+    [InlineData("nameof(IFxVendorClient.GetOverloadedAsync)", "MC0012", "overloads")]
+    [InlineData("nameof(IFxVendorClient.PingAsync)", "MC0012", "without a result")]
     public async Task ListingAMethodItCannotCache_IsAnError(string method, string id, string expected)
     {
         var source = $@"
@@ -314,7 +314,7 @@ namespace VendorApp
 ";
 
         var errors = await GeneratorErrorsAsync(source, "VendorApp_Type_" + (uint)expected.GetHashCode());
-        Assert.Contains("MCG010", errors);
+        Assert.Contains("MC0011", errors);
         Assert.Contains(expected, errors);
     }
 
@@ -330,7 +330,7 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 ";
 
         var errors = await GeneratorErrorsAsync(source, "VendorApp_Duplicate");
-        Assert.Contains("MCG012", errors);
+        Assert.Contains("MC0013", errors);
     }
 
     [Fact]
@@ -344,8 +344,8 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 ";
 
         var result = await _engine.CompileWithSourceGeneratorAsync(source, "VendorApp_Tags");
-        var warnings = result.Diagnostics.Where(d => d.Id is "MCG009" or "MCG015").ToList();
-        Assert.Equal(new[] { "MCG009", "MCG015" }, warnings.Select(d => d.Id).OrderBy(id => id));
+        var warnings = result.Diagnostics.Where(d => d.Id is "MC0010" or "MC0016").ToList();
+        Assert.Equal(new[] { "MC0010", "MC0016" }, warnings.Select(d => d.Id).OrderBy(id => id));
         Assert.All(warnings, d => Assert.True(d.Location.IsInSource));
     }
 

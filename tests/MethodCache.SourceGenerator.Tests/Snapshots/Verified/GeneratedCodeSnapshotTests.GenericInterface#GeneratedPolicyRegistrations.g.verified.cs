@@ -18,6 +18,7 @@ namespace MethodCache.Generated
             {
                 builder.Method("App.IRepository<T>.GetAsync", new string[] { "id" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
+                    CanonicalTagParts = true,
                     Tags = new[] { "repo" },
                 });
             }

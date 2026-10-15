@@ -126,9 +126,9 @@ builder.Services.AddMethodCache();
 <!-- endSnippet -->
 
 - Synchronous methods, `Task<T>` and `ValueTask<T>` can be cached. A method that returns nothing has nothing to
-  cache, so `[Cache]` on it is a build error ([MCG001](user-guide/DIAGNOSTICS.md#mcg001),
-  [MCG002](user-guide/DIAGNOSTICS.md#mcg002)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
-  ([MCG014](user-guide/DIAGNOSTICS.md#mcg014)): return a list.
+  cache, so `[Cache]` on it is a build error ([MC0003](user-guide/DIAGNOSTICS.md#mc0003),
+  [MC0004](user-guide/DIAGNOSTICS.md#mc0004)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
+  ([MC0015](user-guide/DIAGNOSTICS.md#mc0015)): return a list.
   Synchronous methods use L1/origin when the distributed adapter has no bounded native synchronous capability.
   Custom async-only managers bypass their synchronous caching path; see [Generated decorators](features/source-generator.md).
 - Exceptions are never cached: the next call runs the method again.

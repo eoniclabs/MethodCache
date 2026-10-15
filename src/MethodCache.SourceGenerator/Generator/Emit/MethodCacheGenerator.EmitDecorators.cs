@@ -18,7 +18,7 @@ namespace MethodCache.SourceGenerator
             // Add static tags
             if (staticTags.Any())
             {
-                // A placeholder that names no parameter stays literal text (MCG009), as it does on cached entries
+                // A placeholder that names no parameter stays literal text (MC0010), as it does on cached entries
                 var staticTagsWithoutDynamic = staticTags.Where(t => !NamesParameter(method, t)).ToList();
                 if (staticTagsWithoutDynamic.Any())
                 {
@@ -60,7 +60,7 @@ namespace MethodCache.SourceGenerator
         private static string FormatTagArgument(IMethodSymbol method, string paramName)
         {
             // Invariant, so every node and culture builds the same tag text for the same argument
-            return $"(global::System.Convert.ToString((object?){Utils.ParameterIdentifier(method.Parameters.Single(p => p.Name == paramName))}, global::System.Globalization.CultureInfo.InvariantCulture) ?? \"null\")";
+            return $"global::MethodCache.Generated.KeyParts.TagPart({Utils.ParameterIdentifier(method.Parameters.Single(p => p.Name == paramName))})";
         }
 
         private static class DecoratorEmitter
@@ -314,13 +314,8 @@ namespace MethodCache.SourceGenerator
 
                 // Simple arguments, and records or DTOs made of them, are formatted inline; anything else goes
                 // through the key generator.
-                var rawKeyParam = GetRawKeyParameter(keyParams);
                 var stackKeyLookup = false;
-                if (rawKeyParam != null)
-                {
-                    EmitRawKey(sb, rawKeyParam, "            ");
-                }
-                else if (keyParams.Count > 0 && keyParams.All(p => IsSimpleType(p.Type)))
+                if (keyParams.Count > 0 && keyParams.All(p => IsSimpleType(p.Type)))
                 {
                     EmitStackKeyLookup(sb, keyParams, kind, valueType, safeFieldName, serviceType, method);
                     stackKeyLookup = true;
@@ -821,114 +816,6 @@ namespace MethodCache.SourceGenerator
                 // Guid and DateTimeOffset have no SpecialType; MethodCacheKeys.Part formats both
                 return type.ContainingNamespace?.ToDisplayString() == "System" &&
                        type.Name is "Guid" or "DateTimeOffset";
-            }
-
-            private static string GetRawKeyExpression(IParameterSymbol param)
-            {
-                var name = Utils.ParameterIdentifier(param);
-                if (param.Type.SpecialType == SpecialType.System_String)
-                {
-                    return $"{name} ?? \"null\"";
-                }
-
-                // Invariant, so 1.5 is "1.5" and -1 is "-1" on every machine, whatever its culture
-                const string invariant = "global::System.Globalization.CultureInfo.InvariantCulture";
-                if (param.Type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable)
-                {
-                    var underlying = nullable.TypeArguments[0];
-                    return underlying.TypeKind == TypeKind.Enum
-                        ? $"({name} is null ? \"null\" : {GetRawEnumExpression($"{name}.Value")})"
-                        : IsDateTime(underlying)
-                            ? $"({name} is null ? \"null\" : global::MethodCache.Generated.KeyParts.Part({name}.Value))"
-                            : $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
-                }
-
-                if (param.Type.TypeKind == TypeKind.Enum)
-                {
-                    return GetRawEnumExpression(name);
-                }
-
-                // As in generated keys: fractions of a second and the offset are kept, and a local time is written as
-                // UTC, so the key doesn't depend on the server's time zone
-                if (IsDateTime(param.Type))
-                {
-                    return $"global::MethodCache.Generated.KeyParts.Part({name})";
-                }
-
-                if (param.Type.IsValueType)
-                {
-                    if (!IsFormattable(param.Type))
-                    {
-                        return $"{name}.ToString()";
-                    }
-
-                    // A struct that implements IFormattable explicitly has no public ToString(format, provider)
-                    return HasPublicFormattableToString(param.Type)
-                        ? $"{name}.ToString(null, {invariant})"
-                        : $"((global::System.IFormattable){name}).ToString(null, {invariant})";
-                }
-
-                return $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
-            }
-
-            /// <summary>
-            /// A named enum value keeps its name; a value without one is written as its number in the invariant culture,
-            /// since the enum's own formatting would write a negative number with the culture's minus sign.
-            /// </summary>
-            private static string GetRawEnumExpression(string value)
-                => $"({value}.ToString() is var __rawEnumName && (char.IsLetter(__rawEnumName[0]) || __rawEnumName[0] == '_') ? __rawEnumName : global::MethodCache.Generated.KeyParts.Part({value}))";
-
-            private static bool IsDateTime(ITypeSymbol type)
-                => type.SpecialType == SpecialType.System_DateTime ||
-                   type is { Name: "DateTimeOffset", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } };
-
-            private static bool IsFormattable(ITypeSymbol type)
-                => type.AllInterfaces.Any(i => i.ToDisplayString() == "System.IFormattable");
-
-            private static bool HasPublicFormattableToString(ITypeSymbol type)
-                => type.GetMembers("ToString").OfType<IMethodSymbol>().Any(m =>
-                    m.DeclaredAccessibility == Accessibility.Public && !m.IsStatic && m.Parameters.Length == 2 &&
-                    m.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                    m.Parameters[1].Type.ToDisplayString() == "System.IFormatProvider");
-
-            internal static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
-            {
-                foreach (var param in keyParams)
-                {
-                    foreach (var attribute in param.GetAttributes())
-                    {
-                        if (IsRawKeyAttribute(attribute))
-                        {
-                            return param;
-                        }
-                    }
-                }
-
-                return null;
-            }
-
-            private static bool IsRawKeyAttribute(AttributeData attribute)
-            {
-                if (!string.Equals(attribute.AttributeClass?.ToDisplayString(), "MethodCache.CacheKeyAttribute", StringComparison.Ordinal))
-                {
-                    return false;
-                }
-
-                foreach (var namedArgument in attribute.NamedArguments)
-                {
-                    if (namedArgument.Key == "UseAsRawKey" && namedArgument.Value.Value is bool flag && flag)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            private static void EmitRawKey(StringBuilder sb, IParameterSymbol rawKeyParam, string indent)
-            {
-                sb.AppendLine($"{indent}// Raw key optimization: [CacheKey(UseAsRawKey = true)] detected");
-                sb.AppendLine($"{indent}var __mcKey = {GetRawKeyExpression(rawKeyParam)};");
             }
 
             private static void EmitGeneratedKey(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams)

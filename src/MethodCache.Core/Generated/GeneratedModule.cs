@@ -77,6 +77,14 @@ public sealed class GeneratedMethodOptions
     public TimeSpan? FailSafe { get; init; }
     /// <summary>The fail-safe timeout, when explicitly specified.</summary>
     public TimeSpan? FailSafeTimeout { get; init; }
+    /// <summary>The retry delay, when explicitly specified.</summary>
+    public TimeSpan? FailSafeRetryAfter { get; init; }
+    /// <summary>Whether caching is enabled, when explicitly specified.</summary>
+    public bool? Enabled { get; init; }
+    /// <summary>Whether distributed caching is enabled, when explicitly specified.</summary>
+    public bool? Distributed { get; init; }
+    /// <summary>Uses canonical key-part formatting for dynamic tags; omitted by earlier contract-1 generators.</summary>
+    public bool CanonicalTagParts { get; init; }
     /// <summary>The key version, when explicitly specified.</summary>
     public int? Version { get; init; }
     /// <summary>The method's static or parameterized tag templates.</summary>
@@ -139,6 +147,9 @@ public sealed class GeneratedModuleBuilder
         if (options.RefreshAhead is { } refresh) { policy = policy with { RefreshAhead = refresh }; fields |= CachePolicyFields.RefreshAhead; }
         if (options.FailSafe is { } failSafe) { policy = policy with { FailSafe = failSafe }; fields |= CachePolicyFields.FailSafe; }
         if (options.FailSafeTimeout is { } timeout) { policy = policy with { FailSafeTimeout = timeout }; fields |= CachePolicyFields.FailSafeTimeout; }
+        if (options.FailSafeRetryAfter is { } retry) { policy = policy with { FailSafeRetryAfter = retry }; fields |= CachePolicyFields.FailSafeRetryAfter; }
+        if (options.Enabled is { } enabled) { policy = policy with { Enabled = enabled }; fields |= CachePolicyFields.Enabled; }
+        if (options.Distributed is { } distributed) { policy = policy with { Distributed = distributed }; fields |= CachePolicyFields.Distributed; }
         if (options.Version is { } version) { policy = policy with { Version = version }; fields |= CachePolicyFields.Version; }
         if (options.Tags is { } tags) { policy = policy with { Tags = Array.AsReadOnly(tags.ToArray()) }; fields |= CachePolicyFields.Tags; }
         var metadata = new Dictionary<string, string?>(StringComparer.Ordinal) { ["priority"] = "10" };
@@ -148,6 +159,7 @@ public sealed class GeneratedModuleBuilder
             policy = policy with { Metadata = new Dictionary<string, string?> { ["group"] = group } };
             fields |= CachePolicyFields.Metadata;
         }
+        policy = policy with { CanonicalTagParts = options.CanonicalTagParts };
         var timestamp = DateTimeOffset.UtcNow;
         policy = CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
         Policies.Add(new PolicySnapshot("attributes", methodId, policy, timestamp, metadata));

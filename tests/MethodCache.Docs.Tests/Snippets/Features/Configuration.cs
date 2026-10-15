@@ -11,7 +11,7 @@ namespace Docs.Configuration
 
     public interface IUserService
     {
-        [Cache("user-data", Duration = "01:00:00", Tags = ["users"])]
+        [Cache(Group = "user-data", Duration = "01:00:00", Tags = ["users"])]
         Task<UserProfile> GetProfileAsync(int userId);
     }
 
@@ -31,7 +31,7 @@ namespace Docs.Configuration
                 // Every cached method: fills in what the method leaves unset
                 config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15)));
 
-                // Methods in the "user-data" group: [Cache("user-data")] or WithGroup("user-data")
+                // Methods in the "user-data" group: [Cache(Group = "user-data")] or WithGroup("user-data")
                 config.Group("user-data", o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
 
                 // One method
