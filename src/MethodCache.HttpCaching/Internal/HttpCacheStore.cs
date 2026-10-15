@@ -39,11 +39,15 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         private readonly TimeProvider _time;
         private readonly string _client;
         private readonly string[] _tags;
+        private readonly HttpResponseStore.KeyPrefix _keyPrefix;
+        private readonly bool _defaultTags;
         private const string Unavailable = "|generation:unavailable:";
         internal View(HttpResponseStore core, TimeProvider time, string client, HttpCacheOptions options)
         {
             if (client.Length > 1024) throw new ArgumentException("HTTP cache client names cannot exceed 1024 UTF-16 code units.", nameof(client));
             _core = core; _time = time; _client = client;
+            _keyPrefix = new(HttpCacheKeys.ClientIdentity(client) + ":");
+            _defaultTags = options.Tags.Count == 0;
             if (options.Tags.Count > 125 || options.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 1024))
                 throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
             _tags = options.Tags.Append("http:" + MethodCacheKeys.Part(client)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
@@ -60,7 +64,8 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         /// <inheritdoc />
         public async ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
         {
-            var vector = await _core.CaptureSlotAsync(HttpResponseStore.Slot(HttpCacheKeys.GenerationTargetSpan(key)), _tags, cancellationToken).ConfigureAwait(false);
+            var slot = _keyPrefix.Slot(HttpCacheKeys.GenerationTargetSpan(key), out var canonical);
+            var vector = await _core.CaptureSlotAsync(slot, _tags, cancellationToken, allowInitialNamespace: canonical && _defaultTags).ConfigureAwait(false);
             if (vector != null) return vector;
             _core.ForgetUrl(HttpCacheKeys.GenerationTarget(key));
             return "unavailable:" + Guid.NewGuid().ToString("N");
@@ -76,7 +81,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (key.Contains(Unavailable, StringComparison.Ordinal)) return null;
-            if (!_core.Distributed) return _core.ReadLocal(key) as HttpCacheEntry;
+            if (!_core.Distributed) return _core.ReadLocal(key, _keyPrefix) as HttpCacheEntry;
             var data = await _core.ReadBytesAsync(key, cancellationToken).ConfigureAwait(false);
             var stored = data == null ? null : HttpCacheEntrySerializer.Deserialize(data);
             if (stored is not { } valid || valid.ExpiresAt <= _time.GetUtcNow())

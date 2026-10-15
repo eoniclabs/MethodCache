@@ -1,4 +1,5 @@
 using Xunit;
+using MethodCache.HttpCaching.Internal;
 
 namespace MethodCache.HttpCaching.Tests.Storage;
 
@@ -13,6 +14,23 @@ public class LocalEpochAllocationTests
         var before = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < 10_000; i++) _ = await storage.Core.CaptureAsync("url", tags, default);
         Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+    }
+
+    [Fact]
+    public async Task DefaultLocalClient_InitialNamespaceIsEmpty_AndNeverReturnsAfterInvalidation()
+    {
+        using var storage = new TestHttpStore();
+        var key = HttpCacheKeys.ForUri("test", HttpMethod.Get, new Uri("https://example.test/a"));
+        Assert.Empty(await storage.GetGenerationAsync(key));
+        await storage.InvalidateAsync(key);
+        var afterUrl = await storage.GetGenerationAsync(key);
+        Assert.NotEmpty(afterUrl);
+        storage.Core.InvalidateLocalTag("http:test");
+        var afterTag = await storage.GetGenerationAsync(key);
+        Assert.NotEmpty(afterTag); Assert.NotEqual(afterUrl, afterTag);
+        await storage.ClearAsync();
+        var afterClear = await storage.GetGenerationAsync(key);
+        Assert.NotEmpty(afterClear); Assert.NotEqual(afterTag, afterClear);
     }
 
     [Fact]

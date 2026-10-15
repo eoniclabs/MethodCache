@@ -16,6 +16,7 @@ public class HttpResponsePathBenchmarks
     private MeterListener? _listener;
     private int _next;
     [Params(false, true)] public bool Listening { get; set; }
+    [Params(false, true)] public bool AfterInvalidation { get; set; }
     public int OriginLoads => _origin.Calls;
 
     [GlobalSetup]
@@ -41,6 +42,13 @@ public class HttpResponsePathBenchmarks
         _client = _provider.GetRequiredService<IHttpClientFactory>().CreateClient("http-benchmark");
         await FreshHit(); await VariantHit(); await Revalidated();
         if (_origin.Calls != 3) throw new InvalidOperationException("HTTP setup did not populate all representations.");
+        if (AfterInvalidation)
+        {
+            using (var freshWrite = await _client.PostAsync("https://benchmark.invalid/fresh", new StringContent("update"))) { }
+            using (var variantWrite = await _client.PostAsync("https://benchmark.invalid/variant", new StringContent("update"))) { }
+            await FreshHit(); await VariantHit();
+            if (_origin.Calls != 7) throw new InvalidOperationException("HTTP setup did not prove post-invalidation origin reloads.");
+        }
     }
 
     [Benchmark] public Task<int> FreshHit() => Read("https://benchmark.invalid/fresh");

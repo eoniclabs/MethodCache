@@ -27,3 +27,20 @@ string formatting. No hash is truncated and no caller/header/URI identity or gen
 
 The repaired implementation still needs isolated timing and complete native/AOT/package gates. Functional tests
 alone do not discharge the performance gate.
+
+## Second rejected diagnostic: 6bf7221
+
+Candidate `6bf7221147b3f0030433d25af9f5036d6706a446`, same runtime/base/workload/settings as above, fresh independent
+launches: listener off 723.2 → 950.9 ns, on 715.8 → 944.2 ns; allocations 2.48 → 2.62 KiB. This is still rejected,
+not a three-run acceptance result. [Its raw logs/manifest](../../plans/design-benchmarks/http-preflight-6bf7221/)
+retain the unsuccessful intermediate repair.
+
+The next repair prepares both the permanent-slot hash and process-key hash after the fixed hashed client prefix.
+A CsCheck property proves full/split hash and slot identity with arbitrary UTF-16/surrogates and mismatched prefixes.
+Default local clients keep the original empty initial namespace only while clear, URL and implicit client-tag cells
+are still initial; those cells cannot return to initial after an invalidation. Custom-tag sets retain their complete
+vector identity, and native L2 never uses this local shortcut. The initial-namespace regression failed before the fix;
+existing gated origin/publication races and all net8/net9/net10 HTTP tests remain green. Variant framing preserves the
+same exact UTF-16 bytes while avoiding temporary arrays/digest strings. Benchmark setup now explicitly proves both
+fresh and private-variant hits after an unsafe mutation and origin reload, without counting origin work as a hit.
+The next timings and the complete section-10 matrix remain required.

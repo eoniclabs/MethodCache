@@ -44,4 +44,21 @@ public class DesignWorkloadSetupTests
         }
         finally { await benchmark.Cleanup(); }
     }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HttpHitScenarios_AfterInvalidationStillHitTheirRepopulatedNamespaces(bool listening)
+    {
+        var benchmark = new HttpResponsePathBenchmarks { Listening = listening, AfterInvalidation = true };
+        try
+        {
+            await benchmark.Setup();
+            Assert.Equal(7, benchmark.OriginLoads);
+            Assert.Equal(200, await benchmark.FreshHit());
+            Assert.Equal(200, await benchmark.VariantHit());
+            Assert.Equal(7, benchmark.OriginLoads);
+        }
+        finally { benchmark.Cleanup(); }
+    }
+
 }
