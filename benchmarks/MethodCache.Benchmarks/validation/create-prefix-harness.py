@@ -2,7 +2,7 @@ from pathlib import Path
 import argparse,hashlib,json,re,subprocess
 p=argparse.ArgumentParser();p.add_argument('--runtime-root',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--workloads-root',type=Path,required=True);a=p.parse_args()
 root=a.runtime_root.resolve();source=a.workloads_root.resolve();out=a.output.resolve();out.mkdir(exist_ok=True,parents=True)
-files=['Microbenchmarks/PrefixHitPathBenchmarks.cs','Microbenchmarks/KeyHashLookupBenchmarks.cs','Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs']
+files=['Microbenchmarks/PrefixHitPathBenchmarks.cs','Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs','Microbenchmarks/KeyHashLookupBenchmarks.cs','Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs']
 checksums={}
 for file in files:
  data=(source/'benchmarks/MethodCache.Benchmarks'/file).read_bytes();(out/Path(file).name).write_bytes(data);checksums[file]=hashlib.sha256(data).hexdigest()
@@ -28,10 +28,32 @@ capabilities={'prefix_hash':sip or marvin,'hash_algorithm':'SipHash-1-3' if sip 
 <ProjectReference Include="{core}"/><ProjectReference Include="{generator}" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
 </ItemGroup></Project>''')
 (out/'Program.cs').write_text('''using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Filters;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using MethodCache.Benchmarks.Microbenchmarks;
 using MethodCache.Generated;
+using System.Text.Json;
+var types = new[] { typeof(PrefixHitPathBenchmarks), typeof(GeneratedPrefixHitPathBenchmarks),
+    typeof(KeyHashLookupBenchmarks), typeof(MemoryCacheLookupReferenceBenchmarks) };
+var config = DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true));
+if (args.FirstOrDefault() == "--workload-inventory")
+{
+    var patterns = args.Skip(1).ToArray();
+    if (patterns.Length == 0) throw new ArgumentException("Supply the timing filters.");
+    var filter = new GlobFilter(patterns);
+    var cases = new List<object>();
+    foreach (var type in types)
+    {
+        using var run = BenchmarkConverter.TypeToBenchmarks(type, config);
+        foreach (var benchmark in run.BenchmarksCases.Where(filter.Predicate))
+            cases.Add(new { full_name = FullNameProvider.GetBenchmarkName(benchmark),
+                report_type = benchmark.Descriptor.Type.FullName });
+    }
+    Console.WriteLine(JsonSerializer.Serialize(cases));
+    return;
+}
 if (args.Contains("--verify-components"))
 {
     var core = typeof(CachedMethod).Assembly;
@@ -82,11 +104,27 @@ if (args.Contains("--verify-components"))
             throw new Exception("Reference cache missed.");
     }
     finally { reference.Cleanup(); }
+    foreach (var argument in new[] { PrefixArgumentKind.Int, PrefixArgumentKind.Guid })
+    foreach (var longPrefix in new[] { false, true })
+    foreach (var listening in new[] { false, true })
+    {
+        var generated = new GeneratedPrefixHitPathBenchmarks
+        { ArgumentKind = argument, LongPrefix = longPrefix, Listening = listening, SelectPerformanceCores = false };
+        generated.Setup();
+        try
+        {
+            if ((generated.KeyLength > 256) != longPrefix || generated.OriginLoads != 33)
+                throw new Exception("Generated prefix setup did not exercise the declared path.");
+            generated.VerifyResidentHits();
+            generated.VerifyUniqueMisses();
+            if (generated.OriginLoads != 63) throw new Exception("Generated prefix miss guard failed.");
+        }
+        finally { generated.Cleanup(); }
+    }
     Console.WriteLine("Verified all component prefix/growth/listener/cache/reference setup combinations.");
     return;
 }
-BenchmarkSwitcher.FromTypes(new[] {typeof(PrefixHitPathBenchmarks),typeof(KeyHashLookupBenchmarks),typeof(MemoryCacheLookupReferenceBenchmarks)})
- .Run(args,DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true)));
+BenchmarkSwitcher.FromTypes(types).Run(args,config);
 ''')
-(out/'source-manifest.json').write_text(json.dumps({'runtime_root':str(root),'runtime_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'workload_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=source,text=True).strip(),'source_sha256':checksums,'compiled_capabilities':capabilities,'statistics':'PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied.'},indent=2))
+(out/'source-manifest.json').write_text(json.dumps({'runtime_root':str(root),'runtime_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'workload_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=source,text=True).strip(),'source_sha256':checksums,'harness_program_sha256':hashlib.sha256((out/'Program.cs').read_bytes()).hexdigest(),'compiled_capabilities':capabilities,'statistics':'PR5 and later have no independent statistics toggle; facade and generated-interface cases measure both MeterListener states. No ineffective flag is varied.'},indent=2))
 print(out/'PrefixValidation.csproj')

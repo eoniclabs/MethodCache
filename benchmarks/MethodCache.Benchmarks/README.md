@@ -13,7 +13,8 @@ Memory scenarios use a fresh invocation identity for each `CacheFillUp` run, so 
 | How fast is a `[Cache]` hit compared with other libraries, used the way each documents? | `ReadmeComparisonBenchmarks` | `readme` |
 | How do generated contract revisions compare for sync/Task/ValueTask with GUID ids, string, structural and fallback keys? | `GeneratedContractBenchmarks` | `contract` |
 | What is the cost of hashing/lookup alone, with a ready key versus prefix-state reuse? | `KeyHashLookupBenchmarks` | `hashlookup` |
-| What do immutable prefix state, buffer growth and listeners cost on the complete contract-1 hit path? | `PrefixHitPathBenchmarks` | `hitpath` |
+| What do immutable prefix state, buffer growth and listeners cost at the contract-1 facade? | `PrefixHitPathBenchmarks` | `hitpath` |
+| What do actual generated short/long service interfaces cost for int/GUID hits and misses, with/without listeners? | `GeneratedPrefixHitPathBenchmarks` | `generated-hitpath` |
 | What do HTTP freshness hits, caller variants, misses and 304 validation cost? | `HttpResponsePathBenchmarks` | `httppath` |
 | How do libraries compare behind one interface (hits, misses, concurrency, stampedes)? | `UnifiedCacheComparisonBenchmarks` | `comparison` |
 | How fast is the in-memory engine on its own? | `MemoryEngineBenchmarks` | `engine` |
@@ -38,6 +39,7 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> 
 | `httppath` | `HttpResponsePathBenchmarks`: fresh/variant hits, 304 validation and growing-cache miss pressure, listeners off/on |
 | `httpcold` | `HttpColdMissBenchmarks`: cold publication, 8,192 operations per iteration, fresh isolated cache outside the measured region |
 | `hitpath` | `PrefixHitPathBenchmarks`: short/long method names, fitting/growing stack buffers, sync/Task/ValueTask hits and key building, listeners off/on |
+| `generated-hitpath` | `GeneratedPrefixHitPathBenchmarks`: actual generated short/long interfaces, distinct int/GUID controls, sync/Task/ValueTask hits and unique misses, listeners off/on |
 | `readme` | `ReadmeComparisonBenchmarks`: MethodCache `[Cache]`, `IMemoryCache` by hand, HybridCache, FusionCache |
 | `comparison` | `UnifiedCacheComparisonBenchmarks`: MethodCache, FusionCache, LazyCache, EasyCaching through `ICacheAdapter` |
 | `engine` | `MemoryEngineBenchmarks` |
@@ -158,6 +160,12 @@ measured hit shape must retain that one origin call. `KeyBuild` only builds; com
 expiration, frequency recording and request counting. Run the same source against the full before/after SHAs;
 three alternating independent runs and their 95% intervals are required by design-spec section 10. Buffer growth
 allocations are compared against the matching growth baseline, rather than being mistaken for a new hit allocation.
+
+The facade workload constructs calls and buffers by hand. `generated-hitpath` separately invokes generated
+decorators through actual service interfaces. A long namespace produces keys over 256 characters. Setup verifies
+three populations, repeated hits without origin calls and thirty distinct-key misses, for both listener states
+and both argument kinds. Int controls stay separate from the primary GUID results. Its 48 cases supplement
+the 54 lookup/facade/reference cases; run these as bounded families rather than one oversized lease.
 
 ### Pre-1.0 design validation workloads
 

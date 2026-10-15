@@ -60,6 +60,7 @@ public class BenchmarkSetupTests
     [Theory]
     [InlineData("engine")]
     [InlineData("hitpath")]
+    [InlineData("generated-hitpath")]
     [InlineData("httppath")]
     [InlineData("httpcold")]
     [InlineData("hashlookup")]

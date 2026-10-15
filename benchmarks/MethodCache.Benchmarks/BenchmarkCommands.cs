@@ -66,6 +66,9 @@ public static class BenchmarkCommands
             case "hitpath":
                 RunBenchmark<Microbenchmarks.PrefixHitPathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
+            case "generated-hitpath":
+                RunBenchmark<Microbenchmarks.GeneratedPrefixHitPathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "httppath":
                 RunBenchmark<Microbenchmarks.HttpResponsePathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
@@ -163,7 +166,8 @@ public static class BenchmarkCommands
         Console.WriteLine("  design-l2     - Real Redis/SQL reads and writes, round-trip off/on");
         Console.WriteLine("  hashlookup   - Ready string/span lookup versus immutable prefix-state reuse");
         Console.WriteLine("  memory-reference - IMemoryCache ready/built keys, sync and Task results");
-        Console.WriteLine("  hitpath      - Complete contract-1 hits, buffers and listeners");
+        Console.WriteLine("  hitpath      - Contract-1 facade hits, buffers and listeners");
+        Console.WriteLine("  generated-hitpath - Generated short/long interfaces, int/GUID, hits/misses and listeners");
         Console.WriteLine("  httppath     - HTTP fresh/variant hits, misses and 304, listeners off/on");
         Console.WriteLine("  httpcold     - HTTP cold publication with a bounded resident set per iteration");
         Console.WriteLine("  contract     - Generated sync/Task/ValueTask, complex keys and misses");

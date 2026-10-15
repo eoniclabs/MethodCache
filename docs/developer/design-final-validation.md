@@ -1,5 +1,31 @@
 # Final design verification
 
+## Exact comparison bases and generated prefix coverage
+
+The constructor and SipHash branches use an earlier HTTP implementation than the new combined candidate.
+All ten PR merge bases were checked against current GitHub base/head snapshots and `git merge-base`.
+Constructor PR132 must compare **9767fec → 2b3cb93**; isolated SipHash PR133 compares **2b3cb93 → 4f6cd73**.
+The full preparation therefore includes fourteen runtime points. Main GUID workloads remain identical,
+and the cumulative comparison remains f43854d → the final combined runtime. Neighboring points in a
+flattened list are not automatically valid isolated PR comparisons.
+
+The earlier prefix benchmark calls the Generated facade by hand. F05 additionally requires real generated
+decorators with short/long prefixes and both listener states. `GeneratedPrefixHitPathBenchmarks` now calls
+actual service interfaces, including a real long namespace, sync/Task/ValueTask hits and unique misses.
+GUIDs are the primary workload; separately labelled int controls retain the known regression check.
+All six component runtime points compile and pass setup guards with the same four C# files and program.
+Their actual inventories agree on **102 cases: 18 lookup, 36 facade/reference and 48 generated-interface**.
+Split these three families into separate bounded leases; do not drop cases to fit one oversized batch.
+Local setup/inventory proof and constant-key mutation sensitivity do not imply performance acceptance.
+[Exact six-runtime source/program/inventory proof](../../plans/design-benchmarks/generated-prefix-f05-preflight/).
+
+The prior exact GUID checkpoint c88f145 passes every required functional CI job: 2,528 main-suite facts
+across sixteen projects, 91 randomized properties, enabled soak, both cultures, native Redis/SQL,
+172 AOT signatures, seven installed packages/add-ons and docs. All fourteen exits and four commit
+statuses are success; changed-line coverage is 3468/3690 (94.0%). It precedes the HTTP header-copy
+candidate and the new generated-prefix workload, so it is not latest-head or timing acceptance.
+[Exact C88 jobs, counts, hashes and statuses](../../plans/design-benchmarks/guid-functional-c88f145/).
+
 ## Completed HTTP response-reuse confirmation
 
 The fixed three-pair Nimbus comparison of prefix 850cef8 with response-reuse 12bf99d
