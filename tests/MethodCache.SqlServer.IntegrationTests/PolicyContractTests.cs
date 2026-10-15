@@ -13,7 +13,8 @@ public class PolicyContractTests(SqlServerFixture sql)
     [SkippableFact]
     public async Task PolicyTransitionsAndDeadlines_ConformToSharedContract()
     {
-        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        // Keep physical native TTLs ahead of wall-clock setup; expiry assertions use source deadlines on this clock.
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
         var schema = "policy_" + Guid.NewGuid().ToString("N");
         var connection = sql.RequireConnectionString();
         async Task<ServiceProvider> Create(PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)

@@ -21,7 +21,8 @@ public class NativePolicyStateContractTests
     [InlineData("lost-message")]
     public async Task PolicyState_ConformsToSharedNativeContract(string scenario)
     {
-        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        // Keep physical native TTLs ahead of wall-clock setup; expiry assertions use source deadlines on this clock.
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
         var store = new AtomicTestCache(time);
         var hub = new ChaosBackplaneHub(time);
         Task<ServiceProvider> Create(PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)
