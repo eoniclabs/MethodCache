@@ -392,3 +392,13 @@ launches are pending, without pooling earlier protocols. All 31 validation-helpe
 neither those tests nor these baseline pilots pass the final timing gate. [Failure, primary-source
 analysis and frozen V4 protocol](../../plans/design-benchmarks/independent-run-precision/startup-affinity-validation/).
 Full timing remains pending for the standalone HTTP candidate and the finished combined contract/hash source.
+
+## HTTP 304 response-reuse directional follow-up
+
+The first post-fix prefix/candidate pair completed on Nimbus with four cases and empty
+interference guards. Candidate 12bf99d reduces allocation from 8,256 bytes to 7,536
+without listeners and 7,736 with listeners, but its four means remain 2.68–9.77% slower
+than prefix850 in this pair. One pair cannot prove a section-10 pass or a reproducible
+regression. The earlier three-run failure is not cleared; a fresh fixed three-pair
+alternating comparison is required. No timing samples are pooled across these protocols.
+[Exact means, sources, raw reports and guards](../../plans/design-benchmarks/http-304-response-reuse-pair/).
