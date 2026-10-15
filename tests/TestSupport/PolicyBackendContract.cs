@@ -66,27 +66,35 @@ public static partial class PolicyBackendContract
         await using var verifier = await create(new Origin(600), null);
         Assert.Equal(1, await verifier.GetRequiredService<ICacheManager>().GetOrCreateAsync("local-only", (_, _) => ValueTask.FromResult(3)));
 
+        // Deadline assertions have no dependency on the preceding policy mutations or their callbacks.
+        // Keep both timed nodes on one fresh physical/backplane scope, with subscriptions ready in Create.
+        var expiryScope = "expiry:" + Guid.NewGuid().ToString("N") + ":";
+        Action<MethodCacheBuilder> isolateExpiry = builder => builder.Services.PostConfigure<DistributedCacheOptions>(o => o.KeyPrefix += expiryScope);
+        await using var timedFirst = await create(new Origin(700), isolateExpiry);
+        await using var timedSecond = await create(new Origin(800), isolateExpiry);
+        var timedWriter = timedFirst.GetRequiredService<ICacheManager>();
+        var timedReceiver = timedSecond.GetRequiredService<ICacheManager>();
         var slow = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var loading = writer.GetOrCreateAsync("slow", (_, _) => { started.TrySetResult(); return new ValueTask<int>(slow.Task); }, o => o.WithDuration(TimeSpan.FromSeconds(10))).AsTask();
+        var loading = timedWriter.GetOrCreateAsync("slow", (_, _) => { started.TrySetResult(); return new ValueTask<int>(slow.Task); }, o => o.WithDuration(TimeSpan.FromSeconds(10))).AsTask();
         await started.Task;
         time.Advance(TimeSpan.FromSeconds(20));
         slow.SetResult(10); Assert.Equal(10, await loading);
         time.Advance(TimeSpan.FromSeconds(8));
-        Assert.Equal(10, await receiver.GetOrCreateAsync("slow", (_, _) => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
+        Assert.Equal(10, await timedReceiver.GetOrCreateAsync("slow", (_, _) => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
         time.Advance(TimeSpan.FromSeconds(2));
-        Assert.Equal(20, await receiver.GetOrCreateAsync("slow", (_, _) => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
-        await writer.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(1), o => o.WithDuration(TimeSpan.FromSeconds(10)));
+        Assert.Equal(20, await timedReceiver.GetOrCreateAsync("slow", (_, _) => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
+        await timedWriter.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(1), o => o.WithDuration(TimeSpan.FromSeconds(10)));
         var sliding = new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromSeconds(30))
             .WithSlidingExpiration(TimeSpan.FromSeconds(2)).FailSafe(TimeSpan.FromSeconds(5)).Build();
-        Assert.Equal(1, await receiver.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(2), sliding));
+        Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(2), sliding));
         for (var i = 0; i < 6; i++)
         {
             time.Advance(TimeSpan.FromMilliseconds(1500));
-            Assert.Equal(1, await receiver.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(2), sliding));
+            Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(2), sliding));
         }
         time.Advance(TimeSpan.FromSeconds(1));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => receiver.GetOrCreateAsync<int>("deadline",
+        await Assert.ThrowsAsync<InvalidOperationException>(() => timedReceiver.GetOrCreateAsync<int>("deadline",
             (_, _) => ValueTask.FromException<int>(new InvalidOperationException()), sliding).AsTask());
 
         await writer.GetOrCreateAsync("version", (_, _) => ValueTask.FromResult(7), o => o.WithVersion(2));

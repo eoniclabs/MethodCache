@@ -53,5 +53,6 @@
   <ItemGroup>
     <Compile Include="../TestSupport/PolicyBackendAcceptanceContract.cs" Link="TestSupport/PolicyBackendAcceptanceContract.cs" />
     <Compile Include="../TestSupport/PolicyBackendContract.cs" Link="TestSupport/PolicyBackendContract.cs" />
+    <Compile Include="../TestSupport/PolicySubscriptionBarrier.cs" Link="TestSupport/PolicySubscriptionBarrier.cs" />
   </ItemGroup>
 </Project>
