@@ -94,3 +94,15 @@ half-widths above 3% as insufficient precision for review. This diagnostic thres
 the specification or automatically accept narrower intervals. Every other row remains
 `review_required`; feature equivalence, matching-hit allocation increases, pressure paths and the
 complete scenario matrix still require assessment. Passing the helper's tests is not a performance pass.
+
+## Affinity evidence
+
+`bdn_affinity.py` parses BDN 0.15.4's declared affinity as binary at every display width;
+`Affinity=100` means mask4. The job display alone does not establish the OS mask. See the
+[versioned BDN implementation](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.4/src/BenchmarkDotNet/Extensions/ProcessExtensions.cs).
+The Nimbus startup-affinity protocol uses taskset before .NET initializes, supplies no BDN
+affinity characteristic, and samples the owned .NET process tree's actual CPU sets. Each of the
+four executed child PIDs must have observations on CPU2; missing samples or different masks fail.
+The V3 validation failure and fresh V4 protocol are retained under
+`plans/design-benchmarks/independent-run-precision/startup-affinity-validation/`. Earlier samples
+remain separate; all 31 affinity/activity/statistics helper tests pass, without a timing pass.

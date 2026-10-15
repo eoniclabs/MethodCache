@@ -47,3 +47,9 @@ The new study still requires interval review and establishes no product speedup.
 [Microsoft documents](https://learn.microsoft.com/en-us/dotnet/api/system.environment.processorcount?view=net-10.0)
 that ProcessorCount reflects affinity and is fixed at runtime startup. This is
 why the parent launch setting and startup probe are part of the new protocol.
+
+V3's first batch later completed four cases but its validator exited 1. The short binary display
+was misread, and BDN's extra affinity-setting attempts failed. Those artifacts are retained
+separately. Fresh V4 sets affinity only before startup and verifies actual OS CPU sets for each
+executed child PID; its nine fixed baseline launches are pending. See
+[the retained failure and V4 protocol](startup-affinity-validation/). No earlier samples are pooled.

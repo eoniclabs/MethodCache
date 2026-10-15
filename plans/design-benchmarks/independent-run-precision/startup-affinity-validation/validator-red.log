@@ -1,0 +1,77 @@
+FFFFFFF.F...
+======================================================================
+FAIL: test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) (display='Job(Default)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 21, in test_exported_missing_invalid_or_duplicate_masks_are_rejected
+    with self.subTest(display=display), self.assertRaises(ValueError):
+                                        ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) (display='Affinity=4')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 21, in test_exported_missing_invalid_or_duplicate_masks_are_rejected
+    with self.subTest(display=display), self.assertRaises(ValueError):
+                                        ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) (display='Affinity=0x4')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 21, in test_exported_missing_invalid_or_duplicate_masks_are_rejected
+    with self.subTest(display=display), self.assertRaises(ValueError):
+                                        ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) (display='Affinity=12')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 21, in test_exported_missing_invalid_or_duplicate_masks_are_rejected
+    with self.subTest(display=display), self.assertRaises(ValueError):
+                                        ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) (display='Affinity=100x')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 21, in test_exported_missing_invalid_or_duplicate_masks_are_rejected
+    with self.subTest(display=display), self.assertRaises(ValueError):
+                                        ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) (display='Affinity=100.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 21, in test_exported_missing_invalid_or_duplicate_masks_are_rejected
+    with self.subTest(display=display), self.assertRaises(ValueError):
+                                        ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) (display='Affinity=100, Affinity=100')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 21, in test_exported_missing_invalid_or_duplicate_masks_are_rejected
+    with self.subTest(display=display), self.assertRaises(ValueError):
+                                        ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exported_short_binary_masks_match_actual_bdn_display (test_bdn_affinity.AffinityEvidenceTests.test_exported_short_binary_masks_match_actual_bdn_display)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_bdn_affinity.py", line 9, in test_exported_short_binary_masks_match_actual_bdn_display
+    self.assertEqual(4, exported_affinity_mask(display))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 100
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+FAILED (failures=8)
