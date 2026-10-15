@@ -72,6 +72,7 @@ Not guaranteed, by design:
   what RFC 9111 specifies for a shared cache. Add `Cookie` or `Authorization` to `KeyHeaders` when your origin
   personalises without saying so.
 - Anonymous callers of a private cache are one caller: they share responses.
+- HTTP key hashing preserves complete UTF-16 header frames; temporary pooled buffers are cleared before reuse.
 - HTTP cache diagnostics omit raw URLs, headers and exception payloads. Static configured client names remain visible.
   Application/transport instrumentation has its own logging configuration.
 

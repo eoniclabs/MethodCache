@@ -50,6 +50,28 @@ public class HttpCacheKeysTests
         Assert.Equal(client + ":" + Convert.ToBase64String(reference.GetHashAndReset()) + ":m:GET", HttpCacheKeys.ForUri("api", HttpMethod.Get, uri));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    [InlineData(300)]
+    [InlineData(4096)]
+    public void VariantFrame_StackAndGrowthMatchTheExactUtf16IncrementalEncoding(int valueLength)
+    {
+        using var request = Get();
+        var value = new string('é', valueLength) + "\ud800";
+        request.Headers.TryAddWithoutValidation("X-Tenant", new[] { value, "two" });
+        using var reference = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var part in new[] { "schema", "x-tenant", "1", "2", value, "two" })
+        {
+            var bytes = new byte[part.Length * 2];
+            for (var i = 0; i < part.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * 2), part[i]);
+            var length = new byte[4];
+            BinaryPrimitives.WriteInt32LittleEndian(length, bytes.Length);
+            reference.AppendData(length); reference.AppendData(bytes);
+        }
+        Assert.Equal("base|" + Convert.ToBase64String(reference.GetHashAndReset()), HttpCacheKeys.ForVariant("base", "schema", request, ["X-Tenant"]));
+    }
+
     [Fact]
     public void ForRequest_IsDeterministic_AndSeparatesHashedClients()
     {

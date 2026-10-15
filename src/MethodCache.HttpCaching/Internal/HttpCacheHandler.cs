@@ -19,6 +19,18 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private readonly CoreTelemetry? _metrics;
     private readonly ILogger<HttpCacheHandler> _logger;
     private string _keyName;
+    // Only immutable configuration is memoized; request data and the active view stay in invocation locals.
+    private StorageBinding? _binding;
+    private sealed record StorageBinding(HttpCacheOptions Options, string Client, IHttpCacheStorage Store);
+
+    private IHttpCacheStorage CaptureStorage(HttpCacheOptions options)
+    {
+        var binding = Volatile.Read(ref _binding);
+        if (binding != null && ReferenceEquals(binding.Options, options) && binding.Client == _keyName) return binding.Store;
+        var store = _storage.ForClient(_keyName, options);
+        Volatile.Write(ref _binding, new StorageBinding(options, _keyName, store));
+        return store;
+    }
 
     public HttpCacheHandler(
         HttpCacheClientState state,
@@ -99,7 +111,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private async Task<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.Get(_keyName);
-        var storage = _storage.ForClient(_keyName, options);
+        var storage = CaptureStorage(options);
         var requestDirectives = RequestCacheDirectives.Parse(request);
 
         var isUnsafe = IsUnsafeMethod(request.Method);
@@ -329,17 +341,27 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     /// <summary>
     /// RFC 9111 section 4.1: a stored response with <c>Vary</c> is only used for a request whose varying headers match.
     /// </summary>
-    private async ValueTask<HttpCacheEntry?> GetCacheEntryAsync(IHttpCacheStorage storage, HttpRequestMessage request, string baseKey, CancellationToken cancellationToken)
+    private static ValueTask<HttpCacheEntry?> GetCacheEntryAsync(IHttpCacheStorage storage, HttpRequestMessage request, string baseKey, CancellationToken cancellationToken)
     {
-        var entry = await storage.GetAsync(baseKey, cancellationToken).ConfigureAwait(false);
+        var lookup = storage.GetAsync(baseKey, cancellationToken);
+        return lookup.IsCompletedSuccessfully ? SelectEntry(storage, request, baseKey, lookup.Result, cancellationToken)
+            : AwaitBaseEntryAsync(storage, request, baseKey, lookup, cancellationToken);
+    }
+
+    private static async ValueTask<HttpCacheEntry?> AwaitBaseEntryAsync(IHttpCacheStorage storage, HttpRequestMessage request,
+        string baseKey, ValueTask<HttpCacheEntry?> lookup, CancellationToken token)
+        => await SelectEntry(storage, request, baseKey, await lookup.ConfigureAwait(false), token).ConfigureAwait(false);
+
+    private static ValueTask<HttpCacheEntry?> SelectEntry(IHttpCacheStorage storage, HttpRequestMessage request, string baseKey,
+        HttpCacheEntry? entry, CancellationToken token)
+    {
         if (entry?.VariantGeneration is not { } generation)
         {
-            // Stored in place for a request that sent none of its selecting headers: only such requests may use it
-            return entry?.VaryHeaders is { Length: > 0 } inline && HttpCacheKeys.SendsAny(request, inline) ? null : entry;
+            // An inline entry can only be used by callers that still send none of its selecting headers.
+            return new(entry?.VaryHeaders is { Length: > 0 } inline && HttpCacheKeys.SendsAny(request, inline) ? null : entry);
         }
-
         var variantKey = HttpCacheKeys.ForVariant(baseKey, generation, request, entry.VaryHeaders ?? []);
-        return variantKey == null ? null : await storage.GetAsync(variantKey, cancellationToken).ConfigureAwait(false);
+        return variantKey == null ? new((HttpCacheEntry?)null) : storage.GetAsync(variantKey, token);
     }
 
     private async ValueTask<StoreResult> TryStoreResponseAsync(IHttpCacheStorage storage,

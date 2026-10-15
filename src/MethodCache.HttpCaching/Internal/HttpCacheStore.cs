@@ -62,10 +62,16 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
             return Cost(entry) + metadata;
         }
         /// <inheritdoc />
-        public async ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
+        public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
         {
             var slot = _keyPrefix.Slot(HttpCacheKeys.GenerationTargetSpan(key), out var canonical);
-            var vector = await _core.CaptureSlotAsync(slot, _tags, cancellationToken, allowInitialNamespace: canonical && _defaultTags).ConfigureAwait(false);
+            var captured = _core.CaptureSlotAsync(slot, _tags, cancellationToken, allowInitialNamespace: canonical && _defaultTags);
+            return captured.IsCompletedSuccessfully ? new(GenerationOrUnavailable(key, captured.Result)) : AwaitGenerationAsync(key, captured);
+        }
+        private async ValueTask<string> AwaitGenerationAsync(string key, ValueTask<string?> captured)
+            => GenerationOrUnavailable(key, await captured.ConfigureAwait(false));
+        private string GenerationOrUnavailable(string key, string? vector)
+        {
             if (vector != null) return vector;
             _core.ForgetUrl(HttpCacheKeys.GenerationTarget(key));
             return "unavailable:" + Guid.NewGuid().ToString("N");
@@ -77,11 +83,14 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         public ValueTask InvalidateManyAsync(IReadOnlyList<string> keys, CancellationToken token)
             => _core.InvalidateUrlsAsync(keys.Select(HttpCacheKeys.GenerationTarget), token);
         /// <inheritdoc />
-        public async ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
+        public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (key.Contains(Unavailable, StringComparison.Ordinal)) return null;
-            if (!_core.Distributed) return _core.ReadLocal(key, _keyPrefix) as HttpCacheEntry;
+            if (key.Contains(Unavailable, StringComparison.Ordinal)) return new((HttpCacheEntry?)null);
+            return !_core.Distributed ? new(_core.ReadLocal(key, _keyPrefix) as HttpCacheEntry) : ReadDistributedAsync(key, cancellationToken);
+        }
+        private async ValueTask<HttpCacheEntry?> ReadDistributedAsync(string key, CancellationToken cancellationToken)
+        {
             var data = await _core.ReadBytesAsync(key, cancellationToken).ConfigureAwait(false);
             var stored = data == null ? null : HttpCacheEntrySerializer.Deserialize(data);
             if (stored is not { } valid || valid.ExpiresAt <= _time.GetUtcNow())

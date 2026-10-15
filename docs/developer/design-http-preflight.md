@@ -6,7 +6,7 @@ It exposed a large allocation/time regression and therefore rejects this candida
 Base: `850cef8f3bc709eaf464b3c25e5ec898217fcc73` (HTTP before the Core-store change).
 Candidate: `0663b331c4621d8647db5d2183e51534b8126bff` (Core HTTP plus final-audit fixes).
 Same workload source hashes, .NET 10.0.3 / SDK 10.0.103, macOS ARM64 M5, concurrent workstation GC.
-No build/test/CI processes ran during these launches. Data: fresh cached response, fixed URI/body, private cache,
+Build/test launch guards were active, and this task started no concurrent builds, tests or publication during timing. Data: fresh cached response, fixed URI/body, private cache,
 without/with a no-op MeterListener. Both setups prove the origin is not called by the measured hit.
 16 warmups, 12 measured 500 ms iterations, one process per listener mode/revision.
 
@@ -44,3 +44,25 @@ existing gated origin/publication races and all net8/net9/net10 HTTP tests remai
 same exact UTF-16 bytes while avoiding temporary arrays/digest strings. Benchmark setup now explicitly proves both
 fresh and private-variant hits after an unsafe mutation and origin reload, without counting origin work as a hit.
 The next timings and the complete section-10 matrix remain required.
+
+## Third rejected diagnostic: d5dd97a
+
+Candidate `d5dd97ac1436eb8e4af31d15769ca10cd40b9f8a`, same base/runtime/job settings, now including private variants
+and origin-repopulated namespaces after unsafe invalidation. All measured hits are proven not to call origin.
+[Raw logs/manifest](../../plans/design-benchmarks/http-preflight-d5dd97a/) retain this one-pair diagnostic.
+
+| Hit / listeners / after invalidation | Base ns | Candidate ns | Allocated base / candidate KiB |
+|---|---:|---:|---:|
+| Fresh / off / no | 718.1 | 772.6 | 2.48 / 2.22 |
+| Fresh / off / yes | 769.2 | 856.9 | 2.71 / 2.62 |
+| Private variant / off / no | 1,267.9 | 1,424.1 | 4.00 / 3.37 |
+| Private variant / off / yes | 1,295.2 | 1,559.8 | 4.31 / 3.92 |
+
+Every off/on hit allocates less than its corresponding base. Time still regresses and this revision remains rejected.
+The listener-on private-variant initial sample was noisy (217 ns standard deviation); it is not used as precise timing
+evidence. The next repair caches only an immutable options/client/storage binding, retaining each request's captured
+view across config changes. Completed generation/value lookups bypass async state machines; pending native I/O is
+still awaited. Variant keys hash the complete unchanged UTF-16 frame in one SHA-256 operation, using stack buffers
+for small inputs and clearing pooled credential buffers on growth/return. Incremental reference tests cover empty,
+large and isolated-surrogate header frames. A gated options-change regression checks that simultaneous requests
+retain their own tag namespace and an earlier configuration's cache stays isolated when selected again.

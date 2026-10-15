@@ -15,6 +15,13 @@ namespace Docs.ThirdPartyPage
             // end-snippet
         }
 
+        public static void SelectModule(WebApplicationBuilder builder)
+        {
+            // begin-snippet: third-party-module-selection
+            builder.Services.AddMethodCache(cache => cache.FromAssemblyOf<Rates>());
+            // end-snippet
+        }
+
         public static void Wrapper(WebApplicationBuilder builder)
         {
             // begin-snippet: third-party-wrapper-registration
