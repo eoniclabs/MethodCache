@@ -1,6 +1,7 @@
 using MethodCache.Core.Runtime.Keys;
 using MethodCache.Generated;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 namespace MethodCache.Core.Runtime.Memory;
 
@@ -59,6 +60,7 @@ internal sealed class MemoryCacheEngine
 #if NET9_0_OR_GREATER
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<ReadOnlySpan<char>> _spanLookup;
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<PrehashedKey> _keyLookup;
+    private readonly bool _hasPrehashedLookup;
 #endif
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Node, byte>> _tagIndex = new(StringComparer.Ordinal);
     private readonly ReadBuffer _readBuffer = new();
@@ -94,20 +96,25 @@ internal sealed class MemoryCacheEngine
     // Inserts enqueued but not yet applied by maintenance; may dip below zero for a moment.
     private long _pendingAdds;
 
-    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems, KeyComparer? comparer = null)
+    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems, KeyComparer? comparer = null, bool useRuntimeStringComparer = false)
     {
         if (maximum <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(maximum), maximum, "Maximum must be greater than zero.");
         }
 
+        if (useRuntimeStringComparer && comparer != null)
+            throw new ArgumentException("A forced comparer cannot be combined with the runtime string comparer.", nameof(comparer));
         _maximum = maximum;
         _mode = mode;
         _clock = clock;
-        _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024), comparer ?? KeyComparer.Instance);
+        // String-only stores can retain the runtime's optimized ordinal comparer and its built-in
+        // collision defenses. Generated-method stores use the process-secret prefix comparer.
+        IEqualityComparer<string> selected = useRuntimeStringComparer ? StringComparer.Ordinal : comparer ?? KeyComparer.Instance;
+        _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024), selected);
 #if NET9_0_OR_GREATER
         _spanLookup = _map.GetAlternateLookup<ReadOnlySpan<char>>();
-        _keyLookup = _map.GetAlternateLookup<PrehashedKey>();
+        _hasPrehashedLookup = _map.TryGetAlternateLookup<PrehashedKey>(out _keyLookup);
 #endif
 
         if (mode == EngineEvictionMode.TinyLfu)
@@ -168,19 +175,25 @@ internal sealed class MemoryCacheEngine
 #endif
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryGet(ref KeyBuilder key, long now, out Node node)
     {
 #if NET9_0_OR_GREATER
-        return Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), key.LookupHash()), out node!), now, ref node);
+        return _hasPrehashedLookup
+            ? Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), key.LookupHash()), out node!), now, ref node)
+            : TryGet(key.AsSpan(), now, out node);
 #else
         return TryGet(key.ToString(), now, out node);
 #endif
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryGet(string key, MethodCache.Generated.CallSnapshot binding, long now, out Node node)
     {
 #if NET9_0_OR_GREATER
-        return Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), binding.HashKey(key)), out node!), now, ref node);
+        return _hasPrehashedLookup
+            ? Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), binding.HashKey(key)), out node!), now, ref node)
+            : TryGet(key, now, out node);
 #else
         return TryGet(key, now, out node);
 #endif

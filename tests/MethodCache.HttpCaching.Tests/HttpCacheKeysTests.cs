@@ -55,7 +55,7 @@ public class HttpCacheKeysTests
     [InlineData(100)]
     [InlineData(300)]
     [InlineData(4096)]
-    public void VariantFrame_StackAndGrowthMatchTheExactUtf16IncrementalEncoding(int valueLength)
+    public void VariantFrame_StackAndStreamingMatchTheExactUtf16IncrementalEncoding(int valueLength)
     {
         using var request = Get();
         var value = new string('é', valueLength) + "\ud800";

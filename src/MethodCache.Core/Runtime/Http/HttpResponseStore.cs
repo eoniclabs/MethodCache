@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Buffers.Binary;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.Memory;
-using MethodCache.Core.Runtime.Keys;
 using MethodCache.Core.Telemetry;
 using MethodCache.Infrastructure;
 using Microsoft.Extensions.Options;
@@ -64,7 +63,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         { ForegroundMaintenance = true };
         if (distributed == null)
         {
-            _local = new MemoryCacheEngine(MaximumBytes, EngineEvictionMode.TinyLfu, clock, 128);
+            _local = new MemoryCacheEngine(MaximumBytes, EngineEvictionMode.TinyLfu, clock, 128, useRuntimeStringComparer: true);
             _slots = new LocalEpoch?[GenerationSlots];
             _tagEpochs = new(StringComparer.Ordinal);
         }
@@ -160,27 +159,20 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    internal object? ReadLocal(string key, KeyPrefix? prefix = null)
+    internal object? ReadLocal(string key)
     {
         if (_local == null) return null;
-        prefix?.Prime(key);
         return _local.TryGet(key, _local.Now, out var node) ? node.BoxedValue : null;
     }
 
-    // Fixed hashed client text, prepared once per adapter view. Both hashes retain the full exact suffix.
-    internal sealed class KeyPrefix(string text)
+    // Fixed hashed client text, prepared once per adapter view. Slot identity retains the full exact suffix.
+    internal sealed class UrlSlotPrefix(string text)
     {
         private readonly uint _slotHash = ContinueSlotHash(2166136261u, text);
-        private readonly MarvinState _hash = ProcessKeyHash.Prefix(text);
         internal int Slot(ReadOnlySpan<char> target, out bool canonical)
         {
             canonical = target.StartsWith(text, StringComparison.Ordinal);
             return canonical ? (int)(ContinueSlotHash(_slotHash, target[text.Length..]) & (GenerationSlots - 1)) : HttpResponseStore.Slot(target);
-        }
-        internal void Prime(string key)
-        {
-            if (key.Length <= 2048 && key.AsSpan().StartsWith(text, StringComparison.Ordinal))
-                ProcessKeyHash.Remember(key, _hash.FinishUtf16(key.AsSpan(text.Length)));
         }
     }
 

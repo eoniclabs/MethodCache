@@ -68,12 +68,23 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     internal string ClientName => _keyName;
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         try
         {
-            return await SendThroughCacheAsync(request, cancellationToken).ConfigureAwait(false);
+            var response = SendThroughCacheAsync(request, cancellationToken);
+            return response.IsCompletedSuccessfully ? Task.FromResult(response.Result) : ObserveResponseAsync(response);
         }
+        catch
+        {
+            _metrics?.Request("http", _keyName, RequestResult.Error);
+            throw;
+        }
+    }
+
+    private async Task<HttpResponseMessage> ObserveResponseAsync(ValueTask<HttpResponseMessage> pending)
+    {
+        try { return await pending.ConfigureAwait(false); }
         catch
         {
             _metrics?.Request("http", _keyName, RequestResult.Error);
@@ -108,7 +119,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private static HttpResponseMessage CreateCacheUnavailableResponse(HttpRequestMessage request) =>
         new(HttpStatusCode.GatewayTimeout) { RequestMessage = request, ReasonPhrase = "Cache entry not available" };
 
-    private async Task<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    private async ValueTask<HttpResponseMessage> SendThroughCacheAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.Get(_keyName);
         var storage = CaptureStorage(options);

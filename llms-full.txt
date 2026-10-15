@@ -88,7 +88,7 @@ builder.Services.AddMethodCache();                               // after your r
   prefixed key such as `$"order:{id}"`.
 - Fix MethodCache's `MC` build diagnostics; each links to its explanation, and many have a code fix.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
-  caching off.
+  method caching off. HTTP response storage remains independent; use its own options and administrator.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass `CacheManagerExtensions.GetCacheKey(key, version)`
   to `InvalidateKeysAsync`.
 - Use `UseRedis` or `UseSqlServer`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
@@ -1125,8 +1125,8 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
   itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
-- `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
-  `NoOpCacheManager` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
+- The four operations on `ICacheManager` can be mocked directly. The options-builder convenience overload
+  delegates to that interface. You can also pass a `NoOpCacheManager` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
 
 Manual `TryGetAsync` reads a fresh entry, including a cached null, even when refresh-ahead is due. This lookup does not start a factory or background refresh.
 
@@ -1878,7 +1878,7 @@ var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProduc
 `ICacheAdministrator` from the same provider lists the entries and their keys, which helps when a test needs to check
 what was cached ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
-## Turning caching off
+## Turning method caching off
 
 Register `NoOpCacheManager` after `AddMethodCache()` and every call reaches your implementation:
 
@@ -1890,15 +1890,16 @@ services.AddMethodCache();
 services.AddSingleton<ICacheManager, NoOpCacheManager>();   // after AddMethodCache: every call reaches ProductService
 ```
 
-For code that uses [manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md), pass a `NoOpCacheManager` directly. `GetOrCreateAsync` is an
-extension method, so mocking libraries can't intercept it:
+For code that uses [manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md), pass a `NoOpCacheManager` directly, or mock the four
+operations on `ICacheManager`. The options-builder convenience overload delegates to that interface contract:
 
 ```cs
 ICacheManager cache = new NoOpCacheManager();   // never caches: the factory runs on every call
 var reader = new OrderReader(cache, repository);
 ```
 
-`NoOpCacheManager` is in `MethodCache.Extensibility`.
+`NoOpCacheManager` is in `MethodCache.Extensibility`. It disables method caching; HTTP response storage remains
+independent. Configure HTTP caching separately and use its administrator for invalidation.
 
 ## Time
 

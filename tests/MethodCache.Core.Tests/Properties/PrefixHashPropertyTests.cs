@@ -15,20 +15,16 @@ namespace MethodCache.Core.Tests.Properties;
 public class PrefixHashPropertyTests
 {
     [Fact]
-    public void HttpClientPrefix_ArbitraryUtf16Suffixes_PreserveFullHashAndPermanentSlot()
+    public void HttpClientPrefix_ArbitraryUtf16Suffixes_PreservePermanentSlot()
     {
         Gen.Select(Gen.String[Gen.Char["abc:\\\0\ud800\udfffé"], 0, 100], Gen.String[Gen.Char["abc:\\\0\ud800\udfffé"], 0, 200]).Sample((prefix, suffix) =>
         {
-            var binding = new HttpResponseStore.KeyPrefix(prefix);
+            var binding = new HttpResponseStore.UrlSlotPrefix(prefix);
             var key = prefix + suffix;
             Assert.Equal(HttpResponseStore.Slot(key), binding.Slot(key, out var canonical));
             Assert.True(canonical);
-            binding.Prime(key);
-            Assert.Equal(ProcessKeyHash.Compute(key.AsSpan()), ProcessKeyHash.Compute(key));
             var other = "unbound:" + key;
             Assert.Equal(HttpResponseStore.Slot(other), binding.Slot(other, out _));
-            binding.Prime(other);
-            Assert.Equal(ProcessKeyHash.Compute(other.AsSpan()), ProcessKeyHash.Compute(other));
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
     }
 

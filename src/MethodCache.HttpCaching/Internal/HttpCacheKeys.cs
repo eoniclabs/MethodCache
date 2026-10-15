@@ -175,11 +175,11 @@ internal static class HttpCacheKeys
         }
     }
 
-    private static void Append(IncrementalHash hash, string value)
+    private static void Append(IncrementalHash hash, scoped ReadOnlySpan<char> value)
     {
         if (BitConverter.IsLittleEndian)
         {
-            AppendBytes(hash, MemoryMarshal.AsBytes(value.AsSpan()));
+            AppendBytes(hash, MemoryMarshal.AsBytes(value));
             return;
         }
         Span<byte> length = stackalloc byte[4];
@@ -200,44 +200,48 @@ internal static class HttpCacheKeys
         hash.AppendData(length);
         hash.AppendData(bytes);
     }
-    // One SHA operation for the complete existing frame. Small header sets stay on the stack; any pooled
-    // buffer containing credentials is cleared before return, including buffers replaced during growth.
+    // Small frames use one SHA operation from the stack. Large frames switch to incremental hashing,
+    // keeping working memory bounded instead of building a buffer proportional to caller header sizes.
     private ref struct FramedHash(Span<byte> buffer)
     {
         private Span<byte> _buffer = buffer;
-        private byte[]? _rented;
+        private IncrementalHash? _stream;
         private int _written;
 
         internal void Append(scoped ReadOnlySpan<char> value)
         {
             var bytes = checked(value.Length * 2);
-            EnsureCapacity(checked(_written + 4 + bytes));
-            BinaryPrimitives.WriteInt32LittleEndian(_buffer[_written..], bytes);
-            _written += 4;
-            var destination = _buffer.Slice(_written, bytes);
-            if (BitConverter.IsLittleEndian) MemoryMarshal.AsBytes(value).CopyTo(destination);
-            else
-                for (var i = 0; i < value.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(destination[(i * 2)..], value[i]);
-            _written += bytes;
+            if (_stream == null && bytes <= _buffer.Length - _written - 4)
+            {
+                BinaryPrimitives.WriteInt32LittleEndian(_buffer[_written..], bytes);
+                _written += 4;
+                var destination = _buffer.Slice(_written, bytes);
+                if (BitConverter.IsLittleEndian) MemoryMarshal.AsBytes(value).CopyTo(destination);
+                else
+                    for (var i = 0; i < value.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(destination[(i * 2)..], value[i]);
+                _written += bytes;
+                return;
+            }
+            if (_stream == null)
+            {
+                _stream = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                _stream.AppendData(_buffer[.._written]);
+                _buffer[.._written].Clear();
+                _written = 0;
+            }
+            HttpCacheKeys.Append(_stream, value);
         }
 
-        private void EnsureCapacity(int minimum)
+        internal readonly void Finish(scoped Span<byte> digest)
         {
-            if (_buffer.Length >= minimum) return;
-            var next = ArrayPool<byte>.Shared.Rent(Math.Max(minimum, checked(_buffer.Length * 2)));
-            _buffer[.._written].CopyTo(next);
-            if (_rented != null) ArrayPool<byte>.Shared.Return(_rented, clearArray: true);
-            else _buffer[.._written].Clear();
-            _buffer = _rented = next;
+            if (_stream == null) _ = SHA256.HashData(_buffer[.._written], digest);
+            else _ = _stream.TryGetHashAndReset(digest, out _);
         }
-
-        internal readonly void Finish(scoped Span<byte> digest) => _ = SHA256.HashData(_buffer[.._written], digest);
         internal void Dispose()
         {
-            if (_rented != null) ArrayPool<byte>.Shared.Return(_rented, clearArray: true);
-            else _buffer[.._written].Clear();
-            _buffer = default; _rented = null; _written = 0;
+            _stream?.Dispose(); _stream = null;
+            _buffer[.._written].Clear();
+            _buffer = default; _written = 0;
         }
     }
-
 }

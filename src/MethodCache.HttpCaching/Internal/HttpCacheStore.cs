@@ -39,14 +39,14 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         private readonly TimeProvider _time;
         private readonly string _client;
         private readonly string[] _tags;
-        private readonly HttpResponseStore.KeyPrefix _keyPrefix;
+        private readonly HttpResponseStore.UrlSlotPrefix _slotPrefix;
         private readonly bool _defaultTags;
         private const string Unavailable = "|generation:unavailable:";
         internal View(HttpResponseStore core, TimeProvider time, string client, HttpCacheOptions options)
         {
             if (client.Length > 1024) throw new ArgumentException("HTTP cache client names cannot exceed 1024 UTF-16 code units.", nameof(client));
             _core = core; _time = time; _client = client;
-            _keyPrefix = new(HttpCacheKeys.ClientIdentity(client) + ":");
+            _slotPrefix = new(HttpCacheKeys.ClientIdentity(client) + ":");
             _defaultTags = options.Tags.Count == 0;
             if (options.Tags.Count > 125 || options.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 1024))
                 throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
@@ -64,7 +64,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         /// <inheritdoc />
         public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
         {
-            var slot = _keyPrefix.Slot(HttpCacheKeys.GenerationTargetSpan(key), out var canonical);
+            var slot = _slotPrefix.Slot(HttpCacheKeys.GenerationTargetSpan(key), out var canonical);
             var captured = _core.CaptureSlotAsync(slot, _tags, cancellationToken, allowInitialNamespace: canonical && _defaultTags);
             return captured.IsCompletedSuccessfully ? new(GenerationOrUnavailable(key, captured.Result)) : AwaitGenerationAsync(key, captured);
         }
@@ -86,8 +86,10 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (key.Contains(Unavailable, StringComparison.Ordinal)) return new((HttpCacheEntry?)null);
-            return !_core.Distributed ? new(_core.ReadLocal(key, _keyPrefix) as HttpCacheEntry) : ReadDistributedAsync(key, cancellationToken);
+            // TrySet rejects unpublishable generations, so local lookup cannot find one. Native mode
+            // additionally avoids issuing I/O for such a generation after a failed metadata read.
+            if (!_core.Distributed) return new(_core.ReadLocal(key) as HttpCacheEntry);
+            return key.Contains(Unavailable, StringComparison.Ordinal) ? new((HttpCacheEntry?)null) : ReadDistributedAsync(key, cancellationToken);
         }
         private async ValueTask<HttpCacheEntry?> ReadDistributedAsync(string key, CancellationToken cancellationToken)
         {

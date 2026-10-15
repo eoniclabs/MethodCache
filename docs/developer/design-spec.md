@@ -13,8 +13,9 @@ tests/MethodCache.Docs.Tests i respektive implementations-PR.
 
 Ledstång: **lättförståeligt, enkelt, tydligt; ingen reproducerbar prestandaförsämring.**
 Korrekthet och isolering är egna godkännandekrav. Att uppdatera detta dokument innebär inte att en release
-är publicerad eller att implementationstesterna har körts. Användarens begäran i denna chatt omfattar PR 0;
-implementationen av PR 1–7 är nästa arbetssteg och ingår inte i denna dokumentändring.
+är publicerad eller att implementationstesterna har körts. Dokumentet skapades som PR 0. Johan gav därefter,
+den 2026-10-15, uppdraget att genomföra hela PR-serien som ett sammanhängande mål. Aktuell verifieringsstatus
+finns i design-execution.md; publicering av paket och merge är separata från detta implementationsuppdrag.
 
 ## 1. Beslut och omfattning
 
