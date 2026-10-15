@@ -1,5 +1,21 @@
 # Final design verification
 
+## Completed HTTP response-reuse confirmation
+
+The fixed three-pair Nimbus comparison of prefix 850cef8 with response-reuse 12bf99d
+is complete. The listener-on/post-invalidation case regresses **9.36%**, with disjoint
+95% intervals over the three independent launch means. The other three cases have
+insufficient precision. All six launches completed with twelve actual iterations per
+case and empty interference guards. Allocation decreases do not waive this failed gate.
+[Exact results, frozen inputs, complete logs and rederived comparison](../../plans/design-benchmarks/http-304-response-reuse-confirmation/).
+
+A new candidate merges 304 headers directly into the replacement dictionary and avoids
+per-response filter allocations when Connection options are absent. The local header-only
+probe falls from 1248 B to 880 B; this is not full HTTP timing evidence. All 322 HTTP tests
+pass, including two new preservation cases that also pass before the optimization, and
+all nine changed executable lines are covered. Fresh Nimbus comparison and final-head CI
+remain required; this change does not close section 10.
+
 ## Current supported candidate: .NET 10
 
 Johan approved .NET 10 as the only application runtime on 2026-10-15. The published stack is

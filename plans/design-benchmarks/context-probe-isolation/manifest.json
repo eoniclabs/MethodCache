@@ -30,6 +30,14 @@
     "full-sv_SE-green.log": {
       "original_sha256": "538ea5c9e7bb29025f1d557c8006bd5ee4757e5bb3819cd7dbd0fff69068a589",
       "stored_sha256": "538ea5c9e7bb29025f1d557c8006bd5ee4757e5bb3819cd7dbd0fff69068a589"
+    },
+    "lower-http-green.log": {
+      "original_sha256": "222ba862b6d75ef5a7052eccafc4126ff75d4c4eb3655685506f7dc2b5801d9c",
+      "stored_sha256": "222ba862b6d75ef5a7052eccafc4126ff75d4c4eb3655685506f7dc2b5801d9c"
+    },
+    "lower-net10-green.log": {
+      "original_sha256": "88bc9ab76d2d8f98f74f3f8006bec49ee5691a2d53cabc78f07289bb54aa3be5",
+      "stored_sha256": "88bc9ab76d2d8f98f74f3f8006bec49ee5691a2d53cabc78f07289bb54aa3be5"
     }
   },
   "normalization": "LF and trailing-whitespace normalization; original source hashes retained."

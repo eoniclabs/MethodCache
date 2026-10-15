@@ -20,3 +20,7 @@ actual post, then production source is restored byte for byte. Complete Core
 suites pass 1,036 facts with one intentional opt-in soak skip under default,
 tr-TR and sv-SE on net10. This is local fixture verification, not latest-head CI
 or a production fix for the unproven original timeout.
+
+The exact fixture is forwarded to the lower HTTP and .NET-10-only steps. Each
+complete local net10 Core suite passes 1,023 facts, with one intentional soak
+skip. Shipped source is unchanged; fresh latest-head CI remains required.
