@@ -1,0 +1,15 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Core/bin/Release/net8.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net8.0/MethodCache.OpenTelemetry.dll
+  MethodCache.OpenTelemetry.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net8.0/MethodCache.OpenTelemetry.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net8.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: 113 ms - MethodCache.OpenTelemetry.Tests.dll (net8.0)
