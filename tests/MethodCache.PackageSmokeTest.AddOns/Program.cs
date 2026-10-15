@@ -7,12 +7,16 @@ using MethodCache;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
+if (args is ["--seed-isolation", ..]) return await SeedIsolationCheck.WorkerAsync(args);
+
 // Each check runs against the installed packages and returns what went wrong; the run fails if any check fails.
 var checks = new (string Name, Func<Task<string?>> Run)[]
 {
     ("Redis, two instances, JSON", () => DistributedCheck.RunAsync(Backend.Redis, messagePack: false)),
     ("Redis, two instances, MessagePack", () => DistributedCheck.RunAsync(Backend.Redis, messagePack: true)),
     ("SQL Server, two instances, JSON", () => DistributedCheck.RunAsync(Backend.SqlServer, messagePack: false)),
+    ("Redis across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.Redis)),
+    ("SQL Server across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.SqlServer)),
     ("ASP.NET Core admin endpoints and health check", AspNetCoreCheck.RunAsync),
     ("OpenTelemetry metrics and spans", OpenTelemetryCheck.RunAsync),
     ("HttpClient caching", HttpCachingCheck.RunAsync),
@@ -120,12 +124,13 @@ public static class DistributedCheck
         return UserService.Calls == 2 ? null : "the invalidation on the first instance did not reach the second";
     }
 
-    private static Instance CreateInstance(Backend backend, string connection, string isolation, bool messagePack)
+    internal static Instance CreateInstance(Backend backend, string connection, string isolation, bool messagePack)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
         services.AddMethodCache();
+        services.AddHealthChecks().AddMethodCache();
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = isolation + ":");
         if (backend == Backend.Redis)
         {
@@ -152,9 +157,12 @@ public static class DistributedCheck
         return new Instance(services.BuildServiceProvider());
     }
 
-    private sealed class Instance(ServiceProvider provider) : IAsyncDisposable
+    internal sealed class Instance(ServiceProvider provider) : IAsyncDisposable
     {
         private readonly AsyncServiceScope _scope = provider.CreateAsyncScope();
+        internal IServiceProvider Services => provider;
+
+        public ICacheAdministrator Administrator => provider.GetRequiredService<ICacheAdministrator>();
 
         public IUserService Users => _scope.ServiceProvider.GetRequiredService<IUserService>();
 

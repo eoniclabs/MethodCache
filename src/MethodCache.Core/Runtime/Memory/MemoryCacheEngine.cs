@@ -1,3 +1,5 @@
+using MethodCache.Core.Runtime.Keys;
+using MethodCache.Generated;
 using System.Collections.Concurrent;
 
 namespace MethodCache.Core.Runtime.Memory;
@@ -56,6 +58,7 @@ internal sealed class MemoryCacheEngine
     private readonly ConcurrentDictionary<string, Node> _map;
 #if NET9_0_OR_GREATER
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<ReadOnlySpan<char>> _spanLookup;
+    private readonly ConcurrentDictionary<string, Node>.AlternateLookup<PrehashedKey> _keyLookup;
 #endif
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Node, byte>> _tagIndex = new(StringComparer.Ordinal);
     private readonly ReadBuffer _readBuffer = new();
@@ -91,7 +94,7 @@ internal sealed class MemoryCacheEngine
     // Inserts enqueued but not yet applied by maintenance; may dip below zero for a moment.
     private long _pendingAdds;
 
-    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems)
+    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems, KeyComparer? comparer = null)
     {
         if (maximum <= 0)
         {
@@ -101,9 +104,10 @@ internal sealed class MemoryCacheEngine
         _maximum = maximum;
         _mode = mode;
         _clock = clock;
-        _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024)); // default comparer enables the non-randomized string hashing fast path
+        _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024), comparer ?? KeyComparer.Instance);
 #if NET9_0_OR_GREATER
         _spanLookup = _map.GetAlternateLookup<ReadOnlySpan<char>>();
+        _keyLookup = _map.GetAlternateLookup<PrehashedKey>();
 #endif
 
         if (mode == EngineEvictionMode.TinyLfu)
@@ -159,6 +163,16 @@ internal sealed class MemoryCacheEngine
     {
 #if NET9_0_OR_GREATER
         return Accept(_spanLookup.TryGetValue(key, out node!), now, ref node);
+#else
+        return TryGet(key.ToString(), now, out node);
+#endif
+    }
+
+    internal bool TryGet(ref KeyBuilder key, long now, out Node node)
+    {
+        if (key.StoredText is { } text) return TryGet(text, now, out node);
+#if NET9_0_OR_GREATER
+        return Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), key.LookupHash()), out node!), now, ref node);
 #else
         return TryGet(key.ToString(), now, out node);
 #endif
