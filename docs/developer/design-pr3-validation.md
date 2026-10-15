@@ -21,3 +21,17 @@ An initial full three-framework run passed 6,863 tests with three intentional so
 ## Remaining verification
 
 Run the final combined matrix after the PR 2 test fixes, coverage, cultures, AOT/signature corpus, package smoke tests and the section-10 benchmark gate. Record results below before the series is considered complete.
+
+## Combined implementation verification
+
+Source revision: `0b0460b` (the typed capability and PR 2 test barriers are included).
+
+- Full Release matrix: 6,872 passed, zero failed, three intentional soak skips, 46 project/framework runs. Real Redis and SQL Server integration fixtures ran.
+- Changed-source coverage against PR 2: 207/218 lines (95.0%). Shared duration parser: 40/40 changed lines.
+- sv-SE and tr-TR unit runs passed.
+- Guided demo: all six chapters passed.
+- Native osx-arm64 smoke passed; 172 signature corpus cases compiled and executed natively. Existing reflection-fallback trimming/AOT warnings remain and do not imply arbitrary fallback types are AOT-safe.
+- Seven packages packed; Core and six add-ons smoke-tested, including actual .NET 8 SDK compiler consumption and real Redis/SQL Server.
+- Frozen contract-1 binary fixtures passed unchanged. Snippets and LLM documentation regenerated; formatter ran.
+
+Section-10 benchmark comparisons and external cross-platform CI remain recorded as outstanding verification in the execution tracker. PR 4 also follows up the observed transient Redis startup read; the combined full matrix passed, which does not by itself prove that scheduling issue resolved.
