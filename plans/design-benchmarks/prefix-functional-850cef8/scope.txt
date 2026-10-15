@@ -1,0 +1,5 @@
+Production source 850cef8f3bc709eaf464b3c25e5ec898217fcc73; src tree 9a108fa5d163389d7f036ffca55a8709f964234c
+No production code changed during the rerun. Test-only worker warm-up is identical to the existing HTTP descendant fix. First attempt retained separately and not counted as passing.
+net10:2400;net8:2276;net9:2281;total6957;failed0;intentionalsoakskip3;project/frameworkruns46.
+Changed-line coverage against PR5 149/157=94.9%. All native backends required. Culture/randomproperties(net10+net8)/soak/demo/nativeAOT+172corpus/all7packages+actualSDK8.0.203/mixedversionchecks/independentseedprocesses passed.
+Section10 timing remains pending; Nimbus times the identical production source at850cef8.
