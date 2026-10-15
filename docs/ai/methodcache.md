@@ -9,7 +9,7 @@ Bulk source reads are guarded against key, tag and clear invalidation; invalidat
 ## Adding caching to a service
 
 1. The `MethodCache` package contains the library, the source generator and the analyzers. Nothing else is needed
-   for in-memory caching.
+   for in-memory caching. All packages require .NET 10 and the .NET 10 SDK.
 2. Put `[Cache]` on the **interface** method, never on the class. Put `[CacheInvalidate(Tags = [...])]` on the
    interface methods that change the data. Don't change the implementation.
 3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them. Later cacheable

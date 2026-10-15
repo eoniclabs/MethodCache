@@ -129,7 +129,7 @@ namespace MethodCache
         /// <summary>
         /// Like <see cref="TryGetFast{T}(string, out T)"/>, for a key held in a buffer such as one written by
         /// <see cref="MethodCache.Infrastructure.MethodCacheKeyBuilder"/>. The built-in memory cache looks it up without
-        /// allocating on .NET 9 and later; the default implementation converts the key to a string.
+        /// allocating; the default implementation converts the key to a string.
         /// </summary>
         /// <typeparam name="T">Type of cached value</typeparam>
         /// <param name="cacheKey">Pre-computed cache key</param>

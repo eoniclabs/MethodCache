@@ -2,7 +2,7 @@
 
   <!-- A stand-in for a third-party package: the AOT smoke test caches its interface with [assembly: CacheInterface]. -->
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsAotCompatible>true</IsAotCompatible>

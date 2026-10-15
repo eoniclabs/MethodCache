@@ -1,0 +1,24 @@
+=== soak
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.04]   Discovering: MethodCache.Core.Tests
+[xUnit.net 00:00:00.09]   Discovered:  MethodCache.Core.Tests
+[xUnit.net 00:00:00.09]   Starting:    MethodCache.Core.Tests
+[xUnit.net 00:00:30.15]   Finished:    MethodCache.Core.Tests
+  Passed MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [30 s]
+  Standard Output Messages:
+ Ran 30 s with 20 workers: 70 153 240 loads (42 087 741 hot), 26 706 824 factory calls (534 079 failed), 9 349 201 reads, 4 674 596 writes, 1 955 invalidations
+ Stats: 48 800 861 hits, 35 603 682 misses, 30 569 536 evictions, 989 entries, weight 2 090 981 (max seen 2 100 917, bound 2 097 152), max entries seen 1 093
+ Managed memory after full GCs (MB): 24.5, 24.3, 24.2, 24.3, 24.1, 24.1, 23.9, 24.0, 24.2, 24.0, 24.0
+
+
+
+Test Run Successful.
+Total tests: 1
+     Passed: 1
+ Total time: 30,3320 Seconds

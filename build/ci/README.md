@@ -5,11 +5,11 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 
 | Script | Runs on | What it does |
 |---|---|---|
-| `jobs.sh <job>...` | anything with the .NET 8, 9 and 10 SDKs | the jobs themselves: `build`, `demo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
+| `jobs.sh <job>...` | anything with the .NET 10 SDK | the jobs themselves: `build`, `demo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
 | `diff_coverage.py` | | the share of changed lines under `src/` that a Cobertura report covers (used by `diffcoverage`) |
 | `linux.sh [job...]` | Linux with Docker | every Linux job inside the build image (`Dockerfile`), with Redis and SQL Server for the package apps |
 | `windows.ps1 [job...]` | Windows | `build` and `unit` (the Docker-backed tests run on Linux only) |
-| `Dockerfile` | | the Linux build image: .NET 10 SDK plus the .NET 8 and 9 SDKs, clang for Native AOT, Python |
+| `Dockerfile` | | the Linux build image: .NET 10 SDK, clang for Native AOT, Python |
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
 | `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
@@ -26,7 +26,7 @@ Each job writes `artifacts/ci/<job>.log` and `artifacts/ci/<job>.exit`. A new CI
 `windows.ps1`) as a script or `dotnet` command, never as a step that only works in one CI system.
 
 `jobs.sh build unit` is what the Windows and macOS servers run: every test except the Docker-backed ones. It takes
-about 50 s on Linux with `FRAMEWORK=net10.0`, which runs one framework instead of three.
+one .NET 10 test pass per platform. Earlier timings for the three-framework matrix are historical.
 
 ## Diff coverage (pull requests)
 
@@ -56,14 +56,14 @@ checkout; `mutation` builds for itself.
 
 | Entry point | Run time (measured, 4 cores) | Fails on |
 |---|---|---|
-| `jobs.sh build properties` | about 2 min (5 s per property, 2 frameworks; raise `PROPERTY_SECONDS` for a longer search) | a property failing from a random seed |
+| `jobs.sh build properties` | 5 s per property on .NET 10; raise `PROPERTY_SECONDS` for a longer search | a property failing from a random seed |
 | `jobs.sh build soak` | `METHODCACHE_SOAK_SECONDS` plus about 3 s (30 s by default) | an exception, a stampede, wrong values, inconsistent counters, the size bound or memory growth |
 | `jobs.sh mutation` | about 62 min (2,251 mutants tested, concurrency 2) | Stryker itself failing, never the score |
 
 - **properties**: the CsCheck properties in `tests/MethodCache.Core.Tests/Properties` with
   `METHODCACHE_PROPERTY_RANDOM_SEED=true` and `CsCheck_Time` set, so each property runs for `PROPERTY_SECONDS`
   (default 5) from a fresh seed instead of its fixed iteration count, on `PROPERTY_FRAMEWORKS` (default
-  `net10.0 net8.0`). A failure prints CsCheck's `CsCheck_Seed=...`, repeated at the end of the log with the command
+  `net10.0`). A failure prints CsCheck's `CsCheck_Seed=...`, repeated at the end of the log with the command
   that replays it. Logs: `artifacts/properties/<framework>.log`.
 - **soak**: `tests/MethodCache.Core.Tests/Soak` (`Category=Soak`) runs the in-memory cache under load from every
   core for `METHODCACHE_SOAK_SECONDS` (default 30 in the job; without the variable the test is skipped).
@@ -120,7 +120,7 @@ shared lock are settings in `~/.config/methodcache-ci/env` on Megatron (see "Ins
 |---|---|
 | Megatron (macOS) | coordinator; runs `jobs.sh build unit` itself with the SDKs in `/usr/local/share/dotnet` |
 | Nimbus (Linux) | `linux.sh` in Docker, under `~/methodcache-ci`. Nimbus also builds another project's images; a MethodCache run holds that project's capacity lock shared (`METHODCACHE_CI_NIMBUS_SHARED_LOCK`), so those builds wait for it |
-| baloo (Windows) | `windows.ps1`, under `C:\mc`. The .NET 8, 9 and 10 SDKs are installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
+| baloo (Windows) | `windows.ps1`, under `C:\mc`. The .NET 10 SDK is installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
 
 Every minute the coordinator looks at the head of `main` and every open pull request from this repository. Each
 commit without a result runs on all three servers, one commit at a time. Each server keeps a mirror of the

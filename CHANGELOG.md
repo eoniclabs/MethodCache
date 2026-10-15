@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- **Breaking before 1.0:** all runtime packages now require .NET 10 and the .NET 10 SDK. Remove .NET 8/9 targets,
+  their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Frozen generated-contract fixtures remain unchanged.
+
 ### Core telemetry and attribute diagnostics
 
 - Move instrumentation into Core's container-owned Meter/ActivitySource; the OpenTelemetry package now only subscribes.

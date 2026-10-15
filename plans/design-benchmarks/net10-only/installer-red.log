@@ -1,0 +1,21 @@
+test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts (test_coordinator.InstallTests.test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts) ... 
+  test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts (test_coordinator.InstallTests.test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts) (versions='10.0.103 [/sdk]\n') ... FAIL
+test_update_atomically_preserves_open_old_script_and_versions_helper (test_coordinator.InstallTests.test_update_atomically_preserves_open_old_script_and_versions_helper) ... ok
+test_remote_linux_results_recovered_without_any_build (test_coordinator.RetryIntegrationTests.test_remote_linux_results_recovered_without_any_build) ... ok
+test_retry_builds_only_missing_platform (test_coordinator.RetryIntegrationTests.test_retry_builds_only_missing_platform) ... ok
+test_background_command_receives_script_on_stdin (test_coordinator.TimeoutTests.test_background_command_receives_script_on_stdin) ... ok
+test_watchdog_does_not_hold_archive_stdout_open (test_coordinator.TimeoutTests.test_watchdog_does_not_hold_archive_stdout_open) ... ok
+
+======================================================================
+FAIL: test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts (test_coordinator.InstallTests.test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts) (versions='10.0.103 [/sdk]\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/build/ci/tests/test_coordinator.py", line 99, in test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts
+    self.assertEqual(expected, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : 
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.710s
+
+FAILED (failures=1)

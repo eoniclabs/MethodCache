@@ -6,8 +6,7 @@
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <!-- net8.0, so CI can also build it with the .NET 8 SDK (the oldest compiler the generator supports) -->
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>

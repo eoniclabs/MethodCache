@@ -5,9 +5,7 @@ namespace MethodCache.Core.Runtime.Keys;
 // The mask is immutable and exists only to exercise collisions in an individual test engine.
 // Production uses every output bit and a process-secret 64-bit Marvin seed (the .NET randomized string hash).
 internal sealed class KeyComparer(uint mask = uint.MaxValue) : IEqualityComparer<string>
-#if NET9_0_OR_GREATER
     , IAlternateEqualityComparer<ReadOnlySpan<char>, string>, IAlternateEqualityComparer<PrehashedKey, string>
-#endif
 {
     internal static readonly KeyComparer Instance = new();
     /// <inheritdoc />
@@ -16,7 +14,6 @@ internal sealed class KeyComparer(uint mask = uint.MaxValue) : IEqualityComparer
     public int GetHashCode(string obj) => Mask(ProcessKeyHash.Compute(obj));
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int Mask(int hash) => unchecked((int)((uint)hash & mask));
-#if NET9_0_OR_GREATER
     /// <inheritdoc />
     public bool Equals(ReadOnlySpan<char> alternate, string other) => alternate.SequenceEqual(other.AsSpan());
     /// <inheritdoc />
@@ -29,10 +26,8 @@ internal sealed class KeyComparer(uint mask = uint.MaxValue) : IEqualityComparer
     public int GetHashCode(PrehashedKey alternate) => Mask(alternate.Hash);
     /// <inheritdoc />
     public string Create(PrehashedKey alternate) => new(alternate.Text);
-#endif
 }
 
-#if NET9_0_OR_GREATER
 // Two machine words on 64-bit runtimes, like ReadOnlySpan<char>. Keeping length and hash together
 // avoids passing a 24-byte aggregate indirectly on ARM64. The managed byref remains a GC-tracked field.
 internal readonly ref struct PrehashedKey
@@ -47,5 +42,3 @@ internal readonly ref struct PrehashedKey
     internal ReadOnlySpan<char> Text => System.Runtime.InteropServices.MemoryMarshal.CreateReadOnlySpan(ref _start, (int)(uint)_lengthAndHash);
     internal int Hash => unchecked((int)(_lengthAndHash >> 32));
 }
-
-#endif

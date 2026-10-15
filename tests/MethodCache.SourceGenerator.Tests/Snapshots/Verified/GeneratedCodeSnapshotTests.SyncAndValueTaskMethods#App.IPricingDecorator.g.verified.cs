@@ -49,7 +49,6 @@ namespace App
         decimal global::App.IPricing.Price(string __mcArgument0, int __mcArgument1)
         {
             var __mcCall = this._method_Method0.Capture();
-#if NET9_0_OR_GREATER
             var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
             __mcKeyBuilder.AppendPart(__mcArgument1);
@@ -60,16 +59,6 @@ namespace App
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
-#else
-            var __mcKey = string.Concat(__mcCall.KeyPrefix, global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument0), global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument1));
-
-            var __mcKeyBuilder = __mcCall.BindTextKey(__mcKey);
-            if (__mcCall.TryGetValue<decimal>(in __mcKeyBuilder, out var __mcCachedValue))
-            {
-                return __mcCachedValue!;
-            }
-
-#endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
             return __Load_Method0(__mcKey, __mcCall, __mcArgument0!, __mcArgument1);
         }
@@ -81,7 +70,6 @@ namespace App
         global::System.Threading.Tasks.ValueTask<string?> global::App.IPricing.FindAsync(string? __mcArgument0)
         {
             var __mcCall = this._method_Method1.Capture();
-#if NET9_0_OR_GREATER
             var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
@@ -91,16 +79,6 @@ namespace App
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
-#else
-            var __mcKey = string.Concat(__mcCall.KeyPrefix, global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument0));
-
-            var __mcKeyBuilder = __mcCall.BindTextKey(__mcKey);
-            if (__mcCall.TryGetValueTask<string?>(in __mcKeyBuilder, out var __mcCachedValue))
-            {
-                return __mcCachedValue!;
-            }
-
-#endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
             return __Load_Method1(__mcKey, __mcCall, __mcArgument0!);
         }

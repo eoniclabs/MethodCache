@@ -45,7 +45,7 @@ public interface IUserService
 - `0.0` and `-0.0` are two keys in every key form (`1 / x` tells them apart). `NaN` and the infinities work anywhere,
   also inside a hashed argument, such as `double.PositiveInfinity` as a "no limit" value in a filter record.
 
-On .NET 9 and later the decorator writes simple keys into a stack buffer and looks them up without allocating.
+On .NET 10 the decorator writes simple keys into a stack buffer and looks them up without allocating.
 
 ## Types whose state is private
 

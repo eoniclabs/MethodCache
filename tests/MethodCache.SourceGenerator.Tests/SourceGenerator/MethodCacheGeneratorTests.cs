@@ -365,7 +365,7 @@ namespace TestApp
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
             // Task methods return the entry's completed task, so hits do not allocate
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcCall.TryGetTask<string>(ref __mcKeyBuilder, out var __mcCachedValue)");
-            // On .NET 9 and later the key is written to the stack, so a hit allocates no key string either
+            // The key is written to the stack, so a hit allocates no key string either
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcKeyBuilder.AppendPart(__mcArgument0);");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcCall.TryGetTask<string>(ref __mcKeyBuilder, out var __mcCachedValue)");
             AssertContainsIgnoreWhitespace(decoratorSource, "return __mcCachedValue!;");
@@ -668,7 +668,7 @@ namespace TestApp
             // With inline key optimization for simple parameter (int id), should use fast path with inline metrics
             // Task methods return the entry's completed task, so hits do not allocate
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcCall.TryGetTask<string>(ref __mcKeyBuilder, out var __mcCachedValue)");
-            // On .NET 9 and later the key is written to the stack, so a hit allocates no key string either
+            // The key is written to the stack, so a hit allocates no key string either
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcKeyBuilder.AppendPart(__mcArgument0);");
             AssertContainsIgnoreWhitespace(decoratorSource, "__mcCall.TryGetTask<string>(ref __mcKeyBuilder, out var __mcCachedValue)");
             AssertContainsIgnoreWhitespace(decoratorSource, "return __mcCachedValue!;");

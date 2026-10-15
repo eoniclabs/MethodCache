@@ -89,6 +89,15 @@ run_macos() { echo UNEXPECTED-BUILD-macos; return 1; }
 
 
 class InstallTests(unittest.TestCase):
+    def test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts(self):
+        installer = (SCRIPT.parent / 'install-coordinator.sh').read_text()
+        functions = installer[installer.index('sdks_ok()'):installer.index('echo "This Mac')]
+        for versions, expected in (("10.0.103 [/sdk]\n", 0), ("8.0.203 [/sdk]\n9.0.308 [/sdk]\n", 1)):
+            with self.subTest(versions=versions):
+                result = subprocess.run(['/bin/bash', '-c', functions + '\nsdks_ok\n'],
+                                        input=versions, text=True, capture_output=True, timeout=5)
+                self.assertEqual(expected, result.returncode, result.stderr)
+
     def test_update_atomically_preserves_open_old_script_and_versions_helper(self):
         import shlex
         installer = (SCRIPT.parent / 'install-coordinator.sh').read_text()

@@ -63,4 +63,4 @@ after the origin/local mutation; use async mutation methods for distributed inva
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
-On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
+With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.

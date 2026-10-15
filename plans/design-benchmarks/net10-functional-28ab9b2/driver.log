@@ -1,0 +1,18 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+Running net10 release gates with isolated owned native backends.
+restore: 0
+build: 0
+coverage: 0
+diffcoverage-net10: 0
+diffcoverage-http: 0
+diffcoverage-cumulative: 0
+cultures: 0
+properties: 0
+soak: 0
+demo: 0
+aot-publish: 0
+aot-run: 0
+corpus-export: 0
+corpus-publish: 0
+corpus-run: 0
+packages: 0
