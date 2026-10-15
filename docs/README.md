@@ -22,7 +22,7 @@ pages is compiled and tested in CI.
 
 ## Running in production
 
-- [Distributed cache](features/distributed-cache.md): Redis, SQL Server, or your own `IDistributedCache` with atomic invalidation stamps.
+- [Distributed cache](features/distributed-cache.md): owned Redis and SQL Server providers.
 - [Monitoring](features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
@@ -37,7 +37,7 @@ pages is compiled and tested in CI.
 ## When something is wrong
 
 - [Troubleshooting](troubleshooting.md): a method that isn't cached, stale data, keys you didn't expect.
-- [Build diagnostics](user-guide/DIAGNOSTICS.md): every `MC` and `MCG` warning and error.
+- [Build diagnostics](user-guide/DIAGNOSTICS.md): every `MC` warning and error.
 - [Migrating from IMemoryCache](migration-from-imemorycache.md): replace hand-written cache-aside code.
 
 ## Packages
@@ -48,4 +48,6 @@ pages is compiled and tested in CI.
 [Benchmarks](benchmarks.md) has the measured performance, and the [changelog](../CHANGELOG.md) lists what changes
 between releases.
 
-Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
+Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](features/configuration.md) and [keys](features/keys.md).
+
+- [Distributed wire contract 1](developer/distributed-wire-v1.md): provider framing, entry formats, permanent epochs and schema migration.

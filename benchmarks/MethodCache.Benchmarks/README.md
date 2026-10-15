@@ -98,9 +98,8 @@ between instances. MethodCache adapter expiration is checked with `FakeTimeProvi
 concurrent miss invocation runs its factories, invalidation removes the entries used by the scenario, and provider
 hits reuse populated values.
 
-The source-generator adapter uses an explicit raw key for its shared operations and receives each factory as a method
-argument. Its direct async hit benchmark still calls the generated decorator; its `TryGet` operation uses a lookup
-that cannot run a factory.
+The source-generator adapter uses the public manual-key API for shared factory operations. Its direct async hit
+benchmark calls the generated decorator with method-owned keys; its `TryGet` operation cannot run a factory.
 
 ## The scenario benchmarks
 

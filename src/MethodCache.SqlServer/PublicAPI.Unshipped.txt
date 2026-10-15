@@ -6,21 +6,21 @@ MethodCache.SqlServer.SqlServerOptions.BackplaneRetention.get -> System.TimeSpan
 MethodCache.SqlServer.SqlServerOptions.BackplaneRetention.set -> void
 MethodCache.SqlServer.SqlServerOptions.ConnectionString.get -> string!
 MethodCache.SqlServer.SqlServerOptions.ConnectionString.set -> void
+MethodCache.SqlServer.SqlServerOptions.ConnectionStringFactory.get -> System.Func<System.IServiceProvider!, string!>?
+MethodCache.SqlServer.SqlServerOptions.ConnectionStringFactory.set -> void
 MethodCache.SqlServer.SqlServerOptions.CreateTablesIfMissing.get -> bool
 MethodCache.SqlServer.SqlServerOptions.CreateTablesIfMissing.set -> void
 MethodCache.SqlServer.SqlServerOptions.EnableBackplane.get -> bool
 MethodCache.SqlServer.SqlServerOptions.EnableBackplane.set -> void
 MethodCache.SqlServer.SqlServerOptions.InvalidationsTableName.get -> string!
 MethodCache.SqlServer.SqlServerOptions.InvalidationsTableName.set -> void
-MethodCache.SqlServer.SqlServerOptions.KeyPrefix.get -> string!
-MethodCache.SqlServer.SqlServerOptions.KeyPrefix.set -> void
 MethodCache.SqlServer.SqlServerOptions.SchemaName.get -> string!
 MethodCache.SqlServer.SqlServerOptions.SchemaName.set -> void
 MethodCache.SqlServer.SqlServerOptions.SqlServerOptions() -> void
 MethodCache.SqlServer.SqlServerOptions.TableName.get -> string!
 MethodCache.SqlServer.SqlServerOptions.TableName.set -> void
 Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions
-static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.AddMethodCacheSqlServer(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! connectionString) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.AddMethodCacheSqlServer(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.SqlServer.SqlServerOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.UseSqlServer(this MethodCache.MethodCacheBuilder! builder, string! connectionString) -> MethodCache.MethodCacheBuilder!
+static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.AddMethodCacheSqlServer(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! connectionString) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.UseSqlServer(this MethodCache.MethodCacheBuilder! builder, System.Action<MethodCache.SqlServer.SqlServerOptions!>! configure) -> MethodCache.MethodCacheBuilder!
+static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.UseSqlServer(this MethodCache.MethodCacheBuilder! builder, string! connectionString) -> MethodCache.MethodCacheBuilder!

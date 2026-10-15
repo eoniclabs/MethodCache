@@ -161,7 +161,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
         // Shared service key contract: MethodCache.HttpCaching resolves this owned cache before the app's cache.
         // Keep this key stable for the HTTP add-on's owned-storage lookup.
-        private const string OwnDistributedCacheKey = "MethodCache";
+        private const string OwnDistributedCacheKey = MethodCache.Infrastructure.OwnedServices.Key;
 
         /// <summary>
         /// Keeps cached results in a distributed cache that only MethodCache uses, created by
@@ -173,7 +173,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="cacheFactory">Creates the distributed cache, once</param>
         /// <param name="configure">Optional distributed cache options</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Func<IServiceProvider, IDistributedCache> cacheFactory, Action<DistributedCacheOptions>? configure = null)
+        internal static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Func<IServiceProvider, IDistributedCache> cacheFactory, Action<DistributedCacheOptions>? configure = null)
         {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(cacheFactory);
@@ -193,13 +193,14 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="services">The service collection</param>
         /// <param name="configure">Optional distributed cache options</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Action<DistributedCacheOptions>? configure = null)
+        internal static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Action<DistributedCacheOptions>? configure = null)
         {
             if (services == null)
             {
                 throw new ArgumentNullException(nameof(services));
             }
 
+            MethodCache.Infrastructure.OwnedServices.AddOptions(services);
             var options = services.AddOptions<DistributedCacheOptions>()
                 .Validate(o => o.HasEffectiveTagRetention, "TagRetention must exceed ClockSkewTolerance after truncation to whole milliseconds.")
                 .ValidateOnStart();
@@ -208,12 +209,12 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.Configure(configure);
             }
 
-            services.TryAddSingleton<ISerializer, JsonCacheSerializer>();
+            services.TryAddKeyedSingleton<ISerializer>(OwnDistributedCacheKey, static (_, _) => new JsonCacheSerializer());
             services.TryAddSingleton(static sp => new DistributedCacheLayer(
-                sp.GetKeyedService<IDistributedCache>(OwnDistributedCacheKey) ?? sp.GetRequiredService<IDistributedCache>(),
-                sp.GetRequiredService<ISerializer>(),
-                sp.GetRequiredService<IOptions<DistributedCacheOptions>>().Value,
-                sp.GetService<IBackplane>(),
+                sp.GetRequiredKeyedService<IDistributedCache>(OwnDistributedCacheKey),
+                sp.GetRequiredKeyedService<ISerializer>(OwnDistributedCacheKey),
+                sp.GetRequiredKeyedService<DistributedCacheOptions>(OwnDistributedCacheKey),
+                sp.GetKeyedService<IBackplane>(OwnDistributedCacheKey),
                 sp.GetService<TimeProvider>(),
                 sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>()));
 

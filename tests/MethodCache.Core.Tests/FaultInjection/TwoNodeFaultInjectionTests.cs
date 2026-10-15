@@ -53,7 +53,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
         services.AddSingleton<TimeProvider>(_time);
         if (backplane != null)
         {
-            services.AddSingleton(backplane);
+            services.AddKeyedSingleton<MethodCache.Extensibility.IBackplane>(global::MethodCache.Infrastructure.OwnedServices.Key, backplane);
         }
 
         services.AddMethodCache();
@@ -267,7 +267,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
         // B's read reaches the cache now, while it still holds v1, and its answer arrives later
         slowB.Inject(ChaosOperations.Get, ChaosFault.SlowResponse(TimeSpan.FromMilliseconds(200)) with
         {
-            Keys = static key => key.EndsWith(":e:key", StringComparison.Ordinal),
+            Keys = static key => key.EndsWith(":e6:s1:key", StringComparison.Ordinal),
             Times = 1,
         });
         var read = Get(b, "key", "unused");

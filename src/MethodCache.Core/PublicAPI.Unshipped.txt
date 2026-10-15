@@ -149,22 +149,11 @@ MethodCache.DistributedCacheOptions.TagCheckInterval.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagCheckInterval.set -> void
 MethodCache.DistributedCacheOptions.TagRetention.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagRetention.set -> void
-MethodCache.Extensibility.IAtomicInvalidationStore
-MethodCache.Extensibility.IAtomicInvalidationStore.WriteInvalidationStampAsync(string! key, long timestamp, System.TimeSpan retention, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 MethodCache.Extensibility.ICacheMetricsProvider
 MethodCache.Extensibility.ICacheMetricsProvider.CacheError(string! methodName, string! errorMessage) -> void
 MethodCache.Extensibility.ICacheMetricsProvider.CacheHit(string! methodName) -> void
 MethodCache.Extensibility.ICacheMetricsProvider.CacheLatency(string! methodName, System.TimeSpan elapsed) -> void
 MethodCache.Extensibility.ICacheMetricsProvider.CacheMiss(string! methodName) -> void
-MethodCache.Extensibility.ISerializer
-MethodCache.Extensibility.ISerializer.ContentType.get -> string!
-MethodCache.Extensibility.ISerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
-MethodCache.Extensibility.ISerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
-MethodCache.Extensibility.JsonCacheSerializer
-MethodCache.Extensibility.JsonCacheSerializer.ContentType.get -> string!
-MethodCache.Extensibility.JsonCacheSerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
-MethodCache.Extensibility.JsonCacheSerializer.JsonCacheSerializer(System.Text.Json.JsonSerializerOptions? options = null) -> void
-MethodCache.Extensibility.JsonCacheSerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
 MethodCache.Extensibility.NoOpCacheManager
 MethodCache.Extensibility.NoOpCacheManager.NoOpCacheManager() -> void
 MethodCache.Extensibility.NoOpCacheManager.NoOpCacheManager(MethodCache.Extensibility.ICacheMetricsProvider? metricsProvider) -> void
@@ -458,10 +447,13 @@ static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this
 static Microsoft.Extensions.DependencyInjection.MethodCacheMetricsServiceCollectionExtensions.AddConsoleCacheMetrics(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.MethodCacheBuilder!>! configureBuilder) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheDistributedCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.DistributedCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheDistributedCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Microsoft.Extensions.Caching.Distributed.IDistributedCache!>! cacheFactory, System.Action<MethodCache.DistributedCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheFromConfiguration(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName = "MethodCache") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 virtual MethodCache.Extensibility.NoOpCacheManager.GetOrCreateAsync<T>(string! key, System.Func<MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, MethodCache.CacheEntryOptions? options, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<T>
 virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 virtual MethodCache.Extensibility.NoOpCacheManager.TryGetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
+MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.Serialization.JsonSerializerContext! context) -> MethodCache.MethodCacheBuilder!
+MethodCache.DistributedCacheOptions.VerifyRoundTrip.get -> bool
+MethodCache.DistributedCacheOptions.VerifyRoundTrip.set -> void
+MethodCache.DistributedCacheOptions.SerializerVersion.get -> int
+MethodCache.DistributedCacheOptions.SerializerVersion.set -> void

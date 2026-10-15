@@ -37,6 +37,17 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         public async Task ExplicitNegativeVersion_IsAnError()
             => Assert.Equal("MC0021", Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Version = -1)] int Read(); }")).Id);
 
+        [Fact]
+        public async Task ArrayValuedTags_DoNotCrashDurationValidation()
+        {
+            var source = """
+                using MethodCache;
+                [assembly: CacheInterface(typeof(IReader), "Read", Tags = new[] { "users" }, Duration = "1m")]
+                public interface IReader { [Cache(Tags = new[] { "users", "{id}" }, Duration = "1m")] int Read(int id); }
+                """;
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
         [Theory]
         [InlineData("public string Get(int id) => \"\";")]
         [InlineData("public virtual string Get(int id) => \"\";")]

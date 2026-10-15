@@ -43,4 +43,7 @@
   <ItemGroup>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="migrations/*.sql" Pack="true" PackagePath="migrations/" />
+  </ItemGroup>
 </Project>

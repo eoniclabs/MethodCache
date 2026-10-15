@@ -202,7 +202,7 @@ public class ExpiryBoundaryTests
     [Fact]
     public async Task DistributedEntry_KeepsItsOriginalExpiry_WhenAnotherInstanceReadsItLater()
     {
-        var shared = new MethodCache.TestSupport.AtomicTestCache();
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
         var first = CreateManager(distributed: CreateLayer(shared));
         var second = CreateManager(distributed: CreateLayer(shared));
         var policy = Policy(TimeSpan.FromSeconds(10));

@@ -10,6 +10,8 @@ internal sealed class ExpiringAtomicCache(TimeProvider clock) : IAtomicInvalidat
     private readonly Dictionary<string, (byte[] Value, DateTimeOffset Expires)> _data = new(StringComparer.Ordinal);
     private readonly object _sync = new();
     public Func<string, Task>? BeforeWrite { get; set; }
+    public DateTimeOffset? ExpirationFor(string key)
+    { lock (_sync) return _data.TryGetValue(key, out var entry) ? entry.Expires : null; }
 
     public byte[]? Get(string key)
     {

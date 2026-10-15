@@ -27,9 +27,9 @@ public class LongTransactionReviewTests(SqlServerFixture fixture)
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
             await using var transaction = connection.BeginTransaction();
-            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 4, '4:bABhAHQAZQA=');", connection, transaction))
+            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 1, '{SqlWireFixture.Key("late")}');", connection, transaction))
             {
-                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
+                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
                 await insert.ExecuteNonQueryAsync();
             }
             await publisher.PublishInvalidationAsync("after");

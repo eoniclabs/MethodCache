@@ -16,8 +16,8 @@ public class RedisBackplaneMessageTests
     [Fact]
     public void EncodedMessages_UseDistinctMessageTypeNumbers()
     {
-        Assert.StartsWith("4\n", RedisBackplane.Format(BackplaneMessageType.KeyInvalidation, "sender", "key"));
-        Assert.StartsWith("5\n", RedisBackplane.Format(BackplaneMessageType.TagInvalidation, "sender", "tag"));
+        Assert.Equal(1, Convert.FromBase64String(RedisBackplane.Format(BackplaneMessageType.KeyInvalidation, "sender", "key")[4..])[1]);
+        Assert.Equal(2, Convert.FromBase64String(RedisBackplane.Format(BackplaneMessageType.TagInvalidation, "sender", "tag")[4..])[1]);
     }
 
     [Theory]

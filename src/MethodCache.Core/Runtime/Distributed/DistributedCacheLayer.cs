@@ -36,13 +36,13 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         internal const string ClearTag = "\u0000clear";
 
-        /// <summary>How long a key's removal stamp keeps values loaded before the removal out of the cache.</summary>
-        internal static readonly TimeSpan RemovalLifetime = TimeSpan.FromMinutes(5);
-
-        private const byte FormatVersion = 5;
+        /// <summary>The current physical value-entry format, independent of wire/metadata contract 1.</summary>
+        internal const byte FormatVersion = 6;
         private const byte KindNull = 0;
         private const byte KindValue = 1;
-        private const int HeaderSize = 1 + 1 + 8 + 8 + 8 + 4;
+        private const int HeaderSize = 44;
+        private readonly byte _entryVersion;
+        private readonly bool _verifyRoundTrip;
         private const int MaxTrackedTags = 10_000;
 
         // Invalidations stored at once (each its own operation); a longer queue than MaxQueuedInvalidations becomes a clear
@@ -56,6 +56,10 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly IAtomicInvalidationStore _stampStore;
         private readonly IBufferDistributedCache? _bufferCache;
         private readonly ISerializer _serializer;
+        private readonly IDistributedEpochStore? _epochStore;
+        private readonly string _scopeKey;
+        private long _retentionMilliseconds;
+        private int _scopeVerified;
 
         // Written into every entry, so values another serializer wrote read as misses instead of wrong values
         private readonly byte[] _contentType;
@@ -141,12 +145,13 @@ namespace MethodCache.Core.Runtime.Distributed
             DistributedCacheOptions options,
             IBackplane? backplane = null,
             TimeProvider? timeProvider = null,
-            ILogger? logger = null)
+            ILogger? logger = null, byte entryVersion = FormatVersion)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _stampStore = cache as IAtomicInvalidationStore ?? throw new ArgumentException(
                 DistributedCacheStoreValidation.NotAtomicMessage(cache.GetType()), nameof(cache));
             _bufferCache = cache as IBufferDistributedCache;
+            _epochStore = cache as IDistributedEpochStore;
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _contentType = Encoding.UTF8.GetBytes(serializer.ContentType);
             if (_contentType.Length > byte.MaxValue)
@@ -154,13 +159,19 @@ namespace MethodCache.Core.Runtime.Distributed
                 throw new ArgumentException($"The serializer's content type must be at most {byte.MaxValue} bytes.", nameof(serializer));
             }
             ArgumentNullException.ThrowIfNull(options);
+            _scopeKey = options.KeyPrefix + "contract:retention:v1";
+            _retentionMilliseconds = options.TagRetention.Ticks / TimeSpan.TicksPerMillisecond;
             if (!options.HasEffectiveTagRetention)
                 throw new ArgumentException("TagRetention must exceed ClockSkewTolerance after truncation to whole milliseconds.", nameof(options));
 
             _backplane = backplane;
             _time = timeProvider ?? TimeProvider.System;
             _logger = logger ?? NullLogger.Instance;
-            _entryPrefix = options.KeyPrefix + "e:";
+            if (entryVersion == 0) throw new ArgumentOutOfRangeException(nameof(entryVersion));
+            _entryVersion = entryVersion;
+            _verifyRoundTrip = options.VerifyRoundTrip;
+            _entryPrefix = options.KeyPrefix + "e" + entryVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ":s" + options.SerializerVersion.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":";
             _tagPrefix = options.KeyPrefix + "t:";
             _removalPrefix = options.KeyPrefix + "r:";
             _tagCheckMilliseconds = (long)options.TagCheckInterval.TotalMilliseconds;
@@ -230,17 +241,18 @@ namespace MethodCache.Core.Runtime.Distributed
                 return default;
             }
 
+            if (!await EnsureScopeAsync(probe, cancellationToken).ConfigureAwait(false)) return default;
             var read = await TryRunAsync(ReadPolicyAsync, (key, identity), "read", probe, cancellationToken).ConfigureAwait(false);
-            if (!read.Succeeded || read.Value is not { } data ||
-                !TryReadHeader(new ReadOnlySequence<byte>(data), _contentType, out var header, out var payload))
+            if (!read.Succeeded || read.Value.Data is not { } data ||
+                !TryReadHeader(new ReadOnlySequence<byte>(data), _contentType, _entryVersion, out var header, out var payload))
             {
                 return default;
             }
 
             var now = Now;
             if (header.ExpiresAt <= now || header.CreatedAt > now + _clockSkewMilliseconds || header.LoadStartedAt > header.CreatedAt ||
-                header.LoadStartedAt < DateTimeOffset.MinValue.ToUnixTimeMilliseconds() || header.CreatedAt >= header.ExpiresAt ||
-                header.ExpiresAt > header.LoadStartedAt + _tagRetention.Ticks / TimeSpan.TicksPerMillisecond - _clockSkewMilliseconds)
+                header.LoadStartedAt < DateTimeOffset.MinValue.ToUnixTimeMilliseconds() || header.CreatedAt >= header.ExpiresAt || header.ExpiresAt > header.PhysicalDeadline ||
+                header.PhysicalDeadline > header.LoadStartedAt + Volatile.Read(ref _retentionMilliseconds) - _clockSkewMilliseconds)
             {
                 return default;
             }
@@ -251,8 +263,14 @@ namespace MethodCache.Core.Runtime.Distributed
                 return default;
             }
 
-            var removal = await TryRunAsync(ReadRemovalAsync, key, "read a removal", probe, cancellationToken).ConfigureAwait(false);
-            if (!removal.Succeeded || removal.Value >= header.LoadStartedAt - ((header.Kind & 2) != 0 ? 0 : _clockSkewMilliseconds)) return default;
+            var removal = read.Value.Removal;
+            if (!read.Value.Batched)
+            {
+                var checkedRemoval = await TryRunAsync(ReadRemovalAsync, key, "read a removal", probe, cancellationToken).ConfigureAwait(false);
+                if (!checkedRemoval.Succeeded) return default;
+                removal = checkedRemoval.Value;
+            }
+            if (removal >= header.LoadStartedAt - ((header.Kind & 2) != 0 ? 0 : _clockSkewMilliseconds)) return default;
 
             T? value = default;
             if ((header.Kind & 1) == KindValue)
@@ -277,7 +295,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             // No write asks for more than the tag retention; a damaged expiry far in the future must not overflow
-            var remaining = Math.Min(header.ExpiresAt - now, _tagRetention.Ticks / TimeSpan.TicksPerMillisecond);
+            var remaining = Math.Min(header.ExpiresAt - now, Volatile.Read(ref _retentionMilliseconds));
             return new DistributedEntry<T>(value, Convert(header.Tags?.Where(static tag => !tag.StartsWith("\0method:", StringComparison.Ordinal)).ToArray(), ApplicationTag), TimeSpan.FromMilliseconds(remaining), header.CreatedAt);
         }
 
@@ -329,11 +347,15 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async Task WriteCoreAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated, bool replaces, string? methodName, string? identity, string? methodId, long? publishedAt)
         {
+            if (_epochStore != null && Volatile.Read(ref _scopeVerified) == 0)
+            {
+                if (!TryEnter(out var scopeProbe) || !await EnsureScopeAsync(scopeProbe, default).ConfigureAwait(false)) return;
+            }
             // The metadata that can invalidate this value must outlive it, including time spent loading or
             // writing it. Anchor its logical expiry to the source read, not the later publication time.
             var now = Now;
             var expiresAt = Math.Min((publishedAt ?? now) + (long)lifetime.TotalMilliseconds,
-                createdAt + _tagRetention.Ticks / TimeSpan.TicksPerMillisecond - _clockSkewMilliseconds);
+                createdAt + Volatile.Read(ref _retentionMilliseconds) - _clockSkewMilliseconds);
             var lifetimeMilliseconds = expiresAt - now;
             if (lifetimeMilliseconds <= 0)
             {
@@ -358,7 +380,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             // A load that took longer than removal stamps live could miss a removal made while it ran, so its value
             // stays in this node's memory only
-            if (!replaces && Now - createdAt >= (long)RemovalLifetime.TotalMilliseconds - _clockSkewMilliseconds)
+            if (!replaces && Now - createdAt >= Volatile.Read(ref _retentionMilliseconds) - _clockSkewMilliseconds)
             {
                 return;
             }
@@ -377,7 +399,7 @@ namespace MethodCache.Core.Runtime.Distributed
             var buffer = new ArrayBufferWriter<byte>(256);
             var storedTags = Convert(tags, StoredTag);
             if (methodId != null) storedTags = (storedTags ?? []).Append(MethodTag(methodId)).ToArray();
-            WriteHeader(buffer, _contentType, (byte)((value is null ? KindNull : KindValue) | (replaces ? 2 : 0)), createdAt, publishedAt ?? now, expiresAt, storedTags);
+            WriteHeader(buffer, _contentType, _entryVersion, (byte)((value is null ? KindNull : KindValue) | (replaces ? 2 : 0)), createdAt, publishedAt ?? now, expiresAt, storedTags);
             var payloadStart = buffer.WrittenCount;
             if (value is not null)
             {
@@ -406,7 +428,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
 
                 // A value the serializer can't read back as it was would be a different value on every other node
-                if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))
+                if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))
                 {
                     // An earlier value of the method (an Animal before this Dog, say) may still be there for the key
                     if (MayHoldAnEarlierValue(replaces, methodName))
@@ -431,7 +453,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return;
             }
 
-            var entry = new Entry(EntryKey(key, identity), buffer.WrittenMemory, TimeSpan.FromMilliseconds(lifetimeMilliseconds), identity != null);
+            var entry = new Entry(EntryKey(key, identity), buffer.WrittenMemory, expiresAt, identity != null);
             var written = await TryRunAsync(StoreAsync, entry, "write", probe, tripOnTimeout: false).ConfigureAwait(false);
             if (written.TimedOut)
             {
@@ -525,7 +547,7 @@ namespace MethodCache.Core.Runtime.Distributed
             if (_roundTrips.TryAdd(method, false))
             {
                 _logger.LogWarning(
-                    "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type returned as its base type, or object. To share them between instances, register a serializer that does: a JsonCacheSerializer with your own JsonSerializerOptions or JsonSerializerContext (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or your own ISerializer.",
+                    "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type returned as its base type, or object. To share them between instances, configure UseJson with JsonSerializerOptions or a JsonSerializerContext that preserves them (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or select UseMessagePack.",
                     methodName ?? "SetAsync", written, typeof(T), _serializer.GetType().Name);
             }
 
@@ -733,6 +755,11 @@ namespace MethodCache.Core.Runtime.Distributed
             var deadline = force ? Now + (long)_timeout.TotalMilliseconds : long.MaxValue;
             var items = tags.Select(static tag => (IsTag: true, Value: tag)).Concat(keys.Select(static key => (IsTag: false, Value: key))).ToList();
             var refused = new Refused();
+            if (!await EnsureScopeAsync(probe, default).ConfigureAwait(false))
+            {
+                refused.AddRange(items);
+                return refused;
+            }
             for (var start = 0; start < items.Count; start += InvalidationBatchSize)
             {
                 var batch = items.GetRange(start, Math.Min(InvalidationBatchSize, items.Count - start));
@@ -745,7 +772,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
                 var stamped = await Task.WhenAll(batch.Select(item => item.IsTag
                         ? TryRunAsync(StoreStampAsync, (_tagPrefix + item.Value, now, _tagRetention), "invalidate a tag", probe)
-                        : TryRunAsync(StoreStampAsync, (_removalPrefix + item.Value, now, RemovalLifetime), "remove a key", probe)))
+                        : TryRunAsync(StoreStampAsync, (_removalPrefix + item.Value, now, _tagRetention), "remove a key", probe)))
                     .ConfigureAwait(false);
                 var removed = await Task.WhenAll(batch.Select((item, i) => item.IsTag || !stamped[i].Succeeded
                         ? Task.FromResult(stamped[i])
@@ -926,8 +953,33 @@ namespace MethodCache.Core.Runtime.Distributed
         private static string EntryKey(string key, string? identity) => identity == null ? key
             : "\0policy:" + key.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + key + ":" + identity;
 
-        private static async Task<ReadOnlyMemory<byte>?> ReadPolicyAsync(DistributedCacheLayer layer, (string Key, string? Identity) state, CancellationToken token)
-            => await ReadCoreAsync(layer, state.Identity == null ? EscapedKey(state.Key) : EntryKey(state.Key, state.Identity), token).ConfigureAwait(false);
+        private readonly record struct PolicyRead(ReadOnlyMemory<byte>? Data, long Removal, bool Batched);
+
+        private static async Task<PolicyRead> ReadPolicyAsync(DistributedCacheLayer layer, (string Key, string? Identity) state, CancellationToken token)
+        {
+            var key = state.Identity == null ? EscapedKey(state.Key) : EntryKey(state.Key, state.Identity);
+            if (layer._cache is IBatchedDistributedStore batched)
+            {
+                var result = await batched.ReadEntryAsync(layer._entryPrefix + key, layer._removalPrefix + state.Key, token).ConfigureAwait(false);
+                return new PolicyRead(result.Value == null ? (ReadOnlyMemory<byte>?)null : new ReadOnlyMemory<byte>(result.Value), EpochMetadata.Stamp(result.RemovalStamp), true);
+            }
+            var value = await ReadCoreAsync(layer, key, token).ConfigureAwait(false);
+            return new PolicyRead(value, long.MinValue, false);
+        }
+
+        private async ValueTask<bool> EnsureScopeAsync(long probe, CancellationToken cancellationToken)
+        {
+            if (_epochStore == null || Volatile.Read(ref _scopeVerified) != 0) return true;
+            var contract = await TryRunAsync(static (layer, _, ct) => layer._epochStore!.EnsureRetentionContractAsync(layer._scopeKey, layer._tagRetention, ct).AsTask(),
+                0, "validate scope retention", probe, cancellationToken).ConfigureAwait(false);
+            if (!contract.Succeeded) return false;
+            var milliseconds = contract.Value.Ticks / TimeSpan.TicksPerMillisecond;
+            if (milliseconds <= _clockSkewMilliseconds)
+                throw new IncompatibleDistributedScopeException("The established scope retention must exceed ClockSkewTolerance. Use a new KeyPrefix for a new contract.");
+            Volatile.Write(ref _retentionMilliseconds, milliseconds);
+            Volatile.Write(ref _scopeVerified, 1);
+            return true;
+        }
 
         private static Task<ReadOnlyMemory<byte>?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
             => ReadCoreAsync(layer, EscapedKey(key), cancellationToken);
@@ -937,7 +989,7 @@ namespace MethodCache.Core.Runtime.Distributed
             if (layer._bufferCache == null)
             {
                 var bytes = await layer._cache.GetAsync(layer._entryPrefix + key, cancellationToken).ConfigureAwait(false);
-                return bytes == null ? null : new ReadOnlyMemory<byte>(bytes);
+                return bytes == null ? (ReadOnlyMemory<byte>?)null : new ReadOnlyMemory<byte>(bytes);
             }
 
             var buffer = new ArrayBufferWriter<byte>();
@@ -948,7 +1000,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private static async Task<bool> StoreAsync(DistributedCacheLayer layer, Entry entry, CancellationToken cancellationToken)
         {
-            var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = entry.Lifetime };
+            var options = new DistributedCacheEntryOptions { AbsoluteExpiration = DateTimeOffset.FromUnixTimeMilliseconds(entry.Deadline) };
             if (layer._bufferCache != null)
             {
                 await layer._bufferCache.SetAsync(layer._entryPrefix + (entry.Policy ? entry.Key : EscapedKey(entry.Key)), new ReadOnlySequence<byte>(entry.Data), options, cancellationToken).ConfigureAwait(false);
@@ -1029,7 +1081,9 @@ namespace MethodCache.Core.Runtime.Distributed
             // An invalidation another node announces while this read is on the wire may not be in its answer
             var generation = Volatile.Read(ref _remoteInvalidations);
             var bytes = await _cache.GetAsync(_tagPrefix + tag, cancellationToken).ConfigureAwait(false);
-            var invalidatedAt = bytes is { Length: >= sizeof(long) } ? BinaryPrimitives.ReadInt64LittleEndian(bytes) : long.MinValue;
+            if (bytes != null && bytes.Length != sizeof(long) && !EpochMetadata.TryRead(bytes, out _))
+                throw new InvalidDataException("MethodCache invalidation metadata is malformed.");
+            var invalidatedAt = EpochMetadata.Stamp(bytes);
             var stamp = new TagStamp(invalidatedAt, now);
             if (invalidatedAt > now + _clockSkewMilliseconds)
             {
@@ -1141,6 +1195,11 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
 
                 return (true, result, false);
+            }
+            catch (IncompatibleDistributedScopeException)
+            {
+                ReleaseProbe(probe);
+                throw; // Invalid settings/schema must not silently behave like an available compatible scope.
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -1392,10 +1451,12 @@ namespace MethodCache.Core.Runtime.Distributed
         // ---------- backplane ----------
 
         private Task<bool> PublishTargetAsync((bool IsTag, string Value) item)
-            => item.IsTag && item.Value.StartsWith("\0method:", StringComparison.Ordinal) && LosslessWireText.TryDecode(item.Value.Substring(8), out var method)
+            => item.IsTag && item.Value == ClearTag
+                ? PublishAsync(static (backplane, _, ct) => backplane.PublishClearAsync(ct), string.Empty)
+                : item.IsTag && item.Value.StartsWith("\0method:", StringComparison.Ordinal) && LosslessWireText.TryDecode(item.Value.Substring(8), out var method)
                 ? PublishAsync(static (backplane, id, ct) => backplane.PublishMethodInvalidationAsync(id, ct), method)
                 : item.IsTag
-                ? PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), item.Value)
+                ? PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), ApplicationTag(item.Value))
                 : PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), item.Value);
 
         private void QueuePublication((bool IsTag, string Value) target)
@@ -1499,7 +1560,6 @@ namespace MethodCache.Core.Runtime.Distributed
 
                         // Stamp reads still on the wire may predate the message: counted first, so they aren't
                         // remembered (see ReadStampAsync)
-                        case BackplaneMessageType.TagInvalidation when message.Tag == ClearTag:
                         case BackplaneMessageType.ClearAll:
                             Interlocked.Increment(ref _remoteInvalidations);
                             _tagStamps.Clear();
@@ -1515,10 +1575,8 @@ namespace MethodCache.Core.Runtime.Distributed
                         case BackplaneMessageType.TagInvalidation when message.Tag != null:
                             // Re-read the stamp the other node wrote rather than trusting this node's clock
                             Interlocked.Increment(ref _remoteInvalidations);
-                            _tagStamps.TryRemove(message.Tag, out _);
-                            if (message.Tag.StartsWith("\0method:", StringComparison.Ordinal) && LosslessWireText.TryDecode(message.Tag.Substring(8), out var method))
-                                _onRemoteMethodInvalidated?.Invoke(method);
-                            else _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
+                            _tagStamps.TryRemove(StoredTag(message.Tag), out _);
+                            _onRemoteTagInvalidated?.Invoke(message.Tag);
                             break;
                     }
                 }
@@ -1533,17 +1591,19 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- entry format ----------
 
-        // Layout: version, kind (null value or value), created (Unix ms), expires (Unix ms), tag count,
-        // then each tag as a length-prefixed UTF-8 string, then the content type and the serialized value.
-        private static void WriteHeader(IBufferWriter<byte> writer, byte[] contentType, byte kind, long loadStartedAt, long createdAt, long expiresAt, string[]? tags)
+        // Layout: version, kind, flags, bounded extension length; source start, first publication, logical
+        // and physical deadlines (Unix ms); tag count; extensions; UTF-16 tags; content type; payload.
+        private static void WriteHeader(IBufferWriter<byte> writer, byte[] contentType, byte entryVersion, byte kind, long loadStartedAt, long createdAt, long expiresAt, string[]? tags)
         {
             var span = writer.GetSpan(HeaderSize);
-            span[0] = FormatVersion;
+            span.Slice(0, HeaderSize).Clear();
+            span[0] = entryVersion;
             span[1] = kind;
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(2), loadStartedAt);
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(10), createdAt);
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(18), expiresAt);
-            BinaryPrimitives.WriteInt32LittleEndian(span.Slice(26), tags?.Length ?? 0);
+            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(8), loadStartedAt);
+            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(16), createdAt);
+            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(24), expiresAt);
+            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(32), expiresAt); // Physical bound; may exceed logical expiry in a later format.
+            BinaryPrimitives.WriteInt32LittleEndian(span.Slice(40), tags?.Length ?? 0);
             writer.Advance(HeaderSize);
 
             if (tags != null)
@@ -1564,23 +1624,27 @@ namespace MethodCache.Core.Runtime.Distributed
             writer.Advance(1 + contentType.Length);
         }
 
-        private static bool TryReadHeader(ReadOnlySequence<byte> data, byte[] contentType, out Header header, out ReadOnlySequence<byte> payload)
+        private static bool TryReadHeader(ReadOnlySequence<byte> data, byte[] contentType, byte entryVersion, out Header header, out ReadOnlySequence<byte> payload)
         {
             header = default;
             payload = default;
 
             var reader = new SequenceReader<byte>(data);
-            if (!reader.TryRead(out var version) || version != FormatVersion ||
+            if (!reader.TryRead(out var version) || version != entryVersion ||
                 !reader.TryRead(out var kind) || kind > 3 ||
+                !reader.TryReadLittleEndian(out short flags) || (flags & 0xff00) != 0 ||
+                !reader.TryReadLittleEndian(out int extensionLength) || extensionLength < 0 || extensionLength > 4096 ||
                 !reader.TryReadLittleEndian(out long loadStartedAt) ||
                 !reader.TryReadLittleEndian(out long createdAt) ||
                 !reader.TryReadLittleEndian(out long expiresAt) ||
+                !reader.TryReadLittleEndian(out long physicalDeadline) ||
                 !reader.TryReadLittleEndian(out int tagCount) ||
-                tagCount < 0 || tagCount > reader.Remaining)
+                tagCount < 0 || tagCount > MaxTrackedTags || extensionLength > reader.Remaining || tagCount > (reader.Remaining - extensionLength) / sizeof(int))
             {
                 return false;
             }
 
+            reader.Advance(extensionLength);
             string[]? tags = null;
             if (tagCount > 0)
             {
@@ -1604,12 +1668,12 @@ namespace MethodCache.Core.Runtime.Distributed
                 return false;
             }
 
-            header = new Header(kind, loadStartedAt, createdAt, expiresAt, tags);
+            header = new Header(kind, loadStartedAt, createdAt, expiresAt, physicalDeadline, tags);
             payload = reader.UnreadSequence;
             return true;
         }
 
-        private readonly record struct Header(byte Kind, long LoadStartedAt, long CreatedAt, long ExpiresAt, string[]? Tags);
+        private readonly record struct Header(byte Kind, long LoadStartedAt, long CreatedAt, long ExpiresAt, long PhysicalDeadline, string[]? Tags);
 
         /// <summary>
         /// A tag's stamp as this node uses it, read from the cache at <paramref name="CheckedAt"/>.
@@ -1617,7 +1681,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         private readonly record struct TagStamp(long InvalidatedAt, long CheckedAt, long Ahead = long.MinValue);
 
-        private readonly record struct Entry(string Key, ReadOnlyMemory<byte> Data, TimeSpan Lifetime, bool Policy = false);
+        private readonly record struct Entry(string Key, ReadOnlyMemory<byte> Data, long Deadline, bool Policy = false);
     }
 
     /// <summary>An entry read from the distributed cache; <see cref="Found"/> is false when there was none.</summary>

@@ -21,7 +21,7 @@ namespace Docs.NativeAot
             // begin-snippet: native-aot-registration
             builder.Services.AddMethodCache();
             builder.Services.AddMethodCacheRedis("localhost:6379");
-            builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(ShopJsonContext.Default.Options));
+            builder.Services.AddMethodCache(cache => cache.UseJson(ShopJsonContext.Default));
             // end-snippet
         }
     }

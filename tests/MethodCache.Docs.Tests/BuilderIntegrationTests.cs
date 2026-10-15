@@ -14,7 +14,7 @@ public class BuilderIntegrationTests
         services.AddMethodCache(b => b.UseRedis("localhost:6379")
             .UseMessagePack().UseJson().UseMessagePack(MessagePack.MessagePackSerializerOptions.Standard));
         using var provider = services.BuildServiceProvider();
-        Assert.IsType<MessagePackCacheSerializer>(provider.GetRequiredService<ISerializer>());
+        Assert.IsType<MessagePackCacheSerializer>(provider.GetRequiredKeyedService<ISerializer>("MethodCache"));
     }
 
     [Fact]
@@ -34,6 +34,6 @@ public class BuilderIntegrationTests
             o.CreateTablesIfMissing = false;
         }).UseJson(new System.Text.Json.JsonSerializerOptions()));
         using var provider = configuredSql.BuildServiceProvider();
-        Assert.IsType<JsonCacheSerializer>(provider.GetRequiredService<ISerializer>());
+        Assert.IsType<JsonCacheSerializer>(provider.GetRequiredKeyedService<ISerializer>("MethodCache"));
     }
 }

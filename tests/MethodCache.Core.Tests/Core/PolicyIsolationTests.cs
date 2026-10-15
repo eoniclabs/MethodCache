@@ -9,7 +9,9 @@ namespace MethodCache.Core.Tests.Core;
 public class PolicyIsolationTests
 {
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UnixEpoch);
-    private readonly MethodCache.TestSupport.AtomicTestCache _store = new();
+    private readonly MethodCache.TestSupport.AtomicTestCache _store;
+
+    public PolicyIsolationTests() => _store = new MethodCache.TestSupport.AtomicTestCache(_time);
 
     private InMemoryCacheManager Node(bool cacheNull = true)
         => new(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions

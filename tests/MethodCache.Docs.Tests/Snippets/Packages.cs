@@ -133,8 +133,9 @@ namespace Docs.Packages
             builder.Services.AddMethodCacheRedis(options =>
             {
                 options.Configuration = "redis1:6379,redis2:6379,password=...";
-                options.KeyPrefix = "orders-api:";   // the backplane channel follows: orders-api:invalidations
             });
+            builder.Services.Configure<DistributedCacheOptions>(options =>
+                options.KeyPrefix = "orders-api:");   // data and backplane use the same final prefix
             // end-snippet
         }
 

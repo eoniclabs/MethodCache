@@ -19,8 +19,8 @@ public class PolicyContractTests(RedisFixture redis)
             services.AddSingleton<TimeProvider>(time);
             services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
             services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
-            services.Configure<DistributedCacheOptions>(o => { o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-            services.AddMethodCacheRedis(o => { o.Configuration = configuration; o.KeyPrefix = prefix; o.BackplaneChannel = prefix + "invalidation"; });
+            services.Configure<DistributedCacheOptions>(o => { o.KeyPrefix = prefix; o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
+            services.AddMethodCacheRedis(o => { o.Configuration = configuration; });
             var provider = services.BuildServiceProvider();
             var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
             await connection.GetSubscriber().PingAsync();

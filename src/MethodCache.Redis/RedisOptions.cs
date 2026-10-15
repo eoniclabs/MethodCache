@@ -20,21 +20,9 @@ public class RedisOptions
     public Func<IServiceProvider, IConnectionMultiplexer>? ConnectionMultiplexerFactory { get; set; }
 
     /// <summary>
-    /// Prefix for every key MethodCache writes, so several applications can share one Redis.
-    /// </summary>
-    public string KeyPrefix { get; set; } = "methodcache:";
-
-    /// <summary>
     /// Whether to send invalidations over Redis pub/sub, so other instances drop their in-memory copies at once.
     /// Without it they keep them until they expire.
     /// </summary>
     public bool EnableBackplane { get; set; } = true;
 
-    /// <summary>
-    /// The pub/sub channel the backplane uses. Defaults to <see cref="KeyPrefix"/> followed by
-    /// <c>invalidations</c>, so applications with different prefixes never clear each other's memory.
-    /// </summary>
-    public string? BackplaneChannel { get; set; }
-
-    internal string EffectiveBackplaneChannel => string.IsNullOrEmpty(BackplaneChannel) ? KeyPrefix + "invalidations" : BackplaneChannel;
 }
