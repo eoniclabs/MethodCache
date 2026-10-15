@@ -1,8 +1,11 @@
 # Design-series performance evidence
 
 `create-harness.py --runtime-root CHECKOUT --output OUTPUT` copies identical public workload sources into an
-external BenchmarkDotNet project. Build that project in Release, then invoke its DLL with `--verify-native` before
-timing. Real Redis/SQL connection variables are required; setup checks the HTTP storage mode, repeated real L2 reads,
+external BenchmarkDotNet project. Build that project in Release, invoke its DLL with `--verify-generated`, then
+run `--verify-native` before timing. The generated guard checks eight initial origin calls, repeated resident
+hits without new origins, and thirty distinct-key misses. Origin counters run only inside factories; all
+revisions use the same instrumented workload and earlier measurements remain separate.
+Real Redis/SQL connection variables are required for native setup; it checks the HTTP storage mode, repeated real L2 reads,
 origin loads and rejection of L1 admission. Older HTTP revisions explicitly enable their separate L2 option.
 
 `create-native-driver.py --output OUTPUT` creates an external test-container runner. Build `Runner.csproj`, then run
@@ -25,8 +28,9 @@ The built harness accepts `--workload-inventory` followed by the exact timing fi
 BenchmarkDotNet's converter, parameter expansion, glob filter and exported full case names without
 running setup or timing. The script requires identical inventories and Program/workload checksums across
 all revisions, then freezes the selected case names in the series manifest. With the current preliminary
-sources the inventory contains 48 local cases and 16 native cases; the final GUID workload update must
-be integrated before freezing the final cohort. Case counts come from the compiled inventory, not a
+GUID sources the inventory contains 47 local cases and 16 native cases; local compilation and generated
+setup pass across all twelve revisions. Rebuild matching final sources and verify native setup on Nimbus
+before freezing the timing cohort. Case counts come from the compiled inventory, not a
 hard-coded total. Local groups run without test containers; native groups own fresh backends.
 Every measured report must contain the exact selected names once, the expected report families and
 twelve actual workload iterations per case. Duplicate, missing, substituted and warmup-only cases are
@@ -62,6 +66,9 @@ DI implementation version as the benchmark tests: otherwise BDN's transitive DI 
 can be selected alongside newer abstractions and fail while constructing the provider. The original
 failure and successful checks against both historical runtime points are retained in
 `plans/design-benchmarks/component-harness-startup/`. No timing from the failed setup is accepted.
+The hash-only component varies both Int and canonical GUID argument text at every prefix length;
+this gives eighteen lookup cases, thirty-two facade/key-build cases and four references. Do not pool
+the earlier int-only hash-component results with the expanded matrix.
 
 ## Cold HTTP publication versus growing-cache pressure
 

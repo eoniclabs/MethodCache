@@ -1,0 +1,66 @@
+[
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Redis\", KeepCookies: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Redis\", KeepCookies: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"SqlServer\", KeepCookies: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"SqlServer\", KeepCookies: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Redis\", KeepCookies: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Redis\", KeepCookies: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"SqlServer\", KeepCookies: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"SqlServer\", KeepCookies: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"Redis\", RoundTrip: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"Redis\", RoundTrip: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"SqlServer\", RoundTrip: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"SqlServer\", RoundTrip: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"Redis\", RoundTrip: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"Redis\", RoundTrip: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"SqlServer\", RoundTrip: False)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  },
+  {
+    "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"SqlServer\", RoundTrip: True)",
+    "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+  }
+]

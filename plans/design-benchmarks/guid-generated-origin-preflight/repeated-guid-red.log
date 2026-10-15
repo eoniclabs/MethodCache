@@ -1,0 +1,29 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs(22,17): warning CS0169: The field 'GeneratedContractBenchmarks._next' is never used [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/MethodCache.Benchmarks.Tests.csproj]
+  MethodCache.Benchmarks.Tests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.13]     MethodCache.Benchmarks.Tests.BenchmarkSetupTests.GeneratedContract_AllHitShapesStayResident_AndEveryMissLoads [FAIL]
+  Failed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.GeneratedContract_AllHitShapesStayResident_AndEveryMissLoads [55 ms]
+  Error Message:
+   System.InvalidOperationException : Each generated miss must invoke the origin with a distinct key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs:line 72
+   at MethodCache.Benchmarks.Tests.BenchmarkSetupTests.GeneratedContract_AllHitShapesStayResident_AndEveryMissLoads() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/BenchmarkSetupTests.cs:line 21
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 59 ms - MethodCache.Benchmarks.Tests.dll (net10.0)

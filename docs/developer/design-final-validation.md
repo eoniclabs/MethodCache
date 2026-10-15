@@ -545,3 +545,22 @@ A temporary capturing-continuation mutation fails with one unexpected context po
 production is restored byte for byte. All 1,036 Core facts pass under default/tr-TR/sv-SE,
 with one intentional soak skip per suite. Fresh current-head CI remains required.
 [Original timeout, sensitivity failure and complete local suites](../../plans/design-benchmarks/context-probe-isolation/).
+
+## Generated GUID origin verification and final local preflight
+
+The result-only setup guard first fails to reject an explicitly uncached service. It
+now verifies eight initial origins, zero new origins across repeated hits in all eight
+shapes, and thirty distinct-key misses with exactly one origin each. A repeated-GUID
+mutation also fails. Origin counters execute only in factories, so every compared
+revision uses the same additional miss work; earlier timings remain separate.
+
+All twelve local revision harnesses compile the identical common workload and Program,
+pass the generated origin checks and produce identical inventories: 47 local and 16
+native cases. All 99 benchmark tests and 40 Python validation tests pass. This does not
+prove native backend setup or timing on Nimbus; those gates and the final freeze remain.
+[Actual negative tests, twelve builds/setup checks and source digests](../../plans/design-benchmarks/guid-generated-origin-preflight/).
+
+The separate hash component now covers both Int and canonical GUID suffixes. Identical
+sources pass across PR5, Marvin, constructor and SipHash, alongside all GUID facade,
+buffer-growth/listener and reference-cache checks. The component matrix is 54 cases.
+[Both argument kinds and exact four-runtime setup proof](../../plans/design-benchmarks/guid-hash-component-preflight/).

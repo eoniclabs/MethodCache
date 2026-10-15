@@ -42,10 +42,11 @@ public class KeyHashLookupBenchmarks
     }
 
     [Params(4, 80, 256)] public int PrefixCharacters { get; set; }
+    [Params("Int", "Guid")] public string ArgumentKind { get; set; } = "Guid";
     public bool SelectPerformanceCores { get; set; } = true;
     private ConcurrentDictionary<string, int> _dictionary = null!;
     private string _text = null!;
-    private const string Suffix = ":42";
+    private string _suffix = null!;
     private ConcurrentDictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> _spans;
 #if METHODCACHE_PREFIX_HASH
     private ConcurrentDictionary<string, int>.AlternateLookup<PrehashedKey> _prefixes;
@@ -57,7 +58,13 @@ public class KeyHashLookupBenchmarks
     {
         if (SelectPerformanceCores) PrefixBenchmarkSetup.PreferPerformanceCores();
         var prefix = new string('p', PrefixCharacters);
-        _text = prefix + Suffix;
+        _suffix = ArgumentKind switch
+        {
+            "Int" => ":42",
+            "Guid" => ":" + MethodCacheKeys.Part(new Guid("6f9619ff-8b86-d011-b42d-00cf4fc964ff")),
+            _ => throw new InvalidOperationException("Unknown benchmark argument kind.")
+        };
+        _text = prefix + _suffix;
 #if METHODCACHE_PREFIX_HASH
         _dictionary = new(KeyComparer.Instance);
 #else
@@ -85,10 +92,10 @@ public class KeyHashLookupBenchmarks
     {
 #if METHODCACHE_PREFIX_HASH
 #if METHODCACHE_SIPHASH
-        var hash = _prefix.FinishUtf16(Suffix);
+        var hash = _prefix.FinishUtf16(_suffix);
 #else
         var state = _prefix;
-        state.AppendUtf16(Suffix);
+        state.AppendUtf16(_suffix);
         var hash = state.Finish32();
 #endif
         return _prefixes.TryGetValue(new PrehashedKey(_text.AsSpan(), hash), out var value) ? value : -1;

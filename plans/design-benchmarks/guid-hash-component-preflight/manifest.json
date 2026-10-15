@@ -1,0 +1,26 @@
+{
+  "files": {
+    "pr5/source-manifest.json": "03637f3b72ff1142b7c681ff79362830e04a4041f5bb64da95760eccdf1d357b",
+    "pr5/PrefixValidation.csproj": "99c627ae5c10198cd0936ace0c8df675c685c4a1eb21ba6821a0754b2d4e0efc",
+    "pr5.log": "d500bc6c8adf002969620de2883afd226d8e3735d96491e28dc736373a0435b8",
+    "marvin/source-manifest.json": "5afc97572a8182badb73839b0b5b660f0ff3fb674f6dd75c33886cd17450cae4",
+    "marvin/PrefixValidation.csproj": "6cabf460a1fb614c8c711114181f7b45b1b8bb2e4c38bc7e80c3638557306f46",
+    "marvin.log": "601bcc9403e2ed8eb71c4c0a2528c3bbb86e018b077b5bc6b31022461c13a33c",
+    "constructor/source-manifest.json": "d7cb2b695e38f7501f85e4dd933293977efcb55241346e1fe78881b18d3e24f3",
+    "constructor/PrefixValidation.csproj": "a8ebfd43f11b18a385fe4f939fcc0fde509ede61646893f4f9d9838d3faf2fc2",
+    "constructor.log": "771c63dae365fad07e1bfee43eaa25e52bb530ecd3e0cfd20bdd75fbb9a03deb",
+    "siphash/source-manifest.json": "5cd9b5bccab8fc4ac545226935ee7fde96937b1d59a3242638bbf4791fe0d342",
+    "siphash/PrefixValidation.csproj": "334ef015163db126fc1cfb978f4e219cb7c3b4c084e5a6a34672028378cfe6a8",
+    "siphash.log": "a54e5757365a16431a6c1d261664040509d6e9f6c1b18674789583e99a33122f",
+    "KeyHashLookupBenchmarks.cs.txt": "b69f2cff541d48773964a208566ab4458fd81d1d500fd0802cbef904a91f6470",
+    "PrefixHitPathBenchmarks.cs.txt": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1",
+    "MemoryCacheLookupReferenceBenchmarks.cs.txt": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120",
+    "Program.cs.txt": "2dc1573def64e0c6c3e5bbe2c93829ec973574dc8cb5b93a9a55f747cdb361f6"
+  },
+  "common_workload_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "b69f2cff541d48773964a208566ab4458fd81d1d500fd0802cbef904a91f6470",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120"
+  },
+  "scope": "Both Int/Guid hash suffixes, GUID facade/reference and compiled hash/builder capabilities; setup only."
+}

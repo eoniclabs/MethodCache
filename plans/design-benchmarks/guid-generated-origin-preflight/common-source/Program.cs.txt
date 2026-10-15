@@ -1,0 +1,74 @@
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Filters;
+using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Running;
+using MethodCache.Benchmarks.Comparison;
+using MethodCache.Benchmarks.Microbenchmarks;
+using System.Text.Json;
+var types = new[] { typeof(GeneratedContractBenchmarks), typeof(HttpResponsePathBenchmarks),
+    typeof(HttpColdMissBenchmarks), typeof(DesignMemoryWorkloadBenchmarks), typeof(DesignL2WorkloadBenchmarks), typeof(DesignHttpWorkloadBenchmarks) };
+var config = DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true));
+if (args.Contains("--verify-generated"))
+{
+    var benchmark = new GeneratedContractBenchmarks { SelectPerformanceCores = false };
+    benchmark.Setup();
+    try
+    {
+        benchmark.VerifyResidentHits();
+        benchmark.VerifyUniqueMisses();
+        if (benchmark.OriginLoads != 38) throw new Exception("Generated workload origin counts differ.");
+        Console.WriteLine("Verified eight resident generated hit shapes and thirty distinct-key misses.");
+    }
+    finally { benchmark.Cleanup(); }
+    return;
+}
+if (args.FirstOrDefault() == "--workload-inventory")
+{
+    var patterns = args.Skip(1).ToArray();
+    if (patterns.Length == 0) throw new ArgumentException("Supply the same filters as the timing launch.");
+    var filter = new GlobFilter(patterns);
+    var cases = new List<object>();
+    foreach (var type in types)
+    {
+        using var run = BenchmarkConverter.TypeToBenchmarks(type, config);
+        foreach (var benchmark in run.BenchmarksCases.Where(filter.Predicate))
+            cases.Add(new { full_name = FullNameProvider.GetBenchmarkName(benchmark),
+                report_type = benchmark.Descriptor.Type.FullName });
+    }
+    Console.WriteLine(JsonSerializer.Serialize(cases));
+    return;
+}
+if (args.Contains("--verify-native"))
+{
+    foreach (var backend in new[] { "Redis", "SqlServer" })
+    {
+        foreach (var roundTrip in new[] { false, true })
+        {
+            var bench = new DesignL2WorkloadBenchmarks { Backend = backend, RoundTrip = roundTrip, SelectPerformanceCores = false };
+            try
+            {
+                await bench.Setup();
+                if (await bench.Read() != 42 || bench.OriginLoads != 1) throw new Exception("L2 read bypassed.");
+                if (await bench.Write() != 42 || bench.OriginLoads != 2) throw new Exception("L2 write did not load.");
+                Console.WriteLine($"Verified {backend} method read/write, roundTrip={roundTrip}");
+            }
+            finally { await bench.Cleanup(); }
+        }
+        foreach (var cookies in new[] { false, true })
+        {
+            var bench = new DesignHttpWorkloadBenchmarks { Backend = backend, KeepCookies = cookies, SelectPerformanceCores = false };
+            try
+            {
+                await bench.Setup();
+                var before = bench.OriginLoads;
+                if (await bench.Fresh() != 200 || bench.OriginLoads != before + (cookies ? 1 : 0)) throw new Exception("HTTP path unproven.");
+                if (await bench.Miss() != 200 || bench.OriginLoads != before + (cookies ? 2 : 1)) throw new Exception("HTTP miss did not load.");
+                Console.WriteLine($"Verified {backend} HTTP hit/miss, KeepCookies={cookies}");
+            }
+            finally { await bench.Cleanup(); }
+        }
+    }
+    return;
+}
+BenchmarkSwitcher.FromTypes(types).Run(args, config);

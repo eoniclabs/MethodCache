@@ -57,6 +57,20 @@ using System.Text.Json;
 var types = new[] { typeof(GeneratedContractBenchmarks), typeof(HttpResponsePathBenchmarks),
     typeof(HttpColdMissBenchmarks), typeof(DesignMemoryWorkloadBenchmarks), typeof(DesignL2WorkloadBenchmarks), typeof(DesignHttpWorkloadBenchmarks) };
 var config = DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true));
+if (args.Contains("--verify-generated"))
+{
+    var benchmark = new GeneratedContractBenchmarks { SelectPerformanceCores = false };
+    benchmark.Setup();
+    try
+    {
+        benchmark.VerifyResidentHits();
+        benchmark.VerifyUniqueMisses();
+        if (benchmark.OriginLoads != 38) throw new Exception("Generated workload origin counts differ.");
+        Console.WriteLine("Verified eight resident generated hit shapes and thirty distinct-key misses.");
+    }
+    finally { benchmark.Cleanup(); }
+    return;
+}
 if (args.FirstOrDefault() == "--workload-inventory")
 {
     var patterns = args.Skip(1).ToArray();
