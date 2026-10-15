@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
@@ -19,21 +20,60 @@ internal static class HttpCacheKeys
         => ForUri(clientName, request.Method, request.RequestUri);
 
     public static string ForUri(string clientName, HttpMethod method, Uri? uri)
-    {
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        => ForUriWithIdentity(ClientIdentity(clientName), method, uri);
 
-        // The fragment never reaches the origin, so /x#top is the same resource as /x
+    internal static string ClientIdentity(string clientName)
+        => Convert.ToHexString(SHA256.HashData(MethodCache.Infrastructure.LosslessUtf16.GetBytes(clientName)));
+
+    internal static string ForRequestWithIdentity(string clientIdentity, HttpRequestMessage request)
+        => ForUriWithIdentity(clientIdentity, request.Method, request.RequestUri);
+
+    private static string ForUriWithIdentity(string client, HttpMethod method, Uri? uri)
+    {
+        // Preserve the frozen length-prefixed UTF-8 URI frame exactly; only temporary buffers change.
         var address = uri == null ? string.Empty : uri.IsAbsoluteUri ? uri.GetComponents(UriComponents.HttpRequestUrl | UriComponents.UserInfo, UriFormat.UriEscaped) : uri.ToString();
-        // URI epoch identity is independent of representation/header formats. Preserve its canonical UTF-8 frame.
-        AppendBytes(hash, Encoding.UTF8.GetBytes(address));
-        var client = Convert.ToHexString(SHA256.HashData(MethodCache.Infrastructure.LosslessUtf16.GetBytes(clientName)));
-        return client + ":" + Convert.ToBase64String(hash.GetHashAndReset()) + ":m:" + method.Method;
+        var length = Encoding.UTF8.GetByteCount(address);
+        byte[]? rented = null;
+        Span<byte> frame = length <= 508 ? stackalloc byte[length + 4] : (rented = ArrayPool<byte>.Shared.Rent(checked(length + 4))).AsSpan(0, length + 4);
+        Span<byte> digest = stackalloc byte[32];
+        try
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(frame, length);
+            _ = Encoding.UTF8.GetBytes(address.AsSpan(), frame[4..]);
+            _ = SHA256.HashData(frame, digest);
+        }
+        finally
+        {
+            // URI user info and queries must not remain in a pooled buffer.
+            if (rented != null) ArrayPool<byte>.Shared.Return(rented, clearArray: true);
+        }
+        return string.Create(client.Length + 48 + method.Method.Length,
+            (Client: client, Low: BinaryPrimitives.ReadUInt128LittleEndian(digest), High: BinaryPrimitives.ReadUInt128LittleEndian(digest[16..]), Method: method.Method),
+            static (text, state) =>
+            {
+                state.Client.AsSpan().CopyTo(text);
+                var offset = state.Client.Length;
+                text[offset++] = ':';
+                Span<byte> bytes = stackalloc byte[32];
+                BinaryPrimitives.WriteUInt128LittleEndian(bytes, state.Low);
+                BinaryPrimitives.WriteUInt128LittleEndian(bytes[16..], state.High);
+                _ = Convert.TryToBase64Chars(bytes, text.Slice(offset, 44), out _);
+                offset += 44;
+                ":m:".AsSpan().CopyTo(text[offset..]);
+                state.Method.AsSpan().CopyTo(text[(offset + 3)..]);
+            });
     }
 
     internal static string GenerationTarget(string key)
     {
+        var target = GenerationTargetSpan(key);
+        return target.Length == key.Length ? key : new string(target);
+    }
+
+    internal static ReadOnlySpan<char> GenerationTargetSpan(string key)
+    {
         var method = key.IndexOf(":m:", StringComparison.Ordinal);
-        return method < 0 ? key : key[..method];
+        return method < 0 ? key.AsSpan() : key.AsSpan(0, method);
     }
 
     /// <summary>

@@ -60,7 +60,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         /// <inheritdoc />
         public async ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
         {
-            var vector = await _core.CaptureAsync(HttpCacheKeys.GenerationTarget(key), _tags, cancellationToken).ConfigureAwait(false);
+            var vector = await _core.CaptureSlotAsync(HttpResponseStore.Slot(HttpCacheKeys.GenerationTargetSpan(key)), _tags, cancellationToken).ConfigureAwait(false);
             if (vector != null) return vector;
             _core.ForgetUrl(HttpCacheKeys.GenerationTarget(key));
             return "unavailable:" + Guid.NewGuid().ToString("N");
