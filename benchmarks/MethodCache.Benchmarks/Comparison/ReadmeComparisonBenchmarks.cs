@@ -7,21 +7,21 @@ using ZiggyCreatures.Caching.Fusion;
 
 namespace MethodCache.Benchmarks.Comparison;
 
-public sealed record BenchUser(int Id, string Name);
+public sealed record BenchUser(Guid Id, string Name);
 
 public interface IReadmeUserService
 {
     [Cache(Duration = "00:10:00")]
-    Task<BenchUser> GetUserAsync(int id);
+    Task<BenchUser> GetUserAsync(Guid id);
 }
 
 public sealed class ReadmeUserService : IReadmeUserService
 {
-    public Task<BenchUser> GetUserAsync(int id) => Task.FromResult(new BenchUser(id, "Ada"));
+    public Task<BenchUser> GetUserAsync(Guid id) => Task.FromResult(new BenchUser(id, "Ada"));
 }
 
 /// <summary>
-/// The numbers in the README: what an application pays to cache <c>GetUserAsync(int id)</c> with each approach,
+/// The numbers in the README: what an application pays to cache <c>GetUserAsync(Guid id)</c> with each approach,
 /// written the way each library's docs show it and with every library on its default settings.
 /// Run: <c>dotnet run -c Release --project MethodCache.Benchmarks -- readme</c>
 /// </summary>
@@ -30,7 +30,7 @@ public sealed class ReadmeUserService : IReadmeUserService
 [CategoriesColumn]
 public class ReadmeComparisonBenchmarks
 {
-    private const int HitId = 42;
+    private static readonly Guid HitId = new("6f9619ff-8b86-d011-b42d-00cf4fc964ff");
     private static readonly TimeSpan Duration = TimeSpan.FromMinutes(10);
 
     private readonly ReadmeUserService _source = new();
@@ -84,18 +84,21 @@ public class ReadmeComparisonBenchmarks
 
     // A new key every call: the cost of a miss, storing the result included
     [BenchmarkCategory("Miss"), Benchmark(Baseline = true, Description = "IMemoryCache by hand")]
-    public Task<BenchUser> MemoryCacheMiss() => GetWithMemoryCache(1_000_000 + Interlocked.Increment(ref _missId));
+    public Task<BenchUser> MemoryCacheMiss() => GetWithMemoryCache(NextMissId());
 
     [BenchmarkCategory("Miss"), Benchmark(Description = "MethodCache [Cache]")]
-    public Task<BenchUser> MethodCacheMiss() => _methodCache.GetUserAsync(1_000_000 + Interlocked.Increment(ref _missId));
+    public Task<BenchUser> MethodCacheMiss() => _methodCache.GetUserAsync(NextMissId());
 
     [BenchmarkCategory("Miss"), Benchmark(Description = "HybridCache")]
-    public ValueTask<BenchUser> HybridCacheMiss() => GetWithHybridCache(1_000_000 + Interlocked.Increment(ref _missId));
+    public ValueTask<BenchUser> HybridCacheMiss() => GetWithHybridCache(NextMissId());
 
     [BenchmarkCategory("Miss"), Benchmark(Description = "FusionCache")]
-    public ValueTask<BenchUser> FusionCacheMiss() => GetWithFusionCache(1_000_000 + Interlocked.Increment(ref _missId));
+    public ValueTask<BenchUser> FusionCacheMiss() => GetWithFusionCache(NextMissId());
 
-    private async Task<BenchUser> GetWithMemoryCache(int id)
+    // A distinct GUID per call, without adding Guid.NewGuid's random-number cost to every library's miss
+    private Guid NextMissId() => new(Interlocked.Increment(ref _missId), 0x4d43, 0x4000, 0x80, 0, 0, 0, 0, 0, 0, 0);
+
+    private async Task<BenchUser> GetWithMemoryCache(Guid id)
     {
         var key = $"user:{id}";
         if (_memoryCache.TryGetValue(key, out BenchUser? user))
@@ -108,14 +111,14 @@ public class ReadmeComparisonBenchmarks
         return user;
     }
 
-    private ValueTask<BenchUser> GetWithHybridCache(int id) =>
+    private ValueTask<BenchUser> GetWithHybridCache(Guid id) =>
         _hybridCache.GetOrCreateAsync(
             $"user:{id}",
             (_source, id),
             static async (state, _) => await state._source.GetUserAsync(state.id),
             new HybridCacheEntryOptions { Expiration = Duration, LocalCacheExpiration = Duration });
 
-    private ValueTask<BenchUser> GetWithFusionCache(int id) =>
+    private ValueTask<BenchUser> GetWithFusionCache(Guid id) =>
         _fusionCache.GetOrSetAsync<BenchUser>(
             $"user:{id}",
             async (_, _) => await _source.GetUserAsync(id),

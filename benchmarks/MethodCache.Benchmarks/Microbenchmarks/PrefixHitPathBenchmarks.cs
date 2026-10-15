@@ -22,6 +22,7 @@ internal static class PrefixBenchmarkSetup
 [MemoryDiagnoser]
 public class PrefixHitPathBenchmarks
 {
+    private static readonly Guid Id = new("6f9619ff-8b86-d011-b42d-00cf4fc964ff");
     private ServiceProvider _provider = null!;
     private CachedMethod _method = null!;
     private MeterListener? _listener;
@@ -62,7 +63,7 @@ public class PrefixHitPathBenchmarks
     {
         var call = _method.Capture();
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
-        key.AppendPart(42);
+        key.AppendPart(Id);
         if (call.TryGetValue<int>(ref key, out var value)) return value;
         return call.Load(key.ToString(), this, static (_, state) => { state.OriginLoads++; return 42; }, [], CancellationToken.None);
     }
@@ -72,7 +73,7 @@ public class PrefixHitPathBenchmarks
     {
         var call = _method.Capture();
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
-        key.AppendPart(42);
+        key.AppendPart(Id);
         if (call.TryGetTask<int>(ref key, out var value)) return value;
         return call.LoadAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return Task.FromResult(42); }, [], CancellationToken.None);
     }
@@ -82,7 +83,7 @@ public class PrefixHitPathBenchmarks
     {
         var call = _method.Capture();
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
-        key.AppendPart(42);
+        key.AppendPart(Id);
         if (call.TryGetValueTask<int>(ref key, out var value)) return value;
         return call.LoadValueAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return ValueTask.FromResult(42); }, [], CancellationToken.None);
     }
@@ -92,7 +93,7 @@ public class PrefixHitPathBenchmarks
     {
         var call = _method.Capture();
         var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
-        key.AppendPart(42);
+        key.AppendPart(Id);
         return key.AsSpan().Length;
     }
 
@@ -100,5 +101,5 @@ public class PrefixHitPathBenchmarks
     public void Cleanup() { _listener?.Dispose(); _provider.Dispose(); }
 }
 
-public interface IPrefixSource { [Cache] int Read(int id); }
-public sealed class PrefixSource : IPrefixSource { public int Read(int id) => id; }
+public interface IPrefixSource { [Cache] int Read(Guid id); }
+public sealed class PrefixSource : IPrefixSource { public int Read(Guid id) => 42; }

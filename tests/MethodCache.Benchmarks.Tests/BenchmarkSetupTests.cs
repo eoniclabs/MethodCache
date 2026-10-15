@@ -15,6 +15,7 @@ public class BenchmarkSetupTests
     [InlineData("httpcold")]
     [InlineData("hashlookup")]
     [InlineData("memory-reference")]
+    [InlineData("contract")]
     [InlineData("readme")]
     [InlineData("comparison")]
     public void BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(string category)
@@ -78,6 +79,31 @@ public class BenchmarkSetupTests
             Assert.Equal(42, await benchmark.BuiltKeyTask());
         }
         finally { benchmark.Cleanup(); }
+    }
+
+    [Fact]
+    public async Task ReadmeComparison_HitsReturnOneGuidUser_AndEveryMissUsesANewGuid()
+    {
+        var benchmark = new MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks();
+        await benchmark.Setup();
+        try
+        {
+            var hit = (await benchmark.MethodCacheHit()).Id;
+            Assert.NotEqual(Guid.Empty, hit);
+            Assert.Equal(hit, (await benchmark.MemoryCacheHit()).Id);
+            Assert.Equal(hit, (await benchmark.HybridCacheHit()).Id);
+            Assert.Equal(hit, (await benchmark.FusionCacheHit()).Id);
+
+            var misses = new[]
+            {
+                (await benchmark.MemoryCacheMiss()).Id, (await benchmark.MethodCacheMiss()).Id,
+                (await benchmark.HybridCacheMiss()).Id, (await benchmark.FusionCacheMiss()).Id,
+                (await benchmark.MethodCacheMiss()).Id,
+            };
+            Assert.Equal(misses.Length, misses.Distinct().Count());
+            Assert.DoesNotContain(hit, misses);
+        }
+        finally { await benchmark.Cleanup(); }
     }
 
     [Theory]

@@ -9,8 +9,9 @@ namespace MethodCache.Benchmarks.Microbenchmarks;
 public class MemoryCacheLookupReferenceBenchmarks
 {
     private MemoryCache _cache = null!;
-    private readonly string _readyKey = "user:42";
-    private int _id = 42;
+    private static readonly Guid Id = new("6f9619ff-8b86-d011-b42d-00cf4fc964ff");
+    private readonly string _readyKey = $"user:{Id}";
+    private Guid _id = Id;
     public bool SelectPerformanceCores { get; set; } = true;
 
     [GlobalSetup]
