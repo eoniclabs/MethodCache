@@ -20,6 +20,28 @@ script suite (45 tests, two existing optional publish-SDK skips) pass. Snapshot 
 removal of the old conditional fallback. New package and SDK-installer acceptance tests failed before
 the implementation and pass after it. Selected logs: `plans/design-benchmarks/net10-only/`.
 
-Pending: full net10.0 functional/coverage matrix with required native Redis and SQL Server, cultures,
-randomized properties, enabled soak, demo, Native AOT, installed packages, final timing and three-platform CI.
-No timing acceptance is inferred from removing framework targets.
+## Full functional receipt
+
+At `28ab9b22e02b0050a449c2bb1cfd977ec187ae25`, the complete release pipeline passed on macOS ARM64,
+SDK 10.0.103 / runtime 10.0.3, with required real Redis and SQL Server in task-owned containers. Source
+was unchanged during the run. **2,475 tests passed, zero failed, one intentional opt-in soak skip,
+16 project runs**. The separately enabled soak passed, as did tr-TR/sv-SE and all 90 randomized properties.
+
+Diff coverage for the net10-only PR has no added executable C# lines; its five changed lines are comments.
+For the HTTP branch, coverage is **733/766 = 95.7%**; cumulative since the PR-1 merge base it is
+**3,451/3,675 = 93.9%**. Both exceed the required 80%.
+
+Demo, Native AOT HTTP/private variants and HTTP-only administration, all **172 native signature cases**,
+and all **seven installed packages** pass. Package checks confirm net10.0-only runtime assets and
+dependency groups, exact Core version bounds and rejected mismatches. Redis/SQL independent-process
+and hash-seed phases pass, along with JSON/MessagePack, ASP.NET Core, OpenTelemetry and HTTP apps.
+The known reflection-fallback AOT warning categories remain; this is not a zero-warning claim.
+
+[Selected full receipts](../../plans/design-benchmarks/net10-functional-28ab9b2/) preserve this run.
+The net10 runtime lookup code retains the former NET9_0_OR_GREATER branch unchanged; new generated code
+removes only its inactive conditional/string fallback for net10 consumers. There is no claim that
+removing framework targets improves runtime throughput.
+
+Pending: final section-10 timing and three-platform CI. The approved Nimbus series now freezes this
+net10 candidate instead of the superseded 8063e9a candidate. Only unchanged revision/workload evidence
+can be reused. Earlier rejected/superseded reports remain separate.

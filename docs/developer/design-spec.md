@@ -613,7 +613,9 @@ inklusive generations-I/O; cookie-disabled caching och KeepCookies-bypass; telem
 Befintliga benchmarkkontrakt för setup/nycklar/cleanup ska fortsatt vara gröna.
 
 Prefixhash-PR:n mäter även nyckelbygge, hash/uppslag och hela genererade träffvägen separat, med korta och
-långa prefix, växande buffertar, reservnycklar och både statistik/lyssnare av och på. IMemoryCache med
+långa prefix, växande buffertar och reservnycklar. Efter PR 5 är inbyggda räknare alltid aktiva; mät
+lyssnare av/på utan att hitta på en borttagen statistik-switch. Äldre revisioners verkliga statistikläge
+redovisas uttryckligen. IMemoryCache med
 färdig nyckel, IMemoryCache med nyckel byggd per anrop och sync kontra Task-resultat redovisas som skilda
 scenarier. Ett snabbare delbenchmark ersätter inte full-path-grinden. Uppskattningen 15–20 ns eller cirka
 20 procent från förslaget Snabbare cacheträffar är en hypotes tills full-path-resultaten verifierats enligt
