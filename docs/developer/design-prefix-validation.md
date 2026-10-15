@@ -79,5 +79,7 @@ run unchanged. The Marvin evidence above belongs to that candidate and is not at
 Section-10 against #132 (Marvin), median of three runs per side: GUID hit −2.8 %, string hit −5.3 %,
 `ValueTask(int)` hit −13 %, `Sync(int)` hit +8 %, `Task(int)` hit +5 %, with no added allocations. Marvin's cost
 depended on the method name's length: with an even prefix length, its first 4-byte read of the suffix spans two
-separate stores and stalls on x64. SipHash packs a short tail from 2-byte loads and has no such dependence. The
-`int` regressions exceed the 3 % gate; Johan accepted them because GUID and string keys are the common case.
+separate stores and stalls on x64. SipHash packs a short tail such as an `int` from 2-byte loads, so short arguments
+have no such dependence. Longer arguments such as GUIDs are read in 8-byte words, and a word that spans two stores
+still costs a few ns, depending on the prefix length modulo four. The `int` regressions exceed the 3 % gate; Johan
+accepted them because GUID and string keys are the common case.
