@@ -1,0 +1,10 @@
+{
+  "ci_run": "20261015-194411-9338454984a4",
+  "runtime_head": "9338454984a436e64ba5e49e8fcb371419cb12ea",
+  "source_log": "/Users/johan/.cache/methodcache-ci/runs/20261015-194411-9338454984a4/macos/console.log",
+  "original_sha256": "b0c264e8bc0be98736b4037d8943416c6dcd50754a9b84bb6c68b938ba16a74a",
+  "stored_sha256": "b0c264e8bc0be98736b4037d8943416c6dcd50754a9b84bb6c68b938ba16a74a",
+  "exit": 128,
+  "macos_test_jobs_started": false,
+  "cause": "Unproven; Git checkout could not read the specified tree."
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "trx": "_Nimbus_2026-10-15_17_28_59_net9.0.trx",
+    "test": "MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract",
+    "error": [
+      {
+        "Message": "System.Threading.Tasks.TaskCanceledException : A task was canceled."
+      },
+      {
+        "StackTrace": "   at MethodCache.Redis.IntegrationTests.PolicyContractTests.<>c__DisplayClass2_0.<<PolicyTransitionsAndDeadlines_ConformToSharedContract>g__Create|0>d.MoveNext() in /_/tests/MethodCache.Redis.IntegrationTests/PolicyContractTests.cs:line 29\n--- End of stack trace from previous location ---\n   at MethodCache.Redis.IntegrationTests.PolicyContractTests.<>c__DisplayClass2_0.<<PolicyTransitionsAndDeadlines_ConformToSharedContract>g__Create|0>d.MoveNext() in /_/tests/MethodCache.Redis.IntegrationTests/PolicyContractTests.cs:line 33\n--- End of stack trace from previous location ---\n   at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 66\n   at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 104\n   at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 104\n   at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 104\n   at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 104\n   at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 104\n   at MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract() in /_/tests/MethodCache.Redis.IntegrationTests/PolicyContractTests.cs:line 35\n--- End of stack trace from previous location ---"
+      }
+    ]
+  },
+  {
+    "trx": "_Nimbus_2026-10-15_17_28_59_net9.0.trx",
+    "test": "MethodCache.Redis.IntegrationTests.RedisDistributedCacheTests.SecondInstance_ReadsTheValueTheFirstStored",
+    "error": [
+      {
+        "Message": "System.Threading.Tasks.TaskCanceledException : A task was canceled."
+      },
+      {
+        "StackTrace": "   at MethodCache.Redis.IntegrationTests.RedisDistributedCacheTests.CreateNode() in /_/tests/MethodCache.Redis.IntegrationTests/RedisDistributedCacheTests.cs:line 54\n   at MethodCache.Redis.IntegrationTests.RedisDistributedCacheTests.SecondInstance_ReadsTheValueTheFirstStored() in /_/tests/MethodCache.Redis.IntegrationTests/RedisDistributedCacheTests.cs:line 78\n--- End of stack trace from previous location ---"
+      }
+    ]
+  }
+]

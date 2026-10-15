@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <DefineConstants Condition="Exists('../../src/MethodCache.Core/Runtime/Keys/SipHashState.cs')">$(DefineConstants);METHODCACHE_PREFIX_HASH</DefineConstants>
+    <DefineConstants Condition="Exists('../../src/MethodCache.Core/Runtime/Keys/SipHashState.cs')">$(DefineConstants);METHODCACHE_PREFIX_HASH;METHODCACHE_SIPHASH;METHODCACHE_KEY_BUILDER_CONSTRUCTOR</DefineConstants>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>

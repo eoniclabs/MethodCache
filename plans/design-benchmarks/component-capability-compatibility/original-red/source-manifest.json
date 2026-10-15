@@ -1,0 +1,11 @@
+{
+  "runtime_root": "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache",
+  "runtime_sha": "83b92c61f20bee738afd3a332e059fab44f6d8a1",
+  "workload_sha": "83b92c61f20bee738afd3a332e059fab44f6d8a1",
+  "source_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "6404cf19a815dba8ccda5b09063b574e92e8c0f8b5b655a06fc9d7922dc36148",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "55c63540d1e835c3e2d530cf1541a9dcf8f816330a308591b8797316e611b030",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "a6176fdcb5bba599eb3ec96b01393cdae58e9bf46367662c1650d2b8c394242b"
+  },
+  "statistics": "PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied."
+}

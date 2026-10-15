@@ -8,16 +8,18 @@ final PR records acceptance evidence without changing the generated contract or 
 Its CI lease fix also covers remote checkout/collection before builds, so those operations cannot
 overlap an exclusive benchmark batch.
 
-The complete e84a549 checkpoint passed all Linux jobs and macOS/Windows build/unit jobs:
-**2,519 tests in 16 projects, zero failures, one intentional opt-in soak skip**, with required
-native backends, 90 randomized properties, enabled soak, cultures, 172 AOT signatures,
-installed packages and docs green. This includes the final epoch/telemetry allocation
-fixtures. All three platform and aggregate statuses were verified success. Its shipped
-sources exactly match standalone runtime 12bf99d; unfinished #132/SipHash and section-10
-timing are not included. [Full checkpoint, exact exits and original logs](../../plans/design-benchmarks/net10-functional-e84a549/).
-The earlier [b518139 checkpoint](../../plans/design-benchmarks/net10-functional-b518139/)
-is retained as history. This checkpoint predates the later body-budget probe isolation below;
-that test-only change and the forwarded lower-stack heads still require current-head CI.
+The complete current standalone 9767fec checkpoint passes all ten Linux jobs and
+macOS/Windows build/unit jobs: **2,519 tests in 16 projects, zero failures and one
+intentional opt-in soak skip**, including the current epoch, telemetry and strict
+body-budget probes. Required native backends, 90 randomized properties, enabled soak,
+cultures, 172 AOT signatures, installed packages and docs pass. All three platform and
+aggregate statuses are success. Its shipped sources exactly match runtime 12bf99d;
+constructor/hash candidates and section-10 timing are excluded.
+[Exact current standalone head, exits and logs](../../plans/design-benchmarks/net10-functional-9767fec/).
+Earlier [e84a549](../../plans/design-benchmarks/net10-functional-e84a549/) and
+[b518139](../../plans/design-benchmarks/net10-functional-b518139/) receipts remain historical.
+The .NET-10-only #130 head befb50a also passes all three platform and aggregate
+statuses; #129 head 0dae335 still requires its current-head result.
 
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
@@ -51,9 +53,11 @@ and updated-probe output is preserved alongside this final receipt.
 
 ## Remaining acceptance gates
 
-- Claude's PR #132 and subsequent SipHash testing are still in progress, as Johan confirmed on
-  2026-10-15. Do not freeze a combined final contract/hash candidate or launch its complete timing
-  matrix until that work is ready. Independent HTTP and baseline-precision checks can continue.
+- Constructor PR #132 at 2b3cb93 and SipHash PR #133 at 83b92c6 are now ready for
+  review, with SipHash chosen in the design notes. Johan reports that Claude is updating
+  the workloads to use GUID identifiers. Wait for that update before freezing the common
+  benchmark sources and complete timing matrix. Compare identical key types and workloads
+  across revisions; keep existing int diagnostics separate from GUID results.
 - Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
   independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
   intervals are insufficient evidence. There is no accepted full-series timing result yet.
@@ -418,3 +422,51 @@ pass with coverage under default/tr-TR/sv-SE on net10. This is local fixture ver
 not current-head Linux acceptance or a performance result. The new fixture is forwarded
 through #129/#130/#131 and requires fresh CI.
 [Original failure, red mutation and complete green suites](../../plans/design-benchmarks/body-budget-probe-isolation/).
+
+## Completed Nimbus preparation and native setup
+
+The repaired PR5/prefix component harnesses now compile and pass all declared setup
+combinations on Nimbus. Candidate 12bf99d also passes the eight Redis/SQL method/HTTP
+setup combinations (two operations each, with origin-load assertions); both task-owned
+backend containers are disposed. These are correctness prerequisites, not component or
+L2 timing acceptance. [Exact sources, programs, job exits and logs](../../plans/design-benchmarks/nimbus-preparation-complete-20261015/).
+
+A separate older #129 run at b841af2 fails two Redis subscriber-Ping setup calls on
+net9.0; its net10.0 Redis integration suite passes all 15 cases present in that branch.
+The original cause remains unknown. These results do not establish a repair or current-head
+CI acceptance. [Original run and TRX-derived failures](../../plans/design-benchmarks/redis-subscriber-ping-observation/).
+
+PR132 incorporates the current standalone fixtures through 9767fec in merge
+2b3cb93. Both PR132 and SipHash PR133 are ready for review, and SipHash is the chosen
+algorithm. The author's median improvements and regressions do not establish this
+specification's independent-run confidence gate. The complete timing matrix remains
+unfrozen while Claude updates the shared workloads to use GUID identifiers.
+
+## Constructor candidate functional checkpoint
+
+PR132 head 2b3cb93 passes all ten Linux jobs and macOS/Windows build/unit jobs, with
+all three platform and aggregate statuses success: 2,519 passing facts in 16
+Linux projects, zero failures and one intentional opt-in soak skip. Required native
+backends, random properties, enabled soak, cultures, AOT, installed packages and docs
+pass; cumulative changed-line coverage is 94.0%. This includes the current standalone
+allocation fixtures. It proves the exact constructor candidate, not the standalone
+head, SipHash or section-10 acceptance. The PR is now ready for review.
+[Exact head, exits and original logs](../../plans/design-benchmarks/constructor-functional-2b3cb93/).
+
+## Component harness compatibility
+
+The prefix harness previously detected Marvin only and silently used complete-span
+lookup for SipHash. An independent binary-capability guard failed before detection was
+fixed. Identical preliminary workload and setup sources now pass against PR5, Marvin,
+the in-place constructor and SipHash. Disabling the prefix/hash symbols fails the guard.
+Local .NET 10 verification passes 92 benchmark tests, 1,036 Core tests (one intentional
+soak skip), all 31 Python validation tests, the benchmark build and selected formatting.
+These checks verify setup and the compiled paths, not timing. The final GUID workloads
+still need integration and the combined head still needs three-platform CI.
+[Red/green outputs, common sources and exact digests](../../plans/design-benchmarks/component-capability-compatibility/).
+
+The earlier SipHash code-head 9338454 macOS job failed during Git checkout with
+exit 128, before build or tests started. The cause of the unreadable tree is unproven;
+this is neither a functional test failure nor a functional pass. Preserve the
+[original checkout output](../../plans/design-benchmarks/siphash-macos-checkout-observation/)
+and require fresh combined-head verification.

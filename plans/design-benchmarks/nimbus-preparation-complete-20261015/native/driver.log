@@ -1,0 +1,11 @@
+Waiting for exclusive capacity: checkout 2026-10-15T15:24:59.425261+00:00
+Finished checkout 2026-10-15T15:25:00.059241+00:00
+Waiting for exclusive capacity: build 2026-10-15T15:25:10.059418+00:00
+Finished build 2026-10-15T16:48:49.002727+00:00
+Waiting for exclusive capacity: round-1-prefix 2026-10-15T16:48:59.013293+00:00
+Finished round-1-prefix 2026-10-15T17:06:02.579119+00:00
+Waiting for exclusive capacity: round-1-candidate 2026-10-15T17:06:12.581579+00:00
+Finished round-1-candidate 2026-10-15T17:18:16.129352+00:00
+Waiting for exclusive capacity: verify-native 2026-10-15T17:18:26.129999+00:00
+Finished verify-native 2026-10-15T17:43:10.279698+00:00
+Candidate diagnostic pair/native setup complete. Review allocations/direction; no section-10 pass. 2026-10-15T17:43:20.279906+00:00

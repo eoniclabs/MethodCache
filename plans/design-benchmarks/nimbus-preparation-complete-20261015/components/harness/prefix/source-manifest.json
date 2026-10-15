@@ -1,0 +1,11 @@
+{
+  "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix",
+  "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+  "workload_sha": "f1da8927490a9496852947433695b8996290b6d4",
+  "source_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "f22998c6275bd3089f749e4bd38eda0c153cae232547ed36adeeae81ad92ead8",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "36cfe0bbe840f59029bba5e045af3af8c4caf033e5e18e928a5edc32cd9848e7",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "a6176fdcb5bba599eb3ec96b01393cdae58e9bf46367662c1650d2b8c394242b"
+  },
+  "statistics": "PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied."
+}

@@ -1,0 +1,198 @@
+{
+  "sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+  "ci_run": "20261015-195545-2b3cb93e4558",
+  "scope": "PR132 constructor candidate including standalone fixtures through 9767fec. Functional checkpoint only; excludes SipHash/hash choice and section-10 performance acceptance.",
+  "platforms": {
+    "linux": {
+      "aot": 0,
+      "build": 0,
+      "cultures": 0,
+      "demo": 0,
+      "diffcoverage": 0,
+      "docs": 0,
+      "packages": 0,
+      "properties": 0,
+      "soak": 0,
+      "tests": 0
+    },
+    "macos": {
+      "build": 0,
+      "unit": 0
+    },
+    "windows": {
+      "build": 0,
+      "unit": 0
+    }
+  },
+  "tests": [
+    {
+      "failed": 0,
+      "passed": 16,
+      "skipped": 0,
+      "total": 16,
+      "assembly": "MethodCache.HttpCaching.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 52,
+      "skipped": 0,
+      "total": 52,
+      "assembly": "MethodCache.Redis.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 4,
+      "skipped": 0,
+      "total": 4,
+      "assembly": "MethodCache.CompatTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 2,
+      "skipped": 0,
+      "total": 2,
+      "assembly": "MethodCache.Samples.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 29,
+      "skipped": 0,
+      "total": 29,
+      "assembly": "MethodCache.OpenTelemetry.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 320,
+      "skipped": 0,
+      "total": 320,
+      "assembly": "MethodCache.HttpCaching.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 49,
+      "skipped": 0,
+      "total": 49,
+      "assembly": "MethodCache.AspNetCore.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 119,
+      "skipped": 0,
+      "total": 119,
+      "assembly": "MethodCache.Docs.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 91,
+      "skipped": 0,
+      "total": 91,
+      "assembly": "MethodCache.Benchmarks.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 27,
+      "skipped": 0,
+      "total": 27,
+      "assembly": "MethodCache.Redis.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 71,
+      "skipped": 0,
+      "total": 71,
+      "assembly": "MethodCache.Analyzers.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 66,
+      "skipped": 0,
+      "total": 66,
+      "assembly": "MethodCache.SourceGenerator.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 42,
+      "skipped": 0,
+      "total": 42,
+      "assembly": "MethodCache.SqlServer.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 1035,
+      "skipped": 1,
+      "total": 1036,
+      "assembly": "MethodCache.Core.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 63,
+      "skipped": 0,
+      "total": 63,
+      "assembly": "MethodCache.SqlServer.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 533,
+      "skipped": 0,
+      "total": 533,
+      "assembly": "MethodCache.SourceGenerator.IntegrationTests.dll"
+    }
+  ],
+  "files": {
+    "linux/aot.log": "834d6529ee0249ae74e6c14222f96b8ba93a262c9c108396930ff4ace07a0fbf",
+    "linux/build.log": "80af08246c2df42f96fe90b33858e5fadbb226e23cf40241a55935ba0ae29fe1",
+    "linux/cultures.log": "629d49bc095723f4ff0ebb3e0bde10c72e2892a0dbc603b4e1b82fe066d25aa1",
+    "linux/demo.log": "538e1215eae1e560c57aebb9356c2abfc7145d2087dc5206861649a0890dc273",
+    "linux/diffcoverage.log": "4221cf2c00b317c9061da559231837859b6f4c5566f0fb06ab9e821f7db30a9b",
+    "linux/docs.log": "e3ada79105a868bf10182fe45e5e62ac0c1077e52373d1c5e7869ebebff149c5",
+    "linux/packages.log": "2f66571a35c2382e68214ac3f7b93ae7bbd2fdcf81bcdd140b3591c16d9692e1",
+    "linux/properties.log": "9801e927a93e489e5b40548735ad33e07c7b2de3bfef27ff140b2609fcd04bf8",
+    "linux/soak.log": "b617365fc63cc1dfdeaabe659930638895a49b91dc9f137548705cb92af2ac07",
+    "linux/tests.log": "a474c8bae667304c96c6062affb701ce3ffbdc52feb4b398b130c912a6a88736",
+    "macos/build.log": "e44a32aa21afc1a519175dff4f3d126f63c732b0be2bcb40e833fb0cad7c40ac",
+    "macos/unit.log": "349b9cd5af71e5f764ec8151d937b43120b8724b89f3e9afc5f586c4533b9d7b",
+    "windows/build.log": "066b6733d04b31a9b9c353805984ceb753d6a73bd10c7fc64b1ba9b94c0a18ee",
+    "windows/unit.log": "243c8f2ee80a8ddaf523841583d0bc8aa4b5f31cf491eca3e63b9caba93b5ee3"
+  },
+  "original_source_sha256": {
+    "linux/aot.log": "834d6529ee0249ae74e6c14222f96b8ba93a262c9c108396930ff4ace07a0fbf",
+    "linux/build.log": "80af08246c2df42f96fe90b33858e5fadbb226e23cf40241a55935ba0ae29fe1",
+    "linux/cultures.log": "629d49bc095723f4ff0ebb3e0bde10c72e2892a0dbc603b4e1b82fe066d25aa1",
+    "linux/demo.log": "2e96b65770019fc4d30ce503bd855e279cb6f7e1eb695862553f71cd39d6686d",
+    "linux/diffcoverage.log": "4221cf2c00b317c9061da559231837859b6f4c5566f0fb06ab9e821f7db30a9b",
+    "linux/docs.log": "02b33a69f680327b919c51ad0f5667b09bf9c8cccef05af45726bba856deaad9",
+    "linux/packages.log": "2f66571a35c2382e68214ac3f7b93ae7bbd2fdcf81bcdd140b3591c16d9692e1",
+    "linux/properties.log": "9801e927a93e489e5b40548735ad33e07c7b2de3bfef27ff140b2609fcd04bf8",
+    "linux/soak.log": "b617365fc63cc1dfdeaabe659930638895a49b91dc9f137548705cb92af2ac07",
+    "linux/tests.log": "a474c8bae667304c96c6062affb701ce3ffbdc52feb4b398b130c912a6a88736",
+    "macos/build.log": "e44a32aa21afc1a519175dff4f3d126f63c732b0be2bcb40e833fb0cad7c40ac",
+    "macos/unit.log": "349b9cd5af71e5f764ec8151d937b43120b8724b89f3e9afc5f586c4533b9d7b",
+    "windows/build.log": "2b87a1e1086ab45638b800a5f47fd68e3f7fa856318b7fffdae0346c5b7f5a9c",
+    "windows/unit.log": "bb2476d1d07b1639bde06514a221615f2a5142dd44343bb1d235079b24cb034d"
+  },
+  "passed": 2519,
+  "skipped": 1,
+  "statuses": [
+    {
+      "context": "MethodCache CI (Linux)",
+      "state": "success",
+      "updated_at": "2026-10-15T18:07:50Z"
+    },
+    {
+      "context": "MethodCache CI (Windows)",
+      "state": "success",
+      "updated_at": "2026-10-15T18:07:51Z"
+    },
+    {
+      "context": "MethodCache CI (macOS)",
+      "state": "success",
+      "updated_at": "2026-10-15T18:07:52Z"
+    },
+    {
+      "context": "MethodCache CI",
+      "state": "success",
+      "updated_at": "2026-10-15T18:07:53Z"
+    }
+  ],
+  "stored_log_normalization": "CRLF to LF; trailing spaces/tabs and trailing empty lines removed. Original source SHA-256 digests preserved separately."
+}

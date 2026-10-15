@@ -8,6 +8,24 @@ namespace MethodCache.Benchmarks.Tests;
 
 public class BenchmarkSetupTests
 {
+    [Fact]
+    public void ComponentPaths_MatchReferencedCoreCapabilities()
+    {
+        var core = typeof(MethodCache.Generated.CachedMethod).Assembly;
+        Assert.Equal(core.GetType("MethodCache.Core.Runtime.Keys.PrehashedKey") != null,
+            MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.UsesPrefixHash);
+        Assert.Equal(core.GetType("MethodCache.Core.Runtime.Keys.SipHashState") != null,
+            MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.UsesSipHash);
+        var hasInPlaceBuilder = typeof(MethodCache.Generated.KeyBuilder).GetConstructors().Any(constructor =>
+        {
+            var parameters = constructor.GetParameters();
+            return parameters.Length == 2 && parameters[0].ParameterType == typeof(MethodCache.Generated.MethodCall) &&
+                parameters[1].ParameterType == typeof(Span<char>);
+        });
+        Assert.Equal(hasInPlaceBuilder,
+            MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.UsesInPlaceKeyBuilder);
+    }
+
     [Theory]
     [InlineData("engine")]
     [InlineData("hitpath")]

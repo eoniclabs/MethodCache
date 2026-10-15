@@ -1,0 +1,17 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-prefix-components-preparation-v2-build-prefix 2026-10-15T17:27:51.660100+00:00
+/home/agent-admin/methodcache-design-bench-20261015/prefix-components-preparation-v2/harness/prefix/PrefixValidation.csproj
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-design-bench-20261015/prefix-components-preparation-v2/harness/prefix/PrefixValidation.csproj (in 248 ms).
+  4 of 5 projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  PrefixValidation -> /home/agent-admin/methodcache-design-bench-20261015/prefix-components-preparation-v2/harness/prefix/bin/Release/net10.0/MethodCache.Benchmarks.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.49
+Releasing exclusive lease methodcache-design-20261015-01a13a93-prefix-components-preparation-v2-build-prefix exit 0 2026-10-15T17:27:56.978490+00:00

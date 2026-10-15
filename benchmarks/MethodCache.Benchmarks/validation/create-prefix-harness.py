@@ -1,5 +1,5 @@
 from pathlib import Path
-import argparse,hashlib,json,subprocess
+import argparse,hashlib,json,re,subprocess
 p=argparse.ArgumentParser();p.add_argument('--runtime-root',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--workloads-root',type=Path,required=True);a=p.parse_args()
 root=a.runtime_root.resolve();source=a.workloads_root.resolve();out=a.output.resolve();out.mkdir(exist_ok=True,parents=True)
 files=['Microbenchmarks/PrefixHitPathBenchmarks.cs','Microbenchmarks/KeyHashLookupBenchmarks.cs','Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs']
@@ -7,7 +7,17 @@ checksums={}
 for file in files:
  data=(source/'benchmarks/MethodCache.Benchmarks'/file).read_bytes();(out/Path(file).name).write_bytes(data);checksums[file]=hashlib.sha256(data).hexdigest()
 core=root/'src/MethodCache.Core/MethodCache.Core.csproj';generator=root/'src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj'
-symbol=';METHODCACHE_PREFIX_HASH' if (root/'src/MethodCache.Core/Runtime/Keys/MarvinState.cs').exists() else ''
+keys=root/'src/MethodCache.Core/Runtime/Keys'
+sip=(keys/'SipHashState.cs').is_file();marvin=(keys/'MarvinState.cs').is_file()
+if sip and marvin:raise SystemExit('Ambiguous prefix hash implementations in the runtime checkout.')
+builder=(root/'src/MethodCache.Core/Generated/KeyBuilder.cs').read_text()
+constructor=bool(re.search(r'public\s+KeyBuilder\s*\(\s*MethodCall\s+\w+\s*,\s*Span<char>\s+\w+\s*\)',builder))
+features=[]
+if sip or marvin:features.append('METHODCACHE_PREFIX_HASH')
+if sip:features.append('METHODCACHE_SIPHASH')
+if constructor:features.append('METHODCACHE_KEY_BUILDER_CONSTRUCTOR')
+symbol=''.join(';'+feature for feature in features)
+capabilities={'prefix_hash':sip or marvin,'hash_algorithm':'SipHash-1-3' if sip else 'Marvin32' if marvin else 'runtime string hash','in_place_key_builder':constructor}
 (out/'PrefixValidation.csproj').write_text(f'''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
 <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><AssemblyName>MethodCache.Benchmarks</AssemblyName>
 <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><LangVersion>latest</LangVersion>
@@ -21,8 +31,21 @@ symbol=';METHODCACHE_PREFIX_HASH' if (root/'src/MethodCache.Core/Runtime/Keys/Ma
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using MethodCache.Benchmarks.Microbenchmarks;
+using MethodCache.Generated;
 if (args.Contains("--verify-components"))
 {
+    var core = typeof(CachedMethod).Assembly;
+    var expectedPrefixHash = core.GetType("MethodCache.Core.Runtime.Keys.PrehashedKey") != null;
+    var expectedSipHash = core.GetType("MethodCache.Core.Runtime.Keys.SipHashState") != null;
+    var expectedConstructor = typeof(KeyBuilder).GetConstructors().Any(constructor =>
+    {
+        var parameters = constructor.GetParameters();
+        return parameters.Length == 2 && parameters[0].ParameterType == typeof(MethodCall) && parameters[1].ParameterType == typeof(Span<char>);
+    });
+    if (KeyHashLookupBenchmarks.UsesPrefixHash != expectedPrefixHash || KeyHashLookupBenchmarks.UsesSipHash != expectedSipHash ||
+        PrefixHitPathBenchmarks.UsesInPlaceKeyBuilder != expectedConstructor)
+        throw new Exception("Compiled component paths do not match the referenced Core implementation.");
+    Console.WriteLine($"Verified compiled capabilities: prefix={expectedPrefixHash}, SipHash={expectedSipHash}, in-place builder={expectedConstructor}.");
     foreach (var length in new[] { 4, 80, 256 })
     {
         var lookup = new KeyHashLookupBenchmarks { PrefixCharacters = length, SelectPerformanceCores = false };
@@ -64,5 +87,5 @@ if (args.Contains("--verify-components"))
 BenchmarkSwitcher.FromTypes(new[] {typeof(PrefixHitPathBenchmarks),typeof(KeyHashLookupBenchmarks),typeof(MemoryCacheLookupReferenceBenchmarks)})
  .Run(args,DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true)));
 ''')
-(out/'source-manifest.json').write_text(json.dumps({'runtime_root':str(root),'runtime_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'workload_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=source,text=True).strip(),'source_sha256':checksums,'statistics':'PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied.'},indent=2))
+(out/'source-manifest.json').write_text(json.dumps({'runtime_root':str(root),'runtime_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'workload_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=source,text=True).strip(),'source_sha256':checksums,'compiled_capabilities':capabilities,'statistics':'PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied.'},indent=2))
 print(out/'PrefixValidation.csproj')
