@@ -203,18 +203,8 @@ internal sealed record HttpCacheEntry
     /// </summary>
     internal HttpCacheEntry WithUpdatedHeaders(HttpResponseMessage notModifiedResponse, DateTimeOffset now, TimeSpan responseDelay = default)
     {
-        var mergedHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var header in Headers)
-        {
-            mergedHeaders[header.Key] = header.Value;
-        }
-
-        var updatedHeaders = SerializeHeaders(notModifiedResponse.Headers, StorableHeaders(notModifiedResponse.Headers));
-        foreach (var header in updatedHeaders)
-        {
-            mergedHeaders[header.Key] = header.Value;
-        }
+        var mergedHeaders = new Dictionary<string, string[]>(Headers, StringComparer.OrdinalIgnoreCase);
+        CopyHeaders(notModifiedResponse.Headers, mergedHeaders, StorableHeaders(notModifiedResponse.Headers));
 
         // RFC 9111 section 3.2: the 304's header fields replace the stored ones, content headers such as Expires
         // included, except those that describe its own (empty) body
@@ -266,14 +256,19 @@ internal sealed record HttpCacheEntry
     private static Dictionary<string, string[]> SerializeHeaders(HttpHeaders headers, Func<string, bool>? include = null)
     {
         var result = new Dictionary<string, string[]>();
+        CopyHeaders(headers, result, include);
+        return result;
+    }
+
+    private static void CopyHeaders(HttpHeaders headers, Dictionary<string, string[]> destination, Func<string, bool>? include)
+    {
         foreach (var header in headers)
         {
             if (include == null || include(header.Key))
             {
-                result[header.Key] = header.Value.ToArray();
+                destination[header.Key] = header.Value.ToArray();
             }
         }
-        return result;
     }
 
     private static bool HasNoBody(HttpRequestMessage request, HttpResponseMessage response)
@@ -295,8 +290,14 @@ internal sealed record HttpCacheEntry
     /// </summary>
     private static Func<string, bool> StorableHeaders(HttpResponseHeaders headers)
     {
-        var connectionOptions = headers.Connection.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return name => !UnstoredHeaders.Contains(name) && !connectionOptions.Contains(name);
+        if (headers.Connection.Count == 0) return static name => !UnstoredHeaders.Contains(name);
+        return WithConnectionOptions(headers);
+
+        static Func<string, bool> WithConnectionOptions(HttpResponseHeaders source)
+        {
+            var connectionOptions = source.Connection.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return name => !UnstoredHeaders.Contains(name) && !connectionOptions.Contains(name);
+        }
     }
 
     private static readonly HashSet<string> UnstoredHeaders = new(StringComparer.OrdinalIgnoreCase)
