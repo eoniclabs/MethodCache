@@ -49,6 +49,14 @@ and updated-probe output is preserved alongside this final receipt.
 - Prefix component/facade measurements and current HTTP publication results must pass the same review.
 - Every published head needs its required three-platform CI; drafts remain unmerged meanwhile.
 
+An additional historical #129 package run at 2bb7c0 failed its net8.0 SQL independent-process
+check at phase 2, exit 5: the L2 value and zero origin calls had passed, but the expected key
+was absent from the following local admin list. Three fixed diagnostic SQL rounds on macOS/.NET 10
+pass all 27 process phases with the original assertions and installed Core source; they do not
+explain or repair the Linux observation. No production/assertion change is claimed. The supported
+12bf99d net10 package job passes separately; latest-head CI remains required. Preserve this failure
+as unresolved evidence: [original output and diagnostic provenance](../../plans/design-benchmarks/seed-isolation-admin-observation/).
+
 The approved one-off Nimbus series uses the existing pinned .NET 10 image, frozen identical workloads,
 exclusive nonblocking capacity leases of at most 25 minutes per batch and exact task-owned cleanup.
 CI runs between batches; no external jobs are interrupted. The final runtime candidate replaces 8063e9a. The corrected cold-publication workloads and
