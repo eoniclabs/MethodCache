@@ -89,7 +89,12 @@ internal class FastHashKeyGenerator : ICacheKeyGenerator
             var prefix = version.HasValue
                 ? string.Concat(methodName, ":v", version.Value.ToString(CultureInfo.InvariantCulture))
                 : methodName;
-            return string.Concat(prefix, ":", ToHexString(hash));
+            return string.Create(prefix.Length + 33, (Prefix: prefix, Hash: hash), static (text, state) =>
+            {
+                state.Prefix.AsSpan().CopyTo(text);
+                text[state.Prefix.Length] = ':';
+                _ = state.Hash.TryFormat(text[(state.Prefix.Length + 1)..], out _, "x32", CultureInfo.InvariantCulture);
+            });
         }
         finally
         {
@@ -284,15 +289,4 @@ internal class FastHashKeyGenerator : ICacheKeyGenerator
         writer.Advance(value.Length);
     }
 
-    private static string ToHexString(UInt128 hash)
-    {
-        Span<char> chars = stackalloc char[32];
-        for (var i = 31; i >= 0; i--)
-        {
-            chars[i] = "0123456789abcdef"[(int)(hash & 0xF)];
-            hash >>= 4;
-        }
-
-        return new string(chars);
-    }
 }

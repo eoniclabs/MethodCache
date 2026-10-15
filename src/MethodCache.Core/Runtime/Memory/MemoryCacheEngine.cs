@@ -281,6 +281,7 @@ internal sealed class MemoryCacheEngine
     /// <summary>Removes <paramref name="node"/> only if it is still the current entry for its key.</summary>
     public bool RemoveNode(Node node)
     {
+        ProcessKeyHash.Remember(node.Key, node.KeyHash);
         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
         {
             Retire(node);

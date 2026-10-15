@@ -33,7 +33,11 @@ tests cover every key path, concurrent publication, removal and frequency/evicti
 A per-thread memo retains at most one immutable string of at most 2048 UTF-16 code units and its hash.
 It checks **reference identity**, so another owner is independently hashed; larger keys are not retained.
 It only avoids hashing the same owned key again during lookup/publication/eviction. The process seed
-never changes, and test-only collision masks are applied after this memo. It is not a value cache.
+never changes, and test-only collision masks are applied after this memo. It is not a value cache. Nodes retain that full randomized 32-bit hash for the frequency sketch and
+reuse it for removal. This replaces the former independently randomized BCL frequency hash; frequencies,
+sampling, sketch sizing, eviction and expiration algorithms are unchanged. Dictionary collision masks never
+apply to the sketch. As before, randomized bucket placement can differ across process starts; exact per-key
+admission choices are not a portable identity or contract. Hit-rate workloads must still pass the gate.
 
 The earlier SipHash-2-4 candidate had correct author vectors and unchanged allocations but failed the
 section-10 timing gate (see design-prefix-preflight.md). That failed implementation remains in history;
