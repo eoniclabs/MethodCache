@@ -1,0 +1,25 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.HttpCaching.Tests -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+Test run for /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.09]     MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup [FAIL]
+  Failed MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup [14 ms]
+  Error Message:
+   System.InvalidOperationException : Unchanged local epochs must reuse the captured identity object.
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.MeasureCaptures(HttpResponseStore storage, String[] tags, String expected) in /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs:line 63
+   at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.<>c__DisplayClass1_0.<MeasureCapturesOnOwnedThread>b__0() in /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs:line 43
+--- End of stack trace from previous location ---
+   at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup() in /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs:line 13
+--- End of stack trace from previous location ---
+
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 20 ms - MethodCache.HttpCaching.Tests.dll (net10.0)

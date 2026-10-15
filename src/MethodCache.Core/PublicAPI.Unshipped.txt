@@ -32,8 +32,20 @@ MethodCache.CacheEntryInfo
 MethodCache.CacheEntryInfo.Age.get -> System.TimeSpan
 MethodCache.CacheEntryInfo.Age.init -> void
 MethodCache.CacheEntryInfo.CacheEntryInfo(string! Key, string? ValueType, System.TimeSpan Age, System.TimeSpan? TimeToLive, System.Collections.Generic.IReadOnlyList<string!>! Tags, long Weight) -> void
+MethodCache.CacheEntryInfo.Client.get -> string?
+MethodCache.CacheEntryInfo.Client.init -> void
+MethodCache.CacheEntryInfo.Description.get -> string?
+MethodCache.CacheEntryInfo.Description.init -> void
+MethodCache.CacheEntryInfo.Format.get -> int?
+MethodCache.CacheEntryInfo.Format.init -> void
 MethodCache.CacheEntryInfo.Key.get -> string!
 MethodCache.CacheEntryInfo.Key.init -> void
+MethodCache.CacheEntryInfo.Kind.get -> MethodCache.CacheEntryKind
+MethodCache.CacheEntryInfo.Kind.init -> void
+MethodCache.CacheEntryInfo.SizeBytes.get -> long?
+MethodCache.CacheEntryInfo.SizeBytes.init -> void
+MethodCache.CacheEntryInfo.Storage.get -> MethodCache.CacheEntryStorage
+MethodCache.CacheEntryInfo.Storage.init -> void
 MethodCache.CacheEntryInfo.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.CacheEntryInfo.Tags.init -> void
 MethodCache.CacheEntryInfo.TimeToLive.get -> System.TimeSpan?
@@ -42,6 +54,9 @@ MethodCache.CacheEntryInfo.ValueType.get -> string?
 MethodCache.CacheEntryInfo.ValueType.init -> void
 MethodCache.CacheEntryInfo.Weight.get -> long
 MethodCache.CacheEntryInfo.Weight.init -> void
+MethodCache.CacheEntryKind
+MethodCache.CacheEntryKind.Http = 1 -> MethodCache.CacheEntryKind
+MethodCache.CacheEntryKind.Method = 0 -> MethodCache.CacheEntryKind
 MethodCache.CacheEntryOptions
 MethodCache.CacheEntryOptions.Builder
 MethodCache.CacheEntryOptions.Builder.Build() -> MethodCache.CacheEntryOptions!
@@ -69,6 +84,9 @@ MethodCache.CacheEntryOptions.RefreshAhead.get -> System.TimeSpan?
 MethodCache.CacheEntryOptions.SlidingExpiration.get -> System.TimeSpan?
 MethodCache.CacheEntryOptions.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.CacheEntryOptions.Version.get -> int?
+MethodCache.CacheEntryStorage
+MethodCache.CacheEntryStorage.LocalMemory = 0 -> MethodCache.CacheEntryStorage
+MethodCache.CacheEntryStorage.ObservedDistributed = 1 -> MethodCache.CacheEntryStorage
 MethodCache.CacheInterfaceAttribute
 MethodCache.CacheInterfaceAttribute.CacheInterfaceAttribute(System.Type! interfaceType, params string![]! methods) -> void
 MethodCache.CacheInterfaceAttribute.Distributed.get -> bool
@@ -110,8 +128,18 @@ MethodCache.CacheStats.Evictions.get -> long
 MethodCache.CacheStats.Evictions.init -> void
 MethodCache.CacheStats.Hits.get -> long
 MethodCache.CacheStats.Hits.init -> void
+MethodCache.CacheStats.LocalHttpBytes.get -> long
+MethodCache.CacheStats.LocalHttpBytes.init -> void
+MethodCache.CacheStats.LocalHttpEntries.get -> long
+MethodCache.CacheStats.LocalHttpEntries.init -> void
+MethodCache.CacheStats.LocalMethodEntries.get -> long
+MethodCache.CacheStats.LocalMethodEntries.init -> void
 MethodCache.CacheStats.Misses.get -> long
 MethodCache.CacheStats.Misses.init -> void
+MethodCache.CacheStats.ObservedDistributedEntries.get -> long
+MethodCache.CacheStats.ObservedDistributedEntries.init -> void
+MethodCache.CacheStats.TotalWeight.get -> long
+MethodCache.CacheStats.TotalWeight.init -> void
 MethodCache.CachedMethodInfo
 MethodCache.CachedMethodInfo.CachedMethodInfo(string! MethodId, System.TimeSpan? Duration, System.Collections.Generic.IReadOnlyList<string!>! Tags, int? Version, System.Collections.Generic.IReadOnlyList<string!>! Sources) -> void
 MethodCache.CachedMethodInfo.Duration.get -> System.TimeSpan?
@@ -140,10 +168,14 @@ MethodCache.DistributedCacheOptions.KeyPrefix.get -> string!
 MethodCache.DistributedCacheOptions.KeyPrefix.set -> void
 MethodCache.DistributedCacheOptions.OperationTimeout.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.OperationTimeout.set -> void
+MethodCache.DistributedCacheOptions.SerializerVersion.get -> int
+MethodCache.DistributedCacheOptions.SerializerVersion.set -> void
 MethodCache.DistributedCacheOptions.TagCheckInterval.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagCheckInterval.set -> void
 MethodCache.DistributedCacheOptions.TagRetention.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagRetention.set -> void
+MethodCache.DistributedCacheOptions.VerifyRoundTrip.get -> bool
+MethodCache.DistributedCacheOptions.VerifyRoundTrip.set -> void
 MethodCache.Extensibility.NoOpCacheManager
 MethodCache.Extensibility.NoOpCacheManager.NoOpCacheManager() -> void
 MethodCache.Generated.CachedMethod
@@ -250,14 +282,12 @@ MethodCache.ICacheManager.TryGetAsync<T>(string! key, System.Threading.Cancellat
 MethodCache.ICacheStats
 MethodCache.ICacheStats.Evictions.get -> long
 MethodCache.ICacheStats.Hits.get -> long
+MethodCache.ICacheStats.LocalHttpBytes.get -> long
+MethodCache.ICacheStats.LocalHttpEntries.get -> long
+MethodCache.ICacheStats.LocalMethodEntries.get -> long
 MethodCache.ICacheStats.Misses.get -> long
-MethodCache.IFluentGroupConfiguration
-MethodCache.IFluentGroupConfiguration.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentGroupConfiguration!
-MethodCache.IFluentMethodCacheConfiguration
-MethodCache.IFluentMethodCacheConfiguration.DefaultPolicy(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodCacheConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.FailSafe(System.TimeSpan duration, System.TimeSpan? timeout = null, System.TimeSpan? retryAfter = null) -> MethodCache.IFluentMethodCacheConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.ForGroup(string! name) -> MethodCache.IFluentGroupConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.ForService<TService>() -> MethodCache.IFluentServiceConfiguration<TService>!
+MethodCache.ICacheStats.ObservedDistributedEntries.get -> long
+MethodCache.ICacheStats.TotalWeight.get -> long
 MethodCache.IFluentMethodConfiguration
 MethodCache.IFluentMethodConfiguration.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration!
 MethodCache.IFluentMethodConfiguration.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration!
@@ -267,12 +297,6 @@ MethodCache.IFluentMethodConfiguration<TResult>.CacheWhen(System.Func<TResult, b
 MethodCache.IFluentMethodConfiguration<TResult>.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithVersion(int version) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>
-MethodCache.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Action<TService>!>! method) -> MethodCache.IFluentMethodConfiguration!
-MethodCache.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! method) -> MethodCache.IFluentMethodConfiguration!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.ValueTask<TResult>>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IRuntimeCacheConfigurator
 MethodCache.IRuntimeCacheConfigurator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 MethodCache.IRuntimeCacheConfigurator.GetOverridesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.RuntimeOverride!>!>!
@@ -312,6 +336,7 @@ MethodCache.MethodCacheBuilder.Method<TService>(System.Linq.Expressions.Expressi
 MethodCache.MethodCacheBuilder.Method<TService>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! method) -> MethodCache.IFluentMethodConfiguration!
 MethodCache.MethodCacheBuilder.UseJson() -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.JsonSerializerOptions! options) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.Serialization.JsonSerializerContext! context) -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheKeys
 MethodCache.MethodCacheMemoryOptions
 MethodCache.MethodCacheMemoryOptions.CacheNullValues.get -> bool
@@ -329,6 +354,15 @@ MethodCache.MethodCacheMemoryOptions.SizeLimit.get -> long
 MethodCache.MethodCacheMemoryOptions.SizeLimit.set -> void
 MethodCache.MethodCacheMemoryOptions.Weigher.get -> System.Func<string!, object?, long>?
 MethodCache.MethodCacheMemoryOptions.Weigher.set -> void
+MethodCache.MethodCacheTelemetry
+MethodCache.MethodCacheTelemetryOptions
+MethodCache.MethodCacheTelemetryOptions.HashCacheKeys.get -> bool
+MethodCache.MethodCacheTelemetryOptions.HashCacheKeys.set -> void
+MethodCache.MethodCacheTelemetryOptions.MethodCacheTelemetryOptions() -> void
+MethodCache.MethodCacheTelemetryOptions.RecordCacheKeys.get -> bool
+MethodCache.MethodCacheTelemetryOptions.RecordCacheKeys.set -> void
+MethodCache.MethodCacheTelemetryOptions.RecordCacheTags.get -> bool
+MethodCache.MethodCacheTelemetryOptions.RecordCacheTags.set -> void
 MethodCache.RuntimeCacheConfiguratorExtensions
 MethodCache.RuntimeOverride
 MethodCache.RuntimeOverride.Metadata.get -> MethodCache.RuntimeOverrideMetadata?
@@ -357,6 +391,7 @@ const MethodCache.Generated.KeyParts.Null = "\\0" -> string!
 const MethodCache.Generated.KeyParts.Separator = ":" -> string!
 const MethodCache.MethodCacheKeys.Null = "\\0" -> string!
 const MethodCache.MethodCacheKeys.Separator = ":" -> string!
+const MethodCache.MethodCacheTelemetry.Name = "MethodCache" -> string!
 override MethodCache.Generated.KeyBuilder.ToString() -> string!
 override MethodCache.Generated.TextKey.ToString() -> string!
 static MethodCache.Any<T>.Value.get -> T
@@ -430,34 +465,3 @@ virtual MethodCache.Extensibility.NoOpCacheManager.GetOrCreateAsync<T>(string! k
 virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 virtual MethodCache.Extensibility.NoOpCacheManager.TryGetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
-MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.Serialization.JsonSerializerContext! context) -> MethodCache.MethodCacheBuilder!
-MethodCache.DistributedCacheOptions.VerifyRoundTrip.get -> bool
-MethodCache.DistributedCacheOptions.VerifyRoundTrip.set -> void
-MethodCache.DistributedCacheOptions.SerializerVersion.get -> int
-MethodCache.DistributedCacheOptions.SerializerVersion.set -> void
-
-MethodCache.MethodCacheTelemetry
-const MethodCache.MethodCacheTelemetry.Name = "MethodCache" -> string!
-MethodCache.MethodCacheTelemetryOptions
-MethodCache.MethodCacheTelemetryOptions.MethodCacheTelemetryOptions() -> void
-MethodCache.MethodCacheTelemetryOptions.RecordCacheKeys.get -> bool
-MethodCache.MethodCacheTelemetryOptions.RecordCacheKeys.set -> void
-MethodCache.MethodCacheTelemetryOptions.HashCacheKeys.get -> bool
-MethodCache.MethodCacheTelemetryOptions.HashCacheKeys.set -> void
-MethodCache.MethodCacheTelemetryOptions.RecordCacheTags.get -> bool
-MethodCache.MethodCacheTelemetryOptions.RecordCacheTags.set -> void
-MethodCache.CacheStats.LocalMethodEntries.get -> long
-MethodCache.CacheStats.LocalMethodEntries.init -> void
-MethodCache.CacheStats.LocalHttpEntries.get -> long
-MethodCache.CacheStats.LocalHttpEntries.init -> void
-MethodCache.CacheStats.LocalHttpBytes.get -> long
-MethodCache.CacheStats.LocalHttpBytes.init -> void
-MethodCache.CacheStats.ObservedDistributedEntries.get -> long
-MethodCache.CacheStats.ObservedDistributedEntries.init -> void
-MethodCache.CacheStats.TotalWeight.get -> long
-MethodCache.CacheStats.TotalWeight.init -> void
-MethodCache.ICacheStats.LocalMethodEntries.get -> long
-MethodCache.ICacheStats.LocalHttpEntries.get -> long
-MethodCache.ICacheStats.LocalHttpBytes.get -> long
-MethodCache.ICacheStats.ObservedDistributedEntries.get -> long
-MethodCache.ICacheStats.TotalWeight.get -> long

@@ -5,6 +5,18 @@ namespace MethodCache.Core.Tests.Core;
 
 public class UserApiShapeTests
 {
+    [Theory]
+    [InlineData("IFluentMethodCacheConfiguration")]
+    [InlineData("IFluentServiceConfiguration`1")]
+    [InlineData("IFluentGroupConfiguration")]
+    public void ReplacedStartupInterfaces_AreNotExported(string typeName)
+    {
+        var exported = typeof(MethodCacheBuilder).Assembly.GetExportedTypes();
+        Assert.DoesNotContain(exported, type => type.Name == typeName);
+        Assert.Contains(typeof(MethodCacheBuilder), exported);
+        Assert.Contains(typeof(IFluentMethodConfiguration), exported);
+    }
+
     [Fact]
     public void UserInterfaces_ExposeOnlyFourMethods_WithCallerTokenLast()
     {

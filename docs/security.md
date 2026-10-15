@@ -49,17 +49,20 @@ authorization too.
 
 | Threat | What MethodCache does |
 |---|---|
-| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports; explicitly supplied cookie headers isolate callers. Unknown transports, and handlers inside the primary transport, bypass caching unless explicitly verified and opted in with `AllowUnverifiedTransport`. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed, so a comma inside one value cannot alias two separate values. |
+| Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports after all handler configuration; `KeepCookies=true` preserves the transport and bypasses response caching, validation and stale fallback completely; explicitly supplied cookie headers isolate callers. Unknown transports, and handlers inside the primary transport, bypass caching unless explicitly verified and opted in with `AllowUnverifiedTransport`. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed as exact UTF-16, so a comma cannot alias multiple values and isolated surrogates cannot collapse through replacement encoding. |
 | A 200 or 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` on a 304 keeps its previous value. Unstorable full replacements also retire the old body, and selection-rule changes retire its URL epoch once so a newer concurrent publication remains reachable, including when old-entry deletion fails after a successful rotation. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
 | A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
 | Responses that vary by a header (tenant, language) get mixed | `Vary` and `KeyHeaders` keep one response per value. `Vary: *` is never served from the cache. |
-| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A successful `POST`, `PUT`, `PATCH` or `DELETE` changes the publication generation for every caller. Older in-flight responses write into an obsolete namespace. Shared generation records must be retained and protected from eviction; invalidation failures propagate to the caller. |
+| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A confirmed `POST`, `PUT`, `PATCH` or `DELETE` atomically advances every relevant shared URL generation before returning, including for bypass/KeepCookies clients. Older origin/304/body writes remain in an obsolete namespace. L2 nodes capture fresh generations in one bounded metadata batch; correctness does not rely on backplane delivery. An unconfirmed mutation throws `HttpCacheInvalidationException`, disposes its response and retains owned recovery after caller cancellation. The origin may have succeeded: do not automatically repeat it. |
 | Two URLs share an entry | The key is the method and the full URL, with reserved characters kept escaped (`%2F`, `%3F` and `/`, `?` are different URLs). |
 | A followed redirect hands one caller's response to another | The transport drops `Authorization` on a redirect and changes the URL on the same message. A response that ended at another URL or method is never stored under the URL that was requested, and entries are keyed on the request as the caller sent it, before the transport changed it. |
 | A malformed `Cache-Control` hides `private` or `no-store` | A `Cache-Control` or `Vary` field the parser rejects, also next to a valid one, makes the response not storable instead of being ignored. |
 | Clients that get caching from `ConfigureHttpClientDefaults` share entries | Each client's handler gets its own name, so clients (often one per tenant or API key) never read each other's entries. |
+| Lost or replayed HTTP generation metadata | Native atomic revisions only advance; missing/overflowed metadata gets a fresh initialization id. Old values never regain their namespace. Global/client/static-tag components are shared with Core-only tag/clear writes, including across value formats. URL-slot collisions cause extra misses, never shared caller identity. The local reverse index follows the same bounded slots and removes every retired body from an invalidated slot. Native observations keep their separate per-URL index. |
+| Administration becomes a body or credential leak, or a false global inventory | Core exposes only resident metadata or at most 1024 historical, expiring, body-free L2 observations. Ids are bounded hashes; no raw query, credentials or cookie headers enter the observations. `ObservedDistributed` explicitly does not confirm presence or global inventory. Unknown ids are NotFound. |
+| An oversized response exhausts the local HTTP budget | Method and HTTP budgets evict independently. Body reads are bounded by response limits and remaining conservative HTTP cost; oversized responses remain available as streams and are not cached. |
 | Crafted entries in the distributed HTTP cache | Read as a miss, with every length checked against the data. As above, whoever can write that cache can store any response. |
 
 Not guaranteed, by design:
@@ -69,7 +72,9 @@ Not guaranteed, by design:
   what RFC 9111 specifies for a shared cache. Add `Cookie` or `Authorization` to `KeyHeaders` when your origin
   personalises without saying so.
 - Anonymous callers of a private cache are one caller: they share responses.
-- Debug and warning logs include request URLs. Don't put secrets in query strings.
+- HTTP key hashing preserves complete UTF-16 header frames; temporary pooled buffers are cleared before reuse.
+- HTTP cache diagnostics omit raw URLs, headers and exception payloads. Static configured client names remain visible.
+  Application/transport instrumentation has its own logging configuration.
 
 ## MethodCache.OpenTelemetry
 
@@ -83,7 +88,8 @@ Core owns the `MethodCache` Meter/ActivitySource. The OpenTelemetry package only
 
 Hashing creates stable identifiers and does not make keys anonymous. Leave identity recording disabled unless the
 export destination is appropriate. Core, Redis and SQL diagnostic logs omit backend exception text because it can
-contain credentials, keys or argument values. Health check failures similarly expose exception types only. Standard
+contain credentials, keys or argument values. Invalid configuration reloads and failed policy watchers likewise log
+only the error type, retaining the last accepted policies. Health check failures expose exception types only. Standard
 application activity parentage and baggage remain intact, including when origin code uses its ambient authorization
 context; MethodCache neither adds identity baggage nor strips the application's context.
 

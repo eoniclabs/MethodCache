@@ -1,5 +1,13 @@
 # Changelog
 
+Changes that a user of the packages notices. The release steps are in
+[docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
+release.
+
+## Unreleased (1.0.0)
+
+### Core telemetry and attribute diagnostics
+
 - Move instrumentation into Core's container-owned Meter/ActivitySource; the OpenTelemetry package now only subscribes.
   Replace provider/wrapper APIs with `MethodCacheTelemetryOptions`, one final request outcome and seconds histograms.
   Spans/logs omit exception payloads and copied request identities; key/tag recording is explicit opt-in.
@@ -10,11 +18,29 @@
 
 - Unify duration parsing and generator errors; add named attribute groups, enabled/distributed flags and fail-safe retry delay. Remove raw-key attributes and consolidate diagnostic IDs. Dynamic tag placeholders now use canonical key parts while existing contract-1 binaries retain their formatting.
 
-Changes that a user of the packages notices. The release steps are in
-[docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
-release.
+- Omit invalid reload values and policy watcher exception payloads from diagnostic logs; retain error types.
+- Drain HTTP generation recovery before disposing its transport. Retry once through an open breaker and report
+  unconfirmed URL invalidations at shutdown without exposing targets.
 
-## Unreleased (1.0.0)
+### Core-owned HTTP storage
+
+- Merge 304 response headers directly into the replacement representation, avoiding a temporary dictionary
+  and per-response filter allocations when no Connection options are present.
+
+- Avoid constructing duplicate response/content/header objects during foreground 304 revalidation; validate
+  the returned representation before adding caller-only headers, and preserve background/error ownership.
+
+- Release every retired local response body when its URL generation slot is invalidated, including colliding URLs.
+  Avoid temporary identity/target buffers and reuse immutable local metadata during response replacement.
+
+- Require explicit AddMethodCache alongside AddHttpCaching, in either order. Core owns a separate 100 MiB
+  HTTP byte budget, or exclusively uses MethodCache's native Redis/SQL Server transport. Remove the public
+  HTTP storage options/interface/entry extension points and the application-cache fallback.
+- Capture shared atomic URL/client/static-tag/clear generations before origin work. Confirm unsafe mutation
+  invalidation across nodes and value formats even with lost backplane messages; retain owned recovery when
+  callers cancel. Unconfirmed mutations throw HttpCacheInvalidationException and must not be retried automatically.
+- Add KeepCookies for a complete response-cache bypass, static HTTP tags, resident/observed administration and
+  bounded body-free L2 observations. Core telemetry and health distinguish HTTP capability from method statistics.
 
 ### Owned distributed transports and stable wire contract
 
@@ -28,6 +54,8 @@ release.
 - Reduce ICacheManager to four async operations with immutable options and explicit invalidation results.
 - Retire local generations on effective policy changes, isolate runtime L2 namespaces and validate L2 lifetimes from first publication.
 - Internalize policy/key/backplane implementation APIs and remove public cache callbacks and memory tuning switches.
+- Keep the replaced fluent root/service/group coordinators internal; startup configuration uses `MethodCacheBuilder`
+  and retains its public method configuration results.
 
 ### Generated contract and explicit startup registration
 

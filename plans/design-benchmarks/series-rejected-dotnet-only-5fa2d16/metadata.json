@@ -1,0 +1,124 @@
+{
+  "purpose": "Section 10: all adjacent PR comparisons and cumulative f43854d comparison",
+  "started": "2026-10-15T08:11:49.561480+00:00",
+  "sources": {
+    "base": {
+      "runtime_root": "/Users/johan/.codex/worktrees/design-timing-base-v1/MethodCache",
+      "runtime_sha": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "pr1": {
+      "runtime_root": "/Users/johan/.codex/worktrees/generated-contract-v1/MethodCache",
+      "runtime_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "pr2": {
+      "runtime_root": "/Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache",
+      "runtime_sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "pr3": {
+      "runtime_root": "/Users/johan/.codex/worktrees/keys-attributes-v1/MethodCache",
+      "runtime_sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "pr4": {
+      "runtime_root": "/Users/johan/.codex/worktrees/transport-format-v1/MethodCache",
+      "runtime_sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "pr5": {
+      "runtime_root": "/Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache",
+      "runtime_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "prefix": {
+      "runtime_root": "/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache",
+      "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "final": {
+      "runtime_root": "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache",
+      "runtime_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "workloads_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    }
+  },
+  "sdk": ".NET SDK:\n Version:           10.0.103\n Commit:            c2435c3e0f\n Workload version:  10.0.100-manifests.a62d7899\n MSBuild version:   18.0.11+c2435c3e0\n\nRuntime Environment:\n OS Name:     Mac OS X\n OS Version:  27.0\n OS Platform: Darwin\n RID:         osx-arm64\n Base Path:   /usr/local/share/dotnet/sdk/10.0.103/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.3\n  Architecture: arm64\n  Commit:       c2435c3e0f\n\n.NET SDKs installed:\n  6.0.302 [/usr/local/share/dotnet/sdk]\n  6.0.400 [/usr/local/share/dotnet/sdk]\n  6.0.401 [/usr/local/share/dotnet/sdk]\n  6.0.407 [/usr/local/share/dotnet/sdk]\n  6.0.408 [/usr/local/share/dotnet/sdk]\n  6.0.412 [/usr/local/share/dotnet/sdk]\n  6.0.414 [/usr/local/share/dotnet/sdk]\n  6.0.415 [/usr/local/share/dotnet/sdk]\n  6.0.419 [/usr/local/share/dotnet/sdk]\n  6.0.425 [/usr/local/share/dotnet/sdk]\n  7.0.202 [/usr/local/share/dotnet/sdk]\n  7.0.203 [/usr/local/share/dotnet/sdk]\n  7.0.306 [/usr/local/share/dotnet/sdk]\n  7.0.308 [/usr/local/share/dotnet/sdk]\n  7.0.309 [/usr/local/share/dotnet/sdk]\n  7.0.313 [/usr/local/share/dotnet/sdk]\n  7.0.317 [/usr/local/share/dotnet/sdk]\n  8.0.203 [/usr/local/share/dotnet/sdk]\n  9.0.308 [/usr/local/share/dotnet/sdk]\n  10.0.103 [/usr/local/share/dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 6.0.7 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.8 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.9 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.15 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.16 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.20 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.22 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.23 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.27 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.33 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.4 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.5 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.9 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.11 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.12 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.16 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.20 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 8.0.3 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 9.0.11 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.3 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 6.0.7 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.8 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.9 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.15 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.16 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.20 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.22 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.23 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.27 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.33 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.4 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.5 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.9 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.11 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.12 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.16 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.20 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.3 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.14 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 9.0.11 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.3 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  x64   [/usr/local/share/dotnet/x64]\n\nEnvironment variables:\n  Not set\n\nglobal.json file:\n  /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/global.json\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n",
+  "cpu": "Apple M5",
+  "gc": "Concurrent workstation, .NET 10, same benchmark job on every revision",
+  "backend": "Fresh Redis 7 alpine and SQL Server 2022 containers per revision launch; same local container images",
+  "order": "descending / ascending / descending; three independent launches per revision",
+  "note": "Feature additions (RoundTrip before PR4, KeepCookies before HTTP) are classified separately, not comparable old behavior.",
+  "runs": [
+    {
+      "round": 1,
+      "revision": "final",
+      "started": "2026-10-15T08:12:49.974974+00:00",
+      "finished": "2026-10-15T08:34:01.866374+00:00",
+      "exit": 0
+    },
+    {
+      "round": 1,
+      "revision": "prefix",
+      "started": "2026-10-15T08:35:02.120085+00:00",
+      "finished": "2026-10-15T08:43:44.573314+00:00",
+      "exit": 254
+    }
+  ]
+}

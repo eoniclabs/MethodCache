@@ -1,0 +1,24 @@
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/samples/MethodCache.Demo.FxVendor/MethodCache.Demo.FxVendor.csproj (in 78 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.AspNetCore/MethodCache.AspNetCore.csproj (in 79 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/MethodCache.Docs.Tests.csproj (in 92 ms).
+  9 of 12 projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.AspNetCore -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.AspNetCore/bin/Release/net10.0/MethodCache.AspNetCore.dll
+  MethodCache.Demo.FxVendor -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/samples/MethodCache.Demo.FxVendor/bin/Release/net10.0/MethodCache.Demo.FxVendor.dll
+  MethodCache.Docs.Tests -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: 190 ms - MethodCache.Docs.Tests.dll (net10.0)

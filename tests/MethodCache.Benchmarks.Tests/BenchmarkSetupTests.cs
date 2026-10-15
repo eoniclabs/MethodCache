@@ -11,7 +11,9 @@ public class BenchmarkSetupTests
     [Theory]
     [InlineData("engine")]
     [InlineData("hitpath")]
+    [InlineData("httppath")]
     [InlineData("hashlookup")]
+    [InlineData("memory-reference")]
     [InlineData("readme")]
     [InlineData("comparison")]
     public void BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(string category)
@@ -26,7 +28,7 @@ public class BenchmarkSetupTests
     [InlineData(256)]
     public void KeyHashLookup_AllPathsReadThePopulatedValue(int length)
     {
-        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks { PrefixCharacters = length };
+        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks { PrefixCharacters = length, SelectPerformanceCores = false };
         benchmark.Setup();
         Assert.Equal(42, benchmark.ReadyStringLookup());
         Assert.Equal(42, benchmark.FullSpanLookup());
@@ -45,7 +47,7 @@ public class BenchmarkSetupTests
     public async Task PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(int prefix, int buffer, bool listening)
     {
         var benchmark = new MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks
-        { MethodNameLength = prefix, BufferCharacters = buffer, Listening = listening };
+        { MethodNameLength = prefix, BufferCharacters = buffer, Listening = listening, SelectPerformanceCores = false };
         benchmark.Setup();
         try
         {
@@ -58,6 +60,39 @@ public class BenchmarkSetupTests
                 Assert.True(benchmark.KeyBuild() > 0);
             }
             Assert.Equal(1, benchmark.OriginLoads);
+        }
+        finally { benchmark.Cleanup(); }
+    }
+
+    [Fact]
+    public async Task MemoryReference_AllFourPathsReturnTheResidentValue()
+    {
+        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks { SelectPerformanceCores = false };
+        benchmark.Setup();
+        try
+        {
+            Assert.Equal(42, benchmark.ReadyKeySync());
+            Assert.Equal(42, benchmark.BuiltKeySync());
+            Assert.Equal(42, await benchmark.ReadyKeyTask());
+            Assert.Equal(42, await benchmark.BuiltKeyTask());
+        }
+        finally { benchmark.Cleanup(); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HttpPath_ActualHitsNeverCallOrigin_And304AndMissDo(bool listening)
+    {
+        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks { Listening = listening };
+        await benchmark.Setup();
+        try
+        {
+            var loads = benchmark.OriginLoads;
+            for (var i = 0; i < 20; i++) { Assert.Equal(200, await benchmark.FreshHit()); Assert.Equal(200, await benchmark.VariantHit()); }
+            Assert.Equal(loads, benchmark.OriginLoads);
+            Assert.Equal(200, await benchmark.Revalidated()); Assert.Equal(loads + 1, benchmark.OriginLoads);
+            Assert.Equal(200, await benchmark.Miss()); Assert.Equal(loads + 2, benchmark.OriginLoads);
         }
         finally { benchmark.Cleanup(); }
     }

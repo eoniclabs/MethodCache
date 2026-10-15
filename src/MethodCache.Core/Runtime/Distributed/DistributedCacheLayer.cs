@@ -29,7 +29,7 @@ namespace MethodCache.Core.Runtime.Distributed
     /// until the distributed cache accepts them; until then nothing is read from it, so an invalidated value
     /// can't come back.</para>
     /// </remarks>
-    internal sealed class DistributedCacheLayer : IDisposable, IAsyncDisposable
+    internal sealed partial class DistributedCacheLayer : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Reserved tag that every entry implicitly carries; invalidating it clears the whole cache. Application tags
@@ -107,7 +107,7 @@ namespace MethodCache.Core.Runtime.Distributed
         internal int PendingPublications => _pendingPublications.Count;
         internal InvalidationQueues GetInvalidationQueues()
         {
-            lock (_pendingLock) return new(_pendingKeys.Count + _pendingTags.Count + _lateRemovals.Count, _pendingPublications.Count);
+            lock (_pendingLock) return new(_pendingKeys.Count + _pendingTags.Count + _lateRemovals.Count + (Volatile.Read(ref _httpPending)?.Invoke() ?? 0), _pendingPublications.Count);
         }
         private readonly HashSet<string> _pendingTags = new(StringComparer.Ordinal);
         private volatile bool _hasPending;
@@ -176,6 +176,8 @@ namespace MethodCache.Core.Runtime.Distributed
             _entryPrefix = options.KeyPrefix + "e" + entryVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 + ":s" + options.SerializerVersion.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":";
             _tagPrefix = options.KeyPrefix + "t:";
+            _httpEntryPrefix = options.KeyPrefix + "http:e";
+            _httpEpochPrefix = options.KeyPrefix + "http:epoch:v1:url:";
             _removalPrefix = options.KeyPrefix + "r:";
             _tagCheckMilliseconds = (long)options.TagCheckInterval.TotalMilliseconds;
             _clockSkewMilliseconds = options.ClockSkewTolerance.Ticks / TimeSpan.TicksPerMillisecond;
@@ -228,12 +230,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 _onRemoteCleared = onCleared;
                 _onError = onError;
 
-                if (_backplane != null && Interlocked.Exchange(ref _subscribed, 1) == 0)
-                {
-                    var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                    _subscriptionTask = completion.Task;
-                    _ = SubscribeAsync(_backplane, completion);
-                }
+                EnsureSubscription();
             }
         }
 
@@ -883,6 +880,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async Task ShutdownAsync()
         {
+            // HTTP recovery must finish while the owned transport is still available, including synchronous DI disposal.
+            if (_httpShutdown is { } shutdownHttp) await shutdownHttp().ConfigureAwait(false);
             // Disposed is set, so the last write to finish completes this
             if (Volatile.Read(ref _writesInFlight) != 0)
             {
@@ -1604,6 +1603,7 @@ namespace MethodCache.Core.Runtime.Distributed
                             Interlocked.Increment(ref _remoteInvalidations);
                             _tagStamps.Clear();
                             _onRemoteCleared?.Invoke();
+                            _httpCleared?.Invoke();
                             break;
 
                         case BackplaneMessageType.MethodInvalidation when message.Key != null:
@@ -1617,6 +1617,7 @@ namespace MethodCache.Core.Runtime.Distributed
                             Interlocked.Increment(ref _remoteInvalidations);
                             _tagStamps.TryRemove(StoredTag(message.Tag), out _);
                             _onRemoteTagInvalidated?.Invoke(message.Tag);
+                            _httpTagInvalidated?.Invoke(message.Tag);
                             break;
                     }
                 }

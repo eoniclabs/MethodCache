@@ -1,0 +1,97 @@
+{
+  "purpose": "Fixed three independent pairs, alternating prefix/candidate order, current HTTP 304 response-reuse candidate. No directional-pair samples pooled. Functional/native checks and whole-design acceptance remain separate.",
+  "owner": "methodcache-design-20261015-01a13a93",
+  "image": "sha256:28177d4fc98bf285dd0a62da2d22d2ef5f9e8d6adbc2500c8e49046b4ca4cdbf",
+  "sources": {
+    "prefix": {
+      "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix",
+      "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+      "workloads_sha": "8063e9aa55b503be34a3b094a0130f1c6c5c8e7c",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    },
+    "candidate": {
+      "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/http-304-candidate/checkout",
+      "runtime_sha": "12bf99d877c33925fe0d0037f45e652d0260d8a4",
+      "workloads_sha": "28ab9b22e02b0050a449c2bb1cfd977ec187ae25",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    }
+  },
+  "binaries_sha256": {
+    "prefix": "05ccc5365aae3653192996d7a8ba2754cd39e2d7972df715eda897328d73d559",
+    "candidate": "48e4a9f90529afce2921028d1ba9dcdcec9c330b77a3e8018d5d9064c27fb022"
+  },
+  "sdk": ".NET SDK:\n Version:           10.0.401\n Commit:            e34a38d2ae\n Workload version:  10.0.400-manifests.63b36e85\n MSBuild version:   18.9.11+e34a38d2a\n\nRuntime Environment:\n OS Name:     ubuntu\n OS Version:  24.04\n OS Platform: Linux\n RID:         linux-x64\n Base Path:   /usr/share/dotnet/sdk/10.0.401/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.12\n  Architecture: x64\n  Commit:       95017c711e\n\n.NET SDKs installed:\n  8.0.425 [/usr/share/dotnet/sdk]\n  9.0.318 [/usr/share/dotnet/sdk]\n  10.0.401 [/usr/share/dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 8.0.31 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 9.0.20 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 8.0.31 [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 9.0.20 [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  None\n\nEnvironment variables:\n  DOTNET_CLI_TELEMETRY_OPTOUT              [1]\n  DOTNET_GENERATE_ASPNET_CERTIFICATE       [false]\n  DOTNET_NOLOGO                            [1]\n  DOTNET_RUNNING_IN_CONTAINER              [true]\n  DOTNET_SDK_VERSION                       [10.0.401]\n  DOTNET_USE_POLLING_FILE_WATCHER          [true]\n  DOTNET_VERSION                           [10.0.12]\n\nglobal.json file:\n  Not found\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n",
+  "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  16\nOn-line CPU(s) list:                     0-15\nVendor ID:                               GenuineIntel\nModel name:                              11th Gen Intel(R) Core(TM) i9-11900 @ 2.50GHz\nCPU family:                              6\nModel:                                   167\nThread(s) per core:                      2\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                1\nCPU(s) scaling MHz:                      56%\nCPU max MHz:                             5200.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                4992.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid mpx avx512f avx512dq rdseed adx smap avx512ifma clflushopt intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm md_clear flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               384 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-15\nVulnerability Gather data sampling:      Vulnerable\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT vulnerable\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; Enhanced IBRS\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+  "gc": "concurrent workstation",
+  "affinity": "unrestricted, identical for both revisions",
+  "lease": "/srv/skribera-ci/ci-build-capacity.lock",
+  "batch_max_seconds": 1500,
+  "helpers_sha256": {
+    "http-304-confirmation/run.py": "397ad97b0733e7a1053b9ed94805f7e8180ca84657e10e2fd145a2f2c6bae266",
+    "http-304-confirmation/worker.py": "25381bf0af3eb3047dc942f4a15efb63a43644f9c736bdfe1cb26622afe25d23",
+    "leased-batch.py": "4a83e0b505eaef6d91599479c8fa6c78ddc2958e698882740cca7ecad57a6830",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+  },
+  "runs": [
+    {
+      "round": 1,
+      "revision": "prefix",
+      "group": "revalidated",
+      "started": "2026-10-15T17:20:59.741109+00:00",
+      "finished": "2026-10-15T17:46:13.337669+00:00",
+      "exit": 0
+    },
+    {
+      "round": 1,
+      "revision": "candidate",
+      "group": "revalidated",
+      "started": "2026-10-15T17:46:13.338223+00:00",
+      "finished": "2026-10-15T18:34:54.981444+00:00",
+      "exit": 0
+    },
+    {
+      "round": 2,
+      "revision": "candidate",
+      "group": "revalidated",
+      "started": "2026-10-15T18:34:54.981727+00:00",
+      "finished": "2026-10-15T18:52:06.436062+00:00",
+      "exit": 0
+    },
+    {
+      "round": 2,
+      "revision": "prefix",
+      "group": "revalidated",
+      "started": "2026-10-15T18:52:06.436637+00:00",
+      "finished": "2026-10-15T19:04:17.987695+00:00",
+      "exit": 0
+    },
+    {
+      "round": 3,
+      "revision": "prefix",
+      "group": "revalidated",
+      "started": "2026-10-15T19:04:17.989671+00:00",
+      "finished": "2026-10-15T19:43:57.600004+00:00",
+      "exit": 0
+    },
+    {
+      "round": 3,
+      "revision": "candidate",
+      "group": "revalidated",
+      "started": "2026-10-15T19:43:57.602226+00:00",
+      "finished": "2026-10-15T20:20:39.215481+00:00",
+      "exit": 0
+    }
+  ]
+}

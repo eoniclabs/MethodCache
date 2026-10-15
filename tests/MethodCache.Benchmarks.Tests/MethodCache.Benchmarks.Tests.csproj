@@ -40,4 +40,9 @@
     <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../src/MethodCache.Analyzers/MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+    <ProjectReference Include="../../src/MethodCache.SqlServer/MethodCache.SqlServer.csproj" />
+    <ProjectReference Include="../../src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj" />
+  </ItemGroup>
 </Project>

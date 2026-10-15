@@ -12,6 +12,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks;
 public class KeyHashLookupBenchmarks
 {
     [Params(4, 80, 256)] public int PrefixCharacters { get; set; }
+    public bool SelectPerformanceCores { get; set; } = true;
     private ConcurrentDictionary<string, int> _dictionary = null!;
     private string _text = null!;
     private const string Suffix = ":42";
@@ -26,6 +27,7 @@ public class KeyHashLookupBenchmarks
     [GlobalSetup]
     public void Setup()
     {
+        if (SelectPerformanceCores) PrefixBenchmarkSetup.PreferPerformanceCores();
         var prefix = new string('p', PrefixCharacters);
         _text = prefix + Suffix;
 #if METHODCACHE_PREFIX_HASH

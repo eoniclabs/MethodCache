@@ -1,0 +1,44 @@
+{
+  "failed_head": "f793d0a188618b03e490c37451ddbc06283d2f49",
+  "ci_run": "20261015-212547-f793d0a18861",
+  "failed_framework": "net10.0",
+  "files": {
+    "original-macos-unit.log": {
+      "original_sha256": "ce07a1103e3e97a2815a91962dedd3570145dd4b05a124e312e8d528ca9d85c2",
+      "stored_sha256": "ce07a1103e3e97a2815a91962dedd3570145dd4b05a124e312e8d528ca9d85c2"
+    },
+    "original-DistributedCacheTests.cs.txt": {
+      "original_sha256": "1cd5bd0d2dc0138d1ddc908d7151d9ce67bec6673ecf1c30b297372cafa22797",
+      "stored_sha256": "1cd5bd0d2dc0138d1ddc908d7151d9ce67bec6673ecf1c30b297372cafa22797"
+    },
+    "original-provenance.json": {
+      "original_sha256": "27ee3c13c749ad8708b7c290efb50c64764f166509208211e02834c3b4bed3c0",
+      "stored_sha256": "27ee3c13c749ad8708b7c290efb50c64764f166509208211e02834c3b4bed3c0"
+    },
+    "capturing-continuation-red.log": {
+      "original_sha256": "88026c0b7487c00b87dfd72c782247a0df7d5be107052418e5d2556509140afd",
+      "stored_sha256": "88026c0b7487c00b87dfd72c782247a0df7d5be107052418e5d2556509140afd"
+    },
+    "full-default-green.log": {
+      "original_sha256": "290ea14e7705698265c4d0340a22c660f8729f5aed648a4b2e68daa7f6f96e3f",
+      "stored_sha256": "290ea14e7705698265c4d0340a22c660f8729f5aed648a4b2e68daa7f6f96e3f"
+    },
+    "full-tr_TR-green.log": {
+      "original_sha256": "935b06827d333f936237c9f7647e52268350aa348707ff36e70d9b5bc01523d6",
+      "stored_sha256": "935b06827d333f936237c9f7647e52268350aa348707ff36e70d9b5bc01523d6"
+    },
+    "full-sv_SE-green.log": {
+      "original_sha256": "538ea5c9e7bb29025f1d557c8006bd5ee4757e5bb3819cd7dbd0fff69068a589",
+      "stored_sha256": "538ea5c9e7bb29025f1d557c8006bd5ee4757e5bb3819cd7dbd0fff69068a589"
+    },
+    "lower-http-green.log": {
+      "original_sha256": "222ba862b6d75ef5a7052eccafc4126ff75d4c4eb3655685506f7dc2b5801d9c",
+      "stored_sha256": "222ba862b6d75ef5a7052eccafc4126ff75d4c4eb3655685506f7dc2b5801d9c"
+    },
+    "lower-net10-green.log": {
+      "original_sha256": "88bc9ab76d2d8f98f74f3f8006bec49ee5691a2d53cabc78f07289bb54aa3be5",
+      "stored_sha256": "88bc9ab76d2d8f98f74f3f8006bec49ee5691a2d53cabc78f07289bb54aa3be5"
+    }
+  },
+  "normalization": "LF and trailing-whitespace normalization; original source hashes retained."
+}

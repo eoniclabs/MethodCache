@@ -1,0 +1,39 @@
+{
+  "purpose": "Repaired HTTP fresh-hit diagnostic, not section-10 acceptance",
+  "started": "2026-10-15T06:18:32.510882+00:00",
+  "sdk": ".NET SDK:\n Version:           10.0.103\n Commit:            c2435c3e0f\n Workload version:  10.0.100-manifests.a62d7899\n MSBuild version:   18.0.11+c2435c3e0\n\nRuntime Environment:\n OS Name:     Mac OS X\n OS Version:  27.0\n OS Platform: Darwin\n RID:         osx-arm64\n Base Path:   /usr/local/share/dotnet/sdk/10.0.103/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.3\n  Architecture: arm64\n  Commit:       c2435c3e0f\n\n.NET SDKs installed:\n  6.0.302 [/usr/local/share/dotnet/sdk]\n  6.0.400 [/usr/local/share/dotnet/sdk]\n  6.0.401 [/usr/local/share/dotnet/sdk]\n  6.0.407 [/usr/local/share/dotnet/sdk]\n  6.0.408 [/usr/local/share/dotnet/sdk]\n  6.0.412 [/usr/local/share/dotnet/sdk]\n  6.0.414 [/usr/local/share/dotnet/sdk]\n  6.0.415 [/usr/local/share/dotnet/sdk]\n  6.0.419 [/usr/local/share/dotnet/sdk]\n  6.0.425 [/usr/local/share/dotnet/sdk]\n  7.0.202 [/usr/local/share/dotnet/sdk]\n  7.0.203 [/usr/local/share/dotnet/sdk]\n  7.0.306 [/usr/local/share/dotnet/sdk]\n  7.0.308 [/usr/local/share/dotnet/sdk]\n  7.0.309 [/usr/local/share/dotnet/sdk]\n  7.0.313 [/usr/local/share/dotnet/sdk]\n  7.0.317 [/usr/local/share/dotnet/sdk]\n  8.0.203 [/usr/local/share/dotnet/sdk]\n  9.0.308 [/usr/local/share/dotnet/sdk]\n  10.0.103 [/usr/local/share/dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 6.0.7 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.8 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.9 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.15 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.16 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.20 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.22 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.23 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.27 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.33 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.4 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.5 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.9 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.11 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.12 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.16 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.20 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 8.0.3 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 9.0.11 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.3 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 6.0.7 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.8 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.9 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.15 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.16 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.20 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.22 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.23 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.27 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.33 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.4 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.5 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.9 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.11 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.12 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.16 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.20 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.3 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.14 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 9.0.11 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.3 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  x64   [/usr/local/share/dotnet/x64]\n\nEnvironment variables:\n  Not set\n\nglobal.json file:\n  /Users/johan/dev/MethodCache/global.json\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n",
+  "runs": [
+    {
+      "variant": "prefix",
+      "source": {
+        "runtime_root": "/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache",
+        "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+        "workloads_sha": "55e3243e02e633021f5682003131929fb8b36fdf",
+        "source_sha256": {
+          "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+          "Microbenchmarks/HttpResponsePathBenchmarks.cs": "5f5c08a253d4c7df83757f4479c14a06d415a8b1684ecf9cb6a0f735e2d83434",
+          "Microbenchmarks/DesignWorkloadBenchmarks.cs": "734b2891674cb8b16211a215c838d4484ae659cfd50011803294fc089eca705f"
+        },
+        "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+        "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+      },
+      "exit": 0
+    },
+    {
+      "variant": "final",
+      "source": {
+        "runtime_root": "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache",
+        "runtime_sha": "6bf7221147b3f0030433d25af9f5036d6706a446",
+        "workloads_sha": "6bf7221147b3f0030433d25af9f5036d6706a446",
+        "source_sha256": {
+          "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+          "Microbenchmarks/HttpResponsePathBenchmarks.cs": "5f5c08a253d4c7df83757f4479c14a06d415a8b1684ecf9cb6a0f735e2d83434",
+          "Microbenchmarks/DesignWorkloadBenchmarks.cs": "734b2891674cb8b16211a215c838d4484ae659cfd50011803294fc089eca705f"
+        },
+        "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+        "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+      },
+      "exit": 0
+    }
+  ]
+}

@@ -49,4 +49,11 @@
   <ItemGroup>
     <Content Include="../../src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql" Link="migrations/0001-version-existing-schema.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+    <Compile Include="../TestSupport/HttpNativeContract.cs" Link="TestSupport/HttpNativeContract.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/PolicySubscriptionBarrier.cs" Link="TestSupport/PolicySubscriptionBarrier.cs" />
+  </ItemGroup>
 </Project>

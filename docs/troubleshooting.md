@@ -7,9 +7,9 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 
 - **The attribute is on the class.** `[Cache]` is read from the interface only. The analyzer reports
   [MC0001](user-guide/DIAGNOSTICS.md#mc0001) and its code fix moves the attribute.
-- **The service was registered after `AddMethodCache()`.** Call `AddMethodCache()` after your own registrations.
-- **An open generic registration.** `AddScoped(typeof(IRepository<>), ...)` is not decorated; register the closed
-  types ([Getting started](getting-started.md#3-register-it)).
+- **A late or unsupported registration raises a named binding error.** Register cacheable services before
+  `AddMethodCache()`. Open generic registrations such as `AddScoped(typeof(IRepository<>), ...)` are rejected;
+  register generated closed types ([Getting started](getting-started.md#3-register-it)).
 - **The caller doesn't use the interface.** The cache is a decorator around the interface. Resolving or injecting the
   class itself, or calling the method from inside the class (`this.GetAsync(...)`), skips it.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
@@ -32,8 +32,8 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](features/invalidation.md#from-code)).
 - **You run several instances** with only the in-memory cache. Each instance has its own cache; add
-  [Redis or SQL Server](features/distributed-cache.md) so invalidations reach all of them. With a custom
-  `IDistributedCache`, also register an `IBackplane`.
+  [Redis or SQL Server](features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
+  The application's `IDistributedCache` is not a MethodCache provider.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](features/fail-safe.md)).
 
 ## Results stay out of the distributed cache
@@ -62,9 +62,9 @@ a key.
 | Exception | Cause |
 |-----------|-------|
 | `InvalidOperationException` when building a key | An argument type has only private state, so every value would get the same key. Implement `ICacheKeyProvider` ([Cache keys](features/keys.md#types-whose-state-is-private)) |
-| `InvalidOperationException` from `AddMethodCache` naming two assemblies | Two assemblies list the same interface in `[assembly: CacheInterface]`; pass the one whose policies apply ([Caching third-party code](features/third-party.md)) |
-| `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. An override can't turn caching off; invalidate instead |
-| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name, a single value for `Tags`, `Metadata` or a section that holds settings, nested settings under a single setting, or a time span without `:` in the `MethodCache` section |
+| `InvalidOperationException` from `AddMethodCache` naming two assemblies | Multiple generated modules contain the same interface; select exactly one with `FromAssemblyOf<T>()` ([Caching third-party code](features/third-party.md)) |
+| `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. Use `WithEnabled(false)` to disable caching, including in runtime overrides |
+| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name, a single value for `Tags`, `Metadata` or a section that holds settings, nested settings under a single setting, or an invalid duration in the `MethodCache` section; positive invariant unit durations such as `30s` are supported |
 
 ## A caller changed a cached object, and others see the change
 
@@ -73,4 +73,4 @@ The cache hands the same instance to every caller. Return immutable types such a
 
 ## Build errors and warnings
 
-Every `MC` and `MCG` diagnostic, with what to do about it, is in [Build diagnostics](user-guide/DIAGNOSTICS.md).
+Every current `MC` diagnostic and the historical `MCG` migration mapping, with what to do about it, is in [Build diagnostics](user-guide/DIAGNOSTICS.md).

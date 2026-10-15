@@ -1,0 +1,44 @@
+[testcontainers.org 00:00:00.07] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.19] Docker container 8522f493db98 created
+[testcontainers.org 00:00:00.22] Start Docker container 8522f493db98
+[testcontainers.org 00:00:00.37] Wait for Docker container 8522f493db98 to complete readiness checks
+[testcontainers.org 00:00:01.39] Docker container 8522f493db98 ready
+[testcontainers.org 00:00:01.49] Docker container ff996ff5a7ef created
+[testcontainers.org 00:00:01.50] Docker container d25a25a2ebfd created
+[testcontainers.org 00:00:01.51] Start Docker container ff996ff5a7ef
+[testcontainers.org 00:00:01.52] Start Docker container d25a25a2ebfd
+[testcontainers.org 00:00:01.62] Wait for Docker container ff996ff5a7ef to complete readiness checks
+[testcontainers.org 00:00:01.63] Wait for Docker container d25a25a2ebfd to complete readiness checks
+[testcontainers.org 00:00:01.63] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container ff996ff5a7ef
+[testcontainers.org 00:00:01.63] Execute "redis-cli ping" at Docker container d25a25a2ebfd
+[testcontainers.org 00:00:01.68] Docker container d25a25a2ebfd ready
+[testcontainers.org 00:00:01.71] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container ff996ff5a7ef
+[testcontainers.org 00:00:10.82] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container ff996ff5a7ef
+[testcontainers.org 00:00:11.78] Docker container ff996ff5a7ef ready
+restore: 0
+snippets-final: 0
+llms-final: 0
+coverage: 0
+diffcoverage: 0
+matrix-net8.0: 0
+matrix-net9.0: 0
+cultures: 0
+properties: 0
+soak: 0
+demo: 0
+aot-publish: 0
+aot-run: 0
+corpus-export: 0
+corpus-publish: 0
+corpus-run: 0
+packages: 0
+[testcontainers.org 00:13:23.88] Delete Docker container ff996ff5a7ef
+[testcontainers.org 00:13:24.13] Delete Docker container d25a25a2ebfd

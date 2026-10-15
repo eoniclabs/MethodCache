@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Runtime.CompilerServices;
 using MethodCache.Core.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
@@ -107,18 +108,55 @@ public class CoreTelemetryTests
     }
 
     [Fact]
-    public void NoListeners_RequestAndOperationChecksAllocateNothing()
+    public async Task NoListeners_RequestAndOperationChecksAllocateNothing()
     {
-        using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
-        var telemetry = provider.GetRequiredService<CoreTelemetry>();
-        telemetry.Request("method", "M", RequestResult.Hit);
+        Assert.Equal(0, await MeasureNoListenerOperationsOnOwnedThread());
+    }
+
+    private static Task<long> MeasureNoListenerOperationsOnOwnedThread()
+    {
+        var completion = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (ExecutionContext.SuppressFlow())
+        {
+            new Thread(() =>
+            {
+                try
+                {
+                    using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
+                    var telemetry = provider.GetRequiredService<CoreTelemetry>();
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        telemetry.Request("method", "M", RequestResult.Hit);
+                        EnsureNoOperation(telemetry);
+                    }
+                    completion.SetResult(MeasureNoListenerOperations(telemetry));
+                }
+                catch (Exception error) { completion.SetException(error); }
+            })
+            { IsBackground = true }.Start();
+        }
+        return completion.Task;
+    }
+
+    // Count only the actual telemetry calls; assertions, setup and completion stay outside.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static long MeasureNoListenerOperations(CoreTelemetry telemetry)
+    {
         var before = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < 10_000; i++)
         {
             telemetry.Request("method", "M", RequestResult.Hit);
-            Assert.Null(telemetry.BeginLoad("method", "M"));
+            EnsureNoOperation(telemetry);
         }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
+
+    private static void EnsureNoOperation(CoreTelemetry telemetry)
+    {
+        var operation = telemetry.BeginLoad("method", "M");
+        if (operation == null) return;
+        operation.Dispose();
+        throw new InvalidOperationException("A telemetry scope requires a listener.");
     }
 
     private sealed class RecordingFactory : IMeterFactory

@@ -31,4 +31,10 @@
     <ProjectReference Include="..\..\src\MethodCache.HttpCaching\MethodCache.HttpCaching.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../TestSupport/HttpEpochTestCache.cs" Link="TestSupport/HttpEpochTestCache.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.HttpCaching.IntegrationTests" />
+  </ItemGroup>
 </Project>

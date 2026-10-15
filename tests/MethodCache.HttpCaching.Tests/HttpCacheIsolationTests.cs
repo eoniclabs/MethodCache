@@ -136,6 +136,39 @@ public class HttpCacheIsolationTests
     }
 
     [Fact]
+    public async Task DistinctUtf16CallerHeaders_NeverAliasThroughReplacementEncoding()
+    {
+        using var origin = new Utf16CallerOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin));
+        async Task<string> Read(string caller)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.test/caller");
+            request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + caller);
+            using var response = await client.SendAsync(request);
+            return await response.Content.ReadAsStringAsync();
+        }
+        Assert.Equal("55296", await Read("\ud800"));
+        Assert.Equal("57343", await Read("\udfff"));
+        Assert.Equal("55296", await Read("\ud800"));
+        Assert.Equal(2, origin.Calls);
+    }
+
+    private sealed class Utf16CallerOrigin : HttpMessageHandler
+    {
+        internal int Calls;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            Calls++;
+            var caller = request.Headers.GetValues("Authorization").Single();
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(((int)caller[^1]).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Headers = { CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { MaxAge = TimeSpan.FromMinutes(1) } }
+            });
+        }
+    }
+
+    [Fact]
     public async Task SharedCache_ServesAStoredAnonymousResponse_ToAuthorizedRequests()
     {
         // RFC 9111 limits which responses a shared cache stores, not who it serves them to: a response stored for an
@@ -370,14 +403,14 @@ public class HttpCacheIsolationTests
     [Fact]
     public async Task Metrics_CarryOnlyTheClientNameAndOutcome_NeverTheUrl()
     {
-        using var meter = new Meter(HttpCacheMetrics.MeterName);
+        using var meter = new Meter(MethodCacheTelemetry.Name);
         var factory = Substitute.For<IMeterFactory>();
         factory.Create(Arg.Any<MeterOptions>()).Returns(meter);
         var tags = new ConcurrentBag<KeyValuePair<string, object?>>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, l) =>
         {
-            if (ReferenceEquals(instrument.Meter, meter) && instrument.Name.StartsWith("methodcache.http.", StringComparison.Ordinal))
+            if (ReferenceEquals(instrument.Meter, meter) && instrument.Name == "methodcache.requests")
             {
                 l.EnableMeasurementEvents(instrument);
             }
@@ -386,7 +419,7 @@ public class HttpCacheIsolationTests
         listener.SetMeasurementEventCallback<double>((_, _, t, _) => { foreach (var tag in t) { tags.Add(tag); } });
         listener.Start();
 
-        using var metrics = new HttpCacheMetrics(factory);
+        using var metrics = new MethodCache.Core.Telemetry.CoreTelemetry(factory, Microsoft.Extensions.Options.Options.Create(new MethodCacheTelemetryOptions()));
         var origin = new EchoOrigin();
         var options = new HttpCacheOptions { AllowUnverifiedTransport = true }; // Verified test transport.
         var handler = new HttpCacheHandler(
@@ -403,8 +436,8 @@ public class HttpCacheIsolationTests
         await client.SendAsync(Get(authorization: "Bearer s3cr3t", url: "https://api.example.com/users/alice@example.com?ssn=123"));
 
         Assert.NotEmpty(tags);
-        Assert.All(tags, tag => Assert.Contains(tag.Key, new[] { "client", "outcome" }));
-        Assert.Equal(new[] { "orders-api" }, tags.Where(t => t.Key == "client").Select(t => (string)t.Value!).Distinct());
+        Assert.All(tags, tag => Assert.Contains(tag.Key, new[] { "kind", "name", "result" }));
+        Assert.Equal(new[] { "orders-api" }, tags.Where(t => t.Key == "name").Select(t => (string)t.Value!).Distinct());
     }
 
     /// <summary>Lets the first request through, then answers 304, with a Set-Cookie the first time only.</summary>

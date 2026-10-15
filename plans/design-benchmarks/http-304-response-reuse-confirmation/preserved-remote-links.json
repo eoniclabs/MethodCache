@@ -1,0 +1,10 @@
+[
+  {
+    "name": "http-304-confirmation/harness/candidate",
+    "target": "/home/agent-admin/methodcache-design-bench-20261015/http-304-candidate/harness/candidate"
+  },
+  {
+    "name": "http-304-confirmation/harness/prefix",
+    "target": "/home/agent-admin/methodcache-design-bench-20261015/http-304-candidate/harness/prefix"
+  }
+]

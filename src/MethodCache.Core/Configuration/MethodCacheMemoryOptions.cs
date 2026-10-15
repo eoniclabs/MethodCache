@@ -43,9 +43,9 @@ namespace MethodCache
         }
 
         internal long MaxMemoryBytes { get => SizeLimit; set => SizeLimit = value; }
-        private long _maxHttpBytes = 32 * 1024 * 1024;
-        /// <summary>Maximum resident HTTP response bytes reserved for the separate HTTP cache.
-        /// The current HTTP storage path does not yet consume this setting.</summary>
+        private long _maxHttpBytes = 100 * 1024 * 1024;
+        /// <summary>Maximum resident HTTP storage cost in bytes, including bodies, headers and conservative metadata overhead.
+        /// Shared by all HTTP clients; independent of method weights. Default 100 MiB.</summary>
         public long MaxHttpBytes
         {
             get => _maxHttpBytes;

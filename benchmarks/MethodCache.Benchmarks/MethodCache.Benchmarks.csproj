@@ -42,4 +42,9 @@
     <ProjectReference Include="..\..\src\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+    <ProjectReference Include="../../src/MethodCache.SqlServer/MethodCache.SqlServer.csproj" />
+    <ProjectReference Include="../../src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj" />
+  </ItemGroup>
 </Project>

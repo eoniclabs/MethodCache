@@ -1,3 +1,4 @@
+using MethodCache.Core.Runtime.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using MethodCache;
@@ -35,6 +36,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(configureBuilder);
+            services.TryAddSingleton<ExplicitCoreRegistration>();
             var builder = new MethodCacheBuilder(services);
             configureBuilder(builder);
             var modules = GeneratedCode.Describe(builder.Assemblies, services.Select(static d => d.ServiceType));
@@ -85,7 +87,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Configuration");
                 if (logger != null)
                 {
-                    source.ReloadFailed += ex => logger.LogError(ex, "Ignored reloaded MethodCache configuration; the previous cache policies stay in effect.");
+                    source.ReloadFailed += ex => logger.LogError("Ignored reloaded MethodCache configuration; the previous cache policies stay in effect. Error type: {ErrorType}.", ex.GetType().FullName);
                 }
 
                 return new PolicySourceRegistration(source, PolicySourcePriority.ConfigurationFiles);
@@ -154,12 +156,21 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<TimeProvider>(),
                 sp.GetService<DistributedCacheLayer>(),
                 methodId => (sp.GetRequiredService<MethodCache.Policies.IPolicyRegistry>() as MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistry)?.InvalidateGeneration(methodId),
-                sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>()));
+                sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>(),
+                sp.GetService<HttpResponseStore>()));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
-            services.TryAddSingleton<ICacheAdministrator>(static sp => new InMemoryCacheAdministrator(
-                sp.GetRequiredService<InMemoryCacheManager>(),
-                sp.GetService<IPolicyRegistry>()));
+            services.TryAddSingleton<ICacheAdministrator>(CreateAdministrator);
+        }
+
+        internal sealed class ExplicitCoreRegistration;
+
+        internal static ICacheAdministrator CreateAdministrator(IServiceProvider services)
+        {
+            var method = services.GetRequiredService<ICacheManager>() as InMemoryCacheManager;
+            var http = services.GetService<HttpResponseStore>();
+            if (method != null) return new InMemoryCacheAdministrator(method, services.GetService<IPolicyRegistry>(), http);
+            return http != null ? new HttpCacheAdministrator(http) : null!;
         }
 
         // Shared service key contract: MethodCache.HttpCaching resolves this owned cache before the app's cache.

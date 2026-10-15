@@ -33,7 +33,7 @@ builder.Services.AddMethodCache();
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
 - **Third-party clients too.** `[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync))]` caches chosen methods of an SDK client's own interface, no wrapper needed.
-- **HTTP responses as well.** `AddHttpCaching()` (package `MethodCache.HttpCaching`) on an `HttpClient` honors `Cache-Control` and revalidates with ETags.
+- **HTTP responses as well.** `AddHttpCaching()` (package `MethodCache.HttpCaching`) on an `HttpClient` honors `Cache-Control` and revalidates with ETags. Register `AddMethodCache` too: Core owns a separate 100 MiB HTTP budget, or uses its configured native Redis/SQL transport exclusively. `KeepCookies` preserves cookies and bypasses response caching; confirmed mutations retire shared generations. Graceful async disposal retries pending invalidations once and reports any lost count; recovery is not durable across process exit.
 - **One line to go distributed.** `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)` (packages `MethodCache.Redis` and `MethodCache.SqlServer`) shares results between instances and keeps every instance's memory cache in sync.
 - **Built for production.** Stampede protection, fail-safe, a W-TinyLFU memory cache that stays within its size limit under load, admin endpoints, a health check and OpenTelemetry tracing and metrics.
 
@@ -57,13 +57,13 @@ Caller cancellation stops the wait during an L2 read or a slow factory, includin
 
 Bulk reads guard their source work against key, tag and clear invalidation: an invalidated batch result is returned to its caller but is not published. Collection subclasses keep their own public properties and fields in hashed keys, as well as their elements. Static tags do not format arguments; templates format only the parameters they reference. Redis backplane publications honor caller cancellation, and a cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane gaps never hold newer invalidations behind a locked transaction, and HTTP variant schema changes retire their publication epoch once; a failed deletion after a successful rotation does not retire a newer concurrent publication.
 
-Policy tags are owned, read-only snapshots in both `CachePolicy` and `CacheRuntimePolicy`. Mutating the collection supplied by application code cannot change a published policy or bypass its version/change notifications.
+Published policy tags are owned, read-only snapshots. Mutating the collection supplied by application code cannot change a published policy or bypass its version/change notifications.
 
 A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
 
-Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is left uncached. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
+Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
 
-Misconfiguration fails when the generic host starts rather than on the first call: GetOrCreate-only settings on a `[Cache]` method, and in `appsettings.json` invalid values, unknown setting names, a single value for `Tags` or a time span without `:`. `AddMethodCacheFromConfiguration` reads its section then, so configuration sources added after it count from the first call.
+Misconfiguration fails when the generic host starts rather than on the first call: GetOrCreate-only settings on a `[Cache]` method, and in `appsettings.json` invalid values, unknown setting names, a single value for `Tags` or an invalid duration. Positive invariant unit durations such as `30s` are accepted. `AddMethodCacheFromConfiguration` reads its section then, so configuration sources added after it count from the first call.
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 

@@ -1,5 +1,10 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Threading.Channels;
+using MethodCache.Core.PolicyPipeline.Resolution;
+using MethodCache.Core.PolicyPipeline.Sources;
+using MethodCache.Policies;
+using Microsoft.Extensions.Configuration;
 using MethodCache.Core.Telemetry;
 using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
@@ -116,17 +121,79 @@ public class TelemetryPrivacyTests
         Assert.Single(parent.Baggage);
     }
 
+    [Fact]
+    public async Task InvalidConfigurationReload_LogsOnlyTheErrorType_AndRetainsPreviousPolicy()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Read:Duration"] = "00:01:00"
+        }).Build();
+        var logs = new RecordingLogs();
+        var services = new ServiceCollection();
+        services.AddLogging(builder => builder.AddProvider(logs));
+        services.AddMethodCache();
+        services.AddMethodCacheFromConfiguration(configuration);
+        await using var provider = services.BuildServiceProvider();
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Read").Policy.Duration);
+        configuration["MethodCache:Services:Sample.Read:Duration"] = Canary;
+        configuration.Reload();
+        var message = Assert.Single(logs.Messages);
+        Assert.DoesNotContain(Canary, message);
+        Assert.Contains(typeof(InvalidOperationException).FullName!, message);
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Read").Policy.Duration);
+    }
+
+    [Fact]
+    public async Task FailedPolicyWatcher_DoesNotLogExceptionPayload()
+    {
+        var source = new FailingPolicySource();
+        var logs = new RecordingLogs();
+        using var factory = LoggerFactory.Create(builder => builder.AddProvider(logs));
+        await using var resolver = new PolicyResolver([new PolicySourceRegistration(source, 1)], factory.CreateLogger<PolicyResolver>());
+        _ = await resolver.ResolveAsync("Sample.Read");
+        // Initialization schedules the watcher; resolving a policy does not mean it has started.
+        await source.Watching.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        source.Fail(new InvalidOperationException(Canary, new Exception(Canary)));
+        await logs.FirstMessage.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var message = Assert.Single(logs.Messages);
+        Assert.DoesNotContain(Canary, message);
+        Assert.Contains(typeof(InvalidOperationException).FullName!, message);
+    }
+
+    private sealed class FailingPolicySource : IPolicySource
+    {
+        // Once the watcher is waiting, fault delivery runs inline rather than depending on another
+        // thread-pool dispatch while the signature corpus is compiling in other framework processes.
+        private readonly Channel<PolicyChange> _changes = Channel.CreateUnbounded<PolicyChange>(new UnboundedChannelOptions
+        { SingleReader = true, AllowSynchronousContinuations = true });
+        internal TaskCompletionSource Watching { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public string SourceId => "fault-injection";
+        public Task<IReadOnlyCollection<PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyCollection<PolicySnapshot>>([]);
+        public IAsyncEnumerable<PolicyChange> WatchAsync(CancellationToken cancellationToken = default)
+        {
+            Watching.TrySetResult();
+            return _changes.Reader.ReadAllAsync(cancellationToken);
+        }
+        public void Fail(Exception error) => _changes.Writer.TryComplete(error);
+    }
+
     private sealed class RecordingLogs : ILoggerProvider
     {
         internal ConcurrentQueue<string> Messages { get; } = new();
-        public ILogger CreateLogger(string categoryName) => new Sink(Messages);
+        internal TaskCompletionSource<bool> FirstMessage { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public ILogger CreateLogger(string categoryName) => new Sink(Messages, FirstMessage);
         public void Dispose() { }
-        private sealed class Sink(ConcurrentQueue<string> messages) : ILogger
+        private sealed class Sink(ConcurrentQueue<string> messages, TaskCompletionSource<bool> firstMessage) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
             public bool IsEnabled(LogLevel logLevel) => true;
             public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> formatter)
-                => messages.Enqueue(formatter(state, error) + error?.ToString());
+            {
+                messages.Enqueue(formatter(state, error) + error?.ToString());
+                firstMessage.TrySetResult(true);
+            }
         }
     }
 

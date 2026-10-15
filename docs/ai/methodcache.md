@@ -64,29 +64,30 @@ builder.Services.AddMethodCache();                               // after your r
   is not part of the key. Every value that changes the result must be a parameter.
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
   literal and gives warning MC0016; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
-- Put ids (`int`, `Guid`) in tag templates, not free text from users: tags are plain text, so `"1:orders"` in
-  `"user:{id}"` equals `"user:{id}:orders"` for id 1. Never pass passwords or tokens as arguments of cached methods.
-- Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`
-  (shorter than `Duration`), `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and a group name as the
-  first argument.
+- Dynamic tag arguments use `MethodCacheKeys.Part` formatting: colons and backslashes in strings are escaped,
+  null has its own marker, and numeric/date formatting is invariant. Use the same helper for manual invalidation.
+  Tags share an application-defined namespace; different literal templates can still select the same tag. Prefer
+  ids (`int`, `Guid`) and never pass passwords or tokens as arguments of cached methods.
+- Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration`, `RefreshAhead`
+  (shorter than `Duration`), `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and the named `Group` setting.
 - Cached objects are shared between callers: return immutable types such as records.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
-- In library code that registers its own cached interfaces, call `AddMethodCache(null, typeof(SomeLibraryType).Assembly)`
-  so the library's assembly is used, not the caller's.
+- For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
+  If multiple modules generate the same interface, select exactly one; calling/entry assemblies have no special priority.
 - In `appsettings.json`, write durations as `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known
   setting names; anything else fails startup.
 - For a client from a NuGet package with an interface, use
   `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` instead of a wrapper.
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,
   prefixed key such as `$"order:{id}"`.
-- Fix every `MC` and `MCG` build diagnostic; each links to its explanation, and many have a code fix.
+- Fix MethodCache's `MC` build diagnostics; each links to its explanation, and many have a code fix.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
-  caching off.
+  method caching off. HTTP response storage remains independent; use its own options and administrator.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass `CacheManagerExtensions.GetCacheKey(key, version)`
   to `InvalidateKeysAsync`.
 - Use `UseRedis` or `UseSqlServer`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
-- With `AddHttpCaching()`, send cookies as explicit `Cookie` headers; it turns automatic cookies off.
+- `AddHttpCaching()` requires explicit `AddMethodCache()` in the same container, in either order. HTTP uses a separate `MaxHttpBytes` budget (100 MiB), or exclusively the configured native MethodCache Redis/SQL transport. Never use the app cache as a fallback. Send explicit Cookie headers, or set `KeepCookies=true` to preserve transport cookies and bypass response caching. Confirmed unsafe mutations still advance shared URL epochs.
 
 ## Namespaces
 
@@ -105,7 +106,7 @@ reject unknown method ids and retire local policy generations. Declarative L2 na
 changes use private random namespaces. Never reintroduce cache callbacks, CacheContext.Services, public policy pipelines,
 key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.
 
-Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); zero is only allowed via builder fail-safe off. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
+Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); ordinary durations must be positive. Disable fail-safe with `"off"` in attributes/configuration or `TimeSpan.Zero` in its builder. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
 
 Select JSON with `UseJson(context)` for Native AOT or `UseJson(options)` for explicit settings. Options are owned snapshots. `VerifyRoundTrip` defaults to true but does not prove nested polymorphic/private data preservation. SQL schema changes require explicit migration; do not use automatic DDL to reinterpret existing unversioned tables. Entry format/serializer versions change value namespaces; logical tombstones, wire-v1 invalidations and HTTP epochs remain format-independent.
 

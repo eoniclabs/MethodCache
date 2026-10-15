@@ -1,7 +1,9 @@
-using System.Diagnostics.Metrics;
+using MethodCache;
+using MethodCache.Core.Runtime.Http;
+using MethodCache.Core.Runtime.Distributed;
+using MethodCache.Core.Telemetry;
 using MethodCache.HttpCaching;
 using MethodCache.HttpCaching.Internal;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Http;
@@ -24,8 +26,9 @@ public static class MethodCacheHttpClientBuilderExtensions
     /// Caching runs after all additional handlers, so their request transformations and caller identity are visible.
     /// Automatic cookies are disabled on this client's SocketsHttpHandler or HttpClientHandler after all handler configuration.
     /// Send caller cookies explicitly so they participate in cache isolation. Unknown transports bypass caching unless explicitly trusted.
-    /// Responses are stored in memory. Set <see cref="HttpCacheStorageOptions.UseDistributedCache"/> to share them through
-    /// Redis or SQL Server as well, or register your own <see cref="IHttpCacheStorage"/> to store them elsewhere.
+    /// Requires AddMethodCache. Core stores responses in its separate HTTP memory budget, or exclusively in
+    /// MethodCache's native Redis/SQL Server transport when configured. KeepCookies preserves transport cookies
+    /// and bypasses response caching completely.
     /// </remarks>
     public static IHttpClientBuilder AddHttpCaching(this IHttpClientBuilder builder, Action<HttpCacheOptions>? configure = null)
     {
@@ -38,29 +41,27 @@ public static class MethodCacheHttpClientBuilderExtensions
             && descriptor.ImplementationType == typeof(HttpCacheTransportFilter));
         services.Remove(transportFilter);
         services.Insert(0, transportFilter);
-        services.AddOptions<HttpCacheStorageOptions>();
-        services.TryAddSingleton<IHttpCacheStorage>(static sp =>
+        services.AddLogging();
+        services.TryAddSingleton(static sp =>
         {
-            var storageOptions = sp.GetRequiredService<IOptions<HttpCacheStorageOptions>>();
-            IDistributedCache? distributed = null;
-            if (storageOptions.Value.UseDistributedCache)
-            {
-                // Shared registration contract with AddMethodCacheDistributedCache's factory overload.
-                // Resolve its owned cache first, keeping the application's unrelated cache untouched.
-                distributed = sp.GetKeyedService<IDistributedCache>("MethodCache") ?? sp.GetService<IDistributedCache>() ?? throw new InvalidOperationException(
-                    "HttpCacheStorageOptions.UseDistributedCache is on, but neither a MethodCache-owned nor an application IDistributedCache is registered. " +
-                    "Register one first, for example with AddMethodCacheRedis() or AddStackExchangeRedisCache().");
-            }
-
-            return new HttpCacheStore(storageOptions, sp.GetRequiredService<ILogger<HttpCacheStore>>(), sp.GetService<TimeProvider>(), distributed);
+            if (sp.GetService<MethodCacheServiceCollectionExtensions.ExplicitCoreRegistration>() == null)
+                throw new InvalidOperationException("AddHttpCaching requires an explicit AddMethodCache registration in this container.");
+            return new HttpResponseStore(sp.GetRequiredService<IOptions<MethodCacheMemoryOptions>>(),
+                sp.GetRequiredService<CoreTelemetry>(), sp.GetService<TimeProvider>(), sp.GetService<DistributedCacheLayer>(), HttpCacheEntrySerializer.FormatVersion);
         });
-        services.TryAddSingleton(static sp => new HttpCacheMetrics(sp.GetService<IMeterFactory>()));
-        services.TryAddKeyedSingleton(name, (_, _) => new HttpCacheClientState(name));
+        services.TryAddSingleton<IHttpCacheStorage>(static sp => new HttpCacheStore(
+            sp.GetRequiredService<HttpResponseStore>(), sp.GetService<TimeProvider>()));
+        services.TryAddSingleton<ICacheAdministrator>(MethodCacheServiceCollectionExtensions.CreateAdministrator);
+        services.AddOptions<HttpStartupValidation>().ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<HttpStartupValidation>, HttpStartupValidator>());
+        services.TryAddSingleton<HttpCacheClientStates>();
+        services.TryAddKeyedSingleton(name, (sp, _) => sp.GetRequiredService<HttpCacheClientStates>().For(name));
 
         var options = services.AddOptions<HttpCacheOptions>(name);
         if (configure != null)
         {
-            options.Configure(configure);
+            if (builder.Name == null) services.ConfigureAll(configure);
+            else options.Configure(configure);
         }
 
         builder.AddHttpMessageHandler(sp => new HttpCacheHandler(
@@ -69,8 +70,19 @@ public static class MethodCacheHttpClientBuilderExtensions
             sp.GetRequiredService<IOptionsMonitor<HttpCacheOptions>>(),
             sp.GetService<TimeProvider>() ?? TimeProvider.System,
             sp.GetRequiredService<ILogger<HttpCacheHandler>>(),
-            sp.GetService<HttpCacheMetrics>()));
+            sp.GetService<CoreTelemetry>()));
 
         return builder;
+    }
+}
+
+internal sealed class HttpStartupValidation;
+internal sealed class HttpStartupValidator(IServiceProvider services) : IValidateOptions<HttpStartupValidation>
+{
+    /// <inheritdoc />
+    public ValidateOptionsResult Validate(string? name, HttpStartupValidation options)
+    {
+        _ = services.GetRequiredService<HttpResponseStore>();
+        return ValidateOptionsResult.Success;
     }
 }

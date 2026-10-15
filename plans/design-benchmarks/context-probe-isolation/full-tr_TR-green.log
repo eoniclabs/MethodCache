@@ -1,0 +1,9 @@
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+VSTest sürümü 18.0.1 (arm64)
+
+Test yürütmesi başlatılıyor, lütfen bekleyin...
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+[xUnit.net 00:00:04.54]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Atlandı MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Başarılı!  - Başarısız:     0, Başarılı:  1036, Atlanan:     1, Toplam:  1037, Süre: 4 s - MethodCache.Core.Tests.dll (net10.0)
