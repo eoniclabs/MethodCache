@@ -1,0 +1,3 @@
+Changed C# lines under src/ since 92bd0ef77e23: 26 in 1 file(s)
+  src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs: 13/13 changed lines covered
+Diff coverage: 13/13 changed lines = 100.0% (minimum 80%)

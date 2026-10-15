@@ -1,0 +1,877 @@
+{
+  "confidence": "95%, Student t with df=2 over 3 independent run means",
+  "method_filter": null,
+  "base_source": {
+    "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix",
+    "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+    "workloads_sha": "8063e9aa55b503be34a3b094a0130f1c6c5c8e7c",
+    "source_sha256": {
+      "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+      "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+      "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+    },
+    "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+    "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+  },
+  "change_source": {
+    "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/net10-followup/checkouts/net10",
+    "runtime_sha": "28ab9b22e02b0050a449c2bb1cfd977ec187ae25",
+    "workloads_sha": "28ab9b22e02b0050a449c2bb1cfd977ec187ae25",
+    "source_sha256": {
+      "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+      "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+      "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+    },
+    "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+    "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+  },
+  "acceptance": "not determined; review feature equivalence and matching hit allocations",
+  "rows": [
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "CollectionHit",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          107.04234218646458,
+          106.38359558166522,
+          110.05479024578176
+        ],
+        "mean_ns": 107.82690933797052,
+        "lower_ns": 102.96467265309036,
+        "upper_ns": 112.68914602285068,
+        "relative_half_width": 0.0450929801728812,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          107.37468763660047,
+          108.15223844876343,
+          117.60023768684856
+        ],
+        "mean_ns": 111.04238792407082,
+        "lower_ns": 96.90129540406751,
+        "upper_ns": 125.18348044407414,
+        "relative_half_width": 0.12734859889425992,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.029820743317623633,
+      "base_allocated_bytes": [
+        256,
+        256,
+        256
+      ],
+      "change_allocated_bytes": [
+        256,
+        256,
+        256
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "FallbackHit",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          434.8618930380417,
+          424.89421752850484,
+          436.7550805933616
+        ],
+        "mean_ns": 432.17039705330274,
+        "lower_ns": 416.3413259182835,
+        "upper_ns": 447.999468188322,
+        "relative_half_width": 0.036626921332297904,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          435.6306915150439,
+          435.0689290124756,
+          440.148929431001
+        ],
+        "mean_ns": 436.9495166528402,
+        "lower_ns": 430.0312596352996,
+        "upper_ns": 443.8677736703808,
+        "relative_half_width": 0.01583308083399763,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.011058414995851695,
+      "base_allocated_bytes": [
+        320,
+        320,
+        320
+      ],
+      "change_allocated_bytes": [
+        320,
+        320,
+        320
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "GenericHit",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          83.48413479717851,
+          65.76202624251924,
+          62.525662739397085
+        ],
+        "mean_ns": 70.59060792636495,
+        "lower_ns": 42.562665620843845,
+        "upper_ns": 98.61855023188606,
+        "relative_half_width": 0.3970491702629596,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          68.42410516698878,
+          64.00809956489924,
+          67.98053637198163
+        ],
+        "mean_ns": 66.80424703462322,
+        "lower_ns": 60.76364396974818,
+        "upper_ns": 72.84485009949826,
+        "relative_half_width": 0.09042244068321467,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": -0.05363830972657713,
+      "base_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "change_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "RecordHit",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          140.2856266102284,
+          134.4780252057513,
+          135.64894961578378
+        ],
+        "mean_ns": 136.80420047725448,
+        "lower_ns": 129.17461646048304,
+        "upper_ns": 144.43378449402593,
+        "relative_half_width": 0.05577010055360087,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          137.0550669623455,
+          143.84028258781592,
+          140.53177373971363
+        ],
+        "mean_ns": 140.4757077632917,
+        "lower_ns": 132.047139677051,
+        "upper_ns": 148.90427584953238,
+        "relative_half_width": 0.06000018238344254,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.02683767949543081,
+      "base_allocated_bytes": [
+        296,
+        296,
+        296
+      ],
+      "change_allocated_bytes": [
+        296,
+        296,
+        296
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "SyncHit",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          48.787662136626864,
+          53.00163287128492,
+          47.40535310825726
+        ],
+        "mean_ns": 49.73154937205635,
+        "lower_ns": 42.49005183324732,
+        "upper_ns": 56.97304691086538,
+        "relative_half_width": 0.14561174204795535,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          54.54493157517489,
+          53.18794570567258,
+          54.940490083595854
+        ],
+        "mean_ns": 54.22445578814778,
+        "lower_ns": 51.941100106799695,
+        "upper_ns": 56.50781146949586,
+        "relative_half_width": 0.04210933329177231,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.09034318200059843,
+      "base_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "change_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "SyncMiss",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          702.8876098997592,
+          694.7693389138558,
+          692.6848524600962
+        ],
+        "mean_ns": 696.7806004245704,
+        "lower_ns": 683.3897514244818,
+        "upper_ns": 710.1714494246589,
+        "relative_half_width": 0.01921817138985948,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          730.8846763548291,
+          684.5423563525663,
+          699.7827373202057
+        ],
+        "mean_ns": 705.0699233425337,
+        "lower_ns": 646.3964832878157,
+        "upper_ns": 763.7433633972516,
+        "relative_half_width": 0.0832164840851019,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.011896604057162863,
+      "base_allocated_bytes": [
+        928,
+        928,
+        928
+      ],
+      "change_allocated_bytes": [
+        928,
+        928,
+        928
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "TaskHit",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          52.553480135557535,
+          54.22288505066793,
+          50.86261107232571
+        ],
+        "mean_ns": 52.54632541951706,
+        "lower_ns": 48.37260538169396,
+        "upper_ns": 56.72004545734016,
+        "relative_half_width": 0.07942934171897151,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          55.98601660430896,
+          56.29477665415823,
+          57.289431043462514
+        ],
+        "mean_ns": 56.52340810064323,
+        "lower_ns": 54.83140839406029,
+        "upper_ns": 58.21540780722617,
+        "relative_half_width": 0.029934495520337966,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.07568717030875338,
+      "base_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "change_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "TaskMiss",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          778.0371256030091,
+          764.4696004293605,
+          757.8503198980364
+        ],
+        "mean_ns": 766.785681976802,
+        "lower_ns": 741.2219910206614,
+        "upper_ns": 792.3493729329426,
+        "relative_half_width": 0.033338769302833665,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          792.9627073012954,
+          804.2328363053088,
+          820.369709337032
+        ],
+        "mean_ns": 805.8550843145454,
+        "lower_ns": 771.6352684726892,
+        "upper_ns": 840.0749001564016,
+        "relative_half_width": 0.042463982058217435,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.05095218032373916,
+      "base_allocated_bytes": [
+        1072,
+        1072,
+        1072
+      ],
+      "change_allocated_bytes": [
+        1072,
+        1072,
+        1072
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "ValueTaskHit",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          56.433066623971435,
+          57.30472854199543,
+          67.11719913937497
+        ],
+        "mean_ns": 60.284998101780616,
+        "lower_ns": 45.54688375023112,
+        "upper_ns": 75.02311245333011,
+        "relative_half_width": 0.24447399544853243,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          58.91109604414706,
+          60.203489287144976,
+          58.86546607002476
+        ],
+        "mean_ns": 59.32668380043893,
+        "lower_ns": 57.43953779567484,
+        "upper_ns": 61.21382980520302,
+        "relative_half_width": 0.03180939644481064,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": -0.01589639763650219,
+      "base_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "change_allocated_bytes": [
+        0,
+        0,
+        0
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "ValueTaskMiss",
+        ""
+      ],
+      "base": {
+        "means_ns": [
+          775.7303813938988,
+          766.4306576663108,
+          804.6526830653673
+        ],
+        "mean_ns": 782.2712407085256,
+        "lower_ns": 732.7553319824417,
+        "upper_ns": 831.7871494346095,
+        "relative_half_width": 0.06329762127166526,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          809.3472627139333,
+          817.0085856895969,
+          778.5501828698872
+        ],
+        "mean_ns": 801.6353437578058,
+        "lower_ns": 751.0681924831972,
+        "upper_ns": 852.2024950324144,
+        "relative_half_width": 0.06307999225379234,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.024753694168459406,
+      "base_allocated_bytes": [
+        1080,
+        1080,
+        1080
+      ],
+      "change_allocated_bytes": [
+        1080,
+        1080,
+        1080
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Miss",
+        "Listening=False&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          8151.375214888371,
+          7926.149363865734,
+          8069.123334680094
+        ],
+        "mean_ns": 8048.8826378114,
+        "lower_ns": 7765.767920913666,
+        "upper_ns": 8331.997354709134,
+        "relative_half_width": 0.035174412354795674,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          8372.426009642588,
+          8178.273401138191,
+          8002.447212570172
+        ],
+        "mean_ns": 8184.38220778365,
+        "lower_ns": 7724.655185083984,
+        "upper_ns": 8644.109230483316,
+        "relative_half_width": 0.05617125532852663,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.01683458140335059,
+      "base_allocated_bytes": [
+        7328,
+        7328,
+        7328
+      ],
+      "change_allocated_bytes": [
+        7705,
+        7704,
+        7704
+      ],
+      "allocation_increase_observed": true,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Miss",
+        "Listening=False&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          8070.3488573788545,
+          8220.36458238065,
+          8408.391476013521
+        ],
+        "mean_ns": 8233.034971924342,
+        "lower_ns": 7812.278893079812,
+        "upper_ns": 8653.791050768872,
+        "relative_half_width": 0.05110582917227477,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          8211.857714569825,
+          8180.9434060243475,
+          8401.588342699672
+        ],
+        "mean_ns": 8264.796487764615,
+        "lower_ns": 7968.018100261491,
+        "upper_ns": 8561.574875267741,
+        "relative_half_width": 0.03590873507199867,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.0038578137890321607,
+      "base_allocated_bytes": [
+        7328,
+        7328,
+        7328
+      ],
+      "change_allocated_bytes": [
+        7705,
+        7705,
+        7705
+      ],
+      "allocation_increase_observed": true,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Miss",
+        "Listening=True&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          8207.275579658088,
+          7868.613577675627,
+          8036.55460936219
+        ],
+        "mean_ns": 8037.481255565302,
+        "lower_ns": 7616.835006391683,
+        "upper_ns": 8458.12750473892,
+        "relative_half_width": 0.05233558073710659,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          8013.136100776449,
+          8223.442434783112,
+          8382.999681213229
+        ],
+        "mean_ns": 8206.526072257597,
+        "lower_ns": 7745.690810186646,
+        "upper_ns": 8667.361334328547,
+        "relative_half_width": 0.05615473076102419,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.021032063567830495,
+      "base_allocated_bytes": [
+        7328,
+        7328,
+        7328
+      ],
+      "change_allocated_bytes": [
+        7904,
+        7904,
+        7904
+      ],
+      "allocation_increase_observed": true,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Miss",
+        "Listening=True&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          8074.910214630858,
+          8171.429254462074,
+          8184.708112358165
+        ],
+        "mean_ns": 8143.682527150366,
+        "lower_ns": 7994.8143646910585,
+        "upper_ns": 8292.550689609672,
+        "relative_half_width": 0.01828020210304033,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          8353.071776037623,
+          8207.741982258065,
+          8446.59766429137
+        ],
+        "mean_ns": 8335.803807529019,
+        "lower_ns": 8036.811788639797,
+        "upper_ns": 8634.79582641824,
+        "relative_half_width": 0.035868408829292237,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.023591450150240556,
+      "base_allocated_bytes": [
+        7328,
+        7328,
+        7328
+      ],
+      "change_allocated_bytes": [
+        7905,
+        7905,
+        7905
+      ],
+      "allocation_increase_observed": true,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=False&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          5349.543841812798,
+          5299.154261506804,
+          5337.505821439652
+        ],
+        "mean_ns": 5328.734641586418,
+        "lower_ns": 5263.364632143294,
+        "upper_ns": 5394.104651029541,
+        "relative_half_width": 0.012267454440865574,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5888.6274072615515,
+          5767.187283182505,
+          5672.911243016761
+        ],
+        "mean_ns": 5776.241977820272,
+        "lower_ns": 5507.60046991493,
+        "upper_ns": 6044.883485725614,
+        "relative_half_width": 0.04650800796380719,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.08398003772629714,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        8016,
+        8016,
+        8016
+      ],
+      "allocation_increase_observed": false,
+      "review": "regression"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=False&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          5230.911340314532,
+          5183.415386082503,
+          5388.730303483476
+        ],
+        "mean_ns": 5267.6856766268365,
+        "lower_ns": 5000.680532969097,
+        "upper_ns": 5534.690820284576,
+        "relative_half_width": 0.05068737203559123,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5786.579382077223,
+          5663.059618336328,
+          5844.116892861941
+        ],
+        "mean_ns": 5764.585297758497,
+        "lower_ns": 5534.77585349585,
+        "upper_ns": 5994.394742021144,
+        "relative_half_width": 0.03986573749754487,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.09432977812940635,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        8016,
+        8016,
+        8016
+      ],
+      "allocation_increase_observed": false,
+      "review": "regression"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=True&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          5136.163316709742,
+          5240.073026677667,
+          5128.950304100551
+        ],
+        "mean_ns": 5168.395549162653,
+        "lower_ns": 5013.933862302003,
+        "upper_ns": 5322.857236023303,
+        "relative_half_width": 0.029885809898136485,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5724.50277621089,
+          6018.535814297401,
+          5786.923780951512
+        ],
+        "mean_ns": 5843.320790486601,
+        "lower_ns": 5458.48525180351,
+        "upper_ns": 6228.156329169692,
+        "relative_half_width": 0.06585904701820133,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.13058699453320566,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        8216,
+        8216,
+        8216
+      ],
+      "allocation_increase_observed": false,
+      "review": "regression"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=True&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          5450.72915592968,
+          5246.250780164027,
+          5334.0271070276685
+        ],
+        "mean_ns": 5343.6690143737915,
+        "lower_ns": 5088.847137516748,
+        "upper_ns": 5598.490891230835,
+        "relative_half_width": 0.047686687961324824,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5837.827929184731,
+          5704.930953642733,
+          5841.352277113538
+        ],
+        "mean_ns": 5794.7037199803335,
+        "lower_ns": 5601.523597423911,
+        "upper_ns": 5987.883842536756,
+        "relative_half_width": 0.03333735974978854,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.08440543461679906,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        8216,
+        8216,
+        8216
+      ],
+      "allocation_increase_observed": false,
+      "review": "regression"
+    }
+  ]
+}
