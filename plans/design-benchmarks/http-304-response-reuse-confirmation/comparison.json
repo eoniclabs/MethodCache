@@ -1,0 +1,219 @@
+{
+  "confidence": "95%, Student t with df=2 over 3 independent run means",
+  "method_filter": null,
+  "base_source": {
+    "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix",
+    "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+    "workloads_sha": "8063e9aa55b503be34a3b094a0130f1c6c5c8e7c",
+    "source_sha256": {
+      "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+      "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+      "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+    },
+    "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+    "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+  },
+  "change_source": {
+    "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/http-304-candidate/checkout",
+    "runtime_sha": "12bf99d877c33925fe0d0037f45e652d0260d8a4",
+    "workloads_sha": "28ab9b22e02b0050a449c2bb1cfd977ec187ae25",
+    "source_sha256": {
+      "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+      "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+      "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+    },
+    "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+    "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+  },
+  "acceptance": "not determined; review feature equivalence and matching hit allocations",
+  "rows": [
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=False&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          5275.647550742019,
+          5279.635632815852,
+          5147.833234312014
+        ],
+        "mean_ns": 5234.3721392899615,
+        "lower_ns": 5048.132825145835,
+        "upper_ns": 5420.611453434088,
+        "relative_half_width": 0.035580067520646165,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5652.890989906319,
+          5296.1463482691115,
+          5503.707338442086
+        ],
+        "mean_ns": 5484.248225539172,
+        "lower_ns": 5039.173668682807,
+        "upper_ns": 5929.322782395538,
+        "relative_half_width": 0.08115507149799159,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.04773754704477429,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        7536,
+        7536,
+        7536
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=False&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          4991.8179889840085,
+          5078.964182394385,
+          5263.8155619847375
+        ],
+        "mean_ns": 5111.532577787711,
+        "lower_ns": 4766.503866685087,
+        "upper_ns": 5456.561288890334,
+        "relative_half_width": 0.0675000512765887,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5597.46132132567,
+          5583.919213417903,
+          5493.933539461941
+        ],
+        "mean_ns": 5558.438024735171,
+        "lower_ns": 5418.652158099429,
+        "upper_ns": 5698.223891370913,
+        "relative_half_width": 0.025148407882518795,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.08743081260784669,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        7536,
+        7536,
+        7536
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=True&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          5129.450063580701,
+          5144.577538973622,
+          5385.860887096774
+        ],
+        "mean_ns": 5219.962829883699,
+        "lower_ns": 4862.5677162387465,
+        "upper_ns": 5577.357943528651,
+        "relative_half_width": 0.06846698440052211,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5644.847573116461,
+          5642.656160634496,
+          5716.5253598276495
+        ],
+        "mean_ns": 5668.009697859536,
+        "lower_ns": 5563.601189937252,
+        "upper_ns": 5772.41820578182,
+        "relative_half_width": 0.018420665010808527,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.08583334452322511,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        7736,
+        7736,
+        7736
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=True&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          5306.339437189575,
+          5160.476597504717,
+          5360.399237791888
+        ],
+        "mean_ns": 5275.738424162059,
+        "lower_ns": 5018.842285967857,
+        "upper_ns": 5532.634562356262,
+        "relative_half_width": 0.048693873262870335,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "change": {
+        "means_ns": [
+          5845.238599220634,
+          5753.133039955003,
+          5710.1908862141945
+        ],
+        "mean_ns": 5769.5208417966105,
+        "lower_ns": 5598.117297596273,
+        "upper_ns": 5940.924385996948,
+        "relative_half_width": 0.029708453942765046,
+        "launch_count": 3,
+        "degrees_of_freedom": 2
+      },
+      "relative_change": 0.09359493931183249,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        7736,
+        7736,
+        7736
+      ],
+      "allocation_increase_observed": false,
+      "review": "regression"
+    }
+  ]
+}

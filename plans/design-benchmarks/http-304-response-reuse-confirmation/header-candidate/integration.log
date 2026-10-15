@@ -1,0 +1,17 @@
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/MethodCache.HttpCaching.IntegrationTests.csproj (in 131 ms).
+  6 of 7 projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.HttpCaching.Tests -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+  MethodCache.HttpCaching.IntegrationTests -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 69 ms - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)

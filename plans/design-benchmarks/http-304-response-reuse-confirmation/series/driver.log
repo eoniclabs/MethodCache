@@ -1,0 +1,13 @@
+Waiting for exclusive capacity: round-1-prefix 2026-10-15T17:20:59.741181+00:00
+Finished round-1-prefix 2026-10-15T17:46:03.337556+00:00
+Waiting for exclusive capacity: round-1-candidate 2026-10-15T17:46:13.338295+00:00
+Finished round-1-candidate 2026-10-15T18:34:44.981347+00:00
+Waiting for exclusive capacity: round-2-candidate 2026-10-15T18:34:54.981771+00:00
+Finished round-2-candidate 2026-10-15T18:51:56.435978+00:00
+Waiting for exclusive capacity: round-2-prefix 2026-10-15T18:52:06.436718+00:00
+Finished round-2-prefix 2026-10-15T19:04:07.987585+00:00
+Waiting for exclusive capacity: round-3-prefix 2026-10-15T19:04:17.989753+00:00
+Finished round-3-prefix 2026-10-15T19:43:47.599877+00:00
+Waiting for exclusive capacity: round-3-candidate 2026-10-15T19:43:57.602347+00:00
+Finished round-3-candidate 2026-10-15T20:20:29.214546+00:00
+Fixed HTTP 304 confirmation complete; review independent-run intervals and allocations, never infer acceptance from exit alone. 2026-10-15T20:20:39.215865+00:00
