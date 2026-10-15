@@ -5,6 +5,8 @@
 Johan approved .NET 10 as the only application runtime on 2026-10-15. The published stack is
 PRs #123–#127, prefix hashing #128, HTTP storage #129 and the minimum-runtime change #130; this
 final PR records acceptance evidence without changing the generated contract or frozen vendor files.
+Its CI lease fix also covers remote checkout/collection before builds, so those operations cannot
+overlap an exclusive benchmark batch.
 
 Runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passes the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
@@ -130,3 +132,16 @@ They must not block quiet timing forever, and are left untouched. State/age/CPU-
 from new or CPU-active workers, including CPU progress whose lifetime percentage rounds to zero. The same collector
 regression fails against the earlier committed implementation and passes after the fix; all eight Python guard
 tests pass. These are measurement-tool changes and do not alter the library source verified at `a711ad3`.
+
+## CI capacity boundary follow-up
+
+The original coordinator acquired capacity inside linux.sh, after remote fetch/checkout and old-run
+collection. A focused mocked remote-execution regression fails against that implementation: denying
+capacity still allows checkout. The coordinator now acquires one shared descriptor before any of
+those operations and holds it through the remote jobs. It clears the inner lock setting to avoid
+nested reacquisition behind an exclusive waiter. A second behavior fact verifies that the descriptor
+remains open during the mock build and the nested setting is absent. Active passes are not restarted.
+
+This closes a verified isolation gap for future measurements; it does not prove that every earlier
+sample experienced competing checkout work. Original evidence remains identified by its environment
+and measured intervals. No library runtime or benchmark workload source changed.
