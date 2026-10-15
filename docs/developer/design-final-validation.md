@@ -16,7 +16,8 @@ fixtures. All three platform and aggregate statuses were verified success. Its s
 sources exactly match standalone runtime 12bf99d; unfinished #132/SipHash and section-10
 timing are not included. [Full checkpoint, exact exits and original logs](../../plans/design-benchmarks/net10-functional-e84a549/).
 The earlier [b518139 checkpoint](../../plans/design-benchmarks/net10-functional-b518139/)
-is retained as history. Current lower-stack heads #129/#130 still require their own statuses.
+is retained as history. This checkpoint predates the later body-budget probe isolation below;
+that test-only change and the forwarded lower-stack heads still require current-head CI.
 
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
@@ -402,3 +403,18 @@ than prefix850 in this pair. One pair cannot prove a section-10 pass or a reprod
 regression. The earlier three-run failure is not cleared; a fresh fixed three-pair
 alternating comparison is required. No timing samples are pooled across these protocols.
 [Exact means, sources, raw reports and guards](../../plans/design-benchmarks/http-304-response-reuse-pair/).
+
+## Strict body-budget allocation probe follow-up
+
+The Linux coverage job at net10 head 7a3b9a8 failed the body-budget probe for the
+method-before-generation input: expected zero, observed 7,696 bytes. Ordinary Linux
+tests and the local pre-change coverage probe pass, so the original byte provenance
+remains unproven. The same 100 warmups and one 1,000-call measurement now run in a
+synchronous NoInlining helper on an owned thread without inherited ExecutionContext.
+The exact-zero, exact sum and stored target assertions remain, with all three inputs
+and no tolerance, minimum or retry. A temporary target-string regression fails all
+three cases with 48,000 bytes. Production is restored byte for byte; all 320 HTTP facts
+pass with coverage under default/tr-TR/sv-SE on net10. This is local fixture verification,
+not current-head Linux acceptance or a performance result. The new fixture is forwarded
+through #129/#130/#131 and requires fresh CI.
+[Original failure, red mutation and complete green suites](../../plans/design-benchmarks/body-budget-probe-isolation/).
