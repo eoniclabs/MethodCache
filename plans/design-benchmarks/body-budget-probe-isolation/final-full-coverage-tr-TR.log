@@ -1,0 +1,19 @@
+Culture override: tr_TR.UTF-8
+  Geri yüklenecek projeler belirleniyor...
+  Geri yükleme için tüm projeler güncel.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.HttpCaching.Tests -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+/Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+VSTest sürümü 18.0.1 (arm64)
+
+Test yürütmesi başlatılıyor, lütfen bekleyin...
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+
+Başarılı!  - Başarısız:     0, Başarılı:   320, Atlanan:     0, Toplam:   320, Süre: 241 ms - MethodCache.HttpCaching.Tests.dll (net10.0)
+
+Ekler:
+  /tmp/methodcache-body-budget-probe/final-full-coverage-tr-TR/3a9880a6-8e34-467e-a11c-34b85799c8e6/coverage.cobertura.xml

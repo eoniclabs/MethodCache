@@ -1,0 +1,53 @@
+{
+  "before": {
+    "source": {
+      "runtime_root": "/Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache",
+      "runtime_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "workload_sha": "c429e7757fc1a7c347ca353c0dba73b06f697abb",
+      "source_sha256": {
+        "Microbenchmarks/PrefixHitPathBenchmarks.cs": "f22998c6275bd3089f749e4bd38eda0c153cae232547ed36adeeae81ad92ead8",
+        "Microbenchmarks/KeyHashLookupBenchmarks.cs": "36cfe0bbe840f59029bba5e045af3af8c4caf033e5e18e928a5edc32cd9848e7",
+        "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "a6176fdcb5bba599eb3ec96b01393cdae58e9bf46367662c1650d2b8c394242b"
+      },
+      "statistics": "PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied."
+    },
+    "resolved_di_packages": [
+      "Microsoft.Extensions.DependencyInjection/6.0.0",
+      "Microsoft.Extensions.DependencyInjection.Abstractions/9.0.9"
+    ]
+  },
+  "pr5": {
+    "source": {
+      "runtime_root": "/Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache",
+      "runtime_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "workload_sha": "c429e7757fc1a7c347ca353c0dba73b06f697abb",
+      "source_sha256": {
+        "Microbenchmarks/PrefixHitPathBenchmarks.cs": "f22998c6275bd3089f749e4bd38eda0c153cae232547ed36adeeae81ad92ead8",
+        "Microbenchmarks/KeyHashLookupBenchmarks.cs": "36cfe0bbe840f59029bba5e045af3af8c4caf033e5e18e928a5edc32cd9848e7",
+        "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "a6176fdcb5bba599eb3ec96b01393cdae58e9bf46367662c1650d2b8c394242b"
+      },
+      "statistics": "PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied."
+    },
+    "resolved_di_packages": [
+      "Microsoft.Extensions.DependencyInjection/9.0.9",
+      "Microsoft.Extensions.DependencyInjection.Abstractions/9.0.9"
+    ]
+  },
+  "prefix": {
+    "source": {
+      "runtime_root": "/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache",
+      "runtime_sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "workload_sha": "c429e7757fc1a7c347ca353c0dba73b06f697abb",
+      "source_sha256": {
+        "Microbenchmarks/PrefixHitPathBenchmarks.cs": "f22998c6275bd3089f749e4bd38eda0c153cae232547ed36adeeae81ad92ead8",
+        "Microbenchmarks/KeyHashLookupBenchmarks.cs": "36cfe0bbe840f59029bba5e045af3af8c4caf033e5e18e928a5edc32cd9848e7",
+        "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "a6176fdcb5bba599eb3ec96b01393cdae58e9bf46367662c1650d2b8c394242b"
+      },
+      "statistics": "PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied."
+    },
+    "resolved_di_packages": [
+      "Microsoft.Extensions.DependencyInjection/9.0.9",
+      "Microsoft.Extensions.DependencyInjection.Abstractions/9.0.9"
+    ]
+  }
+}
