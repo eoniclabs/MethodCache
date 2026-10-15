@@ -23,11 +23,18 @@ public class HttpCacheKeysTests
     }
 
     [Fact]
-    public void ForRequest_IsDeterministic_AndPrefixedWithTheClient()
+    public void UriTarget_RetainsItsFrozenEncoding_WhenHeaderFramingChanges()
+    {
+        Assert.Equal("D567348E39536CD7EA18F8D42522E6E9D1A2E9C6012DD7631F50B792FB475655:M7L6sA55szvnlkwqPQsgxuvRO/0ltkY3OZ+gNQIPscs=:m:GET", HttpCacheKeys.ForUri("api", HttpMethod.Get, new Uri("https://example.test/a?x=1")));
+    }
+
+    [Fact]
+    public void ForRequest_IsDeterministic_AndSeparatesHashedClients()
     {
         var key = HttpCacheKeys.ForRequest("api", Get());
 
-        Assert.StartsWith("api:", key);
+        Assert.DoesNotContain("api", key, StringComparison.Ordinal);
+        Assert.NotEqual(key, HttpCacheKeys.ForRequest("other", Get()));
         Assert.Equal(key, HttpCacheKeys.ForRequest("api", Get()));
     }
 

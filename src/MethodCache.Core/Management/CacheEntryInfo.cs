@@ -13,4 +13,18 @@ public sealed record CacheEntryInfo(
     TimeSpan Age,
     TimeSpan? TimeToLive,
     IReadOnlyList<string> Tags,
-    long Weight);
+    long Weight)
+{
+    /// <summary>Whether this entry describes a method result or an HTTP representation.</summary>
+    public CacheEntryKind Kind { get; init; }
+    /// <summary>Local residency or a historical distributed observation.</summary>
+    public CacheEntryStorage Storage { get; init; }
+    /// <summary>The configured HTTP client name, or null for a method result.</summary>
+    public string? Client { get; init; }
+    /// <summary>The HTTP value format, or null for a method result.</summary>
+    public int? Format { get; init; }
+    /// <summary>HTTP storage cost in bytes; method weight is not a byte estimate.</summary>
+    public long? SizeBytes { get; init; }
+    /// <summary>Explains limitations of an observation; null for a locally resident value.</summary>
+    public string? Description { get; init; }
+}

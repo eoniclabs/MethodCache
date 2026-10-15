@@ -84,6 +84,7 @@ public class TransportCookieIsolationTests
     {
         await using var origin = new CookieOrigin();
         var services = new ServiceCollection();
+        services.AddMethodCache();
         var builder = services.AddHttpClient("cached");
         SocketsHttpHandler? transport = null;
         HttpMessageHandler CreateTransport()
@@ -121,6 +122,7 @@ public class TransportCookieIsolationTests
         await using var origin = new CookieOrigin();
         var identity = new IdentityHandler(header) { Identity = "A" };
         var services = new ServiceCollection();
+        services.AddMethodCache();
         var builder = services.AddHttpClient("identity");
         if (placement == "before") builder.AddHttpMessageHandler(() => identity);
         builder.AddHttpCaching();

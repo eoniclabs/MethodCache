@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
@@ -192,9 +193,12 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         Assert.Contains("users:1", list);
         Assert.DoesNotContain(SecretValue, list);
         Assert.DoesNotContain(SecretValue, one);
+        using var metadata = JsonDocument.Parse(one);
+        Assert.Equal("Method", metadata.RootElement.GetProperty("kind").GetString());
+        Assert.Equal("LocalMemory", metadata.RootElement.GetProperty("storage").GetString());
         var entry = await client.GetFromJsonAsync<Dictionary<string, object>>(Prefix + "/entry?key=users:1");
         Assert.Equal(
-            new[] { "age", "key", "tags", "timeToLive", "valueType", "weight" },
+            new[] { "age", "client", "description", "format", "key", "kind", "sizeBytes", "storage", "tags", "timeToLive", "valueType", "weight" },
             entry!.Keys.OrderBy(k => k, StringComparer.Ordinal));
     }
 

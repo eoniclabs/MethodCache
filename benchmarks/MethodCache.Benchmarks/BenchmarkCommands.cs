@@ -54,6 +54,9 @@ public static class BenchmarkCommands
             case "hitpath":
                 RunBenchmark<Microbenchmarks.PrefixHitPathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
+            case "httppath":
+                RunBenchmark<Microbenchmarks.HttpResponsePathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "contract":
                 RunBenchmark<Comparison.GeneratedContractBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
@@ -142,6 +145,7 @@ public static class BenchmarkCommands
         Console.WriteLine("Available categories:");
         Console.WriteLine("  hashlookup   - Ready string/span lookup versus immutable prefix-state reuse");
         Console.WriteLine("  hitpath      - Complete contract-1 hits, buffers and listeners");
+        Console.WriteLine("  httppath     - HTTP fresh/variant hits, misses and 304, listeners off/on");
         Console.WriteLine("  contract     - Generated sync/Task/ValueTask, complex keys and misses");
         Console.WriteLine("  engine       - Current memory engine latency compared with other caches");
         Console.WriteLine("  hitratio     - Hit ratio and read throughput on synthetic workloads");

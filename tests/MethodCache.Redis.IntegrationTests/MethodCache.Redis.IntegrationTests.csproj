@@ -41,4 +41,8 @@
   <ItemGroup>
     <Compile Include="../TestSupport/EpochBackendContract.cs" Link="EpochBackendContract.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+    <Compile Include="../TestSupport/HttpNativeContract.cs" Link="TestSupport/HttpNativeContract.cs" />
+  </ItemGroup>
 </Project>

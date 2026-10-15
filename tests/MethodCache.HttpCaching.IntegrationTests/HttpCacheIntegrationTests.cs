@@ -12,6 +12,7 @@ public class HttpCacheIntegrationTests
     public void AddHttpCaching_RegistersServicesCorrectly()
     {
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient<TestApiClient>()
             .AddHttpCaching();
 
@@ -32,7 +33,8 @@ public class HttpCacheIntegrationTests
     public void AddHttpCaching_WithConfiguration_AppliesOptions()
     {
         var services = new ServiceCollection();
-        services.Configure<HttpCacheStorageOptions>(storage => storage.MaxCacheSize = 50 * 1024 * 1024);
+        services.AddMethodCache();
+        services.Configure<MethodCacheMemoryOptions>(storage => storage.MaxHttpBytes = 50 * 1024 * 1024);
         services.AddHttpClient<TestApiClient>()
             .AddHttpCaching(options =>
             {
@@ -50,36 +52,8 @@ public class HttpCacheIntegrationTests
         Assert.Equal(TimeSpan.FromMinutes(10), cacheOptions.DefaultMaxAge);
         Assert.True(cacheOptions.AddDiagnosticHeaders);
 
-        var storageOptions = provider.GetRequiredService<IOptions<HttpCacheStorageOptions>>().Value;
-        Assert.Equal(50 * 1024 * 1024, storageOptions.MaxCacheSize);
-    }
-
-    [Fact]
-    public void AddHttpCaching_CanUseCustomStorage()
-    {
-        var services = new ServiceCollection();
-        services.AddSingleton<IHttpCacheStorage, FakeHttpCacheStorage>();
-
-        services.AddHttpClient<TestApiClient>()
-            .AddHttpCaching();
-
-        var provider = services.BuildServiceProvider();
-        var storage = provider.GetRequiredService<IHttpCacheStorage>();
-        Assert.IsType<FakeHttpCacheStorage>(storage);
-    }
-
-    /// <summary>
-    /// Registration-only stub: it never stores a response, so a constant generation and a no-op invalidation are
-    /// correct here. A storage that keeps responses must rotate the generation in <c>InvalidateAsync</c>.
-    /// </summary>
-    private sealed class FakeHttpCacheStorage : IHttpCacheStorage
-    {
-        public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default) => ValueTask.FromResult(string.Empty);
-        public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
-        public ValueTask ClearAsync(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
-        public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) => ValueTask.FromResult<HttpCacheEntry?>(null);
-        public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
-        public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        var storageOptions = provider.GetRequiredService<IOptions<MethodCacheMemoryOptions>>().Value;
+        Assert.Equal(50 * 1024 * 1024, storageOptions.MaxHttpBytes);
     }
 
     public class TestApiClient

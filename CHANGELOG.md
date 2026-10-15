@@ -16,6 +16,17 @@ release.
 
 ## Unreleased (1.0.0)
 
+### Core-owned HTTP storage
+
+- Require explicit AddMethodCache alongside AddHttpCaching, in either order. Core owns a separate 100 MiB
+  HTTP byte budget, or exclusively uses MethodCache's native Redis/SQL Server transport. Remove the public
+  HTTP storage options/interface/entry extension points and the application-cache fallback.
+- Capture shared atomic URL/client/static-tag/clear generations before origin work. Confirm unsafe mutation
+  invalidation across nodes and value formats even with lost backplane messages; retain owned recovery when
+  callers cancel. Unconfirmed mutations throw HttpCacheInvalidationException and must not be retried automatically.
+- Add KeepCookies for a complete response-cache bypass, static HTTP tags, resident/observed administration and
+  bounded body-free L2 observations. Core telemetry and health distinguish HTTP capability from method statistics.
+
 ### Owned distributed transports and stable wire contract
 
 - Freeze one Core prefix and validated provider options at startup; use owned storage and serializer registrations. Application `IDistributedCache` is never a fallback. SQL connection strings can come from DI.

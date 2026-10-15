@@ -13,8 +13,8 @@ Memory scenarios use a fresh invocation identity for each `CacheFillUp` run, so 
 | How fast is a `[Cache]` hit compared with other libraries, used the way each documents? | `ReadmeComparisonBenchmarks` | `readme` |
 | How do generated contract revisions compare for sync/Task/ValueTask, structural and fallback keys? | `GeneratedContractBenchmarks` | `contract` |
 | What is the cost of hashing/lookup alone, with a ready key versus prefix-state reuse? | `KeyHashLookupBenchmarks` | `hashlookup` |
-| What do immutable prefix state, buffer growth and listeners cost on the complete contract-1 hit path? | `PrefixHitPathBenchmarks` | `hashlookup` | `KeyHashLookupBenchmarks`: ready string, full span and prefix-state lookups with 4/80/256-character prefixes |
-| `hitpath` |
+| What do immutable prefix state, buffer growth and listeners cost on the complete contract-1 hit path? | `PrefixHitPathBenchmarks` | `hitpath` |
+| What do HTTP freshness hits, caller variants, misses and 304 validation cost? | `HttpResponsePathBenchmarks` | `httppath` |
 | How do libraries compare behind one interface (hits, misses, concurrency, stampedes)? | `UnifiedCacheComparisonBenchmarks` | `comparison` |
 | How fast is the in-memory engine on its own? | `MemoryEngineBenchmarks` | `engine` |
 | What hit ratio does the eviction policy reach on skewed workloads? | `HitRatioSimulation` (a simulation, not BenchmarkDotNet) | `hitratio` |
@@ -35,6 +35,7 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> 
 
 | Category | Runs |
 |---|---|
+| `httppath` | `HttpResponsePathBenchmarks`: fresh/variant hits, misses, 304 validation, listeners off/on |
 | `hitpath` | `PrefixHitPathBenchmarks`: short/long method names, fitting/growing stack buffers, sync/Task/ValueTask hits and key building, listeners off/on |
 | `readme` | `ReadmeComparisonBenchmarks`: MethodCache `[Cache]`, `IMemoryCache` by hand, HybridCache, FusionCache |
 | `comparison` | `UnifiedCacheComparisonBenchmarks`: MethodCache, FusionCache, LazyCache, EasyCaching through `ICacheAdapter` |
