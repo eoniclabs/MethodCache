@@ -532,3 +532,16 @@ Generated GUID hit/miss origin verification, full-series compilation/catalog che
 final source freeze remain required. Earlier int timing and the preliminary 64-case
 inventory are not GUID acceptance evidence.
 [Exact merged sources and four-runtime setup checks](../../plans/design-benchmarks/guid-workload-integration/).
+
+## Controlled synchronization-context probe
+
+HTTP head f793d0a fails its macOS net10 Core job because the blocking caller thread
+does not join within ten seconds. The original cause is unproven. The fixture now
+keeps the blocking caller on its own recording context while the async test drives
+queued transport completions, proving an incomplete outer task before release and
+actual read/write participation. It retains the exact result, zero context posts and
+ten-second hang guard; real transport delays and blocking the xUnit thread are removed.
+A temporary capturing-continuation mutation fails with one unexpected context post;
+production is restored byte for byte. All 1,036 Core facts pass under default/tr-TR/sv-SE,
+with one intentional soak skip per suite. Fresh current-head CI remains required.
+[Original timeout, sensitivity failure and complete local suites](../../plans/design-benchmarks/context-probe-isolation/).
