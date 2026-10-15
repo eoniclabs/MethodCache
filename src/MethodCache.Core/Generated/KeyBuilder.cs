@@ -47,19 +47,24 @@ public ref struct KeyBuilder
     internal void UseSnapshotPrefix() => _prefixLength = _length;
 
     // Always hash the current suffix. An Append after a lookup cannot reuse a stale final hash.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal readonly int LookupHash()
     {
-        if (_prefixLength == 0) return ProcessKeyHash.Compute(AsSpan());
-        var state = Binding.PrefixHash;
-        state.AppendUtf16(AsSpan()[_prefixLength..]);
-        return state.Finish32();
+        if (_prefixLength == 0) return Binding.HashKey(AsSpan());
+        return Binding.PrefixHash.FinishUtf16(AsSpan()[_prefixLength..]);
     }
 
     /// <summary>The key written so far. Valid until the builder is appended to again.</summary>
     public readonly ReadOnlySpan<char> AsSpan() => _text is { } text ? text.AsSpan() : _chars[.._length];
 
     /// <summary>Returns the key as a string.</summary>
-    public override readonly string ToString() => _text ?? new string(_chars[.._length]);
+    public override readonly string ToString()
+    {
+        if (_text is { } owned) return owned;
+        var text = new string(_chars[.._length]);
+        if (Binding != null) ProcessKeyHash.Remember(text, Binding.HashKey(text));
+        return text;
+    }
 
     /// <summary>Appends text as is, such as a key prefix from <see cref="MethodCacheKeys.Prefix"/>.</summary>
     public void Append(string value)

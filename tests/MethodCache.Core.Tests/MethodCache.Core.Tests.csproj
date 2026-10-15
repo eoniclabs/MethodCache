@@ -48,7 +48,6 @@
     <Compile Include="../TestSupport/DurationCorpus.cs" Link="DurationCorpus.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Fixtures/siphash24-vectors.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixtures/wire-v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
