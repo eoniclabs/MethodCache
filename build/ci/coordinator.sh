@@ -155,10 +155,10 @@ New-Item -ItemType Directory -Force -Path (Join-Path $Root 'runs') | Out-Null
 Set-Location $Root
 function Invoke-Native { & $args[0] $args[1..($args.Count - 1)]; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
 
-# The .NET 8, 9 and 10 SDKs in a folder of our own, so CI needs no administrator and leaves the machine's alone
+# The .NET 10 SDK in a folder of our own; no administrator or changes to machine-wide SDKs
 $dotnet = Join-Path $Root 'dotnet'
 $sdks = if (Test-Path "$dotnet\dotnet.exe") { & "$dotnet\dotnet.exe" --list-sdks } else { @() }
-foreach ($channel in '8.0', '9.0', '10.0') {
+foreach ($channel in '10.0') {
     if (-not ($sdks -match "^$([regex]::Escape($channel))\.")) {
         if (-not (Test-Path dotnet-install.ps1)) { Invoke-WebRequest -UseBasicParsing https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1 }
         & powershell -NoProfile -ExecutionPolicy Bypass -File dotnet-install.ps1 -Channel $channel -InstallDir $dotnet -NoPath

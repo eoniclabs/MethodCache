@@ -309,7 +309,7 @@ A cache hit on `Task<User> GetUserAsync(int id)`, each library on its default se
 | FusionCache | 348 ns | 3.8x | 344 B |
 
 The generated decorator writes the key into a stack buffer and returns the cached `Task` itself, so a hit allocates
-nothing and is at least as fast as hand-written code (on .NET 9 and later; .NET 8 builds the key as a string).
+nothing and is at least as fast as hand-written code in the recorded .NET 10 benchmark.
 Measured with BenchmarkDotNet on .NET 10 on a shared cloud VM (Intel Xeon 2.1 GHz, 4 cores). Times and ratios
 are for that setup and will differ on other hardware and runtimes; the allocations don't.
 [docs/benchmarks.md](docs/benchmarks.md) has the full results. To measure on your own machine:
@@ -339,7 +339,7 @@ auto-recovery. MethodCache is for when you want caching to be a line of metadata
 
 ## Packages
 
-Supported frameworks: .NET 8, 9 and 10.
+Requires .NET 10 and the .NET 10 SDK. The pre-1.0 packages no longer target .NET 8 or 9.
 
 | Package | What it adds |
 |---|---|
@@ -395,7 +395,7 @@ Misconfiguration fails when the generic host starts rather than on the first cal
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
-On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
+With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.
 
 Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
 

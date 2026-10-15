@@ -45,7 +45,6 @@ namespace App
         global::System.Threading.Tasks.Task<global::App.User> global::App.IUserService.GetUserAsync(int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
         {
             var __mcCall = this._method_Method0.Capture();
-#if NET9_0_OR_GREATER
             var __mcKeyBuilder = __mcCall.StartKey(__mcCall.KeyPrefix.Length + 12 <= 64 ? stackalloc char[64] : stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
@@ -55,16 +54,6 @@ namespace App
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
-#else
-            var __mcKey = string.Concat(__mcCall.KeyPrefix, global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument0));
-
-            var __mcKeyBuilder = __mcCall.BindTextKey(__mcKey);
-            if (__mcCall.TryGetTask<global::App.User>(in __mcKeyBuilder, out var __mcCachedValue))
-            {
-                return __mcCachedValue!;
-            }
-
-#endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
             return __Load_Method0(__mcKey, __mcCall, __mcArgument0, __mcArgument1);
         }

@@ -50,12 +50,7 @@ public class InMemoryCacheManagerTests
         var policy = CacheRuntimePolicy.Empty("MethodSpan") with { Duration = TimeSpan.FromMinutes(1) };
         await manager.GetOrCreateFastAsync("Svc.Get:42", "MethodSpan", () => Task.FromResult("value"), policy);
 
-#if NET9_0_OR_GREATER
         MeasureHits(manager).Should().Be(0);
-#else
-        // .NET 8 has no span lookup on ConcurrentDictionary, so a hit allocates the key string and nothing else
-        MeasureHits(manager).Should().BeLessThanOrEqualTo(100 * 64);
-#endif
     }
 
     private static long MeasureHits(InMemoryCacheManager manager)

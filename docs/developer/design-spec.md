@@ -1,5 +1,7 @@
 # PR 0: Designspecifikation för MethodCache före 1.0
 
+> Beslut 2026-10-15: samtliga bibliotek och slutgater kräver .NET 10/SDK 10. Stöd för .NET 8 och 9 tas bort i en separat PR efter HTTP-steget. Frysta kontrakt-1-filer ändras inte.
+
 Revision 3, 2026-10-14. Historisk gransknings- och prestandabaslinje:
 f43854dbcd3646893f490e78a0a1d9651e9c4521. PR 1 startar från main efter att
 [PR 122](https://github.com/eoniclabs/MethodCache/pull/122) blivit grön och mergad; exakt start-SHA
@@ -117,7 +119,8 @@ PR 1 väljer en liten, begränsad stackbuffer utifrån fasta delar och kända ar
 en lång sträng eller oförutsedd provider-part växer säkert till heapen; ingen input bestämmer obegränsad
 stackalloc. Skrivning och hashning läser bara initialiserade tecken. Buffertstorleken får inte ändra
 nyckeltexten, escaping eller reservvägsvalet. Noll extra allokeringar krävs för motsvarande träffvägar;
-befintlig net8-fallback och reservnycklar jämförs mot sin egen baslinje.
+reservnycklar jämförs mot sin egen baslinje. Efter beslut 2026-10-15 stöds endast .NET 10;
+net8-fallbacken tas bort och äldre runtimekrav i tidigare kvitton är historiska.
 
 Publicering kontrollerar laddningens generation och invalidationsstatus under samma skydd som själva
 publiceringen. Att kontrollera generation före en separat skrivning är inte tillräckligt.
@@ -675,7 +678,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 
 | ID | Arrangera/agera | Krävt utfall |
 |---|---|---|
-| K01 | Samma parsercorpus i attribut/generator/analyzer/config: 30s, 1.5h, 1d, 1.00:00:00, fraktion, whitespace/case. | Samma ticks över net8/9/10, sv-SE/tr-TR; alla giltiga former accepterade. |
+| K01 | Samma parsercorpus i attribut/generator/analyzer/config: 30s, 1.5h, 1d, 1.00:00:00, fraktion, whitespace/case. | Samma ticks över net10.0, sv-SE/tr-TR; alla giltiga former accepterade. |
 | K02 | 30, 0s, -1h, 1m30s, 1,5h, exponent, overflow och positivt sub-tick-värde; analyzers av. | Generator/config ger named fel, aldrig tyst default; felaktig generatorinput producerar inget cachebeteende. |
 | K03 | Global FailSafe på; metodtext off och builder-zero; unset och retry/timeout=zero. | Off/zero stänger av för metoden; unset ärver; retry/timeout-zero nekas. |
 | K04 | Version utelämnad, explicit 0 och -1; Enabled/Distributed unset kontra false. | Frånvaro faller igenom; explicita giltiga värden respekteras; negativ Version nekas. |
@@ -717,7 +720,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 | F02 | Tvinga hashkollisioner via en intern testhook; skriv/hämta/ersätt/ta bort genom string-, span- och builder-vägar, inklusive konkurrerande publicering och eviction. | Bara identisk ordinal nyckel är en träff; alla vägar hittar samma post; borttagning och frekvensspårning fungerar trots kollisioner. |
 | F03 | Två processer med olika seed delar Redis/SQL; MethodCacheKeys.For, key/tag/clear-invalidation, admin och restart. Byt även policy under ett fångat anrop. | Nyckeltext och L2-identitet oförändrade; samma data delas och invalidieras; inget processhashvärde lagras/sänds och snapshot-isoleringen består. |
 | F04 | Granska algoritm/seed/hotmodell; kör algoritmens referensvektorer och dokumenterade adversariala kollisionsfall med långa gemensamma prefix och kontrollerad arbetsmätning. | Dokumenterat skydd mot avsiktlig hashflooding; regressioner mäts utan sleeps eller sköra nanosekundasserts. Slumpmässig fördelning ensam räknas inte som godkännande. |
-| F05 | Kör fryst PR 1-vendor-DLL mot prefixhash-Core utan regenerering; hela hit/miss-vägen på net8/9/10 och AOT, med korta/långa prefix och lyssnare av/på. | Samma kontrakt och cachebeteende; manifest oförändrat; full-path-resultat och allokeringar klarar §10, ingen funktion tas bort för vinsten. |
+| F05 | Kör fryst PR 1-vendor-DLL mot prefixhash-Core utan regenerering; hela hit/miss-vägen på net10.0 och AOT, med korta/långa prefix och lyssnare av/på. | Samma kontrakt och cachebeteende; manifest oförändrat; full-path-resultat och allokeringar klarar §10, ingen funktion tas bort för vinsten. |
 
 ### PR 6: HTTP och admin
 
@@ -742,7 +745,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 
 | ID | Verifiering | Krävt utfall |
 |---|---|---|
-| V01 | Alla normala tester net8/9/10, Windows och kulturjobb; riktiga Redis/SQL required. | Inga nya oförklarade skips; relevanta regressions/fault/property/soak-jobb gröna. |
+| V01 | Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required. | Inga nya oförklarade skips; relevanta regressions/fault/property/soak-jobb gröna. |
 | V02 | Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er. | Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer. |
 | V03 | mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; användar-README/package-README matchar nya API. | Ingen drift eller döda exempel; endast utgiven kontraktsyta fryses. |
 | V04 | §10 per förändring och hela baslinjen mot f43854d. | Reproducerbara resultat; ingen dold ackumulerad försämring eller extra hit-allokeringar. |

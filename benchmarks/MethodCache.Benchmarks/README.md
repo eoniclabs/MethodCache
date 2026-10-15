@@ -89,8 +89,7 @@ conclusions from small differences.
 
 ## Setup checks
 
-`tests/MethodCache.Benchmarks.Tests` compiles the benchmark sources and checks that their setup works, on .NET 8, 9
-and 10. Run it after changing a benchmark:
+`tests/MethodCache.Benchmarks.Tests` compiles the benchmark sources and checks that their setup works, on .NET 10. Run it after changing a benchmark:
 
 ```bash
 dotnet test tests/MethodCache.Benchmarks.Tests -c Release

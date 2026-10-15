@@ -28,7 +28,7 @@ builder.Services.AddMethodCache();
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments, including records and collections (`GetAsync:42`, `ByIdsAsync:[3:1:2:3]`; values of different types never share a key, nested ones included); your service stays plain code.
   Register services before `AddMethodCache`; missing registrations need explicit `AutoRegister(lifetime)` and an
   unambiguous generated module. Startup configuration uses `MethodCacheBuilder`.
-- **Fast.** A hit with simple arguments allocates nothing on .NET 9 and later, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache.
+- **Fast.** A hit with simple arguments allocates nothing on .NET 10, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache.
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
@@ -67,7 +67,7 @@ Misconfiguration fails when the generic host starts rather than on the first cal
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
-On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
+With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.
 
 Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
 

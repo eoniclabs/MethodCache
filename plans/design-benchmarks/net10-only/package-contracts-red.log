@@ -1,0 +1,43 @@
+test_different_exact_dependency_fails (test_package_contracts.PackageContractTests.test_different_exact_dependency_fails) ... ok
+test_extra_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_extra_older_runtime_asset_fails) ... FAIL
+test_matching_exact_bounds_pass (test_package_contracts.PackageContractTests.test_matching_exact_bounds_pass) ... ok
+test_minimum_only_dependency_fails (test_package_contracts.PackageContractTests.test_minimum_only_dependency_fails) ... ok
+test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) ... 
+  test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) (framework='net8.0') ... FAIL
+  test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) (framework='net9.0') ... FAIL
+
+======================================================================
+FAIL: test_extra_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_extra_older_runtime_asset_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/build/ci/tests/test_package_contracts.py", line 35, in test_extra_older_runtime_asset_fails
+    with self.assertRaisesRegex(AssertionError, "runtime frameworks"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: AssertionError not raised
+
+======================================================================
+FAIL: test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) (framework='net8.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/build/ci/tests/test_package_contracts.py", line 28, in test_older_runtime_asset_fails
+    with self.assertRaisesRegex(AssertionError, "runtime frameworks"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: AssertionError not raised
+
+======================================================================
+FAIL: test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) (framework='net9.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/build/ci/tests/test_package_contracts.py", line 28, in test_older_runtime_asset_fails
+    with self.assertRaisesRegex(AssertionError, "runtime frameworks"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: AssertionError not raised
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.010s
+
+FAILED (failures=3)
+All six integration packages require MethodCache [1.2.3].
+All six integration packages require MethodCache [1.2.3].
+All six integration packages require MethodCache [1.2.3].
+All six integration packages require MethodCache [1.2.3].

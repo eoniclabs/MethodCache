@@ -18,7 +18,7 @@ Bulk source reads are guarded against key, tag and clear invalidation; invalidat
 ## Adding caching to a service
 
 1. The `MethodCache` package contains the library, the source generator and the analyzers. Nothing else is needed
-   for in-memory caching.
+   for in-memory caching. All packages require .NET 10 and the .NET 10 SDK.
 2. Put `[Cache]` on the **interface** method, never on the class. Put `[CacheInvalidate(Tags = [...])]` on the
    interface methods that change the data. Don't change the implementation.
 3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them. Later cacheable
@@ -137,7 +137,7 @@ MethodCache is not on nuget.org yet. Until it is, reference the projects from th
 dotnet add package MethodCache
 ```
 
-The `MethodCache` package contains the library, the source generator and the analyzers. It supports .NET 8, 9 and 10.
+The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the .NET 10 SDK. The same minimum applies to every add-on package.
 
 ## 1. Start from a service
 
@@ -336,7 +336,7 @@ after the origin/local mutation; use async mutation methods for distributed inva
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
-On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
+With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.
 
 
 ---
@@ -388,7 +388,7 @@ public interface IUserService
 - `0.0` and `-0.0` are two keys in every key form (`1 / x` tells them apart). `NaN` and the infinities work anywhere,
   also inside a hashed argument, such as `double.PositiveInfinity` as a "no limit" value in a filter record.
 
-On .NET 9 and later the decorator writes simple keys into a stack buffer and looks them up without allocating.
+On .NET 10 the decorator writes simple keys into a stack buffer and looks them up without allocating.
 
 ## Types whose state is private
 
@@ -1164,7 +1164,7 @@ builder.Services.AddMethodCache();
 ```
 
 - The listed methods behave like methods with `[Cache]`: keys from the arguments, tag templates with the method's
-  parameter names, zero-allocation hits on .NET 9 and later. Methods you don't list always reach the client, so writes
+  parameter names, zero-allocation hits on .NET 10. Methods you don't list always reach the client, so writes
   are never cached by accident.
 - The attribute's settings (`Duration`, `Tags`, `Group`, `SlidingExpiration`, `RefreshAhead`, `Version`, `FailSafe`,
   `FailSafeTimeout`) apply to every listed method. Give one method its own settings like any cached method:
@@ -2472,6 +2472,8 @@ Migrate one service at a time; both caches can run side by side.
 
 # MethodCache.Redis
 
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
@@ -2560,6 +2562,8 @@ use that common bound. Use a new prefix to change it.
 <!-- source: src/MethodCache.SqlServer/README.md -->
 
 # MethodCache.SqlServer
+
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
@@ -2688,6 +2692,8 @@ versions fail fast; initialization never silently migrates existing tables.
 
 # MethodCache.AspNetCore
 
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
@@ -2754,6 +2760,8 @@ the distributed operation timeout. Error reports include exception types, never 
 <!-- source: src/MethodCache.OpenTelemetry/README.md -->
 
 # MethodCache.OpenTelemetry
+
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Package smoke tests promote NU1608 to a restore error.
@@ -2861,6 +2869,8 @@ MIT. See [LICENSE](https://github.com/eoniclabs/MethodCache/blob/main/LICENSE).
 <!-- source: src/MethodCache.HttpCaching/README.md -->
 
 # MethodCache.HttpCaching
+
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
@@ -3011,6 +3021,8 @@ Background HTTP revalidation preserves the request HTTP version, version policy 
 
 # MethodCache.Serialization.MessagePack
 
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
@@ -3070,6 +3082,9 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- **Breaking before 1.0:** all runtime packages now require .NET 10 and the .NET 10 SDK. Remove .NET 8/9 targets,
+  their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Frozen generated-contract fixtures remain unchanged.
 
 ### Core telemetry and attribute diagnostics
 

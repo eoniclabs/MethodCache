@@ -72,7 +72,7 @@ def main():
     index = [
         "# MethodCache",
         "",
-        "> " + tagline + " A .NET library (net8.0, net9.0, net10.0): a source generator turns `[Cache]` on interface "
+        "> " + tagline + " A .NET 10 library: a source generator turns `[Cache]` on interface "
         "methods into caching decorators at compile time, with keys built from the arguments, tag invalidation, "
         "a memory cache plus optional Redis or SQL Server, and policies you can change in appsettings.json or at runtime.",
         "",

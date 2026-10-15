@@ -27,9 +27,10 @@ Microsoft.Extensions.Caching.Hybrid 9.9.0, ZiggyCreatures.FusionCache 2.0.0
 
 This is a shared cloud VM, so treat the numbers as about ±10 %, and run the benchmark on your own hardware before
 relying on them. A MethodCache hit writes the cache key (method name and arguments) into a stack buffer, looks it up
-without making a string, and returns the completed `Task` it stored, so it allocates nothing. That holds on .NET 9 and
-later when every argument is a simple value (numbers, strings, enums, `Guid`, dates and their nullable forms). On
-.NET 8, and for record or DTO arguments, the key is a string, allocated on every hit.
+without making a string, and returns the completed `Task` it stored, so it allocates nothing. On the supported .NET 10
+runtime this applies when every argument is a simple value (numbers, strings, enums, `Guid`, dates and their nullable
+forms). Record or DTO arguments use a string key, allocated on every hit. The table above records the dated build;
+new design-series measurements are verified separately before replacing those results.
 
 The class also has miss benchmarks (a new key on every call). They grow every cache without bound during the run, so
 they measure the GC more than the libraries and are not quoted here.

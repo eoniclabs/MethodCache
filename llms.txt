@@ -1,6 +1,6 @@
 # MethodCache
 
-> Cache any .NET method with one attribute. A .NET library (net8.0, net9.0, net10.0): a source generator turns `[Cache]` on interface methods into caching decorators at compile time, with keys built from the arguments, tag invalidation, a memory cache plus optional Redis or SQL Server, and policies you can change in appsettings.json or at runtime.
+> Cache any .NET method with one attribute. A .NET 10 library: a source generator turns `[Cache]` on interface methods into caching decorators at compile time, with keys built from the arguments, tag invalidation, a memory cache plus optional Redis or SQL Server, and policies you can change in appsettings.json or at runtime.
 
 Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), register services, then call `builder.Services.AddMethodCache()` after them. Every C# example in these docs is compiled in CI. For coding agents, [docs/ai/methodcache.md](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/ai/methodcache.md) is a compact rule set and [llms-full.txt](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/llms-full.txt) has all the docs in one file.
 
@@ -27,12 +27,12 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Troubleshooting](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/troubleshooting.md): a method that isn't cached, stale data, keys you didn't expect.
 - [Build diagnostics](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/user-guide/DIAGNOSTICS.md): every `MC` warning and error.
 - [Migrating from IMemoryCache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/migration-from-imemorycache.md): replace hand-written cache-aside code.
-- [MethodCache.Redis](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Redis/README.md): Install this package and `MethodCache` at the exact same version.
-- [MethodCache.SqlServer](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.SqlServer/README.md): Install this package and `MethodCache` at the exact same version.
-- [MethodCache.AspNetCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.AspNetCore/README.md): Install this package and `MethodCache` at the exact same version.
-- [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): Install this package and `MethodCache` at the exact same version.
-- [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): Install this package and `MethodCache` at the exact same version.
-- [MethodCache.Serialization.MessagePack](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Serialization.MessagePack/README.md): Install this package and `MethodCache` at the exact same version.
+- [MethodCache.Redis](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Redis/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+- [MethodCache.SqlServer](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.SqlServer/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+- [MethodCache.AspNetCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.AspNetCore/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+- [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+- [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+- [MethodCache.Serialization.MessagePack](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Serialization.MessagePack/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 - [Changelog](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/CHANGELOG.md): Changes that a user of the packages notices.
 - [Distributed contract 1](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/developer/distributed-wire-v1.md): provider framing, entry formats, permanent epochs and schema migration.
 
