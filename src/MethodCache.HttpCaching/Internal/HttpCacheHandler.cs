@@ -35,6 +35,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         _logger = logger;
         _metrics = metrics;
         _keyName = state.Name;
+        _clientIdentity = HttpCacheKeys.ClientIdentity(_keyName);
     }
 
     /// <summary>
@@ -46,9 +47,12 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         if (_state.Name.Length == 0)
         {
             _keyName = clientName;
+            _clientIdentity = HttpCacheKeys.ClientIdentity(clientName);
             _state = state;
         }
     }
+
+    private string _clientIdentity;
 
     internal string ClientName => _keyName;
 
@@ -133,7 +137,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
 
         var freshness = new FreshnessCalculator(options, _timeProvider);
-        var urlKey = HttpCacheKeys.ForRequest(_keyName, request);
+        var urlKey = HttpCacheKeys.ForRequestWithIdentity(_clientIdentity, request);
         var generation = await storage.GetGenerationAsync(urlKey, cancellationToken).ConfigureAwait(false);
         if (generation.StartsWith("unavailable:", StringComparison.Ordinal))
         {

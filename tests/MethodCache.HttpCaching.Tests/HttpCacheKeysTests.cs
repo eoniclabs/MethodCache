@@ -1,4 +1,7 @@
 using System.Net.Http.Headers;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using System.Text;
 using MethodCache.HttpCaching.Internal;
 using Xunit;
 
@@ -26,6 +29,25 @@ public class HttpCacheKeysTests
     public void UriTarget_RetainsItsFrozenEncoding_WhenHeaderFramingChanges()
     {
         Assert.Equal("D567348E39536CD7EA18F8D42522E6E9D1A2E9C6012DD7631F50B792FB475655:M7L6sA55szvnlkwqPQsgxuvRO/0ltkY3OZ+gNQIPscs=:m:GET", HttpCacheKeys.ForUri("api", HttpMethod.Get, new Uri("https://example.test/a?x=1")));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(400)]
+    [InlineData(500)]
+    [InlineData(600)]
+    [InlineData(4096)]
+    public void UriFrame_StackAndPooledPathsMatchTheFrozenIncrementalEncoding(int queryLength)
+    {
+        var uri = new Uri("https://example.test/å?query=" + new string('x', queryLength));
+        var address = uri.GetComponents(UriComponents.HttpRequestUrl | UriComponents.UserInfo, UriFormat.UriEscaped);
+        using var reference = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var bytes = Encoding.UTF8.GetBytes(address);
+        Span<byte> length = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(length, bytes.Length);
+        reference.AppendData(length); reference.AppendData(bytes);
+        var client = Convert.ToHexString(SHA256.HashData(Encoding.Unicode.GetBytes("api")));
+        Assert.Equal(client + ":" + Convert.ToBase64String(reference.GetHashAndReset()) + ":m:GET", HttpCacheKeys.ForUri("api", HttpMethod.Get, uri));
     }
 
     [Fact]

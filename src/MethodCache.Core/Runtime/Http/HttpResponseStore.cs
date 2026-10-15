@@ -39,10 +39,13 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     internal long MaximumBytes { get; }
     internal bool Distributed => _distributed != null;
     internal int PendingRecoveries => _pending.Count(pair => pair.Value.Queued);
-    private sealed record LocalEpoch(CacheEpoch Value)
+    private sealed class LocalEpoch(CacheEpoch value)
     {
+        internal CacheEpoch Value { get; } = value;
+        internal LocalVector? LastVector;
         internal static LocalEpoch Fresh() => new(new CacheEpoch(Guid.NewGuid(), 0));
     }
+    private sealed record LocalVector(LocalEpoch Clear, string[] Tags, LocalEpoch[] TagEpochs, string Identity);
     private sealed record PendingEpoch(long Ticket, bool Queued);
 
     internal HttpResponseStore(IOptions<MethodCacheMemoryOptions> options, CoreTelemetry telemetry,
@@ -82,32 +85,57 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return keys;
     }
 
-    internal async ValueTask<string?> CaptureAsync(string urlTarget, string[] tags, CancellationToken token)
+    internal ValueTask<string?> CaptureAsync(string urlTarget, string[] tags, CancellationToken token)
+        => CaptureSlotAsync(Slot(urlTarget), tags, token);
+
+    internal ValueTask<string?> CaptureSlotAsync(int slot, string[] tags, CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         token.ThrowIfCancellationRequested();
-        var slot = Slot(urlTarget);
-        // A locally unconfirmed mutation never selects a previously stored response on this node.
-        if (!_pending.IsEmpty) return null;
+        if (_distributed == null) return new(CaptureLocal(slot, tags));
+        // Native mode always reads fresh shared epochs; it never uses a local vector or epoch copy.
+        if (!_pending.IsEmpty) return new((string?)null);
+        return CaptureDistributedAsync(slot, tags, token);
+    }
+
+    private async ValueTask<string?> CaptureDistributedAsync(int slot, string[] tags, CancellationToken token)
+    {
         var addresses = EpochAddresses(slot, tags);
-        CacheEpoch[]? epochs;
-        if (_distributed != null)
-            epochs = await _distributed.CaptureHttpEpochsAsync(addresses, token).ConfigureAwait(false);
-        else
+        var epochs = await _distributed!.CaptureHttpEpochsAsync(addresses, token).ConfigureAwait(false);
+        return epochs == null || epochs.Length != addresses.Length ? null : VectorIdentity(addresses, epochs);
+    }
+
+    private string CaptureLocal(int slot, string[] tags)
+    {
+        var current = Volatile.Read(ref _slots![slot]);
+        if (current == null)
         {
-            var current = Volatile.Read(ref _slots![slot]);
-            if (current == null)
-            {
-                var fresh = LocalEpoch.Fresh();
-                current = Interlocked.CompareExchange(ref _slots[slot], fresh, null) ?? fresh;
-            }
-            epochs = new CacheEpoch[addresses.Length];
-            epochs[0] = Volatile.Read(ref _clear).Value;
-            epochs[1] = current.Value;
-            for (var i = 0; i < tags.Length; i++) epochs[i + 2] = _tagEpochs!.GetOrAdd(tags[i], static _ => LocalEpoch.Fresh()).Value;
+            var fresh = LocalEpoch.Fresh();
+            current = Interlocked.CompareExchange(ref _slots[slot], fresh, null) ?? fresh;
         }
-        if (epochs == null || epochs.Length != addresses.Length) return null;
-        return VectorIdentity(addresses, epochs);
+        var clear = Volatile.Read(ref _clear);
+        var previous = Volatile.Read(ref current.LastVector);
+        if (previous != null && ReferenceEquals(previous.Clear, clear) && ReferenceEquals(previous.Tags, tags))
+        {
+            var unchanged = true;
+            for (var i = 0; i < tags.Length; i++)
+                if (!_tagEpochs!.TryGetValue(tags[i], out var epoch) || !ReferenceEquals(epoch, previous.TagEpochs[i]))
+                { unchanged = false; break; }
+            if (unchanged) return previous.Identity;
+        }
+        var epochs = new CacheEpoch[tags.Length + 2];
+        var tagEpochs = new LocalEpoch[tags.Length];
+        epochs[0] = clear.Value; epochs[1] = current.Value;
+        for (var i = 0; i < tags.Length; i++)
+        {
+            tagEpochs[i] = _tagEpochs!.GetOrAdd(tags[i], static _ => LocalEpoch.Fresh());
+            epochs[i + 2] = tagEpochs[i].Value;
+        }
+        var identity = VectorIdentity(EpochAddresses(slot, tags), epochs);
+        // One immutable cached vector per permanent slot, at most 4096. Alternating tag sets recompute
+        // the same deterministic identity; they never invent a new generation or affect cache selection.
+        Volatile.Write(ref current.LastVector, new LocalVector(clear, tags, tagEpochs, identity));
+        return identity;
     }
 
     private static string VectorIdentity(string[] addresses, CacheEpoch[] epochs)
@@ -360,7 +388,8 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private static string UrlTag(string target) => "\0http-url:" + target;
     private static string ApplicationTag(string tag) => "\0http-tag:" + Convert.ToBase64String(LosslessUtf16.GetBytes(tag));
     private static string[] IndexTags(HttpStorageInfo info) => info.Tags.Select(ApplicationTag).Append(UrlTag(info.UrlTarget)).ToArray();
-    internal static int Slot(string target)
+    internal static int Slot(string target) => Slot(target.AsSpan());
+    internal static int Slot(ReadOnlySpan<char> target)
     {
         var hash = 2166136261u;
         foreach (var character in target) hash = unchecked((hash ^ character) * 16777619u);
