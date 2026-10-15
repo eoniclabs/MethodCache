@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using MethodCache;
 using MethodCache.Extensibility;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
@@ -53,12 +54,11 @@ namespace Monitoring
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(Source, "MonitoringApp");
         var assembly = testAssembly.Assembly;
 
-        var metrics = new CountingMetricsProvider();
         var services = new ServiceCollection();
-        services.AddSingleton<ICacheMetricsProvider>(metrics);
         assembly.GetType("Monitoring.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
 
         await using var provider = services.BuildServiceProvider();
+        using var metrics = new CountingMetrics(provider.GetRequiredService<IMeterFactory>());
         var interfaceType = assembly.GetType("Monitoring.IUserService")!;
         var service = provider.GetRequiredService(interfaceType);
         var getUser = interfaceType.GetMethod("GetUserAsync")!;
@@ -73,11 +73,11 @@ namespace Monitoring
         Assert.All(metrics.Latencies, elapsed => Assert.True(elapsed >= TimeSpan.Zero));
 
         var stats = await provider.GetRequiredService<ICacheAdministrator>().GetStatsAsync();
-        Assert.Equal(2, stats.Entries);
+        Assert.Equal(2, stats.LocalMethodEntries);
     }
 
     [Fact]
-    public async Task MethodInheritedFromAGenericBase_IsReportedByTheClosedBaseType()
+    public async Task MethodInheritedFromAGenericBase_UsesItsDeclaredPolicyMethodId()
     {
         const string source = @"
 using System.Threading.Tasks;
@@ -106,11 +106,10 @@ namespace Monitoring
 }";
         var assembly = (await _engine.CompileWithSourceGeneratorAsync(source, "MonitoringGenericBaseNames")).Assembly;
 
-        var metrics = new CountingMetricsProvider();
         var services = new ServiceCollection();
-        services.AddSingleton<ICacheMetricsProvider>(metrics);
         assembly.GetType("Monitoring.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
         await using var provider = services.BuildServiceProvider();
+        using var metrics = new CountingMetrics(provider.GetRequiredService<IMeterFactory>());
 
         foreach (var (name, entity) in new[] { ("Monitoring.IUserRepo", "Monitoring.User"), ("Monitoring.IOrderRepo", "Monitoring.Order") })
         {
@@ -120,7 +119,7 @@ namespace Monitoring
             await (Task<string>)get.Invoke(service, new object[] { 1 })!; // hit
         }
 
-        Assert.Equal(new[] { "IRepository<Order>.GetAsync", "IRepository<User>.GetAsync" }, metrics.Names.Distinct().Order());
+        Assert.Equal(new[] { "Monitoring.IRepository<T>.GetAsync" }, metrics.Names.Distinct().Order());
     }
 
     [Fact]
@@ -150,11 +149,10 @@ namespace Monitoring
 }";
         var assembly = (await _engine.CompileWithSourceGeneratorAsync(source, "MonitoringMethodNames")).Assembly;
 
-        var metrics = new CountingMetricsProvider();
         var services = new ServiceCollection();
-        services.AddSingleton<ICacheMetricsProvider>(metrics);
         assembly.GetType("Monitoring.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
         await using var provider = services.BuildServiceProvider();
+        using var metrics = new CountingMetrics(provider.GetRequiredService<IMeterFactory>());
 
         foreach (var name in new[] { "Monitoring.IUserService", "Monitoring.IOrderService" })
         {
@@ -169,35 +167,40 @@ namespace Monitoring
         Assert.Equal(new[] { "Monitoring.IOrderService.GetAsync", "Monitoring.IUserService.GetAsync" }, metrics.Names.Distinct().Order());
     }
 
-    private sealed class CountingMetricsProvider : ICacheMetricsProvider
+    private sealed class CountingMetrics : IDisposable
     {
+        private readonly MeterListener _listener;
         private int _hits;
         private int _misses;
-
         public int Hits => _hits;
-
         public int Misses => _misses;
-
         public ConcurrentBag<TimeSpan> Latencies { get; } = new();
-
         public ConcurrentBag<string> Names { get; } = new();
-
-        public void CacheHit(string methodName)
+        internal CountingMetrics(IMeterFactory factory)
         {
-            Names.Add(methodName);
-            Interlocked.Increment(ref _hits);
+            _listener = new MeterListener
+            {
+                InstrumentPublished = (instrument, listener) =>
+                {
+                    if (ReferenceEquals(instrument.Meter.Scope, factory)) listener.EnableMeasurementEvents(instrument);
+                }
+            };
+            _listener.SetMeasurementEventCallback<long>((instrument, _, tags, _) =>
+            {
+                if (instrument.Name != "methodcache.requests") return;
+                foreach (var tag in tags)
+                {
+                    if (tag.Key == "name") Names.Add((string)tag.Value!);
+                    if (tag.Key == "result" && Equals(tag.Value, "hit")) Interlocked.Increment(ref _hits);
+                    if (tag.Key == "result" && Equals(tag.Value, "miss")) Interlocked.Increment(ref _misses);
+                }
+            });
+            _listener.SetMeasurementEventCallback<double>((instrument, value, _, _) =>
+            {
+                if (instrument.Name == "methodcache.load.duration") Latencies.Add(TimeSpan.FromSeconds(value));
+            });
+            _listener.Start();
         }
-
-        public void CacheMiss(string methodName)
-        {
-            Names.Add(methodName);
-            Interlocked.Increment(ref _misses);
-        }
-
-        public void CacheError(string methodName, string errorMessage)
-        {
-        }
-
-        public void CacheLatency(string methodName, TimeSpan elapsed) => Latencies.Add(elapsed);
+        public void Dispose() => _listener.Dispose();
     }
 }

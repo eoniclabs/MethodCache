@@ -17,7 +17,7 @@ public class InvalidationResultTests
         var backplane = new FailedPublication();
         await using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(),
             new DistributedCacheOptions { ClockSkewTolerance = TimeSpan.Zero }, backplane, time);
-        using var memory = new InMemoryCacheManager(new NullCacheMetricsProvider(), null, time, layer);
+        using var memory = new InMemoryCacheManager(null, time, layer);
         ICacheManager cache = memory;
         var result = await cache.InvalidateTagsAsync(["good", "bad", "third", "good"]);
         Assert.Equal(3, result.Requested);
@@ -44,7 +44,7 @@ public class InvalidationResultTests
         var backend = new ChaosDistributedCache(store, time).Inject(ChaosOperations.Remove,
             ChaosFault.Throw() with { Times = 1 });
         await using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions(), timeProvider: time);
-        using var memory = new InMemoryCacheManager(new NullCacheMetricsProvider(), null, time, layer);
+        using var memory = new InMemoryCacheManager(null, time, layer);
         var result = await ((ICacheManager)memory).InvalidateKeysAsync(["key"]);
         Assert.Equal(1, result.Distributed);
         Assert.Equal(0, result.Queued);
@@ -55,7 +55,7 @@ public class InvalidationResultTests
     [Fact]
     public async Task InvalidBatch_AndCancellationBeforeMutation_LeaveAllValuesUntouched()
     {
-        using var memory = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        using var memory = new InMemoryCacheManager();
         ICacheManager cache = memory;
         await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
         await Assert.ThrowsAsync<ArgumentException>(async () => await cache.InvalidateKeysAsync(["key", " "]));
@@ -75,7 +75,7 @@ public class InvalidationResultTests
         var time = new FakeTimeProvider();
         var backend = new HeldStampStore();
         await using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions(), timeProvider: time);
-        using var memory = new InMemoryCacheManager(new NullCacheMetricsProvider(), null, time, layer);
+        using var memory = new InMemoryCacheManager(null, time, layer);
         ICacheManager cache = memory;
         await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
         using var cancellation = new CancellationTokenSource();

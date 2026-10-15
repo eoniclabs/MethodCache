@@ -1,3 +1,4 @@
+using MethodCache.Core.Telemetry;
 using MethodCache.Infrastructure;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -56,6 +57,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly IAtomicInvalidationStore _stampStore;
         private readonly IBufferDistributedCache? _bufferCache;
         private readonly ISerializer _serializer;
+        private readonly CoreTelemetry? _telemetry;
         private readonly IDistributedEpochStore? _epochStore;
         private readonly string _scopeKey;
         private long _retentionMilliseconds;
@@ -145,8 +147,9 @@ namespace MethodCache.Core.Runtime.Distributed
             DistributedCacheOptions options,
             IBackplane? backplane = null,
             TimeProvider? timeProvider = null,
-            ILogger? logger = null, byte entryVersion = FormatVersion)
+            ILogger? logger = null, byte entryVersion = FormatVersion, CoreTelemetry? telemetry = null)
         {
+            _telemetry = telemetry;
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _stampStore = cache as IAtomicInvalidationStore ?? throw new ArgumentException(
                 DistributedCacheStoreValidation.NotAtomicMessage(cache.GetType()), nameof(cache));
@@ -179,12 +182,16 @@ namespace MethodCache.Core.Runtime.Distributed
             _tagRetention = options.TagRetention;
             _timeout = options.OperationTimeout;
             _breakDuration = options.CircuitBreakerDuration;
+            _telemetry?.ObserveRecovery(GetInvalidationQueues);
         }
 
         /// <summary>Wall-clock time in Unix milliseconds, comparable across nodes.</summary>
         public long Now => _time.GetUtcNow().ToUnixTimeMilliseconds();
 
-        /// <summary>False while the breaker is open or invalidations wait to be stored, so only memory is used.</summary>
+        /// <summary>Subscription state, independently of distributed storage availability.</summary>
+        internal BackplaneState BackplaneStatus => _backplane?.ConnectionState ?? BackplaneState.NotConfigured;
+
+        /// <summary>False while the breaker is open or invalidations wait to be stored.</summary>
         internal bool IsAvailable => Volatile.Read(ref _openUntil) == 0 && !_hasPending;
 
         /// <summary>
@@ -199,6 +206,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return false;
             }
 
+            if (!await EnsureScopeAsync(probe, cancellationToken).ConfigureAwait(false)) return false;
             // A cancelled check stops waiting; the probe itself still finishes within the timeout and frees the breaker
             var answered = await TryRunAsync(ReadRemovalAsync, HealthCheckKey, "answer a health check", probe)
                 .WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -413,7 +421,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     // doesn't read back, rather than on every write.
                     if (_roundTrips.TryAdd(RoundTripKey(methodName, value), false))
                     {
-                        _logger.LogWarning(ex, "MethodCache could not serialize a value of type {Type} from {Method} for the distributed cache; its values of this type are cached in memory only.", value.GetType(), methodName ?? "SetAsync");
+                        _logger.LogWarning("MethodCache could not serialize a value of type {Type} from {Method} for the distributed cache; its values of this type are cached in memory only. Error type: {ErrorType}.", value.GetType(), methodName ?? "SetAsync", ex.GetType().FullName);
                     }
 
                     _onError?.Invoke(ex);
@@ -675,6 +683,7 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             var count = keys.Length + tags.Length;
             if (count == 0) return new InvalidationResult();
+            using var activity = InvalidationActivity(keys, tags);
             BeginWrite();
             try
             {
@@ -707,6 +716,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return;
             }
 
+            using var activity = InvalidationActivity(keys, tags);
             // Like a write, waited for at shutdown, so what the cache refuses is flushed with the queue (a removal
             // after a late write, say, that started just before shutdown)
             BeginWrite();
@@ -772,7 +782,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 // Stamps first: a load that writes its value after this checks the removal stamp and takes it out again
                 var stamped = await Task.WhenAll(batch.Select(item => item.IsTag
                         ? TryRunAsync(StoreStampAsync, (_tagPrefix + item.Value, now, _tagRetention), "invalidate a tag", probe)
-                        : TryRunAsync(StoreStampAsync, (_removalPrefix + item.Value, now, _tagRetention), "remove a key", probe)))
+                        : TryRunAsync(StoreStampAsync, (_removalPrefix + item.Value, now, _tagRetention), "invalidate a key", probe)))
                     .ConfigureAwait(false);
                 var removed = await Task.WhenAll(batch.Select((item, i) => item.IsTag || !stamped[i].Succeeded
                         ? Task.FromResult(stamped[i])
@@ -782,6 +792,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 var stored = new List<(bool IsTag, string Value)>(batch.Count);
                 for (var i = 0; i < batch.Count; i++)
                 {
+                    if (stamped[i].Succeeded) _telemetry?.Invalidations(InvalidationType(batch[i]), "distributed", 1);
                     if (acknowledgeMetadata ? stamped[i].Succeeded : removed[i].Succeeded)
                     {
                         stored.Add(batch[i]);
@@ -940,7 +951,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "MethodCache could not finish unsubscribing from its backplane.");
+                _logger.LogWarning("MethodCache could not finish unsubscribing from its backplane. Error type: {ErrorType}.", ex.GetType().FullName);
             }
         }
 
@@ -1132,6 +1143,21 @@ namespace MethodCache.Core.Runtime.Distributed
                 stamp);
         }
 
+        private static string TransportOperation(string description)
+            => description.StartsWith("invalidate", StringComparison.Ordinal) || description.Contains("retention", StringComparison.Ordinal) ? "invalidate"
+                : description.StartsWith("remove", StringComparison.Ordinal) ? "remove" : description == "write" ? "set" : "get";
+
+        private static string InvalidationType((bool IsTag, string Value) target)
+            => !target.IsTag ? "key" : target.Value.StartsWith("\0method:", StringComparison.Ordinal) ? "method" : "tag";
+
+        private System.Diagnostics.Activity? InvalidationActivity(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags)
+        {
+            if (_telemetry?.Source.HasListeners() != true) return null;
+            var type = keys.Count > 0 ? "key" : tags.Any(tag => InvalidationType((true, tag)) == "method") ? "method" : "tag";
+            var applicationTags = tags.Where(tag => tag != ClearTag && InvalidationType((true, tag)) == "tag").Select(ApplicationTag).ToArray();
+            return _telemetry.BeginInvalidation(type, keys.ToArray(), applicationTags);
+        }
+
         // ---------- circuit breaker ----------
 
         /// <summary>
@@ -1177,6 +1203,7 @@ namespace MethodCache.Core.Runtime.Distributed
             CancellationToken cancellationToken = default,
             bool tripOnTimeout = true)
         {
+            using var observed = _telemetry?.BeginDistributed(TransportOperation(description));
             try
             {
                 using var timeout = new CancellationTokenSource(_timeout, _time);
@@ -1196,25 +1223,29 @@ namespace MethodCache.Core.Runtime.Distributed
 
                 return (true, result, false);
             }
-            catch (IncompatibleDistributedScopeException)
+            catch (IncompatibleDistributedScopeException error)
             {
+                observed?.Fail(error);
                 ReleaseProbe(probe);
                 throw; // Invalid settings/schema must not silently behave like an available compatible scope.
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException error) when (cancellationToken.IsCancellationRequested)
             {
+                observed?.Fail(error);
                 // A caller leaving says nothing about backend health. Free a half-open probe for the next reader.
                 ReleaseProbe(probe);
                 throw;
             }
             catch (Exception ex) when (!tripOnTimeout && ex is TimeoutException or OperationCanceledException)
             {
+                observed?.Fail(ex);
                 ReleaseProbe(probe);
                 _onError?.Invoke(ex);
                 return (false, default!, true);
             }
             catch (Exception ex)
             {
+                observed?.Fail(ex);
                 Trip(ex, description);
                 return (false, default!, false);
             }
@@ -1245,7 +1276,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             if (wasClosed)
             {
-                _logger.LogWarning(exception, "The distributed cache failed to {Operation}; MethodCache uses only its in-memory cache for the next {Duration}.", operation, _breakDuration);
+                _logger.LogWarning("The distributed cache failed to {Operation}; MethodCache uses only its in-memory cache for the next {Duration}. Error type: {ErrorType}.", operation, _breakDuration, exception.GetType().FullName);
             }
 
             _onError?.Invoke(exception);
@@ -1272,6 +1303,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private void Queue(IEnumerable<string> keys, IEnumerable<string> tags)
         {
+            _telemetry?.Invalidations("key", "queued", keys.Count());
+            foreach (var tag in tags) _telemetry?.Invalidations(InvalidationType((true, tag)), "queued", 1);
             lock (_pendingLock)
             {
                 // Also while shutting down: shutdown flushes the queue (AddPending counts what comes after as lost)
@@ -1450,17 +1483,22 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- backplane ----------
 
-        private Task<bool> PublishTargetAsync((bool IsTag, string Value) item)
-            => item.IsTag && item.Value == ClearTag
+        private async Task<bool> PublishTargetAsync((bool IsTag, string Value) item)
+        {
+            var published = await (item.IsTag && item.Value == ClearTag
                 ? PublishAsync(static (backplane, _, ct) => backplane.PublishClearAsync(ct), string.Empty)
                 : item.IsTag && item.Value.StartsWith("\0method:", StringComparison.Ordinal) && LosslessWireText.TryDecode(item.Value.Substring(8), out var method)
                 ? PublishAsync(static (backplane, id, ct) => backplane.PublishMethodInvalidationAsync(id, ct), method)
                 : item.IsTag
                 ? PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), ApplicationTag(item.Value))
-                : PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), item.Value);
+                : PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), item.Value)).ConfigureAwait(false);
+            if (published && _backplane != null) _telemetry?.Invalidations(InvalidationType(item), "published", 1);
+            return published;
+        }
 
         private void QueuePublication((bool IsTag, string Value) target)
         {
+            _telemetry?.Invalidations(InvalidationType(target), "publication_queued", 1);
             lock (_pendingLock)
             {
                 if (_pendingPublications.Count >= MaxQueuedInvalidations)
@@ -1507,6 +1545,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return false;
             }
 
+            using var observed = _telemetry?.BeginDistributed("invalidate");
             try
             {
                 using var timeout = new CancellationTokenSource(_timeout, _time);
@@ -1515,6 +1554,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
             catch (Exception ex)
             {
+                observed?.Fail(ex);
                 // Other nodes' memory catches up when their entries expire; the distributed cache is already right
                 _onError?.Invoke(ex);
                 return false;

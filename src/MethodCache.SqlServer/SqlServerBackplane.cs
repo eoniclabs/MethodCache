@@ -42,6 +42,9 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     private readonly SqlServerOptions _options;
     private readonly ILogger _logger;
     private int _rejectedWarning;
+    private int _connectionState = (int)BackplaneState.Connecting;
+    /// <inheritdoc />
+    public BackplaneState ConnectionState => (BackplaneState)Volatile.Read(ref _connectionState);
     private readonly byte[] _scope;
     private readonly TimeProvider _timeProvider;
     private readonly List<GapRange> _gaps = new();
@@ -97,6 +100,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             throw new InvalidOperationException("The backplane already has a subscriber.");
         }
 
+        Volatile.Write(ref _connectionState, (int)BackplaneState.Connecting);
         _subscribedAt = _timeProvider.GetTimestamp();
         _polling = new CancellationTokenSource();
         _loop = PollAsync(onMessage, _polling.Token);
@@ -106,6 +110,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     /// <inheritdoc />
     public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
     {
+        Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
         var polling = Interlocked.Exchange(ref _polling, null);
         if (polling == null)
         {
@@ -135,6 +140,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     public void Dispose()
     {
         // Stops polling without waiting for a poll in progress to finish
+        Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
         var polling = Interlocked.Exchange(ref _polling, null);
         if (polling != null)
         {
@@ -198,7 +204,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
                 if (!_failing)
                 {
                     _failing = true;
-                    _logger.LogWarning(ex, "The MethodCache backplane could not read invalidations from SQL Server; retrying every {Interval}.", _options.BackplanePollingInterval);
+                    _logger.LogWarning("The MethodCache backplane could not read invalidations from SQL Server; retrying every {Interval}. Error type: {ErrorType}.", _options.BackplanePollingInterval, ex.GetType().FullName);
                 }
             }
         }
@@ -206,51 +212,61 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
 
     internal async Task PollOnceAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken)
     {
-        var now = _timeProvider.GetUtcNow().UtcDateTime;
-        if (_lastId == null || now - _lastPolled >= _options.BackplaneRetention / 2)
+        var answered = true;
+        try
         {
-            // First poll: start from the invalidations written before this instance subscribed, with a margin, since
-            // it may have cached values since then. After a longer outage, rows this instance never read may
-            // already be deleted, so it drops everything it holds in memory and starts from now.
-            var outage = _lastId != null;
-            var age = outage ? TimeSpan.Zero : _timeProvider.GetElapsedTime(_subscribedAt) + FirstPollMargin;
-            var lastId = await ReadLastIdAsync(age, cancellationToken).ConfigureAwait(false);
-            if (outage)
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            if (_lastId == null || now - _lastPolled >= _options.BackplaneRetention / 2)
             {
-                await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+                // First poll: start from the invalidations written before this instance subscribed, with a margin, since
+                // it may have cached values since then. After a longer outage, rows this instance never read may
+                // already be deleted, so it drops everything it holds in memory and starts from now.
+                var outage = _lastId != null;
+                var age = outage ? TimeSpan.Zero : _timeProvider.GetElapsedTime(_subscribedAt) + FirstPollMargin;
+                var lastId = await ReadLastIdAsync(age, cancellationToken).ConfigureAwait(false);
+                if (outage)
+                {
+                    await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+                }
+
+                // A failed recovery clear must be attempted again; none of its state is acknowledged beforehand.
+                _lastId = lastId;
+                _gaps.Clear();
+                _pendingBatch = null;
+                _lastPolled = now;
+                return;
             }
 
-            // A failed recovery clear must be attempted again; none of its state is acknowledged beforehand.
-            _lastId = lastId;
-            _gaps.Clear();
-            _pendingBatch = null;
+            for (var batch = 0; batch < MaxBatchesPerPoll; batch++)
+            {
+                var pending = _pendingBatch ??= await ReadAsync(now, cancellationToken).ConfigureAwait(false);
+                while (pending.DeliveredCount < pending.Messages.Count)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await DeliverAsync(onMessage, pending, cancellationToken).ConfigureAwait(false);
+                    pending.DeliveredCount++;
+                    pending.FailedAttempts = 0;
+                }
+
+                _lastId = pending.LastId;
+                _gaps.Clear();
+                _gaps.AddRange(pending.Gaps);
+                _pendingBatch = null;
+                if (pending.NewRows < BatchSize)
+                {
+                    break;
+                }
+            }
+
             _lastPolled = now;
-            return;
+            await CleanupAsync(now, cancellationToken).ConfigureAwait(false);
         }
-
-        for (var batch = 0; batch < MaxBatchesPerPoll; batch++)
+        catch { answered = false; throw; }
+        finally
         {
-            var pending = _pendingBatch ??= await ReadAsync(now, cancellationToken).ConfigureAwait(false);
-            while (pending.DeliveredCount < pending.Messages.Count)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await DeliverAsync(onMessage, pending, cancellationToken).ConfigureAwait(false);
-                pending.DeliveredCount++;
-                pending.FailedAttempts = 0;
-            }
-
-            _lastId = pending.LastId;
-            _gaps.Clear();
-            _gaps.AddRange(pending.Gaps);
-            _pendingBatch = null;
-            if (pending.NewRows < BatchSize)
-            {
-                break;
-            }
+            Volatile.Write(ref _connectionState, (int)(answered && !cancellationToken.IsCancellationRequested
+                ? BackplaneState.Connected : BackplaneState.Disconnected));
         }
-
-        _lastPolled = now;
-        await CleanupAsync(now, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -274,7 +290,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "The MethodCache backplane could not apply a {Type} invalidation after {Attempts} attempts; it clears this instance's in-memory cache instead.", message.Type, MaxDeliveryAttempts);
+                _logger.LogWarning("The MethodCache backplane could not apply a {Type} invalidation after {Attempts} attempts; it clears this instance's in-memory cache instead. Error type: {ErrorType}.", message.Type, MaxDeliveryAttempts, ex.GetType().FullName);
             }
         }
 
@@ -423,7 +439,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         catch (SqlException ex) when (!cancellationToken.IsCancellationRequested && ex.Number is 1222 or -2)
         {
             // Lock/query timeout affects only retirement; keep every gap and deliver the messages already read.
-            _logger.LogDebug(ex, "MethodCache keeps unresolved SQL backplane gaps for another poll.");
+            _logger.LogDebug("MethodCache keeps unresolved SQL backplane gaps for another poll. Error type: {ErrorType}.", ex.GetType().FullName);
             return false;
         }
     }

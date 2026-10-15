@@ -18,7 +18,7 @@ public class GeneratedContractTests
     {
         var policy = CacheRuntimePolicy.Empty(name) with { Version = 1, Duration = TimeSpan.FromMinutes(5) };
         var handle = PolicyHandle.Fixed(policy);
-        var memory = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var memory = new InMemoryCacheManager();
         var services = new DecoratorServices(memory, Substitute.For<IPolicyRegistry>(), new FastHashKeyGenerator());
         return (new BoundMethod(services, handle, typeof(IService), name, name), handle, memory);
     }

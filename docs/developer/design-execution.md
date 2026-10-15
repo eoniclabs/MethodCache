@@ -10,7 +10,7 @@ remaining series continuously. Package publication and unrelated work are outsid
 | PR 1 | codex/generated-contract-v1 / #123 | Implementation and frozen ABI fixtures complete. Preserve fixtures unchanged throughout the series. |
 | PR 2 | codex/user-api-policy-v1 / #124 | Functional matrix 6,542 passed; coverage 89.7%; packages/AOT passed. Complete the broad section-10 gate, especially L2 read round trips. |
 | PR 3 | codex/keys-attributes-v1 / #125 | Implemented K01–K08. Full matrix, 95.0% diff coverage, cultures, AOT/172 corpus cases and package smoke passed; Linux/Windows/macOS CI passed; section-10 performance pending. |
-| PR 4 | codex/transport-format-v1 | D01–D10 implemented. 7,020 tests passed, 97.2% diff coverage; cultures/properties/soak/AOT/packages passed. Performance/external CI pending; retain the transient Redis readiness observation. |
+| PR 4 | codex/transport-format-v1 / #126 | D01–D10 implemented. 7,020 tests passed, 97.2% diff coverage; cultures/properties/soak/AOT/packages passed. Linux/Windows/macOS CI passed. Section-10 performance pending; retain the transient Redis readiness observation. |
 | PR 5 | codex/core-telemetry-v1 | In progress: container-owned Core instrumentation, OTel simplification, stats and health; T01–T05. |
 | Prefix hash | after PR 5 | Seeded incremental prefix hashing with reviewed collision protection; F01–F05, frozen vendor ABI and performance. |
 | PR 6 | not started | HTTP Core adapter, budgets, strong epochs, cookies and observation admin; H01–H14. |

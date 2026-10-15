@@ -108,7 +108,7 @@ public class CacheAdministratorTests
         await admin.InvalidateTagsAsync(new[] { "docs" });
 
         Assert.Empty(admin.ListEntries());
-        Assert.Equal(0, (await admin.GetStatsAsync()).Entries);
+        Assert.Equal(0, (await admin.GetStatsAsync()).LocalMethodEntries);
     }
 
     [Fact]

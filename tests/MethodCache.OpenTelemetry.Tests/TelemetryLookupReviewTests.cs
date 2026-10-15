@@ -1,3 +1,5 @@
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +18,7 @@ public class TelemetryLookupReviewTests
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
         services.AddMethodCache();
-        if (instrumented) services.AddMethodCacheOpenTelemetry();
+        using var instrumentation = instrumented ? Sdk.CreateTracerProviderBuilder().AddMethodCacheInstrumentation().Build() : null;
         using var provider = services.BuildServiceProvider();
         var generator = new CountingGenerator();
         var manager = provider.GetRequiredService<ICacheManager>();

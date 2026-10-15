@@ -198,7 +198,8 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             Assert.Equal(50001, startupError.Number);
             var log = Assert.Single(logger.Entries);
             Assert.Equal(LogLevel.Error, log.Level);
-            Assert.Same(startupError, log.Error);
+            Assert.Null(log.Error);
+            Assert.Contains("SqlException", log.Message);
             Assert.Contains("table initialization stopped", log.Message);
 
             await using var rows = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);

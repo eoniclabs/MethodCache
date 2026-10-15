@@ -1,21 +1,25 @@
 #nullable enable
 MethodCache.AspNetCore.MethodCacheHealthCheck
 MethodCache.AspNetCore.MethodCacheHealthCheck.CheckHealthAsync(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult>!
-MethodCache.AspNetCore.MethodCacheHealthCheck.MethodCacheHealthCheck(MethodCache.ICacheAdministrator! admin) -> void
+MethodCache.AspNetCore.MethodCacheHealthCheck.MethodCacheHealthCheck(System.IServiceProvider! services) -> void
 Microsoft.AspNetCore.Builder.CacheStatsResponse
-Microsoft.AspNetCore.Builder.CacheStatsResponse.CacheStatsResponse(long Hits, long Misses, double HitRatio, long Evictions, long Entries, long MemoryUsage) -> void
-Microsoft.AspNetCore.Builder.CacheStatsResponse.Entries.get -> long
-Microsoft.AspNetCore.Builder.CacheStatsResponse.Entries.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.CacheStatsResponse(long Hits, long Misses, long Evictions, long LocalMethodEntries, long LocalHttpEntries, long LocalHttpBytes, long ObservedDistributedEntries, long TotalWeight) -> void
 Microsoft.AspNetCore.Builder.CacheStatsResponse.Evictions.get -> long
 Microsoft.AspNetCore.Builder.CacheStatsResponse.Evictions.init -> void
-Microsoft.AspNetCore.Builder.CacheStatsResponse.HitRatio.get -> double
-Microsoft.AspNetCore.Builder.CacheStatsResponse.HitRatio.init -> void
 Microsoft.AspNetCore.Builder.CacheStatsResponse.Hits.get -> long
 Microsoft.AspNetCore.Builder.CacheStatsResponse.Hits.init -> void
-Microsoft.AspNetCore.Builder.CacheStatsResponse.MemoryUsage.get -> long
-Microsoft.AspNetCore.Builder.CacheStatsResponse.MemoryUsage.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.LocalHttpBytes.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.LocalHttpBytes.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.LocalHttpEntries.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.LocalHttpEntries.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.LocalMethodEntries.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.LocalMethodEntries.init -> void
 Microsoft.AspNetCore.Builder.CacheStatsResponse.Misses.get -> long
 Microsoft.AspNetCore.Builder.CacheStatsResponse.Misses.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.ObservedDistributedEntries.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.ObservedDistributedEntries.init -> void
+Microsoft.AspNetCore.Builder.CacheStatsResponse.TotalWeight.get -> long
+Microsoft.AspNetCore.Builder.CacheStatsResponse.TotalWeight.init -> void
 Microsoft.AspNetCore.Builder.InvalidateRequest
 Microsoft.AspNetCore.Builder.InvalidateRequest.InvalidateRequest(System.Collections.Generic.IReadOnlyList<string!>? Tags) -> void
 Microsoft.AspNetCore.Builder.InvalidateRequest.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>?

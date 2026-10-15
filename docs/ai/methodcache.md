@@ -108,3 +108,11 @@ key generators or backplanes. Recovery has independent L2 and publication counte
 Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); zero is only allowed via builder fail-safe off. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
 
 Select JSON with `UseJson(context)` for Native AOT or `UseJson(options)` for explicit settings. Options are owned snapshots. `VerifyRoundTrip` defaults to true but does not prove nested polymorphic/private data preservation. SQL schema changes require explicit migration; do not use automatic DDL to reinterpret existing unversioned tables. Entry format/serializer versions change value namespaces; logical tombstones, wire-v1 invalidations and HTTP epochs remain format-independent.
+
+Core owns container-scoped `IMeterFactory` instruments and its `MethodCache` ActivitySource. The OpenTelemetry package
+only provides AddMethodCacheInstrumentation builder subscriptions. Never add metrics-provider interfaces, manager
+wrappers or baggage propagators. Core MethodCacheTelemetryOptions controls explicit key/tag span opt-ins; hashes are
+the default when keys are enabled. No keys/tags/URLs/user/tenant metric dimensions, copied HTTP attributes or exception
+payloads in spans/logs. Preserve application ambient activity/baggage context. Histograms use seconds. Report local
+method/HTTP entries, HTTP bytes, observed L2 entries and TotalWeight in configured units, never object-memory estimates.
+Health checks honor failureStatus and independently report L2, backplane subscription and storage/publication queues.

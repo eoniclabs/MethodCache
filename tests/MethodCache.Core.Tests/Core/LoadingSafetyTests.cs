@@ -24,7 +24,7 @@ public class LoadingSafetyTests
     {
         var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
-        return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time);
+        return new InMemoryCacheManager(MsOptions.Create(options), _time);
     }
 
     private static CacheRuntimePolicy Policy(TimeSpan? duration = null) =>
@@ -120,7 +120,7 @@ public class LoadingSafetyTests
         [MethodImpl(MethodImplOptions.NoInlining)]
         static WeakReference<object> Fill()
         {
-            var manager = new InMemoryCacheManager(new NullCacheMetricsProvider()); // background cleanup on (default)
+            var manager = new InMemoryCacheManager(); // background cleanup on (default)
             var value = new object();
             manager.SetAsync("k", value, TimeSpan.FromHours(1)).GetAwaiter().GetResult();
             return new WeakReference<object>(value);
@@ -150,7 +150,7 @@ public class LoadingSafetyTests
             {
                 var requestState = new object();
                 Ambient.Value = requestState;
-                created = new InMemoryCacheManager(new NullCacheMetricsProvider());
+                created = new InMemoryCacheManager();
                 reference = new WeakReference<object>(requestState);
             });
             thread.Start();

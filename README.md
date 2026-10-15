@@ -266,7 +266,6 @@ See [HTTP response caching](docs/features/http-caching.md) and the [package READ
 <!-- snippet: readme-monitoring -->
 ```cs
 builder.Services.AddHealthChecks().AddMethodCache();         // MethodCache.AspNetCore
-builder.Services.AddMethodCacheOpenTelemetry();               // MethodCache.OpenTelemetry
 builder.Services.AddOpenTelemetry()
     .WithTracing(t => t.AddMethodCacheInstrumentation())
     .WithMetrics(m => m.AddMethodCacheInstrumentation());
@@ -412,3 +411,7 @@ mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane 
 Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
 
 Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix` for data and invalidation. Value formats and serializer schemas have separate namespaces; metadata retention and atomic epochs prevent older physical variants from reappearing after invalidation. SQL Server uses an explicit versioned schema and delivered migration scripts. See [distributed caching](docs/features/distributed-cache.md).
+
+Core emits standard `MethodCache` metrics and activities. The optional OpenTelemetry package subscribes to them;
+cache keys/tags require explicit Core options. [Monitoring](docs/features/monitoring.md) documents the instruments,
+local method/HTTP statistics, configured weight units and independent storage/backplane health.

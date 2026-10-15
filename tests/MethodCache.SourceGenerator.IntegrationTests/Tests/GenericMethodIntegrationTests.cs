@@ -202,10 +202,10 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
 
             // Manually register generic interfaces since they're excluded from automatic DI generation
             var userRepoImplType = testAssembly.Assembly.GetType("TestNamespace.UserRepository")!;
@@ -375,10 +375,10 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IGenericService");

@@ -10,7 +10,7 @@ public class BulkInvalidationReviewTests
     [Fact]
     public async Task BulkLoad_ThroughAsyncDecorator_PreservesDecoratorAndInvalidation()
     {
-        using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        using var cache = new InMemoryCacheManager();
         var decorated = new CountingDecorator(cache);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var candidates = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -30,7 +30,7 @@ public class BulkInvalidationReviewTests
     [Fact]
     public async Task BulkLoad_FactoryThrows_ReleasesPublicationGuards()
     {
-        using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        using var cache = new InMemoryCacheManager();
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateManyAsync<string>(["key"],
             (_, _, _) => throw new InvalidOperationException("source failed")));
         await cache.InvalidateByKeysAsync("key");
@@ -45,7 +45,7 @@ public class BulkInvalidationReviewTests
     [InlineData("clear")]
     public async Task BulkLoad_InvalidatedDuringFactory_DoesNotPublishOldValue(string invalidation)
     {
-        using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
+        using var cache = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var result = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var load = cache.GetOrCreateManyAsync<string>(["key"], (_, _, _) =>

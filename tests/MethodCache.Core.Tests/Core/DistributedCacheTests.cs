@@ -40,8 +40,7 @@ public class DistributedCacheTests
             time ?? _time);
 
         return new InMemoryCacheManager(
-            new NullCacheMetricsProvider(),
-            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             time ?? _time,
             layer);
     }
@@ -577,8 +576,7 @@ public class DistributedCacheTests
         var backplane = new HangingBackplane();
         using var layer = new DistributedCacheLayer(cache, new JsonCacheSerializer(), new DistributedCacheOptions(), backplane, time);
         using var node = new InMemoryCacheManager(
-            new NullCacheMetricsProvider(),
-            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             time,
             layer);
 

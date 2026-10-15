@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using MethodCache.OpenTelemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -11,23 +10,16 @@ public class GeneratedTelemetryContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GeneratedSync_TelemetryWrapper_RecordsOriginFailureOrOwnedInvalidation(bool distributed)
+    public void GeneratedSync_CoreTelemetry_RecordsOriginFailureOrOwnedInvalidation(bool distributed)
     {
         var spans = new ConcurrentQueue<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == TracingConstants.ActivitySourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = activity => spans.Enqueue(activity)
-        };
-        ActivitySource.AddActivityListener(listener);
         var inner = new GeneratedTelemetryService { Fail = !distributed };
         var services = new ServiceCollection();
         services.AddSingleton<IGeneratedTelemetryService>(inner);
         services.AddMethodCache();
         if (distributed) services.AddMethodCacheDistributedCache(_ => new MethodCache.TestSupport.AtomicTestCache());
-        services.AddMethodCacheOpenTelemetry();
         using var provider = services.BuildServiceProvider();
+        using var listener = Listen(provider, spans);
         var service = provider.GetRequiredService<IGeneratedTelemetryService>();
         if (distributed)
         {
@@ -36,27 +28,20 @@ public class GeneratedTelemetryContractTests
             Assert.Equal(2, service.Sync(42));
         }
         else Assert.Throws<InvalidOperationException>(() => service.Sync(42));
-        if (distributed) Assert.Contains(spans, activity => Equals(activity.GetTagItem("cache.operation"), TracingConstants.Operations.Delete) && activity.Status != ActivityStatusCode.Error);
+        if (distributed) Assert.Contains(spans, activity => activity.OperationName == "MethodCache.invalidate" && activity.Status != ActivityStatusCode.Error);
         else Assert.Contains(spans, activity => activity.Status == ActivityStatusCode.Error);
     }
 
     [Fact]
-    public async Task GeneratedMethods_TelemetryWrapper_PreservesSyncCachingAndMissSpans()
+    public async Task GeneratedMethods_CoreTelemetry_PreservesSyncCachingAndMissSpans()
     {
         var spans = new ConcurrentQueue<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == TracingConstants.ActivitySourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = activity => spans.Enqueue(activity)
-        };
-        ActivitySource.AddActivityListener(listener);
         var inner = new GeneratedTelemetryService();
         var services = new ServiceCollection();
         services.AddSingleton<IGeneratedTelemetryService>(inner);
         services.AddMethodCache();
-        services.AddMethodCacheOpenTelemetry();
         await using var provider = services.BuildServiceProvider();
+        using var listener = Listen(provider, spans);
         var service = provider.GetRequiredService<IGeneratedTelemetryService>();
         Assert.Equal(1, service.Sync(42));
         Assert.Equal(1, service.Sync(42));
@@ -65,12 +50,25 @@ public class GeneratedTelemetryContractTests
         service.Update();
         Assert.Equal(3, service.Sync(42));
         Assert.Equal(3, inner.Calls);
-        var own = spans.Where(activity => activity.GetTagItem(TracingConstants.AttributeNames.CacheMethod) is string method &&
+        var own = spans.Where(activity => activity.GetTagItem("name") is string method &&
             method.Contains(nameof(IGeneratedTelemetryService), StringComparison.Ordinal)).ToArray();
         Assert.Equal(3, own.Length);
-        Assert.All(own, activity => Assert.Equal(false, activity.GetTagItem(TracingConstants.AttributeNames.CacheHit)));
-        Assert.Contains(spans, activity => Equals(activity.GetTagItem("cache.operation"), TracingConstants.Operations.Delete));
+        Assert.All(own, activity => Assert.Equal("MethodCache.load", activity.OperationName));
+        Assert.Contains(spans, activity => activity.OperationName == "MethodCache.invalidate");
     }
+    private static ActivityListener Listen(ServiceProvider provider, ConcurrentQueue<Activity> spans)
+    {
+        var owned = provider.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>().Source;
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => ReferenceEquals(source, owned),
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => spans.Enqueue(activity)
+        };
+        ActivitySource.AddActivityListener(listener);
+        return listener;
+    }
+
 }
 
 public interface IGeneratedTelemetryService

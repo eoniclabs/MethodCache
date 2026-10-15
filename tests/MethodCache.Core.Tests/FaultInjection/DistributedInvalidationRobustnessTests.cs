@@ -50,8 +50,7 @@ public class DistributedInvalidationRobustnessTests
             logger);
 
         var node = new InMemoryCacheManager(
-            new NullCacheMetricsProvider(),
-            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             time,
             layer);
         return (node, layer);

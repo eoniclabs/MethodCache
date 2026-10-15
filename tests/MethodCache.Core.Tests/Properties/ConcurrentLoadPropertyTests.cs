@@ -22,7 +22,7 @@ public class ConcurrentLoadPropertyTests
     private static readonly CacheRuntimePolicy Policy = CacheRuntimePolicy.Empty("Concurrent.Load") with { Duration = TimeSpan.FromMinutes(1) };
 
     private static InMemoryCacheManager CreateCache(FakeTimeProvider time)
-        => new(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time);
+        => new(MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time);
 
     /// <summary>A cache with a frozen clock, and how often each key's factory ran.</summary>
     private sealed class Harness

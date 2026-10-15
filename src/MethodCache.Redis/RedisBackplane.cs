@@ -29,6 +29,11 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     private readonly ILogger _logger;
     private readonly TimeProvider _time;
     private int _rejectedWarning;
+    private int _connectionState = (int)BackplaneState.Connecting;
+    private long _connectionGeneration;
+    internal Task RecoveryCompletion { get; private set; } = Task.CompletedTask;
+    /// <inheritdoc />
+    public BackplaneState ConnectionState => (BackplaneState)Volatile.Read(ref _connectionState);
 
     public RedisBackplane(Func<Task<IConnectionMultiplexer>> connect, string channel, ILogger<RedisBackplane>? logger = null, TimeProvider? timeProvider = null)
     {
@@ -84,6 +89,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             {
                 try
                 {
+                    Volatile.Write(ref _connectionState, (int)BackplaneState.Connecting);
                     var connection = await _connect().WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
                     if (await TrySubscribeAsync(subscription, connection, failed).ConfigureAwait(false))
                     {
@@ -97,7 +103,8 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "MethodCache could not connect its Redis backplane; it tries again in {Delay}. Until then other instances' invalidations don't reach this instance's memory.", delay);
+                    Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+                    _logger.LogWarning("MethodCache could not connect its Redis backplane; it tries again in {Delay}. Until then other instances' invalidations don't reach this instance's memory. Error type: {ErrorType}.", delay, ex.GetType().FullName);
                 }
 
                 failed = true;
@@ -136,26 +143,50 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
                 }
             }
         };
-        subscription.Restored = (_, _) =>
+        subscription.Failed = (_, failure) =>
         {
-            if (!subscription.Cancellation.IsCancellationRequested && Volatile.Read(ref subscription.Callback) is { } callback)
-                Observe(callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }));
+            if (failure.ConnectionType == ConnectionType.Subscription && !subscription.Cancellation.IsCancellationRequested)
+            {
+                lock (_lifecycleLock)
+                {
+                    _connectionGeneration++;
+                    Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+                }
+            }
         };
+        subscription.Restored = (_, restored) =>
+        {
+            if (!subscription.Cancellation.IsCancellationRequested && Volatile.Read(ref subscription.Callback) != null)
+            {
+                var recovery = RecoverSubscriptionAsync(subscription, restored.ConnectionType == ConnectionType.Subscription);
+                RecoveryCompletion = recovery;
+                Observe(recovery);
+            }
+        };
+        connection.ConnectionFailed += subscription.Failed;
         connection.ConnectionRestored += subscription.Restored;
+        long generation;
+        lock (_lifecycleLock) generation = _connectionGeneration;
         try
         {
             await connection.GetSubscriber().SubscribeAsync(_channel, subscription.Handler).ConfigureAwait(false);
+            if (missed && !subscription.Cancellation.IsCancellationRequested && Volatile.Read(ref subscription.Callback) is { } clear)
+                await clear(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+            CompleteRecovery(subscription, generation);
         }
         catch (RedisConnectionException)
         {
+            Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
             // The multiplexer retains the registration and subscribes again when it reconnects, and then
             // Restored clears.
             missed = false;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "MethodCache could not subscribe its Redis backplane; it tries again. Until then other instances' invalidations don't reach this instance's memory.");
+            Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+            _logger.LogWarning("MethodCache could not subscribe its Redis backplane; it tries again. Until then other instances' invalidations don't reach this instance's memory. Error type: {ErrorType}.", ex.GetType().FullName);
             connection.ConnectionRestored -= subscription.Restored;
+            connection.ConnectionFailed -= subscription.Failed;
             try { await connection.GetSubscriber().UnsubscribeAsync(_channel, subscription.Handler).ConfigureAwait(false); }
             catch (Exception) { /* The handler is removed locally before UNSUBSCRIBE is sent. */ }
             subscription.Connection = null;
@@ -163,19 +194,51 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             return false;
         }
 
-        // Invalidations other instances sent while this one couldn't subscribe never arrived, so what it
-        // cached meanwhile may be stale, as after a reconnect
-        if (missed && !subscription.Cancellation.IsCancellationRequested && Volatile.Read(ref subscription.Callback) is { } clear)
-        {
-            Observe(clear(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }));
-        }
-
         return true;
+    }
+
+    private async Task RecoverSubscriptionAsync(Subscription subscription, bool subscriptionConnection)
+    {
+        long generation;
+        lock (_lifecycleLock)
+        {
+            generation = subscriptionConnection ? ++_connectionGeneration : _connectionGeneration;
+            if (subscriptionConnection) Volatile.Write(ref _connectionState, (int)BackplaneState.Connecting);
+        }
+        try
+        {
+            // A restored socket is not proof that Redis acknowledged this channel subscription.
+            // Reuse the same handler, so the multiplexer retains only one callback registration.
+            if (subscriptionConnection && subscription.Connection is { } connection && subscription.Handler is { } handler)
+                await connection.GetSubscriber().SubscribeAsync(_channel, handler).WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+            if (Volatile.Read(ref subscription.Callback) is { } callback)
+                await callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+            if (subscriptionConnection) CompleteRecovery(subscription, generation);
+        }
+        catch
+        {
+            lock (_lifecycleLock)
+            {
+                if (generation == _connectionGeneration)
+                    Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+            }
+            throw;
+        }
+    }
+
+    private void CompleteRecovery(Subscription subscription, long generation)
+    {
+        lock (_lifecycleLock)
+        {
+            if (generation == _connectionGeneration && !subscription.Cancellation.IsCancellationRequested)
+                Volatile.Write(ref _connectionState, (int)BackplaneState.Connected);
+        }
     }
 
     /// <inheritdoc />
     public Task UnsubscribeAsync(CancellationToken cancellationToken = default)
     {
+        Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
         Task cleanup;
         lock (_lifecycleLock)
         {
@@ -199,6 +262,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             if (subscription.Connection is { } connection)
             {
                 connection.ConnectionRestored -= subscription.Restored;
+                connection.ConnectionFailed -= subscription.Failed;
                 if (subscription.Handler is { } handler)
                 {
                     try { await connection.GetSubscriber().UnsubscribeAsync(_channel, handler).ConfigureAwait(false); }
@@ -241,6 +305,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
         public IConnectionMultiplexer? Connection;
         public Action<RedisChannel, RedisValue>? Handler;
         public EventHandler<ConnectionFailedEventArgs>? Restored;
+        public EventHandler<ConnectionFailedEventArgs>? Failed;
     }
 
     private async Task PublishAsync(BackplaneMessageType type, string value, CancellationToken cancellationToken)

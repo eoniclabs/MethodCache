@@ -4,9 +4,9 @@ using MethodCache.SourceGenerator.IntegrationTests.Models;
 namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// Test implementation of ICacheMetricsProvider that tracks metrics for integration tests
+/// Records the fake manager's calls for generator contract assertions; this is not a runtime instrumentation provider.
 /// </summary>
-public class TestCacheMetricsProvider : ICacheMetricsProvider
+public class TestCacheProbe
 {
     private readonly CacheMetrics _metrics = new();
     private readonly object _lock = new();

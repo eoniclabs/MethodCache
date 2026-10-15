@@ -229,9 +229,8 @@ namespace MethodCache.SourceGenerator
                     // so Find(int) and Find(string) never share keys
                     var keyMethodName = Utils.GetKeyMethodName(cached.Method, interfaceSymbol);
 
-                    // Metrics and spans name the method by its id, such as MyApp.IUserService.GetAsync. A method of a
-                    // generic interface, also one inherited from IRepository<User> by IUserRepo, reports the closed
-                    // type instead, for example IRepository<User>.Get, so IRepository<Order>.Get is another series
+                    // Keep the contract-1 display name for diagnostics. Runtime instrumentation uses the declared
+                    // policy method id, so closed generic registrations share the policy's bounded metric identity.
                     var owner = cached.Method.ContainingType.IsGenericType ? cached.Method.ContainingType : interfaceSymbol;
                     var displayName = owner.IsGenericType
                         ? $"{Utils.Literal(owner.Name + "<")} + string.Join(\",\", typeof({Utils.GetFullyQualifiedName(owner)}).GetGenericArguments().Select(t => t.Name)) + {Utils.Literal(">." + Utils.GetMethodName(cached.Method))}"

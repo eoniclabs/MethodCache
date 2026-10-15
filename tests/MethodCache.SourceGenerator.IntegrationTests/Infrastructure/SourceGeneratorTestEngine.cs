@@ -127,7 +127,7 @@ public class SourceGeneratorTestEngine
         services.AddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
 
         // Add default metrics provider (will be overridden by tests)
-        services.AddSingleton<ICacheMetricsProvider, TestCacheMetricsProvider>();
+        services.AddSingleton<TestCacheProbe, TestCacheProbe>();
 
         // Add policy registry and resolver services (required by generated decorators)
         // Add a dummy policy source to satisfy PolicyResolver's requirement for at least one source

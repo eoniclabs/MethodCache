@@ -54,7 +54,6 @@ public sealed class GeneratedServices
     {
         ArgumentNullException.ThrowIfNull(tags);
         if (_services.CacheManager is InMemoryCacheManager memory) memory.InvalidateTagsSynchronously(tags);
-        else if (_services.CacheManager is IGeneratedMemoryCache { Memory: not null } integration) integration.InvalidateTagsSynchronously(tags);
         else throw new NotSupportedException("The configured MethodCache manager does not support synchronous invalidation. Use an async mutation method.");
     }
 }

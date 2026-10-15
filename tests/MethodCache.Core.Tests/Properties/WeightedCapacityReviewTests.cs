@@ -16,7 +16,7 @@ public class WeightedCapacityReviewTests
         var eviction = (MemoryCacheEvictionPolicy)evictionValue;
         Gen.OneOfConst(long.MaxValue / 2 + 1, long.MaxValue - 1, long.MaxValue).Sample(weight =>
         {
-            using var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions
+            using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions
             {
                 MaxMemoryBytes = long.MaxValue,
                 Weigher = (_, _) => weight,

@@ -110,7 +110,7 @@ namespace SinglePath
         var compiled = await _engine.CompileWithSourceGeneratorAsync(Source);
         _provider = _engine.CreateTestServiceProvider(compiled, services =>
         {
-            services.AddSingleton<ICacheManager>(sp => new InMemoryCacheManager(sp.GetRequiredService<ICacheMetricsProvider>(), null, null));
+            services.AddSingleton<ICacheManager>(sp => new InMemoryCacheManager(telemetry: sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>()));
         }, _output.WriteLine);
 
         var assembly = compiled.Assembly;

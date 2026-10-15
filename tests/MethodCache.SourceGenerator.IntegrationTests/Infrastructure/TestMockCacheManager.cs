@@ -21,13 +21,13 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
     internal class TestMockCacheManager : ICacheManager
     {
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
-        private readonly ICacheMetricsProvider _metricsProvider;
+        private readonly TestCacheProbe _metricsProvider;
         private readonly TimeProvider _time;
 
         /// <summary>
         /// Reads time from <paramref name="timeProvider"/>, so a test that registers a FakeTimeProvider controls expiry.
         /// </summary>
-        public TestMockCacheManager(ICacheMetricsProvider metricsProvider, TimeProvider? timeProvider = null)
+        public TestMockCacheManager(TestCacheProbe metricsProvider, TimeProvider? timeProvider = null)
         {
             _metricsProvider = metricsProvider;
             _time = timeProvider ?? TimeProvider.System;
@@ -205,10 +205,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             // Record invalidation if the metrics provider supports it
-            if (_metricsProvider is TestCacheMetricsProvider testProvider)
-            {
-                testProvider.RecordInvalidation(tags);
-            }
+            _metricsProvider.RecordInvalidation(tags);
 
             // For simplicity, clear entire cache on any invalidation
             _cache.Clear();

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using MethodCache.Infrastructure;
 
 namespace MethodCache.Extensibility
@@ -9,17 +8,10 @@ namespace MethodCache.Extensibility
     /// </summary>
     public partial class NoOpCacheManager : ICacheRuntime
     {
-        private readonly ICacheMetricsProvider? _metricsProvider;
 
         /// <summary>Creates a cache manager that never caches.</summary>
         public NoOpCacheManager()
         {
-        }
-
-        /// <summary>Creates a cache manager that never caches and reports every call as a miss.</summary>
-        public NoOpCacheManager(ICacheMetricsProvider? metricsProvider)
-        {
-            _metricsProvider = metricsProvider;
         }
 
         Task<T> ICacheRuntime.GetOrCreateAsync<T>(string name, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator generator) => GetOrCreateAsync(name, args, factory, policy, generator);
@@ -72,27 +64,7 @@ namespace MethodCache.Extensibility
             return RunAsync(methodName, factory);
         }
 
-        private async Task<T> RunAsync<T>(string methodName, Func<Task<T>> factory)
-        {
-            if (_metricsProvider == null)
-            {
-                return await factory().ConfigureAwait(false);
-            }
-
-            _metricsProvider.CacheMiss(methodName);
-            var start = Stopwatch.GetTimestamp();
-            try
-            {
-                var result = await factory().ConfigureAwait(false);
-                _metricsProvider.CacheLatency(methodName, Stopwatch.GetElapsedTime(start));
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _metricsProvider.CacheError(methodName, ex.Message);
-                throw;
-            }
-        }
+        private static Task<T> RunAsync<T>(string methodName, Func<Task<T>> factory) => factory();
 
         // ============= Invalidation methods =============
 
