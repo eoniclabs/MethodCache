@@ -82,6 +82,16 @@ internal sealed record CallSnapshot(DecoratorServices Services, CacheRuntimePoli
     string KeyMethod, string Name, BackgroundLoadTarget? Background, string[] ParameterNames)
 {
     private ConditionalWeakTable<string, CallSnapshot>? _specializations;
+    private FastHashKeyGenerator.PreparedPrefix? _fallbackPrefix;
+    internal FastHashKeyGenerator.PreparedPrefix FallbackPrefix
+    {
+        get
+        {
+            if (Volatile.Read(ref _fallbackPrefix) is { } existing) return existing;
+            var created = FastHashKeyGenerator.PreparePrefix(KeyMethod, Policy.Version);
+            return Interlocked.CompareExchange(ref _fallbackPrefix, created, null) ?? created;
+        }
+    }
     internal MarvinState PrefixHash { get; } = ProcessKeyHash.Prefix(Prefix);
 
     internal int HashKey(ReadOnlySpan<char> text)
