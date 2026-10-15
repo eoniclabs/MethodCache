@@ -299,14 +299,14 @@ builder.Services.AddMethodCache(cache => cache.UseJson(AppJsonContext.Default));
 
 ## Performance
 
-A cache hit on `Task<User> GetUserAsync(int id)`, each library on its default settings:
+A cache hit on `Task<User> GetUserAsync(Guid id)`, each library on its default settings:
 
 | Approach | Mean | vs. `IMemoryCache` by hand | Allocated per hit |
 |---|---:|---:|---:|
-| `IMemoryCache` by hand | 92 ns | 1.00x | 112 B |
-| **MethodCache `[Cache]`** | **84 ns** | **0.92x** | **0 B** |
-| HybridCache | 497 ns | 5.4x | 272 B |
-| FusionCache | 348 ns | 3.8x | 344 B |
+| `IMemoryCache` by hand | 115 ns | 1.00x | 176 B |
+| **MethodCache `[Cache]`** | **100 ns** | **0.86x** | **0 B** |
+| HybridCache | 574 ns | 5.0x | 352 B |
+| FusionCache | 385 ns | 3.3x | 416 B |
 
 The generated decorator writes the key into a stack buffer and returns the cached `Task` itself, so a hit allocates
 nothing and is at least as fast as hand-written code in the recorded .NET 10 benchmark.
