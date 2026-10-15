@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Buffers.Binary;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.Memory;
+using MethodCache.Core.Runtime.Keys;
 using MethodCache.Core.Telemetry;
 using MethodCache.Infrastructure;
 using Microsoft.Extensions.Options;
@@ -25,7 +26,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private readonly CoreTelemetry _telemetry;
     private readonly LocalEpoch?[]? _slots;
     private readonly ConcurrentDictionary<string, LocalEpoch>? _tagEpochs;
-    private LocalEpoch _clear = LocalEpoch.Fresh();
+    private LocalEpoch _clear = LocalEpoch.Fresh(initial: true);
     private readonly ConcurrentDictionary<int, PendingEpoch> _pending = new();
     private readonly SemaphoreSlim _recoveryGate = new(1, 1);
     private readonly object _timerGate = new();
@@ -39,13 +40,14 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     internal long MaximumBytes { get; }
     internal bool Distributed => _distributed != null;
     internal int PendingRecoveries => _pending.Count(pair => pair.Value.Queued);
-    private sealed class LocalEpoch(CacheEpoch value)
+    private sealed class LocalEpoch(CacheEpoch value, bool initial)
     {
         internal CacheEpoch Value { get; } = value;
+        internal bool Initial { get; } = initial;
         internal LocalVector? LastVector;
-        internal static LocalEpoch Fresh() => new(new CacheEpoch(Guid.NewGuid(), 0));
+        internal static LocalEpoch Fresh(bool initial = false) => new(new CacheEpoch(Guid.NewGuid(), 0), initial);
     }
-    private sealed record LocalVector(LocalEpoch Clear, string[] Tags, LocalEpoch[] TagEpochs, string Identity);
+    private sealed record LocalVector(LocalEpoch Clear, string[] Tags, LocalEpoch[] TagEpochs, bool AllowInitialNamespace, string Identity);
     private sealed record PendingEpoch(long Ticket, bool Queued);
 
     internal HttpResponseStore(IOptions<MethodCacheMemoryOptions> options, CoreTelemetry telemetry,
@@ -88,11 +90,11 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     internal ValueTask<string?> CaptureAsync(string urlTarget, string[] tags, CancellationToken token)
         => CaptureSlotAsync(Slot(urlTarget), tags, token);
 
-    internal ValueTask<string?> CaptureSlotAsync(int slot, string[] tags, CancellationToken token)
+    internal ValueTask<string?> CaptureSlotAsync(int slot, string[] tags, CancellationToken token, bool allowInitialNamespace = false)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         token.ThrowIfCancellationRequested();
-        if (_distributed == null) return new(CaptureLocal(slot, tags));
+        if (_distributed == null) return new(CaptureLocal(slot, tags, allowInitialNamespace));
         // Native mode always reads fresh shared epochs; it never uses a local vector or epoch copy.
         if (!_pending.IsEmpty) return new((string?)null);
         return CaptureDistributedAsync(slot, tags, token);
@@ -105,17 +107,17 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return epochs == null || epochs.Length != addresses.Length ? null : VectorIdentity(addresses, epochs);
     }
 
-    private string CaptureLocal(int slot, string[] tags)
+    private string CaptureLocal(int slot, string[] tags, bool allowInitialNamespace)
     {
         var current = Volatile.Read(ref _slots![slot]);
         if (current == null)
         {
-            var fresh = LocalEpoch.Fresh();
+            var fresh = LocalEpoch.Fresh(initial: true);
             current = Interlocked.CompareExchange(ref _slots[slot], fresh, null) ?? fresh;
         }
         var clear = Volatile.Read(ref _clear);
         var previous = Volatile.Read(ref current.LastVector);
-        if (previous != null && ReferenceEquals(previous.Clear, clear) && ReferenceEquals(previous.Tags, tags))
+        if (previous != null && ReferenceEquals(previous.Clear, clear) && ReferenceEquals(previous.Tags, tags) && previous.AllowInitialNamespace == allowInitialNamespace)
         {
             var unchanged = true;
             for (var i = 0; i < tags.Length; i++)
@@ -128,13 +130,16 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         epochs[0] = clear.Value; epochs[1] = current.Value;
         for (var i = 0; i < tags.Length; i++)
         {
-            tagEpochs[i] = _tagEpochs!.GetOrAdd(tags[i], static _ => LocalEpoch.Fresh());
+            tagEpochs[i] = _tagEpochs!.GetOrAdd(tags[i], static _ => LocalEpoch.Fresh(initial: true));
             epochs[i + 2] = tagEpochs[i].Value;
         }
-        var identity = VectorIdentity(EpochAddresses(slot, tags), epochs);
+        // A canonical default client already identifies its one implicit client tag in the URL key.
+        // Its initial local namespace can remain empty; no invalidation can return these cells to Initial.
+        var identity = allowInitialNamespace && clear.Initial && current.Initial && tagEpochs.All(static epoch => epoch.Initial)
+            ? string.Empty : VectorIdentity(EpochAddresses(slot, tags), epochs);
         // One immutable cached vector per permanent slot, at most 4096. Alternating tag sets recompute
         // the same deterministic identity; they never invent a new generation or affect cache selection.
-        Volatile.Write(ref current.LastVector, new LocalVector(clear, tags, tagEpochs, identity));
+        Volatile.Write(ref current.LastVector, new LocalVector(clear, tags, tagEpochs, allowInitialNamespace, identity));
         return identity;
     }
 
@@ -155,8 +160,29 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    internal object? ReadLocal(string key)
-        => _local != null && _local.TryGet(key, _local.Now, out var node) ? node.BoxedValue : null;
+    internal object? ReadLocal(string key, KeyPrefix? prefix = null)
+    {
+        if (_local == null) return null;
+        prefix?.Prime(key);
+        return _local.TryGet(key, _local.Now, out var node) ? node.BoxedValue : null;
+    }
+
+    // Fixed hashed client text, prepared once per adapter view. Both hashes retain the full exact suffix.
+    internal sealed class KeyPrefix(string text)
+    {
+        private readonly uint _slotHash = ContinueSlotHash(2166136261u, text);
+        private readonly MarvinState _hash = ProcessKeyHash.Prefix(text);
+        internal int Slot(ReadOnlySpan<char> target, out bool canonical)
+        {
+            canonical = target.StartsWith(text, StringComparison.Ordinal);
+            return canonical ? (int)(ContinueSlotHash(_slotHash, target[text.Length..]) & (GenerationSlots - 1)) : HttpResponseStore.Slot(target);
+        }
+        internal void Prime(string key)
+        {
+            if (key.Length <= 2048 && key.AsSpan().StartsWith(text, StringComparison.Ordinal))
+                ProcessKeyHash.Remember(key, _hash.FinishUtf16(key.AsSpan(text.Length)));
+        }
+    }
 
     internal bool StoreLocal(string key, object payload, HttpStorageInfo info)
     {
@@ -389,11 +415,11 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private static string ApplicationTag(string tag) => "\0http-tag:" + Convert.ToBase64String(LosslessUtf16.GetBytes(tag));
     private static string[] IndexTags(HttpStorageInfo info) => info.Tags.Select(ApplicationTag).Append(UrlTag(info.UrlTarget)).ToArray();
     internal static int Slot(string target) => Slot(target.AsSpan());
-    internal static int Slot(ReadOnlySpan<char> target)
+    internal static int Slot(ReadOnlySpan<char> target) => (int)(ContinueSlotHash(2166136261u, target) & (GenerationSlots - 1));
+    private static uint ContinueSlotHash(uint hash, ReadOnlySpan<char> target)
     {
-        var hash = 2166136261u;
         foreach (var character in target) hash = unchecked((hash ^ character) * 16777619u);
-        return (int)(hash & (GenerationSlots - 1));
+        return hash;
     }
     private static long Deadline(long now, TimeSpan remaining)
         => remaining.Ticks > (long.MaxValue - now) / 100 ? long.MaxValue : now + Math.Max(1, remaining.Ticks * 100);

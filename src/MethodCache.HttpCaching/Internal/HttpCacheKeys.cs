@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -47,22 +48,28 @@ internal static class HttpCacheKeys
             // URI user info and queries must not remain in a pooled buffer.
             if (rented != null) ArrayPool<byte>.Shared.Return(rented, clearArray: true);
         }
-        return string.Create(client.Length + 48 + method.Method.Length,
-            (Client: client, Low: BinaryPrimitives.ReadUInt128LittleEndian(digest), High: BinaryPrimitives.ReadUInt128LittleEndian(digest[16..]), Method: method.Method),
+        return DigestKey(client, ':', digest, method.Method);
+    }
+
+    private static string DigestKey(string prefix, char separator, ReadOnlySpan<byte> digest, string? method = null)
+        => string.Create(prefix.Length + 45 + (method == null ? 0 : 3 + method.Length),
+            (Prefix: prefix, Separator: separator, Low: BinaryPrimitives.ReadUInt128LittleEndian(digest), High: BinaryPrimitives.ReadUInt128LittleEndian(digest[16..]), Method: method),
             static (text, state) =>
             {
-                state.Client.AsSpan().CopyTo(text);
-                var offset = state.Client.Length;
-                text[offset++] = ':';
+                state.Prefix.AsSpan().CopyTo(text);
+                var offset = state.Prefix.Length;
+                text[offset++] = state.Separator;
                 Span<byte> bytes = stackalloc byte[32];
                 BinaryPrimitives.WriteUInt128LittleEndian(bytes, state.Low);
                 BinaryPrimitives.WriteUInt128LittleEndian(bytes[16..], state.High);
                 _ = Convert.TryToBase64Chars(bytes, text.Slice(offset, 44), out _);
-                offset += 44;
-                ":m:".AsSpan().CopyTo(text[offset..]);
-                state.Method.AsSpan().CopyTo(text[(offset + 3)..]);
+                if (state.Method != null)
+                {
+                    offset += 44;
+                    ":m:".AsSpan().CopyTo(text[offset..]);
+                    state.Method.AsSpan().CopyTo(text[(offset + 3)..]);
+                }
             });
-    }
 
     internal static string GenerationTarget(string key)
     {
@@ -126,7 +133,9 @@ internal static class HttpCacheKeys
             AppendHeader(hash, request, header);
         }
 
-        return baseKey + "|" + Convert.ToBase64String(hash.GetHashAndReset());
+        Span<byte> digest = stackalloc byte[32];
+        _ = hash.TryGetHashAndReset(digest, out _);
+        return DigestKey(baseKey, '|', digest);
     }
 
     /// <summary>Whether the request sends any of <paramref name="headers"/>.</summary>
@@ -166,7 +175,22 @@ internal static class HttpCacheKeys
     }
 
     private static void Append(IncrementalHash hash, string value)
-        => AppendBytes(hash, MethodCache.Infrastructure.LosslessUtf16.GetBytes(value));
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            AppendBytes(hash, MemoryMarshal.AsBytes(value.AsSpan()));
+            return;
+        }
+        Span<byte> length = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(length, checked(value.Length * 2));
+        hash.AppendData(length);
+        Span<byte> character = stackalloc byte[2];
+        foreach (var item in value)
+        {
+            BinaryPrimitives.WriteUInt16LittleEndian(character, item);
+            hash.AppendData(character);
+        }
+    }
 
     private static void AppendBytes(IncrementalHash hash, ReadOnlySpan<byte> bytes)
     {
