@@ -3089,6 +3089,9 @@ release.
 
 ### Core-owned HTTP storage
 
+- Avoid constructing duplicate response/content/header objects during foreground 304 revalidation; validate
+  the returned representation before adding caller-only headers, and preserve background/error ownership.
+
 - Release every retired local response body when its URL generation slot is invalidated, including colliding URLs.
   Avoid temporary identity/target buffers and reuse immutable local metadata during response replacement.
 
