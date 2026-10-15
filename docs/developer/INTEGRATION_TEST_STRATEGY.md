@@ -35,3 +35,12 @@ Each SQL Server test uses its own schema, and each Redis test its own key prefix
 ## SQL Server readiness
 
 The SQL Server fixture opens a connection and runs a readiness query before cache operations start. Node setup also waits for `SqlServerTables.Creating`, because hosted startup can return while background table creation is still running. The tests give each distributed operation five seconds, for emulated SQL Server and concurrent framework runs; the library's default `OperationTimeout` is one second. `FixtureReadinessTests` cover pending creation, creation errors and cancellation.
+
+## Policy invalidation faults
+
+The Redis and SQL policy suites compile the same `NativePolicyFaultContract` as the Core fault model.
+It holds or fails selected stamp writes and fails one publication around the real provider, while
+successful operations still reach that provider. Tests check exact partial confirmation counters,
+independent recovery queues, caller cancellation after local mutation and validation before mutation.
+They read confirmed stamp bytes back from the backend; wrapper counters alone cannot pass the test.
+Each scenario owns its metadata prefix and SQL schema.

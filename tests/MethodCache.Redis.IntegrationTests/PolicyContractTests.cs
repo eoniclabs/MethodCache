@@ -1,4 +1,6 @@
 using MethodCache.TestSupport;
+using MethodCache.Extensibility;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
@@ -28,4 +30,18 @@ public class PolicyContractTests(RedisFixture redis)
         }
         await PolicyBackendContract.RunAsync(Create, time);
     }
+    [SkippableTheory]
+    [InlineData("partial")]
+    [InlineData("cancellation")]
+    [InlineData("validation")]
+    public async Task NativeInvalidationFaults_ConformToSharedContract(string scenario)
+    {
+        var services = new ServiceCollection();
+        services.Configure<DistributedCacheOptions>(o => o.KeyPrefix = "policy-fault:" + Guid.NewGuid().ToString("N") + ":");
+        services.AddMethodCacheRedis(redis.RequireConfiguration());
+        await using var provider = services.BuildServiceProvider();
+        var store = Assert.IsAssignableFrom<IAtomicInvalidationStore>(provider.GetRequiredKeyedService<IDistributedCache>("MethodCache"));
+        await NativePolicyFaultContract.RunAsync(scenario, store, provider.GetRequiredKeyedService<IBackplane>("MethodCache"));
+    }
+
 }
