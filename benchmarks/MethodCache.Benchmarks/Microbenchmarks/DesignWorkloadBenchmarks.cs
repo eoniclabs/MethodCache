@@ -89,6 +89,37 @@ internal static class DesignWorkloadSetup
         if (provider.GetKeyedService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>("MethodCache") is { } backend)
             _ = await backend.GetAsync("design-readiness", timeout.Token);
     }
+
+    internal static void RequireHttpStorage(ServiceProvider provider, string backend)
+    {
+        var oldStorage = typeof(MethodCache.HttpCaching.HttpCacheOptions).Assembly.GetType("MethodCache.HttpCaching.HttpCacheStorageOptions");
+        bool distributed;
+        if (oldStorage != null)
+        {
+            var storageType = oldStorage.Assembly.GetType("MethodCache.HttpCaching.IHttpCacheStorage", throwOnError: true)!;
+            var storage = provider.GetRequiredService(storageType);
+            distributed = storage.GetType().GetField("_distributed", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(storage) != null;
+        }
+        else
+        {
+            var storageType = typeof(ICacheManager).Assembly.GetType("MethodCache.Core.Runtime.Http.HttpResponseStore", throwOnError: true)!;
+            var storage = provider.GetRequiredService(storageType);
+            distributed = (bool)storageType.GetProperty("Distributed", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(storage)!;
+        }
+        if (distributed != (backend != "Local"))
+            throw new InvalidOperationException($"HTTP benchmark selected {(distributed ? "L2" : "local")} storage for backend {backend}.");
+    }
+
+    internal static void ConfigureLegacyHttpStorage(IServiceCollection services, string backend, string prefix)
+    {
+        var optionsType = typeof(MethodCache.HttpCaching.HttpCacheOptions).Assembly.GetType("MethodCache.HttpCaching.HttpCacheStorageOptions");
+        if (optionsType == null || backend == "Local") return;
+        var options = Activator.CreateInstance(optionsType)!;
+        optionsType.GetProperty("UseDistributedCache")!.SetValue(options, true);
+        optionsType.GetProperty("KeyPrefix")!.SetValue(options, prefix);
+        var wrapper = Activator.CreateInstance(typeof(Microsoft.Extensions.Options.OptionsWrapper<>).MakeGenericType(optionsType), [options])!;
+        services.AddSingleton(typeof(Microsoft.Extensions.Options.IOptions<>).MakeGenericType(optionsType), wrapper);
+    }
 }
 
 [MemoryDiagnoser]
@@ -221,7 +252,9 @@ public class DesignHttpWorkloadBenchmarks
         if (SelectPerformanceCores) DesignWorkloadSetup.PreferPerformanceCores();
         var services = new ServiceCollection();
         services.AddMethodCache();
-        DesignWorkloadSetup.Backend(services, Backend, "design_http_" + Guid.NewGuid().ToString("N"), roundTrip: false);
+        var prefix = "design_http_" + Guid.NewGuid().ToString("N");
+        DesignWorkloadSetup.Backend(services, Backend, prefix, roundTrip: false);
+        DesignWorkloadSetup.ConfigureLegacyHttpStorage(services, Backend, prefix);
         _origin = new Origin();
         var client = services.AddHttpClient("design-http");
         var keepCookies = typeof(MethodCache.HttpCaching.HttpCacheOptions).GetProperty("KeepCookies");
@@ -237,6 +270,7 @@ public class DesignHttpWorkloadBenchmarks
         _provider = services.BuildServiceProvider();
         await DesignWorkloadSetup.StartAsync(_provider);
         _client = _provider.GetRequiredService<IHttpClientFactory>().CreateClient("design-http");
+        if (!KeepCookies) DesignWorkloadSetup.RequireHttpStorage(_provider, Backend);
         await Fresh(); await Fresh();
         if (OriginLoads != (KeepCookies ? 2 : 1)) throw new InvalidOperationException("HTTP setup failed to prove the requested hit/bypass path.");
     }

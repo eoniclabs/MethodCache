@@ -99,7 +99,8 @@ Open generic registrations and closed types without a generated binding also giv
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
-`AddScoped(typeof(IRepository<>), typeof(Repository<>))` is not cached; register the closed types instead.
+`AddScoped(typeof(IRepository<>), typeof(Repository<>))` gives a named binding error at startup or first binding
+without a host; register generated closed types instead.
 
 ### Registering with a factory
 

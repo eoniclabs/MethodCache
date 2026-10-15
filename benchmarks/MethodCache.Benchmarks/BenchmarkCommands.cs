@@ -60,6 +60,9 @@ public static class BenchmarkCommands
             case "hashlookup":
                 RunBenchmark<Microbenchmarks.KeyHashLookupBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
+            case "memory-reference":
+                RunBenchmark<Microbenchmarks.MemoryCacheLookupReferenceBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "hitpath":
                 RunBenchmark<Microbenchmarks.PrefixHitPathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
@@ -156,6 +159,7 @@ public static class BenchmarkCommands
         Console.WriteLine("  design-memory - Public API hits, contention, single-flight and weighted eviction");
         Console.WriteLine("  design-l2     - Real Redis/SQL reads and writes, round-trip off/on");
         Console.WriteLine("  hashlookup   - Ready string/span lookup versus immutable prefix-state reuse");
+        Console.WriteLine("  memory-reference - IMemoryCache ready/built keys, sync and Task results");
         Console.WriteLine("  hitpath      - Complete contract-1 hits, buffers and listeners");
         Console.WriteLine("  httppath     - HTTP fresh/variant hits, misses and 304, listeners off/on");
         Console.WriteLine("  contract     - Generated sync/Task/ValueTask, complex keys and misses");

@@ -1,0 +1,107 @@
+=== packages
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/samples/MethodCache.Demo.FxVendor/MethodCache.Demo.FxVendor.csproj (in 173 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj (in 188 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj (in 188 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/samples/MethodCache.Demo/MethodCache.Demo.csproj (in 175 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj (in 193 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/MethodCache.HttpCaching.Tests.csproj (in 218 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.Tests/MethodCache.Redis.Tests.csproj (in 224 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.AspNetCore.Tests/MethodCache.AspNetCore.Tests.csproj (in 35 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.Tests/MethodCache.SourceGenerator.Tests.csproj (in 243 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Samples.Tests/MethodCache.Samples.Tests.csproj (in 36 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj (in 245 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.SqlServer.Tests/MethodCache.SqlServer.Tests.csproj (in 60 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/MethodCache.SourceGenerator.IntegrationTests.csproj (in 58 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.CompatTests/MethodCache.CompatTests.csproj (in 14 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/MethodCache.SqlServer.IntegrationTests.csproj (in 87 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/MethodCache.HttpCaching.IntegrationTests.csproj (in 29 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/MethodCache.Redis.IntegrationTests.csproj (in 42 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/MethodCache.Benchmarks.csproj (in 296 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/MethodCache.Docs.Tests.csproj (in 42 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Redis/MethodCache.Redis.csproj (in 22 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Analyzers.Tests/MethodCache.Analyzers.Tests.csproj (in 31 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj (in 23 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 14 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/MethodCache.Core.csproj (in 18 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/MethodCache.Analyzers.csproj (in 6 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/MethodCache.SqlServer.csproj (in 55 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/MethodCache.OpenTelemetry.Tests.csproj (in 95 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.AspNetCore/MethodCache.AspNetCore.csproj (in 11 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/samples/MethodCache.WebDemo/MethodCache.WebDemo.csproj (in 7 ms).
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/MethodCache.Benchmarks.Tests.csproj (in 86 ms).
+/usr/local/share/dotnet/sdk/10.0.103/NuGet.Build.Tasks.Pack.targets(204,6): warning : This project cannot be packaged because packaging has been disabled. Add <IsPackable>true</IsPackable> to the project file to enable producing a package from this project. [/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/samples/MethodCache.WebDemo/MethodCache.WebDemo.csproj]
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net8.0/MethodCache.Core.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net9.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net8.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net8.0/MethodCache.Redis.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net8.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.AspNetCore -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.AspNetCore/bin/Release/net10.0/MethodCache.AspNetCore.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net8.0/MethodCache.SqlServer.dll
+  MethodCache.AspNetCore -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.AspNetCore/bin/Release/net8.0/MethodCache.AspNetCore.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net9.0/MethodCache.Redis.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net8.0/MethodCache.HttpCaching.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net9.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net9.0/MethodCache.HttpCaching.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net9.0/MethodCache.OpenTelemetry.dll
+  MethodCache.AspNetCore -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.AspNetCore/bin/Release/net9.0/MethodCache.AspNetCore.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net9.0/MethodCache.SqlServer.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.AspNetCore.1.0.0-g6c9881e0c8.nupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.Serialization.MessagePack.1.0.0-g6c9881e0c8.nupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.AspNetCore.1.0.0-g6c9881e0c8.snupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.Serialization.MessagePack.1.0.0-g6c9881e0c8.snupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.SqlServer.1.0.0-g6c9881e0c8.nupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.SqlServer.1.0.0-g6c9881e0c8.snupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.OpenTelemetry.1.0.0-g6c9881e0c8.nupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.OpenTelemetry.1.0.0-g6c9881e0c8.snupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.1.0.0-g6c9881e0c8.nupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.1.0.0-g6c9881e0c8.snupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.Redis.1.0.0-g6c9881e0c8.nupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.Redis.1.0.0-g6c9881e0c8.snupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.HttpCaching.1.0.0-g6c9881e0c8.nupkg'.
+  Successfully created package '/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/artifacts/packages/MethodCache.HttpCaching.1.0.0-g6c9881e0c8.snupkg'.
+All six integration packages require MethodCache [1.0.0-g6c9881e0c8].
+PASS matching-core-first
+PASS matching-core-last
+PASS mismatched-MethodCache.Redis
+PASS mismatched-MethodCache.SqlServer
+PASS mismatched-MethodCache.Serialization.MessagePack
+PASS mismatched-MethodCache.AspNetCore
+PASS mismatched-MethodCache.OpenTelemetry
+PASS mismatched-MethodCache.HttpCaching
+== All 7 packages were packed
+== The generator, analyzers and code fixes are in the MethodCache package
+== Install the package and run the Quick Start
+Package smoke test passed
+== The Quick Start again with the .NET 8 SDK (the oldest compiler the generator supports)
+8.0.203
+Package smoke test passed
+== Install the add-on packages and use them in an app (net8.0)
+PASS Redis, two instances, JSON
+PASS Redis, two instances, MessagePack
+PASS SQL Server, two instances, JSON
+PASS Redis across independent processes and hash seeds
+PASS SQL Server across independent processes and hash seeds
+PASS ASP.NET Core admin endpoints and health check
+PASS OpenTelemetry metrics and spans
+PASS HttpClient caching
+Add-on package smoke test passed
+== Install the add-on packages and use them in an app (net10.0)
+PASS Redis, two instances, JSON
+PASS Redis, two instances, MessagePack
+PASS SQL Server, two instances, JSON
+PASS Redis across independent processes and hash seeds
+PASS SQL Server across independent processes and hash seeds
+PASS ASP.NET Core admin endpoints and health check
+PASS OpenTelemetry metrics and spans
+PASS HttpClient caching
+Add-on package smoke test passed

@@ -1,9 +1,22 @@
 using System.Diagnostics.Metrics;
+using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using MethodCache.Generated;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Microbenchmarks;
+
+internal static class PrefixBenchmarkSetup
+{
+    internal static void PreferPerformanceCores()
+    {
+        if (OperatingSystem.IsMacOS() && SetQos(0x19, 0) != 0)
+            throw new InvalidOperationException("Could not select benchmark thread QoS.");
+    }
+
+    [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "pthread_set_qos_class_self_np")]
+    private static extern int SetQos(uint quality, int priority);
+}
 
 // This source uses only generated contract 1, so the identical workload can be compiled against its pre-hash base.
 [MemoryDiagnoser]
@@ -16,10 +29,12 @@ public class PrefixHitPathBenchmarks
     [Params(4, 256)] public int MethodNameLength { get; set; }
     [Params(128, 512)] public int BufferCharacters { get; set; }
     [Params(false, true)] public bool Listening { get; set; }
+    public bool SelectPerformanceCores { get; set; } = true;
 
     [GlobalSetup]
     public void Setup()
     {
+        if (SelectPerformanceCores) PrefixBenchmarkSetup.PreferPerformanceCores();
         var services = new ServiceCollection();
         services.AddSingleton<IPrefixSource, PrefixSource>();
         services.AddMethodCache();
