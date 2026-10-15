@@ -119,7 +119,7 @@ shared lock are settings in `~/.config/methodcache-ci/env` on Megatron (see "Ins
 | Server | Role |
 |---|---|
 | Megatron (macOS) | coordinator; runs `jobs.sh build unit` itself with the SDKs in `/usr/local/share/dotnet` |
-| Nimbus (Linux) | `linux.sh` in Docker, under `~/methodcache-ci`. Nimbus also builds another project's images; a MethodCache run holds that project's capacity lock shared (`METHODCACHE_CI_NIMBUS_SHARED_LOCK`), so those builds wait for it |
+| Nimbus (Linux) | `linux.sh` in Docker, under `~/methodcache-ci`. Nimbus also builds another project's images; the coordinator holds that project's capacity lock shared (`METHODCACHE_CI_NIMBUS_SHARED_LOCK`) from before checkout/collection through all jobs, so those builds wait for it |
 | baloo (Windows) | `windows.ps1`, under `C:\mc`. The .NET 10 SDK is installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
 
 Every minute the coordinator looks at the head of `main` and every open pull request from this repository. Each
