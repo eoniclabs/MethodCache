@@ -1109,7 +1109,7 @@ namespace MethodCache.Extensibility
         {
             if (flight.Invalidated) return null;
             var stored = Publish(node, replacing);
-            if (stored != null) flight.PublishedAt ??= _distributed?.Now;
+            if (_distributed is { } distributed && stored != null) flight.PublishedAt ??= distributed.Now;
             return stored;
         }
 
@@ -1543,8 +1543,25 @@ namespace MethodCache.Extensibility
             private volatile bool _invalidated;
             private readonly Flight? _publication;
             public object Gate { get; }
-            public long? SourceStartedAt { get; init; }
-            internal long? PublishedAt { get; set; }
+            // L2 timestamps are absent for memory-only flights. Keeping their nullable longs in
+            // optional state avoids charging every L1 miss for distributed publication bookkeeping.
+            private DistributedLoadTimes? _distributedTimes;
+            public long? SourceStartedAt
+            {
+                get => _distributedTimes?.StartedAt;
+                init { if (value.HasValue) _distributedTimes = new(value); }
+            }
+            internal long? PublishedAt
+            {
+                get => _distributedTimes?.PublishedAt;
+                set { if (value.HasValue) (_distributedTimes ??= new(null)).PublishedAt = value; }
+            }
+
+            private sealed class DistributedLoadTimes(long? startedAt)
+            {
+                internal readonly long? StartedAt = startedAt;
+                internal long? PublishedAt;
+            }
 
             public Flight(string[]? tags, Flight? publication = null)
                 : base(TaskCreationOptions.RunContinuationsAsynchronously)
