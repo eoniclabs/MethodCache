@@ -7,8 +7,8 @@ using System.Text;
 namespace MethodCache.HttpCaching.Internal;
 
 /// <summary>
-/// Storage keys: <c>{client}:{hash of method and URI}</c> for a URL, and
-/// <c>{URL key}|{hash of the variant generation and the selecting header values}</c> for each of its variants.
+/// Storage keys: <c>{hashed client}:{URI hash}:m:{method}</c> for a response, and a hash of the variant
+/// generation and selecting headers for each variant. URL epoch targets omit the method suffix.
 /// Everything that tells callers apart (key headers, <c>Authorization</c> and <c>Cookie</c> in a private cache,
 /// <c>Vary</c>) lives in the variant key, so removing the URL entry invalidates the URL for every caller.
 /// </summary>
@@ -126,16 +126,17 @@ internal static class HttpCacheKeys
             return null;
         }
 
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        Append(hash, generation);
-        foreach (var header in selectingHeaders.OrderBy(h => h, StringComparer.OrdinalIgnoreCase))
+        var hash = new FramedHash(stackalloc byte[512]);
+        try
         {
-            AppendHeader(hash, request, header);
+            hash.Append(generation);
+            foreach (var header in selectingHeaders.OrderBy(h => h, StringComparer.OrdinalIgnoreCase))
+                AppendHeader(ref hash, request, header);
+            Span<byte> digest = stackalloc byte[32];
+            hash.Finish(digest);
+            return DigestKey(baseKey, '|', digest);
         }
-
-        Span<byte> digest = stackalloc byte[32];
-        _ = hash.TryGetHashAndReset(digest, out _);
-        return DigestKey(baseKey, '|', digest);
+        finally { hash.Dispose(); }
     }
 
     /// <summary>Whether the request sends any of <paramref name="headers"/>.</summary>
@@ -152,25 +153,25 @@ internal static class HttpCacheKeys
         return false;
     }
 
-    private static void AppendHeader(IncrementalHash hash, HttpRequestMessage request, string header)
+    private static void AppendHeader(ref FramedHash hash, HttpRequestMessage request, string header)
     {
-        Append(hash, header.ToLowerInvariant());
+        hash.Append(header.ToLowerInvariant());
 
         // A header sent with an empty value and a header not sent at all are different requests
         if (request.Headers.TryGetValues(header, out var values) ||
             request.Content?.Headers.TryGetValues(header, out values) == true)
         {
-            Append(hash, "1");
+            hash.Append("1");
             var items = values.ToArray();
-            Append(hash, items.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            hash.Append(items.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
             foreach (var value in items)
             {
-                Append(hash, value);
+                hash.Append(value);
             }
         }
         else
         {
-            Append(hash, "0");
+            hash.Append("0");
         }
     }
 
@@ -199,4 +200,44 @@ internal static class HttpCacheKeys
         hash.AppendData(length);
         hash.AppendData(bytes);
     }
+    // One SHA operation for the complete existing frame. Small header sets stay on the stack; any pooled
+    // buffer containing credentials is cleared before return, including buffers replaced during growth.
+    private ref struct FramedHash(Span<byte> buffer)
+    {
+        private Span<byte> _buffer = buffer;
+        private byte[]? _rented;
+        private int _written;
+
+        internal void Append(scoped ReadOnlySpan<char> value)
+        {
+            var bytes = checked(value.Length * 2);
+            EnsureCapacity(checked(_written + 4 + bytes));
+            BinaryPrimitives.WriteInt32LittleEndian(_buffer[_written..], bytes);
+            _written += 4;
+            var destination = _buffer.Slice(_written, bytes);
+            if (BitConverter.IsLittleEndian) MemoryMarshal.AsBytes(value).CopyTo(destination);
+            else
+                for (var i = 0; i < value.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(destination[(i * 2)..], value[i]);
+            _written += bytes;
+        }
+
+        private void EnsureCapacity(int minimum)
+        {
+            if (_buffer.Length >= minimum) return;
+            var next = ArrayPool<byte>.Shared.Rent(Math.Max(minimum, checked(_buffer.Length * 2)));
+            _buffer[.._written].CopyTo(next);
+            if (_rented != null) ArrayPool<byte>.Shared.Return(_rented, clearArray: true);
+            else _buffer[.._written].Clear();
+            _buffer = _rented = next;
+        }
+
+        internal readonly void Finish(scoped Span<byte> digest) => _ = SHA256.HashData(_buffer[.._written], digest);
+        internal void Dispose()
+        {
+            if (_rented != null) ArrayPool<byte>.Shared.Return(_rented, clearArray: true);
+            else _buffer[.._written].Clear();
+            _buffer = default; _rented = null; _written = 0;
+        }
+    }
+
 }
