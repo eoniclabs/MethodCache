@@ -1,0 +1,22 @@
+{
+  "failed_head": "0dae335a3e6f702af15f6b26998c8497b6065734",
+  "ci_run": "20261015-203219-0dae335a3e6f",
+  "failed_suite": "MethodCache.Core.Tests net9.0 on macOS",
+  "net10_suite_in_original_run": "1022 passed; one intentional soak skip",
+  "source_of_forwarded_fixtures": "3700ade78a1450e16ad25cd90035268972e3e949",
+  "normalization": "LF, trailing spaces/tabs and trailing empty lines removed; original hashes retained",
+  "files": {
+    "original-macos-unit.log": {
+      "original_sha256": "021201f40ca82dc70ed9aa5bad82f6c7ad6c642498fa65536e667830539286e6",
+      "stored_sha256": "021201f40ca82dc70ed9aa5bad82f6c7ad6c642498fa65536e667830539286e6"
+    },
+    "http-core-final-green.log": {
+      "original_sha256": "8f14850e2fc6d1c6762a37045a0c12549fb973f8310a4bfcb312bc32682491af",
+      "stored_sha256": "8f14850e2fc6d1c6762a37045a0c12549fb973f8310a4bfcb312bc32682491af"
+    },
+    "net10-core-final-green.log": {
+      "original_sha256": "0025097238f1adfdfc2aeb8b8ee446a71435603510da5a7b2928136c1828bf62",
+      "stored_sha256": "0025097238f1adfdfc2aeb8b8ee446a71435603510da5a7b2928136c1828bf62"
+    }
+  }
+}
