@@ -306,6 +306,17 @@ revised test fail with 1,520,000 bytes. Restored source passes the complete 320-
 the historical three-target checkout. The original failure is retained without attributing its bytes
 to a proven cause: `plans/design-benchmarks/local-epoch-probe-isolation/`.
 
+The later #132 Linux/tr-TR run at 94ee6f0 still reports 680 bytes in that owned-thread single batch.
+The follow-up fixture completes three fixed 10,000-capture batches after the same 1,000 warmups
+and requires a zero-byte batch, without tolerance or adaptive retry. It checks sustained per-call
+allocation, not every possible transient runtime allocation. All 30,000 captures also must return
+the same identity object. A mutation copying only the first measured identity fails; an escaping
+128-byte temporary buffer while returning the original identity fails with 1,520,000 bytes in each
+batch. Production source is restored byte for byte. All 320 HTTP facts pass on net10.0 under the
+default, tr-TR and sv-SE cultures. The original cause remains unproven, and whole-path performance
+allocation gates plus latest-head CI remain required. Exact receipts are in that directory's
+`fixed-batches/` subdirectory.
+
 ## Independent-run precision follow-up
 
 The first two CPU2-affinity baseline GenericHit means imply that even the best possible positive
