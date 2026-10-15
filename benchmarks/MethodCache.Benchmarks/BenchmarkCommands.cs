@@ -69,6 +69,9 @@ public static class BenchmarkCommands
             case "httppath":
                 RunBenchmark<Microbenchmarks.HttpResponsePathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
+            case "httpcold":
+                RunBenchmark<Microbenchmarks.HttpColdMissBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "contract":
                 RunBenchmark<Comparison.GeneratedContractBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
@@ -162,6 +165,7 @@ public static class BenchmarkCommands
         Console.WriteLine("  memory-reference - IMemoryCache ready/built keys, sync and Task results");
         Console.WriteLine("  hitpath      - Complete contract-1 hits, buffers and listeners");
         Console.WriteLine("  httppath     - HTTP fresh/variant hits, misses and 304, listeners off/on");
+        Console.WriteLine("  httpcold     - HTTP cold publication with a bounded resident set per iteration");
         Console.WriteLine("  contract     - Generated sync/Task/ValueTask, complex keys and misses");
         Console.WriteLine("  engine       - Current memory engine latency compared with other caches");
         Console.WriteLine("  hitratio     - Hit ratio and read throughput on synthetic workloads");

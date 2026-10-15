@@ -12,9 +12,11 @@ HARNESS = Path('/tmp/methodcache-design-harness')
 RUNNER = '/tmp/methodcache-http-native-runner/bin/Release/net10.0/Runner.dll'
 REVISIONS = ['base','pr1','pr2','pr3','pr4','pr5','prefix','final']
 GROUPS = {
-    'local': {'filters': ['*GeneratedContractBenchmarks*', '*HttpResponsePathBenchmarks*',
+    'local': {'filters': ['*GeneratedContractBenchmarks*', '*HttpResponsePathBenchmarks.FreshHit*',
+                          '*HttpResponsePathBenchmarks.VariantHit*', '*HttpResponsePathBenchmarks.Revalidated*',
+                          '*HttpColdMissBenchmarks*',
                           '*DesignMemoryWorkloadBenchmarks*', '*DesignHttpWorkloadBenchmarks*Local*'],
-              'reports': 4, 'cases': 46},
+              'reports': 5, 'cases': 46},
     'native': {'filters': ['*DesignL2WorkloadBenchmarks*', '*DesignHttpWorkloadBenchmarks*Redis*',
                            '*DesignHttpWorkloadBenchmarks*SqlServer*'],
                'reports': 2, 'cases': 16},

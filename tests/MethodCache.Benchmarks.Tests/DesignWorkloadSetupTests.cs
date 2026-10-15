@@ -1,10 +1,54 @@
 using MethodCache.Benchmarks.Microbenchmarks;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Running;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace MethodCache.Benchmarks.Tests;
 
 public class DesignWorkloadSetupTests
 {
+    [Fact]
+    public void HttpColdPublication_UsesAnExplicitBoundedBatch_WithIterationReset()
+    {
+        var cases = BenchmarkConverter.TypeToBenchmarks(typeof(HttpColdMissBenchmarks), DefaultConfig.Instance).BenchmarksCases;
+        Assert.Equal(4, cases.Length);
+        Assert.All(cases, sample =>
+        {
+            Assert.Equal(HttpColdMissBenchmarks.InvocationsPerIteration, sample.Job.Run.InvocationCount);
+            Assert.Equal(nameof(HttpColdMissBenchmarks.ResetBatch), sample.Descriptor.IterationSetupMethod?.Name);
+        });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task HttpColdPublication_EveryOperationLoads_AndIterationResetReleasesResidents(bool listening, bool afterInvalidation)
+    {
+        var benchmark = new HttpColdMissBenchmarks { Listening = listening, AfterInvalidation = afterInvalidation };
+        try
+        {
+            await benchmark.Setup();
+            for (var batch = 0; batch < 2; batch++)
+            {
+                if (batch != 0) await benchmark.ResetBatch();
+                var warm = afterInvalidation ? 7 : 3;
+                Assert.Equal(warm, benchmark.OriginLoads);
+                var admin = benchmark.Services.GetRequiredService<ICacheAdministrator>();
+                Assert.Equal(3, (await admin.GetStatsAsync()).LocalHttpEntries);
+                for (var i = 0; i < HttpColdMissBenchmarks.InvocationsPerIteration; i++)
+                    Assert.Equal(200, await benchmark.Miss());
+                Assert.Equal(warm + HttpColdMissBenchmarks.InvocationsPerIteration, benchmark.OriginLoads);
+                var stats = await admin.GetStatsAsync();
+                Assert.Equal(HttpColdMissBenchmarks.InvocationsPerIteration + 3, stats.LocalHttpEntries);
+                Assert.InRange(stats.LocalHttpBytes, 1, 100L * 1024 * 1024);
+            }
+        }
+        finally { benchmark.Cleanup(); }
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]

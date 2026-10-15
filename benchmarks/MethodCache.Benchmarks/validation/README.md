@@ -43,3 +43,23 @@ sync/Task/ValueTask and MeterListener off/on. `MemoryCacheLookupReferenceBenchma
 sync/Task result creation; those are different operations, not interchangeable baseline numbers. Post-PR5 statistics
 have no separate toggle, so no ineffective statistics option is varied. Each benchmark setup has a correctness
 contract test, and the macOS benchmark thread selects the same performance QoS on both revisions.
+
+## Cold HTTP publication versus growing-cache pressure
+
+The original `HttpResponsePathBenchmarks.Miss` grows its resident set across iterations. The older
+storage charges bodies only, while the new budget includes headers and metadata; that case therefore
+also measures different eviction/GC pressure. Keep it as a diagnostic workload, not a pure publication
+comparison. `HttpColdMissBenchmarks` resets its isolated provider outside each measured iteration and
+uses an explicit 8,192 invocations with unroll factor 1. Every operation loads origin, and two complete
+batches are checked to retain every response below the default budget, with no cross-batch residents.
+A BenchmarkDotNet conversion test verifies that iteration setup does not reduce the batch to one call.
+
+The validation harness selects fresh/variant/304 from HttpResponsePathBenchmarks and cold misses from
+HttpColdMissBenchmarks. This keeps 62 cases, with one additional report (three for the contract/HTTP
+family). Growing local/native pressure in DesignHttpWorkloadBenchmarks remains separately labelled.
+Changed workloads require all baseline/candidate harnesses to be rebuilt with the exact same sources;
+do not pool previous growing-miss data with this bounded publication case.
+
+The explicit invocation count overrides iterationTime for this one class; other scenarios retain their
+normal 500 ms target. See [BenchmarkDotNet InvocationCount](https://benchmarkdotnet.org/api/BenchmarkDotNet.Attributes.InvocationCountAttribute.html).
+Growing-pressure rows still require performance review; the separation does not waive regressions.
