@@ -124,14 +124,20 @@ public static class DistributedCheck
         return UserService.Calls == 2 ? null : "the invalidation on the first instance did not reach the second";
     }
 
-    internal static Instance CreateInstance(Backend backend, string connection, string isolation, bool messagePack)
+    internal static Instance CreateInstance(Backend backend, string connection, string isolation, bool messagePack, bool sameClock = false)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
         services.AddMethodCache();
         services.AddHealthChecks().AddMethodCache();
-        services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = isolation + ":");
+        services.Configure<DistributedCacheOptions>(options =>
+        {
+            options.KeyPrefix = isolation + ":";
+            // The seed-isolation workers share this host's clock. The default skew margin intentionally
+            // rejects publications loaded very shortly after an invalidation; this test concerns identities.
+            if (sameClock) options.ClockSkewTolerance = TimeSpan.Zero;
+        });
         if (backend == Backend.Redis)
         {
             services.AddMethodCacheRedis(options =>

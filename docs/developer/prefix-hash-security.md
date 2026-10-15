@@ -20,7 +20,7 @@ and unfinished states must never appear in logs, administration, telemetry, stor
 Validation includes the authors' 64 pinned reference vectors; CsCheck across arbitrary byte and UTF-16 split points,
 including isolated surrogates; buffer growth and append after lookup; and forced collisions in an individual engine.
 The immutable test-only comparer mask never changes process-global state. Adversarial cases include embedded NUL,
-long shared prefixes and structured suffixes; work is assessed by block counts/input length rather than timing asserts.
+long shared prefixes and structured suffixes; work is assessed by bounded hash-chain comparison counts rather than timing asserts.
 
 This is an implementation candidate. Functional, frozen-vendor/AOT, backend identity and section-10 performance gates
 must pass before treating the optimization as complete. Security is not traded away for a faster sub-benchmark.
