@@ -302,7 +302,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "MethodCache stopped watching the policy source '{SourceId}'; its policies stay as they were last read.", registration.SourceId);
+            _logger.LogError("MethodCache stopped watching the policy source '{SourceId}'; its policies stay as they were last read. Error type: {ErrorType}.", registration.SourceId, ex.GetType().FullName);
         }
     }
 

@@ -32,6 +32,9 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private ITimer? _retry;
     private long _ticket;
     private int _disposed;
+    private int _advancesInFlight;
+    private readonly TaskCompletionSource _advancesDrained = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Task? _shutdown;
     internal byte Format { get; }
     internal long MaximumBytes { get; }
     internal bool Distributed => _distributed != null;
@@ -64,7 +67,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         {
             if (!distributed.SupportsHttpEpochs)
                 throw new NotSupportedException("HTTP L2 caching requires MethodCache's native Redis or SQL Server transport.");
-            distributed.AttachHttp(InvalidateLocalTag, ClearLocal);
+            distributed.AttachHttp(InvalidateLocalTag, ClearLocal, DisposeAsync);
             distributed.ObserveHttpRecovery(() => PendingRecoveries);
         }
         telemetry.ObserveHttp(Observe);
@@ -170,6 +173,15 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
 
     internal ValueTask InvalidateUrlsAsync(IEnumerable<string> targets, CancellationToken caller)
     {
+        lock (_timerGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed != 0, this);
+            return InvalidateUrlsCore(targets, caller);
+        }
+    }
+
+    private ValueTask InvalidateUrlsCore(IEnumerable<string> targets, CancellationToken caller)
+    {
         var distinct = targets.Distinct(StringComparer.Ordinal).ToArray();
         foreach (var target in distinct)
         {
@@ -201,18 +213,31 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
             throw new InvalidOperationException("The HTTP origin mutation may have succeeded, but its cache invalidation could not be confirmed. The cache owns recovery; do not retry the origin mutation automatically.");
     }
 
-    private async Task<bool> AdvanceAsync(int slot, PendingEpoch pending)
+    private async Task<bool> AdvanceAsync(int slot, PendingEpoch pending, bool shutdown = false)
     {
-        bool confirmed;
-        try { confirmed = await _distributed!.AdvanceHttpSlotAsync(slot).ConfigureAwait(false); }
-        catch { Queue(slot, pending); throw; }
-        if (confirmed)
+        lock (_timerGate)
         {
-            _pending.TryRemove(new KeyValuePair<int, PendingEpoch>(slot, pending));
-            _telemetry.Invalidations("key", "distributed", 1);
+            if (_disposed != 0 && !shutdown) return false;
+            _advancesInFlight++;
         }
-        else Queue(slot, pending);
-        return confirmed;
+        try
+        {
+            bool confirmed;
+            try { confirmed = await _distributed!.AdvanceHttpSlotAsync(slot, shutdown).ConfigureAwait(false); }
+            catch { Queue(slot, pending); throw; }
+            if (confirmed)
+            {
+                _pending.TryRemove(new KeyValuePair<int, PendingEpoch>(slot, pending));
+                _telemetry.Invalidations("key", "distributed", 1);
+            }
+            else Queue(slot, pending);
+            return confirmed;
+        }
+        finally
+        {
+            lock (_timerGate)
+                if (--_advancesInFlight == 0 && _disposed != 0) _advancesDrained.TrySetResult();
+        }
     }
 
     private void Queue(int slot, PendingEpoch pending)
@@ -227,15 +252,20 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         }
     }
 
-    internal async Task FlushRecoveryAsync()
+    internal async Task FlushRecoveryAsync(bool shutdown = false)
     {
-        if (!_recoveryGate.Wait(0)) return;
+        if (shutdown) await _recoveryGate.WaitAsync().ConfigureAwait(false);
+        else
+        {
+            lock (_timerGate)
+                if (_disposed != 0 || !_recoveryGate.Wait(0)) return;
+        }
         try
         {
             foreach (var pair in _pending.ToArray())
             {
                 if (!pair.Value.Queued) continue;
-                try { _ = await AdvanceAsync(pair.Key, pair.Value).ConfigureAwait(false); }
+                try { _ = await AdvanceAsync(pair.Key, pair.Value, shutdown).ConfigureAwait(false); }
                 catch { /* Its bounded transport operation reports the type and retains this target for recovery. */ }
             }
         }
@@ -347,15 +377,43 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        lock (_timerGate) _retry?.Dispose();
-        _distributed?.ObserveHttpRecovery(null);
-        _local?.Clear(); _observations.Clear();
+        lock (_timerGate)
+        {
+            if (_disposed != 0) return;
+            Volatile.Write(ref _disposed, 1);
+            _retry?.Dispose();
+            if (_advancesInFlight == 0) _advancesDrained.TrySetResult();
+            _shutdown = ShutdownAsync();
+            _ = _shutdown.ContinueWith(static task => _ = task.Exception, CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        }
     }
+
+    private async Task ShutdownAsync()
+    {
+        await _advancesDrained.Task.ConfigureAwait(false);
+        try
+        {
+            if (Distributed)
+            {
+                await FlushRecoveryAsync(shutdown: true).ConfigureAwait(false);
+                if (!_pending.IsEmpty) _distributed!.ReportLostHttpRecoveries(_pending.Count);
+                _pending.Clear();
+            }
+        }
+        finally
+        {
+            _distributed?.ObserveHttpRecovery(null);
+            _local?.Clear(); _observations.Clear();
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        try { if (Distributed) await FlushRecoveryAsync().ConfigureAwait(false); }
-        finally { Dispose(); }
+        Dispose();
+        Task shutdown;
+        lock (_timerGate) shutdown = _shutdown!;
+        await shutdown.ConfigureAwait(false);
     }
 }

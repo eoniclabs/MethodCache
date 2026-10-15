@@ -10,6 +10,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace MethodCache.HttpCaching.Tests;
 
@@ -24,7 +25,7 @@ internal sealed class TestHttpStore : IHttpCacheStorage, IDisposable
     internal HttpResponseStore Core { get; }
     internal DistributedCacheLayer Layer => _layer!;
     internal TestHttpStore(TimeProvider? time = null, IDistributedCache? distributed = null,
-        long maximumBytes = 100 * 1024 * 1024, string prefix = "methodcache:", byte format = 2)
+        long maximumBytes = 100 * 1024 * 1024, string prefix = "methodcache:", byte format = 2, ILogger<DistributedCacheLayer>? logger = null)
     {
         time ??= TimeProvider.System;
         _services = new ServiceCollection().AddMetrics().BuildServiceProvider();
@@ -32,7 +33,7 @@ internal sealed class TestHttpStore : IHttpCacheStorage, IDisposable
             Options.Create(new MethodCacheTelemetryOptions()), time);
         if (distributed != null)
             _layer = new DistributedCacheLayer(MethodCache.TestSupport.HttpEpochTestCache.Wrap(distributed), new JsonCacheSerializer(),
-                new DistributedCacheOptions { KeyPrefix = prefix, ClockSkewTolerance = TimeSpan.Zero }, timeProvider: time, telemetry: telemetry);
+                new DistributedCacheOptions { KeyPrefix = prefix, ClockSkewTolerance = TimeSpan.Zero }, logger: logger, timeProvider: time, telemetry: telemetry);
         Core = new HttpResponseStore(Options.Create(new MethodCacheMemoryOptions { MaxHttpBytes = maximumBytes }), telemetry, time, _layer, format);
         _adapter = new HttpCacheStore(Core, time);
         _default = _adapter.ForClient("test", new HttpCacheOptions());

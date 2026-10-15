@@ -1,5 +1,13 @@
 # Changelog
 
+Changes that a user of the packages notices. The release steps are in
+[docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
+release.
+
+## Unreleased (1.0.0)
+
+### Core telemetry and attribute diagnostics
+
 - Move instrumentation into Core's container-owned Meter/ActivitySource; the OpenTelemetry package now only subscribes.
   Replace provider/wrapper APIs with `MethodCacheTelemetryOptions`, one final request outcome and seconds histograms.
   Spans/logs omit exception payloads and copied request identities; key/tag recording is explicit opt-in.
@@ -10,11 +18,9 @@
 
 - Unify duration parsing and generator errors; add named attribute groups, enabled/distributed flags and fail-safe retry delay. Remove raw-key attributes and consolidate diagnostic IDs. Dynamic tag placeholders now use canonical key parts while existing contract-1 binaries retain their formatting.
 
-Changes that a user of the packages notices. The release steps are in
-[docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
-release.
-
-## Unreleased (1.0.0)
+- Omit invalid reload values and policy watcher exception payloads from diagnostic logs; retain error types.
+- Drain HTTP generation recovery before disposing its transport. Retry once through an open breaker and report
+  unconfirmed URL invalidations at shutdown without exposing targets.
 
 ### Core-owned HTTP storage
 
