@@ -1,3 +1,5 @@
+using MethodCache.Core.Runtime.Keys;
+
 namespace MethodCache.Core.Runtime.Memory;
 
 /// <summary>
@@ -24,7 +26,9 @@ internal abstract class Node
     protected Node(string key)
     {
         Key = key;
-        KeyHash = key.GetHashCode();
+        // Reuse the full process-secret hash for the frequency sketch. The dictionary's test-only
+        // collision mask never reaches the sketch; sampling/admission still see all 32 randomized bits.
+        KeyHash = ProcessKeyHash.Compute(key);
     }
 
     public string Key { get; }

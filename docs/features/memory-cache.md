@@ -75,3 +75,6 @@ The cache stores the object your method returned and hands the same instance to 
 object; return immutable types such as records, or copies.
 
 Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
+
+Dictionary hashes are process-local implementation metadata. Canonical key text, L2 identities, administration and
+invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.

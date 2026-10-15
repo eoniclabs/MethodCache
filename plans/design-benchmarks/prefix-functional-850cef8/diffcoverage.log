@@ -1,0 +1,20 @@
+Changed C# lines under src/ since 2f4a91d0c914: 343 in 10 file(s)
+  src/MethodCache.Core/Generated/GeneratedServices.cs: 6/6 changed lines covered
+  src/MethodCache.Core/Generated/KeyBuilder.cs: 9/9 changed lines covered
+  src/MethodCache.Core/Generated/MethodCall.cs: 7/7 changed lines covered
+  src/MethodCache.Core/Generated/TextKey.cs: 3/3 changed lines covered
+  src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs: 3/3 changed lines covered
+  src/MethodCache.Core/Runtime/KeyGeneration/FastHashKeyGenerator.cs: 24/24 changed lines covered
+  src/MethodCache.Core/Runtime/Keys/KeyComparer.cs: 14/16 changed lines covered
+         25 | public string Create(ReadOnlySpan<char> alternate) => new(alternate);
+         31 | public string Create(PrehashedKey alternate) => new(alternate.Text);
+  src/MethodCache.Core/Runtime/Keys/MarvinState.cs: 76/82 changed lines covered
+         22 | Span<byte> bytes = stackalloc byte[2];
+         23 | foreach (var character in text)
+         25 | BinaryPrimitives.WriteUInt16LittleEndian(bytes, character);
+         26 | Append(bytes);
+         29 | }
+         75 | var copy = this; copy.AppendUtf16(suffix); return copy.Finish32();
+  src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs: 6/6 changed lines covered
+  src/MethodCache.Core/Runtime/Memory/Node.cs: 1/1 changed lines covered
+Diff coverage: 149/157 changed lines = 94.9% (minimum 80%)

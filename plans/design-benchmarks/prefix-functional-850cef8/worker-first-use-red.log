@@ -1,0 +1,163 @@
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Core/bin/Release/net8.0/MethodCache.Core.dll
+  MethodCache.SourceGenerator.IntegrationTests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net8.0/MethodCache.SourceGenerator.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net8.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:   528, Skipped:     0, Total:   528, Duration: 25 s - MethodCache.SourceGenerator.IntegrationTests.dll (net8.0)
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net8.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net8.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.AspNetCore -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.AspNetCore/bin/Release/net8.0/MethodCache.AspNetCore.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Redis/bin/Release/net8.0/MethodCache.Redis.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net8.0/MethodCache.HttpCaching.dll
+  MethodCache.Analyzers.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Analyzers.Tests/bin/Release/net8.0/MethodCache.Analyzers.Tests.dll
+  MethodCache.CompatTests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.CompatTests/bin/Release/net8.0/MethodCache.CompatTests.dll
+  MethodCache.SourceGenerator.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SourceGenerator.Tests/bin/Release/net8.0/MethodCache.SourceGenerator.Tests.dll
+  MethodCache.Samples.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Samples.Tests/bin/Release/net8.0/MethodCache.Samples.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.CompatTests/bin/Release/net8.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v8.0)
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Analyzers.Tests/bin/Release/net8.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Samples.Tests/bin/Release/net8.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SourceGenerator.Tests/bin/Release/net8.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+VSTest version 18.0.1 (arm64)
+
+
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 141 ms - MethodCache.CompatTests.dll (net8.0)
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 220 ms - MethodCache.Samples.Tests.dll (net8.0)
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net8.0/MethodCache.SqlServer.dll
+  MethodCache.AspNetCore.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.AspNetCore.Tests/bin/Release/net8.0/MethodCache.AspNetCore.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.AspNetCore.Tests/bin/Release/net8.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+  MethodCache.OpenTelemetry.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net8.0/MethodCache.OpenTelemetry.Tests.dll
+  MethodCache.SqlServer.IntegrationTests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net8.0/MethodCache.SqlServer.IntegrationTests.dll
+  MethodCache.SqlServer.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SqlServer.Tests/bin/Release/net8.0/MethodCache.SqlServer.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net8.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.SqlServer.Tests/bin/Release/net8.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v8.0)
+  MethodCache.HttpCaching.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net8.0/MethodCache.HttpCaching.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net8.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:   268, Skipped:     0, Total:   268, Duration: 600 ms - MethodCache.HttpCaching.Tests.dll (net8.0)
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 3 s - MethodCache.Analyzers.Tests.dll (net8.0)
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 4 s - MethodCache.SourceGenerator.Tests.dll (net8.0)
+
+Passed!  - Failed:     0, Passed:    48, Skipped:     0, Total:    48, Duration: 2 s - MethodCache.AspNetCore.Tests.dll (net8.0)
+/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj::TargetFramework=net8.0]
+/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj::TargetFramework=net8.0]
+/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj::TargetFramework=net8.0]
+  MethodCache.Core.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net8.0/MethodCache.Core.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net8.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.14] MethodCache.Core.Tests: Skipping test case with duplicate ID '13a0e88de602a5b59a614dbf806fe8d4261c32c5' ('MethodCache.Core.Tests.Core.MethodCacheKeyBuilderTests.AppendPart_WritesTheSameTextAsMethodCacheKeys(built: "Prefix:\\0", part: "\\0")' and 'MethodCache.Core.Tests.Core.MethodCacheKeyBuilderTests.AppendPart_WritesTheSameTextAsMethodCacheKeys(built: "Prefix:\\0", part: "\\0")')
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    50, Skipped:     0, Total:    50, Duration: 8 s - MethodCache.SqlServer.IntegrationTests.dll (net8.0)
+  MethodCache.HttpCaching.IntegrationTests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net8.0/MethodCache.HttpCaching.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net8.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    18, Skipped:     0, Total:    18, Duration: 79 ms - MethodCache.HttpCaching.IntegrationTests.dll (net8.0)
+[xUnit.net 00:00:07.73]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Passed!  - Failed:     0, Passed:  1012, Skipped:     1, Total:  1013, Duration: 7 s - MethodCache.Core.Tests.dll (net8.0)
+  MethodCache.Redis.IntegrationTests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net8.0/MethodCache.Redis.IntegrationTests.dll
+  MethodCache.Benchmarks.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net8.0/MethodCache.Benchmarks.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net8.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+  MethodCache.Redis.Tests -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Redis.Tests/bin/Release/net8.0/MethodCache.Redis.Tests.dll
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net8.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.Redis.Tests/bin/Release/net8.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 103 ms - MethodCache.Redis.Tests.dll (net8.0)
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    72, Skipped:     0, Total:    72, Duration: 272 ms - MethodCache.Benchmarks.Tests.dll (net8.0)
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 14 s - MethodCache.SqlServer.Tests.dll (net8.0)
+Test run for /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net8.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.17]     MethodCache.OpenTelemetry.Tests.GeneratedHitAllocationTests.ConcurrentGeneratedHits_PreserveEveryMeasurement_WithoutAddedWorkerAllocations [FAIL]
+  Failed MethodCache.OpenTelemetry.Tests.GeneratedHitAllocationTests.ConcurrentGeneratedHits_PreserveEveryMeasurement_WithoutAddedWorkerAllocations [33 ms]
+  Error Message:
+   Assert.Equal() Failure: Collections differ
+                    ↓ (pos 1)
+Expected: [1360000, 1360048, 1360048, 1360048]
+Actual:   [1360000, 1360000, 1360000, 1360000]
+                    ↑ (pos 1)
+  Stack Trace:
+     at MethodCache.OpenTelemetry.Tests.GeneratedHitAllocationTests.ConcurrentGeneratedHits_PreserveEveryMeasurement_WithoutAddedWorkerAllocations() in /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/GeneratedHitAllocationTests.cs:line 83
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Failed!  - Failed:     1, Passed:    28, Skipped:     0, Total:    29, Duration: 211 ms - MethodCache.OpenTelemetry.Tests.dll (net8.0)
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Passed!  - Failed:     0, Passed:    14, Skipped:     0, Total:    14, Duration: 4 s - MethodCache.Redis.IntegrationTests.dll (net8.0)

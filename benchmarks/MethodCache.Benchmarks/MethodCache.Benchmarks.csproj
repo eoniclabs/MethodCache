@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <DefineConstants Condition="Exists('../../src/MethodCache.Core/Runtime/Keys/MarvinState.cs')">$(DefineConstants);METHODCACHE_PREFIX_HASH</DefineConstants>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>

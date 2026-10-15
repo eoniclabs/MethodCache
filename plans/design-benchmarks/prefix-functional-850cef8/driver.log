@@ -1,0 +1,43 @@
+[testcontainers.org 00:00:00.06] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.14] Docker container 4348b96f543a created
+[testcontainers.org 00:00:00.16] Start Docker container 4348b96f543a
+[testcontainers.org 00:00:00.24] Wait for Docker container 4348b96f543a to complete readiness checks
+[testcontainers.org 00:00:01.26] Docker container 4348b96f543a ready
+[testcontainers.org 00:00:01.32] Docker container 8407f6d80021 created
+[testcontainers.org 00:00:01.32] Docker container 3b05a1ac9a1b created
+[testcontainers.org 00:00:01.32] Start Docker container 8407f6d80021
+[testcontainers.org 00:00:01.33] Start Docker container 3b05a1ac9a1b
+[testcontainers.org 00:00:01.40] Wait for Docker container 8407f6d80021 to complete readiness checks
+[testcontainers.org 00:00:01.41] Wait for Docker container 3b05a1ac9a1b to complete readiness checks
+[testcontainers.org 00:00:01.41] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container 8407f6d80021
+[testcontainers.org 00:00:01.41] Execute "redis-cli ping" at Docker container 3b05a1ac9a1b
+[testcontainers.org 00:00:01.45] Docker container 3b05a1ac9a1b ready
+[testcontainers.org 00:00:01.47] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container 8407f6d80021
+[testcontainers.org 00:00:07.18] Docker container 8407f6d80021 ready
+restore: 0
+snippets-final: 0
+llms-final: 0
+coverage: 0
+diffcoverage: 0
+matrix-net8.0: 0
+matrix-net9.0: 0
+cultures: 0
+properties: 0
+soak: 0
+demo: 0
+aot-publish: 0
+aot-run: 0
+corpus-export: 0
+corpus-publish: 0
+corpus-run: 0
+packages: 0
+[testcontainers.org 00:12:04.61] Delete Docker container 8407f6d80021
+[testcontainers.org 00:12:04.87] Delete Docker container 3b05a1ac9a1b

@@ -48,6 +48,12 @@ public static class BenchmarkCommands
 
         switch (cleanedArgs[0].ToLowerInvariant())
         {
+            case "hashlookup":
+                RunBenchmark<Microbenchmarks.KeyHashLookupBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "hitpath":
+                RunBenchmark<Microbenchmarks.PrefixHitPathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "contract":
                 RunBenchmark<Comparison.GeneratedContractBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
@@ -134,6 +140,8 @@ public static class BenchmarkCommands
         Console.WriteLine("Usage: MethodCache.Benchmarks <category>");
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
+        Console.WriteLine("  hashlookup   - Ready string/span lookup versus immutable prefix-state reuse");
+        Console.WriteLine("  hitpath      - Complete contract-1 hits, buffers and listeners");
         Console.WriteLine("  contract     - Generated sync/Task/ValueTask, complex keys and misses");
         Console.WriteLine("  engine       - Current memory engine latency compared with other caches");
         Console.WriteLine("  hitratio     - Hit ratio and read throughput on synthetic workloads");

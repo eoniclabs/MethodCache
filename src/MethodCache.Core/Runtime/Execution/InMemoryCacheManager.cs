@@ -363,10 +363,10 @@ namespace MethodCache.Extensibility
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedTextTask<T>(string key, PolicyGeneration generation, string name, [NotNullWhen(true)] out Task<T>? task)
+        internal bool TryGetGeneratedTextTask<T>(string key, MethodCache.Generated.CallSnapshot binding, PolicyGeneration generation, string name, [NotNullWhen(true)] out Task<T>? task)
         {
             var now = _engine.Now;
-            if (AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
+            if (AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, binding, now, out var found) ? found : null,
                 now, out T? value, out var node, generation))
             {
                 RecordHitTelemetry(name, node);
@@ -378,10 +378,10 @@ namespace MethodCache.Extensibility
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedTextValue<T>(string key, PolicyGeneration generation, string name, out T? value)
+        internal bool TryGetGeneratedTextValue<T>(string key, MethodCache.Generated.CallSnapshot binding, PolicyGeneration generation, string name, out T? value)
         {
             var now = _engine.Now;
-            if (!AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
+            if (!AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, binding, now, out var found) ? found : null,
                 now, out value, out var node, generation)) return false;
             RecordHitTelemetry(name, node);
             return true;
@@ -402,8 +402,7 @@ namespace MethodCache.Extensibility
             Node? found = null;
             if (_options.EnableFastPath)
             {
-                if (key.StoredText is { } text) _engine.TryGet(text, now, out found);
-                else _engine.TryGet(key.AsSpan(), now, out found);
+                _engine.TryGet(ref key, now, out found);
             }
             return AcceptFastNode(found, now, out value, out node, generation);
         }
