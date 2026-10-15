@@ -1,0 +1,12 @@
+Historical final head cf4caa64f644; Linux CI 20261015-162910-cf4caa64f644.
+[xUnit.net 00:00:02.39]     MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup [FAIL]
+  Failed MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup [260 ms]
+  Error Message:
+Results File: /home/agent-admin/methodcache-ci/runs/20261015-162910-cf4caa64f644/artifacts/test-results/_Nimbus_2026-10-15_14_31_11_net10.0[1].trx
+   Assert.Equal() Failure: Values differ
+Expected: 0
+Actual:   32664
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup() in /_/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs:line 16
+--- End of stack trace from previous location ---
+

@@ -174,12 +174,18 @@ HTTP head 953e04b passed macOS/Windows, but its Linux .NET 9 long-key identity p
 The isolated local probe passed before this change, so neither a deterministic local reproduction
 nor the origin of those historical extra allocations is claimed.
 
-The synchronous probe now runs on an owned thread without inherited ExecutionContext. Thread/delegate
-creation, warmup, completion and assertions stay outside the NoInlining measurement helper. The same
-100-call byte assertion remains exact. A temporary production mutation allocating an escaping UTF-16
-buffer makes all four inputs fail. After restoring production byte-for-byte, all 320 HTTP tests pass
-on .NET 10, and all 11 identity facts pass on each historical runtime. This isolates the test fixture;
-it changes no shipped source or measured benchmark workload.
+The synchronous probe runs on an owned thread without inherited ExecutionContext. Thread/delegate
+creation, warmup, completion and assertions stay outside the NoInlining measurement helper. A later
+Linux culture run of 771980a still counted 16,024 bytes in the output-only reference versus 16,000 in
+Identity. Its retained failure shows that one-batch reference measurement was insufficiently stable;
+the source of the 24 extra reference bytes is not established.
+
+Both paths now use three fixed batches of 100 calls and compare their minima with exact equality and
+no byte tolerance. This tests sustained per-call temporary copies, rather than claiming that every
+individual invocation is free of transient runtime allocation. A temporary production mutation copying
+the UTF-16 input into a new buffer before hashing makes all four inputs fail. Restored production
+passes all 320 HTTP facts on each historical target and under tr-TR/sv-SE on net10. No shipped source
+or measured C# workload changes; this local verification does not establish latest-head CI acceptance.
 
 [Original failures and mutation/green receipts](../../plans/design-benchmarks/identity-probe-isolation/)
 are preserved. The forwarded latest heads of #129, #130 and #131 still require fresh three-platform CI.
@@ -263,3 +269,13 @@ four-case launch completed, but the verifier parsed BDN's binary affinity displa
 its original nonzero validation exit and complete diagnostic reports are retained. A fresh three-run
 pilot uses corrected parsing. No first-run timing is pooled into that pilot or claimed as acceptance.
 The untimed component controller was stopped before preparation to await a sufficiently precise protocol.
+
+## Local epoch allocation probe follow-up
+
+An older Linux run of cf4caa6 reported 32,664 bytes instead of zero for the local epoch-vector probe.
+The exact 10,000-capture measurement and 1,000 warmups now run on an owned thread without inherited
+ExecutionContext. Store construction, completion and assertions remain outside the measurement; the
+zero-byte requirement is unchanged. Replacing memoized identity reuse with a new string makes the
+revised test fail with 1,520,000 bytes. Restored source passes the complete 320-case HTTP suite on
+the historical three-target checkout. The original failure is retained without attributing its bytes
+to a proven cause: `plans/design-benchmarks/local-epoch-probe-isolation/`.
