@@ -3,7 +3,7 @@
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
-When using `MessagePackKeyGenerator`, collection subclasses include their own public properties and fields as well as their elements in the key. Collections with different scope or tenant state cannot share a cached result.
+In cache keys, collection subclasses include their own public properties and fields as well as their elements in the key. Collections with different scope or tenant state cannot share a cached result.
 
 Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack
 instead of the default System.Text.Json: smaller entries and faster reads.
@@ -43,26 +43,5 @@ so switching needs no flush.
 
 ## Key generator (optional)
 
-`MessagePackKeyGenerator` builds keys from a SHA-256 hash of the arguments' MessagePack form. Use it when your argument
-types serialize with MessagePack but not with System.Text.Json, which the default key generator uses:
-
-<!-- snippet: messagepack-key-generator -->
-```cs
-builder.Services.AddMethodCache();
-builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, MessagePackKeyGenerator>());
-```
-<!-- endSnippet -->
-
-Keys keep the usual form (`{method}:{hash}`), so invalidating all of a method's entries works the same way. They
-include the arguments' assembly-qualified type names, so they change when those assemblies' versions change.
-
-## More
-
-The [distributed cache guide](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md)
-covers how the distributed cache works, outages and options. [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)
-covers the other key generators.
-
-MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
-
-`IPAddress` and `JsonElement` arguments are written as their text (a `JsonElement` as its JSON), like the other key
-generators do, instead of their properties; keys of such arguments change.
+Use `UseMessagePack()` to select distributed value serialization. Cache-key construction remains runtime-owned;
+use `ICacheKeyProvider` for custom argument parts. The former public key generator is internal.

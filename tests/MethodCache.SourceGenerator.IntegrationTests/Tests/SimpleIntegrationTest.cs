@@ -50,7 +50,7 @@ namespace TestNamespace
 
         // Act: Compile with source generator
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        
+
         // Debug: Output generated sources
         _output.WriteLine("=== GENERATED SOURCES ===");
         foreach (var (fileName, source) in testAssembly.GeneratedSources)

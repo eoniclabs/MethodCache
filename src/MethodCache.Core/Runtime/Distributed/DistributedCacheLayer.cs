@@ -39,10 +39,10 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>How long a key's removal stamp keeps values loaded before the removal out of the cache.</summary>
         internal static readonly TimeSpan RemovalLifetime = TimeSpan.FromMinutes(5);
 
-        private const byte FormatVersion = 4;
+        private const byte FormatVersion = 5;
         private const byte KindNull = 0;
         private const byte KindValue = 1;
-        private const int HeaderSize = 1 + 1 + 8 + 8 + 4;
+        private const int HeaderSize = 1 + 1 + 8 + 8 + 8 + 4;
         private const int MaxTrackedTags = 10_000;
 
         // Invalidations stored at once (each its own operation); a longer queue than MaxQueuedInvalidations becomes a clear
@@ -94,6 +94,15 @@ namespace MethodCache.Core.Runtime.Distributed
         // Invalidations the distributed cache didn't accept yet, retried by _retryTimer
         private readonly object _pendingLock = new();
         private readonly HashSet<string> _pendingKeys = new(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<(bool IsTag, string Value), long> _pendingPublications = new();
+        private long _publicationTicket;
+        private ITimer? _publicationTimer;
+        private readonly SemaphoreSlim _publicationGate = new(1, 1);
+        internal int PendingPublications => _pendingPublications.Count;
+        internal InvalidationQueues GetInvalidationQueues()
+        {
+            lock (_pendingLock) return new(_pendingKeys.Count + _pendingTags.Count + _lateRemovals.Count, _pendingPublications.Count);
+        }
         private readonly HashSet<string> _pendingTags = new(StringComparer.Ordinal);
         private volatile bool _hasPending;
         private bool _flushedForShutdown;
@@ -104,6 +113,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private int _refusedFlushes;
 
         private Action<string>? _onRemoteKeyInvalidated;
+        private Action<string>? _onRemoteMethodInvalidated;
         private Action<string>? _onRemoteTagInvalidated;
         private Action? _onRemoteCleared;
         private Action<Exception>? _onError;
@@ -188,12 +198,13 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Starts listening to the backplane, if there is one. Messages this node sent are ignored.
         /// <paramref name="onError"/> hears about every distributed cache or backplane failure.
         /// </summary>
-        public void Attach(Action<string> onKeyInvalidated, Action<string> onTagInvalidated, Action onCleared, Action<Exception> onError)
+        public void Attach(Action<string> onKeyInvalidated, Action<string> onTagInvalidated, Action onCleared, Action<Exception> onError, Action<string>? onMethodInvalidated = null)
         {
             lock (_lifecycleLock)
             {
                 ObjectDisposedException.ThrowIf(_disposed != 0, this);
                 _onRemoteKeyInvalidated = onKeyInvalidated;
+                _onRemoteMethodInvalidated = onMethodInvalidated;
                 _onRemoteTagInvalidated = onTagInvalidated;
                 _onRemoteCleared = onCleared;
                 _onError = onError;
@@ -211,7 +222,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Reads an entry. Entries that expired, or whose tags were invalidated after they were created, count as
         /// missing, and so does everything while the distributed cache is unavailable.
         /// </summary>
-        public async ValueTask<DistributedEntry<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken = default)
+        public async ValueTask<DistributedEntry<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken = default, string? identity = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (_hasPending || !TryEnter(out var probe))
@@ -219,7 +230,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return default;
             }
 
-            var read = await TryRunAsync(ReadAsync, key, "read", probe, cancellationToken).ConfigureAwait(false);
+            var read = await TryRunAsync(ReadPolicyAsync, (key, identity), "read", probe, cancellationToken).ConfigureAwait(false);
             if (!read.Succeeded || read.Value is not { } data ||
                 !TryReadHeader(new ReadOnlySequence<byte>(data), _contentType, out var header, out var payload))
             {
@@ -227,19 +238,24 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var now = Now;
-            if (header.ExpiresAt <= now)
+            if (header.ExpiresAt <= now || header.CreatedAt > now + _clockSkewMilliseconds || header.LoadStartedAt > header.CreatedAt ||
+                header.LoadStartedAt < DateTimeOffset.MinValue.ToUnixTimeMilliseconds() || header.CreatedAt >= header.ExpiresAt ||
+                header.ExpiresAt > header.LoadStartedAt + _tagRetention.Ticks / TimeSpan.TicksPerMillisecond - _clockSkewMilliseconds)
             {
                 return default;
             }
 
-            var invalidated = await TryRunAsync(static (layer, header, ct) => layer.IsInvalidatedAsync(header.CreatedAt, header.Tags, ct), header, "read tags", probe, cancellationToken).ConfigureAwait(false);
+            var invalidated = await TryRunAsync(static (layer, header, ct) => layer.IsInvalidatedAsync(header.LoadStartedAt, header.Tags, ct), header, "read tags", probe, cancellationToken).ConfigureAwait(false);
             if (!invalidated.Succeeded || invalidated.Value)
             {
                 return default;
             }
 
+            var removal = await TryRunAsync(ReadRemovalAsync, key, "read a removal", probe, cancellationToken).ConfigureAwait(false);
+            if (!removal.Succeeded || removal.Value >= header.LoadStartedAt - ((header.Kind & 2) != 0 ? 0 : _clockSkewMilliseconds)) return default;
+
             T? value = default;
-            if (header.Kind == KindValue)
+            if ((header.Kind & 1) == KindValue)
             {
                 // A value is never written without its bytes, so this entry was cut short; serializers may read
                 // nothing as a default value, which would be served as a wrong one
@@ -262,7 +278,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             // No write asks for more than the tag retention; a damaged expiry far in the future must not overflow
             var remaining = Math.Min(header.ExpiresAt - now, _tagRetention.Ticks / TimeSpan.TicksPerMillisecond);
-            return new DistributedEntry<T>(value, Convert(header.Tags, ApplicationTag), TimeSpan.FromMilliseconds(remaining));
+            return new DistributedEntry<T>(value, Convert(header.Tags?.Where(static tag => !tag.StartsWith("\0method:", StringComparison.Ordinal)).ToArray(), ApplicationTag), TimeSpan.FromMilliseconds(remaining), header.CreatedAt);
         }
 
         /// <summary>
@@ -273,7 +289,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// answers), so no node keeps the value it replaced. <paramref name="invalidated"/> is checked again after the
         /// write. Never throws.
         /// </summary>
-        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false, string? methodName = null)
+        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false, string? methodName = null, string? identity = null, string? methodId = null, long? publishedAt = null)
         {
             // Shutdown waits for writes in flight (each bounded by the timeout), so the removal a write that times
             // out or fails leaves behind is flushed with the rest of the queue
@@ -293,7 +309,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     return;
                 }
 
-                await WriteCoreAsync(key, value, tags, createdAt, lifetime, invalidated, replaces, methodName).ConfigureAwait(false);
+                await WriteCoreAsync(key, value, tags, createdAt, lifetime, invalidated, replaces, methodName, identity, methodId, publishedAt).ConfigureAwait(false);
             }
             finally
             {
@@ -311,12 +327,12 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
-        private async Task WriteCoreAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated, bool replaces, string? methodName)
+        private async Task WriteCoreAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated, bool replaces, string? methodName, string? identity, string? methodId, long? publishedAt)
         {
             // The metadata that can invalidate this value must outlive it, including time spent loading or
             // writing it. Anchor its logical expiry to the source read, not the later publication time.
             var now = Now;
-            var expiresAt = Math.Min(now + (long)lifetime.TotalMilliseconds,
+            var expiresAt = Math.Min((publishedAt ?? now) + (long)lifetime.TotalMilliseconds,
                 createdAt + _tagRetention.Ticks / TimeSpan.TicksPerMillisecond - _clockSkewMilliseconds);
             var lifetimeMilliseconds = expiresAt - now;
             if (lifetimeMilliseconds <= 0)
@@ -359,7 +375,9 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             var buffer = new ArrayBufferWriter<byte>(256);
-            WriteHeader(buffer, _contentType, value is null ? KindNull : KindValue, createdAt, expiresAt, Convert(tags, StoredTag));
+            var storedTags = Convert(tags, StoredTag);
+            if (methodId != null) storedTags = (storedTags ?? []).Append(MethodTag(methodId)).ToArray();
+            WriteHeader(buffer, _contentType, (byte)((value is null ? KindNull : KindValue) | (replaces ? 2 : 0)), createdAt, publishedAt ?? now, expiresAt, storedTags);
             var payloadStart = buffer.WrittenCount;
             if (value is not null)
             {
@@ -413,7 +431,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return;
             }
 
-            var entry = new Entry(key, buffer.WrittenMemory, TimeSpan.FromMilliseconds(lifetimeMilliseconds));
+            var entry = new Entry(EntryKey(key, identity), buffer.WrittenMemory, TimeSpan.FromMilliseconds(lifetimeMilliseconds), identity != null);
             var written = await TryRunAsync(StoreAsync, entry, "write", probe, tripOnTimeout: false).ConfigureAwait(false);
             if (written.TimedOut)
             {
@@ -625,6 +643,41 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         public Task InvalidateTagsAsync(IReadOnlyCollection<string> tags) => InvalidateAsync(Array.Empty<string>(), tags.Select(StoredTag).ToArray());
 
+        internal Task<InvalidationResult> InvalidateTargetsAsync(string[] targets, bool tags)
+            => InvalidateWithResultAsync(tags ? [] : targets, tags ? targets.Select(StoredTag).ToArray() : []);
+
+        internal Task<InvalidationResult> InvalidateMethodAsync(string methodId)
+            => InvalidateWithResultAsync([], [MethodTag(methodId)]);
+
+        private async Task<InvalidationResult> InvalidateWithResultAsync(string[] keys, string[] tags)
+        {
+            var count = keys.Length + tags.Length;
+            if (count == 0) return new InvalidationResult();
+            BeginWrite();
+            try
+            {
+                var now = Now;
+                foreach (var tag in tags) _ = RememberStamp(tag, new TagStamp(now, now));
+                if (_hasPending || !TryEnter(out var probe))
+                {
+                    Queue(keys, tags);
+                    return new InvalidationResult { Requested = count, Local = count, Queued = count };
+                }
+                var refused = await StoreInvalidationsAsync(keys, tags, now, probe, force: false, acknowledgeMetadata: true).ConfigureAwait(false);
+                if (refused.Count > 0) Queue(refused.Keys, refused.Tags);
+                return new InvalidationResult
+                {
+                    Requested = count,
+                    Local = count,
+                    Distributed = count - refused.Count,
+                    Queued = refused.Count,
+                    Published = refused.Published,
+                    PublicationQueued = refused.PublicationQueued
+                };
+            }
+            finally { EndWrite(); }
+        }
+
         private async Task InvalidateAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags)
         {
             if (keys.Count == 0 && tags.Count == 0)
@@ -675,7 +728,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// stores the rest itself, within its deadline). <paramref name="force"/> ignores the breaker and starts no
         /// batch after one operation timeout (at shutdown). Returns what wasn't stored.
         /// </summary>
-        private async Task<Refused> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe, bool force)
+        private async Task<Refused> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe, bool force, bool acknowledgeMetadata = false)
         {
             var deadline = force ? Now + (long)_timeout.TotalMilliseconds : long.MaxValue;
             var items = tags.Select(static tag => (IsTag: true, Value: tag)).Concat(keys.Select(static key => (IsTag: false, Value: key))).ToList();
@@ -702,7 +755,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 var stored = new List<(bool IsTag, string Value)>(batch.Count);
                 for (var i = 0; i < batch.Count; i++)
                 {
-                    if (removed[i].Succeeded)
+                    if (acknowledgeMetadata ? stamped[i].Succeeded : removed[i].Succeeded)
                     {
                         stored.Add(batch[i]);
                     }
@@ -716,10 +769,13 @@ namespace MethodCache.Core.Runtime.Distributed
                 refused.Answered = refused.Count > 0 && stored.Count > 0;
 
                 // Published together, so a hung backplane holds the caller for one timeout, not one per key or tag
-                await Task.WhenAll(stored.Select(item => item.IsTag
-                        ? PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), item.Value)
-                        : PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), item.Value)))
-                    .ConfigureAwait(false);
+                var publications = await Task.WhenAll(stored.Select(PublishTargetAsync)).ConfigureAwait(false);
+                if (_backplane != null)
+                    for (var i = 0; i < stored.Count; i++)
+                    {
+                        if (publications[i]) refused.Published++;
+                        else { refused.PublicationQueued++; QueuePublication(stored[i]); }
+                    }
             }
 
             return refused;
@@ -751,12 +807,15 @@ namespace MethodCache.Core.Runtime.Distributed
                 if (_disposed != 0) return;
                 Volatile.Write(ref _disposed, 1);
                 _onRemoteKeyInvalidated = null;
+                _onRemoteMethodInvalidated = null;
                 _onRemoteTagInvalidated = null;
                 _onRemoteCleared = null;
                 _onError = null;
                 lock (_pendingLock)
                 {
                     _retryTimer?.Dispose();
+                    _publicationTimer?.Dispose();
+                    _publicationTimer = null;
                     _retryTimer = null;
 
                     // Keys whose write timed out are removed with the queue at shutdown rather than after a delay
@@ -793,6 +852,8 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             await FlushBeforeShutdownAsync().ConfigureAwait(false);
+            await FlushPublicationsAsync(shutdown: true).ConfigureAwait(false);
+            if (!_pendingPublications.IsEmpty) _logger.LogWarning("MethodCache shutdown lost {Count} backplane publications.", _pendingPublications.Count);
             if (_backplane == null || _subscribed == 0) return;
             try
             {
@@ -858,7 +919,20 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- operations, each bounded by the timeout ----------
 
-        private static async Task<ReadOnlyMemory<byte>?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
+        internal static string MethodTag(string methodId) => "\0method:" + LosslessWireText.Encode(methodId);
+
+        private static string EscapedKey(string key) => key.StartsWith('\0') ? "\0" + key : key;
+
+        private static string EntryKey(string key, string? identity) => identity == null ? key
+            : "\0policy:" + key.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + key + ":" + identity;
+
+        private static async Task<ReadOnlyMemory<byte>?> ReadPolicyAsync(DistributedCacheLayer layer, (string Key, string? Identity) state, CancellationToken token)
+            => await ReadCoreAsync(layer, state.Identity == null ? EscapedKey(state.Key) : EntryKey(state.Key, state.Identity), token).ConfigureAwait(false);
+
+        private static Task<ReadOnlyMemory<byte>?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
+            => ReadCoreAsync(layer, EscapedKey(key), cancellationToken);
+
+        private static async Task<ReadOnlyMemory<byte>?> ReadCoreAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
         {
             if (layer._bufferCache == null)
             {
@@ -877,11 +951,11 @@ namespace MethodCache.Core.Runtime.Distributed
             var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = entry.Lifetime };
             if (layer._bufferCache != null)
             {
-                await layer._bufferCache.SetAsync(layer._entryPrefix + entry.Key, new ReadOnlySequence<byte>(entry.Data), options, cancellationToken).ConfigureAwait(false);
+                await layer._bufferCache.SetAsync(layer._entryPrefix + (entry.Policy ? entry.Key : EscapedKey(entry.Key)), new ReadOnlySequence<byte>(entry.Data), options, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                await layer._cache.SetAsync(layer._entryPrefix + entry.Key, entry.Data.ToArray(), options, cancellationToken).ConfigureAwait(false);
+                await layer._cache.SetAsync(layer._entryPrefix + (entry.Policy ? entry.Key : EscapedKey(entry.Key)), entry.Data.ToArray(), options, cancellationToken).ConfigureAwait(false);
             }
 
             return true;
@@ -895,7 +969,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private static async Task<bool> DeleteAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
         {
-            await layer._cache.RemoveAsync(layer._entryPrefix + key, cancellationToken).ConfigureAwait(false);
+            await layer._cache.RemoveAsync(layer._entryPrefix + EscapedKey(key), cancellationToken).ConfigureAwait(false);
             return true;
         }
 
@@ -903,7 +977,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private static async Task<long> ReadRemovalAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
         {
             var bytes = await layer._cache.GetAsync(layer._removalPrefix + key, cancellationToken).ConfigureAwait(false);
-            return bytes is { Length: >= sizeof(long) } ? BinaryPrimitives.ReadInt64LittleEndian(bytes) : long.MinValue;
+            return bytes == null ? long.MinValue : bytes.Length == sizeof(long) ? BinaryPrimitives.ReadInt64LittleEndian(bytes) : long.MaxValue;
         }
 
         private async Task<bool> IsInvalidatedAsync(long createdAt, string[]? tags, CancellationToken cancellationToken)
@@ -1290,6 +1364,8 @@ namespace MethodCache.Core.Runtime.Distributed
             public List<string> Tags { get; } = new();
 
             public int Count => Keys.Count + Tags.Count;
+            public int Published { get; set; }
+            public int PublicationQueued { get; set; }
 
             /// <summary>Whether the cache answered other operations while it refused these.</summary>
             public bool Answered { get; set; }
@@ -1315,22 +1391,72 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- backplane ----------
 
-        private async Task PublishAsync(Func<IBackplane, string, CancellationToken, Task> publish, string value)
+        private Task<bool> PublishTargetAsync((bool IsTag, string Value) item)
+            => item.IsTag && item.Value.StartsWith("\0method:", StringComparison.Ordinal) && LosslessWireText.TryDecode(item.Value.Substring(8), out var method)
+                ? PublishAsync(static (backplane, id, ct) => backplane.PublishMethodInvalidationAsync(id, ct), method)
+                : item.IsTag
+                ? PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), item.Value)
+                : PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), item.Value);
+
+        private void QueuePublication((bool IsTag, string Value) target)
+        {
+            lock (_pendingLock)
+            {
+                if (_pendingPublications.Count >= MaxQueuedInvalidations)
+                {
+                    _pendingPublications.Clear();
+                    _pendingPublications[(true, ClearTag)] = Interlocked.Increment(ref _publicationTicket);
+                }
+                else if (!_pendingPublications.ContainsKey((true, ClearTag))) _pendingPublications[target] = Interlocked.Increment(ref _publicationTicket);
+                if (_publicationTimer == null && Volatile.Read(ref _disposed) == 0)
+                    _publicationTimer = _time.CreateTimer(static state => _ = ((DistributedCacheLayer)state!).FlushPublicationsAsync(),
+                        this, _breakDuration, _breakDuration);
+            }
+        }
+
+        internal async Task FlushPublicationsAsync(bool shutdown = false)
+        {
+            if (shutdown)
+            {
+                await _publicationGate.WaitAsync().ConfigureAwait(false);
+                BeginWrite();
+            }
+            else
+            {
+                lock (_lifecycleLock)
+                {
+                    if (Volatile.Read(ref _disposed) != 0 || !_publicationGate.Wait(0)) return;
+                    BeginWrite();
+                }
+            }
+            try
+            {
+                foreach (var pending in _pendingPublications)
+                    if (await PublishTargetAsync(pending.Key).ConfigureAwait(false)) _pendingPublications.TryRemove(pending);
+                lock (_pendingLock)
+                    if (_pendingPublications.IsEmpty) { _publicationTimer?.Dispose(); _publicationTimer = null; }
+            }
+            finally { EndWrite(); _publicationGate.Release(); }
+        }
+
+        private async Task<bool> PublishAsync(Func<IBackplane, string, CancellationToken, Task> publish, string value)
         {
             if (_backplane == null)
             {
-                return;
+                return false;
             }
 
             try
             {
                 using var timeout = new CancellationTokenSource(_timeout, _time);
                 await publish(_backplane, value, timeout.Token).WaitAsync(_timeout, _time).ConfigureAwait(false);
+                return true;
             }
             catch (Exception ex)
             {
                 // Other nodes' memory catches up when their entries expire; the distributed cache is already right
                 _onError?.Invoke(ex);
+                return false;
             }
         }
 
@@ -1380,11 +1506,19 @@ namespace MethodCache.Core.Runtime.Distributed
                             _onRemoteCleared?.Invoke();
                             break;
 
+                        case BackplaneMessageType.MethodInvalidation when message.Key != null:
+                            Interlocked.Increment(ref _remoteInvalidations);
+                            _tagStamps.TryRemove(MethodTag(message.Key), out _);
+                            _onRemoteMethodInvalidated?.Invoke(message.Key);
+                            break;
+
                         case BackplaneMessageType.TagInvalidation when message.Tag != null:
                             // Re-read the stamp the other node wrote rather than trusting this node's clock
                             Interlocked.Increment(ref _remoteInvalidations);
                             _tagStamps.TryRemove(message.Tag, out _);
-                            _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
+                            if (message.Tag.StartsWith("\0method:", StringComparison.Ordinal) && LosslessWireText.TryDecode(message.Tag.Substring(8), out var method))
+                                _onRemoteMethodInvalidated?.Invoke(method);
+                            else _onRemoteTagInvalidated?.Invoke(ApplicationTag(message.Tag));
                             break;
                     }
                 }
@@ -1401,14 +1535,15 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // Layout: version, kind (null value or value), created (Unix ms), expires (Unix ms), tag count,
         // then each tag as a length-prefixed UTF-8 string, then the content type and the serialized value.
-        private static void WriteHeader(IBufferWriter<byte> writer, byte[] contentType, byte kind, long createdAt, long expiresAt, string[]? tags)
+        private static void WriteHeader(IBufferWriter<byte> writer, byte[] contentType, byte kind, long loadStartedAt, long createdAt, long expiresAt, string[]? tags)
         {
             var span = writer.GetSpan(HeaderSize);
             span[0] = FormatVersion;
             span[1] = kind;
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(2), createdAt);
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(10), expiresAt);
-            BinaryPrimitives.WriteInt32LittleEndian(span.Slice(18), tags?.Length ?? 0);
+            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(2), loadStartedAt);
+            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(10), createdAt);
+            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(18), expiresAt);
+            BinaryPrimitives.WriteInt32LittleEndian(span.Slice(26), tags?.Length ?? 0);
             writer.Advance(HeaderSize);
 
             if (tags != null)
@@ -1436,7 +1571,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
             var reader = new SequenceReader<byte>(data);
             if (!reader.TryRead(out var version) || version != FormatVersion ||
-                !reader.TryRead(out var kind) || kind > KindValue ||
+                !reader.TryRead(out var kind) || kind > 3 ||
+                !reader.TryReadLittleEndian(out long loadStartedAt) ||
                 !reader.TryReadLittleEndian(out long createdAt) ||
                 !reader.TryReadLittleEndian(out long expiresAt) ||
                 !reader.TryReadLittleEndian(out int tagCount) ||
@@ -1468,12 +1604,12 @@ namespace MethodCache.Core.Runtime.Distributed
                 return false;
             }
 
-            header = new Header(kind, createdAt, expiresAt, tags);
+            header = new Header(kind, loadStartedAt, createdAt, expiresAt, tags);
             payload = reader.UnreadSequence;
             return true;
         }
 
-        private readonly record struct Header(byte Kind, long CreatedAt, long ExpiresAt, string[]? Tags);
+        private readonly record struct Header(byte Kind, long LoadStartedAt, long CreatedAt, long ExpiresAt, string[]? Tags);
 
         /// <summary>
         /// A tag's stamp as this node uses it, read from the cache at <paramref name="CheckedAt"/>.
@@ -1481,18 +1617,19 @@ namespace MethodCache.Core.Runtime.Distributed
         /// </summary>
         private readonly record struct TagStamp(long InvalidatedAt, long CheckedAt, long Ahead = long.MinValue);
 
-        private readonly record struct Entry(string Key, ReadOnlyMemory<byte> Data, TimeSpan Lifetime);
+        private readonly record struct Entry(string Key, ReadOnlyMemory<byte> Data, TimeSpan Lifetime, bool Policy = false);
     }
 
     /// <summary>An entry read from the distributed cache; <see cref="Found"/> is false when there was none.</summary>
     internal readonly struct DistributedEntry<T>
     {
-        public DistributedEntry(T? value, string[]? tags, TimeSpan remainingLifetime)
+        public DistributedEntry(T? value, string[]? tags, TimeSpan remainingLifetime, long createdAt = 0)
         {
             Found = true;
             Value = value;
             Tags = tags;
             RemainingLifetime = remainingLifetime;
+            CreatedAt = createdAt;
         }
 
         public bool Found { get; }
@@ -1502,5 +1639,6 @@ namespace MethodCache.Core.Runtime.Distributed
         public string[]? Tags { get; }
 
         public TimeSpan RemainingLifetime { get; }
+        internal long CreatedAt { get; }
     }
 }

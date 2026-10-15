@@ -73,12 +73,12 @@ namespace Docs.Configuration
         public static void Diagnostics(WebApplication app)
         {
             // begin-snippet: configuration-diagnostics
-            var diagnostics = app.Services.GetRequiredService<PolicyDiagnosticsService>();
+            var diagnostics = app.Services.GetRequiredService<ICacheAdministrator>();
 
-            foreach (var report in diagnostics.GetAllPolicies())
+            foreach (var report in diagnostics.GetMethods())
             {
-                var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
-                Console.WriteLine($"{report.MethodId}: Duration={report.Policy.Duration}, from {sources}");
+                var sources = string.Join(", ", report.Sources);
+                Console.WriteLine($"{report.MethodId}: Duration={report.Duration}, from {sources}");
             }
             // end-snippet
         }

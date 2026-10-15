@@ -39,44 +39,19 @@ public class FluentMethodCacheConfigurationTests
         Assert.Equal("orders", method.Policy.Metadata["group"]);
     }
 
-    public static TheoryData<string, Action<CacheEntryOptions.Builder>> GetOrCreateOnlySettings => new()
-    {
-        { "OnHit", o => o.OnHit(_ => { }) },
-        { "OnMiss", o => o.OnMiss(_ => { }) },
-        { "WithMetrics", o => o.WithMetrics(new NoopMetrics()) },
-        { "When", o => o.When(_ => true) },
-    };
-
-    [Theory]
-    [MemberData(nameof(GetOrCreateOnlySettings))]
-    public void BuildMethodPolicies_Throws_ForSettingsThatOnlyApplyToGetOrCreate(string setting, Action<CacheEntryOptions.Builder> configure)
-    {
-        var configuration = new FluentMethodCacheConfiguration();
-        configuration.ForService<IOrderService>()
-            .Method(s => s.GetOrderAsync(default))
-            .Configure(configure);
-
-        var exception = Assert.Throws<InvalidOperationException>(() => configuration.BuildMethodPolicies());
-
-        Assert.Contains($"{setting}()", exception.Message);
-        Assert.Contains(nameof(IOrderService.GetOrderAsync), exception.Message);
-    }
-
     [Fact]
-    public void BuildMethodPolicies_Throws_WhenDefaultPolicyUsesGetOrCreateOnlySetting()
+    public void BuildMethodPolicies_UnifiedOptions_KeepExplicitFlagsAndTypedPredicate()
     {
         var configuration = new FluentMethodCacheConfiguration();
-        configuration.DefaultPolicy(o => o.OnHit(_ => { }));
-
-        var exception = Assert.Throws<InvalidOperationException>(() => configuration.BuildMethodPolicies());
-
-        Assert.Contains("DefaultPolicy()", exception.Message);
-    }
-
-    private sealed class NoopMetrics : ICacheMetrics
-    {
-        public void RecordHit(string key, TimeSpan? duration, object? value) { }
-        public void RecordMiss(string key) { }
-        public void RecordError(string key, Exception exception) { }
+        configuration.DefaultPolicy(o => o.WithEnabled(false).WithDistributed(false));
+        configuration.ForService<IOrderService>().Method(s => s.GetOrderAsync(default))
+            .Configure(o => o.WithEnabled(true).CacheWhen<string>(value => value.Length > 0));
+        var drafts = configuration.BuildMethodPolicies().ToDictionary(d => d.MethodId);
+        Assert.False(drafts[MethodIds.AllMethods].Policy.Enabled);
+        Assert.False(drafts[MethodIds.AllMethods].Policy.Distributed);
+        var method = drafts[MethodIds.For(typeof(IOrderService), nameof(IOrderService.GetOrderAsync))];
+        Assert.True(method.Policy.Enabled);
+        Assert.True(method.Policy.CacheWhen!("value"));
+        Assert.False(method.Policy.CacheWhen!(""));
     }
 }

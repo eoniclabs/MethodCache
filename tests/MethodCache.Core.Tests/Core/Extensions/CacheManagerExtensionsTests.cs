@@ -14,7 +14,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var contexts = new List<string>();
             var calls = 0;
             ValueTask<int> Load(CacheContext context, CancellationToken token) { contexts.Add(context.Key); return ValueTask.FromResult(++calls); }
-            void Configure(CacheEntryOptions.Builder options) => options.WithVersion(3).OnHit(c => contexts.Add(c.Key));
+            void Configure(CacheEntryOptions.Builder options) => options.WithVersion(3);
             Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
             Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
             await cache.InvalidateByKeysAsync(CacheManagerExtensions.GetCacheKey("logical", 3));
@@ -178,34 +178,6 @@ namespace MethodCache.Core.Tests.Core.Extensions
         }
 
         [Fact]
-        public async Task GetOrCreateAsync_InvokesOnHitAndOnMissCallbacks()
-        {
-            // Arrange
-            var cacheManager = new MockCacheManager();
-            var hitCount = 0;
-            var missCount = 0;
-
-            ValueTask<string> Factory(CacheContext context, CancellationToken token)
-                => new("value");
-
-            // Act - initial miss populates cache
-            await cacheManager.GetOrCreateAsync(
-                "users:1",
-                Factory,
-                options => options.OnHit(_ => hitCount++).OnMiss(_ => missCount++));
-
-            // Second call should use cache
-            await cacheManager.GetOrCreateAsync(
-                "users:1",
-                Factory,
-                options => options.OnHit(_ => hitCount++).OnMiss(_ => missCount++));
-
-            // Assert
-            Assert.Equal(1, missCount);
-            Assert.Equal(1, hitCount);
-        }
-
-        [Fact]
         public async Task GetOrCreateAsync_MapsOptionsToRuntimePolicy()
         {
             // Arrange
@@ -272,12 +244,12 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var first = await cacheManager.GetOrCreateAsync(
                 "user:predicate",
                 Factory,
-                options => options.When(_ => false));
+                options => options.WithEnabled(false));
 
             var second = await cacheManager.GetOrCreateAsync(
                 "user:predicate",
                 Factory,
-                options => options.When(_ => false));
+                options => options.WithEnabled(false));
 
             Assert.Equal("value1", first);
             Assert.Equal("value2", second);
@@ -313,13 +285,13 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var result1 = await cacheManager.GetOrCreateAsync(
                 cacheKey,
                 (ctx, ct) => { callCount++; return userService.GetUserAsync(1); },
-                configure: builder => builder.When(predicate)
+                configure: builder => builder.WithEnabled(predicate(new CacheContext(cacheKey)))
             );
 
             var result2 = await cacheManager.GetOrCreateAsync(
                 cacheKey,
                 (ctx, ct) => { callCount++; return userService.GetUserAsync(1); },
-                configure: builder => builder.When(predicate)
+                configure: builder => builder.WithEnabled(predicate(new CacheContext(cacheKey)))
             );
 
             // Should cache when predicate returns true
@@ -328,6 +300,19 @@ namespace MethodCache.Core.Tests.Core.Extensions
 
         private sealed class CapturingCacheManager : ICacheManager
         {
+            public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+            {
+                token.ThrowIfCancellationRequested();
+                var draft = MethodCache.Core.Configuration.Surfaces.Fluent.CachePolicyBuilderFactory.FromOptions(options ?? new CacheEntryOptions.Builder().Build()).Build(CacheKeyLookup.MethodName);
+                var policy = options?.Runtime ?? CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields);
+                return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? key, policy.MethodId, () => factory(new CacheContext(key), token).AsTask(), policy, token));
+            }
+            public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken token) => new(CacheLookupResult<T>.Miss);
+            public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken token)
+            { var values = keys.Distinct().ToArray(); InvalidateByKeysAsync(values); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
+            public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token)
+            { var values = tags.Distinct().ToArray(); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
+
             public string? LastMethodName { get; private set; }
             public string? LastKey { get; private set; }
             public CacheRuntimePolicy? LastPolicy { get; private set; }

@@ -560,11 +560,12 @@ public class InMemoryCacheEngineTests
     }
 
     [Theory]
-    [InlineData(MemoryCacheEvictionPolicy.TinyLfu)]
-    [InlineData(MemoryCacheEvictionPolicy.Lru)]
-    [InlineData(MemoryCacheEvictionPolicy.Fifo)]
-    public async Task Size_IsBoundedByMaxItems(MemoryCacheEvictionPolicy policy)
+    [InlineData((int)MemoryCacheEvictionPolicy.TinyLfu)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Lru)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Fifo)]
+    public async Task Size_IsBoundedByMaxItems(int policyValue)
     {
+        var policy = (MemoryCacheEvictionPolicy)policyValue;
         var manager = CreateManager(o =>
         {
             o.MaxItems = 100;
@@ -794,10 +795,11 @@ public class InMemoryCacheEngineTests
     }
 
     [Theory]
-    [InlineData(MemoryCacheEvictionPolicy.TinyLfu)]
-    [InlineData(MemoryCacheEvictionPolicy.Lru)]
-    public void ConcurrentWriters_CannotOutrunEviction(MemoryCacheEvictionPolicy policy)
+    [InlineData((int)MemoryCacheEvictionPolicy.TinyLfu)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Lru)]
+    public void ConcurrentWriters_CannotOutrunEviction(int policyValue)
     {
+        var policy = (MemoryCacheEvictionPolicy)policyValue;
         const int maxItems = 100;
         var writers = Math.Max(4, Environment.ProcessorCount * 2);
         var manager = CreateManager(o =>

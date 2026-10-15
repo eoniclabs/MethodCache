@@ -92,19 +92,19 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
     public async Task<List<object>> MultipleCacheHits()
     {
         var results = new List<object>();
-        
+
         // Warm up cache for all items
         for (int i = 0; i < 10; i++)
         {
             await _cacheService.GetDataAsync(i, ModelType);
         }
-        
+
         // Measure multiple hits
         for (int i = 0; i < 10; i++)
         {
             results.Add(await _cacheService.GetDataAsync(i, ModelType));
         }
-        
+
         return results;
     }
 }

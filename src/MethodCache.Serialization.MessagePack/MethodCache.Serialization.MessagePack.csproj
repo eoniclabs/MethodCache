@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Benchmarks" />
+    <InternalsVisibleTo Include="MethodCache.Benchmarks.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Serialization.MessagePack.Tests" />
   </ItemGroup>
 
 </Project>

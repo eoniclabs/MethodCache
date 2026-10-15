@@ -33,7 +33,7 @@ namespace MethodCache.Core.Tests.Core
             stopwatch.Stop();
 
             _output.WriteLine($"Fast mode: {memoryUsage:N0} bytes in {stopwatch.ElapsedMilliseconds}ms");
-            
+
             Assert.True(memoryUsage > 0, "Should return a positive memory estimate");
         }
 
@@ -42,12 +42,12 @@ namespace MethodCache.Core.Tests.Core
         {
             // Arrange
             var fastOptions = new MethodCacheMemoryOptions { MemoryCalculationMode = MemoryUsageCalculationMode.Fast };
-            var accurateOptions = new MethodCacheMemoryOptions 
-            { 
+            var accurateOptions = new MethodCacheMemoryOptions
+            {
                 MemoryCalculationMode = MemoryUsageCalculationMode.Accurate,
                 AccurateModeRecalculationInterval = 1 // Force recalculation every time
             };
-            
+
             var fastCalculator = new MemoryUsageCalculator(fastOptions);
             var accurateCalculator = new MemoryUsageCalculator(accurateOptions);
             var cache = CreateTestCache(100);
@@ -70,8 +70,8 @@ namespace MethodCache.Core.Tests.Core
         public void SamplingMode_ShouldBalancePerformanceAndAccuracy()
         {
             // Arrange
-            var options = new MethodCacheMemoryOptions 
-            { 
+            var options = new MethodCacheMemoryOptions
+            {
                 MemoryCalculationMode = MemoryUsageCalculationMode.Sampling,
                 SamplingPercentage = 0.2 // 20% sampling
             };
@@ -108,8 +108,8 @@ namespace MethodCache.Core.Tests.Core
         public void AccurateMode_ShouldThrottleRecalculations()
         {
             // Arrange
-            var options = new MethodCacheMemoryOptions 
-            { 
+            var options = new MethodCacheMemoryOptions
+            {
                 MemoryCalculationMode = MemoryUsageCalculationMode.Accurate,
                 AccurateModeRecalculationInterval = 100 // Only recalculate every 100 operations
             };
@@ -119,13 +119,13 @@ namespace MethodCache.Core.Tests.Core
             // Act - Call multiple times quickly
             var results = new List<long>();
             var timings = new List<long>();
-            
+
             for (int i = 0; i < 10; i++)
             {
                 var stopwatch = Stopwatch.StartNew();
                 var result = calculator.CalculateMemoryUsage(cache, entry => entry.Value);
                 stopwatch.Stop();
-                
+
                 results.Add(result);
                 timings.Add(stopwatch.ElapsedMilliseconds);
             }
@@ -139,11 +139,12 @@ namespace MethodCache.Core.Tests.Core
         }
 
         [Theory]
-        [InlineData(MemoryUsageCalculationMode.Fast)]
-        [InlineData(MemoryUsageCalculationMode.Accurate)]
-        [InlineData(MemoryUsageCalculationMode.Sampling)]
-        public void AllModes_ShouldHandleEmptyCache(MemoryUsageCalculationMode mode)
+        [InlineData((int)MemoryUsageCalculationMode.Fast)]
+        [InlineData((int)MemoryUsageCalculationMode.Accurate)]
+        [InlineData((int)MemoryUsageCalculationMode.Sampling)]
+        public void AllModes_ShouldHandleEmptyCache(int modeValue)
         {
+            var mode = (MemoryUsageCalculationMode)modeValue;
             // Arrange
             var options = new MethodCacheMemoryOptions { MemoryCalculationMode = mode };
             var calculator = new MemoryUsageCalculator(options);
@@ -175,8 +176,8 @@ namespace MethodCache.Core.Tests.Core
 
             foreach (var mode in modes)
             {
-                var options = new MethodCacheMemoryOptions 
-                { 
+                var options = new MethodCacheMemoryOptions
+                {
                     MemoryCalculationMode = mode,
                     AccurateModeRecalculationInterval = 1 // Force accurate calculation
                 };
@@ -193,7 +194,7 @@ namespace MethodCache.Core.Tests.Core
         private ConcurrentDictionary<string, TestCacheEntry> CreateTestCache(int entryCount)
         {
             var cache = new ConcurrentDictionary<string, TestCacheEntry>();
-            
+
             for (int i = 0; i < entryCount; i++)
             {
                 var entry = new TestCacheEntry

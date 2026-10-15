@@ -59,6 +59,9 @@ internal abstract class Node
 
     // Access-order queue links (guarded by the eviction lock).
     public QueueType Queue;
+
+    // Distributed entries must not slide or serve stale past their source deadline.
+    public bool HasSourceDeadline;
     public Node? Previous;
     public Node? Next;
 

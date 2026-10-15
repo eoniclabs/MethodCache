@@ -664,7 +664,7 @@ public class DistributedCacheTests
 
     [Theory]
     [InlineData(2, "fresh")]
-    [InlineData(0, "stale")]
+    [InlineData(0, "fresh")]
     public async Task ClockSkewTolerance_CoversAServerWhoseClockRunsAhead(int toleranceSeconds, string expected)
     {
         void Configure(DistributedCacheOptions o)

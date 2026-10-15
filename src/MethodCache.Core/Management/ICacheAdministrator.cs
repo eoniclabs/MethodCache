@@ -38,6 +38,9 @@ public interface ICacheAdministrator
     /// <summary>Removes every entry and resets the hit and miss counters.</summary>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Reports bounded local invalidation recovery queues.</summary>
+    InvalidationQueues GetInvalidationQueues() => new(0, 0);
+
     /// <summary>The effective policy of every cached method, as resolved from attributes, configuration and overrides.</summary>
     IReadOnlyList<CachedMethodInfo> GetMethods();
 }

@@ -204,7 +204,7 @@ public interface ISerializationTestService
     Task<object> GetDataWithStringAsync(string text);
 }
 
-public class SerializationTestService : ISerializationTestService
+internal class SerializationTestService : ISerializationTestService
 {
     private readonly ICacheManager _cacheManager;
     private readonly IPolicyRegistry _policyRegistry;
@@ -304,7 +304,7 @@ public class SerializationTestService : ISerializationTestService
 }
 
 // Custom key generators for comparison
-public class JsonKeyGenerator : ICacheKeyGenerator
+internal class JsonKeyGenerator : ICacheKeyGenerator
 {
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     {
@@ -337,7 +337,7 @@ public class JsonKeyGenerator : ICacheKeyGenerator
     }
 }
 
-public class ToStringKeyGenerator : ICacheKeyGenerator
+internal class ToStringKeyGenerator : ICacheKeyGenerator
 {
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     {

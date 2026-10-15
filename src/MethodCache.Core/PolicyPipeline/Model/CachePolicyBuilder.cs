@@ -4,6 +4,11 @@ namespace MethodCache.Core.PolicyPipeline.Model;
 
 internal sealed class CachePolicyBuilder
 {
+    private bool? _enabled;
+    private bool? _distributed;
+    public CachePolicyBuilder WithEnabled(bool value) { _enabled = value; return this; }
+    public CachePolicyBuilder WithDistributed(bool value) { _distributed = value; return this; }
+
     private TimeSpan? _duration;
     private bool _durationSet;
 
@@ -36,7 +41,7 @@ internal sealed class CachePolicyBuilder
     private bool _metadataSet;
 
     public bool HasChanges =>
-        _durationSet ||
+        _enabled.HasValue || _distributed.HasValue || _durationSet ||
         _tagsSet ||
         _slidingExpirationSet ||
         _versionSet ||
@@ -245,6 +250,8 @@ internal sealed class CachePolicyBuilder
             _metadataSet = true;
         }
 
+        if (source._enabled.HasValue && (overwriteExisting || !_enabled.HasValue)) _enabled = source._enabled;
+        if (source._distributed.HasValue && (overwriteExisting || !_distributed.HasValue)) _distributed = source._distributed;
         return this;
     }
 
@@ -252,6 +259,8 @@ internal sealed class CachePolicyBuilder
     {
         var clone = new CachePolicyBuilder
         {
+            _enabled = _enabled,
+            _distributed = _distributed,
             _duration = _duration,
             _durationSet = _durationSet,
             _slidingExpiration = _slidingExpiration,
@@ -380,6 +389,9 @@ internal sealed class CachePolicyBuilder
             policy = policy with { Metadata = metadataSnapshot };
             fields |= CachePolicyFields.Metadata;
         }
+
+        if (_enabled.HasValue) { policy = policy with { Enabled = _enabled }; fields |= CachePolicyFields.Enabled; }
+        if (_distributed.HasValue) { policy = policy with { Distributed = _distributed }; fields |= CachePolicyFields.Distributed; }
 
         return (policy, fields);
     }

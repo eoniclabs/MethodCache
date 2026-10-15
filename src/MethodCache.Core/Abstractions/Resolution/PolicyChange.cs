@@ -6,7 +6,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// A change to one method's policy reported by a policy source while the app runs.
 /// </summary>
-public sealed class PolicyChange
+internal sealed class PolicyChange
 {
     // Internal immediate sources attach a revision allocated atomically with their mutation.
     internal long SourceRevision { get; set; }

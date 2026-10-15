@@ -29,7 +29,7 @@ namespace MethodCache.OpenTelemetry;
 /// manager counts their hits as usual.
 /// </para>
 /// </remarks>
-internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator, IGeneratedMemoryCache
+internal partial class TelemetryCacheManager : ICacheRuntime, ICacheManagerDecorator, IGeneratedMemoryCache
 {
     private readonly ICacheManager _innerManager;
     private readonly ICacheActivitySource _activitySource;

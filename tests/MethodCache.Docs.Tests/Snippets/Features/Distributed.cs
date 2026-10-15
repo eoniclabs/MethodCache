@@ -49,8 +49,7 @@ namespace Docs.Distributed
         public static void MessagePackKeys(WebApplicationBuilder builder)
         {
             // begin-snippet: messagepack-key-generator
-            builder.Services.AddMethodCache();
-            builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, MessagePackKeyGenerator>());
+            builder.Services.AddMethodCache(cache => cache.UseMessagePack());
             // end-snippet
         }
     }

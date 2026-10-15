@@ -51,7 +51,7 @@ internal static class PolicySnapshotBuilder
                             CachePolicyFields.CacheWhen |
                             CachePolicyFields.FailSafe |
                             CachePolicyFields.FailSafeTimeout |
-                            CachePolicyFields.FailSafeRetryAfter;
+                            CachePolicyFields.FailSafeRetryAfter | CachePolicyFields.Enabled | CachePolicyFields.Distributed;
 
         var delta = new CachePolicyDelta(
             reason == PolicyChangeReason.Removed ? CachePolicyFields.None : fields,

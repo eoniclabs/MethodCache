@@ -149,7 +149,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetRequiredService<ICacheMetricsProvider>(),
                 sp.GetService<IOptions<MethodCacheMemoryOptions>>(),
                 sp.GetService<TimeProvider>(),
-                sp.GetService<DistributedCacheLayer>()));
+                sp.GetService<DistributedCacheLayer>(),
+                methodId => (sp.GetRequiredService<MethodCache.Policies.IPolicyRegistry>() as MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistry)?.InvalidateGeneration(methodId),
+                sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>()));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<ICacheAdministrator>(static sp => new InMemoryCacheAdministrator(

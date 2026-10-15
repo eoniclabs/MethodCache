@@ -5,11 +5,10 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent;
 internal static class CachePolicyBuilderFactory
 {
     /// <summary>
-    /// Builds the policy for a cached method, rejecting options that only apply to <c>GetOrCreateAsync</c>.
+    /// Builds the policy for a cached method.
     /// </summary>
     public static CachePolicyBuilder ForMethod(string methodId, CacheEntryOptions options)
     {
-        EnsureAppliesToMethods($"cached method '{methodId}'", options);
         return FromOptions(options);
     }
 
@@ -18,7 +17,6 @@ internal static class CachePolicyBuilderFactory
     /// </summary>
     public static CachePolicyBuilder ForDefaults(string target, CacheEntryOptions options)
     {
-        EnsureAppliesToMethods(target, options);
         return FromOptions(options);
     }
 
@@ -30,6 +28,9 @@ internal static class CachePolicyBuilderFactory
         }
 
         var builder = new CachePolicyBuilder();
+        if (options.Enabled is { } enabled) builder.WithEnabled(enabled);
+        if (options.Distributed is { } distributed) builder.WithDistributed(distributed);
+        if (options.CacheWhen != null) builder.WithCacheWhen(options.CacheWhen);
 
         if (options.Duration.HasValue)
         {
@@ -79,26 +80,4 @@ internal static class CachePolicyBuilderFactory
         return builder;
     }
 
-    /// <summary>
-    /// Callbacks, metrics and predicates only apply to a single <c>GetOrCreateAsync</c> call. Rejecting them here
-    /// keeps a cached method from silently ignoring them.
-    /// </summary>
-    private static void EnsureAppliesToMethods(string target, CacheEntryOptions options)
-    {
-        string? unsupported = options switch
-        {
-            { OnHitCallbacks.Count: > 0 } => nameof(CacheEntryOptions.Builder.OnHit),
-            { OnMissCallbacks.Count: > 0 } => nameof(CacheEntryOptions.Builder.OnMiss),
-            { Metrics: not null } => nameof(CacheEntryOptions.Builder.WithMetrics),
-            { Predicate: not null } => nameof(CacheEntryOptions.Builder.When),
-            _ => null
-        };
-
-        if (unsupported != null)
-        {
-            throw new InvalidOperationException(
-                $"{unsupported}() only applies to GetOrCreateAsync and cannot be configured for {target}. " +
-                "Configure duration, tags, sliding expiration, refresh-ahead, fail-safe and version here instead.");
-        }
-    }
 }

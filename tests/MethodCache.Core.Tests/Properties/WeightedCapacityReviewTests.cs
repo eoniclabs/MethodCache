@@ -8,11 +8,12 @@ namespace MethodCache.Core.Tests.Properties;
 public class WeightedCapacityReviewTests
 {
     [Theory]
-    [InlineData(MemoryCacheEvictionPolicy.TinyLfu)]
-    [InlineData(MemoryCacheEvictionPolicy.Lru)]
-    [InlineData(MemoryCacheEvictionPolicy.Fifo)]
-    public void TotalWeight_CannotOverflowAndBypassCapacity(MemoryCacheEvictionPolicy eviction)
+    [InlineData((int)MemoryCacheEvictionPolicy.TinyLfu)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Lru)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Fifo)]
+    public void TotalWeight_CannotOverflowAndBypassCapacity(int evictionValue)
     {
+        var eviction = (MemoryCacheEvictionPolicy)evictionValue;
         Gen.OneOfConst(long.MaxValue / 2 + 1, long.MaxValue - 1, long.MaxValue).Sample(weight =>
         {
             using var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions

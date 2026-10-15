@@ -81,6 +81,11 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         => PublishAsync(BackplaneMessageType.TagInvalidation, tag, cancellationToken);
 
     /// <inheritdoc />
+    public Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default)
+        => PublishAsync(BackplaneMessageType.MethodInvalidation, methodId, cancellationToken);
+
+
+    /// <inheritdoc />
     public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(onMessage);
@@ -534,6 +539,7 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
         return type switch
         {
             BackplaneMessageType.KeyInvalidation => new BackplaneMessage { Type = type, Key = target, InstanceId = instanceId, Timestamp = timestamp },
+            BackplaneMessageType.MethodInvalidation => new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = target, InstanceId = instanceId, Timestamp = timestamp },
             BackplaneMessageType.TagInvalidation => new BackplaneMessage { Type = type, Tag = target, InstanceId = instanceId, Timestamp = timestamp },
             _ => null
         };

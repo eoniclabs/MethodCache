@@ -6,6 +6,19 @@ namespace MethodCache.Core.Tests.Core.Extensions
 {
     internal sealed class MockCacheManager : ICacheManager
     {
+        public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (options?.Enabled == false) return factory(new CacheContext(key), token);
+            var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName);
+            return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? key, policy.MethodId, () => factory(new CacheContext(key), token).AsTask(), policy, token));
+        }
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken token) => new(!ForceCacheMiss && _cache.TryGetValue(key, out var value) ? CacheLookupResult<T>.Hit((T)value) : CacheLookupResult<T>.Miss);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken token)
+        { var values = keys.Distinct().ToArray(); InvalidateByKeysAsync(values); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token)
+        { var values = tags.Distinct().ToArray(); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
+
         private readonly ConcurrentDictionary<string, object> _cache = new ConcurrentDictionary<string, object>();
         public bool ForceCacheHit { get; set; }
         public bool ForceCacheMiss { get; set; }

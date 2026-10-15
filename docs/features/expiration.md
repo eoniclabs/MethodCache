@@ -40,7 +40,7 @@ builder.Services.AddMethodCache(config =>
 ```
 <!-- endSnippet -->
 
-Without any default, entries live for `MethodCacheMemoryOptions.DefaultExpiration` (five minutes). No entry lives
+Without any default, entries live for five minutes. No entry lives
 longer than `MethodCacheMemoryOptions.MaxExpiration` (seven days). See [Memory cache](memory-cache.md).
 
 ## Sliding expiration

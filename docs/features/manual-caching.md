@@ -40,22 +40,24 @@ var list = await cache.GetOrCreateAsync(
           .RefreshAhead(TimeSpan.FromMinutes(5))
           .WithTags("orders", $"customer:{customerId}")
           .WithVersion(2)
-          .OnHit(ctx => logger.LogDebug("Cache hit: {Key}", ctx.Key))
-          .OnMiss(ctx => logger.LogDebug("Cache miss: {Key}", ctx.Key))
-          .When(ctx => customerId > 0));   // skip the cache when false
+          .WithEnabled(customerId > 0));   // skip the cache when false
 ```
 <!-- endSnippet -->
 
 - Duration, sliding expiration, refresh-ahead, tags and version work as described in [Expiration](expiration.md) and
   [Invalidation](invalidation.md).
-- `When` skips the cache for this call when it returns false ([Conditional caching](conditional-caching.md)).
-- `OnHit`, `OnMiss` and `WithMetrics` observe this call. The `CacheContext` they get carries the key, an `Items`
-  dictionary scoped to the call and `Services`, the `services` argument of `GetOrCreateAsync` (null when you don't
-  pass one).
-- These policies live in code: `appsettings.json` and runtime overrides apply to `[Cache]` methods only. `When`,
-  `OnHit`, `OnMiss` and `WithMetrics` work here only ([Validation](configuration.md#validation)).
-- `CacheEntryOptions.Builder.Build()` takes a copy of the tags and callbacks, so changing the builder afterwards
-  doesn't change options already built.
+- `WithEnabled(false)` runs the factory for each call and bypasses reads, joins, stale values and publication.
+- `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before caching and after L2 reads.
+- `CacheContext` carries the logical key and an `Items` dictionary for the factory invocation.
+- Configuration files and runtime overrides apply to declared cached methods. Explicit-key calls use their own options.
+- `Build()` copies mutable collections. Later builder changes cannot change published options.
+
+`ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
+`InvalidateTagsAsync`. The interface accepts immutable options; the helpers accept builder actions or simpler factories.
+A custom manager uses `options.GetCacheKey(key)` to apply versions once and `options.CanCache(value)` to evaluate the
+result predicate. Generated calls already carry complete keys; the same helper handles them without adding another version.
+Custom managers own their caching semantics and must preserve presence separately from null/default values. Generated
+synchronous methods use the underlying implementation directly when a custom manager has no internal sync capability.
 
 ## Reading without loading
 
@@ -76,8 +78,8 @@ if (lookup.Found)
 An entry stored with `WithVersion` lives under a different key than the unversioned one: `entry` at version 1 never
 shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `CacheContext.Key`
 always holds the key you passed. To invalidate or look up such an entry directly, for example with
-`InvalidateByKeysAsync` or `ICacheAdministrator`, get the stored key from `CacheManagerExtensions.GetCacheKey(key,
-version)` (leave out `version` for an unversioned entry) instead of building it by hand.
+`InvalidateKeysAsync` or `ICacheAdministrator`, use `InvalidateKeyAsync(key, version)` or get the stored key from `CacheManagerExtensions.GetCacheKey(key,
+version)` instead of building it by hand.
 
 ## Many keys at once
 
@@ -114,8 +116,6 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
   `NoOpCacheManager` ([Testing](testing.md)).
 
-Manual `TryGetAsync` reads a fresh entry, including a cached null, even when the fast path is disabled or refresh-ahead is due. This lookup does not start a factory or background refresh.
-
-An explicit `SetAsync` with a lifetime shorter than L2 millisecond precision removes the previous distributed value instead of leaving it readable. If the backend is unavailable, the removal follows the normal invalidation retry path.
+Manual `TryGetAsync` reads a fresh entry, including a cached null, even when refresh-ahead is due. This lookup does not start a factory or background refresh.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.

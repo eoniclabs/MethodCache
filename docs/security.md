@@ -21,7 +21,7 @@ under the same OS user from local credential files.
 | A tag built from user text invalidates someone else's entries | **Not prevented.** Tags are plain text: `"user:{userId}"` with the id `"1:orders"` is the same tag that `"user:{userId}:orders"` gives user 1, so invalidating one also removes the other. This only ever removes entries (they are loaded again); it never serves one caller's value to another. Use ids that can't contain your separator (`int`, `Guid`) in tag templates. |
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
 | A tag built from user text clears the whole distributed cache | L2 metadata preserves every UTF-16 code unit, including lone surrogates, so reading a tag cannot change its invalidation identity. A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
-| `*` or `?` in user text widens an invalidation | `InvalidateByTagsAsync`, `InvalidateByKeysAsync` and the admin endpoints match exactly. Only `InvalidateByTagPatternAsync` reads wildcards: never build its pattern from user text. Patterns are matched without regular expressions, so a pattern can't cause catastrophic backtracking. |
+| `*` or `?` in user text widens an invalidation | `InvalidateTagsAsync`, `InvalidateKeysAsync` and admin endpoints match exact keys and tags. Group invalidation uses an explicit common tag. |
 | `[CacheKey(UseAsRawKey = true)]` | The argument *is* the key, unescaped, so a caller who controls it can read any other entry with that key. Use it only for keys your code builds. |
 
 ## Distributed cache (Redis, SQL Server)
@@ -117,3 +117,9 @@ an old-generation fail-safe value. Descriptor/module state is separate from each
 keyed binding and background scope. Unknown contracts fail before descriptor/factory execution; ambiguous
 modules, candidates and unsupported cacheable bindings fail instead of choosing an implementation implicitly.
 The corresponding tests are GeneratedContractTests, QuickStartRegistrationTests and the semantic signature corpus.
+
+Policy-isolation tests reject application keys/tags that imitate internal method or namespace identities. Declarative
+fingerprints use invariant length-framed UTF-16 and SHA-256; runtime namespaces use 16 random bytes per behavior change.
+Typed method messages retire data without accepting policy from the sender. L2 reads enforce first-publication deadlines,
+null/result predicates and original load-start tombstones, including after delayed transport completion. Format-5 malformed
+header/truncation tests exercise the current parser. `PolicyBackendContract` runs the same assertions on Redis and SQL Server.

@@ -216,7 +216,7 @@ public class L2FaultInjectionTests
     {
         { "half", ChaosFault.Truncated() },
         { "empty", ChaosFault.Truncated(0) },
-        { "header only", ChaosFault.Truncated(22) },
+        { "header only", ChaosFault.Truncated(30) },
         { "inverted", ChaosFault.Corrupted() },
         { "random", ChaosFault.Corrupted(bytes => { new Random(42).NextBytes(bytes); return bytes; }) },
         { "last byte cut", ChaosFault.Corrupted(bytes => bytes[..^1]) },
@@ -492,10 +492,10 @@ public class L2FaultInjectionTests
     }
 
     [Fact]
-    public async Task WriteThatTimesOut_AndLandsAfterTheRetry_StaysUntilItExpires()
+    public async Task WriteThatTimesOut_AndLandsAfterTheRetry_IsRejectedByRemovalMetadata()
     {
-        // Observed and documented, not guaranteed: once the queued removal has run, nothing watches the key, so a
-        // write that lands even later stays until its own expiry
+        // A late transport may replace the physical bytes, but its original load timestamp
+        // predates the removal metadata and must never become readable again.
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.HangIgnoringToken() with { Keys = static key => key == EntryKey, Times = 1 });
         var (late, lateLayer) = CreateNode(chaos, backplane: true);
         var (writer, _) = CreateNode(backplane: true);
@@ -514,7 +514,7 @@ public class L2FaultInjectionTests
         chaos.ReleaseHeld();
         await WaitUntil(() => chaos.LandedLate == 1);
 
-        (await Get(CreateNode().Node, "key", () => "unused")).Should().Be("old", "the late write replaced the newer value");
+        (await Get(CreateNode().Node, "key", () => "unused")).Should().Be("unused", "the late write predates the removal metadata");
         _time.Advance(OneMinute);
         (await Get(CreateNode().Node, "key", () => "fresh")).Should().Be("fresh");
     }

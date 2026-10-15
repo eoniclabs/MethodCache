@@ -644,6 +644,8 @@ Properties gäller för typer/Unicode/framing. Docs-löften har även en Docs.Te
 
 ### PR 2: användar-API och policyprimitiver
 
+Implementationsresultat och kvarvarande mergegrindar finns i [PR 2:s valideringsrapport](design-pr2-validation.md).
+
 | ID | Arrangera/agera | Krävt utfall |
 |---|---|---|
 | P01 | Kör varje rad i §5.1: fyll, stoppa en load/refresh, ändra policy, släpp arbetet. | Nästa lokala uppslag använder ny generation; gammal laddning publicerar aldrig över den. |

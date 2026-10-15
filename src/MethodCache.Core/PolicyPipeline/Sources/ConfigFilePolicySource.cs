@@ -13,7 +13,7 @@ namespace MethodCache.Core.PolicyPipeline.Sources;
 /// Policies from an <see cref="IConfiguration"/> section such as appsettings.json. When the configuration reloads,
 /// changed methods are published to the resolver, so edits take effect without a restart.
 /// </summary>
-internal sealed class ConfigFilePolicySource : IPolicySource
+internal sealed class ConfigFilePolicySource : IImmediatePolicySource
 {
     private readonly IConfiguration _configuration;
     private readonly string _sectionName;
@@ -34,20 +34,72 @@ internal sealed class ConfigFilePolicySource : IPolicySource
     /// Reads the section as it is now, so configuration sources added after registration count. Invalid values
     /// throw here, which fails startup; after a reload they are reported and the previous policies stay in place.
     /// </summary>
+    private readonly object _sync = new();
+    private Action<PolicyChange>? _changed;
+    private IDisposable? _subscription;
+    private long _revision;
+
+    public event Action<PolicyChange>? Changed
+    {
+        add
+        {
+            lock (_sync)
+            {
+                _changed += value;
+                _subscription ??= ChangeToken.OnChange(_configuration.GetReloadToken, Reload);
+            }
+        }
+        remove
+        {
+            IDisposable? subscription = null;
+            lock (_sync)
+            {
+                _changed -= value;
+                if (_changed == null) { subscription = _subscription; _subscription = null; }
+            }
+            subscription?.Dispose();
+        }
+    }
+
     public Task<IReadOnlyCollection<PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(GetSnapshot());
+    }
 
-        var policies = Load();
-        Volatile.Write(ref _policies, policies);
+    public IReadOnlyCollection<PolicySnapshot> GetSnapshot() => CaptureSnapshots().Snapshots;
 
-        var timestamp = DateTimeOffset.UtcNow;
-        var snapshots = policies.Values
-            .Select(draft => PolicySnapshotBuilder.FromPolicy(
-                SourceId, draft.MethodId, draft.Policy, draft.Fields, timestamp, draft.Metadata, draft.Notes))
-            .ToArray();
+    public (IReadOnlyCollection<PolicySnapshot> Snapshots, long Revision) CaptureSnapshots()
+    {
+        lock (_sync)
+        {
+            var policies = Load();
+            Volatile.Write(ref _policies, policies);
+            var timestamp = DateTimeOffset.UtcNow;
+            var snapshots = policies.Values.Select(draft => PolicySnapshotBuilder.FromPolicy(
+                SourceId, draft.MethodId, draft.Policy, draft.Fields, timestamp, draft.Metadata, draft.Notes)).ToArray();
+            return (snapshots, ++_revision);
+        }
+    }
 
-        return Task.FromResult<IReadOnlyCollection<PolicySnapshot>>(snapshots);
+    private void Reload()
+    {
+        PolicyChange[] changes;
+        Action<PolicyChange>? changed;
+        try
+        {
+            lock (_sync)
+            {
+                var current = Load();
+                changes = Diff(_policies, current).ToArray();
+                var revision = ++_revision;
+                foreach (var change in changes) change.SourceRevision = revision;
+                Volatile.Write(ref _policies, current);
+                changed = _changed;
+            }
+        }
+        catch (InvalidOperationException ex) { ReloadFailed?.Invoke(ex); return; }
+        foreach (var change in changes) changed?.Invoke(change);
     }
 
     public async IAsyncEnumerable<PolicyChange> WatchAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -79,8 +131,6 @@ internal sealed class ConfigFilePolicySource : IPolicySource
                 ReloadFailed?.Invoke(ex);
                 continue;
             }
-
-            Volatile.Write(ref _policies, current);
 
             foreach (var change in Diff(published, current))
             {
@@ -153,6 +203,8 @@ internal sealed class ConfigFilePolicySource : IPolicySource
            left.Policy.FailSafeTimeout == right.Policy.FailSafeTimeout &&
            left.Policy.FailSafeRetryAfter == right.Policy.FailSafeRetryAfter &&
            left.Policy.Version == right.Policy.Version &&
+           left.Policy.Enabled == right.Policy.Enabled &&
+           left.Policy.Distributed == right.Policy.Distributed &&
            left.Policy.Tags.SequenceEqual(right.Policy.Tags) &&
            SameMetadata(left.Policy.Metadata, right.Policy.Metadata) &&
            SameMetadata(left.Metadata, right.Metadata);

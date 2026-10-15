@@ -66,6 +66,12 @@ public class BulkInvalidationReviewTests
 
     private sealed class CountingDecorator(ICacheManager inner) : ICacheManager, ICacheManagerDecorator
     {
+        public async ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+        { Calls++; await Task.Yield(); return await inner.GetOrCreateAsync(key, factory, options, token); }
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken token) => inner.TryGetAsync<T>(key, token);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken token) => inner.InvalidateKeysAsync(keys, token);
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token) => inner.InvalidateTagsAsync(tags, token);
+
         public int Calls;
         public ICacheManager InnerManager => inner;
         public async Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)

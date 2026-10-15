@@ -68,8 +68,7 @@ namespace MyApp
         public static void Register(WebApplicationBuilder builder)
         {
             // begin-snippet: keys-json-generator
-            builder.Services.AddMethodCache();
-            builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, JsonKeyGenerator>());
+            builder.Services.AddMethodCache(cache => cache.UseJson());
             // end-snippet
         }
     }
