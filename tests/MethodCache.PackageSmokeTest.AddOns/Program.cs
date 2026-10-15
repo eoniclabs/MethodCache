@@ -270,10 +270,14 @@ public static class OpenTelemetryCheck
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        meters.SetMeasurementEventCallback<long>((instrument, value, _, _) =>
+        meters.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
         {
-            if (instrument.Name == "methodcache.hits_total") Interlocked.Add(ref hits, value);
-            if (instrument.Name == "methodcache.misses_total") Interlocked.Add(ref misses, value);
+            if (instrument.Name != "methodcache.requests") return;
+            foreach (var tag in tags)
+            {
+                if (tag.Key == "result" && Equals(tag.Value, "hit")) Interlocked.Add(ref hits, value);
+                if (tag.Key == "result" && Equals(tag.Value, "miss")) Interlocked.Add(ref misses, value);
+            }
         });
         meters.Start();
 
@@ -290,7 +294,6 @@ public static class OpenTelemetryCheck
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
         services.AddMethodCache();
-        services.AddMethodCacheOpenTelemetry();
         await using var provider = services.BuildServiceProvider();
         await using (var scope = provider.CreateAsyncScope())
         {

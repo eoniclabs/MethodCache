@@ -23,7 +23,7 @@ internal static class PolicyRegistrationExtensions
             return new PolicyRegistry(resolver, id =>
             {
                 var manager = provider.GetRequiredService<ICacheManager>();
-                var memory = manager as MethodCache.Extensibility.InMemoryCacheManager ?? (manager as MethodCache.Infrastructure.IGeneratedMemoryCache)?.Memory;
+                var memory = manager as MethodCache.Extensibility.InMemoryCacheManager;
                 return memory?.InvalidateMethodAsync(id) ?? Task.CompletedTask;
             });
         });

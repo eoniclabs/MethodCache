@@ -215,8 +215,8 @@ static async Task InsightAsync(IServiceProvider provider)
     var admin = provider.GetRequiredService<ICacheAdministrator>();
     var stats = await admin.GetStatsAsync();
 
-    Ui.Step("Hits / misses", $"{stats.Hits:N0} / {stats.Misses:N0}  (hit ratio {stats.HitRatio:P1})");
-    Ui.Step("Entries", $"{stats.Entries:N0}");
+    Ui.Step("Hits / misses", $"{stats.Hits:N0} / {stats.Misses:N0}  (hit ratio {(stats.Hits + stats.Misses == 0 ? 0 : (double)stats.Hits / (stats.Hits + stats.Misses)):P1})");
+    Ui.Step("Entries", $"{stats.LocalMethodEntries:N0}");
     Ui.WriteEntries(admin.ListEntries(limit: 10));
 
     var before = admin.ListEntries(tag: "weather").Count;

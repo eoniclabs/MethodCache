@@ -54,7 +54,7 @@ public class GeneratedKeyPropertyTests
     [Fact]
     public void Builder_AllScalarFormsAndBufferSizes_MatchCanonicalHelperText()
     {
-        using var memory = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
+        using var memory = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
         var services = new DecoratorServices(memory, Substitute.For<IPolicyRegistry>(), new FastHashKeyGenerator());
         var method = new BoundMethod(services, PolicyHandle.Fixed(CacheRuntimePolicy.Empty("Get")), typeof(IService), "Get", "Get");
         var call = method.Capture();

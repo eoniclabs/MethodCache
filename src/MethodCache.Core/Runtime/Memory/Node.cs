@@ -62,6 +62,9 @@ internal abstract class Node
 
     // Distributed entries must not slide or serve stale past their source deadline.
     public bool HasSourceDeadline;
+
+    // A fail-safe retry window is logically readable but still serves an older origin value.
+    public bool IsStaleFallback;
     public Node? Previous;
     public Node? Next;
 

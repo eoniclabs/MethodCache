@@ -10,7 +10,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
         [Fact]
         public async Task VersionedManualEntry_FormattedKeyInvalidationReloads_AndContextsKeepLogicalKeys()
         {
-            using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
+            using var cache = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
             var contexts = new List<string>();
             var calls = 0;
             ValueTask<int> Load(CacheContext context, CancellationToken token) { contexts.Add(context.Key); return ValueTask.FromResult(++calls); }

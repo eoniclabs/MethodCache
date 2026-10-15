@@ -47,9 +47,10 @@ The weigher must be fast, thread-safe and return a non-negative value. Without o
 
 ## Memory statistics
 
-With a `Weigher`, `GetStatsAsync().MemoryUsage` is the total weight checked against `SizeLimit`. Without one, the
-statistics provide a rough trend estimate. It is not a byte budget for method results; use entry count or an explicit
-weigher. Serializing sampling/accurate estimation and their tuning switches are no longer public options.
+`GetStatsAsync().TotalWeight` reports the resident method weight in the configured weigher's units. Without a
+weigher, every method entry weighs one; a large returned object does not turn this field into bytes.
+`LocalMethodEntries` reports the actual local entry count. Statistics never serialize results or inspect user
+properties, and there are no sampling/accurate-estimation modes. HTTP entries and bytes use separate fields and budgets.
 
 ## How strict the bound is
 

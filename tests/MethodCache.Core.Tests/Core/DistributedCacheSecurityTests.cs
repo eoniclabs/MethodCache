@@ -31,8 +31,7 @@ public class DistributedCacheSecurityTests
     private readonly Hub _hub = new();
 
     private InMemoryCacheManager CreateNode(ISerializer? serializer = null) => new(
-        new NullCacheMetricsProvider(),
-        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
         _time,
         new DistributedCacheLayer(_shared, serializer ?? new JsonCacheSerializer(), new DistributedCacheOptions { ClockSkewTolerance = TimeSpan.Zero }, _hub.Join(), _time));
 

@@ -5,6 +5,9 @@ namespace MethodCache.Extensibility;
 /// </summary>
 internal interface IBackplane
 {
+    /// <summary>Current delivery-connection capability; successful cache I/O does not imply this is connected.</summary>
+    BackplaneState ConnectionState => BackplaneState.Unknown;
+
     /// <summary>
     /// Publishes a cache invalidation message.
     /// </summary>
@@ -93,3 +96,4 @@ internal enum BackplaneMessageType
     /// <summary>Invalidates a declared method across all registrations and policy identities.</summary>
     MethodInvalidation
 }
+internal enum BackplaneState { Unknown, NotConfigured, Connecting, Connected, Disconnected }

@@ -1,5 +1,6 @@
 using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Infrastructure;
+using MethodCache.Core.Telemetry;
 
 namespace MethodCache.Extensibility;
 
@@ -14,8 +15,11 @@ internal partial class InMemoryCacheManager
         cancellationToken.ThrowIfCancellationRequested();
         options ??= CacheEntryOptions.Default;
         var cacheKey = options.GetCacheKey(key);
-        if (options.Enabled != false && options.Runtime == null && options.CacheWhen == null && TryGetFast<T>(cacheKey, out var cached))
+        if (options.Enabled != false && options.Runtime == null && options.CacheWhen == null && TryGetFastNode<T>(cacheKey, out var cached, out var cachedNode))
+        {
+            RecordHitTelemetry(CacheKeyLookup.MethodName, cachedNode);
             return new(cached!);
+        }
         return GetOrCreateUserSlowAsync(key, cacheKey, factory, options, cancellationToken);
     }
 
@@ -23,7 +27,8 @@ internal partial class InMemoryCacheManager
         Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions options, CancellationToken cancellationToken)
     {
         var context = new CacheContext(key);
-        if (options.Enabled == false) return factory(context, cancellationToken);
+        if (options.Enabled == false) return _telemetry?.Enabled == true
+            ? new ValueTask<T>(_telemetry.BypassAsync(CacheKeyLookup.MethodName, key, () => factory(context, cancellationToken).AsTask())) : factory(context, cancellationToken);
         var policy = options.Runtime;
         if (policy == null)
         {
@@ -39,8 +44,9 @@ internal partial class InMemoryCacheManager
     {
         ValidateTarget(key, nameof(key));
         cancellationToken.ThrowIfCancellationRequested();
-        if (TryGetFresh<T>(key, _engine.Now, out var value, out _, out _))
+        if (TryGetFresh<T>(key, _engine.Now, out var value, out var node, out _))
         {
+            RecordHitTelemetry(CacheKeyLookup.MethodName, node);
             return new(CacheLookupResult<T>.Hit(value!));
         }
         return ReadDistributedLookupAsync<T>(key, cancellationToken);
@@ -51,9 +57,15 @@ internal partial class InMemoryCacheManager
 
     private async ValueTask<CacheLookupResult<T>> ReadDistributedLookupAsync<T>(string key, CancellationToken token)
     {
-        var result = await TryGetDistributedAsync<T>(key, CacheKeyLookup.MethodName,
-            CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName), token).ConfigureAwait(false);
-        return result.Found ? CacheLookupResult<T>.Hit(result.Value!) : CacheLookupResult<T>.Miss;
+        var outcome = RequestResult.Error;
+        try
+        {
+            var result = await TryGetDistributedAsync<T>(key, CacheKeyLookup.MethodName,
+                CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName), token).ConfigureAwait(false);
+            outcome = result.Found ? RequestResult.Hit : RequestResult.Miss;
+            return result.Found ? CacheLookupResult<T>.Hit(result.Value!) : CacheLookupResult<T>.Miss;
+        }
+        finally { _telemetry?.Request("method", CacheKeyLookup.MethodName, outcome); }
     }
 
     /// <inheritdoc />
@@ -68,11 +80,14 @@ internal partial class InMemoryCacheManager
     {
         var validated = ValidateTargets(targets);
         token.ThrowIfCancellationRequested();
+        using var activity = _distributed == null ? _telemetry?.BeginInvalidation(tags ? "tag" : "key",
+            keys: tags ? null : validated, tags: tags ? validated : null) : null;
         foreach (var target in validated)
         {
             if (tags) RemoveLocalTag(target);
             else RemoveLocal(target);
         }
+        _telemetry?.Invalidations(tags ? "tag" : "key", "local", validated.Length);
         // Once local mutation occurs, storage recovery is owned by the cache, not the caller's token.
         if (_distributed == null) return new(new InvalidationResult { Requested = validated.Length, Local = validated.Length });
         var recovery = _distributed.InvalidateTargetsAsync(validated, tags);
@@ -85,7 +100,9 @@ internal partial class InMemoryCacheManager
 
     internal Task InvalidateMethodAsync(string methodId)
     {
+        using var activity = _distributed == null ? _telemetry?.BeginInvalidation("method") : null;
         InvalidateMethodLocally(methodId);
+        _telemetry?.Invalidations("method", "local", 1);
         return _distributed?.InvalidateMethodAsync(methodId) ?? Task.CompletedTask;
     }
 

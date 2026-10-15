@@ -83,3 +83,8 @@ mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane 
 Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
 
 Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix` for data and invalidation. Value formats and serializer schemas have separate namespaces; metadata retention and atomic epochs prevent older physical variants from reappearing after invalidation. SQL Server uses an explicit versioned schema and delivered migration scripts. See [distributed caching](docs/features/distributed-cache.md).
+
+Core emits `MethodCache` metrics and activities through the container's `IMeterFactory`; the OpenTelemetry add-on
+only subscribes with `AddMethodCacheInstrumentation()`. Keys/tags are off by default, histograms use seconds, and pure
+hits have no spans. Administrator statistics distinguish local method/HTTP entries and HTTP bytes; `TotalWeight`
+uses the configured weigher's units (one per method entry by default), with no object-memory estimate.

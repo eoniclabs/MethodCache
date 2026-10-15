@@ -73,18 +73,19 @@ Not guaranteed, by design:
 
 ## MethodCache.OpenTelemetry
 
-With the default options, nothing that identifies a person or an argument leaves the process:
+Core owns the `MethodCache` Meter/ActivitySource. The OpenTelemetry package only subscribes to them.
 
 | Signal | Recorded by default | Opt-in |
 |---|---|---|
-| Span attributes | method id, hit or miss, TTL, group, version, number of keys invalidated; on failure the exception type, message and stack trace | `RecordCacheKeys` (a SHA-256 hash of the key, or the key itself with `HashCacheKeys = false`); `RecordCacheTags` (tags and invalidation patterns, which contain argument values when built from templates) |
-| Span baggage | the correlation and invalidation ids you set | `ExportSensitiveData` adds the user and tenant ids |
-| Metrics | dimensions `method`, `group`, `version`, `error.type`, and `client` and `outcome` for HTTP caching | none: tags, keys and URLs are never metric dimensions |
+| Spans | Static method/client names, operation/type and `error.type`; no exception messages, stacks or copied HTTP/URL attributes | Core `MethodCacheTelemetryOptions.RecordCacheKeys` (SHA-256 by default, raw with `HashCacheKeys=false`); `RecordCacheTags` for application tags |
+| Baggage | No library-added baggage | The app controls normal ambient .NET baggage propagation/export |
+| Metrics | `kind`, static `name`, `result`, invalidation `type`/`stage`, transport `operation` and `error.type` | None: keys, tags, URLs, user ids and tenant ids never become metric dimensions |
 
-Cache spans copy the `http.*` and `url.*` attributes of the request span they belong to; turn off
-`EnableHttpCorrelation` if those hold data your traces shouldn't. Exception messages come from your own code; keep
-personal data out of them. Setting the user or tenant id to `null` or an empty string removes it, so a worker that
-handles one message after another doesn't attribute a message without a user to the previous message's user.
+Hashing creates stable identifiers and does not make keys anonymous. Leave identity recording disabled unless the
+export destination is appropriate. Core, Redis and SQL diagnostic logs omit backend exception text because it can
+contain credentials, keys or argument values. Health check failures similarly expose exception types only. Standard
+application activity parentage and baggage remain intact, including when origin code uses its ambient authorization
+context; MethodCache neither adds identity baggage nor strips the application's context.
 
 ## The tests
 
@@ -97,7 +98,7 @@ tests these protections. Build jobs still execute repository code as the build-s
 not a sandbox for malicious pull requests.
 
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
-`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `TelemetryDefaultsLeakTests` and `TelemetryPrivacyTests` (OpenTelemetry), `KeyInjectionPropertyTests` and
+`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `CoreInstrumentationTests` (OpenTelemetry SDK) and `TelemetryPrivacyTests` (Core), `KeyInjectionPropertyTests` and
 `DistributedCacheSecurityTests` (keys, tags and the distributed cache).
 
 MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
