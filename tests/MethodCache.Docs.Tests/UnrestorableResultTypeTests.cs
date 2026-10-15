@@ -32,7 +32,7 @@ public class UnrestorableResultTypeTests
         public string Title { get; set; } = "";
     }
 
-#pragma warning disable MCG019 // what this test is about: these results can't be shared through the distributed cache
+#pragma warning disable MC0020 // what this test is about: these results can't be shared through the distributed cache
     public interface IReports
     {
         [Cache] Task<object> GetAsync(int id);
@@ -41,7 +41,7 @@ public class UnrestorableResultTypeTests
 
         [Cache] Task<Report> ReportAsync(int id);
     }
-#pragma warning restore MCG019
+#pragma warning restore MC0020
 
     private sealed class Reports : IReports
     {

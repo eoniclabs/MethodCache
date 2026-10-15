@@ -18,9 +18,11 @@ namespace MethodCache.Generated
             {
                 builder.Method("App.IPricing.Price", new string[] { "sku", "quantity" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
+                    CanonicalTagParts = true,
                 });
                 builder.Method("App.IPricing.FindAsync", new string[] { "sku" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
+                    CanonicalTagParts = true,
                 });
             }
         }

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TrackPublicApi>true</TrackPublicApi>
@@ -97,4 +97,7 @@
     <Compile Include="../Shared/KeyCollectionState.cs" Link="Internal/KeyCollectionState.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../Shared/DurationParser.cs" Link="Internal/DurationParser.cs" />
+  </ItemGroup>
 </Project>

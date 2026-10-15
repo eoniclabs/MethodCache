@@ -44,4 +44,7 @@
     <!-- Real SQL lock checks supplement the always-running fault tests below; their infrastructure lives in the integration project. -->
     <Compile Remove="FaultInjection/SqlServerIntegration/**/*.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/DurationCorpus.cs" Link="DurationCorpus.cs" />
+  </ItemGroup>
 </Project>

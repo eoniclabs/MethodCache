@@ -38,7 +38,7 @@ namespace MethodCache
         /// <summary>Gets the names of the cached methods.</summary>
         public string[] Methods { get; }
 
-        /// <summary>Gets or sets the group the methods join, as <see cref="CacheAttribute.GroupName"/>.</summary>
+        /// <summary>Gets or sets the group the methods join, as <see cref="CacheAttribute.Group"/>.</summary>
         public string? Group { get; set; }
 
         /// <summary>Gets or sets the cache duration, as <see cref="CacheAttribute.Duration"/>.</summary>
@@ -56,6 +56,15 @@ namespace MethodCache
         /// <summary>Gets or sets the fail-safe timeout, as <see cref="CacheAttribute.FailSafeTimeout"/>.</summary>
         public string? FailSafeTimeout { get; set; }
 
+        /// <summary>Gets or sets the positive delay before retrying a failed load, for example "30s".</summary>
+        public string? RetryAfter { get; set; }
+
+        /// <summary>Gets or sets whether caching is enabled. Omission inherits the configured policy.</summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>Gets or sets whether the method uses distributed caching. Omission inherits the configured policy.</summary>
+        public bool Distributed { get; set; } = true;
+
         /// <summary>
         /// Gets or sets tags for the cached entries, as <see cref="CacheAttribute.Tags"/>. Templates such as
         /// <c>"fx:{from}"</c> use the method's parameter names.
@@ -63,6 +72,6 @@ namespace MethodCache
         public string[]? Tags { get; set; }
 
         /// <summary>Gets or sets the cache version, as <see cref="CacheAttribute.Version"/>.</summary>
-        public int Version { get; set; } = -1;
+        public int Version { get; set; }
     }
 }

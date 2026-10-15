@@ -62,8 +62,6 @@ public class MethodCacheBenchmarkService : IMethodCacheBenchmarkService
         return _payload;
     }
 
-    public Task<T> GetOrCreateValueAsync<T>(string key, Func<Task<T>> factory) => factory();
-
     public void Set(string key, SamplePayload value)
     {
         // No-op for benchmark

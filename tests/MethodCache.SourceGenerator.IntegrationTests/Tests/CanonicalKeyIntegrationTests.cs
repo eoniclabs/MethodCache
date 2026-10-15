@@ -8,19 +8,19 @@ using Xunit.Abstractions;
 
 namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
 
-public class CacheKeyAttributeIntegrationTests
+public class CanonicalKeyIntegrationTests
 {
     private readonly ITestOutputHelper _output;
     private readonly SourceGeneratorTestEngine _engine;
 
-    public CacheKeyAttributeIntegrationTests(ITestOutputHelper output)
+    public CanonicalKeyIntegrationTests(ITestOutputHelper output)
     {
         _output = output;
         _engine = new SourceGeneratorTestEngine();
     }
 
     [Fact]
-    public async Task CacheKeyAttribute_UsesRawKeyForCacheStorage()
+    public async Task KeyStorage_PreservesMethodScope()
     {
         var sourceCode = @"
 using System;
@@ -32,7 +32,7 @@ namespace TestNamespace
     public interface IRawKeyService
     {
         [Cache(Duration = ""00:10:00"")]
-        Task<string> GetValueAsync([CacheKey(UseAsRawKey = true)] string cacheKey);
+        Task<string> GetValueAsync(string cacheKey);
     }
 
     public class RawKeyService : IRawKeyService
@@ -71,11 +71,11 @@ namespace TestNamespace
         var firstCallTask = (Task)method!.Invoke(service, new object[] { rawKey })!;
         var firstResult = await GetTaskResult<string>(firstCallTask);
 
-        // Verify the cache stored the value under the raw key
-        var fastHit = await cacheManager.TryGetFastAsync<string>(rawKey);
+        // Public key helpers resolve the same method-scoped entry.
+        var fastHit = await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetValueAsync", MethodCacheKeys.Part(rawKey)));
         Assert.Equal(firstResult, fastHit);
 
-        // The default ""MethodName:key"" format should not contain the cached value
+        // A key without the service scope cannot read this entry.
         var prefixedHit = await cacheManager.TryGetFastAsync<string>($"GetValueAsync:{rawKey}");
         Assert.Null(prefixedHit);
 
@@ -89,7 +89,7 @@ namespace TestNamespace
     }
 
     [Fact]
-    public async Task CacheKeyAttribute_RawKeyFromNumber_IsCultureInvariant()
+    public async Task ScalarKeys_AreCultureInvariant()
     {
         var sourceCode = @"
 using System.Threading.Tasks;
@@ -100,19 +100,19 @@ namespace TestNamespace
     public interface IRawNumberKeyService
     {
         [Cache(Duration = ""00:10:00"")]
-        Task<string> GetByDoubleAsync([CacheKey(UseAsRawKey = true)] double value);
+        Task<string> GetByDoubleAsync(double value);
 
         [Cache(Duration = ""00:10:00"")]
-        Task<string> GetByNullableAsync([CacheKey(UseAsRawKey = true)] decimal? value);
+        Task<string> GetByNullableAsync(decimal? value);
 
         [Cache(Duration = ""00:10:00"")]
-        Task<string> GetByLevelAsync([CacheKey(UseAsRawKey = true)] Level value);
+        Task<string> GetByLevelAsync(Level value);
 
         [Cache(Duration = ""00:10:00"")]
-        Task<string> GetByNullableLevelAsync([CacheKey(UseAsRawKey = true)] Level? value);
+        Task<string> GetByNullableLevelAsync(Level? value);
 
         [Cache(Duration = ""00:10:00"")]
-        Task<string> GetByCodeAsync([CacheKey(UseAsRawKey = true)] Code value);
+        Task<string> GetByCodeAsync(Code value);
     }
 
     public enum Level { Low = -1, High = 1 }
@@ -166,14 +166,14 @@ namespace TestNamespace
             CultureInfo.CurrentCulture = previous;
         }
 
-        Assert.Equal("double", await cacheManager.TryGetFastAsync<string>("-1.5"));
-        Assert.Equal("decimal", await cacheManager.TryGetFastAsync<string>("2.5"));
-
-        // A named enum value keeps its name; one without a name is its number with an ASCII minus sign
-        Assert.Equal("level -1", await cacheManager.TryGetFastAsync<string>("Low"));
-        Assert.Equal("level -3", await cacheManager.TryGetFastAsync<string>("-3"));
-        Assert.Equal("nullable level", await cacheManager.TryGetFastAsync<string>("-5"));
-        Assert.Equal("code", await cacheManager.TryGetFastAsync<string>("code--7"));
+        Assert.Equal("double", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByDoubleAsync", MethodCacheKeys.Part(-1.5))));
+        Assert.Equal("decimal", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByNullableAsync", MethodCacheKeys.Part(2.5m))));
+        Assert.Equal("level -1", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByLevelAsync", "-1")));
+        Assert.Equal("level -3", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByLevelAsync", "-3")));
+        Assert.Equal("nullable level", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByNullableLevelAsync", "-5")));
+        // A structural struct key is tested through the generated call, rather than an unscoped raw ToString.
+        var codeAgain = Activator.CreateInstance(testAssembly.Assembly.GetType("TestNamespace.Code")!, -7)!;
+        Assert.Equal("code", await GetTaskResult<string>((Task)serviceType.GetMethod("GetByCodeAsync")!.Invoke(service, new[] { codeAgain })!));
     }
 
     private static async Task<T> GetTaskResult<T>(Task task)

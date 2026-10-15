@@ -28,4 +28,7 @@
     <ProjectReference Include="..\..\src\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/DurationCorpus.cs" Link="DurationCorpus.cs" />
+  </ItemGroup>
 </Project>

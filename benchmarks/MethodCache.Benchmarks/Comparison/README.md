@@ -265,3 +265,5 @@ When adding new comparison scenarios:
 
 - **MethodCache Core**: [`src/MethodCache.Core`](../../../src/MethodCache.Core)
 - **Benchmark Best Practices**: https://benchmarkdotnet.org/articles/guides/good-practices.html
+
+After removal of raw-key attributes, generated service calls use method-scoped keys. `GetAsyncDirect` measures generated lookup; adapter operations that accept arbitrary factories use the public manual API and a separately populated manual key. Do not interpret those factory timings as a generated decorator measurement.

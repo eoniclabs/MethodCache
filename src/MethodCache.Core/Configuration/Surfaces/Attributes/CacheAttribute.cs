@@ -25,7 +25,7 @@ namespace MethodCache
     ///
     /// Advanced usage with full configuration:
     /// <code>
-    /// [Cache("users",
+    /// [Cache(Group = "users",
     ///     Duration = "00:30:00",
     ///     Tags = ["users", "user:{userId}"],
     ///     SlidingExpiration = "00:05:00",
@@ -34,20 +34,20 @@ namespace MethodCache
     /// </code>
     /// </example>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public class CacheAttribute : Attribute
+    public sealed class CacheAttribute : Attribute
     {
         /// <summary>
         /// The group the method belongs to, or null. A group's settings, from <c>config.ForGroup(name)</c> or
         /// <c>appsettings.json</c>, fill in what the method leaves unset.
         /// </summary>
-        public string? GroupName { get; }
+        public string? Group { get; set; }
 
         /// <summary>
-        /// Gets or sets the cache duration as a TimeSpan string.
+        /// Gets or sets a positive duration, for example "5m" or "00:05:00".
         /// Determines how long values remain in cache before expiration.
         /// </summary>
         /// <remarks>
-        /// Format: "HH:MM:SS" or use TimeSpan.Parse-compatible strings.
+        /// Format: a positive invariant decimal with s/m/h/d suffix, or [d.]hh:mm:ss with optional fractional seconds.
         /// Examples: "00:05:00" (5 minutes), "01:00:00" (1 hour), "1.00:00:00" (1 day)
         /// If not specified, uses the default duration from global configuration.
         /// </remarks>
@@ -99,6 +99,15 @@ namespace MethodCache
         /// </example>
         public string? FailSafeTimeout { get; set; }
 
+        /// <summary>Gets or sets the positive delay before retrying a failed load, for example "30s".</summary>
+        public string? RetryAfter { get; set; }
+
+        /// <summary>Gets or sets whether caching is enabled. Omission inherits the configured policy.</summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>Gets or sets whether the method uses distributed caching. Omission inherits the configured policy.</summary>
+        public bool Distributed { get; set; } = true;
+
         /// <summary>
         /// Tags for the entries this method stores, so <c>[CacheInvalidate]</c> or <c>InvalidateByTagsAsync</c> can
         /// remove them. A template such as <c>"product:{id}"</c> is filled in from the parameter with that name; it
@@ -114,7 +123,7 @@ namespace MethodCache
 
         /// <summary>
         /// A version that is part of every key the method produces. Raise it when the cached result's shape changes,
-        /// so values cached by the previous version are ignored. Default -1 (not set).
+        /// so values cached by the previous version are ignored. An omitted named argument leaves the version unset.
         /// </summary>
         /// <example>
         /// <code>
@@ -127,15 +136,11 @@ namespace MethodCache
         /// Task&lt;UserDto&gt; GetUserAsync(int id);
         /// </code>
         /// </example>
-        public int Version { get; set; } = -1;
+        public int Version { get; set; }
 
         /// <summary>
-        /// Caches the method, optionally in a group.
+        /// Caches the method with the explicitly named settings.
         /// </summary>
-        /// <param name="groupName">The group whose settings apply to this method, or null.</param>
-        public CacheAttribute(string? groupName = null)
-        {
-            GroupName = groupName;
-        }
+        public CacheAttribute() { }
     }
 }

@@ -9,6 +9,8 @@ namespace MethodCache.Policies;
 /// </summary>
 internal sealed record CachePolicy
 {
+    internal bool CanonicalTagParts { get; init; } = true;
+
     private readonly IReadOnlyList<string> _tags = Array.Empty<string>();
     private static readonly IReadOnlyDictionary<string, string?> EmptyMetadata = new Dictionary<string, string?>(StringComparer.Ordinal);
 

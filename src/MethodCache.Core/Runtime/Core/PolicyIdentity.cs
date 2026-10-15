@@ -23,6 +23,7 @@ internal static class PolicyIdentity
         writer.Write(policy.Enabled != false);
         writer.Write(policy.Distributed != false);
         Text(writer, policy.Metadata.GetValueOrDefault("group") ?? "");
+        writer.Write(policy.CanonicalTagParts);
         var tags = policy.Tags.Distinct(StringComparer.Ordinal).OrderBy(static value => value, StringComparer.Ordinal).ToArray();
         writer.Write(tags.Length);
         foreach (var tag in tags) Text(writer, tag);

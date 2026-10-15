@@ -416,7 +416,7 @@ namespace KeyFormat
     }
 
     [Fact]
-    public async Task RawKeyDates_AreWrittenLikeGeneratedKeys_SoUtcAndLocalOfOneInstantShareAnEntry()
+    public async Task Dates_AreWrittenLikeGeneratedKeys_SoUtcAndLocalOfOneInstantShareAnEntry()
     {
         const string source = @"
 using System;
@@ -427,8 +427,8 @@ namespace KeyFormat
 {
     public interface IReports
     {
-        [Cache] Task<string> At([CacheKey(UseAsRawKey = true)] DateTime at);
-        [Cache] Task<string> Since([CacheKey(UseAsRawKey = true)] DateTimeOffset? since);
+        [Cache] Task<string> At(DateTime at);
+        [Cache] Task<string> Since(DateTimeOffset? since);
     }
     public class Reports : IReports
     {
@@ -451,9 +451,9 @@ namespace KeyFormat
 
         // The local time of the same instant was a hit, under the key MethodCacheKeys.Part writes, whatever the time zone
         Assert.Equal(1, (int)compiled.Assembly.GetType("KeyFormat.Reports")!.GetField("AtCalls")!.GetValue(null)!);
-        Assert.Equal("at", await cache.TryGetFastAsync<string>(MethodCacheKeys.Part(utc)));
-        Assert.Equal("at", await cache.TryGetFastAsync<string>("2026-01-01T12:00:00.2500000Z"));
-        Assert.Equal("since", await cache.TryGetFastAsync<string>(MethodCacheKeys.Part(since)));
+        Assert.Equal("at", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(reportsType, "At", MethodCacheKeys.Part(utc))));
+        Assert.Equal("at", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(reportsType, "At", "2026-01-01T12:00:00.2500000Z")));
+        Assert.Equal("since", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(reportsType, "Since", MethodCacheKeys.Part(since))));
     }
 
     [Fact]

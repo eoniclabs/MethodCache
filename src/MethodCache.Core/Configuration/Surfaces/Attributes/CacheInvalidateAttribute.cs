@@ -38,7 +38,7 @@ namespace MethodCache
     /// </code>
     /// </example>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public class CacheInvalidateAttribute : Attribute
+    public sealed class CacheInvalidateAttribute : Attribute
     {
         /// <summary>
         /// Gets or sets the tags identifying which cache entries to invalidate when this method executes.

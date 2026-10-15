@@ -32,7 +32,7 @@ builder.Services.AddMethodCache(config =>
     // Every cached method: fills in what the method leaves unset
     config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15)));
 
-    // Methods in the "user-data" group: [Cache("user-data")] or WithGroup("user-data")
+    // Methods in the "user-data" group: [Cache(Group = "user-data")] or WithGroup("user-data")
     config.Group("user-data", o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
 
     // One method
@@ -44,7 +44,7 @@ builder.Services.AddMethodCache(config =>
 
 - `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
   keeps its ten minutes while the defaults fill in what it leaves out.
-- A method joins a group with `[Cache("name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
+- A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
 - `Any<T>.Value` stands for any argument when you point at a method.
 
 Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`,
@@ -192,10 +192,10 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 
 | Setting | Rule | Checked |
 |---------|------|---------|
-| `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
-| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
-| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` only): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
-| `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative value means "not set" (the default is -1) |
+| `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0002](../user-guide/DIAGNOSTICS.md#mc0002)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0002](../user-guide/DIAGNOSTICS.md#mc0002)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
+| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` and `RetryAfter`): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative explicit value is MC0021; omission inherits |
 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. `CacheWhen<T>` is
 configured in code. Cache callbacks, context predicates and a service provider in `CacheContext` are no longer supported.
@@ -205,3 +205,5 @@ Overloaded generic methods include generic arity in their policy ids and key pre
 Published options and policy tags are owned, read-only snapshots. Mutating a collection supplied by application code cannot change an existing policy or bypass its change notifications.
 
 A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
+
+`[Cache]` is parameterless and all settings are named. `Enabled` and `Distributed` inherit the policy when omitted; explicitly setting either to `false` overrides a lower layer. An omitted `Version` remains unset; an explicit negative version is an error. `RetryAfter` sets the fail-safe retry delay (default 30 seconds). `[assembly: CacheInterface(typeof(...), nameof(...))]` retains its required interface and method arguments and offers the same named settings.

@@ -8,6 +8,9 @@ namespace MethodCache.Generated;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class KeyParts
 {
+    /// <summary>Formats a dynamic tag argument using the canonical scalar key-part rules.</summary>
+    public static string TagPart(object? value) => Infrastructure.CanonicalTagPart.Format(value);
+
     /// <summary>The encoded null argument.</summary>
     public const string Null = "\\0";
     /// <summary>The key argument separator.</summary>

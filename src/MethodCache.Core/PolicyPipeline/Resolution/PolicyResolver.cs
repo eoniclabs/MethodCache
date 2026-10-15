@@ -569,6 +569,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         }
         private static (CachePolicy Policy, Dictionary<string, string> Sources) ResolveLayers(IEnumerable<PolicyLayer> layers, IReadOnlyDictionary<string, string?> metadata)
         {
+            var canonicalTagParts = true;
             bool? enabled = null;
             bool? distributed = null;
             TimeSpan? duration = null;
@@ -590,6 +591,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 var fields = layer.Fields;
                 var policy = layer.Policy;
                 var sourceId = policy.Provenance.LastOrDefault()?.SourceId;
+                if (sourceId == PolicySourceIds.Attributes) canonicalTagParts = policy.CanonicalTagParts;
                 if (sourceId != null)
                     foreach (var field in Enum.GetValues<CachePolicyFields>())
                         if (field != CachePolicyFields.None && fields.HasFlag(field)) fieldSources.TryAdd(field.ToString(), sourceId);
@@ -659,6 +661,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             {
                 Duration = duration,
                 Enabled = enabled,
+                CanonicalTagParts = canonicalTagParts,
                 Distributed = distributed,
                 Tags = tags is { Count: > 0 } ? tags.ToArray() : Array.Empty<string>(),
                 SlidingExpiration = slidingExpiration,

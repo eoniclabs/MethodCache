@@ -29,7 +29,7 @@ namespace MethodCache
 
         /// <summary>
         /// Configures defaults for the methods in group <paramref name="name"/>, which they join with
-        /// <c>[Cache("name")]</c> or <see cref="IFluentMethodConfiguration.WithGroup"/>. Settings a method sets itself
+        /// <c>[Cache(Group = "name")]</c> or <see cref="IFluentMethodConfiguration.WithGroup"/>. Settings a method sets itself
         /// win; these win over <see cref="DefaultPolicy"/>.
         /// </summary>
         IFluentGroupConfiguration ForGroup(string name);

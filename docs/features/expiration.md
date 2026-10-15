@@ -26,8 +26,7 @@ public interface IReportService
 ```
 <!-- endSnippet -->
 
-Time spans use the `TimeSpan` format: `"00:05:00"` is five minutes, `"01:00:00"` an hour, `"1.00:00:00"` a day. A
-value that isn't a positive time span is a build error ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)).
+Durations accept an invariant positive decimal followed by `s`, `m`, `h` or `d` (case-insensitive), or `[d.]hh:mm:ss` with up to seven fractional second digits. Examples: `"30s"`, `"1.5h"`, `"1.00:00:00"`. Outer whitespace is ignored. Fractional ticks are truncated; a positive value below one tick is rejected. Bare integers, zero, negatives, exponents, decimal commas, combined units and overflow are errors. The same parser is used for attributes and configuration; invalid explicit attributes produce [MC0002](../user-guide/DIAGNOSTICS.md#mc0002) even without analyzers. `FailSafe` also accepts `"off"`; builder `FailSafe(TimeSpan.Zero)` disables it. Timeout and retry windows must stay positive.
 
 ## Duration
 

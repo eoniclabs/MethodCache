@@ -15,7 +15,7 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
   makes every key different. List the keys to check ([Cache keys](features/keys.md)).
 - **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error
-  [MCG018](user-guide/DIAGNOSTICS.md#mcg018): its key would not follow its value. Pass a string or an id instead
+  [MC0019](user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, the result is `null` with
   `CacheNullValues = false`, or the call threw. Exceptions are never cached.
@@ -26,8 +26,8 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 - **The tags don't match.** `[CacheInvalidate]` removes only the tags it lists. Compare them with the cached methods'
   tags.
 - **A tag template isn't filled in.** The name in braces must be a parameter of that method:
-  [MCG009](user-guide/DIAGNOSTICS.md#mcg009) warns about unknown names. A property path such as `"{product.Id}"` is
-  not a template and stays literal ([MCG015](user-guide/DIAGNOSTICS.md#mcg015)); pass the id as a parameter.
+  [MC0010](user-guide/DIAGNOSTICS.md#mc0010) warns about unknown names. A property path such as `"{product.Id}"` is
+  not a template and stays literal ([MC0016](user-guide/DIAGNOSTICS.md#mc0016)); pass the id as a parameter.
 - **The update method threw.** Invalidation runs only after the method completes successfully.
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](features/invalidation.md#from-code)).
@@ -39,7 +39,7 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 ## Results stay out of the distributed cache
 
 A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
-warning [MCG019](user-guide/DIAGNOSTICS.md#mcg019). The serializer can't tell which class to create when it reads
+warning [MC0020](user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
 such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
 only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
 

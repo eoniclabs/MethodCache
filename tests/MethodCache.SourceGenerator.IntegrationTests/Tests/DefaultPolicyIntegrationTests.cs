@@ -31,7 +31,7 @@ namespace DefaultPolicy
         [Cache(Duration = ""00:10:00"")]
         Task<int> GetOwnDurationAsync(int id);
 
-        [Cache(""short"")]
+        [Cache(Group = ""short"")]
         Task<int> GetGroupedAsync(int id);
     }
 

@@ -12,7 +12,7 @@ namespace MethodCache.SourceGenerator
 
         /// <summary>
         /// Framework types with a key form: the key generators write their value (see KeyArguments and the MessagePack
-        /// key generator). Other framework types are refused (MCG018), since their public properties don't hold their
+        /// key generator). Other framework types are refused (MC0019), since their public properties don't hold their
         /// value (BigInteger has IsZero and Sign) or they are mutable (StringBuilder).
         /// </summary>
         private static readonly HashSet<string> FrameworkTypesWithKeyForm = new(System.StringComparer.Ordinal)
@@ -160,7 +160,7 @@ namespace MethodCache.SourceGenerator
             return null;
         }
 
-        /// <summary>Where a composite's type argument is, as the path in MCG018 names it.</summary>
+        /// <summary>Where a composite's type argument is, as the path in MC0019 names it.</summary>
         private static string CompositeItemPath(INamedTypeSymbol composite, int index) => composite.Name switch
         {
             "Memory" or "ReadOnlyMemory" => "[]",

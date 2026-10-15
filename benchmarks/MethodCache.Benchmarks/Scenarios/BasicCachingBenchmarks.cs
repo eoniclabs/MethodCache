@@ -110,7 +110,7 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
 }
 
 // The benchmarks cache in memory only, and return lists of different models
-#pragma warning disable MCG019
+#pragma warning disable MC0020
 public interface IBasicCacheService
 {
     [Cache(Duration = "00:10:00", Tags = new[] { "data" })]
@@ -122,7 +122,7 @@ public interface IBasicCacheService
     [CacheInvalidate(Tags = new[] { "data" })]
     Task InvalidateDataAsync(int size, string modelType);
 }
-#pragma warning restore MCG019
+#pragma warning restore MC0020
 
 public class BasicCacheService : IBasicCacheService
 {

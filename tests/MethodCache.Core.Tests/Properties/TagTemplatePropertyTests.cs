@@ -43,6 +43,21 @@ public class TagTemplatePropertyTests
             (values, tags) => (names, values, tags)));
 
     [Fact]
+    public void CanonicalParts_PreserveArgumentBoundariesAndCulture()
+    {
+        Gen.Select(GenValue, GenValue, GenValue, GenValue).Sample((a, b, c, d) =>
+        {
+            var policy = Policy("literal:{x}:{y}");
+            string Expand(string x, string y) => CacheTagTemplates.Expand(policy, ["x", "y"], [(object)x, y]).Tags.Single();
+            var tag = Expand(a, b);
+            Assert.Equal(a == c && b == d, tag == Expand(c, d));
+            Assert.Equal("literal:" + MethodCacheKeys.Part(a) + ":" + MethodCacheKeys.Part(b), tag);
+            foreach (var culture in new[] { "sv-SE", "tr-TR" })
+                Assert.Equal(tag, PropertySettings.InCulture(CultureInfo.GetCultureInfo(culture), () => Expand(a, b)));
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+    }
+
+    [Fact]
     public void Expand_CaseDistinctNames_UsesExactMatchAndLeavesAmbiguityLiteral()
     {
         Gen.Select(GenValue, GenValue).Sample((lower, upper) =>
@@ -82,7 +97,8 @@ public class TagTemplatePropertyTests
     [Fact]
     public void Expand_GivesDistinctArgumentsDistinctTags()
     {
-        // One placeholder between fixed text: the tag must identify the argument. (With two placeholders the
+        // This overload receives already formatted parts; the property below tests raw argument boundaries.
+        // One placeholder between fixed text must identify the part. (With two preformatted placeholders the
         // arguments' text can shift between them, as in "a:{x}:{y}" with ("1:2", "3") and ("1", "2:3"). Such tags
         // only make an invalidation remove more entries than needed, never fewer, so that is accepted.)
         Gen.Select(Gen.OneOfConst(NamePool), Gen.OneOfConst("user:", "", "{", "a{b}:"), Gen.OneOfConst("", ":x", "}"), GenValue, GenValue)
