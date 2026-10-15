@@ -54,7 +54,7 @@ namespace App
         global::System.Threading.Tasks.Task<__mcClassArgument0?> global::App.IRepository<__mcClassArgument0>.GetAsync(int __mcArgument0)
         {
             var __mcCall = this._method_Method0.Capture();
-            var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetTask<__mcClassArgument0?>(ref __mcKeyBuilder, out var __mcCachedValue))

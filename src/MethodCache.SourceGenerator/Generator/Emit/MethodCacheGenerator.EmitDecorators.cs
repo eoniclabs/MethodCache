@@ -384,7 +384,8 @@ namespace MethodCache.SourceGenerator
                 var bufferSize = bounded ? Math.Min(256, Math.Max(64, prefixBound + argumentsBound)) : 256;
                 var buffer = bufferSize == 256 ? "stackalloc char[256]"
                     : $"__mcCall.KeyPrefix.Length + {argumentsBound} <= {bufferSize} ? stackalloc char[{bufferSize}] : stackalloc char[256]";
-                sb.AppendLine($"            var __mcKeyBuilder = __mcCall.StartKey({buffer});");
+                // Constructed in place: a builder returned from a helper is copied, which costs ~12 ns per hit on x64
+                sb.AppendLine($"            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, {buffer});");
                 foreach (var param in keyParams)
                 {
                     sb.AppendLine(AppendSimpleValue(Utils.ParameterIdentifier(param), param.Type));

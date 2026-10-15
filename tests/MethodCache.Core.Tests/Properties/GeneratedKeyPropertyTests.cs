@@ -60,7 +60,7 @@ public class GeneratedKeyPropertyTests
         var call = method.Capture();
         Gen.Select(Gen.Int, Gen.String[Gen.Char["a:\\\0\ud800\udfffé"], 0, 40], Gen.Int[0, 256]).Sample((number, text, capacity) =>
         {
-            var key = call.StartKey(new char[capacity]);
+            var key = new KeyBuilder(call, new char[capacity]);
             var date = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
             var offset = new DateTimeOffset(date);
             var guid = new Guid(number, 0, 0, new byte[8]);

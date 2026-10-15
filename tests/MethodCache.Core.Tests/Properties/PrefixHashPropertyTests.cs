@@ -100,7 +100,7 @@ public class PrefixHashPropertyTests
         var call = method.Capture();
         Gen.Select(Gen.Int, Gen.String[Gen.Char["a:\\\0\ud800\udfffé"], 0, 200], Gen.Int[0, 256]).Sample((number, text, capacity) =>
         {
-            var key = call.StartKey(new char[capacity]);
+            var key = new KeyBuilder(call, new char[capacity]);
             key.AppendPart(number);
             key.AppendPart(text);
             Assert.Equal(ProcessKeyHash.Compute(key.AsSpan()), key.LookupHash());

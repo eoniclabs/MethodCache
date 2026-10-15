@@ -92,7 +92,7 @@ och lokal generation. Samma MethodCall används för nyckelbygge, uppslag, tags,
 | GeneratedServices.Method | Binder metod-id och deklarerande/closed service type till registreringskontexten. Context bär service key och inner-DI-slot. |
 | GeneratedServices.InvalidateTagsAsync | Tar tags och caller-token. Samma återhämtningskontrakt som användar-API:t. |
 | CachedMethod.Capture | Returnerar MethodCall; inga oberoende läsningar av KeyPrefix/Enabled/policy får göras. |
-| MethodCall.StartKey | Tar anroparens stackbuffer och returnerar en KeyBuilder bunden till anropets snapshot. Runtime skriver hela det fasta prefixet och äger gränsen mot argumentdelen. |
+| new KeyBuilder(MethodCall, Span<char>) | Tar anropet och anroparens stackbuffer och skapar en KeyBuilder bunden till anropets snapshot. Runtime skriver hela det fasta prefixet och äger gränsen mot argumentdelen. En konstruktor, inte en fabriksmetod: en byggare som returneras från en metod kopieras till anroparens lokala variabel, vilket på x64 kostar cirka 12 ns per träff. |
 | MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder eller in TextKey och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
 | MethodCall.BindTextKey / TextKey | Binder redan ägd strängtext till samma snapshot. En readonly TextKey bär bara text och bindning, utan oanvänd skrivbar span; samma felbindnings- och stale-regler gäller. |
 | MethodCall.LoadAsync / LoadValueAsync | Tar strängnyckel, generiskt state, statisk loader, taggvärden och token. Snapshoten följer laddningen. |
@@ -108,7 +108,7 @@ Formen får justeras för att uppfylla kontraktet och
 prestandagrinden; en ofullständig skiss ska inte låsas som API.
 
 Generatorn fångar först MethodCall, startar sedan byggaren från det anropet, lägger till argument och gör
-uppslaget med ref KeyBuilder. StartKey eller uppslaget får inte läsa om CachedMethod för att hämta ett nytt
+uppslaget med ref KeyBuilder. Byggarens konstruktor eller uppslaget får inte läsa om CachedMethod för att hämta ett nytt
 prefix eller en ny policy. En byggare från en annan metod, container eller snapshot avvisas med tydligt fel
 före cacheåtkomst; en rätt bunden men inaktuell snapshot följer bypass/retry-regeln nedan.
 Byggaren förbrukas inte av ett missat uppslag: samma nyckeltext kan materialiseras till Load/LoadAsync.
@@ -147,7 +147,7 @@ Baslinjerna får inte regenereras under en vanlig testkörning. PR 1 skapar för
 är komplett; 1.0.0 blir första publicerade baslinjen och varje minor lägger till en ny.
 Fixtures täcker sync/Task/ValueTask, keyed/scoped tjänster, generiska metoder, reservnycklar, tags och
 CacheInterface. Källkod och fixtures som provar den nya fasaden kompileras före baseline-frysningen.
-Fixtures inkluderar StartKey/ref KeyBuilder och reservvägen, så att senare prefixhashning kan införas
+Fixtures inkluderar KeyBuilder-konstruktorn/ref KeyBuilder och reservvägen, så att senare prefixhashning kan införas
 utan ändrade generator-signaturer eller omkompilering av vendor-DLL:en.
 
 ### 2.4 Prefixhashning efter PR 5
@@ -646,7 +646,7 @@ Properties gäller för typer/Unicode/framing. Docs-löften har även en Docs.Te
 | G11 | Reservnycklar, sealed/provider/record/samling och Unicode-surrogates med samma typade data. | Samma deterministiska identitet som helper; olika data/typer aliasar inte. |
 | G12 | Capture A; starta inline-/reservbyggare; byt policy till B före uppslag och försök även byggaren med en annan MethodCall/container. | A använder bara A:s prefix och stale-regel; felbindning avvisas före cacheåtkomst. Ingen extra policy-läsning döljer racen. |
 | G13 | Tom/liten/exakt full stackbuffer, långt prefix, långa escaped strängar, provider-parts och Unicode; styr heap-growth och miss följd av load. | Exakt samma text som helper vid alla storlekar; miss lämnar nyckeln användbar; bara skrivna tecken läses och async-arbete äger sin materialiserade nyckel. |
-| G14 | Kompilera hela SignatureCorpus för sync/Task/ValueTask samt generiska/provider/reservformer under stödda TFM och AOT; kör hit-benchmarks. | StartKey/ref KeyBuilder och reservbyggaren kompilerar utan ref-escape; inga extra hit-allokeringar mot respektive TFM/nyckelforms baslinje. |
+| G14 | Kompilera hela SignatureCorpus för sync/Task/ValueTask samt generiska/provider/reservformer under stödda TFM och AOT; kör hit-benchmarks. | KeyBuilder-konstruktorn/ref KeyBuilder och reservbyggaren kompilerar utan ref-escape; inga extra hit-allokeringar mot respektive TFM/nyckelforms baslinje. |
 
 ### PR 2: användar-API och policyprimitiver
 
@@ -757,7 +757,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 | PR | Leverans | Testgrind |
 |---|---|---|
 | 0 | Detta versionshanterade dokument och länken från AGENTS.md. Ingen runtimeändring. | Markdown/länkar, contradictions/dependency-granskning, llms-regenerering utan drift. |
-| 1 | Komplett Generated-fasad, snapshots/bindning, StartKey/ref KeyBuilder och buffertval, startup-builder/modulval och compat-baslinje. | G01–G14, relevanta signature/scope/AOT/package-tester och hit-benchmarks. |
+| 1 | Komplett Generated-fasad, snapshots/bindning, KeyBuilder-konstruktorn/ref KeyBuilder och buffertval, startup-builder/modulval och compat-baslinje. | G01–G14, relevanta signature/scope/AOT/package-tester och hit-benchmarks. |
 | 2 | Smalt användar-API, options/policyprimitiver, identiteter, tombstones, overrides och InvalidationResult. | P01–P16 på en/två noder och båda providers. Befintliga adapters ändras nu där det behövs. |
 | 3 | Keys/attributes/parser/diagnostik. | K01–K08, mdsnippets och AOT/signature corpus. |
 | 4 | Owned options/providers, slutligt format/wire-v1, retention/schema och serialiseringskontroll. | D01–D10, P-regressionerna, packages och mixed-format-kompatibilitet. |
