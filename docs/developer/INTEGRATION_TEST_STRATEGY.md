@@ -44,3 +44,9 @@ successful operations still reach that provider. Tests check exact partial confi
 independent recovery queues, caller cancellation after local mutation and validation before mutation.
 They read confirmed stamp bytes back from the backend; wrapper counters alone cannot pass the test.
 Each scenario owns its metadata prefix and SQL schema.
+
+The shared policy state contract also covers reordered policy sources, reload identity changes,
+Enabled specificity, custom managers, held loads/refreshes and sync calls during a blocked async
+read. A connected delivery gate observes and drops a real native method frame to test lost-message
+semantics without using unsubscription as a timing barrier. Tests await actual policy invalidation
+completion before asserting shared L2 reuse after reload; reload notification alone is a local guarantee.

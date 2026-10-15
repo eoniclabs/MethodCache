@@ -200,3 +200,31 @@ scenarios, demonstrating that wrapper counters cannot stand in for durable write
 contract passes all three scenarios on the model, Redis and SQL. No production or benchmark workload
 source changes; current-head CI is still required. Selected receipts are under
 `plans/design-benchmarks/native-policy-fault-acceptance/`.
+
+## Native policy state acceptance
+
+Nine additional scenarios run unchanged on the Core model and real Redis/SQL providers:
+
+- Equal effective policy with reversed non-conflicting source and tag order, real L2 reuse and audit-only no-op.
+- One-hour to one-second configuration reload, exclusion of an old-policy writer, and shared reuse after both reload.
+- Explicit method Enabled values over group settings and higher-priority file defaults.
+- Disabled caching during a held load or an expired-entry join of a held background refresh: eight distinct bypass
+  calls, no value-write attempts by bypasses/retired work, cold shared-reader rejection and fresh re-enabling.
+- Asynchronous recording/NoOp managers and synchronous custom-manager bypass.
+- Native async cross-node sharing alongside the documented local/origin sync fallback.
+- A held actual async backend read while sync calls complete, with zero synchronous backend reads.
+- A connected native receiver that observes and drops a real method frame, retaining its own L1/policy until expiry.
+
+The first reload test incorrectly assumed notification completion was also a native storage barrier. It failed
+on both native providers while passing the model. The corrected test awaits PolicyRegistry's actual owned
+invalidation task, asserts readiness and empty queues, then advances the fake clock beyond the stored stamp.
+Diagnostic output confirms native readiness was false before that wait. This follows section 5.1; no production
+fix or global barrier is claimed. An early unsubscribe-based loss fixture also failed on Redis; that observation
+is preserved without assigning a root cause. The final delivery gate controls frame loss on an acknowledged
+subscription and waits for the specific dropped method frame. SQL polling uses the injected clock.
+
+A gate mutation that delivers rather than drops the frame makes the loss scenario fail (101 versus 201),
+demonstrating that the scenario depends on real delivery control. The original deadline contract now uses the
+specification's one-hour shared policy, one-second private override and +2 second fake-time expiry. All successful
+store operations still reach the supplied provider. Selected receipts and current full-suite counts are in
+`plans/design-benchmarks/native-policy-state-acceptance/`. No shipped runtime or measured workload source changes.

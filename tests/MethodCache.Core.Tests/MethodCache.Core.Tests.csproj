@@ -50,4 +50,8 @@
   <ItemGroup>
     <Content Include="Fixtures/wire-v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/PolicyBackendAcceptanceContract.cs" Link="TestSupport/PolicyBackendAcceptanceContract.cs" />
+    <Compile Include="../TestSupport/PolicyBackendContract.cs" Link="TestSupport/PolicyBackendContract.cs" />
+  </ItemGroup>
 </Project>
