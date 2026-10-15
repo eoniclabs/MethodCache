@@ -1310,7 +1310,8 @@ generation, so later requests fetch the updated response. With native Redis or S
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
 
 The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
-URLs that share a slot can cause an extra cache miss when either is invalidated. Generation records never expire on
+URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes
+the retired bodies from that slot, releasing their byte budget immediately. Generation records never expire on
 their own; if the backend evicts one anyway, the next request starts a new generation, so a lost record only causes
 cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
 to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains
@@ -1979,7 +1980,7 @@ authorization too.
 | A followed redirect hands one caller's response to another | The transport drops `Authorization` on a redirect and changes the URL on the same message. A response that ended at another URL or method is never stored under the URL that was requested, and entries are keyed on the request as the caller sent it, before the transport changed it. |
 | A malformed `Cache-Control` hides `private` or `no-store` | A `Cache-Control` or `Vary` field the parser rejects, also next to a valid one, makes the response not storable instead of being ignored. |
 | Clients that get caching from `ConfigureHttpClientDefaults` share entries | Each client's handler gets its own name, so clients (often one per tenant or API key) never read each other's entries. |
-| Lost or replayed HTTP generation metadata | Native atomic revisions only advance; missing/overflowed metadata gets a fresh initialization id. Old values never regain their namespace. Global/client/static-tag components are shared with Core-only tag/clear writes, including across value formats. URL-slot collisions cause extra misses, never shared caller identity. |
+| Lost or replayed HTTP generation metadata | Native atomic revisions only advance; missing/overflowed metadata gets a fresh initialization id. Old values never regain their namespace. Global/client/static-tag components are shared with Core-only tag/clear writes, including across value formats. URL-slot collisions cause extra misses, never shared caller identity. The local reverse index follows the same bounded slots and removes every retired body from an invalidated slot. Native observations keep their separate per-URL index. |
 | Administration becomes a body or credential leak, or a false global inventory | Core exposes only resident metadata or at most 1024 historical, expiring, body-free L2 observations. Ids are bounded hashes; no raw query, credentials or cookie headers enter the observations. `ObservedDistributed` explicitly does not confirm presence or global inventory. Unknown ids are NotFound. |
 | An oversized response exhausts the local HTTP budget | Method and HTTP budgets evict independently. Body reads are bounded by response limits and remaining conservative HTTP cost; oversized responses remain available as streams and are not cached. |
 | Crafted entries in the distributed HTTP cache | Read as a miss, with every length checked against the data. As above, whoever can write that cache can store any response. |
@@ -3087,6 +3088,9 @@ release.
   unconfirmed URL invalidations at shutdown without exposing targets.
 
 ### Core-owned HTTP storage
+
+- Release every retired local response body when its URL generation slot is invalidated, including colliding URLs.
+  Avoid temporary identity/target buffers and reuse immutable local metadata during response replacement.
 
 - Require explicit AddMethodCache alongside AddHttpCaching, in either order. Core owns a separate 100 MiB
   HTTP byte budget, or exclusively uses MethodCache's native Redis/SQL Server transport. Remove the public

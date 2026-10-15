@@ -24,6 +24,9 @@ release.
 
 ### Core-owned HTTP storage
 
+- Release every retired local response body when its URL generation slot is invalidated, including colliding URLs.
+  Avoid temporary identity/target buffers and reuse immutable local metadata during response replacement.
+
 - Require explicit AddMethodCache alongside AddHttpCaching, in either order. Core owns a separate 100 MiB
   HTTP byte budget, or exclusively uses MethodCache's native Redis/SQL Server transport. Remove the public
   HTTP storage options/interface/entry extension points and the application-cache fallback.

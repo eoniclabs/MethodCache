@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Core.Telemetry;
@@ -24,6 +26,8 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private readonly DistributedCacheLayer? _distributed;
     private readonly CoreTelemetry _telemetry;
     private readonly LocalEpoch?[]? _slots;
+    private readonly string?[]? _localSlotTags;
+    private readonly ConditionalWeakTable<string[], string[]> _applicationIndexes = new();
     private readonly ConcurrentDictionary<string, LocalEpoch>? _tagEpochs;
     private LocalEpoch _clear = LocalEpoch.Fresh(initial: true);
     private readonly ConcurrentDictionary<int, PendingEpoch> _pending = new();
@@ -65,6 +69,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         {
             _local = new MemoryCacheEngine(MaximumBytes, EngineEvictionMode.TinyLfu, clock, 128, useRuntimeStringComparer: true);
             _slots = new LocalEpoch?[GenerationSlots];
+            _localSlotTags = new string?[GenerationSlots];
             _tagEpochs = new(StringComparer.Ordinal);
         }
         else
@@ -165,6 +170,11 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return _local.TryGet(key, _local.Now, out var node) ? node.BoxedValue : null;
     }
 
+    // Reuse immutable identity/configuration metadata when replacing the same local representation.
+    // A diagnostic map lookup neither serves a response nor records another frequency/user request.
+    internal HttpStorageInfo? FindLocalInfo(string key)
+        => _local != null && _local.Map.TryGetValue(key, out var node) ? node.Policy as HttpStorageInfo : null;
+
     // Fixed hashed client text, prepared once per adapter view. Slot identity retains the full exact suffix.
     internal sealed class UrlSlotPrefix(string text)
     {
@@ -184,7 +194,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         _local.Add(new ValueNode<object>(key, payload)
         {
             Weight = info.Cost,
-            Tags = IndexTags(info),
+            Tags = IndexTags(info, local: true),
             Policy = info,
             CreatedAt = now,
             LogicalExpiresAt = deadline,
@@ -200,7 +210,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         var now = _observations.Now;
         var deadline = Deadline(now, info.Deadline - _time.GetUtcNow());
         _observations.Add(new ValueNode<HttpStorageInfo>(info.Id, info)
-        { Tags = IndexTags(info), LogicalExpiresAt = deadline, PhysicalExpiresAt = deadline, AbsoluteExpiresAt = deadline });
+        { Tags = IndexTags(info, local: false), LogicalExpiresAt = deadline, PhysicalExpiresAt = deadline, AbsoluteExpiresAt = deadline });
     }
 
     internal ValueTask<byte[]?> ReadBytesAsync(string key, CancellationToken token) => _distributed!.ReadHttpAsync(key, Format, token);
@@ -231,7 +241,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         var distinct = targets.Distinct(StringComparer.Ordinal).ToArray();
         foreach (var target in distinct)
         {
-            _local?.RemoveByTag(UrlTag(target));
+            _local?.RemoveByTag(LocalSlotTag(Slot(target)));
             ForgetUrl(target);
         }
         var slots = distinct.Select(Slot).Distinct().ToArray();
@@ -402,10 +412,70 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return true;
     }
 
-    internal static string Identity(string representationKey) => "http:" + Convert.ToHexString(SHA256.HashData(LosslessUtf16.GetBytes(representationKey)));
+    internal static string Identity(string representationKey)
+        => string.Create(69, representationKey, static (text, key) =>
+        {
+            Span<byte> digest = stackalloc byte[32];
+            HashIdentity(key, digest);
+            "http:".AsSpan().CopyTo(text);
+            const string hexadecimal = "0123456789ABCDEF";
+            for (var i = 0; i < digest.Length; i++)
+            {
+                text[5 + 2 * i] = hexadecimal[digest[i] >> 4];
+                text[6 + 2 * i] = hexadecimal[digest[i] & 15];
+            }
+        });
+
+    private static void HashIdentity(string key, Span<byte> digest)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            _ = SHA256.HashData(MemoryMarshal.AsBytes(key.AsSpan()), digest);
+            return;
+        }
+
+        HashIdentityUtf16Streaming(key, digest);
+    }
+
+    // The frozen identity is UTF-16LE even on a different native byte order. Stream fixed-size chunks.
+    internal static void HashIdentityUtf16Streaming(string key, Span<byte> digest)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Span<byte> chunk = stackalloc byte[512];
+        for (var offset = 0; offset < key.Length;)
+        {
+            var count = Math.Min(chunk.Length / 2, key.Length - offset);
+            for (var i = 0; i < count; i++) BinaryPrimitives.WriteUInt16LittleEndian(chunk.Slice(i * 2), key[offset + i]);
+            hash.AppendData(chunk[..(count * 2)]);
+            offset += count;
+        }
+        _ = hash.GetHashAndReset(digest);
+    }
     private static string UrlTag(string target) => "\0http-url:" + target;
     private static string ApplicationTag(string tag) => "\0http-tag:" + Convert.ToBase64String(LosslessUtf16.GetBytes(tag));
-    private static string[] IndexTags(HttpStorageInfo info) => info.Tags.Select(ApplicationTag).Append(UrlTag(info.UrlTarget)).ToArray();
+    private string[] IndexTags(HttpStorageInfo info, bool local)
+    {
+        // Adapter-owned tag snapshots are immutable. Weak keys avoid retaining retired client/options views.
+        var application = _applicationIndexes.GetValue(info.Tags, static tags =>
+        {
+            var encoded = new string[tags.Length];
+            for (var i = 0; i < tags.Length; i++) encoded[i] = ApplicationTag(tags[i]);
+            return encoded;
+        });
+        var indexed = new string[application.Length + 1];
+        application.CopyTo(indexed, 0);
+        indexed[^1] = local ? LocalSlotTag(Slot(info.UrlTarget)) : UrlTag(info.UrlTarget);
+        return indexed;
+    }
+
+    private string LocalSlotTag(int slot)
+    {
+        var tags = _localSlotTags!;
+        var existing = Volatile.Read(ref tags[slot]);
+        if (existing != null) return existing;
+        var created = "\0http-slot:" + slot.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return Interlocked.CompareExchange(ref tags[slot], created, null) ?? created;
+    }
     internal static int Slot(string target) => Slot(target.AsSpan());
     internal static int Slot(ReadOnlySpan<char> target) => (int)(ContinueSlotHash(2166136261u, target) & (GenerationSlots - 1));
     private static uint ContinueSlotHash(uint hash, ReadOnlySpan<char> target)
