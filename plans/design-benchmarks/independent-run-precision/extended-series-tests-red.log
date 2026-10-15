@@ -1,0 +1,42 @@
+.......E...E.EE..
+======================================================================
+ERROR: test_six_and_nine_independent_means_use_correct_degrees_of_freedom (test_summarize_pair.IndependentMeansTests.test_six_and_nine_independent_means_use_correct_degrees_of_freedom)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_summarize_pair.py", line 9, in test_six_and_nine_independent_means_use_correct_degrees_of_freedom
+    six=m.interval([10,11,12,13,14,15]);nine=m.interval(list(range(10,19)))
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/summarize-pair.py", line 11, in interval
+    raise ValueError('Expected exactly three positive finite independent run means')
+ValueError: Expected exactly three positive finite independent run means
+
+======================================================================
+ERROR: test_missing_targeted_method_is_not_empty_success (test_summarize_pair.ReportIntegrityTests.test_missing_targeted_method_is_not_empty_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_summarize_pair.py", line 62, in test_missing_targeted_method_is_not_empty_success
+    with self.assertRaises(ValueError):m.collect(self.root,'base','local',method='Missing')
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: collect() got an unexpected keyword argument 'method'
+
+======================================================================
+ERROR: test_requested_launch_count_requires_every_launch (test_summarize_pair.ReportIntegrityTests.test_requested_launch_count_requires_every_launch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_summarize_pair.py", line 60, in test_requested_launch_count_requires_every_launch
+    with self.assertRaises(ValueError):m.collect(self.root,'base','local',rounds=6)
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: collect() got an unexpected keyword argument 'rounds'
+
+======================================================================
+ERROR: test_targeted_supplement_preserves_full_case_integrity (test_summarize_pair.ReportIntegrityTests.test_targeted_supplement_preserves_full_case_integrity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_summarize_pair.py", line 54, in test_targeted_supplement_preserves_full_case_integrity
+    row=m.collect(self.root,'base','local',rounds=6,method='Hit')[('N','T','Hit','')]
+        ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: collect() got an unexpected keyword argument 'rounds'
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.013s
+
+FAILED (errors=4)

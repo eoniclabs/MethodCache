@@ -1,0 +1,77 @@
+{
+  "purpose": "Completed baseline precision diagnostic only; not a source comparison or acceptance",
+  "statistics": {
+    "SyncHit": {
+      "means_ns": [
+        38.0447909168327,
+        38.32540939410208,
+        41.551418041217474
+      ],
+      "mean_ns": 39.307206117384084,
+      "lower_ns": 34.46660893968649,
+      "upper_ns": 44.14780329508168,
+      "relative_half_width": 0.12314783104253203,
+      "launch_count": 3,
+      "degrees_of_freedom": 2,
+      "allocated_bytes": [
+        0,
+        0,
+        0
+      ]
+    },
+    "GenericHit": {
+      "means_ns": [
+        52.669174755658155,
+        55.952924309596845,
+        53.2669080238968
+      ],
+      "mean_ns": 53.9630023630506,
+      "lower_ns": 49.618130262108295,
+      "upper_ns": 58.3078744639929,
+      "relative_half_width": 0.08051575914384845,
+      "launch_count": 3,
+      "degrees_of_freedom": 2,
+      "allocated_bytes": [
+        0,
+        0,
+        0
+      ]
+    },
+    "TaskHit": {
+      "means_ns": [
+        40.55155115159102,
+        41.36625996663616,
+        40.05481597121736
+      ],
+      "mean_ns": 40.65754236314818,
+      "lower_ns": 39.01275626951288,
+      "upper_ns": 42.302328456783485,
+      "relative_half_width": 0.04045463641024524,
+      "launch_count": 3,
+      "degrees_of_freedom": 2,
+      "allocated_bytes": [
+        0,
+        0,
+        0
+      ]
+    },
+    "ValueTaskHit": {
+      "means_ns": [
+        45.60767145955381,
+        45.48636917346353,
+        46.089603960506274
+      ],
+      "mean_ns": 45.72788153117454,
+      "lower_ns": 44.93524734020964,
+      "upper_ns": 46.520515722139436,
+      "relative_half_width": 0.01733371773246318,
+      "launch_count": 3,
+      "degrees_of_freedom": 2,
+      "allocated_bytes": [
+        0,
+        0,
+        0
+      ]
+    }
+  }
+}

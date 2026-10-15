@@ -10,10 +10,36 @@ public class LocalEpochAllocationTests
     [Fact]
     public async Task UnchangedLocalEpochVector_DoesNotAllocatePerLookup()
     {
-        using var storage = new TestHttpStore();
-        string[] tags = ["http:test", "catalog"];
-        for (var i = 0; i < 1000; i++) _ = await storage.Core.CaptureAsync("url", tags, default);
-        Assert.Equal(0, MeasureCaptures(storage.Core, tags));
+        Assert.Equal(0, await MeasureCapturesOnOwnedThread());
+    }
+
+    // Keep the exact synchronous allocation probe off the runner's worker and ambient context.
+    // Store creation, the original 1,000 warmups, completion and assertions are outside MeasureCaptures.
+    private static Task<long> MeasureCapturesOnOwnedThread()
+    {
+        var completion = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (ExecutionContext.SuppressFlow())
+        {
+            new Thread(() =>
+            {
+                try
+                {
+                    using var storage = new TestHttpStore();
+                    string[] tags = ["http:test", "catalog"];
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        var warmup = storage.Core.CaptureAsync("url", tags, default);
+                        if (!warmup.IsCompletedSuccessfully) throw new InvalidOperationException("Local epoch capture must complete synchronously.");
+                        _ = warmup.Result;
+                    }
+                    var allocated = MeasureCaptures(storage.Core, tags);
+                    completion.SetResult(allocated);
+                }
+                catch (Exception error) { completion.SetException(error); }
+            })
+            { IsBackground = true }.Start();
+        }
+        return completion.Task;
     }
 
     // Keep assertion initialization and the async test state machine outside the measured region.

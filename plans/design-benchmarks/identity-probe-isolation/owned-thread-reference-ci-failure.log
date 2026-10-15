@@ -1,0 +1,11 @@
+Historical final head 771980a; Linux culture run 20261015-164028-771980a6fce2.
+[xUnit.net 00:00:01.28]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "url:\0�:�:é") [FAIL]
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "url:\0�:�:é") [18 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16024
+Actual:   16000
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key) in /_/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 32
+--- End of stack trace from previous location ---
+

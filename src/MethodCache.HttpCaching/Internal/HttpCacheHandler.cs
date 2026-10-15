@@ -270,18 +270,28 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             {
                 _logger.LogDebug("HTTP origin returned 304; updating cache.");
                 var updatedEntry = cachedEntry.WithUpdatedHeaders(upstreamResponse, _timeProvider.GetUtcNow(), _timeProvider.GetElapsedTime(requestStartedAt));
-                await StoreRevalidatedEntryAsync(storage, sent, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken).ConfigureAwait(false);
-
-                var revalidated = CreateCachedResponse(request, updatedEntry, "REVALIDATED", options, freshness);
-
-                // Not stored, but this caller's own: the origin set it on this response
-                if (upstreamResponse.Headers.TryGetValues("Set-Cookie", out var setCookie))
+                // Validate the representation that will be returned instead of constructing and disposing
+                // a second copy of its response/content/header objects. Caller-only headers are added later.
+                var revalidated = updatedEntry.ToHttpResponse(request);
+                try
                 {
-                    revalidated.Headers.TryAddWithoutValidation("Set-Cookie", setCookie);
-                }
+                    await StoreRevalidatedEntryAsync(storage, sent, urlKey, cacheKey, updatedEntry, options, freshness, cancellationToken, revalidated).ConfigureAwait(false);
+                    AddCachedHeaders(revalidated, updatedEntry, "REVALIDATED", options, freshness);
 
-                upstreamResponse.Dispose();
-                return Record(RequestResult.Revalidated, revalidated);
+                    // Not stored, but this caller's own: the origin set it on this response
+                    if (upstreamResponse.Headers.TryGetValues("Set-Cookie", out var setCookie))
+                    {
+                        revalidated.Headers.TryAddWithoutValidation("Set-Cookie", setCookie);
+                    }
+
+                    upstreamResponse.Dispose();
+                    return Record(RequestResult.Revalidated, revalidated);
+                }
+                catch
+                {
+                    revalidated.Dispose();
+                    throw;
+                }
             }
 
             var stored = await TryStoreResponseAsync(storage, sent, upstreamResponse, urlKey, cacheKey, options, freshness, cancellationToken, _timeProvider.GetElapsedTime(requestStartedAt)).ConfigureAwait(false);
@@ -419,12 +429,14 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         HttpCacheEntry entry,
         HttpCacheOptions options,
         FreshnessCalculator freshness,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        HttpResponseMessage? borrowedRepresentation = null)
     {
         // Check the complete representation: a 304 can replace its storage and privacy policy.
+        // Background revalidation owns its temporary response; the foreground caller owns the borrowed one.
         var attempt = new StoreAttempt();
-        using var mergedResponse = entry.ToHttpResponse(request);
-        if (IsStorable(request, mergedResponse, options))
+        using var ownedRepresentation = borrowedRepresentation == null ? entry.ToHttpResponse(request) : null;
+        if (IsStorable(request, borrowedRepresentation ?? ownedRepresentation!, options))
         {
             // The origin answered: failing to refresh the response doesn't fail the request. The old entry
             // may carry the old freshness and Vary rules, though, so it is removed instead (and that must work).
@@ -657,8 +669,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         => cacheControl != null && (cacheControl.Public || cacheControl.MustRevalidate || cacheControl.SharedMaxAge != null);
 
     private static HttpResponseMessage CreateCachedResponse(HttpRequestMessage request, HttpCacheEntry entry, string cacheStatus, HttpCacheOptions options, FreshnessCalculator freshness)
+        => AddCachedHeaders(entry.ToHttpResponse(request), entry, cacheStatus, options, freshness);
+
+    private static HttpResponseMessage AddCachedHeaders(HttpResponseMessage response, HttpCacheEntry entry, string cacheStatus, HttpCacheOptions options, FreshnessCalculator freshness)
     {
-        var response = entry.ToHttpResponse(request);
         var age = freshness.GetCurrentAge(entry);
 
         // RFC 9111 section 5.1: a response served from cache carries its current age

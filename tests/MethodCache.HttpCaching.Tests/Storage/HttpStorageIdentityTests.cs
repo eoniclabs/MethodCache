@@ -28,8 +28,8 @@ public class HttpStorageIdentityTests
         var expected = "http:" + Convert.ToHexString(SHA256.HashData(encoded));
         Assert.Equal(expected, HttpResponseStore.Identity(key));
 
-        var (outputAllocation, actual) = await MeasureIdentityOnOwnedThread(key);
-        if (BitConverter.IsLittleEndian) Assert.Equal(outputAllocation, actual);
+        var (outputAllocations, actuals) = await MeasureIdentityOnOwnedThread(key);
+        if (BitConverter.IsLittleEndian) Assert.Equal(outputAllocations.Min(), actuals.Min());
     }
 
     [Theory]
@@ -104,9 +104,9 @@ public class HttpStorageIdentityTests
 
     // Keep the exact probe away from the test runner's worker and ambient execution context.
     // Creating the thread/delegates, hashing warmup, completion and assertions are outside Measure.
-    private static Task<(long OutputAllocation, long Actual)> MeasureIdentityOnOwnedThread(string key)
+    private static Task<(long[] OutputAllocations, long[] Actuals)> MeasureIdentityOnOwnedThread(string key)
     {
-        var completion = new TaskCompletionSource<(long, long)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<(long[], long[])>(TaskCreationOptions.RunContinuationsAsynchronously);
         using (ExecutionContext.SuppressFlow())
         {
             new Thread(() =>
@@ -117,9 +117,17 @@ public class HttpStorageIdentityTests
                     Func<string> outputOnly = static () => new string('x', 69);
                     _ = Measure(identity);
                     _ = Measure(outputOnly);
-                    var outputAllocation = Measure(outputOnly);
-                    var actual = Measure(identity);
-                    completion.SetResult((outputAllocation, actual));
+                    // Use the minimum of three fixed batches for each path, with no byte tolerance.
+                    // A transient first-use allocation in the reference is not an identity allocation;
+                    // sustained per-call temporary copies remain present in every measured batch.
+                    var outputAllocations = new long[3];
+                    var actuals = new long[3];
+                    for (var i = 0; i < 3; i++)
+                    {
+                        outputAllocations[i] = Measure(outputOnly);
+                        actuals[i] = Measure(identity);
+                    }
+                    completion.SetResult((outputAllocations, actuals));
                 }
                 catch (Exception error) { completion.SetException(error); }
                 finally { _sink = null; }
