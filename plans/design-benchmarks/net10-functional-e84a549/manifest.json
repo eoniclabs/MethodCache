@@ -1,0 +1,198 @@
+{
+  "sha": "e84a54984f7a9876e236b281bc4b0e1236a4a9a9",
+  "ci_run": "20261015-190437-e84a54984f7a",
+  "platforms": {
+    "linux": {
+      "aot": 0,
+      "build": 0,
+      "cultures": 0,
+      "demo": 0,
+      "diffcoverage": 0,
+      "docs": 0,
+      "packages": 0,
+      "properties": 0,
+      "soak": 0,
+      "tests": 0
+    },
+    "macos": {
+      "build": 0,
+      "unit": 0
+    },
+    "windows": {
+      "build": 0,
+      "unit": 0
+    }
+  },
+  "tests": [
+    {
+      "failed": 0,
+      "passed": 16,
+      "skipped": 0,
+      "total": 16,
+      "assembly": "MethodCache.HttpCaching.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 52,
+      "skipped": 0,
+      "total": 52,
+      "assembly": "MethodCache.Redis.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 4,
+      "skipped": 0,
+      "total": 4,
+      "assembly": "MethodCache.CompatTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 2,
+      "skipped": 0,
+      "total": 2,
+      "assembly": "MethodCache.Samples.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 29,
+      "skipped": 0,
+      "total": 29,
+      "assembly": "MethodCache.OpenTelemetry.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 320,
+      "skipped": 0,
+      "total": 320,
+      "assembly": "MethodCache.HttpCaching.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 49,
+      "skipped": 0,
+      "total": 49,
+      "assembly": "MethodCache.AspNetCore.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 119,
+      "skipped": 0,
+      "total": 119,
+      "assembly": "MethodCache.Docs.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 91,
+      "skipped": 0,
+      "total": 91,
+      "assembly": "MethodCache.Benchmarks.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 27,
+      "skipped": 0,
+      "total": 27,
+      "assembly": "MethodCache.Redis.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 71,
+      "skipped": 0,
+      "total": 71,
+      "assembly": "MethodCache.Analyzers.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 66,
+      "skipped": 0,
+      "total": 66,
+      "assembly": "MethodCache.SourceGenerator.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 42,
+      "skipped": 0,
+      "total": 42,
+      "assembly": "MethodCache.SqlServer.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 1035,
+      "skipped": 1,
+      "total": 1036,
+      "assembly": "MethodCache.Core.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 63,
+      "skipped": 0,
+      "total": 63,
+      "assembly": "MethodCache.SqlServer.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 533,
+      "skipped": 0,
+      "total": 533,
+      "assembly": "MethodCache.SourceGenerator.IntegrationTests.dll"
+    }
+  ],
+  "scope": "Full published net10 standalone runtime and all final acceptance fixtures at e84a549. Excludes unfinished PR132/SipHash and section-10 timing.",
+  "files": {
+    "linux/aot.log": "a3506bd16da7b12874614fcf202af0072740c85bd75396b7dba62f2d80d70509",
+    "linux/build.log": "30655b14783ea98cc159fb54b26a0a8e2334d23f3679cab27fef049be273da57",
+    "linux/cultures.log": "f449af0abb6ea7a9ecfc374d99b31cab5bb288bb2e4997b48cf9d51ec08b49f2",
+    "linux/demo.log": "f999cd09bee69c803879586d19e0316d2603fe2e44a0caa8708dfb775c1753b1",
+    "linux/diffcoverage.log": "800d3cf1d7fd6fc0bd0ddf8ae2ba00ebe74e24a5b1e53b38a5562884c2d4f7a0",
+    "linux/docs.log": "423c0b69cf97937ce20c53b6f7a6b098ea6928eaafc638f5254ebffd128afc94",
+    "linux/packages.log": "74d614d7c75c1b6c7d3474a03204a07ea4aca12d91e5d3d613357bf2df42e7ac",
+    "linux/properties.log": "f6da57461cee15b35cfc25e2bddd8c6486b8e46aea945c31265d905fea8675a2",
+    "linux/soak.log": "15e975ca45ade13beee19c825c9c0871d29002665b76c4a0767265dcc8f24703",
+    "linux/tests.log": "c996b10ee0e7dd091c1f2f791ce36c8f06c03858d68dabb906a98f4eafcb96eb",
+    "macos/build.log": "c348bb2c47771edfa5cd65048b1061b96fcebc7da7dcf4da850d9a7044c095b3",
+    "macos/unit.log": "645942f921e34e0046e6307856ac614dcc8017236449d48554dd3bd75b7c5488",
+    "windows/build.log": "2568f3a14bc5b18e34d19d8185b8ccaafd20e33650b97214bc7fed018d62236f",
+    "windows/unit.log": "09280e462ca472cb901114fd1376a71b2313cd259cb86383c11fc48b5481aeed"
+  },
+  "passed": 2519,
+  "skipped": 1,
+  "statuses": [
+    {
+      "context": "MethodCache CI (Linux)",
+      "state": "success",
+      "updated_at": "2026-10-15T17:15:36Z"
+    },
+    {
+      "context": "MethodCache CI (Windows)",
+      "state": "success",
+      "updated_at": "2026-10-15T17:15:38Z"
+    },
+    {
+      "context": "MethodCache CI (macOS)",
+      "state": "success",
+      "updated_at": "2026-10-15T17:15:39Z"
+    },
+    {
+      "context": "MethodCache CI",
+      "state": "success",
+      "updated_at": "2026-10-15T17:15:40Z"
+    }
+  ],
+  "original_source_sha256": {
+    "linux/aot.log": "a3506bd16da7b12874614fcf202af0072740c85bd75396b7dba62f2d80d70509",
+    "linux/build.log": "30655b14783ea98cc159fb54b26a0a8e2334d23f3679cab27fef049be273da57",
+    "linux/cultures.log": "f449af0abb6ea7a9ecfc374d99b31cab5bb288bb2e4997b48cf9d51ec08b49f2",
+    "linux/demo.log": "f999cd09bee69c803879586d19e0316d2603fe2e44a0caa8708dfb775c1753b1",
+    "linux/diffcoverage.log": "800d3cf1d7fd6fc0bd0ddf8ae2ba00ebe74e24a5b1e53b38a5562884c2d4f7a0",
+    "linux/docs.log": "6224aa98eeb18e6b5f51206b488e354852edb88ff7a532447d675eb169e4db5b",
+    "linux/packages.log": "74d614d7c75c1b6c7d3474a03204a07ea4aca12d91e5d3d613357bf2df42e7ac",
+    "linux/properties.log": "f6da57461cee15b35cfc25e2bddd8c6486b8e46aea945c31265d905fea8675a2",
+    "linux/soak.log": "15e975ca45ade13beee19c825c9c0871d29002665b76c4a0767265dcc8f24703",
+    "linux/tests.log": "c996b10ee0e7dd091c1f2f791ce36c8f06c03858d68dabb906a98f4eafcb96eb",
+    "macos/build.log": "c348bb2c47771edfa5cd65048b1061b96fcebc7da7dcf4da850d9a7044c095b3",
+    "macos/unit.log": "645942f921e34e0046e6307856ac614dcc8017236449d48554dd3bd75b7c5488",
+    "windows/build.log": "6c2fd20517b2649d3eca8f6ed2bce77325b07117eca4937084648711d5515cc3",
+    "windows/unit.log": "8f121d8637f51079c39c2ba3121dc3ab57690fa34cf7a22d836a2d0718218b2d"
+  },
+  "log_normalization": "CRLF converted to LF for repository text storage; original source checksums retained separately."
+}
