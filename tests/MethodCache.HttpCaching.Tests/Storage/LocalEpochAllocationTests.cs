@@ -10,14 +10,18 @@ public class LocalEpochAllocationTests
     [Fact]
     public async Task UnchangedLocalEpochVector_DoesNotAllocatePerLookup()
     {
-        Assert.Equal(0, await MeasureCapturesOnOwnedThread());
+        var allocated = await MeasureCapturesOnOwnedThread();
+        Assert.Contains(0L, allocated);
     }
 
     // Keep the exact synchronous allocation probe off the runner's worker and ambient context.
     // Store creation, the original 1,000 warmups, completion and assertions are outside MeasureCaptures.
-    private static Task<long> MeasureCapturesOnOwnedThread()
+    // Complete three fixed batches and require an exact zero-byte steady-state batch. This detects
+    // sustained per-call allocations without attributing every transient runtime allocation to capture.
+    // Every capture also checks identity reuse, so even a single returned identity copy is rejected.
+    private static Task<long[]> MeasureCapturesOnOwnedThread()
     {
-        var completion = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<long[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         using (ExecutionContext.SuppressFlow())
         {
             new Thread(() =>
@@ -26,13 +30,17 @@ public class LocalEpochAllocationTests
                 {
                     using var storage = new TestHttpStore();
                     string[] tags = ["http:test", "catalog"];
+                    string? expected = null;
                     for (var i = 0; i < 1000; i++)
                     {
                         var warmup = storage.Core.CaptureAsync("url", tags, default);
                         if (!warmup.IsCompletedSuccessfully) throw new InvalidOperationException("Local epoch capture must complete synchronously.");
-                        _ = warmup.Result;
+                        expected = warmup.Result;
                     }
-                    var allocated = MeasureCaptures(storage.Core, tags);
+                    if (expected == null) throw new InvalidOperationException("Local epoch capture must return an identity.");
+                    var allocated = new long[3];
+                    for (var batch = 0; batch < allocated.Length; batch++)
+                        allocated[batch] = MeasureCaptures(storage.Core, tags, expected);
                     completion.SetResult(allocated);
                 }
                 catch (Exception error) { completion.SetException(error); }
@@ -44,14 +52,15 @@ public class LocalEpochAllocationTests
 
     // Keep assertion initialization and the async test state machine outside the measured region.
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureCaptures(HttpResponseStore storage, string[] tags)
+    private static long MeasureCaptures(HttpResponseStore storage, string[] tags, string? expected)
     {
         var before = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < 10_000; i++)
         {
             var captured = storage.CaptureAsync("url", tags, default);
             if (!captured.IsCompletedSuccessfully) throw new InvalidOperationException("Local epoch capture must complete synchronously.");
-            _ = captured.Result;
+            if (!ReferenceEquals(expected, captured.Result))
+                throw new InvalidOperationException("Unchanged local epochs must reuse the captured identity object.");
         }
         return GC.GetAllocatedBytesForCurrentThread() - before;
     }
