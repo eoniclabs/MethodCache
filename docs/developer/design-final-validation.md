@@ -520,3 +520,15 @@ All 40 validation tests and the CI Python suite pass (47 run, two SDK-specific s
 Separate HTTP, net10 and constructor comparison points remain in the planned twelve-point
 cohort. These checks do not freeze the final GUID source or prove timing/cache-hit behavior.
 [Original failure, compiled inventories, sources and verification outputs](../../plans/design-benchmarks/compiled-workload-inventory/).
+
+## GUID workload integration
+
+PR135 source 0c09fc1 changes the primary contract/facade/reference inputs to GUIDs and
+retains both int/GUID README comparisons. The combined integration passes all 94 benchmark
+facts locally. Identical component sources pass all setup combinations on PR5, Marvin,
+constructor and SipHash, preserving the direct-constructor/StartKey capability choices.
+The raw hash-only component still uses :42 and is a separate int-suffix diagnostic.
+Generated GUID hit/miss origin verification, full-series compilation/catalog checks and
+final source freeze remain required. Earlier int timing and the preliminary 64-case
+inventory are not GUID acceptance evidence.
+[Exact merged sources and four-runtime setup checks](../../plans/design-benchmarks/guid-workload-integration/).

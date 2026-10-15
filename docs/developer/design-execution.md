@@ -27,9 +27,11 @@ A passing ancestor does not establish the latest head's result.
 
 ## Remaining performance work
 
-Johan reports that Claude is updating the common workloads to use GUID identifiers. Integrate that update
-and verify the same key types, data and workload sources on every compared revision before freezing the
-final cohort. Existing int diagnostics remain separate; changing a key type cannot be presented as a
+PR135 at 0c09fc1 updates the common workloads to GUID identifiers and retains both int/GUID README
+comparisons. The combined integration passes 94 benchmark tests and identical component setup checks
+on PR5, Marvin, constructor and SipHash. Verify actual generated hit/miss origin counts and rebuild
+the same final key types, data and workload sources on every compared revision before freezing the
+cohort. Existing int diagnostics remain separate; changing a key type cannot be presented as a
 before/after optimization result. GUID sources are not frozen yet.
 
 Complete all adjacent behavior-change comparisons and the cumulative f43854d comparison, plus prefix

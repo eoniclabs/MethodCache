@@ -1,0 +1,2 @@
+Verified compiled capabilities: prefix=False, SipHash=False, in-place builder=False.
+Verified all component prefix/growth/listener/cache/reference setup combinations.
