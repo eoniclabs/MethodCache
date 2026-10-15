@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Extensibility;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -120,4 +121,44 @@ internal static class NativePolicyFaultContract
         public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default) => inner.SubscribeAsync(onMessage, cancellationToken);
         public Task UnsubscribeAsync(CancellationToken cancellationToken = default) => inner.UnsubscribeAsync(cancellationToken);
     }
+}
+
+// Holds a real asynchronous backend read. Synchronous reads are forbidden: the generated sync path
+// must use its L1/origin fallback while this operation is pending, without waiting on its Task.
+internal sealed class GatedNativePolicyStore(IAtomicInvalidationStore inner, bool holdReads) : IAtomicInvalidationStore
+{
+    internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal int SyncReads;
+    internal int ValueWrites;
+    internal static void Decorate(IServiceCollection services, bool holdReads = true)
+    {
+        var descriptor = services.Last(d => d.IsKeyedService && d.ServiceType == typeof(IDistributedCache) && Equals(d.ServiceKey, "MethodCache"));
+        services.Remove(descriptor);
+        services.AddSingleton(provider =>
+            new GatedNativePolicyStore((IAtomicInvalidationStore)(descriptor.KeyedImplementationInstance ?? descriptor.KeyedImplementationFactory!(provider, "MethodCache")), holdReads));
+        services.AddKeyedSingleton<IDistributedCache>("MethodCache",
+            static (provider, _) => provider.GetRequiredService<GatedNativePolicyStore>());
+    }
+    public byte[]? Get(string key)
+    {
+        Interlocked.Increment(ref SyncReads);
+        throw new InvalidOperationException("A sync method must not call an unbounded native store.");
+    }
+    public async Task<byte[]?> GetAsync(string key, CancellationToken token = default)
+    {
+        Started.TrySetResult();
+        if (holdReads) await Release.Task.WaitAsync(token);
+        return await inner.GetAsync(key, token);
+    }
+    public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default)
+        => inner.WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken);
+    public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+    { Interlocked.Increment(ref ValueWrites); inner.Set(key, value, options); }
+    public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+    { Interlocked.Increment(ref ValueWrites); return inner.SetAsync(key, value, options, token); }
+    public void Refresh(string key) => inner.Refresh(key);
+    public Task RefreshAsync(string key, CancellationToken token = default) => inner.RefreshAsync(key, token);
+    public void Remove(string key) => inner.Remove(key);
+    public Task RemoveAsync(string key, CancellationToken token = default) => inner.RemoveAsync(key, token);
 }

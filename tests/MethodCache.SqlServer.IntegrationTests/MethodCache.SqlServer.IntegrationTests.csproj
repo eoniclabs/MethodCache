@@ -56,4 +56,7 @@
   <ItemGroup>
     <Compile Include="../MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs" Link="TestSupport/NativePolicyFaultContract.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/PolicyBackendAcceptanceContract.cs" Link="TestSupport/PolicyBackendAcceptanceContract.cs" />
+  </ItemGroup>
 </Project>
