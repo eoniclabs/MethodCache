@@ -23,8 +23,6 @@ public ref struct KeyBuilder
     private Span<char> _chars;
     private int _length;
     private int _prefixLength;
-    private int _lastHash;
-    private int _lastHashLength;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal KeyBuilder(Span<char> initialBuffer, CallSnapshot binding)
@@ -32,8 +30,6 @@ public ref struct KeyBuilder
         _chars = initialBuffer;
         _length = 0;
         _prefixLength = 0;
-        _lastHash = 0;
-        _lastHashLength = -1;
         _text = null;
         Binding = binding;
     }
@@ -44,8 +40,6 @@ public ref struct KeyBuilder
         _chars = default;
         _length = 0;
         _prefixLength = 0;
-        _lastHash = 0;
-        _lastHashLength = -1;
         _text = text;
         Binding = binding;
     }
@@ -54,15 +48,7 @@ public ref struct KeyBuilder
 
     // Always hash the current suffix. An Append after a lookup cannot reuse a stale final hash.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal int LookupHash()
-    {
-        var hash = ComputeCurrentHash();
-        _lastHash = hash;
-        _lastHashLength = AsSpan().Length;
-        return hash;
-    }
-
-    private readonly int ComputeCurrentHash()
+    internal readonly int LookupHash()
     {
         if (_prefixLength == 0) return Binding.HashKey(AsSpan());
         return Binding.PrefixHash.FinishUtf16(AsSpan()[_prefixLength..]);
@@ -74,8 +60,9 @@ public ref struct KeyBuilder
     /// <summary>Returns the key as a string.</summary>
     public override readonly string ToString()
     {
-        var text = _text ?? new string(_chars[.._length]);
-        if (Binding != null) ProcessKeyHash.Remember(text, _lastHashLength == text.Length ? _lastHash : ComputeCurrentHash());
+        if (_text is { } owned) return owned;
+        var text = new string(_chars[.._length]);
+        if (Binding != null) ProcessKeyHash.Remember(text, Binding.HashKey(text));
         return text;
     }
 
