@@ -1,5 +1,15 @@
 # Final design verification
 
+## Native fault-fixture failure and bounded cleanup
+
+The b92553d Linux diff-coverage run stalled in the Redis policy-fault fixture. A private diagnostic
+snapshot shows an Empty assertion failure unwinding through shutdown while its own test write remains
+behind an unreleased gate. The fixture now counts held operations separately from earlier receipts and
+always releases that gate in finally. Two regressions fail before the fix; all 1038 Core facts and the
+original three shared cases on each real Redis/SQL provider pass afterward. Shipped source is unchanged;
+the original CI run remains failed/stuck evidence, never a substituted pass.
+[Exact safe diagnostics and red/green receipts](../../plans/design-benchmarks/native-fault-fixture-cleanup/).
+
 ## Exact comparison bases and generated prefix coverage
 
 The constructor and SipHash branches use an earlier HTTP implementation than the new combined candidate.

@@ -1,0 +1,49 @@
+{
+  "collected_utc": "2026-10-15T22:12:16.414077+00:00",
+  "ci_run": "20261015-231740-b92553dac51d",
+  "target_testhost_host_pid": 3038735,
+  "target_testhost_container_pid": 1004,
+  "ci_job_container": "cfe525730034",
+  "scope": "Fixture assertion/cleanup failure, no production-source change",
+  "diagnostic_private_heap_not_published": true,
+  "diagnostic_limits": "ClrMD3 reports unknown dump version 0.0; exact .NET10.0.12 DAC from the same target container supplied. Method stack names unavailable; heap type/field states and safe assertion message available. No payload/connection strings printed.",
+  "observed_failure": "Xunit.Sdk.EmptyException while Release gate remains incomplete and owned shutdown waits for its write",
+  "local_core_passed": 1038,
+  "intentional_soak_skip": 1,
+  "native_redis_passed": 3,
+  "native_sql_passed": 3,
+  "files": {
+    "sql-three-green.log": {
+      "original_sha256": "b4b6cc665eedecd46880446fcc51c1e086758942612983d4ea598076f8b6bf93",
+      "stored_sha256": "b4b6cc665eedecd46880446fcc51c1e086758942612983d4ea598076f8b6bf93"
+    },
+    "five-contract-cases-green.log": {
+      "original_sha256": "bf5862e79c603c7e0319c3069209c81a1b280ac963154432975e9bb3e988ad8b",
+      "stored_sha256": "bf5862e79c603c7e0319c3069209c81a1b280ac963154432975e9bb3e988ad8b"
+    },
+    "format.log": {
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    "ci-private-dump-safe-summary.log": {
+      "original_sha256": "ec13b3e9ad6f2b4e42a3771be770ad1e80567c1070cbf578a78eb4b59c23ef2b",
+      "stored_sha256": "ec13b3e9ad6f2b4e42a3771be770ad1e80567c1070cbf578a78eb4b59c23ef2b"
+    },
+    "full-core-1038-green.log": {
+      "original_sha256": "1876a151a791054066269f9a08c90fc9389fa175b35c95a19ef4e1d91c69b872",
+      "stored_sha256": "1876a151a791054066269f9a08c90fc9389fa175b35c95a19ef4e1d91c69b872"
+    },
+    "two-regressions-red.log": {
+      "original_sha256": "e8803fe09135a8c48d5033122c42b4ceb43acb8ff20c866aa068b610aba2e1c4",
+      "stored_sha256": "e8803fe09135a8c48d5033122c42b4ceb43acb8ff20c866aa068b610aba2e1c4"
+    },
+    "original-ci-diffcoverage-at-diagnosis.log": {
+      "original_sha256": "469a13f1088220d5748a809cce6971f306b9cb1b244752233474b1078e55b684",
+      "stored_sha256": "469a13f1088220d5748a809cce6971f306b9cb1b244752233474b1078e55b684"
+    },
+    "redis-three-green.log": {
+      "original_sha256": "621bd05ec31b511dfaa942d37d3ac24a44173287fc58698d15a966d80b2c9d77",
+      "stored_sha256": "621bd05ec31b511dfaa942d37d3ac24a44173287fc58698d15a966d80b2c9d77"
+    }
+  }
+}

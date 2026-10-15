@@ -13,7 +13,8 @@ namespace MethodCache.TestSupport;
 // always reach the supplied backend; this is not a replacement in-memory cache for native tests.
 internal static class NativePolicyFaultContract
 {
-    internal static async Task RunAsync(string scenario, IAtomicInvalidationStore backend, IBackplane backplane)
+    internal static async Task RunAsync(string scenario, IAtomicInvalidationStore backend, IBackplane backplane,
+        Action? afterHold = null, bool includeEarlierStamp = false)
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var store = new FaultStore(backend);
@@ -22,59 +23,70 @@ internal static class NativePolicyFaultContract
             new DistributedCacheOptions { KeyPrefix = "policy-fault:" + Guid.NewGuid().ToString("N") + ":", ClockSkewTolerance = TimeSpan.Zero }, publication, time);
         using var memory = new InMemoryCacheManager(null, time, layer);
         ICacheManager cache = memory;
-        switch (scenario)
+        try
         {
-            case "partial":
-                store.FailOnce = static key => key.EndsWith("bad", StringComparison.Ordinal);
-                publication.FailOnce = "good";
-                var result = await cache.InvalidateTagsAsync(["good", "bad", "third", "good"]);
-                Assert.Equal(new InvalidationResult { Requested = 3, Local = 3, Distributed = 2, Queued = 1, Published = 1, PublicationQueued = 1 }, result);
-                Assert.Equal(new InvalidationQueues(1, 1), memory.GetInvalidationQueues());
-                await layer.FlushAsync(force: true);
-                await layer.FlushPublicationsAsync();
-                Assert.Equal(new InvalidationQueues(0, 0), memory.GetInvalidationQueues());
-                Assert.Equal(3, store.Confirmed.Count);
-                Assert.Equal(3, publication.Confirmed);
-                break;
-            case "cancellation":
-                await cache.GetOrCreateAsync("held", (_, _) => ValueTask.FromResult(1));
-                store.Hold = true;
-                using (var cancellation = new CancellationTokenSource())
-                {
-                    var invalidating = cache.InvalidateKeysAsync(["held"], cancellation.Token).AsTask();
-                    await store.Started.Task.WaitAsync(TimeSpan.FromSeconds(20));
-                    Assert.False(memory.TryGetFreshForLookup<int>("held").Found);
-                    cancellation.Cancel();
-                    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invalidating);
-                    Assert.Empty(store.Confirmed);
-                    store.Release.TrySetResult();
-                    await layer.DisposeAsync();
-                    Assert.Single(store.Confirmed);
+            switch (scenario)
+            {
+                case "partial":
+                    store.FailOnce = static key => key.EndsWith("bad", StringComparison.Ordinal);
+                    publication.FailOnce = "good";
+                    var result = await cache.InvalidateTagsAsync(["good", "bad", "third", "good"]);
+                    Assert.Equal(new InvalidationResult { Requested = 3, Local = 3, Distributed = 2, Queued = 1, Published = 1, PublicationQueued = 1 }, result);
+                    Assert.Equal(new InvalidationQueues(1, 1), memory.GetInvalidationQueues());
+                    await layer.FlushAsync(force: true);
+                    await layer.FlushPublicationsAsync();
                     Assert.Equal(new InvalidationQueues(0, 0), memory.GetInvalidationQueues());
-                }
-                break;
-            case "validation":
-                await cache.GetOrCreateAsync("retained", (_, _) => ValueTask.FromResult(1));
-                await Assert.ThrowsAsync<ArgumentException>(() => cache.InvalidateKeysAsync(["retained", " "]).AsTask());
-                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.InvalidateKeysAsync(["retained"], new CancellationToken(true)).AsTask());
-                Assert.True(memory.TryGetFreshForLookup<int>("retained").Found);
-                Assert.True((await cache.TryGetAsync<int>("retained")).Found);
-                Assert.Empty(store.Confirmed);
-                Assert.Equal(new InvalidationResult(), await cache.InvalidateKeysAsync([]));
-                var unique = await cache.InvalidateKeysAsync(["retained", "retained", "absent"]);
-                Assert.Equal(2, unique.Requested);
-                Assert.Equal(2, unique.Local);
-                Assert.Equal(2, unique.Distributed);
-                Assert.Equal(0, unique.Queued);
-                Assert.Equal(2, store.Confirmed.Count);
-                break;
-            default: throw new ArgumentOutOfRangeException(nameof(scenario));
+                    Assert.Equal(3, store.Confirmed.Count);
+                    Assert.Equal(3, publication.Confirmed);
+                    break;
+                case "cancellation":
+                    await cache.GetOrCreateAsync("held", (_, _) => ValueTask.FromResult(1));
+                    if (includeEarlierStamp)
+                        await store.WriteInvalidationStampAsync("fixture-prior:" + Guid.NewGuid().ToString("N"), time.GetUtcNow().UtcTicks, TimeSpan.FromHours(1));
+                    store.Hold = true;
+                    using (var cancellation = new CancellationTokenSource())
+                    {
+                        var invalidating = cache.InvalidateKeysAsync(["held"], cancellation.Token).AsTask();
+                        await store.Started.Task.WaitAsync(TimeSpan.FromSeconds(20));
+                        afterHold?.Invoke();
+                        Assert.False(memory.TryGetFreshForLookup<int>("held").Found);
+                        cancellation.Cancel();
+                        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invalidating);
+                        Assert.Equal(0, store.HeldConfirmed);
+                        store.Release.TrySetResult();
+                        await layer.DisposeAsync();
+                        Assert.Equal(1, store.HeldConfirmed);
+                        Assert.Equal(new InvalidationQueues(0, 0), memory.GetInvalidationQueues());
+                    }
+                    break;
+                case "validation":
+                    await cache.GetOrCreateAsync("retained", (_, _) => ValueTask.FromResult(1));
+                    await Assert.ThrowsAsync<ArgumentException>(() => cache.InvalidateKeysAsync(["retained", " "]).AsTask());
+                    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.InvalidateKeysAsync(["retained"], new CancellationToken(true)).AsTask());
+                    Assert.True(memory.TryGetFreshForLookup<int>("retained").Found);
+                    Assert.True((await cache.TryGetAsync<int>("retained")).Found);
+                    Assert.Empty(store.Confirmed);
+                    Assert.Equal(new InvalidationResult(), await cache.InvalidateKeysAsync([]));
+                    var unique = await cache.InvalidateKeysAsync(["retained", "retained", "absent"]);
+                    Assert.Equal(2, unique.Requested);
+                    Assert.Equal(2, unique.Local);
+                    Assert.Equal(2, unique.Distributed);
+                    Assert.Equal(0, unique.Queued);
+                    Assert.Equal(2, store.Confirmed.Count);
+                    break;
+                default: throw new ArgumentOutOfRangeException(nameof(scenario));
+            }
+            // Read the actual native metadata, not the wrapper's in-memory receipt alone.
+            foreach (var write in store.Confirmed)
+            {
+                var bytes = Assert.IsType<byte[]>(await backend.GetAsync(write.Key));
+                Assert.Equal(write.Timestamp, BinaryPrimitives.ReadInt64LittleEndian(bytes));
+            }
         }
-        // Read the actual native metadata, not the wrapper's in-memory receipt alone.
-        foreach (var write in store.Confirmed)
+        finally
         {
-            var bytes = Assert.IsType<byte[]>(await backend.GetAsync(write.Key));
-            Assert.Equal(write.Timestamp, BinaryPrimitives.ReadInt64LittleEndian(bytes));
+            // A failed assertion must not leave owned shutdown waiting forever for this test gate.
+            store.Release.TrySetResult();
         }
     }
 
@@ -82,6 +94,7 @@ internal static class NativePolicyFaultContract
     {
         internal Func<string, bool>? FailOnce;
         internal bool Hold;
+        internal int HeldConfirmed;
         internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal ConcurrentQueue<(string Key, long Timestamp)> Confirmed { get; } = new();
@@ -92,9 +105,11 @@ internal static class NativePolicyFaultContract
                 FailOnce = null;
                 throw new InvalidOperationException("Controlled native stamp failure.");
             }
-            if (Hold) { Started.TrySetResult(); await Release.Task; }
+            var held = Hold;
+            if (held) { Started.TrySetResult(); await Release.Task; }
             await inner.WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken);
             Confirmed.Enqueue((key, timestamp));
+            if (held) Interlocked.Increment(ref HeldConfirmed);
         }
         public byte[]? Get(string key) => inner.Get(key);
         public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => inner.GetAsync(key, token);

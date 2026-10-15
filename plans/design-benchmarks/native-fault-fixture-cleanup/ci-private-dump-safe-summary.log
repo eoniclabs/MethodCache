@@ -1,0 +1,34 @@
+Managed thread stacks: method/type names only, no argument values.
+Async state machine type counts, without heap field/string values.
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+Refused>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<StoreInvalidationsAsync>d__102>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<MethodCache.InvalidationResult>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<InvalidateWithResultAsync>d__99>
+ASYNC 4 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<StackExchange.Redis.IConnectionMultiplexer>+AsyncStateMachineBox<MethodCache.Redis.RedisConnection+<ConnectAsync>d__10>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Boolean>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<StoreStampAsync>d__121>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Collections.Generic.List<MethodCache.Redis.IntegrationTests.ToxiproxyFixture+Toxic>>+AsyncStateMachineBox<System.Net.Http.Json.HttpClientJsonExtensions+<<FromJsonAsyncCore>g__Core|12_0>d<System.Collections.Generic.List<MethodCache.Redis.IntegrationTests.ToxiproxyFixture+Toxic>, System.Text.Json.JsonSerializerOptions>>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<DisposeAsync>d__108>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<ShutdownAsync>d__109>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Redis.IntegrationTests.PolicyContractTests+<NativeInvalidationFaults_ConformToSharedContract>d__3>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Redis.IntegrationTests.RedisToxiproxyTests+<DisposeAsync>d__8>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Redis.IntegrationTests.ToxiproxyFixture+<RemoveToxicsAsync>d__19>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Redis.RedisBackplane+<RecoverSubscriptionAsync>d__31>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.TestSupport.NativePolicyFaultContract+<RunAsync>d__0>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.TestSupport.NativePolicyFaultContract+FaultStore+<WriteInvalidationStampAsync>d__13>
+ASYNC 1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.ValueTuple<System.Boolean, System.Boolean, System.Boolean>>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<TryRunAsync>d__132<System.ValueTuple<System.String, System.Int64, System.TimeSpan>, System.Boolean>>
+Controlled fault-store and relevant async states; no keys/payload strings.
+FAULTSTORE 731e2f8f9ac0 hold=True
+  <Started>k__BackingField task=731e2f8f9b18 flags=7000440
+  <Release>k__BackingField task=731e2f8f9b70 flags=2000440
+STATE 731e2f922408 flags=2000c00 step=14 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.TestSupport.NativePolicyFaultContract+<RunAsync>d__0>
+  CLEANUP_EXCEPTION <>7__wrap5 type=Xunit.Sdk.EmptyException
+  SAFE_FAILURE_MESSAGE Assert.Empty() Failure: Collection was not empty
+Collection: [Tuple ("policy-fault:00e6d6c2aa4e42d6962ce829dff7631f:r:he"···, 1792099240646)]
+  AWAIT <>u__2 type= address=0
+  AWAIT <>u__4 type= address=0
+  AWAIT <>u__6 type= address=0
+  AWAIT <>u__8 type= address=0
+STATE 731e2f923338 flags=2000c00 step=0 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.TestSupport.NativePolicyFaultContract+FaultStore+<WriteInvalidationStampAsync>d__13>
+  AWAIT <>u__1 type=System.Threading.Tasks.Task address=731e2f8f9b70
+STATE 731e2f926cf8 flags=2000c00 step=1 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<ShutdownAsync>d__109>
+  AWAIT <>u__2 type=System.Threading.Tasks.Task address=731e2f8ffaa8
+STATE 731e2f926d78 flags=2000c00 step=0 System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<DisposeAsync>d__108>
+  AWAIT <>u__1 type=System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<MethodCache.Core.Runtime.Distributed.DistributedCacheLayer+<ShutdownAsync>d__109> address=731e2f926cf8
