@@ -415,3 +415,6 @@ Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix
 Core emits standard `MethodCache` metrics and activities. The optional OpenTelemetry package subscribes to them;
 cache keys/tags require explicit Core options. [Monitoring](docs/features/monitoring.md) documents the instruments,
 local method/HTTP statistics, configured weight units and independent storage/backplane health.
+
+Dictionary hashes are process-local implementation metadata. Canonical key text, L2 identities, administration and
+invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.

@@ -19,6 +19,7 @@ public readonly struct MethodCall
     {
         var builder = new KeyBuilder(buffer, _snapshot);
         builder.Append(_snapshot.Prefix);
+        builder.UseSnapshotPrefix();
         return builder;
     }
 

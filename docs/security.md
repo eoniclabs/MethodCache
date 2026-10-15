@@ -133,3 +133,9 @@ all entry formats and policies. Permanent HTTP epochs use atomic revisions with 
 after metadata loss or overflow. SQL initialization rejects unversioned/unknown schemas; use the delivered offline
 migration for the known legacy layout. The roundtrip check is optional and cannot detect semantic losses in nested
 derived or private state; explicit serializer configuration remains the application's responsibility.
+
+The prefix-hash candidate uses process-secret SipHash-2-4 for dictionary hashing; full key text is always compared
+ordinally. Hash state is immutable per invocation snapshot and never becomes an L2/wire/admin identity. The
+[algorithm and threat review](developer/prefix-hash-security.md) records the 32-bit dictionary output limitation,
+reference sources and validation. `PrefixHashPropertyTests` pins author vectors, arbitrary UTF-16 splits and append
+invalidation; `PrefixCollisionTests` forces collisions through all lookup/publication paths and checks eviction.

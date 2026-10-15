@@ -402,8 +402,7 @@ namespace MethodCache.Extensibility
             Node? found = null;
             if (_options.EnableFastPath)
             {
-                if (key.StoredText is { } text) _engine.TryGet(text, now, out found);
-                else _engine.TryGet(key.AsSpan(), now, out found);
+                _engine.TryGet(ref key, now, out found);
             }
             return AcceptFastNode(found, now, out value, out node, generation);
         }

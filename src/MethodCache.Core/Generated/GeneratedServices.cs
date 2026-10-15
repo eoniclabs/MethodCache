@@ -1,3 +1,4 @@
+using MethodCache.Core.Runtime.Keys;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -81,6 +82,7 @@ internal sealed record CallSnapshot(DecoratorServices Services, CacheRuntimePoli
     string KeyMethod, string Name, BackgroundLoadTarget? Background, string[] ParameterNames)
 {
     private ConditionalWeakTable<string, CallSnapshot>? _specializations;
+    internal SipHashState PrefixHash { get; } = ProcessKeyHash.Prefix(Prefix);
     internal PolicyGeneration Generation { get; } = Policy.Generation!;
     internal bool HasParameterizedTags { get; } = Policy.Tags.Any(static tag => tag.Contains('{'));
 

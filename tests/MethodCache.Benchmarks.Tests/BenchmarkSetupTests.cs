@@ -10,12 +10,56 @@ public class BenchmarkSetupTests
 {
     [Theory]
     [InlineData("engine")]
+    [InlineData("hitpath")]
+    [InlineData("hashlookup")]
     [InlineData("readme")]
     [InlineData("comparison")]
     public void BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(string category)
     {
         var error = Record.Exception(() => MethodCache.Benchmarks.BenchmarkCommands.Run(new[] { category, "--list", "flat" }));
         Assert.Null(error);
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(80)]
+    [InlineData(256)]
+    public void KeyHashLookup_AllPathsReadThePopulatedValue(int length)
+    {
+        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks { PrefixCharacters = length };
+        benchmark.Setup();
+        Assert.Equal(42, benchmark.ReadyStringLookup());
+        Assert.Equal(42, benchmark.FullSpanLookup());
+        Assert.Equal(42, benchmark.PrefixLookup());
+    }
+
+    [Theory]
+    [InlineData(4, 128, false)]
+    [InlineData(4, 128, true)]
+    [InlineData(4, 512, false)]
+    [InlineData(4, 512, true)]
+    [InlineData(256, 128, false)]
+    [InlineData(256, 128, true)]
+    [InlineData(256, 512, false)]
+    [InlineData(256, 512, true)]
+    public async Task PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(int prefix, int buffer, bool listening)
+    {
+        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks
+        { MethodNameLength = prefix, BufferCharacters = buffer, Listening = listening };
+        benchmark.Setup();
+        try
+        {
+            Assert.Equal(1, benchmark.OriginLoads);
+            for (var i = 0; i < 100; i++)
+            {
+                Assert.Equal(42, benchmark.SyncHit());
+                Assert.Equal(42, await benchmark.TaskHit());
+                Assert.Equal(42, await benchmark.ValueTaskHit());
+                Assert.True(benchmark.KeyBuild() > 0);
+            }
+            Assert.Equal(1, benchmark.OriginLoads);
+        }
+        finally { benchmark.Cleanup(); }
     }
 
     [Fact]
