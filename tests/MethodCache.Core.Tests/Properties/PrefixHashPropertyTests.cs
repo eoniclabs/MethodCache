@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using MethodCache.Policies;
 using MethodCache.Core.Runtime.Http;
 using System.Globalization;
@@ -52,41 +53,55 @@ public class PrefixHashPropertyTests
     }
 
     [Fact]
-    public void Marvin_MatchesPinnedDotNetReference_AtEveryByteSplit()
+    public void ReferenceOracle_MatchesPublishedSipHashVectors()
     {
-        var input = Enumerable.Range(0, 256).Select(i => (byte)i).ToArray();
-        foreach (var seed in new[] { 0UL, 1UL, ulong.MaxValue, 0x0706050403020100UL })
-            for (var length = 0; length <= input.Length; length++)
-            {
-                var expected = Reference.Marvin.ComputeHash32(input.AsSpan(0, length), seed);
-                for (var split = 0; split <= length; split++)
-                {
-                    var hash = new MarvinState(seed);
-                    hash.Append(input.AsSpan(0, split));
-                    hash.Append(input.AsSpan(split, length - split));
-                    Assert.Equal(expected, hash.Finish32());
-                    Assert.Equal(expected, hash.Finish32());
-                }
-            }
+        var input = Enumerable.Range(0, 64).Select(i => (byte)i).ToArray();
+        for (var length = 0; length < 64; length++)
+        {
+            var data = input.AsSpan(0, length);
+            Assert.Equal(Reference.SipHash.SipHash24Vectors[length], Reference.SipHash.Compute(2, 4, Reference.SipHash.VectorKey0, Reference.SipHash.VectorKey1, data));
+            Assert.Equal(Reference.SipHash.SipHash13Vectors[length], Reference.SipHash.Compute(1, 3, Reference.SipHash.VectorKey0, Reference.SipHash.VectorKey1, data));
+        }
     }
 
     [Fact]
-    public void SplitUtf16_WithArbitrarySeedsAndSurrogates_EqualsWholeText()
+    public void SipHash13_MatchesPublishedVectors_AtEveryUtf16Split()
     {
-        Gen.Select(Gen.Long, Gen.Long, Gen.String[Gen.Char["a:\\\0\ud800\udfffé"], 0, 200]).Sample((key0, key1, text) =>
+        // UTF-16 input has whole code units, so the even-length vectors apply: code unit i is bytes 2i and 2i+1
+        for (var length = 0; length < 64; length += 2)
         {
-            var full = new MarvinState(unchecked((ulong)key0) ^ unchecked((ulong)key1));
-            full.AppendUtf16(text);
+            var text = Enumerable.Range(0, length / 2).Select(i => (char)(2 * i | (2 * i + 1) << 8)).ToArray();
+            var expected = unchecked((int)Reference.SipHash.SipHash13Vectors[length]);
+            for (var first = 0; first <= text.Length; first++)
+                for (var second = first; second <= text.Length; second++)
+                {
+                    var hash = new SipHashState(Reference.SipHash.VectorKey0, Reference.SipHash.VectorKey1);
+                    hash.AppendUtf16(text.AsSpan(0, first));
+                    hash.AppendUtf16(text.AsSpan(first, second - first));
+                    Assert.Equal(expected, hash.FinishUtf16(text.AsSpan(second)));
+                    Assert.Equal(expected, hash.FinishUtf16(text.AsSpan(second)));
+                }
+        }
+    }
+
+    [Fact]
+    public void SplitUtf16_WithArbitraryKeysAndSurrogates_EqualsReference()
+    {
+        Gen.Select(Gen.ULong, Gen.ULong, Gen.String[Gen.Char["a:\\\0\ud800\udfffé"], 0, 200]).Sample((key0, key1, text) =>
+        {
+            var bytes = new byte[text.Length * 2];
+            for (var i = 0; i < text.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(2 * i), text[i]);
+            var expected = unchecked((int)Reference.SipHash.Compute(1, 3, key0, key1, bytes));
             for (var split = 0; split <= text.Length; split++)
             {
-                var parts = new MarvinState(unchecked((ulong)key0) ^ unchecked((ulong)key1));
-                parts.AppendUtf16(text.AsSpan(0, split));
-                parts.AppendUtf16(ReadOnlySpan<char>.Empty);
-                var prefix = parts;
-                Assert.Equal(full.Finish32(), prefix.FinishUtf16(text.AsSpan(split)));
-                parts.AppendUtf16(text.AsSpan(split));
-                Assert.Equal(full.Finish32(), parts.Finish32());
-                Assert.Equal(prefix.Finish32(), prefix.Finish32());
+                var prefix = new SipHashState(key0, key1);
+                prefix.AppendUtf16(text.AsSpan(0, split));
+                prefix.AppendUtf16(ReadOnlySpan<char>.Empty);
+                Assert.Equal(expected, prefix.FinishUtf16(text.AsSpan(split)));
+                var whole = prefix;
+                whole.AppendUtf16(text.AsSpan(split));
+                Assert.Equal(expected, whole.FinishUtf16(ReadOnlySpan<char>.Empty));
+                Assert.Equal(expected, prefix.FinishUtf16(text.AsSpan(split)));
             }
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
     }
@@ -118,7 +133,7 @@ public class PrefixHashPropertyTests
     }
 
     [Fact]
-    public void AdversarialPolynomialCollisionFamily_DoesNotCreateAQuadraticMarvinProbeWorkload()
+    public void AdversarialPolynomialCollisionFamily_DoesNotCreateAQuadraticProbeWorkload()
     {
         // Every equal-length Aa/BB composition collides under a seeded base-31 polynomial, for every seed.
         // Exercise that chosen-input family with long common prefixes, NUL and an isolated surrogate.
@@ -128,22 +143,19 @@ public class PrefixHashPropertyTests
         Assert.Single(keys.Select(key => Polynomial(key)).Distinct());
         foreach (var seed in new[] { (0UL, 0UL), (1UL, ulong.MaxValue), (0x0706050403020100UL, 0x0f0e0d0c0b0a0908UL) })
         {
-            var prefixState = new MarvinState(seed.Item1 ^ seed.Item2);
+            var prefixState = new SipHashState(seed.Item1, seed.Item2);
             prefixState.AppendUtf16(prefix);
             var hashes = new List<int>(keys.Length);
             foreach (var key in keys)
             {
-                var split = prefixState;
-                split.AppendUtf16(key.AsSpan(prefix.Length));
-                var whole = new MarvinState(seed.Item1 ^ seed.Item2);
-                whole.AppendUtf16(key);
-                Assert.Equal(whole.Finish32(), split.Finish32());
-                hashes.Add(split.Finish32());
+                var split = prefixState.FinishUtf16(key.AsSpan(prefix.Length));
+                Assert.Equal(new SipHashState(seed.Item1, seed.Item2).FinishUtf16(key), split);
+                hashes.Add(split);
             }
             var chains = hashes.GroupBy(hash => hash).Select(group => group.Count()).ToArray();
             // Visiting every node in every equal-hash chain costs sum(n^2) equality probes. This bounded,
             // deterministic work metric avoids fragile nanosecond assertions; it is additional regression
-            // evidence, not a substitute for the randomized-comparer security review and pinned reference oracle.
+            // evidence, not a substitute for the keyed-hash security review and the pinned reference vectors.
             var comparisons = chains.Sum(length => (long)length * length);
             Assert.InRange(comparisons, keys.Length, 2L * keys.Length);
             Assert.InRange(chains.Max(), 1, 3);
