@@ -247,7 +247,8 @@ public static class Probe { public static async Task<int> Go(ISvc s, Svc impl) {
 public interface ISvc { [Cache] Task<string> Get(int id, CancellationToken ct); }
 public class Svc : ISvc {
   public int Calls; public readonly TaskCompletionSource Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
-  public async Task<string> Get(int id, CancellationToken ct) { Interlocked.Increment(ref Calls); Started.TrySetResult(); await Task.Delay(100, ct); return ""v"" + id; }
+  public readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+  public async Task<string> Get(int id, CancellationToken ct) { var call = Interlocked.Increment(ref Calls); Started.TrySetResult(); if (call == 1) await Release.Task.WaitAsync(ct); return ""v"" + id; }
 }
 public static class Startup { public static void Configure(IServiceCollection s) { s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>()); s.AddMethodCache(); } }
 public static class Probe { public static async Task<string> Go(ISvc s, Svc impl) {
@@ -256,6 +257,7 @@ public static class Probe { public static async Task<string> Go(ISvc s, Svc impl
   var b = s.Get(1, CancellationToken.None);
   cts.Cancel();
   var aResult = ""value""; try { await a; } catch (OperationCanceledException) { aResult = ""cancelled""; }
+  impl.Release.TrySetResult();
   return aResult + ""|"" + await b + ""|"" + impl.Calls;
 } }
 }", nameof(CallerCancellingASharedLoad_DoesNotFailTheOtherCaller), load: true);
