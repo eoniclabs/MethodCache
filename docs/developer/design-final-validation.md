@@ -8,12 +8,15 @@ final PR records acceptance evidence without changing the generated contract or 
 Its CI lease fix also covers remote checkout/collection before builds, so those operations cannot
 overlap an exclusive benchmark batch.
 
-The complete b518139 checkpoint passed all Linux jobs and macOS/Windows build/unit jobs:
-**2,518 tests in 16 projects, zero failures, one intentional opt-in soak skip**, with required
-native backends, properties, enabled soak, cultures, AOT, installed packages and docs green.
-Its shipped sources match the current standalone runtime. The later epoch-probe fixture and
-current heads still require their own CI; unfinished #132/SipHash and section-10 timing are
-not included. [Full checkpoint and per-job exits](../../plans/design-benchmarks/net10-functional-b518139/).
+The complete e84a549 checkpoint passed all Linux jobs and macOS/Windows build/unit jobs:
+**2,519 tests in 16 projects, zero failures, one intentional opt-in soak skip**, with required
+native backends, 90 randomized properties, enabled soak, cultures, 172 AOT signatures,
+installed packages and docs green. This includes the final epoch/telemetry allocation
+fixtures. All three platform and aggregate statuses were verified success. Its shipped
+sources exactly match standalone runtime 12bf99d; unfinished #132/SipHash and section-10
+timing are not included. [Full checkpoint, exact exits and original logs](../../plans/design-benchmarks/net10-functional-e84a549/).
+The earlier [b518139 checkpoint](../../plans/design-benchmarks/net10-functional-b518139/)
+is retained as history. Current lower-stack heads #129/#130 still require their own statuses.
 
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
