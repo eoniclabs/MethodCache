@@ -14,6 +14,19 @@ namespace MethodCache.Core.Tests.Properties;
 public class PrefixCollisionTests
 {
     [Fact]
+    public void FrequencyHash_UsesFullProcessSecretHash_NotForcedDictionaryCollisionMask()
+    {
+        var nodes = Enumerable.Range(0, 128).Select(i => new ValueNode<int>("frequency:" + i, i)).ToArray();
+        var comparer = new KeyComparer(0);
+        Assert.All(nodes, node =>
+        {
+            Assert.Equal(ProcessKeyHash.Compute(node.Key.AsSpan()), node.KeyHash);
+            Assert.Equal(0, comparer.GetHashCode(node.Key));
+        });
+        Assert.InRange(nodes.Select(node => node.KeyHash).Distinct().Count(), 120, 128);
+    }
+
+    [Fact]
     public void ForcedCollisions_AllLookupAndMutationPaths_MatchDictionaryModel()
     {
         using var manager = new InMemoryCacheManager();
