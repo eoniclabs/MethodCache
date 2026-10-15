@@ -42,16 +42,44 @@ public class HttpStorageIdentityTests
         using var owner = new TestHttpStore(time);
         var storage = owner.ForClient("budget", new HttpCacheOptions());
         var entry = new HttpCacheEntry { RequestUri = "https://example.test/a", Method = "GET", StoredAt = time.GetUtcNow() };
-        var budget = storage.BodyBudget(key, entry);
-        for (var i = 0; i < 100; i++) _ = storage.BodyBudget(key, entry);
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        long sum = 0;
-        for (var i = 0; i < 1000; i++) sum += storage.BodyBudget(key, entry);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var (budget, sum, allocated) = await MeasureBodyBudgetOnOwnedThread(storage, key, entry);
         Assert.Equal(budget * 1000, sum);
         Assert.Equal(0, allocated);
         Assert.True(await storage.TrySetAsync(key, entry, TimeSpan.FromMinutes(1), default));
         Assert.Equal("client:abc", Assert.Single(owner.Core.List()).UrlTarget);
+    }
+
+    // Preserve the original 100 warmups, one 1,000-call batch and exact-zero assertion.
+    // Thread setup/completion and the async test runner stay outside the synchronous probe.
+    private static Task<(long Budget, long Sum, long Allocated)> MeasureBodyBudgetOnOwnedThread(
+        IHttpCacheStorage storage, string key, HttpCacheEntry entry)
+    {
+        var completion = new TaskCompletionSource<(long, long, long)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (ExecutionContext.SuppressFlow())
+        {
+            new Thread(() =>
+            {
+                try
+                {
+                    var budget = storage.BodyBudget(key, entry);
+                    for (var i = 0; i < 100; i++) _ = storage.BodyBudget(key, entry);
+                    var (sum, allocated) = MeasureBodyBudget(storage, key, entry);
+                    completion.SetResult((budget, sum, allocated));
+                }
+                catch (Exception error) { completion.SetException(error); }
+            })
+            { IsBackground = true }.Start();
+        }
+        return completion.Task;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static (long Sum, long Allocated) MeasureBodyBudget(IHttpCacheStorage storage, string key, HttpCacheEntry entry)
+    {
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        long sum = 0;
+        for (var i = 0; i < 1000; i++) sum += storage.BodyBudget(key, entry);
+        return (sum, GC.GetAllocatedBytesForCurrentThread() - before);
     }
 
     [Theory]

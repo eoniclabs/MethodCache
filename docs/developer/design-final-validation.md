@@ -8,6 +8,17 @@ final PR records acceptance evidence without changing the generated contract or 
 Its CI lease fix also covers remote checkout/collection before builds, so those operations cannot
 overlap an exclusive benchmark batch.
 
+The complete e84a549 checkpoint passed all Linux jobs and macOS/Windows build/unit jobs:
+**2,519 tests in 16 projects, zero failures, one intentional opt-in soak skip**, with required
+native backends, 90 randomized properties, enabled soak, cultures, 172 AOT signatures,
+installed packages and docs green. This includes the final epoch/telemetry allocation
+fixtures. All three platform and aggregate statuses were verified success. Its shipped
+sources exactly match standalone runtime 12bf99d; unfinished #132/SipHash and section-10
+timing are not included. [Full checkpoint, exact exits and original logs](../../plans/design-benchmarks/net10-functional-e84a549/).
+The earlier [b518139 checkpoint](../../plans/design-benchmarks/net10-functional-b518139/)
+is retained as history. This checkpoint predates the later body-budget probe isolation below;
+that test-only change and the forwarded lower-stack heads still require current-head CI.
+
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
 The enabled soak, both cultures, 90 randomized properties, demo, native HTTP/AOT smoke, all 172
@@ -18,6 +29,15 @@ HTTP diff coverage is **95.7% (733/766)** and cumulative design coverage is **93
 The .NET-10-only PR adds no executable C# lines. Full receipt and environment details are in
 [.NET 10 verification](design-net10-validation.md), with [selected logs](../../plans/design-benchmarks/net10-functional-28ab9b2/).
 Earlier .NET 8/9 results below describe their historical revisions, not additional supported targets.
+
+The newer HTTP-optimized standalone #130 source `12bf99d877c33925fe0d0037f45e652d0260d8a4`
+subsequently passed every Linux functional job: 2,476 tests in 16 projects, zero failures,
+one intentional soak skip; required native backends, 90 randomized properties, enabled soak,
+cultures, demo, 172 AOT signatures and all installed-package checks. Windows/macOS build and unit
+jobs pass. Cumulative coverage is 3,462/3,686 (93.9%). Its overall CI nevertheless failed because
+`llms-full.txt` lacked the three generated HTTP changelog lines. That drift is repaired in the
+stack; newer-head CI remains required. This receipt does not include #131's additional policy
+fixtures or unfinished #132/hash changes. [Exact jobs, exits and failure](../../plans/design-benchmarks/net10-functional-12bf99d/).
 
 After that complete pipeline, two allocation probes were moved into synchronous NoInlining helpers,
 outside assertion/async test scaffolding, with unchanged zero-byte assertions and explicit completed-hit
@@ -31,11 +51,22 @@ and updated-probe output is preserved alongside this final receipt.
 
 ## Remaining acceptance gates
 
+- Claude's PR #132 and subsequent SipHash testing are still in progress, as Johan confirmed on
+  2026-10-15. Do not freeze a combined final contract/hash candidate or launch its complete timing
+  matrix until that work is ready. Independent HTTP and baseline-precision checks can continue.
 - Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
   independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
   intervals are insufficient evidence. There is no accepted full-series timing result yet.
 - Prefix component/facade measurements and current HTTP publication results must pass the same review.
 - Every published head needs its required three-platform CI; drafts remain unmerged meanwhile.
+
+An additional historical #129 package run at 2bb7c0 failed its net8.0 SQL independent-process
+check at phase 2, exit 5: the L2 value and zero origin calls had passed, but the expected key
+was absent from the following local admin list. Three fixed diagnostic SQL rounds on macOS/.NET 10
+pass all 27 process phases with the original assertions and installed Core source; they do not
+explain or repair the Linux observation. No production/assertion change is claimed. The supported
+12bf99d net10 package job passes separately; latest-head CI remains required. Preserve this failure
+as unresolved evidence: [original output and diagnostic provenance](../../plans/design-benchmarks/seed-isolation-admin-observation/).
 
 The approved one-off Nimbus series uses the existing pinned .NET 10 image, frozen identical workloads,
 exclusive nonblocking capacity leases of at most 25 minutes per batch and exact task-owned cleanup.
@@ -268,7 +299,13 @@ with unchanged source/runtime/GC/JIT/features. No host governor, boost or servic
 four-case launch completed, but the verifier parsed BDN's binary affinity display in the wrong radix;
 its original nonzero validation exit and complete diagnostic reports are retained. A fresh three-run
 pilot uses corrected parsing. No first-run timing is pooled into that pilot or claimed as acceptance.
-The untimed component controller was stopped before preparation to await a sufficiently precise protocol.
+The component timing controller was stopped before preparation to await a sufficiently precise protocol.
+Its later preparation-only controller failed during provider setup, before any timing. The standalone
+harness selected BDN's transitive DI 6 implementation with DI 9 abstractions. This was reproduced
+locally; explicitly selecting DI 9, as the benchmark tests do, makes all component setup checks pass
+against both PR5 and the prefix runtime. The generated harness now includes those executable guards
+and preserves a setup exception instead of masking it during cleanup. Native-host preparation and
+actual timing remain required; see `plans/design-benchmarks/component-harness-startup/`.
 
 ## Local epoch allocation probe follow-up
 
@@ -280,13 +317,40 @@ revised test fail with 1,520,000 bytes. Restored source passes the complete 320-
 the historical three-target checkout. The original failure is retained without attributing its bytes
 to a proven cause: `plans/design-benchmarks/local-epoch-probe-isolation/`.
 
+The later #132 Linux/tr-TR run at 94ee6f0 still reports 680 bytes in that owned-thread single batch.
+The follow-up fixture completes three fixed 10,000-capture batches after the same 1,000 warmups
+and requires a zero-byte batch, without tolerance or adaptive retry. It checks sustained per-call
+allocation, not every possible transient runtime allocation. All 30,000 captures also must return
+the same identity object. A mutation copying only the first measured identity fails; an escaping
+128-byte temporary buffer while returning the original identity fails with 1,520,000 bytes in each
+batch. Production source is restored byte for byte. All 320 HTTP facts pass on net10.0 under the
+default, tr-TR and sv-SE cultures. The original cause remains unproven, and whole-path performance
+allocation gates plus latest-head CI remain required. Exact receipts are in that directory's
+`fixed-batches/` subdirectory.
+
+## No-listener telemetry probe follow-up
+
+Historical net10 head 0626bdb passed Linux/Windows but its macOS unit job measured 2,256 bytes
+in the no-listener telemetry test. That probe included an assertion inside the measured loop
+and left BeginLoad unwarmed. The revised final-PR fixture warms both operations on an owned
+thread, then measures the same 10,000 pairs in a synchronous NoInlining helper with assertions,
+setup and completion outside it. The single batch still must allocate exactly zero bytes,
+without tolerance or resampling; a non-null operation fails explicitly. The original byte
+source remains unproven. Adding an escaping temporary buffer to either API fails with 1,520,000 bytes.
+
+The complete Core suite passes 1,035 facts, zero failures and one intentional soak skip in the
+default, tr-TR and sv-SE cultures. The formerly duplicated AppendNullPart theory row is now a
+separate fact, so both null APIs receive distinct assertions and the duplicate-ID warning is
+gone. Production source is unchanged. [Failure, sensitivity and final-suite receipts](../../plans/design-benchmarks/telemetry-allocation-probe/)
+do not replace latest-head CI or the whole-path performance allocation gate.
+
 ## Independent-run precision follow-up
 
 The first two CPU2-affinity baseline GenericHit means imply that even the best possible positive
 third mean would leave a relative three-launch 95% interval half-width of at least 7.51%.
-A fixed nine-launch baseline precision study retains the initial three and adds six independent
-GenericHit launches with the same source/job/affinity, before examining source-change comparisons.
-It is diagnostic only; neither this calculation nor the new helper marks a performance gate passed.
+This originally motivated a nine-launch GenericHit supplement, but it was stopped before any timing
+and replaced by the separate all-four-hit startup-affinity study described below. Its samples will
+not be pooled with the earlier pilot. Neither the calculation nor the helper passes a performance gate.
 
 The statistical report now supports complete fixed series of three, six or nine independent
 launches, with the matching Student-t degrees of freedom. An explicit exact-method selector permits
@@ -319,7 +383,38 @@ retain all six launches, full source SHAs, actual per-report SDK/runtime/CPU and
 
 The complete v2 affinity baseline pilot still has wide Sync/Generic/Task intervals (relative half-widths
 12.31%, 8.05%, 4.05%; ValueTask 1.73%). Raw three-launch evidence is retained under independent-run-precision.
-The unstarted Generic-only supplement was stopped without a child or any timing. Its replacement is a
-fixed nine-launch all-four-hit v3 study, with parent startup affinity and an explicit ProcessorCount/affinity
-probe required before timing. It is a controlled precision diagnostic; earlier samples are not pooled and
-no cause of the v2 variance is claimed. Full timing remains pending for the new 12bf99d HTTP candidate.
+The unstarted Generic-only supplement was stopped without a child or any timing. Its replacement,
+the nine-launch V3 startup-affinity study, stopped after its first batch with validation exit 1.
+The parser misread BDN's short binary display; the original log also records failed BDN affinity
+changes after startup CPU availability was restricted. Complete raw evidence remains diagnostic.
+Fresh V4 uses startup taskset only and samples the actual OS CPU sets of the host and all four
+executed benchmark child PIDs, rejecting missing observations or mismatches. Nine fixed baseline
+launches are pending, without pooling earlier protocols. All 31 validation-helper tests pass;
+neither those tests nor these baseline pilots pass the final timing gate. [Failure, primary-source
+analysis and frozen V4 protocol](../../plans/design-benchmarks/independent-run-precision/startup-affinity-validation/).
+Full timing remains pending for the standalone HTTP candidate and the finished combined contract/hash source.
+
+## HTTP 304 response-reuse directional follow-up
+
+The first post-fix prefix/candidate pair completed on Nimbus with four cases and empty
+interference guards. Candidate 12bf99d reduces allocation from 8,256 bytes to 7,536
+without listeners and 7,736 with listeners, but its four means remain 2.68–9.77% slower
+than prefix850 in this pair. One pair cannot prove a section-10 pass or a reproducible
+regression. The earlier three-run failure is not cleared; a fresh fixed three-pair
+alternating comparison is required. No timing samples are pooled across these protocols.
+[Exact means, sources, raw reports and guards](../../plans/design-benchmarks/http-304-response-reuse-pair/).
+
+## Strict body-budget allocation probe follow-up
+
+The Linux coverage job at net10 head 7a3b9a8 failed the body-budget probe for the
+method-before-generation input: expected zero, observed 7,696 bytes. Ordinary Linux
+tests and the local pre-change coverage probe pass, so the original byte provenance
+remains unproven. The same 100 warmups and one 1,000-call measurement now run in a
+synchronous NoInlining helper on an owned thread without inherited ExecutionContext.
+The exact-zero, exact sum and stored target assertions remain, with all three inputs
+and no tolerance, minimum or retry. A temporary target-string regression fails all
+three cases with 48,000 bytes. Production is restored byte for byte; all 320 HTTP facts
+pass with coverage under default/tr-TR/sv-SE on net10. This is local fixture verification,
+not current-head Linux acceptance or a performance result. The new fixture is forwarded
+through #129/#130/#131 and requires fresh CI.
+[Original failure, red mutation and complete green suites](../../plans/design-benchmarks/body-budget-probe-isolation/).
