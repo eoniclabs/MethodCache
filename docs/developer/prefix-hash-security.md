@@ -1,26 +1,41 @@
 # Prefix hashing review
 
-The prototype uses SipHash-2-4 with a fresh 128-bit process-secret key from `RandomNumberGenerator`, hashing exact
-UTF-16 little-endian bytes. Each immutable invocation snapshot holds the unfinished state after its prefix. Lookup
-finishes a copy after the current suffix. String, span and fallback paths use the same algorithm and secret. All
-comparisons still check the entire text ordinally. No seed/state/hash is serialized or used as an external identity.
+The current candidate uses the **Marvin32 randomized string hash used by .NET 10** with an independent
+64-bit process-secret seed from `RandomNumberGenerator`. Exact UTF-16 little-endian input is preserved,
+including isolated surrogates. Immutable invocation snapshots retain unfinished prefix state; a lookup
+finishes a copy with its current suffix. Every dictionary path uses this algorithm and seed. Equality
+always compares the complete key ordinally. Hashes and seeds never become external identities.
 
-SipHash was designed for adversarial hash-table inputs. The [authors' specification](https://www.aumasson.jp/siphash/siphash.pdf)
-and [reference implementation/security statement](https://github.com/veorq/SipHash) define the 2 compression / 4 finalization
-rounds and secret-key requirement. A random seed on a fast unkeyed hash is insufficient; no claim relies on random
-input distribution or BCL's collision-triggered rehashing. The custom comparer does not receive that BCL protection.
+The security basis is the runtime's [randomized string comparer](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/Collections/Generic/RandomizedStringEqualityComparer.cs)
+and [Marvin implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/Marvin.cs).
+The runtime's [nonrandomized comparer](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/Collections/Generic/NonRandomizedStringEqualityComparer.cs)
+switches to that randomized algorithm when collisions exceed its threshold. This custom comparer starts
+with that defense immediately; it cannot rely on the dictionary recognizing it and performing that switch.
+This is a specific runtime-vetted keyed algorithm, not an arbitrary fast hash with a random initial value.
 
-The 64-bit PRF output is folded to the dictionary's required 32-bit hash. This does not give 128-bit collision
-resistance: ordinary birthday collisions in 32 output bits remain possible. Its purpose is to prevent an attacker
-without the secret from cheaply preparing a large reusable collision family. An adaptive online oracle, excessive
-request volume, enormous key text, or a compromised application can still consume resources. Application admission,
-authorization and request size limits remain necessary; the cache's entry/weight bounds still apply. Process secrets
-and unfinished states must never appear in logs, administration, telemetry, storage or wire frames.
+This does **not** make Marvin a cryptographic PRF or establish cryptographic collision resistance.
+The secret has 64 bits and the output 32 bits. Ordinary birthday collisions, an adaptive online oracle,
+resource exhaustion through request volume or very long inputs, and compromised application code remain
+outside the guarantee. The intended protection is against cheaply preparing a reusable offline collision
+family without knowing the secret, matching the randomized-comparer defense used by the runtime.
+Application admission, authorization and request limits remain necessary. The change does not claim
+stronger protection than .NET's randomized strings. No seed/state/hash is exposed through logs, metrics,
+admin, L2 or wire frames.
 
-Validation includes the authors' 64 pinned reference vectors; CsCheck across arbitrary byte and UTF-16 split points,
-including isolated surrogates; buffer growth and append after lookup; and forced collisions in an individual engine.
-The immutable test-only comparer mask never changes process-global state. Adversarial cases include embedded NUL,
-long shared prefixes and structured suffixes; work is assessed by bounded hash-chain comparison counts rather than timing asserts.
+The byte-stream implementation is checked against a separately vendored, MIT-licensed .NET v10.0.0
+reference algorithm across all byte splits and several fixed seeds. CsCheck covers arbitrary seeds,
+UTF-16 splits, empty parts, growth and append after lookup, including the specialized UTF-16 finalizer.
+Deterministic Aa/BB polynomial-collision families, long common prefixes, NUL and isolated surrogates
+are assessed using bounded equality-chain work, not fragile nanosecond assertions. These cases are
+regression evidence; their distribution alone is not the security argument. Forced-collision engine
+tests cover every key path, concurrent publication, removal and frequency/eviction behavior.
 
-This is an implementation candidate. Functional, frozen-vendor/AOT, backend identity and section-10 performance gates
-must pass before treating the optimization as complete. Security is not traded away for a faster sub-benchmark.
+A per-thread memo retains at most one immutable string of at most 2048 UTF-16 code units and its hash.
+It checks **reference identity**, so another owner is independently hashed; larger keys are not retained.
+It only avoids hashing the same owned key again during lookup/publication/eviction. The process seed
+never changes, and test-only collision masks are applied after this memo. It is not a value cache.
+
+The earlier SipHash-2-4 candidate had correct author vectors and unchanged allocations but failed the
+section-10 timing gate (see design-prefix-preflight.md). That failed implementation remains in history;
+it is not silently counted as an approved optimization. The current algorithm and full-path results
+must pass the same functional, frozen-vendor/AOT, backend-identity and timing gates before completion.

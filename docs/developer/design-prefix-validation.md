@@ -1,9 +1,9 @@
 # Prefix-hash candidate: functional verification
 
-Library implementation: `3aa4800`, based on PR 5 `2f4a91d0c9144dd0cd9de3482291f365c4443508`.
+Initial SipHash library implementation: `3aa4800`, based on PR 5 `2f4a91d0c9144dd0cd9de3482291f365c4443508`.
 This is a candidate until the full section-10 timing gates pass. No 15–20 ns / 20% performance claim is made.
 
-- F01: 64 pinned author SipHash-2-4 vectors at every byte split; CsCheck with arbitrary seeds/UTF-16 splits,
+- F01 for the initial implementation: 64 pinned author SipHash-2-4 vectors at every byte split; CsCheck with arbitrary seeds/UTF-16 splits,
   isolated surrogates, escaping, empty parts, buffer growth, fallback keys and Append after lookup.
   Finalization copies state; snapshot prefix data never changes.
 - F02: forced collisions across string/span/builder insert/read/replace/remove, a dictionary model, concurrent
@@ -29,3 +29,14 @@ and all phases pass on Redis and SQL. It adds no sleeps and does not weaken prod
 
 The full-path/component, listener, L2 and cumulative timing gates remain pending; functional green is not timing
 evidence. Existing broader PR 2/3/4/5 performance obligations remain in the execution tracker.
+
+## Current replacement candidate
+
+The initial SipHash timing gate failed; see [the recorded measurements](design-prefix-preflight.md).
+The current replacement uses the .NET randomized Marvin algorithm, independently checked against a pinned
+v10.0.0 reference oracle. UTF-16 suffix finalization, all byte splits, immutable string memo interleaving,
+forced collisions and append/growth are covered. Its security basis and limits are described in the
+[updated review](prefix-hash-security.md). The 6,945-test/full-package evidence above belongs to the initial
+implementation and must not be attributed to the replacement until rerun. A default-builder regression
+first failed (empty-string hash memo contamination) and was corrected before the replacement was committed.
+Current targeted net10 tests pass; broader functional and timing verification remains pending.

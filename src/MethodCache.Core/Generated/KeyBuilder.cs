@@ -23,6 +23,8 @@ public ref struct KeyBuilder
     private Span<char> _chars;
     private int _length;
     private int _prefixLength;
+    private int _lastHash;
+    private int _lastHashLength;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal KeyBuilder(Span<char> initialBuffer, CallSnapshot binding)
@@ -30,6 +32,8 @@ public ref struct KeyBuilder
         _chars = initialBuffer;
         _length = 0;
         _prefixLength = 0;
+        _lastHash = 0;
+        _lastHashLength = -1;
         _text = null;
         Binding = binding;
     }
@@ -40,6 +44,8 @@ public ref struct KeyBuilder
         _chars = default;
         _length = 0;
         _prefixLength = 0;
+        _lastHash = 0;
+        _lastHashLength = -1;
         _text = text;
         Binding = binding;
     }
@@ -47,19 +53,31 @@ public ref struct KeyBuilder
     internal void UseSnapshotPrefix() => _prefixLength = _length;
 
     // Always hash the current suffix. An Append after a lookup cannot reuse a stale final hash.
-    internal readonly int LookupHash()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal int LookupHash()
     {
-        if (_prefixLength == 0) return ProcessKeyHash.Compute(AsSpan());
-        var state = Binding.PrefixHash;
-        state.AppendUtf16(AsSpan()[_prefixLength..]);
-        return state.Finish32();
+        var hash = ComputeCurrentHash();
+        _lastHash = hash;
+        _lastHashLength = AsSpan().Length;
+        return hash;
+    }
+
+    private readonly int ComputeCurrentHash()
+    {
+        if (_prefixLength == 0) return Binding.HashKey(AsSpan());
+        return Binding.PrefixHash.FinishUtf16(AsSpan()[_prefixLength..]);
     }
 
     /// <summary>The key written so far. Valid until the builder is appended to again.</summary>
     public readonly ReadOnlySpan<char> AsSpan() => _text is { } text ? text.AsSpan() : _chars[.._length];
 
     /// <summary>Returns the key as a string.</summary>
-    public override readonly string ToString() => _text ?? new string(_chars[.._length]);
+    public override readonly string ToString()
+    {
+        var text = _text ?? new string(_chars[.._length]);
+        if (Binding != null) ProcessKeyHash.Remember(text, _lastHashLength == text.Length ? _lastHash : ComputeCurrentHash());
+        return text;
+    }
 
     /// <summary>Appends text as is, such as a key prefix from <see cref="MethodCacheKeys.Prefix"/>.</summary>
     public void Append(string value)

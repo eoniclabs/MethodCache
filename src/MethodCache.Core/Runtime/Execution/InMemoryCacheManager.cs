@@ -363,10 +363,10 @@ namespace MethodCache.Extensibility
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedTextTask<T>(string key, PolicyGeneration generation, string name, [NotNullWhen(true)] out Task<T>? task)
+        internal bool TryGetGeneratedTextTask<T>(string key, MethodCache.Generated.CallSnapshot binding, PolicyGeneration generation, string name, [NotNullWhen(true)] out Task<T>? task)
         {
             var now = _engine.Now;
-            if (AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
+            if (AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, binding, now, out var found) ? found : null,
                 now, out T? value, out var node, generation))
             {
                 RecordHitTelemetry(name, node);
@@ -378,10 +378,10 @@ namespace MethodCache.Extensibility
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetGeneratedTextValue<T>(string key, PolicyGeneration generation, string name, out T? value)
+        internal bool TryGetGeneratedTextValue<T>(string key, MethodCache.Generated.CallSnapshot binding, PolicyGeneration generation, string name, out T? value)
         {
             var now = _engine.Now;
-            if (!AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, now, out var found) ? found : null,
+            if (!AcceptFastNode(_options.EnableFastPath && _engine.TryGet(key, binding, now, out var found) ? found : null,
                 now, out value, out var node, generation)) return false;
             RecordHitTelemetry(name, node);
             return true;
