@@ -42,3 +42,25 @@ actual storage mode before measuring, and fresh-hit/miss origin counts still pro
 setup checks then passed on the historical base (`/tmp/methodcache-http-legacy-guard-green.log`). This reflection is
 setup-only and is absent from measured code. Preserved-cookie bypass is classified as a separate workload where the
 earlier API did not offer KeepCookies.
+
+## Rejected initial broad timing attempt
+
+The first 62-case final launch and the interrupted prefix launch at `5fa2d16` are **not acceptance evidence**.
+The initial activity monitor recognized .NET build/test processes but missed concurrent external Flutter tests.
+Four Flutter workers were observed at roughly 79%, 78%, 76% and 26% CPU while the prefix launch was active;
+individual sample times also drifted substantially. This observation does not identify the cause of every earlier
+sample. The complete attempt is rejected rather than treating an absence of .NET activity as quiet-machine proof.
+
+Only this task's BDN host was interrupted; its native containers were disposed, and external tasks were untouched.
+[Raw reports, logs and rejection record](../../plans/design-benchmarks/series-rejected-dotnet-only-5fa2d16/) are retained.
+The new Flutter-worker regression test failed before the guard fix. Five guard tests now pass, covering external
+workers, own benchmark descendants, unrelated backend/apps and multiline process arguments. Local timing is also
+separated from native backend startup. The entire acceptance matrix must be repeated with the corrected guard.
+
+## Final exported API audit
+
+The replaced fluent root/service/group interfaces had no public entry point after startup moved to
+`MethodCacheBuilder`, but remained exported. Three new API-shape cases failed before internalizing those types and
+passed after the change. Public method configuration results remain available. Public API records and XML references
+are updated; the generated contract-1 surface and frozen vendors are unaffected. The complete release pipeline is
+rerun for this source change before restarting frozen timing.

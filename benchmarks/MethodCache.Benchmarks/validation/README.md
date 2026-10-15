@@ -15,16 +15,23 @@ containers. It does not print credentials or touch a production backend.
 top of the script. Each manifest records absolute runtime roots, full SHAs and workload SHA256 checksums. Every
 revision must use identical workloads. Source changes require rebuilding the relevant harness and a fresh evidence
 directory. The script runs 62 cases in three independent launches per revision, descending/ascending/descending,
-so adjacent base/change order alternates. Every launch owns fresh native backends, uses concurrent workstation GC,
+so adjacent base/change order alternates. Local families (46 cases) run without test containers; native families
+(16 cases) own fresh backends. This gives 48 family launches covering 24 complete revision rounds. Each uses concurrent workstation GC,
 16 warmups and 12 measured 500ms iterations. It checks every report for measured results; a zero host exit code alone
 does not establish successful benchmarks.
 
 Builds/tests must finish before timing. A minute of observed quiet is required, and concurrent external
-build/test activity makes the affected launch inadmissible. Other jobs are never terminated. Logs and JSON retain
+build/test activity makes the affected launch inadmissible. The process guard recognizes .NET, Flutter/Dart and
+other common test/build runners, and excludes the benchmark's own compilation descendants. It is a useful check,
+not proof against every possible source of system load. Other jobs are never terminated. Logs and JSON retain
 all failed or interrupted attempts; a restart must preserve rejected attempt directories before reusing a run name.
 The script only gathers evidence: section-10 acceptance still requires 95% intervals over the three independent run
 means, allocation comparisons and review of uncertain/regressed cases. New RoundTrip/KeepCookies behavior is reported
 separately where the historical feature was absent.
+
+Run the guard regression tests with `python3 -m unittest discover -s benchmarks/MethodCache.Benchmarks/validation`.
+The Flutter-worker case failed before the broadened guard; own benchmark descendants and normal backend/app
+processes are checked separately. Interrupted evidence from the earlier .NET-only monitor is explicitly rejected.
 
 `create-prefix-harness.py --runtime-root CHECKOUT --workloads-root WORKLOAD_CHECKOUT --output OUTPUT` adds the separate
 prefix-state/whole-span lookup and full contract-1 facade matrix: short/long prefixes, growing/large buffers,

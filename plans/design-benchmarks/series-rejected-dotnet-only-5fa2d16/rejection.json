@@ -1,0 +1,13 @@
+{
+  "status": "rejected, not performance acceptance",
+  "reason": "External Flutter test workers were observed at high CPU during the prefix launch. The initial monitor covered only .NET, so neither this interrupted launch nor the earlier full launch establishes quiet execution for other test stacks. No causal claim is made for every individual sample.",
+  "observed_cpu_percent_flutter_workers": [
+    79.0,
+    78.2,
+    75.6,
+    25.7
+  ],
+  "interruption": "Only own BDN host received SIGINT; own Redis/SQL containers were disposed. External jobs were untouched.",
+  "runtime_sha": "5fa2d16f24e14b8a9b1515efcc39bb679d8742c5",
+  "corrective_action": "Recognize Flutter/Dart and other test/build workers; separate local timing from native test containers; repeat all accepted evidence."
+}

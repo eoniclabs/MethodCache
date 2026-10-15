@@ -1,0 +1,27 @@
+[testcontainers.org 00:00:00.07] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.15] Docker container 5d27c62a23ec created
+[testcontainers.org 00:00:00.17] Start Docker container 5d27c62a23ec
+[testcontainers.org 00:00:00.27] Wait for Docker container 5d27c62a23ec to complete readiness checks
+[testcontainers.org 00:00:01.29] Docker container 5d27c62a23ec ready
+[testcontainers.org 00:00:01.34] Docker container af91349214dc created
+[testcontainers.org 00:00:01.34] Docker container 28b7d1178633 created
+[testcontainers.org 00:00:01.35] Start Docker container af91349214dc
+[testcontainers.org 00:00:01.35] Start Docker container 28b7d1178633
+[testcontainers.org 00:00:01.43] Wait for Docker container af91349214dc to complete readiness checks
+[testcontainers.org 00:00:01.43] Wait for Docker container 28b7d1178633 to complete readiness checks
+[testcontainers.org 00:00:01.44] Execute "redis-cli ping" at Docker container 28b7d1178633
+[testcontainers.org 00:00:01.44] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container af91349214dc
+[testcontainers.org 00:00:01.48] Docker container 28b7d1178633 ready
+[testcontainers.org 00:00:01.50] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container af91349214dc
+[testcontainers.org 00:00:07.23] Docker container af91349214dc ready
+Verified complete measured cases: 62
+[testcontainers.org 00:21:11.35] Delete Docker container af91349214dc
+[testcontainers.org 00:21:11.61] Delete Docker container 28b7d1178633

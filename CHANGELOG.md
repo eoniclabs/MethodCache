@@ -45,6 +45,8 @@ release.
 - Reduce ICacheManager to four async operations with immutable options and explicit invalidation results.
 - Retire local generations on effective policy changes, isolate runtime L2 namespaces and validate L2 lifetimes from first publication.
 - Internalize policy/key/backplane implementation APIs and remove public cache callbacks and memory tuning switches.
+- Keep the replaced fluent root/service/group coordinators internal; startup configuration uses `MethodCacheBuilder`
+  and retains its public method configuration results.
 
 ### Generated contract and explicit startup registration
 

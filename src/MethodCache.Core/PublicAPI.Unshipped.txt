@@ -288,13 +288,6 @@ MethodCache.ICacheStats.LocalMethodEntries.get -> long
 MethodCache.ICacheStats.Misses.get -> long
 MethodCache.ICacheStats.ObservedDistributedEntries.get -> long
 MethodCache.ICacheStats.TotalWeight.get -> long
-MethodCache.IFluentGroupConfiguration
-MethodCache.IFluentGroupConfiguration.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentGroupConfiguration!
-MethodCache.IFluentMethodCacheConfiguration
-MethodCache.IFluentMethodCacheConfiguration.DefaultPolicy(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodCacheConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.FailSafe(System.TimeSpan duration, System.TimeSpan? timeout = null, System.TimeSpan? retryAfter = null) -> MethodCache.IFluentMethodCacheConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.ForGroup(string! name) -> MethodCache.IFluentGroupConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.ForService<TService>() -> MethodCache.IFluentServiceConfiguration<TService>!
 MethodCache.IFluentMethodConfiguration
 MethodCache.IFluentMethodConfiguration.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration!
 MethodCache.IFluentMethodConfiguration.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration!
@@ -304,12 +297,6 @@ MethodCache.IFluentMethodConfiguration<TResult>.CacheWhen(System.Func<TResult, b
 MethodCache.IFluentMethodConfiguration<TResult>.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithVersion(int version) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>
-MethodCache.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Action<TService>!>! method) -> MethodCache.IFluentMethodConfiguration!
-MethodCache.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! method) -> MethodCache.IFluentMethodConfiguration!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.ValueTask<TResult>>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IRuntimeCacheConfigurator
 MethodCache.IRuntimeCacheConfigurator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 MethodCache.IRuntimeCacheConfigurator.GetOverridesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.RuntimeOverride!>!>!
