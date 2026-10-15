@@ -1,0 +1,78 @@
+=== cultures
+== Tests under tr_TR
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll içinde sunulan test çalışması filtresi `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` ile eşleşen test yok
+/home/agent-admin/methodcache-ci/runs/20261015-181718-94ee6f0c1525/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll içinde sunulan test çalışması filtresi `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` ile eşleşen test yok
+
+
+
+Başarılı!  - Başarısız:     0, Başarılı:    16, Atlanan:     0, Toplam:    16, Süre: 601 ms - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+[xUnit.net 00:00:01.10] MethodCache.Core.Tests: Skipping test case with duplicate ID '13a0e88de602a5b59a614dbf806fe8d4261c32c5' ('MethodCache.Core.Tests.Core.MethodCacheKeyBuilderTests.AppendPart_WritesTheSameTextAsMethodCacheKeys(built: "Prefix:\\0", part: "\\0")' and 'MethodCache.Core.Tests.Core.MethodCacheKeyBuilderTests.AppendPart_WritesTheSameTextAsMethodCacheKeys(built: "Prefix:\\0", part: "\\0")')
+
+Başarılı!  - Başarısız:     0, Başarılı:    52, Atlanan:     0, Toplam:    52, Süre: 803 ms - MethodCache.Redis.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:     4, Atlanan:     0, Toplam:     4, Süre: 437 ms - MethodCache.CompatTests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:     2, Atlanan:     0, Toplam:     2, Süre: 804 ms - MethodCache.Samples.Tests.dll (net10.0)
+[xUnit.net 00:00:02.00]     MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup [FAIL]
+  Başarısız MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup [272 ms]
+  Hata İletisi:
+   Assert.Equal() Failure: Values differ
+Expected: 0
+Actual:   680
+  Yığın İzleme:
+     at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.UnchangedLocalEpochVector_DoesNotAllocatePerLookup() in /_/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs:line 13
+--- End of stack trace from previous location ---
+
+Başarılı!  - Başarısız:     0, Başarılı:    29, Atlanan:     0, Toplam:    29, Süre: 1 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+
+Başarısız! - Başarısız:     1, Başarılı:   319, Atlanan:     0, Toplam:   320, Süre: 1 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    49, Atlanan:     0, Toplam:    49, Süre: 2 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:   119, Atlanan:     0, Toplam:   119, Süre: 4 s - MethodCache.Docs.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    91, Atlanan:     0, Toplam:    91, Süre: 5 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    71, Atlanan:     0, Toplam:    71, Süre: 6 s - MethodCache.Analyzers.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    66, Atlanan:     0, Toplam:    66, Süre: 7 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+[xUnit.net 00:00:13.08]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Atlandı MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Başarılı!  - Başarısız:     0, Başarılı:  1034, Atlanan:     1, Toplam:  1035, Süre: 11 s - MethodCache.Core.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    42, Atlanan:     0, Toplam:    42, Süre: 15 s - MethodCache.SqlServer.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:   533, Atlanan:     0, Toplam:   533, Süre: 43 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)
