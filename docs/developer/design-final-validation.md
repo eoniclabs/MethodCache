@@ -19,6 +19,15 @@ The .NET-10-only PR adds no executable C# lines. Full receipt and environment de
 [.NET 10 verification](design-net10-validation.md), with [selected logs](../../plans/design-benchmarks/net10-functional-28ab9b2/).
 Earlier .NET 8/9 results below describe their historical revisions, not additional supported targets.
 
+The newer HTTP-optimized standalone #130 source `12bf99d877c33925fe0d0037f45e652d0260d8a4`
+subsequently passed every Linux functional job: 2,476 tests in 16 projects, zero failures,
+one intentional soak skip; required native backends, 90 randomized properties, enabled soak,
+cultures, demo, 172 AOT signatures and all installed-package checks. Windows/macOS build and unit
+jobs pass. Cumulative coverage is 3,462/3,686 (93.9%). Its overall CI nevertheless failed because
+`llms-full.txt` lacked the three generated HTTP changelog lines. That drift is repaired in the
+stack; newer-head CI remains required. This receipt does not include #131's additional policy
+fixtures or unfinished #132/hash changes. [Exact jobs, exits and failure](../../plans/design-benchmarks/net10-functional-12bf99d/).
+
 After that complete pipeline, two allocation probes were moved into synchronous NoInlining helpers,
 outside assertion/async test scaffolding, with unchanged zero-byte assertions and explicit completed-hit
 requirements. The four relevant facts pass again on .NET 10. Later source changes are described below; the 28ab9b2 receipt is historical evidence for its exact revision. Benchmark workloads were
