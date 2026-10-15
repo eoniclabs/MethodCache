@@ -371,16 +371,12 @@ namespace MethodCache.SourceGenerator
             }
 
             /// <summary>
-            /// Emits the key and the hit lookup for methods whose arguments are all simple values. On .NET 9 and later
-            /// the key is written into a stack buffer and looked up as a span, so a hit allocates no key string; the
-            /// string is only made on a miss. Older frameworks have no allocation-free dictionary lookup, so they keep
-            /// the string key.
+            /// Emits the key and the hit lookup for methods whose arguments are all simple values.
+            /// The key is written into a stack buffer and looked up as a span, so a hit allocates no key string;
+            /// the string is only made on a miss.
             /// </summary>
             private static void EmitStackKeyLookup(StringBuilder sb, List<IParameterSymbol> keyParams, ResultKind kind, ITypeSymbol valueType, string safeFieldName, INamedTypeSymbol serviceType, IMethodSymbol method)
             {
-                TryBuildInlineKey(keyParams, out var stringKey, out _);
-
-                sb.AppendLine("#if NET9_0_OR_GREATER");
                 // Strings and generic prefixes are unbounded; retain their previous 256-char capacity.
                 var bounded = !serviceType.IsGenericType && !method.IsGenericMethod && keyParams.All(p => p.Type.SpecialType != SpecialType.System_String);
                 var argumentsBound = keyParams.Sum(p => MaxPartLength(p.Type) + 1);
@@ -397,11 +393,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
                 EmitHit(sb, kind, valueType, safeFieldName, "__mcKeyBuilder.AsSpan()");
                 sb.AppendLine("            var __mcKey = __mcKeyBuilder.ToString();");
-                sb.AppendLine("#else");
-                sb.AppendLine($"            var __mcKey = {stringKey};");
-                sb.AppendLine();
-                EmitHit(sb, kind, valueType, safeFieldName, "__mcKey");
-                sb.AppendLine("#endif");
             }
 
             private static int MaxPartLength(ITypeSymbol type)

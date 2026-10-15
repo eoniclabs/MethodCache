@@ -1,5 +1,7 @@
 # MethodCache.AspNetCore
 
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 

@@ -43,7 +43,7 @@ def verify(folder: Path) -> None:
             references = "".join(f'<PackageReference Include="{identifier}" Version="{requested}" />'
                                  for identifier, requested in packages)
             project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
-                               '<TargetFramework>net8.0</TargetFramework>'
+                               '<TargetFramework>net10.0</TargetFramework>'
                                '<WarningsAsErrors>NU1608</WarningsAsErrors>'
                                f'<RestorePackagesPath>{temporary / "packages"}</RestorePackagesPath>'
                                '</PropertyGroup><ItemGroup>' + references + '</ItemGroup></Project>')

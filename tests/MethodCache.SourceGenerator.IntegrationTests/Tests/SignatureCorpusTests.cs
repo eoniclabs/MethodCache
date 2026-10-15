@@ -8,7 +8,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Tests;
 
 /// <summary>
 /// Runs the generator over a corpus of interface shapes that real code uses, and checks each one end to end:
-/// the generated code compiles (with the C# 12 compiler of the .NET 8 SDK and with the latest language version),
+/// the generated code compiles (with C# 12 and the latest language version on the .NET 10 runtime),
 /// the generator reports nothing, and through the real <c>AddMethodCache()</c> registration a repeated call is
 /// served from the cache while a call that differs only in the shape under test reaches the implementation.
 /// </summary>
@@ -270,7 +270,6 @@ public class SignatureCorpusTests
         Assert.Equal(2, (int)compiled.Assembly.GetType("Scenario")!.GetMethod("Run")!.Invoke(null, null)!);
     }
 
-#if NET9_0_OR_GREATER
     [Fact]
     public async Task RefStructAllowanceReview_HandlesAnUnusedMethodTypeArgument()
     {
@@ -311,7 +310,6 @@ public class SignatureCorpusTests
         var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
         Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
     }
-#endif
 
     [Theory]
     [InlineData(false)]

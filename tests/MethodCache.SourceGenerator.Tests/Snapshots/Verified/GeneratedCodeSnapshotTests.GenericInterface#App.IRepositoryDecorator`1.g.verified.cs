@@ -54,7 +54,6 @@ namespace App
         global::System.Threading.Tasks.Task<__mcClassArgument0?> global::App.IRepository<__mcClassArgument0>.GetAsync(int __mcArgument0)
         {
             var __mcCall = this._method_Method0.Capture();
-#if NET9_0_OR_GREATER
             var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
@@ -64,16 +63,6 @@ namespace App
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
-#else
-            var __mcKey = string.Concat(__mcCall.KeyPrefix, global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument0));
-
-            var __mcKeyBuilder = __mcCall.BindTextKey(__mcKey);
-            if (__mcCall.TryGetTask<__mcClassArgument0?>(in __mcKeyBuilder, out var __mcCachedValue))
-            {
-                return __mcCachedValue!;
-            }
-
-#endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
             return __Load_Method0(__mcKey, __mcCall, __mcArgument0);
         }

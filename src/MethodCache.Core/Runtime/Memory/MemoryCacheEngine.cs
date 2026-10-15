@@ -57,11 +57,9 @@ internal sealed class MemoryCacheEngine
     private readonly record struct WriteTask(Node Node, WriteKind Kind);
 
     private readonly ConcurrentDictionary<string, Node> _map;
-#if NET9_0_OR_GREATER
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<ReadOnlySpan<char>> _spanLookup;
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<PrehashedKey> _keyLookup;
     private readonly bool _hasPrehashedLookup;
-#endif
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Node, byte>> _tagIndex = new(StringComparer.Ordinal);
     private readonly ReadBuffer _readBuffer = new();
     private readonly ConcurrentQueue<WriteTask> _writeBuffer = new();
@@ -112,10 +110,8 @@ internal sealed class MemoryCacheEngine
         // collision defenses. Generated-method stores use the process-secret prefix comparer.
         IEqualityComparer<string> selected = useRuntimeStringComparer ? StringComparer.Ordinal : comparer ?? KeyComparer.Instance;
         _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024), selected);
-#if NET9_0_OR_GREATER
         _spanLookup = _map.GetAlternateLookup<ReadOnlySpan<char>>();
         _hasPrehashedLookup = _map.TryGetAlternateLookup<PrehashedKey>(out _keyLookup);
-#endif
 
         if (mode == EngineEvictionMode.TinyLfu)
         {
@@ -163,40 +159,27 @@ internal sealed class MemoryCacheEngine
         => Accept(_map.TryGetValue(key, out node!), now, ref node);
 
     /// <summary>
-    /// Like <see cref="TryGet(string, long, out Node)"/>, for a key held in a buffer. On .NET 9 and later the
-    /// lookup does not allocate.
+    /// Like <see cref="TryGet(string, long, out Node)"/>, for a key held in a buffer. The lookup does not allocate.
     /// </summary>
     public bool TryGet(ReadOnlySpan<char> key, long now, out Node node)
     {
-#if NET9_0_OR_GREATER
         return Accept(_spanLookup.TryGetValue(key, out node!), now, ref node);
-#else
-        return TryGet(key.ToString(), now, out node);
-#endif
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryGet(ref KeyBuilder key, long now, out Node node)
     {
-#if NET9_0_OR_GREATER
         return _hasPrehashedLookup
             ? Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), key.LookupHash()), out node!), now, ref node)
             : TryGet(key.AsSpan(), now, out node);
-#else
-        return TryGet(key.ToString(), now, out node);
-#endif
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryGet(string key, MethodCache.Generated.CallSnapshot binding, long now, out Node node)
     {
-#if NET9_0_OR_GREATER
         return _hasPrehashedLookup
             ? Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), binding.HashKey(key)), out node!), now, ref node)
             : TryGet(key, now, out node);
-#else
-        return TryGet(key, now, out node);
-#endif
     }
 
     private bool Accept(bool found, long now, ref Node node)

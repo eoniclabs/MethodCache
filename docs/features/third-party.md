@@ -28,7 +28,7 @@ builder.Services.AddMethodCache();
 <!-- endSnippet -->
 
 - The listed methods behave like methods with `[Cache]`: keys from the arguments, tag templates with the method's
-  parameter names, zero-allocation hits on .NET 9 and later. Methods you don't list always reach the client, so writes
+  parameter names, zero-allocation hits on .NET 10. Methods you don't list always reach the client, so writes
   are never cached by accident.
 - The attribute's settings (`Duration`, `Tags`, `Group`, `SlidingExpiration`, `RefreshAhead`, `Version`, `FailSafe`,
   `FailSafeTimeout`) apply to every listed method. Give one method its own settings like any cached method:

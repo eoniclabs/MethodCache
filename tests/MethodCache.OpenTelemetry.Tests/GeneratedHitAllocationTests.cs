@@ -22,9 +22,7 @@ public class GeneratedHitAllocationTests
         var service = provider.GetRequiredService<IAllocationShapes>();
         _ = await MeasureShapes(service); // warm all generated and measurement call sites
         var baseline = await MeasureShapes(service);
-#if NET9_0_OR_GREATER
         Assert.Equal(0, baseline);
-#endif
         long count = 0;
         using var listener = new MeterListener
         {
@@ -37,7 +35,7 @@ public class GeneratedHitAllocationTests
         listener.SetMeasurementEventCallback<long>((_, value, _, _) => Interlocked.Add(ref count, value));
         listener.Start();
         var allocated = await MeasureShapes(service);
-        Assert.Equal(baseline, allocated); // .NET 8 materializes string keys; subscribing must add nothing.
+        Assert.Equal(baseline, allocated); // Subscribing must add nothing.
         Assert.Equal(listening ? 30_000 : 0, count);
     }
 
@@ -65,9 +63,7 @@ public class GeneratedHitAllocationTests
         var service = provider.GetRequiredService<IAllocationShapes>();
         for (var i = 0; i < 1000; i++) _ = service.Read(42);
         var baseline = MeasureWorkers(service);
-#if NET9_0_OR_GREATER
         Assert.All(baseline, bytes => Assert.Equal(0, bytes));
-#endif
         long total = 0;
         using var listener = new MeterListener
         {
