@@ -55,9 +55,9 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         /// <inheritdoc />
         public long BodyBudget(string key, HttpCacheEntry metadata)
             => _core.Distributed ? long.MaxValue : _core.MaximumBytes - EntryCost(key, metadata) - 256;
-        private long EntryCost(string key, HttpCacheEntry entry)
+        private long EntryCost(string key, HttpCacheEntry entry, int? targetLength = null)
         {
-            long metadata = 512L + 2L * (key.Length + Target(key).Length + 69 + _client.Length);
+            long metadata = 512L + 2L * (key.Length + (targetLength ?? TargetSpan(key).Length) + 69 + _client.Length);
             foreach (var tag in _tags) metadata += 48L + 2L * tag.Length;
             return Cost(entry) + metadata;
         }
@@ -123,11 +123,30 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         /// <inheritdoc />
         public ValueTask ClearAsync(CancellationToken cancellationToken = default) => _core.ClearAsync(cancellationToken);
         private HttpStorageInfo Info(string key, HttpCacheEntry entry, DateTimeOffset deadline)
-            => new(HttpResponseStore.Identity(key), Target(key), _client, _core.Format, EntryCost(key, entry), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
+        {
+            if (!_core.Distributed && _core.FindLocalInfo(key) is { } previous && previous.Client == _client &&
+                previous.Format == _core.Format && (ReferenceEquals(previous.Tags, _tags) || previous.Tags.SequenceEqual(_tags, StringComparer.Ordinal)))
+                return previous with
+                {
+                    Cost = EntryCost(key, entry, previous.UrlTarget.Length),
+                    CreatedAt = entry.StoredAt,
+                    Deadline = deadline,
+                    Selector = entry.VariantGeneration != null
+                };
+            var target = Target(key);
+            return new(HttpResponseStore.Identity(key), target, _client, _core.Format, EntryCost(key, entry, target.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
+        }
         private static string Target(string key)
         {
-            var end = key.IndexOf("|generation:", StringComparison.Ordinal);
-            return HttpCacheKeys.GenerationTarget(end < 0 ? key : key[..end]);
+            var target = TargetSpan(key);
+            return target.Length == key.Length ? key : new string(target);
+        }
+        private static ReadOnlySpan<char> TargetSpan(string key)
+        {
+            var generation = key.IndexOf("|generation:", StringComparison.Ordinal);
+            var method = key.IndexOf(":m:", StringComparison.Ordinal);
+            var end = generation < 0 ? method : method < 0 ? generation : Math.Min(generation, method);
+            return end < 0 ? key.AsSpan() : key.AsSpan(0, end);
         }
     }
 

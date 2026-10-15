@@ -65,7 +65,8 @@ generation, so later requests fetch the updated response. With native Redis or S
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
 
 The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
-URLs that share a slot can cause an extra cache miss when either is invalidated. Generation records never expire on
+URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes
+the retired bodies from that slot, releasing their byte budget immediately. Generation records never expire on
 their own; if the backend evicts one anyway, the next request starts a new generation, so a lost record only causes
 cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
 to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains

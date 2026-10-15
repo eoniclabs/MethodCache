@@ -51,3 +51,22 @@ variant/header frames now preserve exact UTF-16. URI epoch framing stays frozen 
 cannot move invalidation to a different URL slot. A pinned URI vector failed before restoring that separation.
 The maximum accepted client name now treats its implicit escaped tag separately from custom-tag length limits.
 Real native Redis and SQL contract facts passed with no skipped infrastructure tests (2026-10-15).
+
+## Publication and local slot follow-up (2026-10-15)
+
+The initial Nimbus pair is diagnostic, not section-10 acceptance. It identified response publication for
+further allocation work. The follow-up preserves frozen UTF-16LE SHA-256 identities, hashes without
+intermediate input/digest arrays, avoids temporary body-budget target strings, and reuses immutable
+metadata only when client, tags and format match. Replacements always recompute cost, timestamps and
+selector state. Local reverse indexing now follows the bounded generation slots, releasing all bodies
+whose namespace an invalidation retires. Native observations remain indexed by exact URL.
+
+Identity and budget allocation probes and a colliding-slot cleanup fact failed before the fixes.
+The updated HTTP unit suite passes all 320 cases on net10.0; 49 selected Core property/engine tests
+and all three host startup facts pass. Windows CI previously exposed its default EventLog logger
+masking the intended missing-Core startup exception with an access-denied logging exception. The
+host registration tests now clear host logging providers; no machine permissions are changed.
+Selected red/green receipts are in `plans/design-benchmarks/http-publication-followup/`.
+Full descendant release gates and timing remain pending. Johan subsequently approved dropping .NET
+8 and 9: a separate following PR changes the supported matrix to .NET 10 only; prior receipts remain
+historical evidence for their original revisions.
