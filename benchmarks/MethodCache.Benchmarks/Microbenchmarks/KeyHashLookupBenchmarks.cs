@@ -19,7 +19,7 @@ public class KeyHashLookupBenchmarks
     private ConcurrentDictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> _spans;
 #if METHODCACHE_PREFIX_HASH
     private ConcurrentDictionary<string, int>.AlternateLookup<PrehashedKey> _prefixes;
-    private MarvinState _prefix;
+    private SipHashState _prefix;
 #endif
 
     [GlobalSetup]
@@ -54,9 +54,7 @@ public class KeyHashLookupBenchmarks
     public int PrefixLookup()
     {
 #if METHODCACHE_PREFIX_HASH
-        var hash = _prefix;
-        hash.AppendUtf16(Suffix);
-        return _prefixes.TryGetValue(new PrehashedKey(_text.AsSpan(), hash.Finish32()), out var value) ? value : -1;
+        return _prefixes.TryGetValue(new PrehashedKey(_text.AsSpan(), _prefix.FinishUtf16(Suffix)), out var value) ? value : -1;
 #else
         return FullSpanLookup();
 #endif

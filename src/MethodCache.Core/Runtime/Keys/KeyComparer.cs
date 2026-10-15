@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 namespace MethodCache.Core.Runtime.Keys;
 
 // The mask is immutable and exists only to exercise collisions in an individual test engine.
-// Production uses every output bit and a process-secret 64-bit Marvin seed (the .NET randomized string hash).
+// Production uses every output bit and a process-secret 128-bit SipHash-1-3 key.
 internal sealed class KeyComparer(uint mask = uint.MaxValue) : IEqualityComparer<string>
     , IAlternateEqualityComparer<ReadOnlySpan<char>, string>, IAlternateEqualityComparer<PrehashedKey, string>
 {

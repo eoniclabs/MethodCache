@@ -92,7 +92,8 @@ internal sealed record CallSnapshot(DecoratorServices Services, CacheRuntimePoli
             return Interlocked.CompareExchange(ref _fallbackPrefix, created, null) ?? created;
         }
     }
-    internal MarvinState PrefixHash { get; } = ProcessKeyHash.Prefix(Prefix);
+    // A field, not a property: a lookup finishes the hash from it in place instead of copying the state first
+    internal readonly SipHashState PrefixHash = ProcessKeyHash.Prefix(Prefix);
 
     internal int HashKey(ReadOnlySpan<char> text)
     {

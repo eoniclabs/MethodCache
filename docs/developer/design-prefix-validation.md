@@ -30,10 +30,10 @@ and all phases pass on Redis and SQL. It adds no sleeps and does not weaken prod
 The full-path/component, listener, L2 and cumulative timing gates remain pending; functional green is not timing
 evidence. Existing broader PR 2/3/4/5 performance obligations remain in the execution tracker.
 
-## Current replacement candidate
+## Marvin replacement candidate (superseded by PR #133)
 
 The initial SipHash timing gate failed; see [the recorded measurements](design-prefix-preflight.md).
-The current replacement uses the .NET randomized Marvin algorithm, independently checked against a pinned
+This replacement used the .NET randomized Marvin algorithm, independently checked against a pinned
 v10.0.0 reference oracle. UTF-16 suffix finalization, all byte splits, immutable string memo interleaving,
 forced collisions and append/growth are covered. Its security basis and limits are described in the
 [updated review](prefix-hash-security.md). The 6,945-test/full-package evidence above belongs to the initial
@@ -64,3 +64,22 @@ is not counted as passing evidence. Regenerating LLM documentation also corrects
 [Selected standalone receipts](../../plans/design-benchmarks/prefix-functional-850cef8/) record both attempts and
 the exact production source. This test/documentation-only follow-up does not change the library being measured on
 Nimbus. Section-10 timing and external CI remain required; no speed claim is introduced.
+
+## SipHash-1-3 replacement (PR #133)
+
+Johan chose SipHash-1-3 over Marvin on 2026-10-15. PR #133, stacked on #132, replaces the Marvin candidate above.
+It uses SipHash-1-3 (one compression round, three finalization rounds, as Python 3.11+ and Rust do) under a
+128-bit process-secret key, not the initial SipHash-2-4 candidate. The call snapshot keeps the unfinished prefix
+state as a field, and a lookup finishes it in locals. The [prefix hash review](prefix-hash-security.md) describes
+the algorithm, its limits and its tests: the 64 published SipHash-1-3 vectors at every pair of UTF-16 split points,
+a separately written reference pinned to those and the authors' SipHash-2-4 vectors, and CsCheck comparisons for
+arbitrary keys, text, isolated surrogates and splits. The forced-collision, collision-family and builder tests
+run unchanged. The Marvin evidence above belongs to that candidate and is not attributed to this one.
+
+Section-10 against #132 (Marvin), median of three runs per side: GUID hit −2.8 %, string hit −5.3 %,
+`ValueTask(int)` hit −13 %, `Sync(int)` hit +8 %, `Task(int)` hit +5 %, with no added allocations. Marvin's cost
+depended on the method name's length: with an even prefix length, its first 4-byte read of the suffix spans two
+separate stores and stalls on x64. SipHash packs a short tail such as an `int` from 2-byte loads, so short arguments
+have no such dependence. Reading GUID arguments 2 bytes at a time as well made no measurable difference on the full
+hit path, so longer arguments keep 8-byte reads. The `int` regressions exceed the 3 % gate; Johan accepted them
+because GUID and string keys are the common case.
