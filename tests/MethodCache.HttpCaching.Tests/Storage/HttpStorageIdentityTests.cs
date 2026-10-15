@@ -21,20 +21,14 @@ public class HttpStorageIdentityTests
 
     [Theory]
     [MemberData(nameof(Keys))]
-    public void Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(string key)
+    public async Task Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(string key)
     {
         var encoded = new byte[checked(key.Length * 2)];
         for (var i = 0; i < key.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(encoded.AsSpan(i * 2), key[i]);
         var expected = "http:" + Convert.ToHexString(SHA256.HashData(encoded));
         Assert.Equal(expected, HttpResponseStore.Identity(key));
 
-        Func<string> identity = () => HttpResponseStore.Identity(key);
-        Func<string> outputOnly = static () => new string('x', 69);
-        _ = Measure(identity); // warm the same worker, hash implementation and thread-static slot
-        _ = Measure(outputOnly);
-        var outputAllocation = Measure(outputOnly);
-        var actual = Measure(identity);
-        _sink = null;
+        var (outputAllocation, actual) = await MeasureIdentityOnOwnedThread(key);
         if (BitConverter.IsLittleEndian) Assert.Equal(outputAllocation, actual);
     }
 
@@ -106,6 +100,33 @@ public class HttpStorageIdentityTests
         }
         await owner.Core.InvalidateTagsAsync([tag], default);
         Assert.Null(await replacementView.GetAsync(key));
+    }
+
+    // Keep the exact probe away from the test runner's worker and ambient execution context.
+    // Creating the thread/delegates, hashing warmup, completion and assertions are outside Measure.
+    private static Task<(long OutputAllocation, long Actual)> MeasureIdentityOnOwnedThread(string key)
+    {
+        var completion = new TaskCompletionSource<(long, long)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (ExecutionContext.SuppressFlow())
+        {
+            new Thread(() =>
+            {
+                try
+                {
+                    Func<string> identity = () => HttpResponseStore.Identity(key);
+                    Func<string> outputOnly = static () => new string('x', 69);
+                    _ = Measure(identity);
+                    _ = Measure(outputOnly);
+                    var outputAllocation = Measure(outputOnly);
+                    var actual = Measure(identity);
+                    completion.SetResult((outputAllocation, actual));
+                }
+                catch (Exception error) { completion.SetException(error); }
+                finally { _sink = null; }
+            })
+            { IsBackground = true }.Start();
+        }
+        return completion.Task;
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
