@@ -13,8 +13,8 @@ remaining series continuously. Package publication and unrelated work are outsid
 | PR 4 | codex/transport-format-v1 / #126 | D01–D10 implemented. 7,020 tests passed, 97.2% diff coverage; cultures/properties/soak/AOT/packages passed. Linux/Windows/macOS CI passed. Section-10 performance pending; retain the transient Redis readiness observation. |
 | PR 5 | codex/core-telemetry-v1 / #127 | T01–T05 implemented. 6,885 tests passed, 92.2% diff coverage; cultures/properties/soak/AOT/packages passed. Linux/Windows/macOS CI passed at 2f4a91d. Timing gates pending. |
 | Prefix hash | codex/prefix-hash-v1 | Functional candidate verified: 6,945 passing tests, 91.4% diff coverage, independent Redis/SQL processes, frozen vendors/AOT/packages. Section-10 timing still required; no speed claim. |
-| PR 6 | codex/http-core-store-v1 (in progress) | Core adapter, separate byte budget, native shared epochs, cookies and observation admin implemented. 285 HTTP unit tests, 16 HTTP registration/transport integration tests and 119 docs tests passed locally at intermediate revisions. Native Redis/SQL contract tests compile; real-backend execution, full matrix/coverage/AOT/packages and section-10 timing remain pending. |
-| PR 7 | not started | Full cross-platform/backend/package/AOT/docs/security and per-change/f43854d performance verification; V01–V04. |
+| PR 6 | codex/http-core-store-v1 | 7,035 tests passed across net8/9/10 with real Redis/SQL, 95.9% diff coverage, cultures/properties/soak/AOT172/packages/actualSDK8. Descendant shutdown/privacy fixes, external CI and section-10 timing remain pending. |
+| PR 7 | codex/design-final-gates-v1 (in progress) | Full cross-platform/backend/package/AOT/docs/security and per-change/f43854d performance verification; V01–V04. |
 
 Each implementation keeps its own isolated worktree and is stacked on the preceding implementation. CI
 runs automatically on Megatron after publication; timing benchmarks must run after local builds have stopped.
