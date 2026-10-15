@@ -1,0 +1,45 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Core/bin/Release/net9.0/MethodCache.Core.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net9.0/MethodCache.SqlServer.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net9.0/MethodCache.HttpCaching.dll
+  MethodCache.SqlServer.IntegrationTests -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net9.0/MethodCache.SqlServer.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net9.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v9.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 9.0.11)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.SqlServer.IntegrationTests
+[xUnit.net 00:00:00.05]   Discovered:  MethodCache.SqlServer.IntegrationTests
+[xUnit.net 00:00:00.06]   Starting:    MethodCache.SqlServer.IntegrationTests
+[testcontainers.org 00:00:00.06] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.14] Docker container 9f8276607db8 created
+[testcontainers.org 00:00:00.16] Start Docker container 9f8276607db8
+[testcontainers.org 00:00:00.24] Wait for Docker container 9f8276607db8 to complete readiness checks
+[testcontainers.org 00:00:01.26] Docker container 9f8276607db8 ready
+[testcontainers.org 00:00:01.30] Docker container c3ac53572b7f created
+[testcontainers.org 00:00:01.31] Start Docker container c3ac53572b7f
+[testcontainers.org 00:00:01.39] Wait for Docker container c3ac53572b7f to complete readiness checks
+[testcontainers.org 00:00:01.40] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container c3ac53572b7f
+[testcontainers.org 00:00:01.46] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container c3ac53572b7f
+[testcontainers.org 00:00:06.21] Docker container c3ac53572b7f ready
+[testcontainers.org 00:00:07.33] Delete Docker container c3ac53572b7f
+[xUnit.net 00:00:07.65]   Finished:    MethodCache.SqlServer.IntegrationTests
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract [519 ms]
+
+Test Run Successful.
+Total tests: 1
+     Passed: 1
+ Total time: 7,8717 Seconds

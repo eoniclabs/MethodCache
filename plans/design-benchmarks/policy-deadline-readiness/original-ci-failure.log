@@ -1,0 +1,48 @@
+Starting Redis and SQL Server for the package apps
+=== build (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/build.log)
+    exit 0 after 25 s
+=== demo (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/demo.log)
+    exit 0 after 9 s
+=== tests (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/tests.log)
+    exit 1 after 48 s
+[xUnit.net 00:00:03.60]     MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract [FAIL]
+Results File: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/test-results/_Nimbus_2026-10-15_14_03_58_net10.0[3].trx
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 3 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+  Failed MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract [424 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 1
+Actual:   2
+  Stack Trace:
+     at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 82
+   at MethodCache.TestSupport.PolicyBackendContract.RunAsync(Func`3 create, FakeTimeProvider time) in /_/tests/TestSupport/PolicyBackendContract.cs:line 96
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 8 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+[xUnit.net 00:00:14.67]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+Results File: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/test-results/_Nimbus_2026-10-15_14_03_59_net10.0[2].trx
+
+Passed!  - Failed:     0, Passed:  1021, Skipped:     1, Total:  1022, Duration: 12 s - MethodCache.Core.Tests.dll (net10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/test-results/_Nimbus_2026-10-15_14_03_58_net10.0[5].trx
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 15 s - MethodCache.SqlServer.Tests.dll (net10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/test-results/_Nimbus_2026-10-15_14_03_58_net10.0[6].trx
+
+Passed!  - Failed:     0, Passed:    51, Skipped:     0, Total:    51, Duration: 20 s - MethodCache.SqlServer.IntegrationTests.dll (net10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/test-results/_Nimbus_2026-10-15_14_04_03_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   533, Skipped:     0, Total:   533, Duration: 43 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)
+=== diffcoverage (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/diffcoverage.log)
+    exit 0 after 59 s
+=== properties (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/properties.log)
+    exit 0 after 232 s
+=== soak (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/soak.log)
+    exit 0 after 32 s
+=== cultures (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/cultures.log)
+    exit 0 after 90 s
+=== aot (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/aot.log)
+    exit 0 after 30 s
+=== packages (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/packages.log)
+    exit 0 after 36 s
+=== docs (log: /home/agent-admin/methodcache-ci/runs/20261015-154832-f0a492ba4cc9/artifacts/ci/docs.log)
+    exit 0 after 3 s
