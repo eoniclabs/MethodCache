@@ -116,11 +116,21 @@ SCRIPT
 
 run_linux() { # sha run_id results_dir
   {
+    if [ -n "$nimbus_lock" ]; then
+      # Repository checkout and age-based collection also consume shared host capacity.
+      # Hold this descriptor through the whole remote pass.
+      cat <<SCRIPT
+set -euo pipefail
+exec 8>>'$nimbus_lock'
+flock --shared --timeout 1800 8
+SCRIPT
+    fi
     checkout_script "$nimbus_root" "$1" "$2"
     cat <<SCRIPT
 export METHODCACHE_CI_RUN_ID='$2' METHODCACHE_CI_CACHE=~/'$nimbus_root/cache'
-# Always held when configured: a missing lease directory fails the run instead of building without the lease
-${nimbus_lock:+export METHODCACHE_CI_SHARED_LOCK='$nimbus_lock'}
+# Descriptor 8 already owns the configured lease from before checkout. Do not reacquire a second
+# shared descriptor: an intervening queued exclusive holder could otherwise deadlock nested leases.
+unset METHODCACHE_CI_SHARED_LOCK
 code=0
 nice -n 10 build/ci/linux.sh || code=\$?
 # Written only when every job got its turn, so a dropped connection or timeout is retried

@@ -10,13 +10,15 @@ its DLL with a working directory followed by the child executable and arguments.
 Server 2022 containers and credentials through the child's environment, checks its exit code and disposes its own
 containers. It does not print credentials or touch a production backend.
 
-`run-series.py` expects the eight prepared harnesses under `/tmp/methodcache-design-harness` and the built driver at
+`run-series.py` expects the nine prepared harnesses under `/tmp/methodcache-design-harness` and the built driver at
 `/tmp/methodcache-http-native-runner/bin/Release/net10.0/Runner.dll`. These paths are configurable as constants at the
 top of the script. Each manifest records absolute runtime roots, full SHAs and workload SHA256 checksums. Every
-revision must use identical workloads. Source changes require rebuilding the relevant harness and a fresh evidence
+revision must use identical workloads. The `pr1-base` harness is the actual post-PR122 merge-base
+of PR1 (`a023336088c0df4fe887ee336dabcbbdb41f5b26`); `base` remains the cumulative f43854d comparison.
+Do not substitute the cumulative baseline for the adjacent PR1 comparison. Source changes require rebuilding the relevant harness and a fresh evidence
 directory. The script runs 62 cases in three independent launches per revision, descending/ascending/descending,
 so adjacent base/change order alternates. Local families (46 cases) run without test containers; native families
-(16 cases) own fresh backends. This gives 48 family launches covering 24 complete revision rounds. Each uses concurrent workstation GC,
+(16 cases) own fresh backends. This gives 54 family launches covering 27 complete revision rounds. Each uses concurrent workstation GC,
 16 warmups and 12 measured 500ms iterations. It checks every report for measured results; a zero host exit code alone
 does not establish successful benchmarks.
 
@@ -43,3 +45,64 @@ sync/Task/ValueTask and MeterListener off/on. `MemoryCacheLookupReferenceBenchma
 sync/Task result creation; those are different operations, not interchangeable baseline numbers. Post-PR5 statistics
 have no separate toggle, so no ineffective statistics option is varied. Each benchmark setup has a correctness
 contract test, and the macOS benchmark thread selects the same performance QoS on both revisions.
+Build the external project and run its DLL with `--verify-components` before timing. This verifies
+all prefix/buffer/listener combinations, repeated hits without origin loads, actual long-key growth,
+lookup variants and all four memory-cache references. The harness explicitly references the same
+DI implementation version as the benchmark tests: otherwise BDN's transitive DI 6 implementation
+can be selected alongside newer abstractions and fail while constructing the provider. The original
+failure and successful checks against both historical runtime points are retained in
+`plans/design-benchmarks/component-harness-startup/`. No timing from the failed setup is accepted.
+
+## Cold HTTP publication versus growing-cache pressure
+
+The original `HttpResponsePathBenchmarks.Miss` grows its resident set across iterations. The older
+storage charges bodies only, while the new budget includes headers and metadata; that case therefore
+also measures different eviction/GC pressure. Keep it as a diagnostic workload, not a pure publication
+comparison. `HttpColdMissBenchmarks` resets its isolated provider outside each measured iteration and
+uses an explicit 8,192 invocations with unroll factor 1. Every operation loads origin, and two complete
+batches are checked to retain every response below the default budget, with no cross-batch residents.
+A BenchmarkDotNet conversion test verifies that iteration setup does not reduce the batch to one call.
+
+The validation harness selects fresh/variant/304 from HttpResponsePathBenchmarks and cold misses from
+HttpColdMissBenchmarks. This keeps 62 cases, with one additional report (three for the contract/HTTP
+family). Growing local/native pressure in DesignHttpWorkloadBenchmarks remains separately labelled.
+Changed workloads require all baseline/candidate harnesses to be rebuilt with the exact same sources;
+do not pool previous growing-miss data with this bounded publication case.
+
+The explicit invocation count overrides iterationTime for this one class; other scenarios retain their
+normal 500 ms target. See [BenchmarkDotNet InvocationCount](https://benchmarkdotnet.org/api/BenchmarkDotNet.Attributes.InvocationCountAttribute.html).
+Growing-pressure rows still require performance review; the separation does not waive regressions.
+
+## Independent-run statistical report
+
+`summarize-pair.py RESULTS BASE CHANGE GROUP` defaults to three independent launches per revision.
+`--rounds 6` or `--rounds 9` reads every launch in a fixed longer series, using df=5 or df=8 instead
+of df=2 for the 95% Student-t interval over run means. Choose the longer count from a separate
+baseline precision study, retain all launches, and complete the chosen series; do not stop or drop
+runs when the result becomes favorable. These are independent processes, not iterations pooled
+from one process. The [NIST Student-t table](https://www.itl.nist.gov/div898/handbook/eda/section3/eda3672.htm)
+describes the two-sided 0.975 quantile.
+
+An explicit `--method GenericHit` selects the exact method for a targeted supplementary series;
+other cases are not assessed by that report. Every selected launch must still contain twelve actual
+measured iterations and an empty interference guard. Base/change launch counts, case matrices and
+workload checksums must match. Missing selected cases are errors, not empty success. Allocation
+samples remain visible per run. The default full-series three-launch report is unchanged.
+
+The tool identifies the specified disjoint-interval/>3% regression and labels relative interval
+half-widths above 3% as insufficient precision for review. This diagnostic threshold does not modify
+the specification or automatically accept narrower intervals. Every other row remains
+`review_required`; feature equivalence, matching-hit allocation increases, pressure paths and the
+complete scenario matrix still require assessment. Passing the helper's tests is not a performance pass.
+
+## Affinity evidence
+
+`bdn_affinity.py` parses BDN 0.15.4's declared affinity as binary at every display width;
+`Affinity=100` means mask4. The job display alone does not establish the OS mask. See the
+[versioned BDN implementation](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.4/src/BenchmarkDotNet/Extensions/ProcessExtensions.cs).
+The Nimbus startup-affinity protocol uses taskset before .NET initializes, supplies no BDN
+affinity characteristic, and samples the owned .NET process tree's actual CPU sets. Each of the
+four executed child PIDs must have observations on CPU2; missing samples or different masks fail.
+The V3 validation failure and fresh V4 protocol are retained under
+`plans/design-benchmarks/independent-run-precision/startup-affinity-validation/`. Earlier samples
+remain separate; all 31 affinity/activity/statistics helper tests pass, without a timing pass.

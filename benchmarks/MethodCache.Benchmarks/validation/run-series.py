@@ -10,11 +10,13 @@ from process_activity import ActivityMonitor
 OUT = Path('/tmp/methodcache-design-series-timing')
 HARNESS = Path('/tmp/methodcache-design-harness')
 RUNNER = '/tmp/methodcache-http-native-runner/bin/Release/net10.0/Runner.dll'
-REVISIONS = ['base','pr1','pr2','pr3','pr4','pr5','prefix','final']
+REVISIONS = ['base','pr1-base','pr1','pr2','pr3','pr4','pr5','prefix','final']
 GROUPS = {
-    'local': {'filters': ['*GeneratedContractBenchmarks*', '*HttpResponsePathBenchmarks*',
+    'local': {'filters': ['*GeneratedContractBenchmarks*', '*HttpResponsePathBenchmarks.FreshHit*',
+                          '*HttpResponsePathBenchmarks.VariantHit*', '*HttpResponsePathBenchmarks.Revalidated*',
+                          '*HttpColdMissBenchmarks*',
                           '*DesignMemoryWorkloadBenchmarks*', '*DesignHttpWorkloadBenchmarks*Local*'],
-              'reports': 4, 'cases': 46},
+              'reports': 5, 'cases': 46},
     'native': {'filters': ['*DesignL2WorkloadBenchmarks*', '*DesignHttpWorkloadBenchmarks*Redis*',
                            '*DesignHttpWorkloadBenchmarks*SqlServer*'],
                'reports': 2, 'cases': 16},
@@ -52,6 +54,7 @@ if len(sys.argv)>1 and sys.argv[1]=='worker':
     if group == 'native' or activity(): idle()
     job=GROUPS[group]
     target=OUT/f'round-{round_number}-{name}-{group}'
+    if target.exists(): raise SystemExit('Preserve the previous attempt before retrying: '+str(target))
     command=['dotnet',str(HARNESS/name/'bin/Release/net10.0/DesignValidation.dll'),
              '--filter',*job['filters'],'--warmupCount','16','--iterationCount','12',
              '--iterationTime','500','--launchCount','1','--exporters','json',
@@ -115,4 +118,4 @@ for round_number,order in enumerate([list(reversed(REVISIONS)),REVISIONS,list(re
             manifest_path.write_text(json.dumps(manifest,indent=2))
             print('finished',round_number,name,group,result.returncode,utc(),flush=True)
             if result.returncode: raise SystemExit(result.returncode)
-print('Completed all 48 family launches (24 complete revision rounds). Statistical acceptance still requires review.',flush=True)
+print('Completed all 54 family launches (27 complete revision rounds). Statistical acceptance still requires review.',flush=True)

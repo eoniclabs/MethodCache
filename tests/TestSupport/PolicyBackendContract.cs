@@ -8,7 +8,7 @@ using Xunit;
 namespace MethodCache.TestSupport;
 
 // Shared assertions run unchanged against both real providers. Each factory creates an isolated container.
-public static class PolicyBackendContract
+public static partial class PolicyBackendContract
 {
     private static readonly string MethodId = typeof(IOrigin).FullName!.Replace('+', '.') + ".ReadAsync";
 
@@ -25,22 +25,22 @@ public static class PolicyBackendContract
         var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         receiverHandle.Subscribe(policy => { if (!ReferenceEquals(policy.Generation, before.Generation)) delivered.TrySetResult(); });
         time.Advance(TimeSpan.FromMilliseconds(1));
-        await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(10)));
+        await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(1)));
         time.Advance(TimeSpan.FromMilliseconds(100));
         await delivered.Task.WaitAsync(TimeSpan.FromSeconds(20));
         time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal(TimeSpan.FromMinutes(5), receiverHandle.Current.Duration);
+        Assert.Equal(TimeSpan.FromHours(1), receiverHandle.Current.Duration);
         // The typed method message has retired the receiver. The following assertions isolate L2
         // namespaces from the documented possibility of delayed messages evicting fresh local data.
         await first.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
         await second.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
         Assert.Equal(102, await a.ReadAsync(1));
         Assert.Equal(201, await b.ReadAsync(1));
-        time.Advance(TimeSpan.FromSeconds(11));
+        time.Advance(TimeSpan.FromSeconds(2));
         Assert.Equal(103, await a.ReadAsync(1));
         Assert.Equal(201, await b.ReadAsync(1));
         await using var third = await create(new Origin(300), null);
-        await third.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(10)));
+        await third.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(1)));
         time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(301, await third.GetRequiredService<IOrigin>().ReadAsync(1));
         Assert.NotEqual(PolicyHandle.For(first.GetRequiredService<IPolicyRegistry>(), MethodId).Current.Identity,
@@ -104,10 +104,27 @@ public static class PolicyBackendContract
         Assert.Equal(0, result.Queued); Assert.Equal(1, result.Published); Assert.Equal(0, result.PublicationQueued);
     }
 
-    public interface IOrigin { [Cache(Duration = "00:05:00")] Task<int> ReadAsync(int id); }
+    public interface IOrigin
+    {
+        [Cache(Duration = "01:00:00")] Task<int> ReadAsync(int id);
+        [Cache] int Read(int id);
+        [Cache(Group = "native-enabled", Enabled = true)] Task<int> EnabledAsync(int id);
+        [Cache(Group = "native-disabled", Enabled = false)] Task<int> DisabledAsync(int id);
+    }
     public sealed class Origin(int basis) : IOrigin
     {
         private int _calls;
-        public Task<int> ReadAsync(int id) => Task.FromResult(basis + Interlocked.Increment(ref _calls));
+        private int _syncCalls;
+        public int Calls => Volatile.Read(ref _calls);
+        public int SyncCalls => Volatile.Read(ref _syncCalls);
+        public Func<int, Task<int>>? OnCall { get; init; }
+        public Task<int> ReadAsync(int id)
+        {
+            var call = Interlocked.Increment(ref _calls);
+            return OnCall?.Invoke(call) ?? Task.FromResult(basis + call);
+        }
+        public int Read(int id) => basis + Interlocked.Increment(ref _syncCalls);
+        public Task<int> EnabledAsync(int id) => ReadAsync(id);
+        public Task<int> DisabledAsync(int id) => ReadAsync(id);
     }
 }

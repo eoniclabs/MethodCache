@@ -35,7 +35,8 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- <category> 
 
 | Category | Runs |
 |---|---|
-| `httppath` | `HttpResponsePathBenchmarks`: fresh/variant hits, misses, 304 validation, listeners off/on |
+| `httppath` | `HttpResponsePathBenchmarks`: fresh/variant hits, 304 validation and growing-cache miss pressure, listeners off/on |
+| `httpcold` | `HttpColdMissBenchmarks`: cold publication, 8,192 operations per iteration, fresh isolated cache outside the measured region |
 | `hitpath` | `PrefixHitPathBenchmarks`: short/long method names, fitting/growing stack buffers, sync/Task/ValueTask hits and key building, listeners off/on |
 | `readme` | `ReadmeComparisonBenchmarks`: MethodCache `[Cache]`, `IMemoryCache` by hand, HybridCache, FusionCache |
 | `comparison` | `UnifiedCacheComparisonBenchmarks`: MethodCache, FusionCache, LazyCache, EasyCaching through `ICacheAdapter` |

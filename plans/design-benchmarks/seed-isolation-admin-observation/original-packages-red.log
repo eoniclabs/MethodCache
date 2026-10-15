@@ -1,0 +1,97 @@
+=== packages
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj (in 2.67 sec).
+  Restored /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Analyzers/MethodCache.Analyzers.csproj (in 2.38 sec).
+  Restored /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj (in 2.67 sec).
+  Restored /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Core/MethodCache.Core.csproj (in 2.67 sec).
+  Restored /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 2.67 sec).
+  25 of 30 projects are up-to-date for restore.
+/usr/share/dotnet/sdk/10.0.401/NuGet.Build.Tasks.Pack.targets(204,6): warning : This project cannot be packaged because packaging has been disabled. Add <IsPackable>true</IsPackable> to the project file to enable producing a package from this project. [/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/samples/MethodCache.WebDemo/MethodCache.WebDemo.csproj]
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Core/bin/Release/net8.0/MethodCache.Core.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Core/bin/Release/net9.0/MethodCache.Core.dll
+  MethodCache.Serialization.MessagePack -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Serialization.MessagePack/bin/Release/net8.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.HttpCaching/bin/Release/net8.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.SqlServer -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.SqlServer/bin/Release/net8.0/MethodCache.SqlServer.dll
+  MethodCache.AspNetCore -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.AspNetCore/bin/Release/net9.0/MethodCache.AspNetCore.dll
+  MethodCache.AspNetCore -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.AspNetCore/bin/Release/net10.0/MethodCache.AspNetCore.dll
+  MethodCache.Serialization.MessagePack -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Serialization.MessagePack/bin/Release/net9.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.AspNetCore -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.AspNetCore/bin/Release/net8.0/MethodCache.AspNetCore.dll
+  MethodCache.SqlServer -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.OpenTelemetry -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.OpenTelemetry/bin/Release/net9.0/MethodCache.OpenTelemetry.dll
+  MethodCache.SqlServer -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.SqlServer/bin/Release/net9.0/MethodCache.SqlServer.dll
+  MethodCache.Redis -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Redis/bin/Release/net8.0/MethodCache.Redis.dll
+  MethodCache.Redis -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Redis/bin/Release/net9.0/MethodCache.Redis.dll
+  MethodCache.Serialization.MessagePack -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.OpenTelemetry -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.OpenTelemetry -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.OpenTelemetry/bin/Release/net8.0/MethodCache.OpenTelemetry.dll
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.1.0.0-g2bb7c0423a.nupkg'.
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/src/MethodCache.HttpCaching/bin/Release/net9.0/MethodCache.HttpCaching.dll
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.1.0.0-g2bb7c0423a.snupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.Redis.1.0.0-g2bb7c0423a.nupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.Redis.1.0.0-g2bb7c0423a.snupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.SqlServer.1.0.0-g2bb7c0423a.nupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.SqlServer.1.0.0-g2bb7c0423a.snupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.AspNetCore.1.0.0-g2bb7c0423a.nupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.AspNetCore.1.0.0-g2bb7c0423a.snupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.HttpCaching.1.0.0-g2bb7c0423a.nupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.Serialization.MessagePack.1.0.0-g2bb7c0423a.nupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.Serialization.MessagePack.1.0.0-g2bb7c0423a.snupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.OpenTelemetry.1.0.0-g2bb7c0423a.nupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.HttpCaching.1.0.0-g2bb7c0423a.snupkg'.
+  Successfully created package '/home/agent-admin/methodcache-ci/runs/20261015-175639-2bb7c0423a80/artifacts/packages/MethodCache.OpenTelemetry.1.0.0-g2bb7c0423a.snupkg'.
+All six integration packages require MethodCache [1.0.0-g2bb7c0423a].
+PASS matching-core-first
+PASS matching-core-last
+PASS mismatched-MethodCache.Redis
+PASS mismatched-MethodCache.SqlServer
+PASS mismatched-MethodCache.Serialization.MessagePack
+PASS mismatched-MethodCache.AspNetCore
+PASS mismatched-MethodCache.OpenTelemetry
+PASS mismatched-MethodCache.HttpCaching
+== All 7 packages were packed
+== The generator, analyzers and code fixes are in the MethodCache package
+== Install the package and run the Quick Start
+Package smoke test passed
+== The Quick Start again with the .NET 8 SDK (the oldest compiler the generator supports)
+8.0.425
+Package smoke test passed
+== Install the add-on packages and use them in an app (net8.0)
+PASS Redis, two instances, JSON
+PASS Redis, two instances, MessagePack
+PASS SQL Server, two instances, JSON
+PASS Redis across independent processes and hash seeds
+PASS SQL Server across independent processes and hash seeds
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/tmp/home/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {8d8eb94b-9238-4272-9501-6d29b7ddd679} may be persisted to storage in unencrypted form.
+warn: Microsoft.AspNetCore.Hosting.Diagnostics[15]
+      Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://127.0.0.1:0'.
+PASS ASP.NET Core admin endpoints and health check
+PASS OpenTelemetry metrics and spans
+warn: Microsoft.AspNetCore.Hosting.Diagnostics[15]
+      Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://127.0.0.1:0'.
+PASS HttpClient caching
+Add-on package smoke test passed
+== Install the add-on packages and use them in an app (net10.0)
+PASS Redis, two instances, JSON
+PASS Redis, two instances, MessagePack
+PASS SQL Server, two instances, JSON
+PASS Redis across independent processes and hash seeds
+FAIL SQL Server across independent processes and hash seeds: SqlServer independent-process phase 2:hit failed (5)
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/tmp/home/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Hosting.Diagnostics[15]
+      Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://127.0.0.1:0'.
+PASS ASP.NET Core admin endpoints and health check
+PASS OpenTelemetry metrics and spans
+warn: Microsoft.AspNetCore.Hosting.Diagnostics[15]
+      Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://127.0.0.1:0'.
+PASS HttpClient caching
+Add-on package smoke test failed (1 of 8)

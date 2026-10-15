@@ -33,7 +33,14 @@ construction; it does not diagnose every nanosecond of the original regression.
 
 All 320 HTTP facts and 85 benchmark contracts pass in this historical HTTP
 checkout on net10.0 (SDK 10.0.103, macOS arm64). Diff coverage for this optimization
-is 13/13 executable changed lines. The final stack has six additional cold-miss
+is 13/13 executable changed lines. The final stack includes the newer bounded cold-miss
 contracts and must run its own 91-case suite after forwarding. New comparative
 timing and latest-head full CI are still required; no optimization speedup or
 section-10 acceptance is claimed yet.
+
+
+After forwarding to the final .NET 10 checkout, all 320 HTTP facts, 91 benchmark
+contracts and 16 IHttpClientFactory/HTTP integration facts pass. The latter suite
+uses in-process handlers and is not real Redis/SQL evidence. The queued Nimbus
+candidate setup check uses actual owned Redis/SQL; its result is still pending.
+The frozen new runtime source is 12bf99d877c33925fe0d0037f45e652d0260d8a4.

@@ -1,0 +1,40 @@
+{
+  "package_version": "1.0.0-g28ab9b22e0",
+  "purpose": "Diagnostic reproduction only: original installed packages, unchanged assertions, extra synthetic-key diagnostics on failure. Core sources match 12bf except unrelated HTTP optimization.",
+  "repo_sources": {
+    "SeedIsolationCheck.cs": "c7ed097fd81906cd251838b8542ef932aad5fab997ecfd662b2896d8e74717b3",
+    "Program.cs": "68253961574f55237f09318399550cf1116ae9123a237c83f621a02545587e23"
+  },
+  "packages": {
+    "MethodCache.1.0.0-g28ab9b22e0.nupkg": "649879ff6c95d4cb5e3ef72b8d571743e4281d5713f5084c2778ea36d1a13241",
+    "MethodCache.OpenTelemetry.1.0.0-g28ab9b22e0.nupkg": "86cb309fb6304a7c09e057a2d2014598cf15c443939189a55e966878a1f7939d",
+    "MethodCache.HttpCaching.1.0.0-g28ab9b22e0.nupkg": "364cfb32078a5d9959d50f40dcad82c364091d5e788a6943e84f92008cb1425c",
+    "MethodCache.Redis.1.0.0-g28ab9b22e0.nupkg": "a2e17dfa9b36448670595988c9775a8cd6a25d070d401659c5a81ae0ca312ec0",
+    "MethodCache.SqlServer.1.0.0-g28ab9b22e0.nupkg": "30e0b3c845ea1d4201d36c32678dd10912ea9ea4fa1b6b8e5552a33e84416b41",
+    "MethodCache.Serialization.MessagePack.1.0.0-g28ab9b22e0.nupkg": "8ff5731527544e34ef7005a522cfd34ddcbf543ccef57dd82ec28f236dcf8912",
+    "MethodCache.AspNetCore.1.0.0-g28ab9b22e0.nupkg": "ef5152615393213fe41613c51ad2e48ce2d624aef8a80df62b746041d9a10d18"
+  },
+  "failed_ci_runtime_sha": "2bb7c0423a800ec43cfd4ab270682d6a6bc2169a",
+  "failed_ci_run": "20261015-175639-2bb7c0423a80",
+  "failed_ci_framework": "net8.0",
+  "diagnostic_framework": "net10.0",
+  "fixed_rounds": 3,
+  "phases_per_round": 9,
+  "exit": 0,
+  "diagnostic_sources_sha256": {
+    "harness/SeedDiagnostic.csproj": "467174c3b69b6e54100200a59f781a0685ca567da54f77c05ae06ae19fa6b02c",
+    "harness/SeedIsolationCheck.cs": "d9414f86d4983352b78802f7f2c86d253d1a90e0a90a6f36bdc54109f9b7097e",
+    "harness/Program.cs": "18a32d11cb90fcc87aab709aa39aad797a25bfa481539ccceede5dc172a7cf04",
+    "native-runner/Runner.csproj": "df421fb426dc5877a486cddc6b9e53341acba4ce0f224d5eecd394f3f812a7c9",
+    "native-runner/Program.cs": "1f9dc85cd53ed7e7028fbad51cd3c189bfe6921db84dd1e8f34b3c0f83a58c3e"
+  },
+  "command": [
+    "dotnet",
+    "/tmp/methodcache-seed-isolation-investigation/native-runner/bin/Release/net10.0/Runner.dll",
+    "/tmp/methodcache-seed-isolation-investigation/harness",
+    "dotnet",
+    "/tmp/methodcache-seed-isolation-investigation/harness/bin/Release/net10.0/SeedDiagnostic.dll",
+    "--seed-diagnostic"
+  ],
+  "native_environment": "Fresh task-labelled Redis7/SQL2022 containers; connection values supplied only in child environment, not retained."
+}

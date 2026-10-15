@@ -29,6 +29,44 @@ class TimeoutTests(unittest.TestCase):
 
 
 class RetryIntegrationTests(unittest.TestCase):
+    def run_linux_capacity(self, granted):
+        import shlex
+        source = SCRIPT.read_text()
+        functions = source[source.index('run_linux()'):source.index('fetch_linux_results()')]
+        with tempfile.TemporaryDirectory() as directory:
+            state = pathlib.Path(directory)
+            script = 'set -uo pipefail\n' + functions + '\n'
+            script += 'nimbus_lock=' + shlex.quote(str(state / 'capacity.lock')) + '\n'
+            script += 'fixture_dir=' + shlex.quote(directory) + '\n'
+            script += 'flock() { return ' + ('0' if granted else '75') + '; }\n'
+            script += r'''
+nimbus_root=owned; nimbus=unused; timeout_seconds=5; ssh_options=(-o BatchMode=yes)
+checkout_script() { echo 'echo CHECKOUT-EXECUTED; mkdir -p artifacts/ci'; }
+with_timeout() { shift; "$@"; }
+ssh() { (cd "$fixture_dir" && /bin/bash -s); }
+nice() {
+  : >&8 || return 47
+  [ -z "${METHODCACHE_CI_SHARED_LOCK:-}" ] || return 48
+  echo MOCK-BUILD
+}
+export -f flock nice
+fetch_linux_results() { return 0; }
+'''
+            script += 'run_linux ' + 'a' * 40 + ' run ' + shlex.quote(directory) + '\n'
+            result = subprocess.run(['/bin/bash', '-c', script], text=True, capture_output=True, timeout=10)
+            return result, (state / 'console.log').read_text()
+
+    def test_linux_capacity_denial_prevents_remote_checkout(self):
+        result, console = self.run_linux_capacity(granted=False)
+        self.assertNotIn('CHECKOUT-EXECUTED', console)
+        self.assertEqual(75, result.returncode, result.stderr)
+
+    def test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition(self):
+        result, console = self.run_linux_capacity(granted=True)
+        self.assertEqual(0, result.returncode, result.stderr + console)
+        self.assertIn('CHECKOUT-EXECUTED', console)
+        self.assertIn('MOCK-BUILD', console)
+
     def run_retry(self, recover=False):
         import shlex
         source = SCRIPT.read_text()

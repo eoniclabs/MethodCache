@@ -1,0 +1,10 @@
+Starting prefix=4,buffer=128,listening=False
+Unhandled exception. System.NullReferenceException: Object reference not set to an instance of an object.
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.Populate()
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory..ctor(ICollection`1 descriptors)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider..ctor(ICollection`1 serviceDescriptors, ServiceProviderOptions options)
+   at Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(IServiceCollection services, ServiceProviderOptions options)
+   at Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(IServiceCollection services)
+   at MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.Setup() in /private/tmp/methodcache-component-startup-red/PrefixHitPathBenchmarks.cs:line 41
+   at Program.<Main>$(String[] args) in /private/tmp/methodcache-component-startup-red/Program.cs:line 5
+   at Program.<Main>(String[] args)

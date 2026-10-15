@@ -1,0 +1,27 @@
+test_linux_capacity_denial_prevents_remote_checkout (coordinator_probe.RetryIntegrationTests.test_linux_capacity_denial_prevents_remote_checkout) ... FAIL
+test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition (coordinator_probe.RetryIntegrationTests.test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition) ... FAIL
+
+======================================================================
+FAIL: test_linux_capacity_denial_prevents_remote_checkout (coordinator_probe.RetryIntegrationTests.test_linux_capacity_denial_prevents_remote_checkout)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/build/ci/tests/test_coordinator.py", line 61, in test_linux_capacity_denial_prevents_remote_checkout
+    self.assertNotIn('CHECKOUT-EXECUTED', console)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CHECKOUT-EXECUTED' unexpectedly found in 'CHECKOUT-EXECUTED\n/bin/bash: 8: Bad file descriptor\n'
+
+======================================================================
+FAIL: test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition (coordinator_probe.RetryIntegrationTests.test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/build/ci/tests/test_coordinator.py", line 66, in test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition
+    self.assertEqual(0, result.returncode, result.stderr + console)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 47 : CHECKOUT-EXECUTED
+/bin/bash: 8: Bad file descriptor
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.017s
+
+FAILED (failures=2)

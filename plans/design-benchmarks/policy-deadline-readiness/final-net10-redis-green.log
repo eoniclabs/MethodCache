@@ -1,0 +1,94 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis.IntegrationTests -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.05]   Discovered:  MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.06]   Starting:    MethodCache.Redis.IntegrationTests
+[testcontainers.org 00:00:00.05] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.10] Docker network fd9ca4bf420e created
+[testcontainers.org 00:00:00.12] Docker container c1106b73e992 created
+[testcontainers.org 00:00:00.14] Start Docker container c1106b73e992
+[testcontainers.org 00:00:00.23] Wait for Docker container c1106b73e992 to complete readiness checks
+[testcontainers.org 00:00:01.26] Docker container c1106b73e992 ready
+[testcontainers.org 00:00:01.32] Docker container 496157f7208f created
+[testcontainers.org 00:00:01.32] Docker container 615764d7b621 created
+[testcontainers.org 00:00:01.33] Docker container 0838cb471e5e created
+[testcontainers.org 00:00:01.33] Start Docker container 496157f7208f
+[testcontainers.org 00:00:01.33] Start Docker container 615764d7b621
+[testcontainers.org 00:00:01.33] Start Docker container 0838cb471e5e
+[testcontainers.org 00:00:01.41] Wait for Docker container 615764d7b621 to complete readiness checks
+[testcontainers.org 00:00:01.42] Execute "redis-cli ping" at Docker container 615764d7b621
+[testcontainers.org 00:00:01.42] Wait for Docker container 496157f7208f to complete readiness checks
+[testcontainers.org 00:00:01.43] Wait for Docker container 0838cb471e5e to complete readiness checks
+[testcontainers.org 00:00:01.43] Execute "redis-cli ping" at Docker container 0838cb471e5e
+[testcontainers.org 00:00:01.44] Docker container 496157f7208f ready
+[testcontainers.org 00:00:01.45] Docker container 615764d7b621 ready
+[testcontainers.org 00:00:01.45] Docker container 0838cb471e5e ready
+     Warning:
+     The component "Fluent Assertions" is governed by the rules defined in the Xceed License Agreement and
+     the Xceed Fluent Assertions Community License. You may use Fluent Assertions free of charge for
+     non-commercial use only. An active subscription is required to use Fluent Assertions for commercial use.
+     Please contact Xceed Sales mailto:sales@xceed.com to acquire a subscription at a very low cost.
+     A paid commercial license supports the development and continued increasing support of
+     Fluent Assertions users under both commercial and community licenses. Help us
+     keep Fluent Assertions at the forefront of unit testing.
+     For more information, visit https://xceed.com/products/unit-testing/fluent-assertions/
+Reload generation ready before confirmation: False
+Reload generation ready before confirmation: False
+  Passed MethodCache.Redis.IntegrationTests.RedisUnicodeKeyTests.AllCacheOperationsAndAtomicStamps_KeepUtf16KeysDistinct [81 ms]
+  Passed MethodCache.Redis.IntegrationTests.RedisDistributedCacheTests.TagInvalidation_ReachesTheOtherInstancesMemory [33 ms]
+  Passed MethodCache.Redis.IntegrationTests.RedisDistributedCacheTests.SecondInstance_ReadsTheValueTheFirstStored [4 ms]
+  Passed MethodCache.Redis.IntegrationTests.RedisDistributedCacheTests.KeyInvalidation_ReachesTheOtherInstancesMemory [7 ms]
+  Passed MethodCache.Redis.IntegrationTests.RedisBackplaneShutdownTests.DisposeAsync_BorrowedConnection_PreservesOtherSubscribersAndTheConnection [2 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "disabled") [31 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "reload") [23 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "equivalent") [9 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "specificity") [4 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "unready-sync") [4 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "lost-message") [7 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "sync") [5 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "custom") [6 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "refresh") [8 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract [42 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyContractTests.NativeInvalidationFaults_ConformToSharedContract(scenario: "cancellation") [10 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyContractTests.NativeInvalidationFaults_ConformToSharedContract(scenario: "partial") [6 ms]
+[testcontainers.org 00:00:01.90] Delete Docker container 615764d7b621
+  Passed MethodCache.Redis.IntegrationTests.PolicyContractTests.NativeInvalidationFaults_ConformToSharedContract(scenario: "validation") [3 ms]
+  Passed MethodCache.Redis.IntegrationTests.HttpContractTests.HttpEpochs_WithDroppedBackplane_NoOpAndRollingFormats_ConformToContract [96 ms]
+  Passed MethodCache.Redis.IntegrationTests.EpochContractTests.NativeAtomicEpochs_ConformAcrossIndependentConnections [14 ms]
+  Passed MethodCache.Redis.IntegrationTests.AtomicInvalidationTests.OlderStampWithShortRetention_DoesNotShortenNewerRetention [3 ms]
+  Passed MethodCache.Redis.IntegrationTests.AtomicInvalidationTests.IndependentConnections_PreserveSignedMaximumAndConcurrentStamps(concurrent: False) [9 ms]
+  Passed MethodCache.Redis.IntegrationTests.AtomicInvalidationTests.IndependentConnections_PreserveSignedMaximumAndConcurrentStamps(concurrent: True) [3 ms]
+  Passed MethodCache.Redis.IntegrationTests.RedisToxiproxyTests.AfterTheNetworkHeals_InstancesShareValuesAgain [1 s]
+[testcontainers.org 00:00:04.12] Delete Docker container 496157f7208f
+[testcontainers.org 00:00:04.36] Delete Docker container 0838cb471e5e
+[testcontainers.org 00:00:04.50] Delete Docker network fd9ca4bf420e
+[xUnit.net 00:00:04.81]   Finished:    MethodCache.Redis.IntegrationTests
+  Passed MethodCache.Redis.IntegrationTests.RedisToxiproxyTests.Miss_WhenRedisMisbehaves_TakesAtMostTheOperationTimeout_AndHitsAreUnaffected(toxic: "timeout", attribute: "timeout", value: 0) [513 ms]
+  Passed MethodCache.Redis.IntegrationTests.RedisToxiproxyTests.Miss_WhenRedisMisbehaves_TakesAtMostTheOperationTimeout_AndHitsAreUnaffected(toxic: "latency", attribute: "latency", value: 10000) [505 ms]
+  Passed MethodCache.Redis.IntegrationTests.RedisToxiproxyTests.Miss_WhenRedisMisbehaves_TakesAtMostTheOperationTimeout_AndHitsAreUnaffected(toxic: "reset_peer", attribute: "timeout", value: 0) [8 ms]
+
+Test Run Successful.
+Total tests: 27
+     Passed: 27
+ Total time: 5,0127 Seconds

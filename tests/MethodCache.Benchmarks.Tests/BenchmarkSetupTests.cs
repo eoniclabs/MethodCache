@@ -12,6 +12,7 @@ public class BenchmarkSetupTests
     [InlineData("engine")]
     [InlineData("hitpath")]
     [InlineData("httppath")]
+    [InlineData("httpcold")]
     [InlineData("hashlookup")]
     [InlineData("memory-reference")]
     [InlineData("readme")]

@@ -18,6 +18,7 @@ public class HttpResponsePathBenchmarks
     [Params(false, true)] public bool Listening { get; set; }
     [Params(false, true)] public bool AfterInvalidation { get; set; }
     public int OriginLoads => _origin.Calls;
+    internal IServiceProvider Services => _provider;
 
     [GlobalSetup]
     public async Task Setup()
@@ -88,5 +89,39 @@ public class HttpResponsePathBenchmarks
             };
             return Task.FromResult(response);
         }
+    }
+}
+
+// Publication without an ever-growing resident set. Setup/teardown are outside the measured operation;
+// every iteration starts with the same three warm representations and at most 8192 new responses.
+// The older body's-only budget and the new metadata-inclusive budget both comfortably admit this batch.
+[MemoryDiagnoser]
+[InvocationCount(HttpColdMissBenchmarks.InvocationsPerIteration, unrollFactor: 1)]
+public class HttpColdMissBenchmarks
+{
+    public const int InvocationsPerIteration = 8192;
+    private HttpResponsePathBenchmarks? _workload;
+    [Params(false, true)] public bool Listening { get; set; }
+    [Params(false, true)] public bool AfterInvalidation { get; set; }
+    public int OriginLoads => _workload!.OriginLoads;
+    internal IServiceProvider Services => _workload!.Services;
+
+    [GlobalSetup] public Task Setup() => ResetBatch();
+
+    [IterationSetup]
+    public async Task ResetBatch()
+    {
+        _workload?.Cleanup();
+        _workload = new HttpResponsePathBenchmarks { Listening = Listening, AfterInvalidation = AfterInvalidation };
+        await _workload.Setup().ConfigureAwait(false);
+    }
+
+    [Benchmark] public Task<int> Miss() => _workload!.Miss();
+
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        _workload?.Cleanup();
+        _workload = null;
     }
 }

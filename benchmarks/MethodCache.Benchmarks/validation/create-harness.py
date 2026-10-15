@@ -84,7 +84,7 @@ if (args.Contains("--verify-native"))
     return;
 }
 BenchmarkSwitcher.FromTypes(new[] { typeof(GeneratedContractBenchmarks), typeof(HttpResponsePathBenchmarks),
-    typeof(DesignMemoryWorkloadBenchmarks), typeof(DesignL2WorkloadBenchmarks), typeof(DesignHttpWorkloadBenchmarks) })
+    typeof(HttpColdMissBenchmarks), typeof(DesignMemoryWorkloadBenchmarks), typeof(DesignL2WorkloadBenchmarks), typeof(DesignHttpWorkloadBenchmarks) })
     .Run(args, DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true)));
 ''')
 metadata = {
