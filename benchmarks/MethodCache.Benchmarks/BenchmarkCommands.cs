@@ -48,6 +48,15 @@ public static class BenchmarkCommands
 
         switch (cleanedArgs[0].ToLowerInvariant())
         {
+            case "design-http":
+                RunBenchmark<Microbenchmarks.DesignHttpWorkloadBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "design-memory":
+                RunBenchmark<Microbenchmarks.DesignMemoryWorkloadBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "design-l2":
+                RunBenchmark<Microbenchmarks.DesignL2WorkloadBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "hashlookup":
                 RunBenchmark<Microbenchmarks.KeyHashLookupBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
                 break;
@@ -143,6 +152,9 @@ public static class BenchmarkCommands
         Console.WriteLine("Usage: MethodCache.Benchmarks <category>");
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
+        Console.WriteLine("  design-http   - Local/native HTTP hit, miss and cookie-preserving bypass");
+        Console.WriteLine("  design-memory - Public API hits, contention, single-flight and weighted eviction");
+        Console.WriteLine("  design-l2     - Real Redis/SQL reads and writes, round-trip off/on");
         Console.WriteLine("  hashlookup   - Ready string/span lookup versus immutable prefix-state reuse");
         Console.WriteLine("  hitpath      - Complete contract-1 hits, buffers and listeners");
         Console.WriteLine("  httppath     - HTTP fresh/variant hits, misses and 304, listeners off/on");

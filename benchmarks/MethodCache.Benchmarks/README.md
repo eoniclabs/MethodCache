@@ -158,3 +158,27 @@ measured hit shape must retain that one origin call. `KeyBuild` only builds; com
 expiration, frequency recording and request counting. Run the same source against the full before/after SHAs;
 three alternating independent runs and their 95% intervals are required by design-spec section 10. Buffer growth
 allocations are compared against the matching growth baseline, rather than being mistaken for a new hit allocation.
+
+### Pre-1.0 design validation workloads
+
+`design-memory` measures public API hits, four-worker contention, four-caller single-flight batches and
+unweighted/weighted eviction pressure, without/with a MeterListener. Its setup fills the configured capacity;
+the setup tests prove resident hits and one source load per four-caller batch. QoS selection is requested for
+actual macOS benchmark launches, and disabled in setup-only unit tests.
+
+`design-l2` requires real Redis and SQL Server from the two standard infrastructure environment variables.
+It measures native reads and miss/publication separately, with VerifyRoundTrip off/on. A deliberately overweight
+value prevents L1 admission; setup proves two subsequent reads do not call the origin. It waits for actual SQL
+table creation and a real backend read before measuring. This is a network workload, not a nanosecond lookup.
+
+`design-http` measures local/native HTTP fresh hits, misses and cookie-preserving bypass. Before KeepCookies
+existed, the comparison uses HttpClient without the response-cache handler for that bypass; this is a new
+workload, not an assertion that the old cache supported automatic cookies. The older round-trip labels retain
+that revision's existing behavior when VerifyRoundTrip was absent; report them separately from the new switch.
+
+`validation/create-harness.py` copies these same workload sources plus the generated/HTTP contract workloads
+into an external project targeting a chosen checkout. Its manifest records full runtime SHA and source SHA-256s;
+setup reflection only accommodates renamed options and the former telemetry registration. Measured calls use
+the common public APIs. Build the external project, run its DLL with `--verify-native` inside the standard native
+infrastructure wrapper, then use BenchmarkDotNet filters. Compare three independent alternating launches per
+revision and preserve all raw logs, environment metadata and confidence intervals as required by design-spec §10.
