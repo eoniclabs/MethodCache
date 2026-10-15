@@ -10,13 +10,15 @@ its DLL with a working directory followed by the child executable and arguments.
 Server 2022 containers and credentials through the child's environment, checks its exit code and disposes its own
 containers. It does not print credentials or touch a production backend.
 
-`run-series.py` expects the eight prepared harnesses under `/tmp/methodcache-design-harness` and the built driver at
+`run-series.py` expects the nine prepared harnesses under `/tmp/methodcache-design-harness` and the built driver at
 `/tmp/methodcache-http-native-runner/bin/Release/net10.0/Runner.dll`. These paths are configurable as constants at the
 top of the script. Each manifest records absolute runtime roots, full SHAs and workload SHA256 checksums. Every
-revision must use identical workloads. Source changes require rebuilding the relevant harness and a fresh evidence
+revision must use identical workloads. The `pr1-base` harness is the actual post-PR122 merge-base
+of PR1 (`a023336088c0df4fe887ee336dabcbbdb41f5b26`); `base` remains the cumulative f43854d comparison.
+Do not substitute the cumulative baseline for the adjacent PR1 comparison. Source changes require rebuilding the relevant harness and a fresh evidence
 directory. The script runs 62 cases in three independent launches per revision, descending/ascending/descending,
 so adjacent base/change order alternates. Local families (46 cases) run without test containers; native families
-(16 cases) own fresh backends. This gives 48 family launches covering 24 complete revision rounds. Each uses concurrent workstation GC,
+(16 cases) own fresh backends. This gives 54 family launches covering 27 complete revision rounds. Each uses concurrent workstation GC,
 16 warmups and 12 measured 500ms iterations. It checks every report for measured results; a zero host exit code alone
 does not establish successful benchmarks.
 
@@ -63,3 +65,17 @@ do not pool previous growing-miss data with this bounded publication case.
 The explicit invocation count overrides iterationTime for this one class; other scenarios retain their
 normal 500 ms target. See [BenchmarkDotNet InvocationCount](https://benchmarkdotnet.org/api/BenchmarkDotNet.Attributes.InvocationCountAttribute.html).
 Growing-pressure rows still require performance review; the separation does not waive regressions.
+
+## Independent-run statistical report
+
+`summarize-pair.py RESULTS BASE CHANGE GROUP` reads exactly three independently launched reports
+per revision, checks empty interference guards, matching case matrices and twelve actual measured
+iterations per case. It reports a 95% Student-t interval (df=2) over the three run means, rather than
+reusing BenchmarkDotNet's interval over iterations inside one process. Different workload checksums
+are rejected. Allocation samples remain visible per run.
+
+The tool identifies the specified disjoint-interval/>3% regression and labels relative interval
+half-widths above 3% as insufficient precision for review. This diagnostic threshold does not modify
+the specification or automatically accept narrower intervals. Every other row remains
+`review_required`; feature equivalence, matching-hit allocation increases, pressure paths and the
+complete scenario matrix still require assessment. Passing the helper's tests is not a performance pass.

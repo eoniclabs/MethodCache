@@ -21,8 +21,8 @@ Earlier .NET 8/9 results below describe their historical revisions, not addition
 
 After that complete pipeline, two allocation probes were moved into synchronous NoInlining helpers,
 outside assertion/async test scaffolding, with unchanged zero-byte assertions and explicit completed-hit
-requirements. The four relevant facts pass again on .NET 10. No shipped source or benchmark workload
-differs from the frozen 28ab9b2 candidate. Linux CI must confirm this probe change.
+requirements. The four relevant facts pass again on .NET 10. No shipped source differs from the frozen 28ab9b2 candidate. Benchmark workloads were
+subsequently corrected as described below; their evidence must use the same corrected sources on every revision.
 
 The preceding HTTP-only CI run at 8ffa85c passed Windows/macOS but failed Linux in those probes,
 and one net9 Redis contract setup failed in subscriber Ping with TaskCanceledException. The latter
@@ -39,10 +39,11 @@ and updated-probe output is preserved alongside this final receipt.
 
 The approved one-off Nimbus series uses the existing pinned .NET 10 image, frozen identical workloads,
 exclusive nonblocking capacity leases of at most 25 minutes per batch and exact task-owned cleanup.
-CI runs between batches; no external jobs are interrupted. The updated final candidate replaces only
-8063e9a in a separate evidence cohort. Frozen successful measurements for unchanged revisions can
-be reused with their original manifests; rejected/superseded runs are retained. Focused comparisons
-check generated hits and HTTP miss/304 publication before resuming the complete matrix.
+CI runs between batches; no external jobs are interrupted. The final runtime candidate replaces 8063e9a. The corrected cold-publication workloads and
+complete CI capacity boundary require a fresh nine-revision cohort, including the actual post-PR122
+merge-base of PR1 and the cumulative f43854d baseline. Earlier measurements remain separate
+diagnostics; they are not pooled into this cohort. Focused comparisons check generated hits and
+HTTP miss/304 behavior while the new identical harnesses are prepared.
 
 Dropping runtime targets simplifies build/test support; it is not a throughput claim. A supplementary
 raw-IL diagnostic compared the seven net10 library outputs before/after that change: all 3,702
@@ -164,3 +165,22 @@ The shared validation harness now selects cold publication plus fresh/variant/30
 there are still 62 scenarios, with one additional JSON report. All nine runtime revisions need the
 identical new workload sources and fresh evidence; older growing-miss samples cannot be pooled into
 this case. No shipped runtime source changed. Evidence: `plans/design-benchmarks/http-cold-publication/`.
+
+## Exact identity allocation probe follow-up
+
+HTTP head 953e04b passed macOS/Windows, but its Linux .NET 9 long-key identity probe reported
+20,200 bytes against 16,000 expected. Final head f1da892 also failed that probe on macOS/.NET 10
+(23,080 versus 16,000). These are retained failures, not dismissed as obsolete-runtime behavior.
+The isolated local probe passed before this change, so neither a deterministic local reproduction
+nor the origin of those historical extra allocations is claimed.
+
+The synchronous probe now runs on an owned thread without inherited ExecutionContext. Thread/delegate
+creation, warmup, completion and assertions stay outside the NoInlining measurement helper. The same
+100-call byte assertion remains exact. A temporary production mutation allocating an escaping UTF-16
+buffer makes all four inputs fail. After restoring production byte-for-byte, all 320 HTTP tests pass
+on .NET 10, and all 11 identity facts pass on each historical runtime. This isolates the test fixture;
+it changes no shipped source or measured benchmark workload.
+
+[Original failures and mutation/green receipts](../../plans/design-benchmarks/identity-probe-isolation/)
+are preserved. The forwarded latest heads of #129, #130 and #131 still require fresh three-platform CI.
+Earlier green statuses do not verify these newer heads.
