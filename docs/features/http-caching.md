@@ -70,7 +70,10 @@ their own; if the backend evicts one anyway, the next request starts a new gener
 cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
 to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains
 bounded recovery. The origin mutation may have succeeded: do not automatically retry it. Cancelling the caller stops
-its wait, while owned generation recovery continues.
+its wait, while owned generation recovery continues. Graceful asynchronous disposal waits for owned advances, then
+tries queued URL invalidations once more even while the circuit breaker is open. Each transport operation remains
+bounded by its configured timeout. Any invalidations still unconfirmed at shutdown are reported as a count and are
+lost when the process exits; other nodes may retain old responses until they expire.
 
 ## Core storage and administration
 

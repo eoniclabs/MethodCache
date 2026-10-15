@@ -87,7 +87,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Configuration");
                 if (logger != null)
                 {
-                    source.ReloadFailed += ex => logger.LogError(ex, "Ignored reloaded MethodCache configuration; the previous cache policies stay in effect.");
+                    source.ReloadFailed += ex => logger.LogError("Ignored reloaded MethodCache configuration; the previous cache policies stay in effect. Error type: {ErrorType}.", ex.GetType().FullName);
                 }
 
                 return new PolicySourceRegistration(source, PolicySourcePriority.ConfigurationFiles);

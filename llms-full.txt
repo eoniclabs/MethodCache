@@ -1311,7 +1311,10 @@ their own; if the backend evicts one anyway, the next request starts a new gener
 cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
 to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains
 bounded recovery. The origin mutation may have succeeded: do not automatically retry it. Cancelling the caller stops
-its wait, while owned generation recovery continues.
+its wait, while owned generation recovery continues. Graceful asynchronous disposal waits for owned advances, then
+tries queued URL invalidations once more even while the circuit breaker is open. Each transport operation remains
+bounded by its configured timeout. Any invalidations still unconfirmed at shutdown are reported as a count and are
+lost when the process exits; other nodes may retain old responses until they expire.
 
 ## Core storage and administration
 
@@ -1997,7 +2000,8 @@ Core owns the `MethodCache` Meter/ActivitySource. The OpenTelemetry package only
 
 Hashing creates stable identifiers and does not make keys anonymous. Leave identity recording disabled unless the
 export destination is appropriate. Core, Redis and SQL diagnostic logs omit backend exception text because it can
-contain credentials, keys or argument values. Health check failures similarly expose exception types only. Standard
+contain credentials, keys or argument values. Invalid configuration reloads and failed policy watchers likewise log
+only the error type, retaining the last accepted policies. Health check failures expose exception types only. Standard
 application activity parentage and baggage remain intact, including when origin code uses its ambient authorization
 context; MethodCache neither adds identity baggage nor strips the application's context.
 
@@ -2954,7 +2958,9 @@ builder.Services.AddMethodCache(cache => cache.UseRedis("localhost:6379"));
 
 An ETag fetched by one instance is revalidated by another, and a successful unsafe mutation advances the shared
 URL generation before returning. This remains correct without backplane messages. Tag and Clear generations are
-shared with Core-only nodes and across entry formats. A failed generation read bypasses caching. An unconfirmed
+shared with Core-only nodes and across entry formats. Graceful async disposal drains owned generation work,
+retries queued invalidations once through an open circuit breaker, and reports any lost count. Recovery is not
+durable across process exit. A failed generation read bypasses caching. An unconfirmed
 mutation throws `HttpCacheInvalidationException`; the origin may already have succeeded. Do not automatically
 repeat the origin mutation. Core owns bounded invalidation recovery after caller cancellation.
 
@@ -3051,6 +3057,14 @@ representation. Configure the serializer for your model. Increment method `Versi
 
 # Changelog
 
+Changes that a user of the packages notices. The release steps are in
+[docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
+release.
+
+## Unreleased (1.0.0)
+
+### Core telemetry and attribute diagnostics
+
 - Move instrumentation into Core's container-owned Meter/ActivitySource; the OpenTelemetry package now only subscribes.
   Replace provider/wrapper APIs with `MethodCacheTelemetryOptions`, one final request outcome and seconds histograms.
   Spans/logs omit exception payloads and copied request identities; key/tag recording is explicit opt-in.
@@ -3061,11 +3075,9 @@ representation. Configure the serializer for your model. Increment method `Versi
 
 - Unify duration parsing and generator errors; add named attribute groups, enabled/distributed flags and fail-safe retry delay. Remove raw-key attributes and consolidate diagnostic IDs. Dynamic tag placeholders now use canonical key parts while existing contract-1 binaries retain their formatting.
 
-Changes that a user of the packages notices. The release steps are in
-[docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
-release.
-
-## Unreleased (1.0.0)
+- Omit invalid reload values and policy watcher exception payloads from diagnostic logs; retain error types.
+- Drain HTTP generation recovery before disposing its transport. Retry once through an open breaker and report
+  unconfirmed URL invalidations at shutdown without exposing targets.
 
 ### Core-owned HTTP storage
 

@@ -87,7 +87,8 @@ Core owns the `MethodCache` Meter/ActivitySource. The OpenTelemetry package only
 
 Hashing creates stable identifiers and does not make keys anonymous. Leave identity recording disabled unless the
 export destination is appropriate. Core, Redis and SQL diagnostic logs omit backend exception text because it can
-contain credentials, keys or argument values. Health check failures similarly expose exception types only. Standard
+contain credentials, keys or argument values. Invalid configuration reloads and failed policy watchers likewise log
+only the error type, retaining the last accepted policies. Health check failures expose exception types only. Standard
 application activity parentage and baggage remain intact, including when origin code uses its ambient authorization
 context; MethodCache neither adds identity baggage nor strips the application's context.
 

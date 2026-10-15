@@ -112,7 +112,9 @@ builder.Services.AddMethodCache(cache => cache.UseRedis("localhost:6379"));
 
 An ETag fetched by one instance is revalidated by another, and a successful unsafe mutation advances the shared
 URL generation before returning. This remains correct without backplane messages. Tag and Clear generations are
-shared with Core-only nodes and across entry formats. A failed generation read bypasses caching. An unconfirmed
+shared with Core-only nodes and across entry formats. Graceful async disposal drains owned generation work,
+retries queued invalidations once through an open circuit breaker, and reports any lost count. Recovery is not
+durable across process exit. A failed generation read bypasses caching. An unconfirmed
 mutation throws `HttpCacheInvalidationException`; the origin may already have succeeded. Do not automatically
 repeat the origin mutation. Core owns bounded invalidation recovery after caller cancellation.
 

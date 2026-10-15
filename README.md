@@ -258,7 +258,8 @@ reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELE
 that URL. `AddHttpCaching` requires `AddMethodCache`. Configured native Redis or SQL Server stores HTTP responses
 exclusively in MethodCache's owned L2; otherwise Core uses its separate `MaxHttpBytes` budget (100 MiB by default).
 Shared atomic generations prevent late old responses becoming visible after a confirmed mutation, even without
-backplane delivery. `KeepCookies=true` preserves transport cookies and bypasses response caching; otherwise
+backplane delivery. Graceful async disposal drains HTTP invalidation recovery and reports any unconfirmed targets
+as a count; recovery does not survive process exit. `KeepCookies=true` preserves transport cookies and bypasses response caching; otherwise
 `AddHttpCaching()` turns off automatic cookies
 on the client's handler; send any cookie the API needs as an explicit `Cookie` header. Redirects the transport
 follows are not stored under the URL you asked for, retries (Polly, standard resilience) get full responses, and a

@@ -1,4 +1,7 @@
 using System.Net;
+using System.Collections.Concurrent;
+using MethodCache.Core.Runtime.Distributed;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using MethodCache.HttpCaching.Internal;
 using MethodCache.TestSupport;
@@ -69,6 +72,95 @@ public class HttpGenerationFaultTests
         try { Assert.StartsWith("unavailable:", await storage.GetGenerationAsync("url")); }
         finally { backend.StampRelease.TrySetResult(); await storage.Layer.FlushAsync(force: true); }
         Assert.DoesNotContain("unavailable:", await storage.GetGenerationAsync("url"));
+    }
+
+    [Fact]
+    public async Task Shutdown_RetriesQueuedEpochEvenWhileBreakerIsOpen()
+    {
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend);
+        backend.FailAdvance = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
+        Assert.Equal(1, storage.Core.PendingRecoveries);
+        backend.FailAdvance = false;
+        await storage.Core.DisposeAsync();
+        Assert.Equal(2, backend.Advances);
+        Assert.Equal(0, storage.Core.PendingRecoveries);
+    }
+
+    [Fact]
+    public async Task Shutdown_WaitsForOwnedAdvanceAfterCallerStopsWaiting()
+    {
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time); backend.HoldNextAdvance = true;
+        using var storage = new TestHttpStore(time, backend);
+        using var caller = new CancellationTokenSource();
+        var mutation = storage.Core.InvalidateUrlsAsync(["url"], caller.Token).AsTask();
+        await backend.Started.Task;
+        caller.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => mutation);
+        var shutdown = storage.Core.DisposeAsync().AsTask();
+        try { Assert.False(shutdown.IsCompleted); }
+        finally { backend.Release.TrySetResult(); await shutdown; }
+        Assert.Equal(1, backend.Advances);
+        Assert.Equal(0, storage.Core.PendingRecoveries);
+    }
+
+    [Fact]
+    public async Task Shutdown_ReportsUnconfirmedEpochCountWithoutLeakingTargets()
+    {
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        var logger = new ShutdownLogger();
+        using var storage = new TestHttpStore(time, backend, logger: logger);
+        backend.FailAdvance = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["https://secret.test/?token=canary"], default).AsTask());
+        await storage.Core.DisposeAsync();
+        var lost = Assert.Single(logger.Messages, message => message.Contains("shutdown lost", StringComparison.Ordinal));
+        Assert.Contains("1 HTTP URL invalidations", lost);
+        Assert.DoesNotContain("secret", lost);
+        Assert.Equal(0, storage.Core.PendingRecoveries);
+    }
+
+    [Fact]
+    public async Task TransportShutdown_FlushesAndReportsHttpQueueBeforeDetachingObservations()
+    {
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        var logger = new ShutdownLogger();
+        using var storage = new TestHttpStore(time, backend, logger: logger);
+        backend.FailAdvance = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
+        backend.FailAdvance = false;
+        await storage.Layer.DisposeAsync();
+        Assert.Equal(2, backend.Advances);
+        Assert.Equal(0, storage.Core.PendingRecoveries);
+        await storage.Core.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Shutdown_HangingFinalRetryIsBoundedByConfiguredFakeClockTimeout()
+    {
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        var logger = new ShutdownLogger();
+        using var storage = new TestHttpStore(time, backend, logger: logger);
+        backend.FailAdvance = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
+        backend.FailAdvance = false; backend.HoldNextAdvance = true;
+        var shutdown = storage.Core.DisposeAsync().AsTask();
+        Assert.False(shutdown.IsCompleted);
+        await backend.Started.Task;
+        time.Advance(TimeSpan.FromSeconds(1));
+        await shutdown;
+        Assert.Equal(2, backend.Advances);
+        Assert.Contains(logger.Messages, message => message.Contains("shutdown lost 1 HTTP URL invalidations", StringComparison.Ordinal));
+        backend.Release.TrySetResult();
+    }
+
+    private sealed class ShutdownLogger : ILogger<DistributedCacheLayer>
+    {
+        internal ConcurrentQueue<string> Messages { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> formatter)
+            => Messages.Enqueue(formatter(state, error) + error?.ToString());
     }
 
     private sealed class Origin : HttpMessageHandler

@@ -880,6 +880,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async Task ShutdownAsync()
         {
+            // HTTP recovery must finish while the owned transport is still available, including synchronous DI disposal.
+            if (_httpShutdown is { } shutdownHttp) await shutdownHttp().ConfigureAwait(false);
             // Disposed is set, so the last write to finish completes this
             if (Volatile.Read(ref _writesInFlight) != 0)
             {
