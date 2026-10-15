@@ -9,6 +9,37 @@ namespace MethodCache.Benchmarks.Tests;
 public class BenchmarkSetupTests
 {
     [Fact]
+    public void GeneratedContract_AllHitShapesStayResident_AndEveryMissLoads()
+    {
+        var benchmark = new MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks { SelectPerformanceCores = false };
+        benchmark.Setup();
+        try
+        {
+            Assert.Equal(8, benchmark.OriginLoads);
+            benchmark.VerifyResidentHits();
+            Assert.Equal(8, benchmark.OriginLoads);
+            benchmark.VerifyUniqueMisses();
+            Assert.Equal(38, benchmark.OriginLoads);
+        }
+        finally { benchmark.Cleanup(); }
+    }
+
+    [Fact]
+    public void GeneratedContract_ResidentGuardRejectsUncachedService()
+    {
+        var benchmark = new MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks { SelectPerformanceCores = false };
+        benchmark.Setup();
+        try
+        {
+            typeof(MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks)
+                .GetField("_service", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .SetValue(benchmark, benchmark.OriginService);
+            Assert.Throws<InvalidOperationException>(() => benchmark.VerifyResidentHits());
+        }
+        finally { benchmark.Cleanup(); }
+    }
+
+    [Fact]
     public void ComponentPaths_MatchReferencedCoreCapabilities()
     {
         var core = typeof(MethodCache.Generated.CachedMethod).Assembly;
@@ -43,12 +74,15 @@ public class BenchmarkSetupTests
     }
 
     [Theory]
-    [InlineData(4)]
-    [InlineData(80)]
-    [InlineData(256)]
-    public void KeyHashLookup_AllPathsReadThePopulatedValue(int length)
+    [InlineData(4, "Int")]
+    [InlineData(80, "Int")]
+    [InlineData(256, "Int")]
+    [InlineData(4, "Guid")]
+    [InlineData(80, "Guid")]
+    [InlineData(256, "Guid")]
+    public void KeyHashLookup_AllPathsReadThePopulatedValue(int length, string argument)
     {
-        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks { PrefixCharacters = length, SelectPerformanceCores = false };
+        var benchmark = new MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks { PrefixCharacters = length, ArgumentKind = argument, SelectPerformanceCores = false };
         benchmark.Setup();
         Assert.Equal(42, benchmark.ReadyStringLookup());
         Assert.Equal(42, benchmark.FullSpanLookup());

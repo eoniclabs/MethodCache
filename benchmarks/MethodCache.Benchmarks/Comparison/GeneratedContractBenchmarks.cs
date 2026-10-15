@@ -20,14 +20,18 @@ public class GeneratedContractBenchmarks
     ];
     private readonly object _fallback = new ContractQuery("a:\\b\ud800", 42);
     private int _next;
+    public bool SelectPerformanceCores { get; set; } = true;
+    internal ContractService OriginService => _provider.GetRequiredService<ContractService>();
+    internal int OriginLoads => OriginService.OriginLoads;
     [GlobalSetup]
     public void Setup()
     {
         // Prefer performance cores for this process under macOS; use the same setting on both revisions.
-        if (OperatingSystem.IsMacOS() && SetQualityOfService(0x19, 0) != 0)
+        if (SelectPerformanceCores && OperatingSystem.IsMacOS() && SetQualityOfService(0x19, 0) != 0)
             throw new InvalidOperationException("Could not set benchmark thread quality of service.");
         var services = new ServiceCollection();
-        services.AddSingleton<IContractService, ContractService>();
+        services.AddSingleton<ContractService>();
+        services.AddSingleton<IContractService>(provider => provider.GetRequiredService<ContractService>());
         services.Configure<MethodCacheMemoryOptions>(options => options.MaxItems = 1024);
         services.AddMethodCache();
         _provider = services.BuildServiceProvider();
@@ -40,6 +44,33 @@ public class GeneratedContractBenchmarks
         _ = FallbackHit().GetAwaiter().GetResult();
         _ = GenericHit().GetAwaiter().GetResult();
         _ = StringHit().GetAwaiter().GetResult();
+        if (OriginLoads != 8) throw new InvalidOperationException("Each declared hit must populate exactly once.");
+        VerifyResidentHits();
+    }
+
+    internal void VerifyResidentHits()
+    {
+        var before = OriginLoads;
+        for (var i = 0; i < 100; i++)
+        {
+            if (SyncHit() != 42 || GenericHit().GetAwaiter().GetResult() != 42 ||
+                TaskHit().GetAwaiter().GetResult() != 42 || ValueTaskHit().GetAwaiter().GetResult() != 42 ||
+                StringHit().GetAwaiter().GetResult() != 24 || RecordHit().GetAwaiter().GetResult() != 42 ||
+                CollectionHit().GetAwaiter().GetResult() != 3 || FallbackHit().GetAwaiter().GetResult() != 42)
+                throw new InvalidOperationException("Generated hit returned the wrong value.");
+        }
+        if (OriginLoads != before) throw new InvalidOperationException("Generated hit invoked the origin.");
+    }
+
+    internal void VerifyUniqueMisses()
+    {
+        var before = OriginLoads;
+        for (var i = 0; i < 10; i++)
+        {
+            if (SyncMiss() != 42 || ValueTaskMiss().GetAwaiter().GetResult() != 42 ||
+                TaskMiss().GetAwaiter().GetResult() != 42 || OriginLoads != before + 3 * (i + 1))
+                throw new InvalidOperationException("Each generated miss must invoke the origin with a distinct key.");
+        }
     }
 
     [Benchmark] public int SyncHit() => _service.Sync(Id);
@@ -79,12 +110,15 @@ public interface IContractService
 
 public sealed class ContractService : IContractService
 {
-    public Task<int> Generic<T>(Guid id) => System.Threading.Tasks.Task.FromResult(42);
-    public int Sync(Guid id) => 42;
-    public Task<int> Task(Guid id) => System.Threading.Tasks.Task.FromResult(42);
-    public Task<int> ByEmail(string email) => System.Threading.Tasks.Task.FromResult(email.Length);
-    public ValueTask<int> ValueTask(Guid id) => new(42);
-    public Task<int> Record(ContractQuery query) => System.Threading.Tasks.Task.FromResult(query.Page);
-    public Task<int> Collection(Guid[] ids) => System.Threading.Tasks.Task.FromResult(ids.Length);
-    public Task<int> Fallback(object value) => System.Threading.Tasks.Task.FromResult(42);
+    private int _originLoads;
+    internal int OriginLoads => Volatile.Read(ref _originLoads);
+    private int Loaded(int value) { Interlocked.Increment(ref _originLoads); return value; }
+    public Task<int> Generic<T>(Guid id) => System.Threading.Tasks.Task.FromResult(Loaded(42));
+    public int Sync(Guid id) => Loaded(42);
+    public Task<int> Task(Guid id) => System.Threading.Tasks.Task.FromResult(Loaded(42));
+    public Task<int> ByEmail(string email) => System.Threading.Tasks.Task.FromResult(Loaded(email.Length));
+    public ValueTask<int> ValueTask(Guid id) => new(Loaded(42));
+    public Task<int> Record(ContractQuery query) => System.Threading.Tasks.Task.FromResult(Loaded(query.Page));
+    public Task<int> Collection(Guid[] ids) => System.Threading.Tasks.Task.FromResult(Loaded(ids.Length));
+    public Task<int> Fallback(object value) => System.Threading.Tasks.Task.FromResult(Loaded(42));
 }

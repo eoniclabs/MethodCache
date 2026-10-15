@@ -47,8 +47,9 @@ if (args.Contains("--verify-components"))
         throw new Exception("Compiled component paths do not match the referenced Core implementation.");
     Console.WriteLine($"Verified compiled capabilities: prefix={expectedPrefixHash}, SipHash={expectedSipHash}, in-place builder={expectedConstructor}.");
     foreach (var length in new[] { 4, 80, 256 })
+    foreach (var argument in new[] { "Int", "Guid" })
     {
-        var lookup = new KeyHashLookupBenchmarks { PrefixCharacters = length, SelectPerformanceCores = false };
+        var lookup = new KeyHashLookupBenchmarks { PrefixCharacters = length, ArgumentKind = argument, SelectPerformanceCores = false };
         lookup.Setup();
         if (lookup.ReadyStringLookup() != 42 || lookup.FullSpanLookup() != 42 || lookup.PrefixLookup() != 42)
             throw new Exception("Component lookup missed.");
