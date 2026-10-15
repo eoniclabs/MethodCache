@@ -97,7 +97,10 @@ public readonly struct MethodCall
     public KeyBuilder CreateFallbackKey(object?[] arguments)
     {
         ArgumentNullException.ThrowIfNull(arguments);
-        return BindKey(_snapshot.Services.KeyGenerator.GenerateKey(_snapshot.KeyMethod, arguments!, _snapshot.Policy));
+        var generator = _snapshot.Services.KeyGenerator;
+        return BindKey(generator.GetType() == typeof(FastHashKeyGenerator)
+            ? ((FastHashKeyGenerator)generator).GenerateKey(_snapshot.FallbackPrefix, arguments)
+            : generator.GenerateKey(_snapshot.KeyMethod, arguments!, _snapshot.Policy));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

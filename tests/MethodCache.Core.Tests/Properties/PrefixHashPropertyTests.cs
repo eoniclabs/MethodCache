@@ -14,6 +14,22 @@ namespace MethodCache.Core.Tests.Properties;
 public class PrefixHashPropertyTests
 {
     [Fact]
+    public void PreparedFallbackPrefix_ArbitraryUtf16NamesAndVersions_PreservesExactExternalKeys()
+    {
+        var generator = new FastHashKeyGenerator();
+        Gen.Select(Gen.String[Gen.Char["abc:<>,\\\0\ud800\udfffé"], 0, 160], Gen.Int, Gen.Int).Sample((method, version, value) =>
+        {
+            foreach (var selected in new int?[] { null, version })
+            {
+                var policy = CacheRuntimePolicy.Empty("property") with { Version = selected };
+                var prefix = FastHashKeyGenerator.PreparePrefix(method, selected);
+                object?[] arguments = [value, "text:\\0\ud800", null];
+                Assert.Equal(generator.GenerateKey(method, arguments, policy), generator.GenerateKey(prefix, arguments));
+            }
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+    }
+
+    [Fact]
     public void DefaultBuilder_ToString_PreservesEmptyTextWithoutABinding()
     {
         Assert.Equal(string.Empty, default(KeyBuilder).ToString());
