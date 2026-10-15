@@ -32,6 +32,10 @@ separately where the historical feature was absent.
 Run the guard regression tests with `python3 -m unittest discover -s benchmarks/MethodCache.Benchmarks/validation`.
 The Flutter-worker case failed before the broadened guard; own benchmark descendants and normal backend/app
 processes are checked separately. Interrupted evidence from the earlier .NET-only monitor is explicitly rejected.
+Long-lived sleeping orphan test workers are not active jobs: the monitor checks their state, age, reported CPU and
+CPU-time progress. An orphan using CPU is still detected even if its lifetime percentage rounds to zero. This
+prevents stale workers from blocking forever without terminating them. The dormant-orphan collector regression
+fails against the previous committed collector and passes with the fix; eight guard cases now cover these paths.
 
 `create-prefix-harness.py --runtime-root CHECKOUT --workloads-root WORKLOAD_CHECKOUT --output OUTPUT` adds the separate
 prefix-state/whole-span lookup and full contract-1 facade matrix: short/long prefixes, growing/large buffers,
