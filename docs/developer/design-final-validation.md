@@ -1,4 +1,55 @@
-# Final design verification: functional checkpoint
+# Final design verification
+
+## Current supported candidate: .NET 10
+
+Johan approved .NET 10 as the only application runtime on 2026-10-15. The published stack is
+PRs #123–#127, prefix hashing #128, HTTP storage #129 and the minimum-runtime change #130; this
+final PR records acceptance evidence without changing the generated contract or frozen vendor files.
+
+Runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passes the full required native-backend
+release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
+The enabled soak, both cultures, 90 randomized properties, demo, native HTTP/AOT smoke, all 172
+native signature cases and all seven installed packages pass. Independent Redis/SQL processes and
+hash seeds, exact matching package dependencies and rejected mismatches pass.
+
+HTTP diff coverage is **95.7% (733/766)** and cumulative design coverage is **93.9% (3,451/3,675)**.
+The .NET-10-only PR adds no executable C# lines. Full receipt and environment details are in
+[.NET 10 verification](design-net10-validation.md), with [selected logs](../../plans/design-benchmarks/net10-functional-28ab9b2/).
+Earlier .NET 8/9 results below describe their historical revisions, not additional supported targets.
+
+After that complete pipeline, two allocation probes were moved into synchronous NoInlining helpers,
+outside assertion/async test scaffolding, with unchanged zero-byte assertions and explicit completed-hit
+requirements. The four relevant facts pass again on .NET 10. No shipped source or benchmark workload
+differs from the frozen 28ab9b2 candidate. Linux CI must confirm this probe change.
+
+The preceding HTTP-only CI run at 8ffa85c passed Windows/macOS but failed Linux in those probes,
+and one net9 Redis contract setup failed in subscriber Ping with TaskCanceledException. The latter
+remains an unexplained historical startup observation; no production fix is claimed. Selected failing
+and updated-probe output is preserved alongside this final receipt.
+
+## Remaining acceptance gates
+
+- Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
+  independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
+  intervals are insufficient evidence. There is no accepted full-series timing result yet.
+- Prefix component/facade measurements and current HTTP publication results must pass the same review.
+- Every published head needs its required three-platform CI; drafts remain unmerged meanwhile.
+
+The approved one-off Nimbus series uses the existing pinned .NET 10 image, frozen identical workloads,
+exclusive nonblocking capacity leases of at most 25 minutes per batch and exact task-owned cleanup.
+CI runs between batches; no external jobs are interrupted. The updated final candidate replaces only
+8063e9a in a separate evidence cohort. Frozen successful measurements for unchanged revisions can
+be reused with their original manifests; rejected/superseded runs are retained. Focused comparisons
+check generated hits and HTTP miss/304 publication before resuming the complete matrix.
+
+Dropping runtime targets simplifies build/test support; it is not a throughput claim. A supplementary
+raw-IL diagnostic compared the seven net10 library outputs before/after that change: all 3,702
+non-version-initializer method bodies/signatures/locals/exception regions match. The seven differences
+are generated ThisAssembly commit-date initializers. This diagnostic is not a substitute for section 10.
+
+---
+
+# Historical functional checkpoints
 
 Runtime source: `6c9881e0c89d3fe3c4e507879411d3e7493a92a6`, based on HTTP checkpoint
 `ee1920db6cb5` and prefix candidate `850cef8f3bc709eaf464b3c25e5ec898217fcc73`.
