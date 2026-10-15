@@ -19,7 +19,7 @@ public class KeyHashLookupBenchmarks
     private ConcurrentDictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> _spans;
 #if METHODCACHE_PREFIX_HASH
     private ConcurrentDictionary<string, int>.AlternateLookup<PrehashedKey> _prefixes;
-    private SipHashState _prefix;
+    private MarvinState _prefix;
 #endif
 #endif
 

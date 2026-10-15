@@ -51,7 +51,7 @@ public readonly struct MethodCall
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetTask<T>(in TextKey key, [NotNullWhen(true)] out Task<T>? task)
     {
-        if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextTask(key.Text, _snapshot.Generation, _snapshot.Policy.MethodId, out task))
+        if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextTask(key.Text, _snapshot, _snapshot.Generation, _snapshot.Policy.MethodId, out task))
         {
             return true;
         }
@@ -63,7 +63,7 @@ public readonly struct MethodCall
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue<T>(in TextKey key, out T? value)
     {
-        if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextValue(key.Text, _snapshot.Generation, _snapshot.Policy.MethodId, out value))
+        if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextValue(key.Text, _snapshot, _snapshot.Generation, _snapshot.Policy.MethodId, out value))
         {
             return true;
         }

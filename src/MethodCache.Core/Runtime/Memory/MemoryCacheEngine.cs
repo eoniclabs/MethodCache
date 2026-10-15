@@ -170,11 +170,19 @@ internal sealed class MemoryCacheEngine
 
     internal bool TryGet(ref KeyBuilder key, long now, out Node node)
     {
-        if (key.StoredText is { } text) return TryGet(text, now, out node);
 #if NET9_0_OR_GREATER
         return Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), key.LookupHash()), out node!), now, ref node);
 #else
         return TryGet(key.ToString(), now, out node);
+#endif
+    }
+
+    internal bool TryGet(string key, MethodCache.Generated.CallSnapshot binding, long now, out Node node)
+    {
+#if NET9_0_OR_GREATER
+        return Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), binding.HashKey(key)), out node!), now, ref node);
+#else
+        return TryGet(key, now, out node);
 #endif
     }
 
