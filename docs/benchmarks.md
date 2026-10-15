@@ -1,9 +1,9 @@
 # Benchmarks
 
 The numbers in the README come from [`ReadmeComparisonBenchmarks`](../benchmarks/MethodCache.Benchmarks/Comparison/ReadmeComparisonBenchmarks.cs):
-a cache hit on `Task<User> GetUserAsync(Guid id)`, written the way each library documents it, with every library on its
-default settings (MethodCache with statistics on) and workstation GC. The id is a `Guid` because that is what most
-applications key their data by.
+a cache hit on `Task<User> GetUserAsync(int id)`, and on the same method with a `Guid` id, written the way each library
+documents it, with every library on its default settings (MethodCache with statistics on) and workstation GC. Most
+applications key their data by `Guid`, which is a longer key for every library to build, hash and compare.
 
 ```bash
 dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
@@ -11,16 +11,14 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --fi
 
 ## Cache hit (2026-10-15)
 
-| Approach | Mean | Allocated | vs. IMemoryCache by hand |
-|---|---:|---:|---:|
-| `IMemoryCache` by hand (`TryGetValue` + `Set`) | 115 ns | 176 B | 1.00x |
-| **MethodCache `[Cache]`** | **100 ns** | **0 B** | **0.86x** |
-| HybridCache `GetOrCreateAsync` | 574 ns | 352 B | 5.0x |
-| FusionCache `GetOrSetAsync` | 385 ns | 416 B | 3.3x |
+| Approach | `int` id | Allocated | vs. IMemoryCache by hand | `Guid` id | Allocated | vs. IMemoryCache by hand |
+|---|---:|---:|---:|---:|---:|---:|
+| `IMemoryCache` by hand (`TryGetValue` + `Set`) | 93 ns | 112 B | 1.00x | 114 ns | 176 B | 1.00x |
+| **MethodCache `[Cache]`** | **77 ns** | **0 B** | **0.82x** | **102 ns** | **0 B** | **0.90x** |
+| HybridCache `GetOrCreateAsync` | 551 ns | 272 B | 5.9x | 597 ns | 352 B | 5.2x |
+| FusionCache `GetOrSetAsync` | 354 ns | 344 B | 3.8x | 389 ns | 416 B | 3.4x |
 
-Each mean is the median of three runs. With an `int` id on the same machine, `IMemoryCache` by hand takes 93 ns and
-allocates 112 B, and MethodCache takes 73 ns and allocates nothing: a GUID is a longer key for every library to build,
-hash and compare.
+Each mean is the median of three runs of both id types. Single runs of the same benchmark differed by up to 14 %.
 
 ```text
 BenchmarkDotNet v0.15.4, Linux Ubuntu 24.04.5 LTS (Noble Numbat)

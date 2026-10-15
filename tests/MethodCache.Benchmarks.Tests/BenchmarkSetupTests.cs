@@ -82,26 +82,38 @@ public class BenchmarkSetupTests
     }
 
     [Fact]
-    public async Task ReadmeComparison_HitsReturnOneGuidUser_AndEveryMissUsesANewGuid()
+    public async Task ReadmeComparison_HitsReturnOneUserPerKeyType_AndEveryMissUsesANewId()
     {
         var benchmark = new MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks();
         await benchmark.Setup();
         try
         {
             var hit = (await benchmark.MethodCacheHit()).Id;
-            Assert.NotEqual(Guid.Empty, hit);
             Assert.Equal(hit, (await benchmark.MemoryCacheHit()).Id);
             Assert.Equal(hit, (await benchmark.HybridCacheHit()).Id);
             Assert.Equal(hit, (await benchmark.FusionCacheHit()).Id);
+
+            var guidHit = (await benchmark.MethodCacheGuidHit()).Id;
+            Assert.NotEqual(Guid.Empty, guidHit);
+            Assert.Equal(guidHit, (await benchmark.MemoryCacheGuidHit()).Id);
+            Assert.Equal(guidHit, (await benchmark.HybridCacheGuidHit()).Id);
+            Assert.Equal(guidHit, (await benchmark.FusionCacheGuidHit()).Id);
 
             var misses = new[]
             {
                 (await benchmark.MemoryCacheMiss()).Id, (await benchmark.MethodCacheMiss()).Id,
                 (await benchmark.HybridCacheMiss()).Id, (await benchmark.FusionCacheMiss()).Id,
-                (await benchmark.MethodCacheMiss()).Id,
             };
             Assert.Equal(misses.Length, misses.Distinct().Count());
             Assert.DoesNotContain(hit, misses);
+
+            var guidMisses = new[]
+            {
+                (await benchmark.MemoryCacheGuidMiss()).Id, (await benchmark.MethodCacheGuidMiss()).Id,
+                (await benchmark.HybridCacheGuidMiss()).Id, (await benchmark.FusionCacheGuidMiss()).Id,
+            };
+            Assert.Equal(guidMisses.Length, guidMisses.Distinct().Count());
+            Assert.DoesNotContain(guidHit, guidMisses);
         }
         finally { await benchmark.Cleanup(); }
     }
