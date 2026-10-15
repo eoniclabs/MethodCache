@@ -23,6 +23,7 @@ internal struct SipHashState
         _tailBytes = 0;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void AppendUtf16(ReadOnlySpan<char> text)
     {
         if (BitConverter.IsLittleEndian) Append(MemoryMarshal.AsBytes(text));
@@ -40,33 +41,38 @@ internal struct SipHashState
     internal void Append(ReadOnlySpan<byte> data)
     {
         _length = unchecked(_length + (ulong)data.Length);
+        // Keep the round state in scalar locals. Mutating fields through the struct's this-reference
+        // prevents the JIT from retaining them in registers across compression blocks.
+        var v0 = _v0; var v1 = _v1; var v2 = _v2; var v3 = _v3;
         if (_tailBytes != 0)
         {
-            while (_tailBytes < 8 && !data.IsEmpty)
-            {
-                _tail |= (ulong)data[0] << (8 * _tailBytes++);
-                data = data[1..];
-            }
+            var take = Math.Min(8 - _tailBytes, data.Length);
+            _tail |= ReadTail(data[..take]) << (8 * _tailBytes);
+            _tailBytes += take;
+            data = data[take..];
             if (_tailBytes != 8) return;
-            Compress(_tail);
+            Compress(ref v0, ref v1, ref v2, ref v3, _tail);
             _tail = 0;
             _tailBytes = 0;
         }
         while (data.Length >= 8)
         {
-            Compress(BinaryPrimitives.ReadUInt64LittleEndian(data));
+            Compress(ref v0, ref v1, ref v2, ref v3, BinaryPrimitives.ReadUInt64LittleEndian(data));
             data = data[8..];
         }
-        foreach (var value in data) _tail |= (ulong)value << (8 * _tailBytes++);
+        _tail = ReadTail(data);
+        _tailBytes = data.Length;
+        _v0 = v0; _v1 = v1; _v2 = v2; _v3 = v3;
     }
 
     internal readonly ulong Finish64()
     {
-        var current = this; // finishing never mutates a reusable prefix state
-        current.Compress(_tail | (_length << 56));
-        current._v2 ^= 0xff;
-        current.Round(); current.Round(); current.Round(); current.Round();
-        return current._v0 ^ current._v1 ^ current._v2 ^ current._v3;
+        var v0 = _v0; var v1 = _v1; var v2 = _v2; var v3 = _v3;
+        Compress(ref v0, ref v1, ref v2, ref v3, _tail | (_length << 56));
+        v2 ^= 0xff;
+        Round(ref v0, ref v1, ref v2, ref v3); Round(ref v0, ref v1, ref v2, ref v3);
+        Round(ref v0, ref v1, ref v2, ref v3); Round(ref v0, ref v1, ref v2, ref v3);
+        return v0 ^ v1 ^ v2 ^ v3;
     }
 
     internal readonly int Finish32()
@@ -76,26 +82,48 @@ internal struct SipHashState
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void Compress(ulong block)
+    private static ulong ReadTail(ReadOnlySpan<byte> data)
     {
-        _v3 ^= block;
-        Round(); Round();
-        _v0 ^= block;
+        ulong value = 0;
+        var shift = 0;
+        if (data.Length >= 4)
+        {
+            value = BinaryPrimitives.ReadUInt32LittleEndian(data);
+            data = data[4..];
+            shift = 32;
+        }
+        if (data.Length >= 2)
+        {
+            value |= (ulong)BinaryPrimitives.ReadUInt16LittleEndian(data) << shift;
+            data = data[2..];
+            shift += 16;
+        }
+        if (!data.IsEmpty) value |= (ulong)data[0] << shift;
+        return value;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void Round()
+    private static void Compress(ref ulong v0, ref ulong v1, ref ulong v2, ref ulong v3, ulong block)
+    {
+        v3 ^= block;
+        Round(ref v0, ref v1, ref v2, ref v3); Round(ref v0, ref v1, ref v2, ref v3);
+        v0 ^= block;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void Round(ref ulong v0, ref ulong v1, ref ulong v2, ref ulong v3)
     {
         unchecked
         {
-            _v0 += _v1; _v1 = BitOperations.RotateLeft(_v1, 13); _v1 ^= _v0;
-            _v0 = BitOperations.RotateLeft(_v0, 32);
-            _v2 += _v3; _v3 = BitOperations.RotateLeft(_v3, 16); _v3 ^= _v2;
-            _v0 += _v3; _v3 = BitOperations.RotateLeft(_v3, 21); _v3 ^= _v0;
-            _v2 += _v1; _v1 = BitOperations.RotateLeft(_v1, 17); _v1 ^= _v2;
-            _v2 = BitOperations.RotateLeft(_v2, 32);
+            v0 += v1; v1 = BitOperations.RotateLeft(v1, 13); v1 ^= v0;
+            v0 = BitOperations.RotateLeft(v0, 32);
+            v2 += v3; v3 = BitOperations.RotateLeft(v3, 16); v3 ^= v2;
+            v0 += v3; v3 = BitOperations.RotateLeft(v3, 21); v3 ^= v0;
+            v2 += v1; v1 = BitOperations.RotateLeft(v1, 17); v1 ^= v2;
+            v2 = BitOperations.RotateLeft(v2, 32);
         }
     }
+
 }
 
 internal static class ProcessKeyHash
