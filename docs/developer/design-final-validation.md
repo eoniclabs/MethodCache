@@ -31,6 +31,9 @@ and updated-probe output is preserved alongside this final receipt.
 
 ## Remaining acceptance gates
 
+- Claude's PR #132 and subsequent SipHash testing are still in progress, as Johan confirmed on
+  2026-10-15. Do not freeze a combined final contract/hash candidate or launch its complete timing
+  matrix until that work is ready. Independent HTTP and baseline-precision checks can continue.
 - Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
   independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
   intervals are insufficient evidence. There is no accepted full-series timing result yet.
@@ -268,7 +271,13 @@ with unchanged source/runtime/GC/JIT/features. No host governor, boost or servic
 four-case launch completed, but the verifier parsed BDN's binary affinity display in the wrong radix;
 its original nonzero validation exit and complete diagnostic reports are retained. A fresh three-run
 pilot uses corrected parsing. No first-run timing is pooled into that pilot or claimed as acceptance.
-The untimed component controller was stopped before preparation to await a sufficiently precise protocol.
+The component timing controller was stopped before preparation to await a sufficiently precise protocol.
+Its later preparation-only controller failed during provider setup, before any timing. The standalone
+harness selected BDN's transitive DI 6 implementation with DI 9 abstractions. This was reproduced
+locally; explicitly selecting DI 9, as the benchmark tests do, makes all component setup checks pass
+against both PR5 and the prefix runtime. The generated harness now includes those executable guards
+and preserves a setup exception instead of masking it during cleanup. Native-host preparation and
+actual timing remain required; see `plans/design-benchmarks/component-harness-startup/`.
 
 ## Local epoch allocation probe follow-up
 
@@ -284,9 +293,9 @@ to a proven cause: `plans/design-benchmarks/local-epoch-probe-isolation/`.
 
 The first two CPU2-affinity baseline GenericHit means imply that even the best possible positive
 third mean would leave a relative three-launch 95% interval half-width of at least 7.51%.
-A fixed nine-launch baseline precision study retains the initial three and adds six independent
-GenericHit launches with the same source/job/affinity, before examining source-change comparisons.
-It is diagnostic only; neither this calculation nor the new helper marks a performance gate passed.
+This originally motivated a nine-launch GenericHit supplement, but it was stopped before any timing
+and replaced by the separate all-four-hit startup-affinity study described below. Its samples will
+not be pooled with the earlier pilot. Neither the calculation nor the helper passes a performance gate.
 
 The statistical report now supports complete fixed series of three, six or nine independent
 launches, with the matching Student-t degrees of freedom. An explicit exact-method selector permits
