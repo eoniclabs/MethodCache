@@ -1,21 +1,24 @@
 # Benchmarks
 
 The numbers in the README come from [`ReadmeComparisonBenchmarks`](../benchmarks/MethodCache.Benchmarks/Comparison/ReadmeComparisonBenchmarks.cs):
-a cache hit on `Task<User> GetUserAsync(int id)`, written the way each library documents it, with every library on its
-default settings (MethodCache with statistics on) and workstation GC.
+a cache hit on `Task<User> GetUserAsync(int id)`, and on the same method with a `Guid` id, written the way each library
+documents it, with every library on its default settings (MethodCache with statistics on) and workstation GC. Most
+applications key their data by `Guid`, which is a longer key for every library to build, hash and compare.
 
 ```bash
 dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
 ```
 
-## Cache hit (2026-10-11)
+## Cache hit (2026-10-15)
 
-| Approach | Mean | Allocated | vs. IMemoryCache by hand |
-|---|---:|---:|---:|
-| `IMemoryCache` by hand (`TryGetValue` + `Set`) | 92 ns | 112 B | 1.00x |
-| **MethodCache `[Cache]`** | **84 ns** | **0 B** | **0.92x** |
-| HybridCache `GetOrCreateAsync` | 497 ns | 272 B | 5.4x |
-| FusionCache `GetOrSetAsync` | 348 ns | 344 B | 3.8x |
+| Approach | `int` id | Allocated | vs. IMemoryCache by hand | `Guid` id | Allocated | vs. IMemoryCache by hand |
+|---|---:|---:|---:|---:|---:|---:|
+| `IMemoryCache` by hand (`TryGetValue` + `Set`) | 93 ns | 112 B | 1.00x | 114 ns | 176 B | 1.00x |
+| **MethodCache `[Cache]`** | **77 ns** | **0 B** | **0.82x** | **102 ns** | **0 B** | **0.90x** |
+| HybridCache `GetOrCreateAsync` | 551 ns | 272 B | 5.9x | 597 ns | 352 B | 5.2x |
+| FusionCache `GetOrSetAsync` | 354 ns | 344 B | 3.8x | 389 ns | 416 B | 3.4x |
+
+Each mean is the median of three runs of both id types. Single runs of the same benchmark differed by up to 14 %.
 
 ```text
 BenchmarkDotNet v0.15.4, Linux Ubuntu 24.04.5 LTS (Noble Numbat)
@@ -29,8 +32,8 @@ This is a shared cloud VM, so treat the numbers as about ±10 %, and run the ben
 relying on them. A MethodCache hit writes the cache key (method name and arguments) into a stack buffer, looks it up
 without making a string, and returns the completed `Task` it stored, so it allocates nothing. On the supported .NET 10
 runtime this applies when every argument is a simple value (numbers, strings, enums, `Guid`, dates and their nullable
-forms). Record or DTO arguments use a string key, allocated on every hit. The table above records the dated build;
-new design-series measurements are verified separately before replacing those results.
+forms). Record or DTO arguments use a string key, allocated on every hit. The table above was measured on the build
+that includes the design series.
 
 The class also has miss benchmarks (a new key on every call). They grow every cache without bound during the run, so
 they measure the GC more than the libraries and are not quoted here.

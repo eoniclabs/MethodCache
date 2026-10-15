@@ -11,7 +11,7 @@ Memory scenarios use a fresh invocation identity for each `CacheFillUp` run, so 
 | Question | Benchmark | Command |
 |---|---|---|
 | How fast is a `[Cache]` hit compared with other libraries, used the way each documents? | `ReadmeComparisonBenchmarks` | `readme` |
-| How do generated contract revisions compare for sync/Task/ValueTask, GUID, string, structural and fallback keys? | `GeneratedContractBenchmarks` | `contract` |
+| How do generated contract revisions compare for sync/Task/ValueTask with GUID ids, string, structural and fallback keys? | `GeneratedContractBenchmarks` | `contract` |
 | What is the cost of hashing/lookup alone, with a ready key versus prefix-state reuse? | `KeyHashLookupBenchmarks` | `hashlookup` |
 | What do immutable prefix state, buffer growth and listeners cost on the complete contract-1 hit path? | `PrefixHitPathBenchmarks` | `hitpath` |
 | What do HTTP freshness hits, caller variants, misses and 304 validation cost? | `HttpResponsePathBenchmarks` | `httppath` |

@@ -84,6 +84,6 @@ have no such dependence. Longer arguments such as GUIDs are read in 8-byte words
 4bddd4a notes that words spanning separate stores still depend on prefix length modulo four. The
 reported `int` median differences exceed 3 %. These medians do not supply section 10's required 95 %
 intervals over independent run means or its complete workload matrix. Algorithm selection and timing
-acceptance have separate proof requirements. Claude is updating the common workloads to use GUID
-identifiers; verify identical key types and workloads across compared revisions before the final series.
+acceptance have separate proof requirements. PR135 supplies common GUID workloads; verify identical
+key types and workloads across compared revisions before the final series.
 Existing int diagnostics remain separate and do not become GUID before/after results.
