@@ -70,3 +70,11 @@ Selected red/green receipts are in `plans/design-benchmarks/http-publication-fol
 Full descendant release gates and timing remain pending. Johan subsequently approved dropping .NET
 8 and 9: a separate following PR changes the supported matrix to .NET 10 only; prior receipts remain
 historical evidence for their original revisions.
+
+The 4ab6c2e follow-up passed all Linux jobs and Windows, but the older net8 macOS matrix timed out
+waiting for a policy-watcher privacy log while the three signature corpora compiled concurrently.
+The privacy fixture now explicitly waits for watcher startup and delivers its channel fault inline,
+avoiding a second thread-pool dispatch in the assertion phase. The privacy checks are unchanged.
+A temporary unsanitized-logger mutation still fails on the synthetic secret canary; after restoring
+production code all seven privacy cases pass on net10.0. Production source is unchanged. Selected
+red/green evidence is in `plans/design-benchmarks/privacy-watcher-startup/`; latest-head CI is required.

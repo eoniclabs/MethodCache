@@ -152,6 +152,8 @@ public class TelemetryPrivacyTests
         using var factory = LoggerFactory.Create(builder => builder.AddProvider(logs));
         await using var resolver = new PolicyResolver([new PolicySourceRegistration(source, 1)], factory.CreateLogger<PolicyResolver>());
         _ = await resolver.ResolveAsync("Sample.Read");
+        // Initialization schedules the watcher; resolving a policy does not mean it has started.
+        await source.Watching.Task.WaitAsync(TimeSpan.FromSeconds(30));
         source.Fail(new InvalidOperationException(Canary, new Exception(Canary)));
         await logs.FirstMessage.Task.WaitAsync(TimeSpan.FromSeconds(10));
         var message = Assert.Single(logs.Messages);
@@ -161,12 +163,19 @@ public class TelemetryPrivacyTests
 
     private sealed class FailingPolicySource : IPolicySource
     {
-        private readonly Channel<PolicyChange> _changes = Channel.CreateUnbounded<PolicyChange>();
+        // Once the watcher is waiting, fault delivery runs inline rather than depending on another
+        // thread-pool dispatch while the signature corpus is compiling in other framework processes.
+        private readonly Channel<PolicyChange> _changes = Channel.CreateUnbounded<PolicyChange>(new UnboundedChannelOptions
+        { SingleReader = true, AllowSynchronousContinuations = true });
+        internal TaskCompletionSource Watching { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public string SourceId => "fault-injection";
         public Task<IReadOnlyCollection<PolicySnapshot>> GetSnapshotAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyCollection<PolicySnapshot>>([]);
         public IAsyncEnumerable<PolicyChange> WatchAsync(CancellationToken cancellationToken = default)
-            => _changes.Reader.ReadAllAsync(cancellationToken);
+        {
+            Watching.TrySetResult();
+            return _changes.Reader.ReadAllAsync(cancellationToken);
+        }
         public void Fail(Exception error) => _changes.Writer.TryComplete(error);
     }
 
