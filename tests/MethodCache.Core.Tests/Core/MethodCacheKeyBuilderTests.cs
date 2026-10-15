@@ -37,7 +37,6 @@ namespace MethodCache.Core.Tests.Core
                 { Build((ref MethodCacheKeyBuilder b) => b.AppendPart(@"a:b\c::")), MethodCacheKeys.Part(@"a:b\c::") },
                 { Build((ref MethodCacheKeyBuilder b) => b.AppendPart("")), MethodCacheKeys.Part("") },
                 { Build((ref MethodCacheKeyBuilder b) => b.AppendPart((string?)null)), MethodCacheKeys.Part((string?)null) },
-                { Build((ref MethodCacheKeyBuilder b) => b.AppendNullPart()), MethodCacheKeys.Null },
                 { Build((ref MethodCacheKeyBuilder b) => b.AppendPart(Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e"))), MethodCacheKeys.Part(Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e")) },
                 { Build((ref MethodCacheKeyBuilder b) => b.AppendPart(local)), MethodCacheKeys.Part(local) },
                 { Build((ref MethodCacheKeyBuilder b) => b.AppendPart(new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc))), MethodCacheKeys.Part(new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc)) },
@@ -52,6 +51,13 @@ namespace MethodCache.Core.Tests.Core
         public void AppendPart_WritesTheSameTextAsMethodCacheKeys(string built, string part)
         {
             Assert.Equal("Prefix" + MethodCacheKeys.Separator + part, built);
+        }
+
+        [Fact]
+        public void AppendNullPart_WritesTheSameTextAsMethodCacheKeysNull()
+        {
+            Assert.Equal("Prefix" + MethodCacheKeys.Separator + MethodCacheKeys.Null,
+                Build((ref MethodCacheKeyBuilder builder) => builder.AppendNullPart()));
         }
 
         [Fact]

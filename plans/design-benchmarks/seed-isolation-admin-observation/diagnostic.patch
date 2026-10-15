@@ -1,0 +1,50 @@
+--- a/tests/MethodCache.PackageSmokeTest.AddOns/Program.cs
++++ b/diagnostic/Program.cs
+@@ -8,6 +8,17 @@
+ using Microsoft.Extensions.Options;
+ 
+ if (args is ["--seed-isolation", ..]) return await SeedIsolationCheck.WorkerAsync(args);
++
++if (args is ["--seed-diagnostic"])
++{
++ for(var round=1;round<=3;round++)
++ {
++  var failure = await SeedIsolationCheck.RunAsync(Backend.SqlServer);
++  Console.WriteLine($"SQL seed check {round}: {failure ?? "PASS"}");
++  if(failure != null) return 1;
++ }
++ return 0;
++}
+ 
+ // Each check runs against the installed packages and returns what went wrong; the run fails if any check fails.
+ var checks = new (string Name, Func<Task<string?>> Run)[]
+--- a/tests/MethodCache.PackageSmokeTest.AddOns/SeedIsolationCheck.cs
++++ b/diagnostic/SeedIsolationCheck.cs
+@@ -32,8 +32,9 @@
+                 await worker.WaitForExitAsync();
+                 return $"{backend} process phase {index + 1}:{phase} exceeded its infrastructure deadline";
+             }
+-            _ = await output;
+-            _ = await error;
++            var stdout = await output;
++            var stderr = await error;
++            if(worker.ExitCode != 0) Console.WriteLine($"Worker exit={worker.ExitCode}; stdout={stdout}; stderr={stderr}");
+             if (worker.ExitCode != 0) return $"{backend} independent-process phase {index + 1}:{phase} failed ({worker.ExitCode})";
+         }
+         return null;
+@@ -65,7 +66,14 @@
+                 var result = await instance.Users.GetAsync(7);
+                 if (result != new User(7, "user-7") || UserService.Calls != (phase == "origin" ? 1 : 0)) return 4;
+                 var entries = instance.Administrator.ListEntries();
+-                if (!entries.Any(entry => entry.Key == key)) return 5;
++                if (!entries.Any(entry => entry.Key == key))
++                {
++                    Console.Error.WriteLine($"Missing local admin entry; phase={phase}; originCalls={UserService.Calls}; entryCount={entries.Count}; key={key}");
++                    foreach(var entry in entries) Console.Error.WriteLine($"Listed synthetic key={entry.Key}");
++                    var direct = instance.Administrator.GetEntry(key);
++                    Console.Error.WriteLine($"Direct admin lookup present={direct != null}");
++                    return 5;
++                }
+             }
+             else if (phase == "key")
+             {

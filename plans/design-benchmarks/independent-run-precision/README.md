@@ -7,10 +7,9 @@ mean could bring the relative three-launch 95% half-width below 7%. The compact
 calculation and frozen source manifest are retained here. These are diagnostic
 baseline results, not a source-change comparison or performance acceptance.
 
-A fixed nine-launch GenericHit precision study is therefore planned before
-examining source-change results: keep all three original launches and add six
-independent launches with the identical source/job/affinity. Other pilot cases
-retain their three-launch scope. Every batch still owns an exclusive nonblocking
+This first motivated a nine-launch GenericHit supplement, but it was stopped
+before timing and replaced by the all-four-hit startup-affinity protocol below.
+Earlier samples remain separate. Every batch still owns an exclusive nonblocking
 Nimbus capacity lease for at most 25 minutes; no running CI is interrupted.
 
 The report helper now accepts complete fixed series of 3, 6 or 9 launches,
@@ -48,3 +47,9 @@ The new study still requires interval review and establishes no product speedup.
 [Microsoft documents](https://learn.microsoft.com/en-us/dotnet/api/system.environment.processorcount?view=net-10.0)
 that ProcessorCount reflects affinity and is fixed at runtime startup. This is
 why the parent launch setting and startup probe are part of the new protocol.
+
+V3's first batch later completed four cases but its validator exited 1. The short binary display
+was misread, and BDN's extra affinity-setting attempts failed. Those artifacts are retained
+separately. Fresh V4 sets affinity only before startup and verifies actual OS CPU sets for each
+executed child PID; its nine fixed baseline launches are pending. See
+[the retained failure and V4 protocol](startup-affinity-validation/). No earlier samples are pooled.

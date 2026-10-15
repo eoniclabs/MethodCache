@@ -1,0 +1,96 @@
+=== diffcoverage
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Data collection : Unable to find a datacollector with friendly name 'XPlat Code Coverage'.
+Data collection : Could not find data collector 'XPlat Code Coverage'
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 371 ms - MethodCache.CompatTests.dll (net10.0)
+[xUnit.net 00:00:01.22] MethodCache.Core.Tests: Skipping test case with duplicate ID '13a0e88de602a5b59a614dbf806fe8d4261c32c5' ('MethodCache.Core.Tests.Core.MethodCacheKeyBuilderTests.AppendPart_WritesTheSameTextAsMethodCacheKeys(built: "Prefix:\\0", part: "\\0")' and 'MethodCache.Core.Tests.Core.MethodCacheKeyBuilderTests.AppendPart_WritesTheSameTextAsMethodCacheKeys(built: "Prefix:\\0", part: "\\0")')
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 1 s - MethodCache.Redis.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 905 ms - MethodCache.Samples.Tests.dll (net10.0)
+[xUnit.net 00:00:04.47]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.BodyBudget_DoesNotMaterializeTemporaryTargetStrings(key: "client:abc:m:GET|generation:v") [FAIL]
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.BodyBudget_DoesNotMaterializeTemporaryTargetStrings(key: "client:abc:m:GET|generation:v") [55 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 0
+Actual:   7696
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.BodyBudget_DoesNotMaterializeTemporaryTargetStrings(String key) in /_/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 52
+--- End of stack trace from previous location ---
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 3 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 1 s - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+
+Failed!  - Failed:     1, Passed:   319, Skipped:     0, Total:   320, Duration: 2 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    85, Skipped:     0, Total:    85, Duration: 2 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 4 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15, Duration: 7 s - MethodCache.Redis.IntegrationTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 4 s - MethodCache.Docs.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 8 s - MethodCache.Analyzers.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 9 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 15 s - MethodCache.SqlServer.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    51, Skipped:     0, Total:    51, Duration: 22 s - MethodCache.SqlServer.IntegrationTests.dll (net10.0)
+[xUnit.net 00:00:30.52]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Passed!  - Failed:     0, Passed:  1022, Skipped:     1, Total:  1023, Duration: 27 s - MethodCache.Core.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   533, Skipped:     0, Total:   533, Duration: 49 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)
+
+Attachments:
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/43caa852-75f6-406e-825d-45a6c2debcc4/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/a6d25d7a-3580-4552-a58a-48b1b35ebe81/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/88c03519-09fe-4b6c-a0cc-f471cd2b2a2d/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/fd2169d8-7961-4227-aaf9-6b36ff7b13b0/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/f15efffb-22e8-4137-a70e-06c88bf6d355/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/9584a605-c695-4227-b4a9-54cacc191495/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/9653f73b-bee7-4da0-996e-526da9314007/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/77bea27d-bb84-4830-a5df-0799f8f3ea7b/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/00d8370e-b1b1-4b32-9a69-006cd9d70f49/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/d6213c70-1af0-4d66-8edb-4850ecb0ed69/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/ba5ec968-1da4-4a49-a19e-bb3ab4382537/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/8ef42ba3-8a82-4da0-8720-7c15879b729a/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/e3e6e8ee-de6b-4cbf-ac69-012d056282d2/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/8db9c4a9-27c4-4d0f-9e23-5e2e0ddd739a/coverage.cobertura.xml
+  /home/agent-admin/methodcache-ci/runs/20261015-191543-7a3b9a837bea/artifacts/diff-coverage/55feacd7-3b3d-4e67-be67-55b3aaf386e9/coverage.cobertura.xml

@@ -1,0 +1,141 @@
+{
+  "runtime_sha": "12bf99d877c33925fe0d0037f45e652d0260d8a4",
+  "ci_run": "20261015-174658-12bf99d877c3",
+  "overall": "failure: docs generated LLM drift",
+  "jobs": {
+    "docs": 1,
+    "demo": 0,
+    "tests": 0,
+    "properties": 0,
+    "soak": 0,
+    "packages": 0,
+    "diffcoverage": 0,
+    "aot": 0,
+    "cultures": 0,
+    "build": 0
+  },
+  "test_summary": [
+    {
+      "failed": 0,
+      "passed": 16,
+      "skipped": 0,
+      "total": 16,
+      "assembly": "MethodCache.HttpCaching.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 52,
+      "skipped": 0,
+      "total": 52,
+      "assembly": "MethodCache.Redis.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 4,
+      "skipped": 0,
+      "total": 4,
+      "assembly": "MethodCache.CompatTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 2,
+      "skipped": 0,
+      "total": 2,
+      "assembly": "MethodCache.Samples.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 29,
+      "skipped": 0,
+      "total": 29,
+      "assembly": "MethodCache.OpenTelemetry.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 85,
+      "skipped": 0,
+      "total": 85,
+      "assembly": "MethodCache.Benchmarks.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 320,
+      "skipped": 0,
+      "total": 320,
+      "assembly": "MethodCache.HttpCaching.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 49,
+      "skipped": 0,
+      "total": 49,
+      "assembly": "MethodCache.AspNetCore.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 119,
+      "skipped": 0,
+      "total": 119,
+      "assembly": "MethodCache.Docs.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 71,
+      "skipped": 0,
+      "total": 71,
+      "assembly": "MethodCache.Analyzers.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 15,
+      "skipped": 0,
+      "total": 15,
+      "assembly": "MethodCache.Redis.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 66,
+      "skipped": 0,
+      "total": 66,
+      "assembly": "MethodCache.SourceGenerator.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 1022,
+      "skipped": 1,
+      "total": 1023,
+      "assembly": "MethodCache.Core.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 42,
+      "skipped": 0,
+      "total": 42,
+      "assembly": "MethodCache.SqlServer.Tests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 51,
+      "skipped": 0,
+      "total": 51,
+      "assembly": "MethodCache.SqlServer.IntegrationTests.dll"
+    },
+    {
+      "failed": 0,
+      "passed": 533,
+      "skipped": 0,
+      "total": 533,
+      "assembly": "MethodCache.SourceGenerator.IntegrationTests.dll"
+    }
+  ],
+  "total_passed": 2476,
+  "total_skipped": 1,
+  "macos": {
+    "build": 0,
+    "unit": 0
+  },
+  "windows": {
+    "build": 0,
+    "unit": 0
+  }
+}
