@@ -26,7 +26,7 @@ public class L2FaultInjectionTests
     // Only bounds the real time a test waits for work that the fake clock already released
     private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(10);
 
-    private const string EntryKey = "methodcache:e:key";
+    private const string EntryKey = "methodcache:e6:s1:key";
 
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
     private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
@@ -201,7 +201,9 @@ public class L2FaultInjectionTests
         var miss = Get(node, "key", () => "loaded");
         for (var roundTrip = 1; roundTrip <= 3; roundTrip++)
         {
-            await WaitUntil(() => chaos.FaultsStarted == roundTrip && chaos.Blocked == 1);
+            try { await WaitUntil(() => chaos.FaultsStarted == roundTrip && chaos.Blocked == 1); }
+            catch (Exception error)
+            { throw new InvalidOperationException($"Waiting for round trip {roundTrip}: started={chaos.FaultsStarted}, blocked={chaos.Blocked}, load={miss.Status}.", error); }
             miss.IsCompleted.Should().BeFalse();
             _time.Advance(delay);
         }

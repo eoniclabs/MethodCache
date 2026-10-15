@@ -34,7 +34,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache();
         services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().Build());
-        services.AddMethodCacheDistributedCache();
+        services.AddMethodCacheDistributedCache(sp => sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>());
 
         await using var sp = services.BuildServiceProvider();
         var runtimeSources = sp.GetServices<PolicySourceRegistration>().Count(r => r.Source is RuntimePolicySource);
@@ -207,7 +207,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1))));
         services.AddMethodCacheFromConfiguration(config);
-        services.AddMethodCacheDistributedCache();
+        services.AddMethodCacheDistributedCache(sp => sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>());
         var sp = services.BuildServiceProvider();
         sp.GetRequiredService<ICacheManager>();
         sp.GetRequiredService<IPolicyRegistry>().GetPolicy(Id);

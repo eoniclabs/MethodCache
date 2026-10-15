@@ -90,16 +90,14 @@ builder.Services.AddMethodCache();                               // after your r
   caching off.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass `CacheManagerExtensions.GetCacheKey(key, version)`
   to `InvalidateKeysAsync`.
-- For a distributed cache, use `AddMethodCacheRedis` or `AddMethodCacheSqlServer`. A custom `IDistributedCache` must
-  also implement `IAtomicInvalidationStore` (`MethodCache.Extensibility`), or the app fails at startup.
+- Use `UseRedis` or `UseSqlServer`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
 - With `AddHttpCaching()`, send cookies as explicit `Cookie` headers; it turns automatic cookies off.
 
 ## Namespaces
 
 - `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
   `IRuntimeCacheConfigurator`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`, `ICacheKeyProvider`.
-- `MethodCache.Extensibility`: `ISerializer`, `JsonCacheSerializer`,
-  `NoOpCacheManager`, `IAtomicInvalidationStore`.
+- `MethodCache.Extensibility`: `NoOpCacheManager`. Serializer, transport and atomic-store interfaces are internal.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
 
@@ -113,6 +111,8 @@ changes use private random namespaces. Never reintroduce cache callbacks, CacheC
 key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.
 
 Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); zero is only allowed via builder fail-safe off. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
+
+Select JSON with `UseJson(context)` for Native AOT or `UseJson(options)` for explicit settings. Options are owned snapshots. `VerifyRoundTrip` defaults to true but does not prove nested polymorphic/private data preservation. SQL schema changes require explicit migration; do not use automatic DDL to reinterpret existing unversioned tables. Entry format/serializer versions change value namespaces; logical tombstones, wire-v1 invalidations and HTTP epochs remain format-independent.
 
 
 ---
@@ -1421,7 +1421,7 @@ Redis backplane publication stops waiting when its token is cancelled. A cancell
   entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
   with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
 - Only Redis and Microsoft SQL Server have packages. Another store, such as PostgreSQL, needs a
-  [custom provider](#custom-distributed-caches).
+  [owned storage](#owned-storage-and-compatibility).
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
@@ -1482,7 +1482,7 @@ the backplane message).
 
 ## Options
 
-`DistributedCacheOptions` apply to Redis, SQL Server and custom distributed caches alike:
+`DistributedCacheOptions` apply to the owned Redis and SQL Server providers:
 
 ```cs
 builder.Services.Configure<DistributedCacheOptions>(options =>
@@ -1499,7 +1499,10 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
-| `KeyPrefix` | `methodcache:` | Prefix of every key MethodCache writes. `AddMethodCacheRedis` and `AddMethodCacheSqlServer` set it from their own `KeyPrefix`; give each application its own |
+| `KeyPrefix` | `methodcache:` | One startup-immutable prefix for values, metadata, HTTP epochs and the backplane; give each application its own |
+
+| `VerifyRoundTrip` | `true` | Verify the serialized representation before publishing; not a proof of semantic equality |
+| `SerializerVersion` | `1` | Positive value-format identity; increment when changing serializer settings |
 
 ## What other instances see
 
@@ -1536,8 +1539,8 @@ field) stays in memory the same way. A collection declared as an interface (`IRe
 `IEnumerable<int>`) may come back as another implementation, a `List<int>` for an array, and is still shared. The
 check looks at the type of the value itself, not of what it holds: a `Dog` inside a `List<Animal>` or in a property
 declared `Animal` is shared without its `Dog` data. To share such values, register a serializer that reads them back,
-such as `JsonCacheSerializer` with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the
-setter, `[JsonDerivedType]` on the base type), or your own `ISerializer`. The `MethodCache.Serialization.MessagePack` package makes values
+through `UseJson` with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the
+setter, `[JsonDerivedType]` on the base type). The `MethodCache.Serialization.MessagePack` package makes values
 smaller and faster to read:
 
 ```cs
@@ -1550,26 +1553,17 @@ Entries written in the other format read as misses and are replaced, so switchin
 [MessagePack package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Serialization.MessagePack/README.md). Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md)).
 
-## Custom distributed caches
+## Owned storage and compatibility
 
-```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheDistributedCache(
-    _ => customCache);   // IDistributedCache with backend-atomic invalidation stamps
-```
+Use `MethodCacheBuilder.UseRedis` or `UseSqlServer`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` before building the container. All Configure registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
 
-`customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
-`IDistributedCache`. MethodCache rejects a provider without this capability, such as Microsoft's
-`MemoryDistributedCache` (`AddDistributedMemoryCache()`), `RedisCache` or `SqlServerCache`: with a generic host,
-`host.StartAsync()` throws an `OptionsValidationException` naming `IAtomicInvalidationStore`, so the app fails at
-startup rather than on its first request; without a host, resolving the cache manager throws an `ArgumentException`.
-Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
-signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
-stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
-insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
-transaction with a key/range update lock. This applies to tag, clear and key-removal stamps.
+`TagRetention` establishes a permanent scope minimum on first use. Later nodes may request at least that minimum; a shorter setting is rejected. Value deadlines remain capped by the established minimum, even when a later node requests longer retention. Use a new prefix to establish a different scope contract. Exact key removals retain tombstones for metadata retention across every entry format and policy identity. Writes use absolute physical deadlines anchored to source start, so slow serialization or transport cannot extend them.
 
-The [HTTP response cache](http-caching.md) has its own contract and works with a plain `IDistributedCache`.
+Entry keys include the entry format and `SerializerVersion` (default 1); logical invalidation metadata does not. Raise the method `Version` or `DistributedCacheOptions.SerializerVersion` when changing result schemas or serializer settings. Content type only identifies the serialization family. Wire contract 1 frames key, application-tag, method and clear as separate operations. Unknown optional fields are ignored; incompatible mandatory frames retire local entries and produce one payload-free warning.
+
+SQL Server creates only fresh schema contract 1 automatically. Existing unversioned or incompatible schema fails explicitly. The package includes `migrations/0001-version-existing-schema.sql`; stop all old nodes, back up the database and apply the supported migration before starting the new version. `CreateTablesIfMissing = false` prevents creation while retaining schema validation. `SqlServerOptions.ConnectionStringFactory` resolves once from DI.
+
+Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
 
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
 `IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them. Disposing the service provider
@@ -1850,10 +1844,10 @@ public sealed partial class ShopJsonContext : JsonSerializerContext;
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
-builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(ShopJsonContext.Default.Options));
+builder.Services.AddMethodCache(cache => cache.UseJson(ShopJsonContext.Default));
 ```
 
-`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`. MethodCache can't generate this context
+Select your context with `MethodCacheBuilder.UseJson(context)`. MethodCache cannot generate this context
 for you, because one source generator can't see another generator's output.
 
 ## Keys
@@ -1970,7 +1964,7 @@ under the same OS user from local credential files.
 |---|---|
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
-| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Custom method-result providers must implement backend-atomic invalidation stamps through `IAtomicInvalidationStore`; plain read-modify-write providers are rejected. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic initialization rejects missing, nullable or incorrectly typed scope columns; it requires `binary(32) NOT NULL`. |
+| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Owned Redis and SQL Server providers use backend-atomic maximum stamps and permanent epoch updates; their internal contracts are not application extension points. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic initialization rejects missing, nullable or incorrectly typed scope columns; it requires `binary(32) NOT NULL`. |
 | Invalidations evicted from the store | A store that evicts a tag or removal stamp under memory pressure makes the entries it invalidated valid again (for example data cached before a permission change). Run Redis with `maxmemory-policy noeviction` or a Redis of its own; see [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted). |
 | Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Messages from another MethodCache version are rejected with one warning, without logging their contents. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
@@ -2065,6 +2059,14 @@ null/result predicates and original load-start tombstones, including after delay
 header/truncation tests exercise the current parser. `PolicyBackendContract` runs the same assertions on Redis and SQL Server.
 
 Generated methods always retain their method/service/type scope; the raw-key escape hatch is removed. Dynamic tag arguments use canonical scalar key formatting, keeping null, escaped strings and full-precision temporal values distinct. Reserved metadata keys and tags remain centrally framed and cannot be selected by caller-controlled strings.
+
+Wire v1 rejects malformed lengths, mandatory flags/operations and unsupported versions before identity decoding.
+A delivered incompatible frame clears local entries and warns once without its payload. Optional fields are bounded
+and ignored. Entry deadlines are absolute and capped by the scope retention floor; logical key tombstones outlive
+all entry formats and policies. Permanent HTTP epochs use atomic revisions with fresh initialization identities
+after metadata loss or overflow. SQL initialization rejects unversioned/unknown schemas; use the delivered offline
+migration for the known legacy layout. The roundtrip check is optional and cannot detect semantic losses in nested
+derived or private state; explicit serializer configuration remains the application's responsibility.
 
 
 ---
@@ -2492,8 +2494,9 @@ With options:
 builder.Services.AddMethodCacheRedis(options =>
 {
     options.Configuration = "redis1:6379,redis2:6379,password=...";
-    options.KeyPrefix = "orders-api:";   // the backplane channel follows: orders-api:invalidations
 });
+builder.Services.Configure<DistributedCacheOptions>(options =>
+    options.KeyPrefix = "orders-api:");   // data and backplane use the same final prefix
 ```
 
 MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again, and the backplane keeps trying to connect and subscribe (after 1 second, then twice as long each time, up to 30 seconds), logging a warning for each failure, until it succeeds or the application stops. Once subscribed after a failure, it clears this instance's in-memory cache, as after a reconnect, since invalidations other instances sent meanwhile never arrived.
@@ -2512,7 +2515,7 @@ subscriptions (`DisposeAsync` waits for that). A cancelled Redis unsubscribe ack
 
 - Entries are stored through `Microsoft.Extensions.Caching.StackExchangeRedis`, so values are written without extra copies.
 - MethodCache reads Redis on an in-memory miss and writes new results to both.
-- Invalidating a key removes it from Redis. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
+- Invalidating a key writes a logical tombstone shared by all value formats and policy identities, then removes the current physical value. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
 - Invalidation times are written with one Lua script, so an older invalidation that arrives late never undoes a newer one.
 - Every invalidation is also published on the backplane channel, so every instance drops its in-memory copies at once.
 - Pub/sub delivers nothing while a connection is down. When the connection comes back, the instance clears its in-memory cache and reads entries from Redis again.
@@ -2522,7 +2525,7 @@ subscriptions (`DisposeAsync` waits for that). A cancelled Redis unsubscribe ack
 
 Invalidations are stored as expiring keys beside the entries. If Redis evicts one under memory pressure, the entries it
 invalidated are served again by every instance until they expire. Set `maxmemory-policy noeviction` on the Redis
-MethodCache uses (or give it a Redis of its own) and enough memory: every MethodCache key has a time to live, so
+MethodCache uses (or give it a Redis of its own) and enough memory: method invalidation keys have a time to live; HTTP epochs and the scope-retention contract are permanent, so
 `volatile-lru` and the other `volatile-*` policies, the default of some managed Redis services, can evict them too. A
 full Redis with `noeviction` refuses writes, which MethodCache handles like an outage. See
 [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted).
@@ -2543,9 +2546,15 @@ that tune all of this.
 |--------|---------|-------------|
 | `Configuration` | `localhost:6379` | StackExchange.Redis configuration string |
 | `ConnectionMultiplexerFactory` | none | Returns an existing connection to share instead of opening one |
-| `KeyPrefix` | `methodcache:` | Prefix for every key MethodCache writes |
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
-| `BackplaneChannel` | `KeyPrefix` + `invalidations` | Pub/sub channel; applications with different key prefixes get different channels |
+
+
+Configure `DistributedCacheOptions.KeyPrefix` once for values, invalidations, permanent HTTP epochs and the
+`<prefix>invalidations` channel. All Configure registrations are applied before the snapshot is frozen.
+Wire v1 supports mixed entry formats; malformed mandatory frames clear local entries and warn once.
+Value and logical tombstone are read in one pipeline. Atomic metadata updates never shorten retention.
+The first node establishes the scope retention floor; a shorter setting is rejected, while longer settings
+use that common bound. Use a new prefix to change it.
 
 
 ---
@@ -2580,7 +2589,7 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 
 Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
-Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. A custom provider can implement `IAtomicInvalidationStore` and `IBackplane` (see [Custom distributed caches](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#custom-distributed-caches)).
+Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
 
 ## Usage
 
@@ -2602,9 +2611,10 @@ builder.Services.AddMethodCacheSqlServer(options =>
 
 ## Tables
 
-By default the schema and two tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if SQL Server is down, creation is retried in the background and methods run uncached until it succeeds.
+By default the schema and three tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if SQL Server is down, creation is retried in the background and methods run uncached until it succeeds.
 
 - `MethodCache` holds the entries, in the layout `Microsoft.Extensions.Caching.SqlServer` uses (the same as `dotnet sql-cache create`).
+- `MethodCacheSchema` contains the schema version (currently 1). Existing unversioned or unknown schemas are rejected.
 - `MethodCacheInvalidations` holds recent invalidations for the backplane. Applications that share it are kept
   apart by `KeyPrefix` (compared exactly, whatever the SQL collation).
 
@@ -2640,10 +2650,10 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | Option | Default | Description |
 |--------|---------|-------------|
 | `ConnectionString` | (required) | SQL Server connection string |
-| `SchemaName` | `dbo` | Schema of both tables |
+| `SchemaName` | `dbo` | Schema of the cache, invalidations and schema-version tables |
 | `TableName` | `MethodCache` | Table for cache entries |
 | `InvalidationsTableName` | `MethodCacheInvalidations` | Table the backplane uses |
-| `KeyPrefix` | `methodcache:` | Prefix for every key MethodCache writes; also keeps backplanes that share the tables apart |
+| `ConnectionStringFactory` | none | Resolves a connection string once from DI at binding |
 | `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
@@ -2656,7 +2666,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
 - Keys are stored as `mc:` followed by a SHA-256 hash of the exact UTF-16 key, so keys that SQL collation would treat as equal (casing, trailing spaces, NULs, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID.
-- Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
+- Invalidating a key writes a format-independent logical tombstone and removes the current physical row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
@@ -2664,8 +2674,14 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
 
-Run the same MethodCache version on every instance that shares the tables; backplane messages from another version
-are ignored with one warning.
+Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
+Value and logical tombstone are read in one query. Atomic stamps never shorten retention, and HTTP epochs
+are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefix`; provider options do not
+have a separate prefix. The first node establishes a common retention bound; shorter settings are rejected.
+
+For a known unversioned schema, drain all nodes, back up the database and apply the delivered
+[`0001-version-existing-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql) migration. Unknown schema
+versions fail fast; initialization never silently migrates existing tables.
 
 
 ---
@@ -3025,7 +3041,7 @@ do not override their exact Core dependency. Our package smoke tests promote NU1
 
 In cache keys, collection subclasses include their own public properties and fields as well as their elements in the key. Collections with different scope or tenant state cannot share a cached result.
 
-Stores MethodCache's distributed cache values (Redis, SQL Server or a custom distributed cache) as compact MessagePack
+Stores MethodCache's distributed cache values (Redis or SQL Server) as compact MessagePack
 instead of the default System.Text.Json: smaller entries and faster reads.
 
 ## Install
@@ -3042,8 +3058,7 @@ builder.Services.AddMethodCacheRedis("localhost:6379");
 builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
 ```
 
-Call `AddMethodCacheMessagePack()` with `AddMethodCacheRedis()`, `AddMethodCacheSqlServer()` or
-`AddMethodCacheDistributedCache()`, in any order. Entries written in the other format read as misses and are replaced,
+Call `AddMethodCacheMessagePack()` with `AddMethodCacheRedis()`, `AddMethodCacheSqlServer()`, in any order. Entries written in the other format read as misses and are replaced,
 so switching needs no flush.
 
 ## When to use it
@@ -3053,7 +3068,7 @@ so switching needs no flush.
 - Types serialize without attributes (contractless resolver). The defaults use LZ4 compression, keep `DateTime`
   values as they are, and read stored data with `MessagePackSecurity.UntrustedData`.
 - Like JSON, the contractless resolver doesn't restore private setters or a derived type returned as its base type.
-  MethodCache reads every value back before sharing it, and keeps values that don't survive that in memory only,
+  With the default `VerifyRoundTrip = true`, MethodCache reads every value back before sharing it, and keeps values that don't survive that in memory only,
   with one warning per method and type.
 - Pass your own `MessagePackSerializerOptions` to `AddMethodCacheMessagePack(options)` to change them. Keep
   `UntrustedData` and don't enable typeless payloads: the distributed cache must not choose which types get created
@@ -3063,6 +3078,10 @@ so switching needs no flush.
 
 Use `UseMessagePack()` to select distributed value serialization. Cache-key construction remains runtime-owned;
 use `ICacheKeyProvider` for custom argument parts. The former public key generator is internal.
+
+The check cannot detect lost nested derived/private state that was absent from the first serialized
+representation. Configure the serializer for your model. Increment method `Version` or
+`DistributedCacheOptions.SerializerVersion` when changing the representation.
 
 
 ---
@@ -3078,6 +3097,13 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+### Owned distributed transports and stable wire contract
+
+- Freeze one Core prefix and validated provider options at startup; use owned storage and serializer registrations. Application `IDistributedCache` is never a fallback. SQL connection strings can come from DI.
+- Add wire v1 and entry format 6 with absolute deadlines, format-independent logical invalidation and shared retention bounds. Malformed mandatory frames clear local entries and warn once.
+- Add native batched reads and permanent atomic epochs in Redis/SQL Server; version SQL schemas and ship an explicit legacy migration.
+- Select JSON through copied options or a source-generated context. Add `VerifyRoundTrip` and `SerializerVersion`; internalize serializer/atomic-store interfaces.
 
 ### Cache API and policy isolation
 
@@ -3261,3 +3287,66 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   Upgrade every instance that shares the tables together, and restart them with empty in-memory caches.
 
 Diagnostic migration: MC0001 stays MC0001; old duration MC0004 → MC0002; MCG001–MCG007 → MC0003–MC0009; MCG009–MCG019 → MC0010–MC0020. MC0021 rejects explicit negative versions. Update analyzer suppressions and `.editorconfig`; migrate `[Cache("group")]` to `[Cache(Group = "group")]` and remove `[CacheKey]`. Canonical `ICacheKeyProvider` parts and manual `ICacheManager` keys replace raw-key use cases.
+
+
+---
+
+<!-- source: docs/developer/distributed-wire-v1.md -->
+
+# Distributed contract 1
+
+This contract is independent of the generated-code ABI and of value entry formats. Keep the checked-in
+`tests/MethodCache.Core.Tests/Fixtures/wire-v1.json` vectors unchanged throughout 1.x. The frozen generator
+vendor binaries in `CompatTests/Baselines/Contract1` are a separate compatibility fixture.
+
+## Backplane envelope
+
+Transport text is ASCII `MC1:` followed by Base64. Before decoding, reject encoded lengths exceeding the
+4 MiB binary-frame bound. The binary frame starts with version (u8, 1), operation (u8: key=1, application
+tag=2, method=3, clear=4), flags (u16 LE), and body length (i32 LE). Upper flag bits are mandatory and
+unknown bits reject the frame; lower optional bits may be ignored.
+
+The body is TLV: field (u8; bit 7 means mandatory, lower seven bits identify the field), length (i32 LE),
+then bytes. Required fields are sender=1 (UTF-16 LE, at most 1,024 code units), target=2 (UTF-16 LE; omitted
+for clear), and timestamp=3 (i64 LE Unix milliseconds). Duplicate known fields, negative/out-of-frame
+lengths, odd UTF-16 lengths, missing required fields, unsupported mandatory fields/operations and invalid
+timestamps reject the frame. Unknown optional fields are skipped after validating their bounds.
+
+Each rejection clears local cached data and emits a payload-free warning once per provider instance.
+This does not repair messages the transport never delivered. Key, tag, method and clear are separate
+operations; application text, including NUL or a method-marker-looking tag, never selects an internal one.
+SQL stores envelope version 1 in MessageType and the same envelope text in Target; row sender must match.
+
+## Metadata and epochs
+
+Logical key/tag/method/clear metadata keys contain neither value-format nor policy identity. Existing
+method identity text encoding remains stable, preserving exact UTF-16 units. A normal timestamp is eight
+signed LE bytes. An HTTP-marked timestamp is that stamp followed by version=1, 16 opaque initialization
+bytes (the .NET Guid byte representation), and u64 BE revision; future trailing data is preserved.
+
+Ensure initializes only missing epoch state. Advance increments every time; after overflow or missing state
+it uses a fresh initialization ID. An old/retried Advance can increment again but cannot restore an older
+ID. Redis compares/increments bytes in single-key Lua operations, including beyond Lua's exact numeric
+range. SQL uses key/range update locks and two unsigned 32-bit revision halves. Updating a marked method
+tag/clear stamp advances its HTTP revision in the same operation. Marked metadata has no TTL.
+
+A scope's permanent retention contract is established on first use. A shorter node configuration is rejected.
+Longer requests retain the existing common minimum, which caps all value deadlines; establishing a different
+common bound requires a new KeyPrefix. Atomic maximum writes never shorten existing stamp lifetimes.
+
+## Value format 6
+
+Physical value namespace is `KeyPrefix + e6:s{SerializerVersion}:`, followed by the framed policy/logical key.
+Other post formats use their own `eN` namespace. SerializerVersion is an independent application schema
+identity; changing serializer settings/result schemas requires raising it or the method Version.
+
+Header: version u8; kind u8 (null/value plus explicit-set bit); flags u16 LE; extension length i32 LE (0–4096);
+load-start, first-publication, logical deadline, physical deadline as four i64 LE Unix millisecond values;
+tag count i32 LE (0–10,000); extensions; length-prefixed UTF-16 LE tags; content-type length u8 and bytes;
+serialized payload. Unknown mandatory flags and malformed frames become misses. Every read checks the
+logical key tombstone, even for entries written by another post format. Native Redis/SQL providers batch
+value and tombstone retrieval; fallback test stores retain separate per-operation timeouts.
+
+Deadlines are bounded from source start by common metadata retention minus skew. Physical store expiry
+is absolute, so delayed serialization/transport never extends it. Round-trip checks are enabled by default,
+can be explicitly disabled, and do not prove nested polymorphic/private data preservation.

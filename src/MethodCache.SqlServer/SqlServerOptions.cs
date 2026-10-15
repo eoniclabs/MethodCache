@@ -10,6 +10,9 @@ public class SqlServerOptions
     /// </summary>
     public string ConnectionString { get; set; } = string.Empty;
 
+    /// <summary>Resolves the connection string once from the completed container; takes precedence over ConnectionString.</summary>
+    public Func<IServiceProvider, string>? ConnectionStringFactory { get; set; }
+
     /// <summary>
     /// The schema of the cache tables.
     /// </summary>
@@ -24,12 +27,6 @@ public class SqlServerOptions
     /// The table the backplane writes invalidations to.
     /// </summary>
     public string InvalidationsTableName { get; set; } = "MethodCacheInvalidations";
-
-    /// <summary>
-    /// Prefix for every key MethodCache writes and the scope of backplane messages, so several applications can
-    /// share the tables. Prefixes are compared by their exact UTF-16 code units, independently of SQL collation.
-    /// </summary>
-    public string KeyPrefix { get; set; } = "methodcache:";
 
     /// <summary>
     /// Whether to create the schema and tables when the application starts, if they do not exist. Turn this off
@@ -54,6 +51,8 @@ public class SqlServerOptions
     /// </summary>
     public TimeSpan BackplaneRetention { get; set; } = TimeSpan.FromHours(1);
 
+    internal string QualifiedVersionTableName => Quote(SchemaName) + "." + Quote(TableName + "Schema");
+
     internal string QualifiedTableName => Quote(SchemaName) + "." + Quote(TableName);
 
     internal string QualifiedInvalidationsTableName => Quote(SchemaName) + "." + Quote(InvalidationsTableName);
@@ -62,7 +61,7 @@ public class SqlServerOptions
 
     internal void Validate()
     {
-        if (string.IsNullOrWhiteSpace(ConnectionString))
+        if (ConnectionStringFactory == null && string.IsNullOrWhiteSpace(ConnectionString))
         {
             throw new InvalidOperationException("SqlServerOptions.ConnectionString is required.");
         }
@@ -71,6 +70,13 @@ public class SqlServerOptions
         {
             throw new InvalidOperationException("SqlServerOptions needs a schema, a table and an invalidations table name.");
         }
+
+        if (SchemaName.Length > 128 || TableName.Length > 122 || InvalidationsTableName.Length > 128)
+            throw new InvalidOperationException("SQL Server table identifiers, including the schema-version table suffix, must fit 128 characters.");
+
+        if (string.Equals(TableName, InvalidationsTableName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(TableName + "Schema", InvalidationsTableName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("SQL Server cache, schema-version and invalidations tables need distinct names.");
 
         if (BackplanePollingInterval <= TimeSpan.Zero || BackplaneRetention <= TimeSpan.Zero)
         {

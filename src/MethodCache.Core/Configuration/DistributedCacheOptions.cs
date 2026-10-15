@@ -5,8 +5,28 @@ namespace MethodCache
     /// <summary>
     /// Options for the distributed cache (L2) that MethodCache uses behind its in-memory cache.
     /// </summary>
-    public class DistributedCacheOptions
+    public sealed class DistributedCacheOptions
     {
+        private bool _verifyRoundTrip = true;
+        private int _serializerVersion = 1;
+        /// <summary>Checks newly serialized values can be restored before sharing them. Default true; this is not a semantic equality check.</summary>
+        public bool VerifyRoundTrip
+        {
+            get => _verifyRoundTrip;
+            set { CheckMutable(); _verifyRoundTrip = value; }
+        }
+        /// <summary>Identifies the application's serializer schema. Raise it when changing serializer settings or result schemas without per-method Version changes.</summary>
+        public int SerializerVersion
+        {
+            get => _serializerVersion;
+            set { CheckMutable(); if (value < 1) throw new ArgumentOutOfRangeException(nameof(SerializerVersion)); _serializerVersion = value; }
+        }
+        private bool _frozen;
+        internal DistributedCacheOptions Freeze() { _frozen = true; return this; }
+        private void CheckMutable()
+        {
+            if (_frozen) throw new InvalidOperationException("MethodCache distributed settings are bound to this container. Create a new container to change them.");
+        }
         private string _keyPrefix = "methodcache:";
         private TimeSpan _tagCheckInterval = TimeSpan.FromSeconds(1);
         private TimeSpan _tagRetention = TimeSpan.FromDays(1);
@@ -23,7 +43,7 @@ namespace MethodCache
         public string KeyPrefix
         {
             get => _keyPrefix;
-            set => _keyPrefix = value ?? throw new ArgumentNullException(nameof(KeyPrefix));
+            set { CheckMutable(); _keyPrefix = value ?? throw new ArgumentNullException(nameof(KeyPrefix)); }
         }
 
         /// <summary>
@@ -36,6 +56,7 @@ namespace MethodCache
             get => _tagCheckInterval;
             set
             {
+                CheckMutable();
                 if (value < TimeSpan.Zero)
                     throw new ArgumentOutOfRangeException(nameof(TagCheckInterval), value, "TagCheckInterval cannot be negative.");
                 _tagCheckInterval = value;
@@ -52,6 +73,7 @@ namespace MethodCache
             get => _tagRetention;
             set
             {
+                CheckMutable();
                 if (value <= TimeSpan.Zero)
                     throw new ArgumentOutOfRangeException(nameof(TagRetention), value, "TagRetention must be greater than zero.");
                 _tagRetention = value;
@@ -67,6 +89,7 @@ namespace MethodCache
             get => _operationTimeout;
             set
             {
+                CheckMutable();
                 if (value <= TimeSpan.Zero)
                     throw new ArgumentOutOfRangeException(nameof(OperationTimeout), value, "OperationTimeout must be greater than zero.");
                 _operationTimeout = value;
@@ -83,6 +106,7 @@ namespace MethodCache
             get => _circuitBreakerDuration;
             set
             {
+                CheckMutable();
                 if (value <= TimeSpan.Zero)
                     throw new ArgumentOutOfRangeException(nameof(CircuitBreakerDuration), value, "CircuitBreakerDuration must be greater than zero.");
                 _circuitBreakerDuration = value;
@@ -99,6 +123,7 @@ namespace MethodCache
             get => _clockSkewTolerance;
             set
             {
+                CheckMutable();
                 if (value < TimeSpan.Zero)
                     throw new ArgumentOutOfRangeException(nameof(ClockSkewTolerance), value, "ClockSkewTolerance cannot be negative.");
                 _clockSkewTolerance = value;

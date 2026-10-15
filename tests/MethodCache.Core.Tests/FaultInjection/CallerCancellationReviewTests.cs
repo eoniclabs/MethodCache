@@ -105,7 +105,7 @@ public class CallerCancellationReviewTests
             // Metadata reads run in parallel; inject one blocked operation so its completion signal
             // proves that exact operation released its resources, independently of its siblings.
             Times = 1,
-            Keys = key => invalidationRead ? !key.StartsWith("methodcache:e:", StringComparison.Ordinal) : key.StartsWith("methodcache:e:", StringComparison.Ordinal)
+            Keys = key => invalidationRead ? !key.StartsWith("methodcache:e6:s1:", StringComparison.Ordinal) : key.StartsWith("methodcache:e6:s1:", StringComparison.Ordinal)
         });
         using var cancellation = new CancellationTokenSource();
         var read = layer.TryGetAsync<int>("key", cancellation.Token).AsTask();

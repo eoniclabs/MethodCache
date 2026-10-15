@@ -131,7 +131,7 @@ namespace Docs.Readme
         public static void NativeAot(WebApplicationBuilder builder)
         {
             // begin-snippet: readme-native-aot
-            builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(AppJsonContext.Default.Options));
+            builder.Services.AddMethodCache(cache => cache.UseJson(AppJsonContext.Default));
             // end-snippet
         }
     }

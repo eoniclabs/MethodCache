@@ -57,29 +57,46 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var options = new SqlServerOptions();
-        configure(options);
-        options.Validate();
-
-        if (options.CreateTablesIfMissing)
+        MethodCache.Infrastructure.OwnedServices.AddOptions(services);
+        services.AddOptions<SqlServerOptions>().Configure(configure)
+            .Validate(options =>
+            {
+                try { options.Validate(); return true; }
+                catch (InvalidOperationException) { return false; }
+            }, "SqlServerOptions requires a connection, table names and valid positive polling/retention settings.")
+            .ValidateOnStart();
+        services.TryAddSingleton(static sp =>
         {
-            services.AddSingleton<IHostedService>(sp => new SqlServerTables(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>(), timeProvider: sp.GetService<TimeProvider>()));
-        }
-
-        if (options.EnableBackplane)
+            var configured = sp.GetRequiredService<IOptions<SqlServerOptions>>().Value;
+            var options = new SqlServerOptions
+            {
+                ConnectionString = configured.ConnectionStringFactory?.Invoke(sp) ?? configured.ConnectionString,
+                SchemaName = configured.SchemaName,
+                TableName = configured.TableName,
+                InvalidationsTableName = configured.InvalidationsTableName,
+                CreateTablesIfMissing = configured.CreateTablesIfMissing,
+                EnableBackplane = configured.EnableBackplane,
+                BackplanePollingInterval = configured.BackplanePollingInterval,
+                BackplaneRetention = configured.BackplaneRetention
+            };
+            options.Validate();
+            _ = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(options.ConnectionString);
+            return new SqlServerRuntimeOptions(options,
+                sp.GetRequiredKeyedService<DistributedCacheOptions>(MethodCache.Infrastructure.OwnedServices.Key).KeyPrefix);
+        });
+        services.AddSingleton<IHostedService>(sp => new SqlServerTables(
+            sp.GetRequiredService<SqlServerRuntimeOptions>().Options,
+            sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>(), timeProvider: sp.GetService<TimeProvider>()));
+        services.TryAddKeyedSingleton<IBackplane>(MethodCache.Infrastructure.OwnedServices.Key, static (sp, _) =>
         {
-            services.TryAddSingleton<IBackplane>(sp => new SqlServerBackplane(options, sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerBackplane>(), sp.GetService<TimeProvider>()));
-        }
-
-        // Entries can't outlive the stamps that invalidate them, and SQL Server stores no time past 9999-12-31
+            var runtime = sp.GetRequiredService<SqlServerRuntimeOptions>();
+            return runtime.Options.EnableBackplane ? new SqlServerBackplane(runtime.Options,
+                sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerBackplane>(), sp.GetService<TimeProvider>(), runtime.Prefix) : null!;
+        });
         services.AddOptions<DistributedCacheOptions>().Validate(
             o => o.TagRetention < DateTimeOffset.MaxValue - DateTimeOffset.UtcNow,
             "TagRetention must end before 9999-12-31, the latest time SQL Server stores.");
-
-        // MethodCache's own cache instance, so the app's IDistributedCache and its settings are left alone
-        return services.AddMethodCacheDistributedCache(
-            _ => new SqlServerDistributedCache(options),
-            cacheOptions => cacheOptions.KeyPrefix = options.KeyPrefix);
+        return services.AddMethodCacheDistributedCache(sp => new SqlServerDistributedCache(sp.GetRequiredService<SqlServerRuntimeOptions>().Options));
     }
 
     internal static SqlServerCacheOptions CacheOptions(SqlServerOptions options) => new()
@@ -96,3 +113,5 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
     /// <summary>How often each instance deletes expired rows from the cache table.</summary>
     internal static readonly TimeSpan ExpiredItemsDeletionInterval = TimeSpan.FromMinutes(5);
 }
+
+internal sealed record SqlServerRuntimeOptions(SqlServerOptions Options, string Prefix);

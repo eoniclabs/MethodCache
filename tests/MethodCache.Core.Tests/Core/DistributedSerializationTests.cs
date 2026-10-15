@@ -48,18 +48,18 @@ public class DistributedSerializationTests
         public string Breed { get; set; } = "";
     }
 
-    public static TheoryData<ISerializer> Serializers => new()
+    public static TheoryData<object> Serializers => new()
     {
         new JsonCacheSerializer(),
         new MessagePackCacheSerializer(),
     };
 
-    private (InMemoryCacheManager Node, DistributedCacheLayer Layer) CreateNode(ISerializer? serializer = null)
+    private (InMemoryCacheManager Node, DistributedCacheLayer Layer) CreateNode(ISerializer? serializer = null, bool verifyRoundTrip = true)
     {
         var layer = new DistributedCacheLayer(
             _shared,
             serializer ?? new JsonCacheSerializer(),
-            new DistributedCacheOptions { ClockSkewTolerance = TimeSpan.Zero },
+            new DistributedCacheOptions { ClockSkewTolerance = TimeSpan.Zero, VerifyRoundTrip = verifyRoundTrip },
             backplane: null,
             _time,
             _logger);
@@ -89,13 +89,13 @@ public class DistributedSerializationTests
 
     [Theory]
     [MemberData(nameof(Serializers))]
-    public void Serializer_ValueTuple_RoundTrips(ISerializer serializer)
-        => RoundTrip(serializer, (Total: 7, Name: "x")).Should().Be((7, "x"));
+    public void Serializer_ValueTuple_RoundTrips(object serializer)
+        => RoundTrip((ISerializer)serializer, (Total: 7, Name: "x")).Should().Be((7, "x"));
 
     [Theory]
     [MemberData(nameof(Serializers))]
-    public void Serializer_StructWithPublicFields_RoundTrips(ISerializer serializer)
-        => RoundTrip(serializer, new Point { X = 1, Y = 2 }).Should().Be(new Point { X = 1, Y = 2 });
+    public void Serializer_StructWithPublicFields_RoundTrips(object serializer)
+        => RoundTrip((ISerializer)serializer, new Point { X = 1, Y = 2 }).Should().Be(new Point { X = 1, Y = 2 });
 
     [Fact]
     public async Task L2Hit_OfAValueTuple_EqualsTheValueTheMethodReturned()
@@ -126,7 +126,7 @@ public class DistributedSerializationTests
 
         // B never sees a copy without the id: there is none in the distributed cache, so B runs its method
         (await Load(b, "k", () => Entity.Create(42))).Id.Should().Be(42);
-        _shared.Get("methodcache:e:k").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
         Warnings.Should().Be(2, "each instance warns once");
     }
 
@@ -139,7 +139,7 @@ public class DistributedSerializationTests
         (await Load<Animal>(a, "k", () => new Dog { Name = "a", Breed = "b" })).Should().BeOfType<Dog>();
 
         (await Load<Animal>(b, "k", () => new Dog { Name = "a", Breed = "b" })).Should().BeOfType<Dog>("B ran its method instead of reading a plain Animal");
-        _shared.Get("methodcache:e:k").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
         Warnings.Should().Be(2, "each instance warns once");
     }
 
@@ -152,7 +152,7 @@ public class DistributedSerializationTests
         (await Load<object>(a, "k", () => 42)).Should().Be(42);
 
         (await Load<object>(b, "k", () => 42)).Should().BeOfType<int>("B ran its method instead of reading a JsonElement");
-        _shared.Get("methodcache:e:k").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
         Warnings.Should().Be(2, "each instance warns once");
     }
 
@@ -168,6 +168,32 @@ public class DistributedSerializationTests
 
         var (c, _) = CreateNode();
         (await Load<object>(c, "k", () => "loaded")).Should().Be("loaded", "the replaced value must not stay shared");
+    }
+
+    [Fact]
+    public async Task NestedDerivedValue_RoundTripCheckCannotDetectLostDerivedState()
+    {
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+        await Load<List<Animal>>(a, "nested", () => [new Dog { Name = "rex", Breed = "collie" }]);
+        var result = await Load<List<Animal>>(b, "nested", () => throw new InvalidOperationException("Expected L2"));
+        result.Should().ContainSingle().Which.Should().BeOfType<Animal>();
+        result[0].Name.Should().Be("rex");
+        Warnings.Should().Be(0, "the check compares the serialized representation, not nested semantic equality");
+    }
+
+    [Fact]
+    public async Task VerifyRoundTripFalse_SkipsValidation_AndSharesWhatTheSerializerCarries()
+    {
+        var serializer = new CountingSerializer(new JsonCacheSerializer());
+        var (a, _) = CreateNode(serializer, verifyRoundTrip: false);
+        var (b, _) = CreateNode(serializer, verifyRoundTrip: false);
+        await Load(a, "unchecked", () => Entity.Create(42));
+        serializer.Reads.Should().Be(0, "writing does not deserialize for verification");
+        var result = await Load<Entity>(b, "unchecked", () => throw new InvalidOperationException("Expected L2"), method: "M");
+        result.Id.Should().Be(0, "opting out accepts the serializer's loss of the private setter");
+        serializer.Reads.Should().Be(1);
+        Warnings.Should().Be(0);
     }
 
     // ---------- Collections declared as interfaces ----------
@@ -209,10 +235,10 @@ public class DistributedSerializationTests
         var (b, _) = CreateNode();
 
         await Load<Animal>(a, "plain", () => new Animal { Name = "a" });
-        _shared.Get("methodcache:e:plain").Should().NotBeNull("a plain Animal comes back as it was");
+        _shared.Get("methodcache:e6:s1:plain").Should().NotBeNull("a plain Animal comes back as it was");
 
         (await Load<Animal>(a, "dog", () => new Dog { Name = "d", Breed = "b" })).Should().BeOfType<Dog>();
-        _shared.Get("methodcache:e:dog").Should().BeNull("a Dog would come back as a plain Animal");
+        _shared.Get("methodcache:e6:s1:dog").Should().BeNull("a Dog would come back as a plain Animal");
         Warnings.Should().Be(1);
 
         (await Load<Animal>(b, "dog", () => new Dog { Name = "d", Breed = "b" })).Should().BeOfType<Dog>("B ran its method");
@@ -223,13 +249,13 @@ public class DistributedSerializationTests
     {
         var (_, layer) = CreateNode();
         await layer.WriteAsync<Animal>("k", new Animal { Name = "old" }, null, layer.Now, OneMinute, methodName: "M");
-        _shared.Get("methodcache:e:k").Should().NotBeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().NotBeNull();
         _time.Advance(TimeSpan.FromMilliseconds(1));
 
         // A refresh, say, that now returns a Dog: other nodes must not go on reading the old Animal
         await layer.WriteAsync<Animal>("k", new Dog { Name = "new", Breed = "b" }, null, layer.Now, OneMinute, methodName: "M");
 
-        _shared.Get("methodcache:e:k").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
     }
 
     [Fact]
@@ -238,13 +264,13 @@ public class DistributedSerializationTests
         var (_, layer) = CreateNode();
         await layer.WriteAsync<Animal>("first", new Dog { Name = "d", Breed = "b" }, null, layer.Now, OneMinute, methodName: "M");
         await layer.WriteAsync<Animal>("k", new Animal { Name = "old" }, null, layer.Now, OneMinute, methodName: "M");
-        _shared.Get("methodcache:e:k").Should().NotBeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().NotBeNull();
         _time.Advance(TimeSpan.FromMilliseconds(1));
 
         // Dogs were already rejected, so this one isn't serialized; the Animal still must not stay behind
         await layer.WriteAsync<Animal>("k", new Dog { Name = "new", Breed = "b" }, null, layer.Now, OneMinute, methodName: "M");
 
-        _shared.Get("methodcache:e:k").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
     }
 
     [Fact]
@@ -252,13 +278,13 @@ public class DistributedSerializationTests
     {
         var (_, layer) = CreateNode();
         await layer.WriteAsync<Entity?>("k", null, null, layer.Now, OneMinute, methodName: "M");
-        _shared.Get("methodcache:e:k").Should().NotBeNull("a null is shared");
+        _shared.Get("methodcache:e6:s1:k").Should().NotBeNull("a null is shared");
         _time.Advance(TimeSpan.FromMilliseconds(1));
 
         // A refresh that now finds the entity: other nodes must run the method rather than go on reading null
         await layer.WriteAsync<Entity?>("k", Entity.Create(42), null, layer.Now, OneMinute, methodName: "M");
 
-        _shared.Get("methodcache:e:k").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
     }
 
     [Fact]
@@ -270,8 +296,8 @@ public class DistributedSerializationTests
         await a.SetAsync<Animal>("plain", new Animal { Name = "a" }, OneMinute);
         await a.SetAsync<Animal>("dog", new Dog { Name = "d", Breed = "b" }, OneMinute);
 
-        _shared.Get("methodcache:e:plain").Should().NotBeNull();
-        _shared.Get("methodcache:e:dog").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:plain").Should().NotBeNull();
+        _shared.Get("methodcache:e6:s1:dog").Should().BeNull();
         _logger.Messages.Should().ContainSingle(m => m.Message.Contains("SetAsync", StringComparison.Ordinal) && m.Message.Contains("Dog", StringComparison.Ordinal));
         (await Load<Animal>(b, "dog", () => new Dog { Name = "d", Breed = "b" })).Should().BeOfType<Dog>();
     }
@@ -296,7 +322,7 @@ public class DistributedSerializationTests
 
         serializer.Writes.Should().Be(1, "once the type failed, the method's values of it aren't serialized again");
         _logger.Messages.Count(m => m.Level == LogLevel.Warning).Should().Be(1);
-        _shared.Get("methodcache:e:k0").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k0").Should().BeNull();
     }
 
     // ---------- Which values are checked ----------
@@ -375,6 +401,6 @@ public class DistributedSerializationTests
         (await Load(a, "k", () => Entity.Create(42))).Id.Should().Be(42);
 
         (await Load(b, "k", () => Entity.Create(42))).Id.Should().Be(42, "B runs its method rather than read an Entity without its id");
-        _shared.Get("methodcache:e:k").Should().BeNull();
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
     }
 }

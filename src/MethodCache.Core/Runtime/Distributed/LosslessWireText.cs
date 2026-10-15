@@ -1,26 +1,11 @@
 using System.Buffers;
-using MethodCache.Extensibility;
 
 namespace MethodCache.Infrastructure;
 
-// ASCII transport frame for arbitrary .NET strings. Encodings with replacement fallbacks cannot carry lone
-// UTF-16 surrogates; write each code unit explicitly so Redis and SQL backplanes preserve tag/key identity.
+// Stable method-identity encoding for metadata keys; independent of the backplane protocol.
+// Write UTF-16 code units explicitly to preserve lone surrogates without replacement fallbacks.
 internal static class LosslessWireText
 {
-    internal static int ToMessageType(BackplaneMessageType type) => type switch
-    {
-        BackplaneMessageType.KeyInvalidation => 4,
-        BackplaneMessageType.TagInvalidation => 5,
-        BackplaneMessageType.MethodInvalidation => 6,
-        _ => throw new ArgumentOutOfRangeException(nameof(type))
-    };
-
-    internal static bool TryMessageType(int type, out BackplaneMessageType logical)
-    {
-        logical = type == 6 ? BackplaneMessageType.MethodInvalidation : type == 5 ? BackplaneMessageType.TagInvalidation : BackplaneMessageType.KeyInvalidation;
-        return type is 4 or 5 or 6;
-    }
-
     internal static string Encode(string value)
     {
         var bytes = LosslessUtf16.GetBytes(value);

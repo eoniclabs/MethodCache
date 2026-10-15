@@ -32,7 +32,7 @@ public class DistributedTagIdentityPropertyTests
     public void MalformedTransportText_IsRejected(string wire) => Assert.False(LosslessWireText.TryDecode(wire, out _));
 
     [Fact]
-    public void BackplaneFrame_PreservesOrdinalUtf16ThroughReplacingEncodings()
+    public void MethodIdentity_PreservesOrdinalUtf16ThroughReplacingEncodings()
     {
         Gen.String[Gen.Char, 0, 32].Sample(text =>
         {
@@ -42,6 +42,24 @@ public class DistributedTagIdentityPropertyTests
                 var transported = encoding.GetString(encoding.GetBytes(wire));
                 Assert.True(LosslessWireText.TryDecode(transported, out var decoded));
                 Assert.Equal(text, decoded);
+            }
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+    }
+
+    [Fact]
+    public void WireContractOne_PreservesEveryOrdinalTargetAndOperation()
+    {
+        Gen.String[Gen.Char, 0, 128].Sample(text =>
+        {
+            foreach (var type in Enum.GetValues<MethodCache.Extensibility.BackplaneMessageType>())
+            {
+                var frame = BackplaneWire.Encode(new MethodCache.Extensibility.BackplaneMessage
+                { Type = type, InstanceId = "sender", Key = text, Tag = text, Timestamp = DateTimeOffset.UnixEpoch });
+                var transported = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.UTF8.GetBytes(frame));
+                Assert.True(BackplaneWire.TryDecode(transported, out var result));
+                Assert.Equal(type, result.Type);
+                Assert.Equal(type is MethodCache.Extensibility.BackplaneMessageType.KeyInvalidation or MethodCache.Extensibility.BackplaneMessageType.MethodInvalidation ? text : null, result.Key);
+                Assert.Equal(type == MethodCache.Extensibility.BackplaneMessageType.TagInvalidation ? text : null, result.Tag);
             }
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
     }

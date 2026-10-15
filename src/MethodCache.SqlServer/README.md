@@ -26,7 +26,7 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 
 Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
-Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. A custom provider can implement `IAtomicInvalidationStore` and `IBackplane` (see [Custom distributed caches](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#custom-distributed-caches)).
+Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
 
 ## Usage
 
@@ -52,9 +52,10 @@ builder.Services.AddMethodCacheSqlServer(options =>
 
 ## Tables
 
-By default the schema and two tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if SQL Server is down, creation is retried in the background and methods run uncached until it succeeds.
+By default the schema and three tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if SQL Server is down, creation is retried in the background and methods run uncached until it succeeds.
 
 - `MethodCache` holds the entries, in the layout `Microsoft.Extensions.Caching.SqlServer` uses (the same as `dotnet sql-cache create`).
+- `MethodCacheSchema` contains the schema version (currently 1). Existing unversioned or unknown schemas are rejected.
 - `MethodCacheInvalidations` holds recent invalidations for the backplane. Applications that share it are kept
   apart by `KeyPrefix` (compared exactly, whatever the SQL collation).
 
@@ -92,10 +93,10 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | Option | Default | Description |
 |--------|---------|-------------|
 | `ConnectionString` | (required) | SQL Server connection string |
-| `SchemaName` | `dbo` | Schema of both tables |
+| `SchemaName` | `dbo` | Schema of the cache, invalidations and schema-version tables |
 | `TableName` | `MethodCache` | Table for cache entries |
 | `InvalidationsTableName` | `MethodCacheInvalidations` | Table the backplane uses |
-| `KeyPrefix` | `methodcache:` | Prefix for every key MethodCache writes; also keeps backplanes that share the tables apart |
+| `ConnectionStringFactory` | none | Resolves a connection string once from DI at binding |
 | `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
@@ -108,7 +109,7 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
 - Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
 - Keys are stored as `mc:` followed by a SHA-256 hash of the exact UTF-16 key, so keys that SQL collation would treat as equal (casing, trailing spaces, NULs, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID.
-- Invalidating a key removes its row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
+- Invalidating a key writes a format-independent logical tombstone and removes the current physical row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
@@ -116,5 +117,11 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
 - Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
 
-Run the same MethodCache version on every instance that shares the tables; backplane messages from another version
-are ignored with one warning.
+Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
+Value and logical tombstone are read in one query. Atomic stamps never shorten retention, and HTTP epochs
+are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefix`; provider options do not
+have a separate prefix. The first node establishes a common retention bound; shorter settings are rejected.
+
+For a known unversioned schema, drain all nodes, back up the database and apply the delivered
+[`0001-version-existing-schema.sql`](migrations/0001-version-existing-schema.sql) migration. Unknown schema
+versions fail fast; initialization never silently migrates existing tables.

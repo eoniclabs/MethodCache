@@ -15,7 +15,6 @@ namespace MethodCache.Redis;
 /// </remarks>
 internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
 {
-    private const char Separator = '\n';
 
     internal static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(1);
     internal static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
@@ -70,6 +69,9 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
             return subscription.Completion.Task;
         }
     }
+
+    public Task PublishClearAsync(CancellationToken cancellationToken = default)
+        => PublishAsync(BackplaneMessageType.ClearAll, string.Empty, cancellationToken);
 
     private async Task StartSubscriptionAsync(Subscription subscription)
     {
@@ -126,8 +128,12 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
                 Volatile.Read(ref subscription.Callback) is { } callback)
             {
                 if (TryParse(value, out var message)) Observe(callback(message));
-                else if (Interlocked.Exchange(ref _rejectedWarning, 1) == 0)
-                    _logger.LogWarning("Rejected an incompatible or malformed MethodCache backplane frame. Invalidations do not cross wire versions; deploy the same version on all nodes.");
+                else
+                {
+                    if (Interlocked.Exchange(ref _rejectedWarning, 1) == 0)
+                        _logger.LogWarning("Rejected an incompatible or malformed MethodCache backplane frame; clearing this instance's memory.");
+                    Observe(callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }));
+                }
             }
         };
         subscription.Restored = (_, _) =>
@@ -246,10 +252,13 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     }
 
     internal static string Format(BackplaneMessageType type, string instanceId, string value)
-    {
-        // Type, sender and value on separate lines; the value is last, so it may contain anything
-        return string.Concat(MethodCache.Infrastructure.LosslessWireText.ToMessageType(type).ToString(System.Globalization.CultureInfo.InvariantCulture), "\n", instanceId, "\n", MethodCache.Infrastructure.LosslessWireText.Encode(value));
-    }
+        => MethodCache.Infrastructure.BackplaneWire.Encode(new BackplaneMessage
+        {
+            Type = type,
+            InstanceId = instanceId,
+            Key = type is BackplaneMessageType.KeyInvalidation or BackplaneMessageType.MethodInvalidation ? value : null,
+            Tag = type == BackplaneMessageType.TagInvalidation ? value : null
+        });
 
     private static void Observe(Task task)
     {
@@ -265,32 +274,5 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     }
 
     internal static bool TryParse(RedisValue value, out BackplaneMessage message)
-    {
-        message = null!;
-        var text = (string?)value;
-        if (text == null)
-        {
-            return false;
-        }
-
-        var first = text.IndexOf(Separator);
-        var second = first < 0 ? -1 : text.IndexOf(Separator, first + 1);
-        if (second < 0 || !int.TryParse(text.AsSpan(0, first), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var type))
-        {
-            return false;
-        }
-
-        if (!MethodCache.Infrastructure.LosslessWireText.TryMessageType(type, out var logicalType)) return false;
-        var instanceId = text.Substring(first + 1, second - first - 1);
-        if (!MethodCache.Infrastructure.LosslessWireText.TryDecode(text.Substring(second + 1), out var target)) return false;
-        message = logicalType switch
-        {
-            BackplaneMessageType.KeyInvalidation => new BackplaneMessage { Type = BackplaneMessageType.KeyInvalidation, Key = target, InstanceId = instanceId },
-            BackplaneMessageType.MethodInvalidation => new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = target, InstanceId = instanceId },
-            BackplaneMessageType.TagInvalidation => new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, Tag = target, InstanceId = instanceId },
-            _ => null!
-        };
-
-        return message != null;
-    }
+        => MethodCache.Infrastructure.BackplaneWire.TryDecode((string?)value, out message);
 }

@@ -3,12 +3,61 @@ using MethodCache.SqlServer;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Time.Testing;
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace MethodCache.SqlServer.IntegrationTests;
 
 [Collection(SqlServerCollection.Name)]
 public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
 {
+    [SkippableFact]
+    public async Task MalformedFrames_ClearFilledLocalCache_AndWarnOnceWithoutPayload()
+    {
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "wire_bad_" + Guid.NewGuid().ToString("N") };
+        try
+        {
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
+            var logger = new FrameLogger();
+            await using var receiver = new SqlServerBackplane(options, logger);
+            using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
+            var cache = provider.GetRequiredService<ICacheManager>();
+            var runtime = Assert.IsType<InMemoryCacheManager>(cache);
+            var clears = 0;
+            async Task Handle(BackplaneMessage message)
+            {
+                Assert.Equal(BackplaneMessageType.ClearAll, message.Type);
+                clears++;
+                await runtime.ClearAsync();
+            }
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+            await cache.GetOrCreateAsync("local", (_, _) => ValueTask.FromResult("old"));
+            await using var connection = new SqlConnection(options.ConnectionString);
+            await connection.OpenAsync();
+            await using var command = new SqlCommand($"""
+                INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target)
+                VALUES (@scope, 'other', 1, 'sensitive-payload'), (@scope, 'other', 99, 'unknown-required-version');
+                """, connection);
+            command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
+            await command.ExecuteNonQueryAsync();
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+            Assert.Equal(2, clears);
+            Assert.Equal("new", await cache.GetOrCreateAsync("local", (_, _) => ValueTask.FromResult("new")));
+            Assert.Single(logger.Warnings);
+            Assert.DoesNotContain("sensitive-payload", logger.Warnings[0]);
+        }
+        finally { await BackplaneIsolationTests.DropSchemaAsync(options); }
+    }
+
+    private sealed class FrameLogger : ILogger<SqlServerBackplane>
+    {
+        public List<string> Warnings { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> formatter)
+        { if (level == LogLevel.Warning) Warnings.Add(formatter(state, error)); }
+    }
+
     [SkippableTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -154,12 +203,12 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
         await using var command = new SqlCommand($"""
             SET IDENTITY_INSERT {options.QualifiedInvalidationsTableName} ON;
             INSERT INTO {options.QualifiedInvalidationsTableName} (Id, Scope, InstanceId, MessageType, Target)
-            VALUES (@id, @scope, 'other', 4, @key);
+            VALUES (@id, @scope, 'other', 1, @key);
             SET IDENTITY_INSERT {options.QualifiedInvalidationsTableName} OFF;
             """, connection);
         command.Parameters.AddWithValue("@id", id);
-        command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
-        command.Parameters.AddWithValue("@key", "4:" + Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(key)));
+        command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
+        command.Parameters.AddWithValue("@key", SqlWireFixture.Key(key));
         await command.ExecuteNonQueryAsync();
     }
 
@@ -185,11 +234,11 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
                 await connection.OpenAsync();
                 await using var command = new SqlCommand($"""
                     INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target)
-                    SELECT @scope, 'other', 4, [value] FROM OPENJSON(@targets) ORDER BY CONVERT(int, [key]);
+                    SELECT @scope, 'other', 1, [value] FROM OPENJSON(@targets) ORDER BY CONVERT(int, [key]);
                     """, connection);
-                command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
+                command.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
                 command.Parameters.AddWithValue("@targets", System.Text.Json.JsonSerializer.Serialize(Enumerable.Range(1, 1005)
-                    .Select(i => "4:" + Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(i.ToString(System.Globalization.CultureInfo.InvariantCulture))))));
+                    .Select(i => SqlWireFixture.Key(i.ToString(System.Globalization.CultureInfo.InvariantCulture)))));
                 await command.ExecuteNonQueryAsync();
             }
             await Assert.ThrowsAsync<InvalidOperationException>(() => receiver.PollOnceAsync(Handle, CancellationToken.None));

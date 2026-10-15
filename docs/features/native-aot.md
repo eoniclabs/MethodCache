@@ -30,11 +30,11 @@ public sealed partial class ShopJsonContext : JsonSerializerContext;
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
-builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(ShopJsonContext.Default.Options));
+builder.Services.AddMethodCache(cache => cache.UseJson(ShopJsonContext.Default));
 ```
 <!-- endSnippet -->
 
-`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`. MethodCache can't generate this context
+Select your context with `MethodCacheBuilder.UseJson(context)`. MethodCache cannot generate this context
 for you, because one source generator can't see another generator's output.
 
 ## Keys

@@ -53,6 +53,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.Core.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Docs.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="MethodCache.AspNetCore.Tests" />
     <InternalsVisibleTo Include="MethodCache.OpenTelemetry.Tests" />

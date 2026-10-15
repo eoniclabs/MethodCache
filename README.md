@@ -285,11 +285,11 @@ The same operations are available in code through `ICacheAdministrator`.
 
 Registration uses no reflection, and neither do keys built from simple values, records, `ICacheKeyProvider` types and
 collections of them ([Native AOT](docs/features/native-aot.md#keys) lists the rest). Register the JSON serializer with
-your `JsonSerializerContext` (`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`):
+your `JsonSerializerContext` with `MethodCacheBuilder.UseJson(context)`:
 
 <!-- snippet: readme-native-aot -->
 ```cs
-builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(AppJsonContext.Default.Options));
+builder.Services.AddMethodCache(cache => cache.UseJson(AppJsonContext.Default));
 ```
 <!-- endSnippet -->
 
@@ -410,3 +410,5 @@ mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane 
 [configuration](docs/features/configuration.md) and [distributed guarantees](docs/features/distributed-cache.md).
 
 Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
+
+Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix` for data and invalidation. Value formats and serializer schemas have separate namespaces; metadata retention and atomic epochs prevent older physical variants from reappearing after invalidation. SQL Server uses an explicit versioned schema and delivered migration scripts. See [distributed caching](docs/features/distributed-cache.md).

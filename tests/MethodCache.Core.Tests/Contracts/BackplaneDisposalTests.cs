@@ -14,7 +14,7 @@ public class BackplaneDisposalTests
     {
         var backplane = new AppBackplane();
         var services = new ServiceCollection();
-        services.AddSingleton<IBackplane>(backplane);
+        services.AddKeyedSingleton<IBackplane>(global::MethodCache.Infrastructure.OwnedServices.Key, backplane);
         services.AddMethodCache();
         services.AddMethodCacheDistributedCache(_ => new MethodCache.TestSupport.AtomicTestCache());
         var provider = services.BuildServiceProvider();

@@ -27,7 +27,7 @@ Redis backplane publication stops waiting when its token is cancelled. A cancell
   entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
   with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
 - Only Redis and Microsoft SQL Server have packages. Another store, such as PostgreSQL, needs a
-  [custom provider](#custom-distributed-caches).
+  [owned storage](#owned-storage-and-compatibility).
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
@@ -88,7 +88,7 @@ the backplane message).
 
 ## Options
 
-`DistributedCacheOptions` apply to Redis, SQL Server and custom distributed caches alike:
+`DistributedCacheOptions` apply to the owned Redis and SQL Server providers:
 
 <!-- snippet: distributed-outage-options -->
 ```cs
@@ -107,7 +107,10 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 | `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
-| `KeyPrefix` | `methodcache:` | Prefix of every key MethodCache writes. `AddMethodCacheRedis` and `AddMethodCacheSqlServer` set it from their own `KeyPrefix`; give each application its own |
+| `KeyPrefix` | `methodcache:` | One startup-immutable prefix for values, metadata, HTTP epochs and the backplane; give each application its own |
+
+| `VerifyRoundTrip` | `true` | Verify the serialized representation before publishing; not a proof of semantic equality |
+| `SerializerVersion` | `1` | Positive value-format identity; increment when changing serializer settings |
 
 ## What other instances see
 
@@ -144,8 +147,8 @@ field) stays in memory the same way. A collection declared as an interface (`IRe
 `IEnumerable<int>`) may come back as another implementation, a `List<int>` for an array, and is still shared. The
 check looks at the type of the value itself, not of what it holds: a `Dog` inside a `List<Animal>` or in a property
 declared `Animal` is shared without its `Dog` data. To share such values, register a serializer that reads them back,
-such as `JsonCacheSerializer` with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the
-setter, `[JsonDerivedType]` on the base type), or your own `ISerializer`. The `MethodCache.Serialization.MessagePack` package makes values
+through `UseJson` with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the
+setter, `[JsonDerivedType]` on the base type). The `MethodCache.Serialization.MessagePack` package makes values
 smaller and faster to read:
 
 <!-- snippet: distributed-messagepack -->
@@ -160,28 +163,17 @@ Entries written in the other format read as misses and are replaced, so switchin
 [MessagePack package guide](../../src/MethodCache.Serialization.MessagePack/README.md). Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](native-aot.md)).
 
-## Custom distributed caches
+## Owned storage and compatibility
 
-<!-- snippet: distributed-custom -->
-```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheDistributedCache(
-    _ => customCache);   // IDistributedCache with backend-atomic invalidation stamps
-```
-<!-- endSnippet -->
+Use `MethodCacheBuilder.UseRedis` or `UseSqlServer`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` before building the container. All Configure registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
 
-`customCache` implements `IAtomicInvalidationStore` (in `MethodCache.Extensibility`), which extends
-`IDistributedCache`. MethodCache rejects a provider without this capability, such as Microsoft's
-`MemoryDistributedCache` (`AddDistributedMemoryCache()`), `RedisCache` or `SqlServerCache`: with a generic host,
-`host.StartAsync()` throws an `OptionsValidationException` naming `IAtomicInvalidationStore`, so the app fails at
-startup rather than on its first request; without a host, resolving the cache manager throws an `ArgumentException`.
-Implement `WriteInvalidationStampAsync` with a backend atomic maximum: keep the highest unexpired
-signed timestamp, expose it as eight little-endian bytes through `GetAsync`, and never shorten an unexpired
-stamp’s retention. Expired stamps can be replaced. A process-local lock or a read followed by `SetAsync` is
-insufficient for a backend shared by different processes. Redis uses one Lua operation; SQL Server uses a
-transaction with a key/range update lock. This applies to tag, clear and key-removal stamps.
+`TagRetention` establishes a permanent scope minimum on first use. Later nodes may request at least that minimum; a shorter setting is rejected. Value deadlines remain capped by the established minimum, even when a later node requests longer retention. Use a new prefix to establish a different scope contract. Exact key removals retain tombstones for metadata retention across every entry format and policy identity. Writes use absolute physical deadlines anchored to source start, so slow serialization or transport cannot extend them.
 
-The [HTTP response cache](http-caching.md) has its own contract and works with a plain `IDistributedCache`.
+Entry keys include the entry format and `SerializerVersion` (default 1); logical invalidation metadata does not. Raise the method `Version` or `DistributedCacheOptions.SerializerVersion` when changing result schemas or serializer settings. Content type only identifies the serialization family. Wire contract 1 frames key, application-tag, method and clear as separate operations. Unknown optional fields are ignored; incompatible mandatory frames retire local entries and produce one payload-free warning.
+
+SQL Server creates only fresh schema contract 1 automatically. Existing unversioned or incompatible schema fails explicitly. The package includes `migrations/0001-version-existing-schema.sql`; stop all old nodes, back up the database and apply the supported migration before starting the new version. `CreateTablesIfMissing = false` prevents creation while retaining schema validation. `SqlServerOptions.ConnectionStringFactory` resolves once from DI.
+
+Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
 
 Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
 `IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them. Disposing the service provider

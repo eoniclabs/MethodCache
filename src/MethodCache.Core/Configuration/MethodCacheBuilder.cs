@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MethodCache.Extensibility;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using MethodCache.Infrastructure;
 
 namespace MethodCache;
 
@@ -59,13 +61,19 @@ public sealed class MethodCacheBuilder
     { Services.AddMethodCacheFromConfiguration(configuration, sectionName); return this; }
     /// <summary>Selects JSON value serialization with the serializer's defaults.</summary>
     public MethodCacheBuilder UseJson()
-    { Services.Replace(ServiceDescriptor.Singleton<ISerializer>(new JsonCacheSerializer())); return this; }
+    { Services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(OwnedServices.Key, new JsonCacheSerializer())); return this; }
     /// <summary>Selects JSON value serialization with explicit options, including an AOT resolver when needed.</summary>
     public MethodCacheBuilder UseJson(JsonSerializerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        Services.Replace(ServiceDescriptor.Singleton<ISerializer>(new JsonCacheSerializer(options)));
+        Services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(OwnedServices.Key, new JsonCacheSerializer(options)));
         return this;
+    }
+    /// <summary>Selects JSON value serialization using a source-generated context, including under Native AOT.</summary>
+    public MethodCacheBuilder UseJson(JsonSerializerContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return UseJson(context.Options);
     }
     /// <summary>Selects a method returning a synchronous result.</summary>
     public IFluentMethodConfiguration<TResult> Method<TService, TResult>(Expression<Func<TService, TResult>> method)

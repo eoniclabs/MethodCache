@@ -187,6 +187,9 @@ internal sealed class ChaosBackplaneHub(TimeProvider? time = null)
         public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) =>
             hub.PublishAsync(this, new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, Tag = tag, InstanceId = InstanceId });
 
+        public Task PublishClearAsync(CancellationToken cancellationToken = default) =>
+            hub.PublishAsync(this, new BackplaneMessage { Type = BackplaneMessageType.ClearAll, InstanceId = InstanceId });
+
         public Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default) =>
             hub.PublishAsync(this, new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = methodId, InstanceId = InstanceId });
 

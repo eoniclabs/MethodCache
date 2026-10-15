@@ -8,6 +8,13 @@ release.
 
 ## Unreleased (1.0.0)
 
+### Owned distributed transports and stable wire contract
+
+- Freeze one Core prefix and validated provider options at startup; use owned storage and serializer registrations. Application `IDistributedCache` is never a fallback. SQL connection strings can come from DI.
+- Add wire v1 and entry format 6 with absolute deadlines, format-independent logical invalidation and shared retention bounds. Malformed mandatory frames clear local entries and warn once.
+- Add native batched reads and permanent atomic epochs in Redis/SQL Server; version SQL schemas and ship an explicit legacy migration.
+- Select JSON through copied options or a source-generated context. Add `VerifyRoundTrip` and `SerializerVersion`; internalize serializer/atomic-store interfaces.
+
 ### Cache API and policy isolation
 
 - Reduce ICacheManager to four async operations with immutable options and explicit invalidation results.
