@@ -8,6 +8,13 @@ final PR records acceptance evidence without changing the generated contract or 
 Its CI lease fix also covers remote checkout/collection before builds, so those operations cannot
 overlap an exclusive benchmark batch.
 
+The complete b518139 checkpoint passed all Linux jobs and macOS/Windows build/unit jobs:
+**2,518 tests in 16 projects, zero failures, one intentional opt-in soak skip**, with required
+native backends, properties, enabled soak, cultures, AOT, installed packages and docs green.
+Its shipped sources match the current standalone runtime. The later epoch-probe fixture and
+current heads still require their own CI; unfinished #132/SipHash and section-10 timing are
+not included. [Full checkpoint and per-job exits](../../plans/design-benchmarks/net10-functional-b518139/).
+
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
 The enabled soak, both cultures, 90 randomized properties, demo, native HTTP/AOT smoke, all 172
@@ -356,7 +363,13 @@ retain all six launches, full source SHAs, actual per-report SDK/runtime/CPU and
 
 The complete v2 affinity baseline pilot still has wide Sync/Generic/Task intervals (relative half-widths
 12.31%, 8.05%, 4.05%; ValueTask 1.73%). Raw three-launch evidence is retained under independent-run-precision.
-The unstarted Generic-only supplement was stopped without a child or any timing. Its replacement is a
-fixed nine-launch all-four-hit v3 study, with parent startup affinity and an explicit ProcessorCount/affinity
-probe required before timing. It is a controlled precision diagnostic; earlier samples are not pooled and
-no cause of the v2 variance is claimed. Full timing remains pending for the new 12bf99d HTTP candidate.
+The unstarted Generic-only supplement was stopped without a child or any timing. Its replacement,
+the nine-launch V3 startup-affinity study, stopped after its first batch with validation exit 1.
+The parser misread BDN's short binary display; the original log also records failed BDN affinity
+changes after startup CPU availability was restricted. Complete raw evidence remains diagnostic.
+Fresh V4 uses startup taskset only and samples the actual OS CPU sets of the host and all four
+executed benchmark child PIDs, rejecting missing observations or mismatches. Nine fixed baseline
+launches are pending, without pooling earlier protocols. All 31 validation-helper tests pass;
+neither those tests nor these baseline pilots pass the final timing gate. [Failure, primary-source
+analysis and frozen V4 protocol](../../plans/design-benchmarks/independent-run-precision/startup-affinity-validation/).
+Full timing remains pending for the standalone HTTP candidate and the finished combined contract/hash source.
