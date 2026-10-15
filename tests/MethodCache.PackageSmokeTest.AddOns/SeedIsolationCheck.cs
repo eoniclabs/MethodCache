@@ -9,8 +9,10 @@ internal static class SeedIsolationCheck
     internal static async Task<string?> RunAsync(Backend backend)
     {
         var isolation = "seeds" + Guid.NewGuid().ToString("N")[..12];
-        foreach (var phase in new[] { "origin", "hit", "key", "origin", "tag", "origin", "clear", "origin", "hit" })
+        var phases = new[] { "origin", "hit", "key", "origin", "tag", "origin", "clear", "origin", "hit" };
+        for (var index = 0; index < phases.Length; index++)
         {
+            var phase = phases[index];
             var executable = Environment.ProcessPath ?? throw new InvalidOperationException("No process executable.");
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
             if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
@@ -28,11 +30,11 @@ internal static class SeedIsolationCheck
             {
                 worker.Kill(entireProcessTree: true);
                 await worker.WaitForExitAsync();
-                return $"{backend} process phase {phase} exceeded its infrastructure deadline";
+                return $"{backend} process phase {index + 1}:{phase} exceeded its infrastructure deadline";
             }
             _ = await output;
             _ = await error;
-            if (worker.ExitCode != 0) return $"{backend} independent-process phase {phase} failed ({worker.ExitCode})";
+            if (worker.ExitCode != 0) return $"{backend} independent-process phase {index + 1}:{phase} failed ({worker.ExitCode})";
         }
         return null;
     }
@@ -46,7 +48,7 @@ internal static class SeedIsolationCheck
             var variable = backend == Backend.Redis ? "METHODCACHE_REDIS_URL" : "METHODCACHE_SQLSERVER_CONNECTION";
             var connection = Environment.GetEnvironmentVariable(variable);
             if (string.IsNullOrEmpty(connection)) return 3;
-            await using var instance = DistributedCheck.CreateInstance(backend, connection, arguments[2], messagePack: false);
+            await using var instance = DistributedCheck.CreateInstance(backend, connection, arguments[2], messagePack: false, sameClock: true);
             await instance.StartAsync();
             // Establish both storage and subscription before testing sharing, independently of connection startup.
             var health = instance.Services.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
