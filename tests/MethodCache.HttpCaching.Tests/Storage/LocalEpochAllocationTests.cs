@@ -1,5 +1,7 @@
 using Xunit;
 using MethodCache.HttpCaching.Internal;
+using MethodCache.Core.Runtime.Http;
+using System.Runtime.CompilerServices;
 
 namespace MethodCache.HttpCaching.Tests.Storage;
 
@@ -11,9 +13,21 @@ public class LocalEpochAllocationTests
         using var storage = new TestHttpStore();
         string[] tags = ["http:test", "catalog"];
         for (var i = 0; i < 1000; i++) _ = await storage.Core.CaptureAsync("url", tags, default);
+        Assert.Equal(0, MeasureCaptures(storage.Core, tags));
+    }
+
+    // Keep assertion initialization and the async test state machine outside the measured region.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static long MeasureCaptures(HttpResponseStore storage, string[] tags)
+    {
         var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 10_000; i++) _ = await storage.Core.CaptureAsync("url", tags, default);
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        for (var i = 0; i < 10_000; i++)
+        {
+            var captured = storage.CaptureAsync("url", tags, default);
+            if (!captured.IsCompletedSuccessfully) throw new InvalidOperationException("Local epoch capture must complete synchronously.");
+            _ = captured.Result;
+        }
+        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 
     [Fact]
