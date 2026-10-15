@@ -34,7 +34,7 @@ public class AtomicCustomCacheTests
         var error = await Assert.ThrowsAsync<OptionsValidationException>(() => host.StartAsync());
 
         Assert.Contains("IAtomicInvalidationStore", error.Message, StringComparison.Ordinal);
-        Assert.Contains(nameof(MemoryDistributedCache), error.Message, StringComparison.Ordinal);
+        Assert.Contains("owned", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -83,12 +83,15 @@ public class AtomicCustomCacheTests
                     services.AddMethodCacheDistributedCache(_ => new AtomicTestCache());
                     break;
                 default:
-                    services.AddSingleton<IDistributedCache, AtomicTestCache>().AddMethodCacheDistributedCache();
+                    services.AddSingleton<IDistributedCache, AtomicTestCache>().AddMethodCacheDistributedCache(sp => sp.GetRequiredService<IDistributedCache>());
                     break;
             }
         });
 
-        await host.StartAsync();
+        var starting = host.StartAsync();
+        if (registration == "sqlserver")
+            ((FakeTimeProvider)host.Services.GetRequiredService<TimeProvider>()).Advance(TimeSpan.FromSeconds(3));
+        await starting;
         await host.StopAsync();
     }
 

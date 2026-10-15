@@ -32,7 +32,11 @@ internal interface IBackplane
 
     /// <summary>Publishes a declared-method invalidation without changing the receiver's policy.</summary>
     Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default)
-        => PublishTagInvalidationAsync(MethodCache.Core.Runtime.Distributed.DistributedCacheLayer.MethodTag(methodId), cancellationToken);
+        => Task.FromException(new NotSupportedException("This backplane does not support method invalidation."));
+    /// <summary>Publishes a format-independent clear operation.</summary>
+    Task PublishClearAsync(CancellationToken cancellationToken = default)
+        => Task.FromException(new NotSupportedException("This backplane does not support clear invalidation."));
+
 }
 
 /// <summary>

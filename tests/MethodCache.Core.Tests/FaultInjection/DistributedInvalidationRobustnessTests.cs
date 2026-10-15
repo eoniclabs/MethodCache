@@ -395,7 +395,7 @@ public class DistributedInvalidationRobustnessTests
 
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
         {
-            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+            Keys = key => key.EndsWith(":e6:s1:big", StringComparison.Ordinal),
         });
         var (node, _) = CreateNode(chaos);
 
@@ -416,7 +416,7 @@ public class DistributedInvalidationRobustnessTests
     {
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
         {
-            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+            Keys = key => key.EndsWith(":e6:s1:big", StringComparison.Ordinal),
         });
         var (node, layer) = CreateNode(chaos);
         var big = Get(node, "big", () => "large value");
@@ -435,7 +435,7 @@ public class DistributedInvalidationRobustnessTests
     {
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
         {
-            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+            Keys = key => key.EndsWith(":e6:s1:big", StringComparison.Ordinal),
         });
         var (node, layer) = CreateNode(chaos);
         var big = Get(node, "big", () => "large value");
@@ -467,7 +467,7 @@ public class DistributedInvalidationRobustnessTests
         // A load that finished after shutdown (a factory that was still running, say) stays in memory
         await layer.WriteAsync("late", "value", null, layer.Now, TimeSpan.FromMinutes(1)).WaitAsync(RealTimeLimit);
 
-        _shared.Get("methodcache:e:late").Should().BeNull("nothing would remove it again if the write failed");
+        _shared.Get("methodcache:e6:s1:late").Should().BeNull("nothing would remove it again if the write failed");
     }
 
     [Fact]
@@ -475,7 +475,7 @@ public class DistributedInvalidationRobustnessTests
     {
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
         {
-            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+            Keys = key => key.EndsWith(":e6:s1:big", StringComparison.Ordinal),
         });
         var (node, layer) = CreateNode(chaos);
         var big = Get(node, "big", () => "large value");
@@ -494,7 +494,7 @@ public class DistributedInvalidationRobustnessTests
     {
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.Slow(TimeSpan.FromHours(1)) with
         {
-            Keys = key => key.EndsWith(":e:big", StringComparison.Ordinal),
+            Keys = key => key.EndsWith(":e6:s1:big", StringComparison.Ordinal),
         });
         var (_, layer) = CreateNode(chaos);
         for (var i = 0; i < 3; i++)

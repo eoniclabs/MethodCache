@@ -29,17 +29,17 @@ public class LockedGapReviewTests(SqlServerFixture fixture)
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
             await using var transaction = connection.BeginTransaction();
-            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 4, '4:bABhAHQAZQA=');", connection, transaction))
+            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 1, '{SqlWireFixture.Key("late")}');", connection, transaction))
             {
-                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(foreignScope ? "foreign:" : options.KeyPrefix));
+                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(foreignScope ? "foreign:" : "methodcache:"));
                 await insert.ExecuteNonQueryAsync();
             }
             await using var peerConnection = new SqlConnection(options.ConnectionString);
             await peerConnection.OpenAsync();
             await using var peerTransaction = peerConnection.BeginTransaction();
-            await using (var peerInsert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 4, '4:cABlAGUAcgA=');", peerConnection, peerTransaction))
+            await using (var peerInsert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 1, '{SqlWireFixture.Key("peer")}');", peerConnection, peerTransaction))
             {
-                peerInsert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
+                peerInsert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("methodcache:"));
                 await peerInsert.ExecuteNonQueryAsync();
             }
             await publisher.PublishInvalidationAsync("first");

@@ -66,8 +66,10 @@ public class UnrestorableResultTypeTests
         }
     }
 
-    private readonly MethodCache.TestSupport.AtomicTestCache _shared = new();
+    private readonly MethodCache.TestSupport.AtomicTestCache _shared;
     private readonly FakeTimeProvider _time = new();
+
+    public UnrestorableResultTypeTests() => _shared = new(_time);
 
     private (ServiceProvider Provider, Reports Reports, WarningLog Log) Instance()
     {

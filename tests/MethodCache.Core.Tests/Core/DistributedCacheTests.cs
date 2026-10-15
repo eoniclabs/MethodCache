@@ -353,13 +353,13 @@ public class DistributedCacheTests
         var services = new ServiceCollection();
         services.AddSingleton<IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache();
-        services.AddMethodCacheDistributedCache(options => options.KeyPrefix = "app:");
+        services.AddMethodCacheDistributedCache(sp => sp.GetRequiredService<IDistributedCache>(), options => options.KeyPrefix = "app:");
 
         await using var provider = services.BuildServiceProvider();
         var manager = provider.GetRequiredService<ICacheManager>();
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("value"), Policy());
 
-        var stored = await provider.GetRequiredService<IDistributedCache>().GetAsync("app:e:key");
+        var stored = await provider.GetRequiredService<IDistributedCache>().GetAsync("app:e6:s1:key");
         stored.Should().NotBeNull();
     }
 
@@ -549,7 +549,7 @@ public class DistributedCacheTests
         var release = new TaskCompletionSource<string>();
 
         var load = first.GetOrCreateFastAsync("key", "M", () => release.Task, Policy());
-        _time.Advance(DistributedCacheLayer.RemovalLifetime);
+        _time.Advance(TimeSpan.FromDays(1));
         release.SetResult("slow");
         (await load).Should().Be("slow");
 
@@ -731,6 +731,12 @@ public class DistributedCacheTests
 
         public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) =>
             hub.SendAsync(new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, Tag = tag, InstanceId = InstanceId });
+
+        public Task PublishClearAsync(CancellationToken cancellationToken = default) =>
+            hub.SendAsync(new BackplaneMessage { Type = BackplaneMessageType.ClearAll, InstanceId = InstanceId });
+
+        public Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default) =>
+            hub.SendAsync(new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = methodId, InstanceId = InstanceId });
 
         public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
         {

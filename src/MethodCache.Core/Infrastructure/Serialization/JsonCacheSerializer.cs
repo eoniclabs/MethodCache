@@ -15,11 +15,11 @@ namespace MethodCache.Extensibility;
 /// [JsonSerializable(typeof(User))]
 /// internal partial class AppJsonContext : JsonSerializerContext { }
 ///
-/// builder.Services.AddSingleton&lt;ISerializer&gt;(new JsonCacheSerializer(AppJsonContext.Default.Options));
+/// builder.Services.AddMethodCache(cache =&gt; cache.UseJson(AppJsonContext.Default));
 /// </code>
 /// For smaller values, the MethodCache.Serialization.MessagePack package stores them as MessagePack instead.
 /// </remarks>
-public sealed class JsonCacheSerializer : ISerializer
+internal sealed class JsonCacheSerializer : ISerializer
 {
     private readonly JsonSerializerOptions _options;
 
@@ -29,7 +29,8 @@ public sealed class JsonCacheSerializer : ISerializer
     /// </summary>
     public JsonCacheSerializer(JsonSerializerOptions? options = null)
     {
-        _options = options ?? Defaults.Options;
+        _options = options == null ? Defaults.Options : new JsonSerializerOptions(options);
+        if (!_options.IsReadOnly) _options.MakeReadOnly(populateMissingResolver: true);
     }
 
     /// <summary>Created on first use, so a serializer given its own options never builds these.</summary>

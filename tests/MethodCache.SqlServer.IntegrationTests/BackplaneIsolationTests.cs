@@ -15,14 +15,14 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
     [InlineData("tenant-İ:", "tenant-i:")]
     public async Task SharedTable_DifferentPrefixes_ReceiveOnlyTheirOwnMessages(string prefix, string otherPrefix)
     {
-        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = prefix };
-        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, KeyPrefix = otherPrefix };
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N") };
+        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName };
         try
         {
             await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
-            await using var publisher = new SqlServerBackplane(options);
-            await using var subscriber = new SqlServerBackplane(options);
-            await using var other = new SqlServerBackplane(otherOptions);
+            await using var publisher = new SqlServerBackplane(options, prefix: prefix);
+            await using var subscriber = new SqlServerBackplane(options, prefix: prefix);
+            await using var other = new SqlServerBackplane(otherOptions, prefix: otherPrefix);
             var ownMessages = new List<BackplaneMessage>();
             var otherMessages = new List<BackplaneMessage>();
             Task Own(BackplaneMessage message) { ownMessages.Add(message); return Task.CompletedTask; }
@@ -67,15 +67,15 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
     [SkippableFact]
     public async Task SharedTable_OtherPrefixesRows_AreNotTrackedAsGaps_AndALateOwnRowStillArrives()
     {
-        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = "app-b:" };
-        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, KeyPrefix = "app-a:" };
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N") };
+        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName };
         var clock = new FakeTimeProvider();
         try
         {
             await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
-            await using var receiver = new SqlServerBackplane(options, timeProvider: clock);
-            await using var publisher = new SqlServerBackplane(options);
-            await using var otherApp = new SqlServerBackplane(otherOptions);
+            await using var receiver = new SqlServerBackplane(options, timeProvider: clock, prefix: "app-b:");
+            await using var publisher = new SqlServerBackplane(options, prefix: "app-b:");
+            await using var otherApp = new SqlServerBackplane(otherOptions, prefix: "app-a:");
             var delivered = new List<string>();
             Task Handle(BackplaneMessage message) { delivered.Add(message.Key!); return Task.CompletedTask; }
             await receiver.PollOnceAsync(Handle, CancellationToken.None);
@@ -97,9 +97,9 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
             await using var transaction = connection.BeginTransaction();
-            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 4, '4:bABhAHQAZQA=');", connection, transaction))
+            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 1, '{SqlWireFixture.Key("late")}');", connection, transaction))
             {
-                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
+                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("app-b:"));
                 await insert.ExecuteNonQueryAsync();
             }
             for (var i = 0; i < 5; i++)
@@ -125,20 +125,20 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
     {
         await using var connection = new SqlConnection(options.ConnectionString);
         await connection.OpenAsync();
-        await using var command = new SqlCommand($"DROP TABLE IF EXISTS {options.QualifiedInvalidationsTableName}; DROP TABLE IF EXISTS {options.QualifiedTableName}; DROP SCHEMA {SqlServerOptions.Quote(options.SchemaName)};", connection);
+        await using var command = new SqlCommand($"DROP TABLE IF EXISTS {options.QualifiedInvalidationsTableName}; DROP TABLE IF EXISTS {options.QualifiedTableName}; DROP TABLE IF EXISTS {options.QualifiedVersionTableName}; DROP SCHEMA {SqlServerOptions.Quote(options.SchemaName)};", connection);
         await command.ExecuteNonQueryAsync();
     }
 
     [SkippableFact]
     public async Task Cleanup_OnlyRemovesExpiredRowsForItsOwnPrefix()
     {
-        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = "short:", BackplaneRetention = TimeSpan.FromMinutes(1) };
-        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, KeyPrefix = "long:", BackplaneRetention = TimeSpan.FromHours(1) };
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), BackplaneRetention = TimeSpan.FromMinutes(1) };
+        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, BackplaneRetention = TimeSpan.FromHours(1) };
         try
         {
             await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
-            await using var own = new SqlServerBackplane(options);
-            await using var other = new SqlServerBackplane(otherOptions);
+            await using var own = new SqlServerBackplane(options, prefix: "short:");
+            await using var other = new SqlServerBackplane(otherOptions, prefix: "long:");
             await own.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
             await own.PublishInvalidationAsync("own");
             await other.PublishInvalidationAsync("other");
@@ -152,7 +152,8 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using var remaining = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);
             await using var reader = await remaining.ExecuteReaderAsync();
             Assert.True(await reader.ReadAsync());
-            Assert.Equal("4:bwB0AGgAZQByAA==", reader.GetString(0));
+            Assert.True(MethodCache.Infrastructure.BackplaneWire.TryDecode(reader.GetString(0), out var remainingMessage));
+            Assert.Equal("other", remainingMessage.Key);
             Assert.False(await reader.ReadAsync());
         }
         finally { await DropSchemaAsync(options); }
@@ -175,6 +176,8 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
                 """, connection);
             await create.ExecuteNonQueryAsync();
             create.CommandText = $"""
+                CREATE TABLE {options.QualifiedVersionTableName} (Id tinyint PRIMARY KEY, Version int NOT NULL);
+                INSERT INTO {options.QualifiedVersionTableName} VALUES (1, 1);
                 CREATE TABLE {options.QualifiedInvalidationsTableName} (
                     Id bigint IDENTITY PRIMARY KEY, {scopeColumn} InstanceId varchar(32) NOT NULL,
                     MessageType tinyint NOT NULL, Target nvarchar(max) NOT NULL,

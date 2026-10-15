@@ -49,6 +49,8 @@ public sealed class RedisUnicodeKeyTests(RedisFixture fixture)
             Assert.Equal(new byte[] { 1 }, await cache.GetAsync(keys[1]));
             await cache.RemoveAsync(keys[1]);
             Assert.Null(cache.Get(keys[1]));
+            // Timestamp metadata has its own schema, separate from the preceding arbitrary value bytes.
+            foreach (var key in keys) await cache.RemoveAsync(key);
             for (var i = 0; i < keys.Length; i++)
             {
                 await cache.WriteInvalidationStampAsync(keys[i], 10 + i, TimeSpan.FromMinutes(1));

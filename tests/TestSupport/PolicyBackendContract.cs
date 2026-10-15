@@ -32,8 +32,8 @@ public static class PolicyBackendContract
         Assert.Equal(TimeSpan.FromMinutes(5), receiverHandle.Current.Duration);
         // The typed method message has retired the receiver. The following assertions isolate L2
         // namespaces from the documented possibility of delayed messages evicting fresh local data.
-        await first.GetRequiredService<IBackplane>().UnsubscribeAsync();
-        await second.GetRequiredService<IBackplane>().UnsubscribeAsync();
+        await first.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
+        await second.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
         Assert.Equal(102, await a.ReadAsync(1));
         Assert.Equal(201, await b.ReadAsync(1));
         time.Advance(TimeSpan.FromSeconds(11));

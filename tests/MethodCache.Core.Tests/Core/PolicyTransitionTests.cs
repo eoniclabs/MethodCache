@@ -20,7 +20,7 @@ public class PolicyTransitionTests
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(_time);
         services.AddSingleton<IReader>(origin);
-        if (backplane != null) services.AddSingleton(backplane);
+        if (backplane != null) services.AddKeyedSingleton<MethodCache.Extensibility.IBackplane>(global::MethodCache.Infrastructure.OwnedServices.Key, backplane);
         services.AddMethodCache(builder => { builder.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))); configure?.Invoke(builder); });
         services.AddMethodCacheDistributedCache(_ => _store, o => { o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
         return services.BuildServiceProvider();

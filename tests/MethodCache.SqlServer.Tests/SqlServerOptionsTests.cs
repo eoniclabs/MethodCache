@@ -6,6 +6,16 @@ namespace MethodCache.SqlServer.Tests;
 
 public class SqlServerOptionsTests
 {
+    [Theory]
+    [InlineData("Cache")]
+    [InlineData("cache")]
+    [InlineData("CacheSchema")]
+    public void Validate_RejectsCollidingCacheMetadataAndBackplaneNames(string invalidations)
+    {
+        var options = new SqlServerOptions { ConnectionString = "Server=.", TableName = "Cache", InvalidationsTableName = invalidations };
+        Assert.Throws<InvalidOperationException>(() => options.Validate());
+    }
+
     [Fact]
     public void Validate_RequiresConnectionString()
     {

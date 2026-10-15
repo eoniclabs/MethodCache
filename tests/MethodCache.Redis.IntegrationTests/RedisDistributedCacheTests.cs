@@ -36,11 +36,10 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         var configuration = _redis.RequireConfiguration();
         var services = new ServiceCollection();
         services.AddMethodCache();
+        services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = _prefix);
         services.AddMethodCacheRedis(options =>
         {
             options.Configuration = configuration;
-            options.KeyPrefix = _prefix;
-            options.BackplaneChannel = _prefix + "invalidations";
         });
 
         var provider = services.BuildServiceProvider();

@@ -126,12 +126,12 @@ public static class DistributedCheck
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
         services.AddMethodCache();
+        services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = isolation + ":");
         if (backend == Backend.Redis)
         {
             services.AddMethodCacheRedis(options =>
             {
                 options.Configuration = connection;
-                options.KeyPrefix = isolation + ":";
             });
         }
         else

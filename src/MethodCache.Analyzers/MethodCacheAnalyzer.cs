@@ -133,9 +133,9 @@ namespace MethodCache.Analyzers
         {
             foreach (var argument in attribute.NamedArguments)
             {
+                if (Array.IndexOf(TimeSpanProperties, argument.Key) < 0) continue;
                 var text = argument.Value.Value as string;
-                if (Array.IndexOf(TimeSpanProperties, argument.Key) >= 0 &&
-                    !MethodCache.Internal.DurationParser.TryParse(text, argument.Key == "FailSafe", out _))
+                if (!MethodCache.Internal.DurationParser.TryParse(text, argument.Key == "FailSafe", out _))
                 {
                     yield return (argument.Key, text ?? "null");
                 }

@@ -43,4 +43,10 @@
     <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <Compile Include="../TestSupport/PolicyBackendContract.cs" Link="TestSupport/PolicyBackendContract.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/EpochBackendContract.cs" Link="EpochBackendContract.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="../../src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql" Link="migrations/0001-version-existing-schema.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

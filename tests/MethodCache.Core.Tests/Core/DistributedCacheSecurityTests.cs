@@ -22,10 +22,12 @@ namespace MethodCache.Core.Tests.Core;
 /// </summary>
 public class DistributedCacheSecurityTests
 {
-    private const string EntryPrefix = "methodcache:e:";
+    private const string EntryPrefix = "methodcache:e6:s1:";
 
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
-    private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
+    private readonly IDistributedCache _shared;
+
+    public DistributedCacheSecurityTests() => _shared = new MethodCache.TestSupport.AtomicTestCache(_time);
     private readonly Hub _hub = new();
 
     private InMemoryCacheManager CreateNode(ISerializer? serializer = null) => new(
@@ -39,16 +41,16 @@ public class DistributedCacheSecurityTests
 
     [Theory]
     [InlineData(4, 0)]
-    [InlineData(5, 1)]
-    [InlineData(5, -1)]
-    [InlineData(5, int.MaxValue)]
+    [InlineData(6, 1)]
+    [InlineData(6, -1)]
+    [InlineData(6, int.MaxValue)]
     public async Task ObsoleteVersionOrInvalidUtf16Length_IsAMiss(int version, int length)
     {
         var writer = CreateNode();
         await writer.GetOrCreateFastAsync("k", "M", () => Task.FromResult("stored"), Policy("users"));
         var stored = (await _shared.GetAsync(EntryPrefix + "k"))!;
         stored[0] = (byte)version;
-        BinaryPrimitives.WriteInt32LittleEndian(stored.AsSpan(30), length);
+        BinaryPrimitives.WriteInt32LittleEndian(stored.AsSpan(44), length);
         await _shared.SetAsync(EntryPrefix + "k", stored);
         var reader = CreateNode();
         Assert.Equal("loaded", await reader.GetOrCreateFastAsync("k", "M", () => Task.FromResult("loaded"), Policy("users")));
@@ -170,7 +172,7 @@ public class DistributedCacheSecurityTests
 
     [Theory]
     [InlineData("e:k")]
-    [InlineData("methodcache:e:k")]
+    [InlineData("methodcache:e6:s1:k")]
     [InlineData("r:k")]
     [InlineData("k")]
     public async Task ATagNamedLikeAStorageKey_DoesNotTouchThatEntry(string tag)
