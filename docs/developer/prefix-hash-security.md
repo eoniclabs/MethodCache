@@ -43,3 +43,10 @@ The earlier SipHash-2-4 candidate had correct author vectors and unchanged alloc
 section-10 timing gate (see design-prefix-preflight.md). That failed implementation remains in history;
 it is not silently counted as an approved optimization. The current algorithm and full-path results
 must pass the same functional, frozen-vendor/AOT, backend-identity and timing gates before completion.
+
+### HTTP string table
+
+The Core HTTP body table uses the runtime ordinal string comparer and its built-in collision defenses instead of
+the generated-method prefix comparer. HTTP keys are already complete SHA-framed text, and no generated builder
+uses that table. The string/span/builder fallback paths are model-tested; TinyLFU frequency hashes still use the
+full process-secret hash. Generated method tables and their collision-defense argument above remain unchanged.

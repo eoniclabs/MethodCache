@@ -66,3 +66,30 @@ still awaited. Variant keys hash the complete unchanged UTF-16 frame in one SHA-
 for small inputs and clearing pooled credential buffers on growth/return. Incremental reference tests cover empty,
 large and isolated-surrogate header frames. A gated options-change regression checks that simultaneous requests
 retain their own tag namespace and an earlier configuration's cache stays isolated when selected again.
+
+## Fourth rejected diagnostic: 82f8ccb
+
+Candidate `82f8ccb9fd3eaac9ecf991302756ff214bc10c91`; same base/job/runtime/workloads, one independent launch pair.
+[Raw logs/manifest](../../plans/design-benchmarks/http-preflight-82f8ccb/) retain the measured state. Candidate fresh
+hits off/on were 760.5/762.1 ns initially and 842.6/840.8 ns after invalidation, against 720.9/714.1 and
+752.4/747.6 ns. Private variants were 1,353/1,298 ns initially and 1,446/1,436 ns afterward, against
+1,267/1,262 and 1,291/1,290 ns. Allocations remain lower in all corresponding cases. Time still rejects this state.
+The initial listener-off variant was noisy (83 ns standard deviation); it is not precise acceptance evidence.
+
+A separate warmed component diagnostic (not a BDN gate) isolated URI, generation, storage and variant-key work:
+old/new body lookup 36.10/101.63 ns, generation 26.71/35.13 ns, URI 176.17/140.73 ns and private key
+467.25/380.88 ns. With the runtime ordinal comparer for the HTTP-only table, body lookup became 57.02 ns.
+The HTTP table retains TinyLFU admission, frequency sampling, expiry, weight and full ordinal equality. Method tables
+keep their prefix-aware secret hash. The runtime supplies its own string collision defenses; see the
+[.NET 10 dictionary constructor](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs)
+and the corresponding .NET 9 implementation. The frequency sketch retains its full process-secret hash in both modes.
+Model tests cover string/span/builder/bound lookups and mutations under forced collisions and the runtime comparer;
+eviction/admission outcomes match. This removes the unused HTTP process-hash priming attempt.
+
+The completed HTTP response path now uses ValueTask internally so it creates only the Task required by HttpClient
+on a synchronous hit; pending native I/O still has one observed completion/error path. Header framing uses a fixed
+512-byte stack buffer and switches to incremental SHA for larger frames, keeping working memory independent of
+caller header size. The exact existing UTF-16 frame is retained across that boundary. URI pooled buffers are cleared.
+A dedicated Native AOT HTTP check now exercises short/large private caller keys, NoOp method-manager coexistence,
+known-id invalidation, clear and source-generated enum/entry JSON without body/caller/query leakage. It passed.
+The latest complete timing and functional gates remain required before accepting this repair.

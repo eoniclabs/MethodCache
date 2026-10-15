@@ -83,7 +83,7 @@ builder.Services.AddMethodCache();                               // after your r
   prefixed key such as `$"order:{id}"`.
 - Fix MethodCache's `MC` build diagnostics; each links to its explanation, and many have a code fix.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
-  caching off.
+  method caching off. HTTP response storage remains independent; use its own options and administrator.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass `CacheManagerExtensions.GetCacheKey(key, version)`
   to `InvalidateKeysAsync`.
 - Use `UseRedis` or `UseSqlServer`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.

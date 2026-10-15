@@ -113,8 +113,8 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
   itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
-- `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
-  `NoOpCacheManager` ([Testing](testing.md)).
+- The four operations on `ICacheManager` can be mocked directly. The options-builder convenience overload
+  delegates to that interface. You can also pass a `NoOpCacheManager` ([Testing](testing.md)).
 
 Manual `TryGetAsync` reads a fresh entry, including a cached null, even when refresh-ahead is due. This lookup does not start a factory or background refresh.
 

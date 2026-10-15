@@ -109,6 +109,9 @@ await using (var frozenProvider = frozenServices.BuildServiceProvider())
         failures.Add("Frozen closed generic interface did not preserve caching.");
 }
 
+try { await HttpAotChecks.RunAsync(); }
+catch (Exception error) { failures.Add("HTTP storage/admin AOT check failed: " + error.GetType().Name); }
+
 foreach (var failure in failures)
 {
     Console.Error.WriteLine($"FAIL: {failure}");
