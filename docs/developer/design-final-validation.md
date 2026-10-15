@@ -324,6 +324,22 @@ default, tr-TR and sv-SE cultures. The original cause remains unproven, and whol
 allocation gates plus latest-head CI remain required. Exact receipts are in that directory's
 `fixed-batches/` subdirectory.
 
+## No-listener telemetry probe follow-up
+
+Historical net10 head 0626bdb passed Linux/Windows but its macOS unit job measured 2,256 bytes
+in the no-listener telemetry test. That probe included an assertion inside the measured loop
+and left BeginLoad unwarmed. The revised final-PR fixture warms both operations on an owned
+thread, then measures the same 10,000 pairs in a synchronous NoInlining helper with assertions,
+setup and completion outside it. The single batch still must allocate exactly zero bytes,
+without tolerance or resampling; a non-null operation fails explicitly. The original byte
+source remains unproven. Adding an escaping temporary buffer to either API fails with 1,520,000 bytes.
+
+The complete Core suite passes 1,035 facts, zero failures and one intentional soak skip in the
+default, tr-TR and sv-SE cultures. The formerly duplicated AppendNullPart theory row is now a
+separate fact, so both null APIs receive distinct assertions and the duplicate-ID warning is
+gone. Production source is unchanged. [Failure, sensitivity and final-suite receipts](../../plans/design-benchmarks/telemetry-allocation-probe/)
+do not replace latest-head CI or the whole-path performance allocation gate.
+
 ## Independent-run precision follow-up
 
 The first two CPU2-affinity baseline GenericHit means imply that even the best possible positive
