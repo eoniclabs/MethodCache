@@ -52,9 +52,9 @@ builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.
   `AddMethodCache()` uses the one generated in the assemblies passed to it (by default the calling one, usually your
   application), then the one in the entry assembly. If neither has one, it throws `InvalidOperationException` naming
   both; pass the assembly whose policies should apply: `AddMethodCache(null, typeof(Program).Assembly)`.
-- Mistakes are build errors: [MCG010](../user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
-  static abstract or non-public abstract members), [MCG011](../user-guide/DIAGNOSTICS.md#mcg011) (a method that is
-  missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](../user-guide/DIAGNOSTICS.md#mcg012) (an
+- Mistakes are build errors: [MC0011](../user-guide/DIAGNOSTICS.md#mc0011) (a type it can't cache, such as one with
+  static abstract or non-public abstract members), [MC0012](../user-guide/DIAGNOSTICS.md#mc0012) (a method that is
+  missing, overloaded, static, or one `[Cache]` would reject) and [MC0013](../user-guide/DIAGNOSTICS.md#mc0013) (an
   interface listed twice).
 
 ## A wrapper interface

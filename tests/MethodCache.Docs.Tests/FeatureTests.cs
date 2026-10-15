@@ -104,7 +104,7 @@ public class FeatureTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task Keys_RawKeyArgumentIsTheWholeKey()
+    public async Task Keys_ArgumentsCannotReplaceTheMethodScope()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IDocumentStore, Documents>();
@@ -113,7 +113,8 @@ public class FeatureTests(ITestOutputHelper output)
         await provider.GetRequiredService<IDocumentStore>().GetAsync("doc:2026/report.pdf");
 
         var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries().Select(e => e.Key).ToList();
-        Assert.Contains("doc:2026/report.pdf", keys);
+        Assert.Contains(MethodCacheKeys.For(typeof(IDocumentStore), nameof(IDocumentStore.GetAsync), MethodCacheKeys.Part("doc:2026/report.pdf")), keys);
+        Assert.DoesNotContain("doc:2026/report.pdf", keys);
     }
 
     private sealed class Orders : IOrderService

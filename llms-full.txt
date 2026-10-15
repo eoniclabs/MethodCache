@@ -68,7 +68,7 @@ builder.Services.AddMethodCache();                               // after your r
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter.
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
-  literal and gives warning MCG015; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
+  literal and gives warning MC0016; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Put ids (`int`, `Guid`) in tag templates, not free text from users: tags are plain text, so `"1:orders"` in
   `"user:{id}"` equals `"user:{id}:orders"` for id 1. Never pass passwords or tokens as arguments of cached methods.
 - Durations are `TimeSpan` strings: `Duration = "00:10:00"`. Other settings: `SlidingExpiration`, `RefreshAhead`
@@ -111,6 +111,8 @@ synchronous calls bypass a custom manager. Runtime configurators expose only Ups
 reject unknown method ids and retire local policy generations. Declarative L2 namespaces are stable; runtime behavior
 changes use private random namespaces. Never reintroduce cache callbacks, CacheContext.Services, public policy pipelines,
 key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.
+
+Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); zero is only allowed via builder fail-safe off. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
 
 
 ---
@@ -235,9 +237,9 @@ builder.Services.AddMethodCache();
 ```
 
 - Synchronous methods, `Task<T>` and `ValueTask<T>` can be cached. A method that returns nothing has nothing to
-  cache, so `[Cache]` on it is a build error ([MCG001](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg001),
-  [MCG002](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg002)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
-  ([MCG014](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg014)): return a list.
+  cache, so `[Cache]` on it is a build error ([MC0003](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0003),
+  [MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
+  ([MC0015](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0015)): return a list.
   Synchronous methods use L1/origin when the distributed adapter has no bounded native synchronous capability.
   Custom async-only managers bypass their synchronous caching path; see [Generated decorators](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/source-generator.md).
 - Exceptions are never cached: the next call runs the method again.
@@ -275,8 +277,8 @@ the containing type and the interface, including `unmanaged` and base class cons
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
 implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
-[MCG017](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg017). An interface with non-public abstract members is rejected with
-[MCG013](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg013), because the decorator can't call those members on the implementation.
+[MC0018](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0018). An interface with non-public abstract members is rejected with
+[MC0014](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0014), because the decorator can't call those members on the implementation.
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
 don't clash with the generated code. You don't need to rename anything.
@@ -324,7 +326,7 @@ after the origin/local mutation; use async mutation methods for distributed inva
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
-On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MCG007 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
+On C# 13/.NET 9 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The generator still supports the .NET 8 compiler baseline.
 
 
 ---
@@ -359,9 +361,9 @@ public interface IUserService
   could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
   collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
   includes that type, so an array and a list with the same elements stay two entries. Unknown collection subclasses passed through a base class or interface use the key generator so their own runtime state is preserved.
-- **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the default, JSON and MessagePack key generators.
+- **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the internal fallback generator.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
-  generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
+  generator. The internal default generator hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **Framework types** are written by their value wherever they appear, not by their public properties; see
   [Framework types](#framework-types). Other framework types are a build error.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
@@ -412,7 +414,7 @@ the key generator, which writes their value, in an argument of their own or insi
 Any other type from .NET itself, ASP.NET Core or Microsoft.Extensions in a key (one from an assembly named
 `System.*`, `Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`), such as `StringBuilder` (which can change after
 the call), `CultureInfo`, `Stream`, `Type` or a delegate, is build error
-[MCG018](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg018), also as a property of your own record. Pass a value that identifies
+[MC0019](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0019), also as a property of your own record. Pass a value that identifies
 it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`. Other libraries' models, such
 as an SDK's classes in a `Microsoft.*` namespace, are written by their public properties like your own types.
 
@@ -426,26 +428,17 @@ key generator.
 builder.Services.AddMethodCache(cache => cache.UseJson());
 ```
 
-## Using an argument as the key
+## Method scope
 
-`[CacheKey(UseAsRawKey = true)]` on a parameter makes that argument the whole key. The interface, the method name, the
-`Version` and the other arguments are not part of it:
+Generated keys always include the interface, method, version, closed generic types and keyed-service identity where applicable. An argument cannot replace that scope: `CacheKeyAttribute` and its `UseAsRawKey` flag have been removed. Use `ICacheKeyProvider` to customize one argument's part, or the manual `ICacheManager` API when supplying a complete key.
 
 ```cs
 public interface IDocumentStore
 {
-    // The argument is the whole key: GetAsync("doc:2026/report.pdf") is stored as "doc:2026/report.pdf"
-    [Cache] Task<byte[]> GetAsync([CacheKey(UseAsRawKey = true)] string key);
+    // The document path is an argument; the interface and method remain part of the key.
+    [Cache] Task<byte[]> GetAsync(string key);
 }
 ```
-
-Strings are used as they are. Dates are written as in generated keys (`MethodCacheKeys.Part`), in the round-trip
-format (`2026-01-01T12:00:00.2500000Z`): fractions of a second and a `DateTimeOffset`'s offset are part of the key,
-and a local `DateTime` is written as UTC, so the key doesn't depend on the server's time zone and a local time and the
-UTC time of the same instant share an entry. Numbers and other formattable values are written in the invariant culture;
-any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
-prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
-your own code builds, never for text a caller controls; see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
 ## Building a key yourself
 
@@ -535,8 +528,7 @@ public interface IReportService
 }
 ```
 
-Time spans use the `TimeSpan` format: `"00:05:00"` is five minutes, `"01:00:00"` an hour, `"1.00:00:00"` a day. A
-value that isn't a positive time span is a build error ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)).
+Durations accept an invariant positive decimal followed by `s`, `m`, `h` or `d` (case-insensitive), or `[d.]hh:mm:ss` with up to seven fractional second digits. Examples: `"30s"`, `"1.5h"`, `"1.00:00:00"`. Outer whitespace is ignored. Fractional ticks are truncated; a positive value below one tick is rejected. Bare integers, zero, negatives, exponents, decimal commas, combined units and overflow are errors. The same parser is used for attributes and configuration; invalid explicit attributes produce [MC0002](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0002) even without analyzers. `FailSafe` also accepts `"off"`; builder `FailSafe(TimeSpan.Zero)` disables it. Timeout and retry windows must stay positive.
 
 ## Duration
 
@@ -626,7 +618,7 @@ public interface IOrderService
 - `[CacheInvalidate]` removes every entry with any of its tags once the method has completed successfully. If it
   throws, nothing is removed.
 - A tag can be shared by many methods, so one write clears every cached view of the same data.
-- `[CacheInvalidate]` without tags removes nothing and is reported as [MCG005](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg005).
+- `[CacheInvalidate]` without tags removes nothing and is reported as [MC0007](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0007).
 
 ## Tag templates
 
@@ -634,12 +626,12 @@ public interface IOrderService
 `CancelAsync(42, 7)` removes `order:42`. The name in braces must be a parameter of the method it is on. The exact
 spelling is used first; otherwise a single case-insensitive match is used. A name that matches several parameters
 only by case, such as `{NAME}` for `name` and `Name`, stays literal text and is reported as
-[MCG016](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg016). An unknown name is reported as
-[MCG009](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg009), with a code fix that offers the closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
+[MC0017](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0017). An unknown name is reported as
+[MC0010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0010), with a code fix that offers the closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
 the tag `order:{org}` on both the cached call and the invalidation.
 
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
-share one tag; it is reported as [MCG015](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
+share one tag; it is reported as [MC0016](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0016). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md).
 
 Static tags never format method arguments. A template formats only the parameters it references, in the invariant culture; an unrelated argument's `ToString()` is not invoked.
@@ -843,7 +835,7 @@ builder.Services.AddMethodCache(config =>
     // Every cached method: fills in what the method leaves unset
     config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15)));
 
-    // Methods in the "user-data" group: [Cache("user-data")] or WithGroup("user-data")
+    // Methods in the "user-data" group: [Cache(Group = "user-data")] or WithGroup("user-data")
     config.Group("user-data", o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
 
     // One method
@@ -854,7 +846,7 @@ builder.Services.AddMethodCache(config =>
 
 - `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
   keeps its ten minutes while the defaults fill in what it leaves out.
-- A method joins a group with `[Cache("name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
+- A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
 - `Any<T>.Value` stands for any argument when you point at a method.
 
 Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`,
@@ -996,10 +988,10 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 
 | Setting | Rule | Checked |
 |---------|------|---------|
-| `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
-| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
-| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` only): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
-| `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative value means "not set" (the default is -1) |
+| `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0002](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0002)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0002](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0002)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
+| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` and `RetryAfter`): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative explicit value is MC0021; omission inherits |
 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. `CacheWhen<T>` is
 configured in code. Cache callbacks, context predicates and a service provider in `CacheContext` are no longer supported.
@@ -1009,6 +1001,8 @@ Overloaded generic methods include generic arity in their policy ids and key pre
 Published options and policy tags are owned, read-only snapshots. Mutating a collection supplied by application code cannot change an existing policy or bypass its change notifications.
 
 A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
+
+`[Cache]` is parameterless and all settings are named. `Enabled` and `Distributed` inherit the policy when omitted; explicitly setting either to `false` overrides a lower layer. An omitted `Version` remains unset; an explicit negative version is an error. `RetryAfter` sets the fail-safe retry delay (default 30 seconds). `[assembly: CacheInterface(typeof(...), nameof(...))]` retains its required interface and method arguments and offers the same named settings.
 
 
 ---
@@ -1182,9 +1176,9 @@ builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.
   `AddMethodCache()` uses the one generated in the assemblies passed to it (by default the calling one, usually your
   application), then the one in the entry assembly. If neither has one, it throws `InvalidOperationException` naming
   both; pass the assembly whose policies should apply: `AddMethodCache(null, typeof(Program).Assembly)`.
-- Mistakes are build errors: [MCG010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
-  static abstract or non-public abstract members), [MCG011](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg011) (a method that is
-  missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg012) (an
+- Mistakes are build errors: [MC0011](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0011) (a type it can't cache, such as one with
+  static abstract or non-public abstract members), [MC0012](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0012) (a method that is
+  missing, overloaded, static, or one `[Cache]` would reject) and [MC0013](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0013) (an
   interface listed twice).
 
 ## A wrapper interface
@@ -1963,13 +1957,12 @@ under the same OS user from local credential files.
 
 | Threat | What MethodCache does |
 |---|---|
-| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MCG018. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. Collection subclasses include their own public state alongside their elements in every key generator. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
+| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MC0019. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. Collection subclasses include their own public state alongside their elements in every key generator. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
 | An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id. |
-| A tag built from user text invalidates someone else's entries | **Not prevented.** Tags are plain text: `"user:{userId}"` with the id `"1:orders"` is the same tag that `"user:{userId}:orders"` gives user 1, so invalidating one also removes the other. This only ever removes entries (they are loaded again); it never serves one caller's value to another. Use ids that can't contain your separator (`int`, `Guid`) in tag templates. |
+| A dynamic tag argument impersonates another argument | Dynamic placeholders use canonical key parts: null has its own marker, strings escape colons and backslashes, enums use invariant numbers, and dates keep their full precision. Static template text stays literal. Tags remain an application-defined shared invalidation namespace; they are not an authorization boundary. |
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
 | A tag built from user text clears the whole distributed cache | L2 metadata preserves every UTF-16 code unit, including lone surrogates, so reading a tag cannot change its invalidation identity. A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
 | `*` or `?` in user text widens an invalidation | `InvalidateTagsAsync`, `InvalidateKeysAsync` and admin endpoints match exact keys and tags. Group invalidation uses an explicit common tag. |
-| `[CacheKey(UseAsRawKey = true)]` | The argument *is* the key, unescaped, so a caller who controls it can read any other entry with that key. Use it only for keys your code builds. |
 
 ## Distributed cache (Redis, SQL Server)
 
@@ -2071,6 +2064,8 @@ Typed method messages retire data without accepting policy from the sender. L2 r
 null/result predicates and original load-start tombstones, including after delayed transport completion. Format-5 malformed
 header/truncation tests exercise the current parser. `PolicyBackendContract` runs the same assertions on Redis and SQL Server.
 
+Generated methods always retain their method/service/type scope; the raw-key escape hatch is removed. Dynamic tag arguments use canonical scalar key formatting, keeping null, escaped strings and full-precision temporal values distinct. Reserved metadata keys and tags remain centrally framed and cannot be selected by caller-controlled strings.
+
 
 ---
 
@@ -2093,7 +2088,7 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
   makes every key different. List the keys to check ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)).
 - **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error
-  [MCG018](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg018): its key would not follow its value. Pass a string or an id instead
+  [MC0019](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, the result is `null` with
   `CacheNullValues = false`, or the call threw. Exceptions are never cached.
@@ -2104,8 +2099,8 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 - **The tags don't match.** `[CacheInvalidate]` removes only the tags it lists. Compare them with the cached methods'
   tags.
 - **A tag template isn't filled in.** The name in braces must be a parameter of that method:
-  [MCG009](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg009) warns about unknown names. A property path such as `"{product.Id}"` is
-  not a template and stays literal ([MCG015](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg015)); pass the id as a parameter.
+  [MC0010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0010) warns about unknown names. A property path such as `"{product.Id}"` is
+  not a template and stays literal ([MC0016](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0016)); pass the id as a parameter.
 - **The update method threw.** Invalidation runs only after the method completes successfully.
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code)).
@@ -2117,7 +2112,7 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 ## Results stay out of the distributed cache
 
 A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
-warning [MCG019](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mcg019). The serializer can't tell which class to create when it reads
+warning [MC0020](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
 such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
 only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
 
@@ -2167,25 +2162,27 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | Id | Severity | Summary | Code fix |
 |----|----------|---------|----------|
 | [MC0001](#mc0001) | Warning | `[Cache]` or `[CacheInvalidate]` on a class member | Move to the interface |
-| [MC0004](#mc0004) | Error | A time span that is not a positive `TimeSpan` | |
-| [MCG001](#mcg001) | Error | `[Cache]` on a `void` method | Remove `[Cache]` |
-| [MCG002](#mcg002) | Error | `[Cache]` on `Task`/`ValueTask` without a result | Remove `[Cache]` |
-| [MCG003](#mcg003) | Error | `[Cache]` with reference parameters or returns | Remove `[Cache]` |
-| [MCG004](#mcg004) | Error | `[Cache]` and `[CacheInvalidate]` on the same method | |
-| [MCG005](#mcg005) | Warning | `[CacheInvalidate]` without tags | |
-| [MCG006](#mcg006) | Error | `[Cache]` with pointer or function pointer parameters or returns, including arrays of them | Remove `[Cache]` |
-| [MCG007](#mcg007) | Error | `[Cache]` with ref struct or potentially ref-like parameters or returns | Remove `[Cache]` |
-| [MCG009](#mcg009) | Warning | A tag names a parameter the method does not have | Use the closest parameter |
-| [MCG010](#mcg010) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
-| [MCG011](#mcg011) | Error | `[assembly: CacheInterface]` lists a method it can't cache | |
-| [MCG012](#mcg012) | Error | The same interface in more than one `[assembly: CacheInterface]` | |
-| [MCG013](#mcg013) | Error | An interface with static or non-public abstract members | |
-| [MCG014](#mcg014) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
-| [MCG015](#mcg015) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
-| [MCG016](#mcg016) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
-| [MCG017](#mcg017) | Warning | `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member | |
-| [MCG018](#mcg018) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
-| [MCG019](#mcg019) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
+| [MC0002](#mc0002) | Error | A time span that is not a positive `TimeSpan` | |
+| [MC0003](#mc0003) | Error | `[Cache]` on a `void` method | Remove `[Cache]` |
+| [MC0004](#mc0004) | Error | `[Cache]` on `Task`/`ValueTask` without a result | Remove `[Cache]` |
+| [MC0005](#mc0005) | Error | `[Cache]` with reference parameters or returns | Remove `[Cache]` |
+| [MC0006](#mc0006) | Error | `[Cache]` and `[CacheInvalidate]` on the same method | |
+| [MC0007](#mc0007) | Warning | `[CacheInvalidate]` without tags | |
+| [MC0008](#mc0008) | Error | `[Cache]` with pointer or function pointer parameters or returns, including arrays of them | Remove `[Cache]` |
+| [MC0009](#mc0009) | Error | `[Cache]` with ref struct or potentially ref-like parameters or returns | Remove `[Cache]` |
+| [MC0010](#mc0010) | Warning | A tag names a parameter the method does not have | Use the closest parameter |
+| [MC0011](#mc0011) | Error | `[assembly: CacheInterface]` names a type it can't decorate | |
+| [MC0012](#mc0012) | Error | `[assembly: CacheInterface]` lists a method it can't cache | |
+| [MC0013](#mc0013) | Error | The same interface in more than one `[assembly: CacheInterface]` | |
+| [MC0014](#mc0014) | Error | An interface with static or non-public abstract members | |
+| [MC0015](#mc0015) | Error | `[Cache]` on a lazy sequence | Remove `[Cache]` |
+| [MC0016](#mc0016) | Warning | A tag placeholder that is not a parameter name, such as `{product.Id}` | |
+| [MC0017](#mc0017) | Warning | A tag placeholder matches several parameter names without an exact spelling match | |
+| [MC0018](#mc0018) | Warning | `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member | |
+| [MC0019](#mc0019) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
+| [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
+
+| [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 
 ## MC0001
 
@@ -2209,33 +2206,33 @@ public class UserService : IUserService
 removes it when the member implements no interface. To cache an interface you don't own, see the
 [third-party caching page](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md).
 
-## MC0004
+## MC0002
 
 `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` or `FailSafeTimeout` on `[Cache]` or
 `[assembly: CacheInterface]` is not a positive time span. Use the `TimeSpan` format: `"00:05:00"` (five minutes),
 `"01:00:00"` (an hour) or `"1.00:00:00"` (a day). `FailSafe` also accepts `"off"`.
 
-## MCG001
+## MC0003
 
 `[Cache]` on a `void` method: there is no result to cache. Return the value, or remove `[Cache]`. If the method
 changes data, you probably want `[CacheInvalidate(Tags = ...)]` instead.
 
-## MCG002
+## MC0004
 
 `[Cache]` on a method returning `Task` or `ValueTask` without a result. Return `Task<T>` or `ValueTask<T>`, or remove
 `[Cache]`. A write method usually wants `[CacheInvalidate(Tags = ...)]` instead.
 
-## MCG003
+## MC0005
 
 `[Cache]` on a method with `ref`, `out` or `in` parameters, or a `ref` / `ref readonly` return.
 A cached value cannot preserve references or set an `out` value. Pass and return values by value, for example as a record.
 
-## MCG004
+## MC0006
 
 `[Cache]` and `[CacheInvalidate]` on the same method. A method either reads (cached) or writes (invalidates); keep
 the one that matches what it does.
 
-## MCG005
+## MC0007
 
 `[CacheInvalidate]` without tags removes nothing. List the tags of the cached methods it should clear:
 
@@ -2247,74 +2244,74 @@ Task<User> GetAsync(int id);
 Task UpdateAsync(int id, User user);
 ```
 
-## MCG006
+## MC0008
 
 `[Cache]` on a method with pointer or function pointer parameters or returns, including arrays of them such as
 `int*[]`. These cannot be stored as cached values or keys; use a value or an array of values. Unsupported methods, and
 any other member of the interface that uses a pointer, are still forwarded through an unsafe implementation.
 
-## MCG007
+## MC0009
 
 `[Cache]` on a method with `Span<T>`, `ReadOnlySpan<T>` or other ref struct parameters or returns. These cannot be
 stored in a cache; use an array, `Memory<T>` or a string. This also applies to a type parameter with `allows ref struct` when that parameter is used as an argument or return value.
 
-## MCG009
+## MC0010
 
 A tag such as `"user:{userId}"` names a parameter the method does not have, so the braces stay literal text and every
 call shares that tag. The name between the braces must match a parameter name: the exact spelling first, otherwise a
-single case-insensitive match. A name that matches several parameters only by case is [MCG016](#mcg016).
+single case-insensitive match. A name that matches several parameters only by case is [MC0017](#mc0017).
 
-A template takes a parameter name only; a property path such as `"{product.Id}"` is reported as [MCG015](#mcg015).
+A template takes a parameter name only; a property path such as `"{product.Id}"` is reported as [MC0016](#mc0016).
 
 **Code fix:** offers the closest parameter names, so `"user:{usrId}"` becomes `"user:{userId}"`.
 
-## MCG010
+## MC0011
 
 `[assembly: CacheInterface]` names a type MethodCache can't decorate: a class, a generic interface, an interface that
 is not accessible, one with static abstract or non-public abstract members, or one declared in your own project (put `[Cache]` on its methods
 instead). It is also reported when the attribute lists no methods. See the [third-party caching page](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md).
 
-## MCG011
+## MC0012
 
 `[assembly: CacheInterface]` lists a method that is missing, overloaded or static, or one that `[Cache]` would reject:
 it returns nothing to cache, has `ref`, `out`, `in`, pointer or ref struct parameters, a framework type without a key
-form ([MCG018](#mcg018)), or returns a lazy sequence. Use
+form ([MC0019](#mc0019)), or returns a lazy sequence. Use
 `nameof(IClient.Method)` so a rename is caught by the compiler. See the
 [third-party caching page](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md).
 
-## MCG012
+## MC0013
 
 The same interface is listed in more than one `[assembly: CacheInterface]`. List each interface once, with all its
 methods in the same attribute.
 
-## MCG013
+## MC0014
 
 The interface has static abstract members, or non-public abstract members that cannot be forwarded to the decorated
 instance. Move the cached methods to an interface without them. Non-public default methods are supported because they
 remain on the interface, and so are nested helper types declared inside the interface.
 
-## MCG014
+## MC0015
 
 `[Cache]` on a method returning `IEnumerable<T>`, `IAsyncEnumerable<T>` or `IQueryable<T>`. The cached value would be
 the lazy sequence itself, which runs the query again on every enumeration. Return a materialized collection, such as
 `Task<List<T>>`, `Task<IReadOnlyList<T>>` or `T[]`, and call `ToListAsync()` (or similar) in the implementation.
 
-## MCG015
+## MC0016
 
 A tag has braces that look like a template but don't hold a plain parameter name: a property path such as
 `"product:{product.Id}"`, spaces such as `"{ id }"`, or a format such as `"{day:yyyy-MM-dd}"`. Templates take a
 parameter name only, so the braces stay literal text and every call shares the same tag. Write `"product:{id}"` and
 add the value as its own parameter, as `UpdateAsync(int id, Product product)` does in
-[Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md). For `[assembly: CacheInterface]` both MCG009 and MCG015 are reported on the
+[Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md). For `[assembly: CacheInterface]` both MC0010 and MC0016 are reported on the
 attribute.
 
-## MCG016
+## MC0017
 
 The placeholder has no exact parameter match and more than one case-insensitive match, such as `{NAME}` for
 parameters `name` and `Name`. Use the intended parameter's exact spelling. Until corrected, the placeholder remains
 literal in both cached tags and invalidation.
 
-## MCG017
+## MC0018
 
 `[Cache]` or `[CacheInvalidate]` is on an interface member the decorator can't intercept: a `static` member, a
 `private` or other non-public member with a body, or a `sealed` one. The decorator implements the interface for a
@@ -2322,7 +2319,7 @@ class, and a class can't implement those members, so calls to them never reach t
 nothing. Put the attribute on a public interface method without `static`, `private` or `sealed` (one without a body,
 or a public default method), or remove it.
 
-## MCG018
+## MC0019
 
 A key argument has a type from .NET itself, ASP.NET Core or Microsoft.Extensions (an assembly named `System.*`,
 `Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`) that the cache key can't be written from: the
@@ -2332,8 +2329,7 @@ value can change after the call (a `StringBuilder`), so two different arguments 
 would get another's result. The message names the value, such as `'note.Text' is a 'StringBuilder'`.
 
 Pass a value that identifies it instead, such as a string, an id or a culture name, or wrap it in a type that
-implements `ICacheKeyProvider` (see [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)). The key ignores the rest of the
-arguments when one has `[CacheKey(UseAsRawKey = true)]`, so the error is not reported then.
+implements `ICacheKeyProvider` (see [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)). Every argument must have a supported key form.
 
 Framework types with a key form are written by their value: `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`,
 `DateOnly`, `TimeOnly`, `Half`, `Int128`, `UInt128`, `BigInteger`, `Complex`, `Uri`, `Version`, `IPAddress` and
@@ -2343,7 +2339,7 @@ well as arrays, collections, `Memory<T>`, tuples and `KeyValuePair` of those. Mo
 an SDK's classes in a `Microsoft.*` namespace, are not framework types: they are written by their public properties
 like your own.
 
-## MCG019
+## MC0020
 
 The cached method's result type, after `Task<T>` or `ValueTask<T>`, is `object`, an interface such as `IComparable` or
 `IShape`, or an abstract class, or has one as an element (`List<object>`). A distributed cache stores results as
@@ -2354,7 +2350,38 @@ in-memory cache only. Collection interfaces such as
 
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
 cache. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
-`#pragma warning disable MCG019` or `<NoWarn>` in the project.
+`#pragma warning disable MC0020` or `<NoWarn>` in the project.
+
+## MC0021
+
+An explicitly supplied `Version` is negative. Omit it to inherit the configured version or use a non-negative integer.
+
+## Diagnostic ID migration
+
+The pre-1.0 diagnostic IDs have been consolidated. Update `.editorconfig` severities and suppressions using this mapping; old IDs are intentionally not emitted.
+
+| Previous ID | Current ID |
+|-------------|------------|
+| MC0001 | MC0001 |
+| MC0004 (duration) | MC0002 |
+| MCG001 | MC0003 |
+| MCG002 | MC0004 |
+| MCG003 | MC0005 |
+| MCG004 | MC0006 |
+| MCG005 | MC0007 |
+| MCG006 | MC0008 |
+| MCG007 | MC0009 |
+| MCG009 | MC0010 |
+| MCG010 | MC0011 |
+| MCG011 | MC0012 |
+| MCG012 | MC0013 |
+| MCG013 | MC0014 |
+| MCG014 | MC0015 |
+| MCG015 | MC0016 |
+| MCG016 | MC0017 |
+| MCG017 | MC0018 |
+| MCG018 | MC0019 |
+| MCG019 | MC0020 |
 
 
 ---
@@ -3044,6 +3071,8 @@ use `ICacheKeyProvider` for custom argument parts. The former public key generat
 
 # Changelog
 
+- Unify duration parsing and generator errors; add named attribute groups, enabled/distributed flags and fail-safe retry delay. Remove raw-key attributes and consolidate diagnostic IDs. Dynamic tag placeholders now use canonical key parts while existing contract-1 binaries retain their formatting.
+
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
@@ -3230,3 +3259,5 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   add them in your migration before deploying. Rows without a scope are ignored and deleted once they are older than
   `BackplaneRetention`. Cache rows written by a pre-release build (unhashed keys) become misses and expire normally.
   Upgrade every instance that shares the tables together, and restart them with empty in-memory caches.
+
+Diagnostic migration: MC0001 stays MC0001; old duration MC0004 → MC0002; MCG001–MCG007 → MC0003–MC0009; MCG009–MCG019 → MC0010–MC0020. MC0021 rejects explicit negative versions. Update analyzer suppressions and `.editorconfig`; migrate `[Cache("group")]` to `[Cache(Group = "group")]` and remove `[CacheKey]`. Canonical `ICacheKeyProvider` parts and manual `ICacheManager` keys replace raw-key use cases.

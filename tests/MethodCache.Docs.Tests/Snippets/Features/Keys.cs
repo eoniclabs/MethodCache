@@ -29,11 +29,11 @@ namespace MyApp
         [Cache] Task<Invoice> FindAsync(string number);
     }
 
-    // begin-snippet: keys-raw
+    // begin-snippet: keys-scoped
     public interface IDocumentStore
     {
-        // The argument is the whole key: GetAsync("doc:2026/report.pdf") is stored as "doc:2026/report.pdf"
-        [Cache] Task<byte[]> GetAsync([CacheKey(UseAsRawKey = true)] string key);
+        // The document path is an argument; the interface and method remain part of the key.
+        [Cache] Task<byte[]> GetAsync(string key);
     }
     // end-snippet
 

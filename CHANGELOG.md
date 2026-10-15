@@ -1,5 +1,7 @@
 # Changelog
 
+- Unify duration parsing and generator errors; add named attribute groups, enabled/distributed flags and fail-safe retry delay. Remove raw-key attributes and consolidate diagnostic IDs. Dynamic tag placeholders now use canonical key parts while existing contract-1 binaries retain their formatting.
+
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
@@ -186,3 +188,5 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   add them in your migration before deploying. Rows without a scope are ignored and deleted once they are older than
   `BackplaneRetention`. Cache rows written by a pre-release build (unhashed keys) become misses and expire normally.
   Upgrade every instance that shares the tables together, and restart them with empty in-memory caches.
+
+Diagnostic migration: MC0001 stays MC0001; old duration MC0004 → MC0002; MCG001–MCG007 → MC0003–MC0009; MCG009–MCG019 → MC0010–MC0020. MC0021 rejects explicit negative versions. Update analyzer suppressions and `.editorconfig`; migrate `[Cache("group")]` to `[Cache(Group = "group")]` and remove `[CacheKey]`. Canonical `ICacheKeyProvider` parts and manual `ICacheManager` keys replace raw-key use cases.

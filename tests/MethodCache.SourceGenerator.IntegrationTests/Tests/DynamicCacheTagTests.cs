@@ -33,7 +33,7 @@ namespace DynamicTags
         [CacheInvalidate(Tags = new[] { ""team:{team}"" })]
         Task UpdateTeamAsync(string? team);
 
-        // ""{other}"" is not a parameter (MCG009), so both sides keep the tag as literal text
+        // ""{other}"" is not a parameter (MC0010), so both sides keep the tag as literal text
         [Cache(Duration = ""00:10:00"", Tags = new[] { ""item:{other}"" })]
         Task<string> GetItemAsync(int id);
 

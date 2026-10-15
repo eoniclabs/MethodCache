@@ -70,6 +70,7 @@ namespace MethodCache.SourceGenerator
                     var group = groupStatement == null ? "null" : groupStatement.Substring(groupStatement.IndexOf(" = ", StringComparison.Ordinal) + 3).TrimEnd(';');
                     sb.AppendLine($"            builder.Method({ToLiteral(definition.MethodId)}, new string[] {{ {string.Join(", ", definition.ParameterNames.Select(ToLiteral))} }}, {group}, new global::MethodCache.Generated.GeneratedMethodOptions");
                     sb.AppendLine("            {");
+                    sb.AppendLine("                CanonicalTagParts = true,");
                     foreach (var statement in definition.PolicyStatements)
                     {
                         const string prefix = "policy = policy with { ";
@@ -130,12 +131,7 @@ namespace MethodCache.SourceGenerator
 
             private static void PopulateFromCacheAttribute(PolicyDefinition definition, AttributeData cacheAttr)
             {
-                // [Cache("group")] names it in the constructor, [assembly: CacheInterface(..., Group = "group")] by name
-                var groupName = cacheAttr.ConstructorArguments.Length > 0 ? cacheAttr.ConstructorArguments[0].Value as string : null;
-                if (groupName is null && TryGetNamedArgument(cacheAttr, "Group", out var groupArg))
-                {
-                    groupName = groupArg.Value as string;
-                }
+                var groupName = TryGetNamedArgument(cacheAttr, "Group", out var groupArg) ? groupArg.Value as string : null;
 
                 if (!string.IsNullOrWhiteSpace(groupName))
                 {
@@ -150,10 +146,14 @@ namespace MethodCache.SourceGenerator
                 AddTimeSpan(definition, cacheAttr, "SlidingExpiration");
                 AddTimeSpan(definition, cacheAttr, "RefreshAhead");
                 AddTimeSpan(definition, cacheAttr, "FailSafeTimeout");
+                AddTimeSpan(definition, cacheAttr, "RetryAfter", "FailSafeRetryAfter");
+                foreach (var name in new[] { "Enabled", "Distributed" })
+                    if (TryGetNamedArgument(cacheAttr, name, out var flag) && flag.Value is bool enabled)
+                        definition.PolicyStatements.Add($"policy = policy with {{ {name} = {(enabled ? "true" : "false")} }};");
 
                 if (TryGetNamedArgument(cacheAttr, "FailSafe", out var failSafeArg) && failSafeArg.Value is string failSafeText)
                 {
-                    if (string.Equals(failSafeText, "off", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(failSafeText.Trim(), "off", StringComparison.OrdinalIgnoreCase))
                     {
                         definition.PolicyStatements.Add("policy = policy with { FailSafe = global::System.TimeSpan.Zero };");
                         definition.PolicyStatements.Add("fields |= global::MethodCache.Policies.CachePolicyFields.FailSafe;");
@@ -186,16 +186,16 @@ namespace MethodCache.SourceGenerator
                 }
             }
 
-            private static void AddTimeSpan(PolicyDefinition definition, AttributeData cacheAttr, string name)
+            private static void AddTimeSpan(PolicyDefinition definition, AttributeData cacheAttr, string name, string? property = null)
             {
-                // The analyzer reports values that do not parse (MC0004); skipping them here keeps the build going
+                property ??= name;
+                // Discovery rejects invalid explicit values before a policy is generated.
                 if (TryGetNamedArgument(cacheAttr, name, out var argument) &&
                     argument.Value is string text &&
-                    TimeSpan.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var value) &&
-                    value > TimeSpan.Zero)
+                    MethodCache.Internal.DurationParser.TryParse(text, false, out var value))
                 {
-                    definition.PolicyStatements.Add($"policy = policy with {{ {name} = global::System.TimeSpan.FromTicks({value.Ticks}L) }};");
-                    definition.PolicyStatements.Add($"fields |= global::MethodCache.Policies.CachePolicyFields.{name};");
+                    definition.PolicyStatements.Add($"policy = policy with {{ {property} = global::System.TimeSpan.FromTicks({value.Ticks}L) }};");
+                    definition.PolicyStatements.Add($"fields |= global::MethodCache.Policies.CachePolicyFields.{property};");
                 }
             }
 

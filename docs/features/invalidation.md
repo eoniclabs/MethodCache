@@ -30,7 +30,7 @@ public interface IOrderService
 - `[CacheInvalidate]` removes every entry with any of its tags once the method has completed successfully. If it
   throws, nothing is removed.
 - A tag can be shared by many methods, so one write clears every cached view of the same data.
-- `[CacheInvalidate]` without tags removes nothing and is reported as [MCG005](../user-guide/DIAGNOSTICS.md#mcg005).
+- `[CacheInvalidate]` without tags removes nothing and is reported as [MC0007](../user-guide/DIAGNOSTICS.md#mc0007).
 
 ## Tag templates
 
@@ -38,12 +38,12 @@ public interface IOrderService
 `CancelAsync(42, 7)` removes `order:42`. The name in braces must be a parameter of the method it is on. The exact
 spelling is used first; otherwise a single case-insensitive match is used. A name that matches several parameters
 only by case, such as `{NAME}` for `name` and `Name`, stays literal text and is reported as
-[MCG016](../user-guide/DIAGNOSTICS.md#mcg016). An unknown name is reported as
-[MCG009](../user-guide/DIAGNOSTICS.md#mcg009), with a code fix that offers the closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
+[MC0017](../user-guide/DIAGNOSTICS.md#mc0017). An unknown name is reported as
+[MC0010](../user-guide/DIAGNOSTICS.md#mc0010), with a code fix that offers the closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
 the tag `order:{org}` on both the cached call and the invalidation.
 
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
-share one tag; it is reported as [MCG015](../user-guide/DIAGNOSTICS.md#mcg015). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
+share one tag; it is reported as [MC0016](../user-guide/DIAGNOSTICS.md#mc0016). Add the id as a parameter, as `UpdateAsync(int id, Product product)` does in
 [Getting started](../getting-started.md).
 
 Static tags never format method arguments. A template formats only the parameters it references, in the invariant culture; an unrelated argument's `ToString()` is not invoked.

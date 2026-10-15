@@ -61,7 +61,9 @@ namespace MethodCache.Infrastructure
             if (!policy.Tags.Any(tag => tag.Contains('{'))) return policy;
 
             var formatted = new string?[values.Length];
-            string Format(int index) => formatted[index] ??= Convert.ToString(values[index], CultureInfo.InvariantCulture) ?? "null";
+            string Format(int index) => formatted[index] ??= (!policy.CanonicalTagParts
+                ? Convert.ToString(values[index], CultureInfo.InvariantCulture) ?? "null"
+                : CanonicalTagPart.Format(values[index]));
             return policy with { Tags = policy.Tags.Select(tag => tag.Contains('{') ? ExpandTag(tag, parameterNames, Format) : tag).ToArray() };
         }
 

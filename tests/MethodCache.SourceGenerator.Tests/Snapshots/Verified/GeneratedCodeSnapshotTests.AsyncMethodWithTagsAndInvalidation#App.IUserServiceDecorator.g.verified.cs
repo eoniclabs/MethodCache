@@ -79,7 +79,7 @@ namespace App
                 await ((global::App.IUserService)this._decorated).UpdateUserAsync(__mcArgument0, __mcArgument1).ConfigureAwait(false);
                 var __mcTags = new global::System.Collections.Generic.List<string>();
                 __mcTags.AddRange(new[] { "users" });
-                __mcTags.Add(string.Format(global::System.Globalization.CultureInfo.InvariantCulture, "user:{0}", (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null")));
+                __mcTags.Add(string.Format(global::System.Globalization.CultureInfo.InvariantCulture, "user:{0}", global::MethodCache.Generated.KeyParts.TagPart(__mcArgument0)));
                 await this._services.InvalidateTagsAsync(__mcTags.ToArray(), default).ConfigureAwait(false);
             }
             catch

@@ -1,16 +1,23 @@
 #nullable enable
 MethodCache.Any<T>
 MethodCache.CacheAttribute
-MethodCache.CacheAttribute.CacheAttribute(string? groupName = null) -> void
+MethodCache.CacheAttribute.CacheAttribute() -> void
+MethodCache.CacheAttribute.Distributed.get -> bool
+MethodCache.CacheAttribute.Distributed.set -> void
 MethodCache.CacheAttribute.Duration.get -> string?
 MethodCache.CacheAttribute.Duration.set -> void
+MethodCache.CacheAttribute.Enabled.get -> bool
+MethodCache.CacheAttribute.Enabled.set -> void
 MethodCache.CacheAttribute.FailSafe.get -> string?
 MethodCache.CacheAttribute.FailSafe.set -> void
 MethodCache.CacheAttribute.FailSafeTimeout.get -> string?
 MethodCache.CacheAttribute.FailSafeTimeout.set -> void
-MethodCache.CacheAttribute.GroupName.get -> string?
+MethodCache.CacheAttribute.Group.get -> string?
+MethodCache.CacheAttribute.Group.set -> void
 MethodCache.CacheAttribute.RefreshAhead.get -> string?
 MethodCache.CacheAttribute.RefreshAhead.set -> void
+MethodCache.CacheAttribute.RetryAfter.get -> string?
+MethodCache.CacheAttribute.RetryAfter.set -> void
 MethodCache.CacheAttribute.SlidingExpiration.get -> string?
 MethodCache.CacheAttribute.SlidingExpiration.set -> void
 MethodCache.CacheAttribute.Tags.get -> string![]?
@@ -64,8 +71,12 @@ MethodCache.CacheEntryOptions.Tags.get -> System.Collections.Generic.IReadOnlyLi
 MethodCache.CacheEntryOptions.Version.get -> int?
 MethodCache.CacheInterfaceAttribute
 MethodCache.CacheInterfaceAttribute.CacheInterfaceAttribute(System.Type! interfaceType, params string![]! methods) -> void
+MethodCache.CacheInterfaceAttribute.Distributed.get -> bool
+MethodCache.CacheInterfaceAttribute.Distributed.set -> void
 MethodCache.CacheInterfaceAttribute.Duration.get -> string?
 MethodCache.CacheInterfaceAttribute.Duration.set -> void
+MethodCache.CacheInterfaceAttribute.Enabled.get -> bool
+MethodCache.CacheInterfaceAttribute.Enabled.set -> void
 MethodCache.CacheInterfaceAttribute.FailSafe.get -> string?
 MethodCache.CacheInterfaceAttribute.FailSafe.set -> void
 MethodCache.CacheInterfaceAttribute.FailSafeTimeout.get -> string?
@@ -76,6 +87,8 @@ MethodCache.CacheInterfaceAttribute.InterfaceType.get -> System.Type!
 MethodCache.CacheInterfaceAttribute.Methods.get -> string![]!
 MethodCache.CacheInterfaceAttribute.RefreshAhead.get -> string?
 MethodCache.CacheInterfaceAttribute.RefreshAhead.set -> void
+MethodCache.CacheInterfaceAttribute.RetryAfter.get -> string?
+MethodCache.CacheInterfaceAttribute.RetryAfter.set -> void
 MethodCache.CacheInterfaceAttribute.SlidingExpiration.get -> string?
 MethodCache.CacheInterfaceAttribute.SlidingExpiration.set -> void
 MethodCache.CacheInterfaceAttribute.Tags.get -> string![]?
@@ -86,10 +99,6 @@ MethodCache.CacheInvalidateAttribute
 MethodCache.CacheInvalidateAttribute.CacheInvalidateAttribute() -> void
 MethodCache.CacheInvalidateAttribute.Tags.get -> string![]?
 MethodCache.CacheInvalidateAttribute.Tags.set -> void
-MethodCache.CacheKeyAttribute
-MethodCache.CacheKeyAttribute.CacheKeyAttribute() -> void
-MethodCache.CacheKeyAttribute.UseAsRawKey.get -> bool
-MethodCache.CacheKeyAttribute.UseAsRawKey.set -> void
 MethodCache.CacheLookupResult<T>
 MethodCache.CacheLookupResult<T>.CacheLookupResult() -> void
 MethodCache.CacheLookupResult<T>.Found.get -> bool
@@ -169,10 +178,18 @@ MethodCache.Generated.CachedMethod
 MethodCache.Generated.CachedMethod.Capture() -> MethodCache.Generated.MethodCall
 MethodCache.Generated.GeneratedCode
 MethodCache.Generated.GeneratedMethodOptions
+MethodCache.Generated.GeneratedMethodOptions.CanonicalTagParts.get -> bool
+MethodCache.Generated.GeneratedMethodOptions.CanonicalTagParts.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Distributed.get -> bool?
+MethodCache.Generated.GeneratedMethodOptions.Distributed.init -> void
 MethodCache.Generated.GeneratedMethodOptions.Duration.get -> System.TimeSpan?
 MethodCache.Generated.GeneratedMethodOptions.Duration.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Enabled.get -> bool?
+MethodCache.Generated.GeneratedMethodOptions.Enabled.init -> void
 MethodCache.Generated.GeneratedMethodOptions.FailSafe.get -> System.TimeSpan?
 MethodCache.Generated.GeneratedMethodOptions.FailSafe.init -> void
+MethodCache.Generated.GeneratedMethodOptions.FailSafeRetryAfter.get -> System.TimeSpan?
+MethodCache.Generated.GeneratedMethodOptions.FailSafeRetryAfter.init -> void
 MethodCache.Generated.GeneratedMethodOptions.FailSafeTimeout.get -> System.TimeSpan?
 MethodCache.Generated.GeneratedMethodOptions.FailSafeTimeout.init -> void
 MethodCache.Generated.GeneratedMethodOptions.GeneratedMethodOptions() -> void
@@ -405,6 +422,7 @@ static MethodCache.Generated.KeyParts.Part(ushort value) -> string!
 static MethodCache.Generated.KeyParts.Part<TEnum>(TEnum value) -> string!
 static MethodCache.Generated.KeyParts.Provider(MethodCache.ICacheKeyProvider! value) -> string!
 static MethodCache.Generated.KeyParts.Sequence<T>(System.Collections.Generic.IEnumerable<T>? values, System.Func<T, string!>! part) -> string!
+static MethodCache.Generated.KeyParts.TagPart(object? value) -> string!
 static MethodCache.MethodCacheKeys.For(System.Type! serviceType, string! methodName, params string![]! parts) -> string!
 static MethodCache.MethodCacheKeys.ForVersion(System.Type! serviceType, string! methodName, int? version, params string![]! parts) -> string!
 static MethodCache.MethodCacheKeys.KeyedMethodName(string! methodName, object! serviceKey) -> string!
