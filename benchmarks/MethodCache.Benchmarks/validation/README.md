@@ -45,6 +45,13 @@ sync/Task/ValueTask and MeterListener off/on. `MemoryCacheLookupReferenceBenchma
 sync/Task result creation; those are different operations, not interchangeable baseline numbers. Post-PR5 statistics
 have no separate toggle, so no ineffective statistics option is varied. Each benchmark setup has a correctness
 contract test, and the macOS benchmark thread selects the same performance QoS on both revisions.
+Build the external project and run its DLL with `--verify-components` before timing. This verifies
+all prefix/buffer/listener combinations, repeated hits without origin loads, actual long-key growth,
+lookup variants and all four memory-cache references. The harness explicitly references the same
+DI implementation version as the benchmark tests: otherwise BDN's transitive DI 6 implementation
+can be selected alongside newer abstractions and fail while constructing the provider. The original
+failure and successful checks against both historical runtime points are retained in
+`plans/design-benchmarks/component-harness-startup/`. No timing from the failed setup is accepted.
 
 ## Cold HTTP publication versus growing-cache pressure
 
