@@ -2089,10 +2089,10 @@ after metadata loss or overflow. SQL initialization rejects unversioned/unknown 
 migration for the known legacy layout. The roundtrip check is optional and cannot detect semantic losses in nested
 derived or private state; explicit serializer configuration remains the application's responsibility.
 
-The prefix-hash candidate uses process-secret SipHash-2-4 for dictionary hashing; full key text is always compared
+The prefix-hash candidate uses process-secret Marvin32 (the .NET randomized string hash) for dictionary hashing; full key text is always compared
 ordinally. Hash state is immutable per invocation snapshot and never becomes an L2/wire/admin identity. The
 [algorithm and threat review](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/prefix-hash-security.md) records the 32-bit dictionary output limitation,
-reference sources and validation. `PrefixHashPropertyTests` pins author vectors, arbitrary UTF-16 splits and append
+reference sources and validation. `PrefixHashPropertyTests` pins the .NET reference algorithm, arbitrary UTF-16 splits and append
 invalidation; `PrefixCollisionTests` forces collisions through all lookup/publication paths and checks eviction.
 
 

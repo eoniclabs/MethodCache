@@ -40,3 +40,24 @@ forced collisions and append/growth are covered. Its security basis and limits a
 implementation and must not be attributed to the replacement until rerun. A default-builder regression
 first failed (empty-string hash memo contamination) and was corrected before the replacement was committed.
 Current targeted net10 tests pass; broader functional and timing verification remains pending.
+
+
+## Standalone replacement verification
+
+The complete release pipeline was also rerun on the standalone `850cef8f3bc709eaf464b3c25e5ec898217fcc73`
+production source, rather than relying only on its HTTP descendant. It passed **6,957 tests, 0 failures and 3 intentional
+soak skips across 46 project/framework runs** (net10: 2,400; net8: 2,276; net9: 2,281), with required real Redis and
+SQL Server. Changed executable source coverage against PR 5 is **149/157 = 94.9%**. Cultures, random-seeded properties
+on net10/net8, enabled soak, demo, Native AOT smoke and all 172 native signature cases passed. All seven packages,
+matching/mismatched version checks, actual SDK 8.0.203 and independent Redis/SQL CLR/hash-seed phases passed.
+
+The first attempt reproduced the known allocation-probe problem already fixed in the HTTP branch: workers were
+measured before their own first-use warm-up, producing 48 extra baseline bytes on three .NET 8 workers while the
+listener-enabled sample was lower. The same worker warm-up fix is now included here. The allocation equality
+assertion remains unchanged, and all 44,000 listener measurements, including warm-up, must be preserved. Three
+allocation cases passed before the full pipeline was repeated successfully. The first failed run is retained and
+is not counted as passing evidence. Regenerating LLM documentation also corrects stale SipHash wording.
+
+[Selected standalone receipts](../../plans/design-benchmarks/prefix-functional-850cef8/) record both attempts and
+the exact production source. This test/documentation-only follow-up does not change the library being measured on
+Nimbus. Section-10 timing and external CI remain required; no speed claim is introduced.
