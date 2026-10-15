@@ -6,7 +6,7 @@ namespace MethodCache
     /// Configures cache policies in code, passed to <c>AddMethodCache(config =&gt; ...)</c>. These settings win over
     /// <c>[Cache]</c> attributes, and lose to <c>appsettings.json</c> and runtime overrides.
     /// </summary>
-    public interface IFluentMethodCacheConfiguration
+    internal interface IFluentMethodCacheConfiguration
     {
         /// <summary>
         /// Configures defaults for every cached method, including methods that only have <c>[Cache]</c>. Settings a
@@ -39,7 +39,7 @@ namespace MethodCache
     /// Picks methods of <typeparamref name="TService"/> to configure, pointing at each with an expression such as
     /// <c>s =&gt; s.GetAsync(Any&lt;int&gt;.Value)</c>. Use <see cref="Any{T}.Value"/> for arguments.
     /// </summary>
-    public interface IFluentServiceConfiguration<TService>
+    internal interface IFluentServiceConfiguration<TService>
     {
         /// <summary>Configures a method that returns nothing.</summary>
         /// <param name="method">An expression calling the method, such as <c>s =&gt; s.Run(Any&lt;int&gt;.Value)</c>.</param>
@@ -68,7 +68,7 @@ namespace MethodCache
     }
 
     /// <summary>
-    /// Configures one cached method chosen with <see cref="IFluentServiceConfiguration{TService}"/>.
+    /// Configures one cached method selected through <see cref="MethodCacheBuilder"/>.
     /// </summary>
     public interface IFluentMethodConfiguration
     {
@@ -78,7 +78,7 @@ namespace MethodCache
         IFluentMethodConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
         /// <summary>
         /// Puts the method in a group, so it picks up the defaults set with
-        /// <see cref="IFluentMethodCacheConfiguration.ForGroup"/>.
+        /// <see cref="MethodCacheBuilder.Group"/>.
         /// </summary>
         /// <param name="groupName">The group's name.</param>
         /// <returns>This configuration, for chaining.</returns>
@@ -114,7 +114,7 @@ namespace MethodCache
     /// <summary>
     /// Configures defaults for the methods in a group, returned by <see cref="IFluentMethodCacheConfiguration.ForGroup"/>.
     /// </summary>
-    public interface IFluentGroupConfiguration
+    internal interface IFluentGroupConfiguration
     {
         /// <summary>Sets cache options for every method in the group; settings a method sets itself win.</summary>
         /// <param name="configure">Sets options on the builder.</param>
