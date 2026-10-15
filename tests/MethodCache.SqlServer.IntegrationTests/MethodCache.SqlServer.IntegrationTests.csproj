@@ -53,4 +53,7 @@
     <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
     <Compile Include="../TestSupport/HttpNativeContract.cs" Link="TestSupport/HttpNativeContract.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs" Link="TestSupport/NativePolicyFaultContract.cs" />
+  </ItemGroup>
 </Project>

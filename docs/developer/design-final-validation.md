@@ -184,3 +184,19 @@ it changes no shipped source or measured benchmark workload.
 [Original failures and mutation/green receipts](../../plans/design-benchmarks/identity-probe-isolation/)
 are preserved. The forwarded latest heads of #129, #130 and #131 still require fresh three-platform CI.
 Earlier green statuses do not verify these newer heads.
+
+## Native policy fault acceptance
+
+The final acceptance audit found that P11/P12's exact partial-result and cancellation/recovery assertions
+ran against the in-process fault store, while the existing native policy contract covered successful
+confirmation only. `NativePolicyFaultContract` is now compiled unchanged into the model, Redis and SQL
+test projects. It injects one stamp failure and one publication failure around the supplied provider;
+all successful operations delegate to that actual provider. It checks exact 3/3/2/1/1/1 counters,
+independent drained queues, cancellation after local mutation with owned completion, and validation/
+deduplication/early cancellation. Confirmed timestamp bytes are read from the supplied backend.
+
+A deliberately false stamp acknowledgement that skips the provider write fails all three real Redis
+scenarios, demonstrating that wrapper counters cannot stand in for durable writes. The restored
+contract passes all three scenarios on the model, Redis and SQL. No production or benchmark workload
+source changes; current-head CI is still required. Selected receipts are under
+`plans/design-benchmarks/native-policy-fault-acceptance/`.
