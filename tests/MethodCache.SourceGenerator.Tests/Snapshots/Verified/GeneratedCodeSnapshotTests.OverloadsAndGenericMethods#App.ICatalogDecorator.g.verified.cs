@@ -53,7 +53,7 @@ namespace App
         global::System.Threading.Tasks.Task<string> global::App.ICatalog.Get(int __mcArgument0)
         {
             var __mcCall = this._method_Method0.Capture();
-            var __mcKeyBuilder = __mcCall.StartKey(__mcCall.KeyPrefix.Length + 12 <= 64 ? stackalloc char[64] : stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, __mcCall.KeyPrefix.Length + 12 <= 64 ? stackalloc char[64] : stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetTask<string>(ref __mcKeyBuilder, out var __mcCachedValue))
@@ -73,7 +73,7 @@ namespace App
         global::System.Threading.Tasks.Task<string> global::App.ICatalog.Get(string __mcArgument0)
         {
             var __mcCall = this._method_Method1.Capture();
-            var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetTask<string>(ref __mcKeyBuilder, out var __mcCachedValue))
@@ -95,7 +95,7 @@ namespace App
         {
             var __mcCall = this._method_Method2.Capture();
             __mcCall = __mcCall.WithTypeArguments(TypeArguments_Method2<__mcTypeArgument0>.Value);
-            var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetTask<__mcTypeArgument0?>(ref __mcKeyBuilder, out var __mcCachedValue))

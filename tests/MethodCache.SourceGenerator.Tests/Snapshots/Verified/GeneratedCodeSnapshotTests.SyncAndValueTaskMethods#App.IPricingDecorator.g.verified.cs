@@ -49,7 +49,7 @@ namespace App
         decimal global::App.IPricing.Price(string __mcArgument0, int __mcArgument1)
         {
             var __mcCall = this._method_Method0.Capture();
-            var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
             __mcKeyBuilder.AppendPart(__mcArgument1);
 
@@ -70,7 +70,7 @@ namespace App
         global::System.Threading.Tasks.ValueTask<string?> global::App.IPricing.FindAsync(string? __mcArgument0)
         {
             var __mcCall = this._method_Method1.Capture();
-            var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetValueTask<string?>(ref __mcKeyBuilder, out var __mcCachedValue))

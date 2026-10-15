@@ -61,7 +61,7 @@ public class PrefixHitPathBenchmarks
     public int SyncHit()
     {
         var call = _method.Capture();
-        var key = call.StartKey(stackalloc char[BufferCharacters]);
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
         key.AppendPart(42);
         if (call.TryGetValue<int>(ref key, out var value)) return value;
         return call.Load(key.ToString(), this, static (_, state) => { state.OriginLoads++; return 42; }, [], CancellationToken.None);
@@ -71,7 +71,7 @@ public class PrefixHitPathBenchmarks
     public Task<int> TaskHit()
     {
         var call = _method.Capture();
-        var key = call.StartKey(stackalloc char[BufferCharacters]);
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
         key.AppendPart(42);
         if (call.TryGetTask<int>(ref key, out var value)) return value;
         return call.LoadAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return Task.FromResult(42); }, [], CancellationToken.None);
@@ -81,7 +81,7 @@ public class PrefixHitPathBenchmarks
     public ValueTask<int> ValueTaskHit()
     {
         var call = _method.Capture();
-        var key = call.StartKey(stackalloc char[BufferCharacters]);
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
         key.AppendPart(42);
         if (call.TryGetValueTask<int>(ref key, out var value)) return value;
         return call.LoadValueAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return ValueTask.FromResult(42); }, [], CancellationToken.None);
@@ -91,7 +91,7 @@ public class PrefixHitPathBenchmarks
     public int KeyBuild()
     {
         var call = _method.Capture();
-        var key = call.StartKey(stackalloc char[BufferCharacters]);
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
         key.AppendPart(42);
         return key.AsSpan().Length;
     }

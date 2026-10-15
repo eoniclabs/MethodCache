@@ -43,7 +43,7 @@ public class PrefixCollisionTests
             Span<char> buffer = stackalloc char[128];
             foreach (var (operation, id, value) in operations)
             {
-                var builder = call.StartKey(buffer);
+                var builder = new KeyBuilder(call, buffer);
                 builder.AppendPart(id);
                 var key = builder.ToString();
                 switch (operation)

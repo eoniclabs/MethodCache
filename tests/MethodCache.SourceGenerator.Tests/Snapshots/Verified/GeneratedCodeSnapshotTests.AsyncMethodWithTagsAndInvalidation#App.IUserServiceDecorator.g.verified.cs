@@ -45,7 +45,7 @@ namespace App
         global::System.Threading.Tasks.Task<global::App.User> global::App.IUserService.GetUserAsync(int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
         {
             var __mcCall = this._method_Method0.Capture();
-            var __mcKeyBuilder = __mcCall.StartKey(__mcCall.KeyPrefix.Length + 12 <= 64 ? stackalloc char[64] : stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, __mcCall.KeyPrefix.Length + 12 <= 64 ? stackalloc char[64] : stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetTask<global::App.User>(ref __mcKeyBuilder, out var __mcCachedValue))
