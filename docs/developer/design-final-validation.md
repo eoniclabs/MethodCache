@@ -8,7 +8,7 @@ final PR records acceptance evidence without changing the generated contract or 
 Its CI lease fix also covers remote checkout/collection before builds, so those operations cannot
 overlap an exclusive benchmark batch.
 
-Runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passes the full required native-backend
+The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
 The enabled soak, both cultures, 90 randomized properties, demo, native HTTP/AOT smoke, all 172
 native signature cases and all seven installed packages pass. Independent Redis/SQL processes and
@@ -21,7 +21,7 @@ Earlier .NET 8/9 results below describe their historical revisions, not addition
 
 After that complete pipeline, two allocation probes were moved into synchronous NoInlining helpers,
 outside assertion/async test scaffolding, with unchanged zero-byte assertions and explicit completed-hit
-requirements. The four relevant facts pass again on .NET 10. No shipped source differs from the frozen 28ab9b2 candidate. Benchmark workloads were
+requirements. The four relevant facts pass again on .NET 10. Later source changes are described below; the 28ab9b2 receipt is historical evidence for its exact revision. Benchmark workloads were
 subsequently corrected as described below; their evidence must use the same corrected sources on every revision.
 
 The preceding HTTP-only CI run at 8ffa85c passed Windows/macOS but failed Linux in those probes,
@@ -174,12 +174,18 @@ HTTP head 953e04b passed macOS/Windows, but its Linux .NET 9 long-key identity p
 The isolated local probe passed before this change, so neither a deterministic local reproduction
 nor the origin of those historical extra allocations is claimed.
 
-The synchronous probe now runs on an owned thread without inherited ExecutionContext. Thread/delegate
-creation, warmup, completion and assertions stay outside the NoInlining measurement helper. The same
-100-call byte assertion remains exact. A temporary production mutation allocating an escaping UTF-16
-buffer makes all four inputs fail. After restoring production byte-for-byte, all 320 HTTP tests pass
-on .NET 10, and all 11 identity facts pass on each historical runtime. This isolates the test fixture;
-it changes no shipped source or measured benchmark workload.
+The synchronous probe runs on an owned thread without inherited ExecutionContext. Thread/delegate
+creation, warmup, completion and assertions stay outside the NoInlining measurement helper. A later
+Linux culture run of 771980a still counted 16,024 bytes in the output-only reference versus 16,000 in
+Identity. Its retained failure shows that one-batch reference measurement was insufficiently stable;
+the source of the 24 extra reference bytes is not established.
+
+Both paths now use three fixed batches of 100 calls and compare their minima with exact equality and
+no byte tolerance. This tests sustained per-call temporary copies, rather than claiming that every
+individual invocation is free of transient runtime allocation. A temporary production mutation copying
+the UTF-16 input into a new buffer before hashing makes all four inputs fail. Restored production
+passes all 320 HTTP facts on each historical target and under tr-TR/sv-SE on net10. No shipped source
+or measured C# workload changes; this local verification does not establish latest-head CI acceptance.
 
 [Original failures and mutation/green receipts](../../plans/design-benchmarks/identity-probe-isolation/)
 are preserved. The forwarded latest heads of #129, #130 and #131 still require fresh three-platform CI.
@@ -263,3 +269,57 @@ four-case launch completed, but the verifier parsed BDN's binary affinity displa
 its original nonzero validation exit and complete diagnostic reports are retained. A fresh three-run
 pilot uses corrected parsing. No first-run timing is pooled into that pilot or claimed as acceptance.
 The untimed component controller was stopped before preparation to await a sufficiently precise protocol.
+
+## Local epoch allocation probe follow-up
+
+An older Linux run of cf4caa6 reported 32,664 bytes instead of zero for the local epoch-vector probe.
+The exact 10,000-capture measurement and 1,000 warmups now run on an owned thread without inherited
+ExecutionContext. Store construction, completion and assertions remain outside the measurement; the
+zero-byte requirement is unchanged. Replacing memoized identity reuse with a new string makes the
+revised test fail with 1,520,000 bytes. Restored source passes the complete 320-case HTTP suite on
+the historical three-target checkout. The original failure is retained without attributing its bytes
+to a proven cause: `plans/design-benchmarks/local-epoch-probe-isolation/`.
+
+## Independent-run precision follow-up
+
+The first two CPU2-affinity baseline GenericHit means imply that even the best possible positive
+third mean would leave a relative three-launch 95% interval half-width of at least 7.51%.
+A fixed nine-launch baseline precision study retains the initial three and adds six independent
+GenericHit launches with the same source/job/affinity, before examining source-change comparisons.
+It is diagnostic only; neither this calculation nor the new helper marks a performance gate passed.
+
+The statistical report now supports complete fixed series of three, six or nine independent
+launches, with the matching Student-t degrees of freedom. An explicit exact-method selector permits
+targeted supplementary evidence without claiming extra launches for unselected cases. Missing
+launches/guards/cases, differing launch counts and incomplete matrices are rejected. Default
+three-launch behavior and the regression/allocation criteria remain unchanged. New collection tests
+fail against the prior helper; all 25 statistical/activity guard tests pass. Evidence and the
+[NIST table reference](https://www.itl.nist.gov/div898/handbook/eda/section3/eda3672.htm) are linked from
+`plans/design-benchmarks/independent-run-precision/`.
+
+## HTTP 304 timing stop and candidate optimization
+
+The focused three-launch comparison of prefix runtime 850cef8 and pre-optimization final runtime
+28ab9b2 is now complete. All four 304 revalidation cases meet the section-10 stop rule: mean time
+increases 8.4–13.1% and the candidate interval lies wholly above the baseline interval. Allocation
+falls from 8,256 to 8,016/8,216 bytes. Generated-hit intervals remain insufficient; the growing-miss
+rows are pressure diagnostics. This is a failing timing check, not an overall acceptance result.
+
+The new HTTP candidate removes duplicate foreground response/content/header construction. Its
+caller-owned response is used for the same complete merged-header/storage/privacy validation before
+adding caller-only headers; background validation owns its temporary response, and failures dispose
+unreturned foreground responses. The historical HTTP checkout passes 320 HTTP facts, 85 benchmark
+contracts and 13/13 executable changed-line coverage on net10. After forwarding, the final checkout passes all 320 HTTP facts, 91 benchmark contracts and
+16 IHttpClientFactory/HTTP integration facts. The last suite uses in-process handlers, not native backends. New timing and complete latest-head CI remain required.
+The new frozen .NET 10 source is `12bf99d877c33925fe0d0037f45e652d0260d8a4`; it supersedes 28ab9b2 as
+the candidate to measure. The complete older release receipt is not claimed for this new source.
+
+[Failing timing, raw reports and candidate receipts](../../plans/design-benchmarks/http-304-revalidation/)
+retain all six launches, full source SHAs, actual per-report SDK/runtime/CPU and empty activity guards.
+
+The complete v2 affinity baseline pilot still has wide Sync/Generic/Task intervals (relative half-widths
+12.31%, 8.05%, 4.05%; ValueTask 1.73%). Raw three-launch evidence is retained under independent-run-precision.
+The unstarted Generic-only supplement was stopped without a child or any timing. Its replacement is a
+fixed nine-launch all-four-hit v3 study, with parent startup affinity and an explicit ProcessorCount/affinity
+probe required before timing. It is a controlled precision diagnostic; earlier samples are not pooled and
+no cause of the v2 variance is claimed. Full timing remains pending for the new 12bf99d HTTP candidate.

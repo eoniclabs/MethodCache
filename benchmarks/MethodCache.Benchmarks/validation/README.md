@@ -68,11 +68,19 @@ Growing-pressure rows still require performance review; the separation does not 
 
 ## Independent-run statistical report
 
-`summarize-pair.py RESULTS BASE CHANGE GROUP` reads exactly three independently launched reports
-per revision, checks empty interference guards, matching case matrices and twelve actual measured
-iterations per case. It reports a 95% Student-t interval (df=2) over the three run means, rather than
-reusing BenchmarkDotNet's interval over iterations inside one process. Different workload checksums
-are rejected. Allocation samples remain visible per run.
+`summarize-pair.py RESULTS BASE CHANGE GROUP` defaults to three independent launches per revision.
+`--rounds 6` or `--rounds 9` reads every launch in a fixed longer series, using df=5 or df=8 instead
+of df=2 for the 95% Student-t interval over run means. Choose the longer count from a separate
+baseline precision study, retain all launches, and complete the chosen series; do not stop or drop
+runs when the result becomes favorable. These are independent processes, not iterations pooled
+from one process. The [NIST Student-t table](https://www.itl.nist.gov/div898/handbook/eda/section3/eda3672.htm)
+describes the two-sided 0.975 quantile.
+
+An explicit `--method GenericHit` selects the exact method for a targeted supplementary series;
+other cases are not assessed by that report. Every selected launch must still contain twelve actual
+measured iterations and an empty interference guard. Base/change launch counts, case matrices and
+workload checksums must match. Missing selected cases are errors, not empty success. Allocation
+samples remain visible per run. The default full-series three-launch report is unchanged.
 
 The tool identifies the specified disjoint-interval/>3% regression and labels relative interval
 half-widths above 3% as insufficient precision for review. This diagnostic threshold does not modify
