@@ -145,3 +145,22 @@ remains open during the mock build and the nested setting is absent. Active pass
 This closes a verified isolation gap for future measurements; it does not prove that every earlier
 sample experienced competing checkout work. Original evidence remains identified by its environment
 and measured intervals. No library runtime or benchmark workload source changed.
+
+## Bounded HTTP publication workload
+
+The original HTTP miss case grows its cache across iterations. Older storage charges only body bytes
+against its default 100 MiB limit; the new storage also charges headers and metadata. Consequently
+that workload combines publication, different eviction pressure and a growing GC live set. It is
+retained as a pressure diagnostic rather than being labelled a pure cold-publication comparison.
+
+HttpColdMissBenchmarks uses a new isolated provider outside each measured iteration, with exactly
+8,192 calls and unroll factor 1. Its invocation count overrides the normal 500 ms iteration target.
+Four end-to-end facts run two complete batches each, prove every call loads origin, preserve all
+8,195 resident representations below budget, and prove the next batch starts with only its three
+warm representations. Removing reset makes all four fail. A fifth fact checks BenchmarkDotNet's
+actual job configuration and reset hook. All 91 benchmark contracts pass on net10.0.
+
+The shared validation harness now selects cold publication plus fresh/variant/304 paths separately;
+there are still 62 scenarios, with one additional JSON report. All nine runtime revisions need the
+identical new workload sources and fresh evidence; older growing-miss samples cannot be pooled into
+this case. No shipped runtime source changed. Evidence: `plans/design-benchmarks/http-cold-publication/`.
