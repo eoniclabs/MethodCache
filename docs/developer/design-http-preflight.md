@@ -93,3 +93,25 @@ caller header size. The exact existing UTF-16 frame is retained across that boun
 A dedicated Native AOT HTTP check now exercises short/large private caller keys, NoOp method-manager coexistence,
 known-id invalidation, clear and source-generated enum/entry JSON without body/caller/query leakage. It passed.
 The latest complete timing and functional gates remain required before accepting this repair.
+
+## Fifth diagnostic: 6c9881e (not an acceptance result)
+
+Candidate `6c9881e0c89d3fe3c4e507879411d3e7493a92a6`, base
+`850cef8f3bc709eaf464b3c25e5ec898217fcc73`; identical local HTTP workload sources, runtime and job settings.
+[Raw logs and manifest](../../plans/design-benchmarks/http-preflight-6c9881e/) preserve this independent launch pair.
+
+| Hit / listeners / after invalidation | Base ns | Candidate ns | Allocated base / candidate KiB |
+|---|---:|---:|---:|
+| Fresh / off / no | 747.0 | 702.0 | 2.48 / 2.15 |
+| Fresh / off / yes | 761.2 | 742.6 | 2.71 / 2.55 |
+| Fresh / on / no | 724.0 | 722.7 | 2.48 / 2.15 |
+| Fresh / on / yes | 746.8 | 756.0 | 2.71 / 2.55 |
+| Private variant / off / no | 1,274.2 | 1,212.4 | 4.00 / 3.17 |
+| Private variant / off / yes | 1,387.9 | 1,279.3 | 4.31 / 3.72 |
+| Private variant / on / no | 1,431.0 | 1,205.9 | 4.00 / 3.17 |
+| Private variant / on / yes | 1,301.8 | 1,267.4 | 4.31 / 3.72 |
+
+Several base measurements are noisy. One pair cannot establish the required 95% intervals over three independent
+run means, so this is neither a performance pass nor a product speed claim. The separate full functional release
+pipeline passed on this exact source; see [its receipt](design-final-validation.md). The complete section-10 matrix
+and the effect on generated method lookups remain required.

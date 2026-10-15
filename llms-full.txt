@@ -223,7 +223,8 @@ Open generic registrations and closed types without a generated binding also giv
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
 implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
-`AddScoped(typeof(IRepository<>), typeof(Repository<>))` is not cached; register the closed types instead.
+`AddScoped(typeof(IRepository<>), typeof(Repository<>))` gives a named binding error at startup or first binding
+without a host; register generated closed types instead.
 
 ### Registering with a factory
 
@@ -900,13 +901,13 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
   `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
   list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`,
-  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
+  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Enabled`, `Distributed`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
   method under `Services`: `true` makes its `Tags` replace the attribute's instead of adding to them. `Metadata` and `Notes` are recorded for
   diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
   `"Durration"` is reported instead of ignored. The same goes for the section itself: it holds only `Defaults`,
   `FailSafe` and `Services`.
-- Time spans are written `"hh:mm:ss"` (or `"d.hh:mm:ss"`); a bare number such as `"300"` is rejected, since .NET
-  would read it as 300 days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+- Durations use the same invariant grammar as attributes: positive unit values such as `"30s"` or `"1.5h"`,
+  or `"hh:mm:ss"` (including `"d.hh:mm:ss"`). A bare number such as `"300"` is rejected rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
   `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section.
 - A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
   `(` or `<`, so this is how environment variables, Kubernetes `env` or Linux App Service configure a method:
@@ -1534,9 +1535,10 @@ SQL Server creates only fresh schema contract 1 automatically. Existing unversio
 
 Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
 
-Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
-`IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them. Disposing the service provider
-unsubscribes from the backplane; a backplane that stalls delays disposal by at most twice `OperationTimeout`.
+Redis and SQL Server own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
+keep an invalidated method result in L1 until it expires. HTTP storage reads shared generations before native L2
+lookups and does not depend on backplane delivery. Disposing the service provider unsubscribes from the owned
+backplane; a backplane that stalls delays its shutdown by at most twice `OperationTimeout`.
 
 ## Keep invalidations from being evicted
 
@@ -2077,9 +2079,9 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 
 - **The attribute is on the class.** `[Cache]` is read from the interface only. The analyzer reports
   [MC0001](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0001) and its code fix moves the attribute.
-- **The service was registered after `AddMethodCache()`.** Call `AddMethodCache()` after your own registrations.
-- **An open generic registration.** `AddScoped(typeof(IRepository<>), ...)` is not decorated; register the closed
-  types ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#3-register-it)).
+- **A late or unsupported registration raises a named binding error.** Register cacheable services before
+  `AddMethodCache()`. Open generic registrations such as `AddScoped(typeof(IRepository<>), ...)` are rejected;
+  register generated closed types ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#3-register-it)).
 - **The caller doesn't use the interface.** The cache is a decorator around the interface. Resolving or injecting the
   class itself, or calling the method from inside the class (`this.GetAsync(...)`), skips it.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
@@ -2102,8 +2104,8 @@ and the effective policy of every method with `GetMethods()` or `GET /methodcach
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code)).
 - **You run several instances** with only the in-memory cache. Each instance has its own cache; add
-  [Redis or SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) so invalidations reach all of them. With a custom
-  `IDistributedCache`, also register an `IBackplane`.
+  [Redis or SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
+  The application's `IDistributedCache` is not a MethodCache provider.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)).
 
 ## Results stay out of the distributed cache
@@ -2132,9 +2134,9 @@ a key.
 | Exception | Cause |
 |-----------|-------|
 | `InvalidOperationException` when building a key | An argument type has only private state, so every value would get the same key. Implement `ICacheKeyProvider` ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private)) |
-| `InvalidOperationException` from `AddMethodCache` naming two assemblies | Two assemblies list the same interface in `[assembly: CacheInterface]`; pass the one whose policies apply ([Caching third-party code](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md)) |
-| `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. An override can't turn caching off; invalidate instead |
-| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name, a single value for `Tags`, `Metadata` or a section that holds settings, nested settings under a single setting, or a time span without `:` in the `MethodCache` section |
+| `InvalidOperationException` from `AddMethodCache` naming two assemblies | Multiple generated modules contain the same interface; select exactly one with `FromAssemblyOf<T>()` ([Caching third-party code](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md)) |
+| `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. Use `WithEnabled(false)` to disable caching, including in runtime overrides |
+| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name, a single value for `Tags`, `Metadata` or a section that holds settings, nested settings under a single setting, or an invalid duration in the `MethodCache` section; positive invariant unit durations such as `30s` are supported |
 
 ## A caller changed a cached object, and others see the change
 
@@ -2143,7 +2145,7 @@ The cache hands the same instance to every caller. Return immutable types such a
 
 ## Build errors and warnings
 
-Every `MC` and `MCG` diagnostic, with what to do about it, is in [Build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md).
+Every current `MC` diagnostic and the historical `MCG` migration mapping, with what to do about it, is in [Build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md).
 
 
 ---

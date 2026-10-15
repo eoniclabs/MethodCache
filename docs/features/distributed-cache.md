@@ -175,9 +175,10 @@ SQL Server creates only fresh schema contract 1 automatically. Existing unversio
 
 Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
 
-Without a backplane, other instances keep their in-memory copy of an invalidated entry until it expires. Register an
-`IBackplane` (in `MethodCache.Extensibility`) to send invalidations to them. Disposing the service provider
-unsubscribes from the backplane; a backplane that stalls delays disposal by at most twice `OperationTimeout`.
+Redis and SQL Server own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
+keep an invalidated method result in L1 until it expires. HTTP storage reads shared generations before native L2
+lookups and does not depend on backplane delivery. Disposing the service provider unsubscribes from the owned
+backplane; a backplane that stalls delays its shutdown by at most twice `OperationTimeout`.
 
 ## Keep invalidations from being evicted
 

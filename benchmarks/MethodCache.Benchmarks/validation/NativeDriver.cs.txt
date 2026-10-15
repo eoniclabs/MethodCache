@@ -1,0 +1,22 @@
+using System.Diagnostics;
+using Testcontainers.Redis;
+using Testcontainers.MsSql;
+await using var redis = new RedisBuilder("redis:7-alpine").Build();
+await using var sql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").WithPassword("Aa!" + Guid.NewGuid().ToString("N")).Build();
+await Task.WhenAll(redis.StartAsync(), sql.StartAsync());
+async Task<int> Run(string executable, IEnumerable<string> arguments)
+{
+    var info = new ProcessStartInfo(executable) { WorkingDirectory = args[0] };
+    foreach (var argument in arguments) info.ArgumentList.Add(argument);
+    info.Environment["METHODCACHE_REDIS_URL"] = redis.GetConnectionString();
+    info.Environment["METHODCACHE_SQLSERVER_CONNECTION"] = sql.GetConnectionString();
+    info.Environment["METHODCACHE_REQUIRE_INFRA_TESTS"] = "true";
+    using var child = Process.Start(info)!; await child.WaitForExitAsync(); return child.ExitCode;
+}
+if (args.Length > 1) return await Run(args[1], args.Skip(2));
+foreach (var provider in new[] { "Redis", "SqlServer" })
+{
+    var code = await Run("dotnet", new[] { "test", $"tests/MethodCache.{provider}.IntegrationTests", "-c", "Release", "-f", "net10.0", "--filter", "FullyQualifiedName~HttpContractTests", "--blame-hang-timeout", "120s", "--blame-hang-dump-type", "none" });
+    if (code != 0) return code;
+}
+return 0;

@@ -91,13 +91,13 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
   `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
   list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](monitoring.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`,
-  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
+  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Enabled`, `Distributed`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
   method under `Services`: `true` makes its `Tags` replace the attribute's instead of adding to them. `Metadata` and `Notes` are recorded for
   diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
   `"Durration"` is reported instead of ignored. The same goes for the section itself: it holds only `Defaults`,
   `FailSafe` and `Services`.
-- Time spans are written `"hh:mm:ss"` (or `"d.hh:mm:ss"`); a bare number such as `"300"` is rejected, since .NET
-  would read it as 300 days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+- Durations use the same invariant grammar as attributes: positive unit values such as `"30s"` or `"1.5h"`,
+  or `"hh:mm:ss"` (including `"d.hh:mm:ss"`). A bare number such as `"300"` is rejected rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
   `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section.
 - A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
   `(` or `<`, so this is how environment variables, Kubernetes `env` or Linux App Service configure a method:

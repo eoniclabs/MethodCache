@@ -39,4 +39,7 @@ forced collisions and append/growth are covered. Its security basis and limits a
 [updated review](prefix-hash-security.md). The 6,945-test/full-package evidence above belongs to the initial
 implementation and must not be attributed to the replacement until rerun. A default-builder regression
 first failed (empty-string hash memo contamination) and was corrected before the replacement was committed.
-Current targeted net10 tests pass; broader functional and timing verification remains pending.
+The current `850cef8` replacement is also included in the final `6c9881e` descendant's complete net8/9/10 matrix,
+random properties, real Redis/SQL tests, native smoke/172-case corpus and installed-package checks, including
+independent-process hash-seed phases. See [the functional receipt](design-final-validation.md) for exact source and
+counts; those counts cover the complete descendant, not a standalone prefix-only run. Timing remains pending.
