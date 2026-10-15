@@ -5,7 +5,7 @@ No credentials or environment variables are written to the manifest.
 """
 from pathlib import Path
 import datetime, json, subprocess, sys, time
-from process_activity import external_activity, parse_processes
+from process_activity import ActivityMonitor
 
 OUT = Path('/tmp/methodcache-design-series-timing')
 HARNESS = Path('/tmp/methodcache-design-harness')
@@ -19,6 +19,7 @@ GROUPS = {
                            '*DesignHttpWorkloadBenchmarks*SqlServer*'],
                'reports': 2, 'cases': 16},
 }
+MONITOR = ActivityMonitor()
 
 def utc(): return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -31,8 +32,8 @@ def frozen(name):
     return source
 
 def activity(owned_pid=None):
-    processes = parse_processes(subprocess.check_output(['ps','-Ao','pid=,ppid=,command='],text=True))
-    return external_activity(processes, owned_pid)
+    snapshot = subprocess.check_output(['ps','-Ao','pid=,ppid=,stat=,pcpu=,time=,etime=,command='],text=True)
+    return MONITOR.observe(snapshot, owned_pid)
 
 def idle():
     # Wait for a minute with no observed build/test activity. Never stop another task.

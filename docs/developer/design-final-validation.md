@@ -64,3 +64,18 @@ The replaced fluent root/service/group interfaces had no public entry point afte
 passed after the change. Public method configuration results remain available. Public API records and XML references
 are updated; the generated contract-1 surface and frozen vendors are unaffected. The complete release pipeline is
 rerun for this source change before restarting frozen timing.
+
+At `a711ad3ae39e8a8d295336418098c799eb2a75c6`, the complete rerun passed: **7,143 tests, 0 failures, 3 intentional
+soak skips across 46 project/framework runs** (net10: 2,462; net8: 2,338; net9: 2,343). Cultures, random properties on
+net10/net8, enabled soak, demo, native HTTP/AOT smoke, the 172-case native corpus, all seven packages, actual SDK8
+and independent Redis/SQL processes passed again. These visibility/XML changes add no executable source lines;
+the earlier runtime changed-line coverage remains 95.5%. [Selected current receipts](../../plans/design-benchmarks/final-functional-a711ad3/)
+retain the driver, coverage decision, native and installed-package output. Full local logs use
+`/tmp/methodcache-release-coordinator-*`. The new guard's five Python regression tests also pass. Performance and
+external CI remain required; the earlier broad timing attempt remains rejected.
+
+The process guard was then refined for four nine-day-old sleeping orphan Flutter workers observed at 0% CPU.
+They must not block quiet timing forever, and are left untouched. State/age/CPU-time sampling distinguishes them
+from new or CPU-active workers, including CPU progress whose lifetime percentage rounds to zero. The same collector
+regression fails against the earlier committed implementation and passes after the fix; all eight Python guard
+tests pass. These are measurement-tool changes and do not alter the library source verified at `a711ad3`.
