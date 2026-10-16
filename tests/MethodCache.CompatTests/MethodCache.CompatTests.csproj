@@ -21,5 +21,8 @@
     <Content Include="Baselines/Contract1/FrozenVendor.Contract99.dll" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Baselines/Contract1Net10/manifest.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Baselines/Contract1Net10/FrozenVendor.Contract99Net10.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Baselines/Contract1GeneratedApi.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../src/MethodCache.Core/PublicAPI.Unshipped.txt" Link="CurrentGeneratedPublicAPI.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../src/MethodCache.Core/PublicAPI.Shipped.txt" Link="CurrentGeneratedPublicAPI.Shipped.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

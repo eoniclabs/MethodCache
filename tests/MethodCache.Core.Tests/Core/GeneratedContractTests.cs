@@ -82,6 +82,32 @@ public class GeneratedContractTests
         });
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(32)]
+    [InlineData(256)]
+    public void StartKey_FrozenFactory_PreservesCapturedPrefixGrowthAndBinding(int capacity)
+    {
+        var (method, handle, memory) = Create(new string('x', 500));
+        using var owned = memory;
+        var call = method.Capture();
+        Update(handle);
+        var key = call.StartKey(new char[capacity]);
+        key.AppendPart("a:\\b\0\ud800\udfff");
+        key.AppendPart(int.MinValue);
+        key.AppendNullPart();
+        var expected = MethodCacheKeys.ForVersion(typeof(IService), new string('x', 500), 1,
+            MethodCacheKeys.Part("a:\\b\0\ud800\udfff"), MethodCacheKeys.Part(int.MinValue), MethodCacheKeys.Null);
+        Assert.Equal(expected, key.ToString());
+        Assert.False(call.TryGetValue<string>(ref key, out _));
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var foreign = call.StartKey(stackalloc char[16]);
+            method.Capture().TryGetValue<string>(ref foreign, out _);
+        });
+    }
+
     private static void Update(PolicyHandle handle)
         => handle.Update(new PolicyResolutionResult(handle.MethodId,
             CachePolicy.Empty with { Version = 2, Duration = TimeSpan.FromMinutes(1) },
