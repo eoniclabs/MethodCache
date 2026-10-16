@@ -59,3 +59,5 @@ step is required.
 
 The precision limit applies even to a faster result or an accepted slowdown. Both sides must contain every
 launch; duplicate cases and non-finite times are rejected instead of being discarded or overwritten.
+Timing records retain all 12 actual workload measurements, the runtime and GC mode. The exported time is
+BenchmarkDotNet's time per operation, including its normalization for batched benchmarks; it is not divided again.

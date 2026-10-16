@@ -1,8 +1,10 @@
 using System.Text.Json;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Running;
+using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Toolchains.InProcess.Emit;
 
 // One timing launch: the matching cases in this process, with a short fixed job. Cases timed in one process shape each
@@ -27,16 +29,29 @@ internal static class Timing
             var summary = BenchmarkRunner.Run(new BenchmarkRunInfo(cases, type, all.Config));
             foreach (var report in summary.Reports)
             {
-                var line = JsonSerializer.Serialize(new Dictionary<string, object?>
-                {
-                    ["case"] = Name(report.BenchmarkCase),
-                    ["ns"] = report.ResultStatistics is { } statistics ? Math.Round(statistics.Median / report.BenchmarkCase.Descriptor.OperationsPerInvoke, 2) : null,
-                });
+                var line = JsonSerializer.Serialize(Record(report));
                 await writer.WriteLineAsync(line);
                 Console.WriteLine(line);
             }
         }
         return 0;
+    }
+
+    internal static Dictionary<string, object?> Record(BenchmarkReport report)
+    {
+        var actual = report.AllMeasurements.Where(m => m.IterationMode == IterationMode.Workload && m.IterationStage == IterationStage.Actual).ToArray();
+        return new()
+        {
+            ["case"] = Name(report.BenchmarkCase),
+            // BenchmarkDotNet statistics already divide by operation count, including OperationsPerInvoke.
+            ["ns"] = report.Success && actual.Length == 12 && report.ResultStatistics is { } statistics ? Math.Round(statistics.Median, 2) : null,
+            ["actualIterations"] = actual.Length,
+            ["actualMeasurements"] = actual.Select(m => new { m.Operations, m.Nanoseconds }).ToArray(),
+            ["operationsPerInvoke"] = report.BenchmarkCase.Descriptor.OperationsPerInvoke,
+            ["runtime"] = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+            ["serverGC"] = System.Runtime.GCSettings.IsServerGC,
+            ["gcLatencyMode"] = System.Runtime.GCSettings.LatencyMode.ToString(),
+        };
     }
 
     private static string Name(BenchmarkCase c)

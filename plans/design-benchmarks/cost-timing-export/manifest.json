@@ -1,0 +1,39 @@
+{
+  "base": "16e2cc71",
+  "red_setup": "Extract the original export dictionary into internal Record(report) without changing normalization or validation; compile that exact source in benchmark tests",
+  "scope": "Timing export only; shipped runtime and benchmark workloads unchanged",
+  "red": "Five tests: four failures (16/64 operations divided twice; 0/11 actual iterations still exported)",
+  "green": "All 120 benchmark tests pass",
+  "files": [
+    {
+      "path": "red.log",
+      "original_sha256": "98ef9cf4173430c392dc927b8f0eb6282f1044c9e281e96a0b49f26cc0e44eb1",
+      "stored_sha256": "d45ca230b9c4a6cf0060a3119e2b956a08244cf3b85df730dcf19b606513f383"
+    },
+    {
+      "path": "green.log",
+      "original_sha256": "bec4e41ae5a438ff89ec538bd07b3f182df0f9e5df3c69d1f81f9bc694d0f59c",
+      "stored_sha256": "47dfaa0f4b1aea9fb1fbe197b5e61424995e53eafc44280f134b197da7ab987c"
+    },
+    {
+      "path": "format.log",
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    }
+  ],
+  "source": [
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    },
+    {
+      "path": "tests/MethodCache.Benchmarks.Tests/CostProfileTimingTests.cs",
+      "sha256": "769d27c1d179d49f6a9623e109f606077bb4b456c0245b1154030f15da4f1460"
+    },
+    {
+      "path": "tests/MethodCache.Benchmarks.Tests/MethodCache.Benchmarks.Tests.csproj",
+      "sha256": "7e5fc8001f15e897955963d3161adbeb4fe97ac2d1a1a84d0e36ae38950d871f"
+    }
+  ],
+  "normalization": "Replace worktree root and normalize line endings/trailing whitespace"
+}
