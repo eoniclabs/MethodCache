@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Avoid temporary sets and sorting when HTTP responses have no custom key headers or `Vary` fields;
+  private caches still select by `Authorization` and `Cookie`.
+
 - Avoid allocating unused fail-safe and distributed-write closures on memory-only asynchronous misses.
 
 - Read already initialized, permanent SQL Server HTTP epoch metadata without rewriting its rows. Missing,

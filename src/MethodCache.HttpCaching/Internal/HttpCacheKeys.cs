@@ -90,6 +90,11 @@ internal static class HttpCacheKeys
     /// </summary>
     public static string[] SelectingHeaders(HttpCacheOptions options, string[]? varyHeaders)
     {
+        // The common schema is already ordered. Return a fresh private array so a
+        // stored entry cannot mutate another response's caller-isolation headers.
+        if (options.KeyHeaders.Count == 0 && varyHeaders is not { Length: > 0 })
+            return options.IsSharedCache ? [] : ["Authorization", "Cookie"];
+
         var headers = new HashSet<string>(options.KeyHeaders, StringComparer.OrdinalIgnoreCase);
         if (!options.IsSharedCache)
         {

@@ -301,6 +301,8 @@ builder.Services.AddMethodCache(cache => cache.UseJson(AppJsonContext.Default));
 ## Performance
 
 Memory-only asynchronous misses avoid allocating closures for inactive fail-safe and distributed-write branches.
+HTTP responses without custom key headers or `Vary` fields use direct variant selection; private caches still
+isolate `Authorization` and `Cookie`.
 
 A cache hit on `Task<User> GetUserAsync(int id)`, and on the same method with a `Guid` id, each library on its
 default settings. The ratio is against `IMemoryCache` by hand with the same id type:
