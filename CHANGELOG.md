@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Keep generated source filenames bounded for long namespace/type identifiers, including Unicode, when
+  `EmitCompilerGeneratedFiles` is enabled. Generated types and cache identities are unchanged.
+
 - **Breaking before 1.0:** all runtime packages now require .NET 10 and the .NET 10 SDK. Remove .NET 8/9 targets,
   their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Frozen generated-contract fixtures remain unchanged.
 

@@ -1,3 +1,4 @@
+using StackExchange.Redis;
 using Testcontainers.Redis;
 using Xunit;
 
@@ -47,6 +48,42 @@ public sealed class RedisFixture : IAsyncLifetime
     {
         Skip.If(UnavailableReason != null, UnavailableReason);
         return Configuration!;
+    }
+
+    internal static Task WaitForSubscriberAsync(IConnectionMultiplexer connection)
+        => WaitForSubscriberAsync(() => connection.GetSubscriber().PingAsync(), TimeProvider.System);
+
+    // ConnectAsync can finish before pub/sub is connected. FailFast then cancels that connection's first
+    // ping. Wait for actual readiness; the policy tests still use their separate subscription barrier.
+    internal static async Task WaitForSubscriberAsync(Func<Task> ping, TimeProvider time)
+    {
+        var started = time.GetTimestamp();
+        var budget = TimeSpan.FromSeconds(20);
+        Exception? lastFailure = null;
+        while (true)
+        {
+            var remaining = budget - time.GetElapsedTime(started);
+            if (remaining <= TimeSpan.Zero)
+            {
+                throw new TimeoutException("Redis subscription connection did not become ready within 20 seconds.", lastFailure);
+            }
+
+            try
+            {
+                await ping().WaitAsync(remaining, time);
+                return;
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or RedisConnectionException)
+            {
+                lastFailure = ex;
+                var retryBudget = budget - time.GetElapsedTime(started);
+                if (retryBudget > TimeSpan.Zero)
+                {
+                    var delay = TimeSpan.FromMilliseconds(10);
+                    await Task.Delay(retryBudget < delay ? retryBudget : delay, time);
+                }
+            }
+        }
     }
 
     private static bool InfrastructureRequired =>

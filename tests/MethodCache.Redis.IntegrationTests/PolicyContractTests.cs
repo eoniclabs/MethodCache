@@ -29,7 +29,7 @@ public class PolicyContractTests(RedisFixture redis)
             try
             {
                 var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
-                await connection.GetSubscriber().PingAsync();
+                await RedisFixture.WaitForSubscriberAsync(connection);
                 await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
                 return provider;
             }

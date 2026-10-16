@@ -17,6 +17,8 @@ implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` mem
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
 don't clash with the generated code. You don't need to rename anything.
+Long namespace and type names also work with `EmitCompilerGeneratedFiles`: the generator gives those files
+short, stable names while preserving the declared types and cache identities.
 
 Unsupported cached method shapes receive a [generator diagnostic](../user-guide/DIAGNOSTICS.md), with a code fix
 to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer

@@ -42,8 +42,8 @@ class RetryIntegrationTests(unittest.TestCase):
             script += r'''
 nimbus_root=owned; nimbus=unused; timeout_seconds=5; ssh_options=(-o BatchMode=yes)
 checkout_script() { echo 'echo CHECKOUT-EXECUTED; mkdir -p artifacts/ci'; }
-with_timeout() { shift; "$@"; }
-ssh() { (cd "$fixture_dir" && /bin/bash -s); }
+with_timeout() { echo "LOCAL_TIMEOUT=$1"; shift; "$@"; }
+ssh() { echo "REMOTE_COMMAND=$*"; (cd "$fixture_dir" && /bin/bash -s); }
 nice() {
   : >&8 || return 47
   [ -z "${METHODCACHE_CI_SHARED_LOCK:-}" ] || return 48
@@ -66,6 +66,12 @@ fetch_linux_results() { return 0; }
         self.assertEqual(0, result.returncode, result.stderr + console)
         self.assertIn('CHECKOUT-EXECUTED', console)
         self.assertIn('MOCK-BUILD', console)
+
+    def test_linux_timeout_runs_on_server_with_local_cleanup_grace(self):
+        result, console = self.run_linux_capacity(granted=True)
+        self.assertEqual(0, result.returncode, result.stderr + console)
+        self.assertIn('timeout --signal=TERM --kill-after=30s 5 bash -s', console)
+        self.assertIn('LOCAL_TIMEOUT=65', console)
 
     def run_retry(self, recover=False):
         import shlex

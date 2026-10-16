@@ -80,6 +80,35 @@ public class SignatureCorpusTests
     [MemberData(nameof(CaseNames))]
     public Task Shape_CompilesAndCaches_WithLatestLanguageVersion(string name) => RunAsync(name, LanguageVersion.Latest);
 
+    [Theory]
+    [InlineData("long ASCII namespace")]
+    [InlineData("long Unicode namespace")]
+    [InlineData("long interface name")]
+    public async Task LongIdentifiers_EmitDistinctDeterministicSourceFiles(string name)
+    {
+        var shape = Cases[name];
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(shape.ToSource(), "LongNames");
+        var again = await _engine.CompileWithSourceGeneratorAsync(shape.ToSource(), "LongNamesAgain");
+        Assert.Equal(4, compiled.GeneratedSources.Count); // Two decorators plus policy and module registration.
+        Assert.Equal(compiled.GeneratedSources.Keys.Order(), again.GeneratedSources.Keys.Order());
+        var directory = Path.Combine(Path.GetTempPath(), "methodcache-generated-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            foreach (var (hint, source) in compiled.GeneratedSources)
+            {
+                Assert.True(System.Text.Encoding.UTF8.GetByteCount(hint) <= 255, "Generated filename exceeds a portable filesystem component");
+                await File.WriteAllTextAsync(Path.Combine(directory, hint), source);
+            }
+
+            Assert.Equal(compiled.GeneratedSources.Count, Directory.GetFiles(directory).Length);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private async Task RunAsync(string name, LanguageVersion languageVersion)
     {
         var shape = Cases[name];
@@ -571,8 +600,23 @@ public class SignatureCorpusTests
                 }
             """, "ISvc", a, b, usings);
 
+    private static Shape LongIdentifiers(string ns, string name)
+        => new($$"""
+            namespace {{ns}} {
+                public interface {{name}} { [Cache] int Get(int id); }
+                public sealed class Svc : {{name}} { public int Get(int id) { Counter.Hit(); return id; } }
+            }
+            namespace {{ns}}Other {
+                public interface {{name}} { [Cache] int Get(int id); }
+                public sealed class Svc : {{name}} { public int Get(int id) => id; }
+            }
+            """, ns + "." + name, "s.Get(1)", "s.Get(2)");
+
     private static readonly Dictionary<string, Shape> Cases = new()
     {
+        ["long ASCII namespace"] = LongIdentifiers("Part" + new string('a', 260), "ISvc"),
+        ["long Unicode namespace"] = LongIdentifiers("Part" + new string('界', 90), "ISvc"),
+        ["long interface name"] = LongIdentifiers("LongTypes", "I" + new string('a', 260)),
         ["dynamic tag does not format unrelated argument"] = new("""
             public sealed class Argument : ICacheKeyProvider {
                 public string CacheKeyPart { get; set; } = "";

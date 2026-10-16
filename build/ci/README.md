@@ -140,6 +140,13 @@ again, after waiting for a pass that is already running. Missing results or fail
 retry after 30 minutes, then exponential backoff capped at six hours. Automatic attempts stop after five passes
 for the commit; a deliberate `--pr` run resets that budget and reruns every platform.
 
+The Linux pass enforces `METHODCACHE_CI_TIMEOUT_SECONDS` (default 3600) on Nimbus itself, including capacity
+waiting and checkout. Its server-side `timeout` terminates the remote process group and allows 30 seconds
+for `linux.sh` to clean up that run's labelled containers before a forced exit. The local SSH watchdog
+allows another 60 seconds beyond the configured deadline; disconnecting SSH alone can leave Docker jobs
+alive. A timed-out pass is incomplete/failed and never a passing result. Coordinator changes require
+reinstallation; use `install-coordinator.sh --update-only` while an existing pass is active.
+
 Automatic retries reuse complete passing results for the exact full commit SHA, including their logs. They
 first try to recover Linux results from Nimbus when a finished job's archive did not arrive. Only platforms
 without reusable results are rebuilt. Every expected job needs a valid exit file: a `finished` marker alone
