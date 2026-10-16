@@ -31,6 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Compile the actual benchmark sources for every library framework including the CLI dispatch. -->
+    <Compile Include="../../benchmarks/MethodCache.CostProfile/Timing.cs" Link="CostProfile/Timing.cs" />
     <Compile Include="../../benchmarks/MethodCache.Benchmarks/**/*.cs"
              Exclude="../../benchmarks/MethodCache.Benchmarks/bin/**/*.cs;../../benchmarks/MethodCache.Benchmarks/obj/**/*.cs;../../benchmarks/MethodCache.Benchmarks/Program.cs"
              Link="Benchmarks/%(RecursiveDir)%(Filename)%(Extension)" />
