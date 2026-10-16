@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using FrozenVendor.Contract1;
 using MethodCache;
@@ -9,8 +11,41 @@ using Xunit;
 
 namespace MethodCache.CompatTests;
 
-public class VendorCompatibilityTests
+public partial class VendorCompatibilityTests
 {
+    [Fact]
+    public void FrozenImages_CoverInlineAndMaterializedKeyContracts()
+    {
+        var references = new HashSet<string>(StringComparer.Ordinal);
+        var baselineRoot = Path.Combine(AppContext.BaseDirectory, "Baselines");
+        foreach (var manifestPath in Directory.EnumerateFiles(baselineRoot, "manifest.json", SearchOption.AllDirectories))
+        {
+            using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            foreach (var image in manifest.RootElement.GetProperty("images").EnumerateArray())
+            {
+                var file = image.GetProperty("file").GetString()!;
+                var path = Path.Combine(AppContext.BaseDirectory, file);
+                if (!File.Exists(path)) path = Path.Combine(Path.GetDirectoryName(manifestPath)!, file);
+                using var stream = File.OpenRead(path);
+                using var pe = new PEReader(stream);
+                var metadata = pe.GetMetadataReader();
+                foreach (var handle in metadata.MemberReferences)
+                {
+                    var member = metadata.GetMemberReference(handle);
+                    if (member.Parent.Kind != HandleKind.TypeReference) continue;
+                    var type = metadata.GetTypeReference((TypeReferenceHandle)member.Parent);
+                    references.Add($"{metadata.GetString(type.Namespace)}.{metadata.GetString(type.Name)}.{metadata.GetString(member.Name)}");
+                }
+            }
+        }
+
+        Assert.Contains("MethodCache.Generated.KeyBuilder..ctor", references);
+        Assert.Contains("MethodCache.Generated.MethodCall.BindTextKey", references);
+        Assert.Contains("MethodCache.Generated.MethodCall.TryGetValue", references);
+        Assert.Contains("MethodCache.Generated.MethodCall.TryGetTask", references);
+        Assert.Contains("MethodCache.Generated.MethodCall.TryGetValueTask", references);
+    }
+
     [Fact]
     public void FrozenImages_MatchRecordedHashes()
     {

@@ -20,6 +20,16 @@ The specification is [design-spec.md](design-spec.md), PR 1 acceptance G01–G14
 
 ## Contract and scope
 
+The historical frozen DLLs below were compiled for .NET 8 and therefore exercise
+materialized keys even when run on newer runtimes. A final audit adds a separate
+`Contract1Net10` checkpoint for the actual `KeyBuilder` constructor/ref lookup ABI;
+the original checkpoint remains unchanged. The metadata coverage fact fails before
+that addition, and removing the constructor from a temporary runtime makes the new
+frozen vendor fail with MissingMethodException. All nine compatibility facts and
+the extended native osx-arm64 smoke pass after restoration. This is additive local
+evidence; the final published head still requires normal CI.
+[Exact baseline provenance and red/green/native receipts](../../plans/design-benchmarks/net10-inline-vendor-baseline/).
+
 Module initializers register descriptors only. Startup validates contract versions, selects modules and binds each
 service registration to its own runtime context. One immutable MethodCall snapshot supplies key construction,
 lookup, tags and load/publication policy. Inline and materialized keys retain snapshot identity; retired snapshots

@@ -109,6 +109,31 @@ await using (var frozenProvider = frozenServices.BuildServiceProvider())
         failures.Add("Frozen closed generic interface did not preserve caching.");
 }
 
+// The historical net8 image uses materialized keys. This independently frozen
+// net10 image also links the inline KeyBuilder constructor/ref lookup ABI.
+var frozenNet10Services = new ServiceCollection();
+frozenNet10Services.AddSingleton<FrozenVendor.Contract1Net10.IService, FrozenVendor.Contract1Net10.Service>();
+frozenNet10Services.AddSingleton<FrozenVendor.ThirdPartyNet10.IClient, FrozenVendor.ThirdPartyNet10.Client>();
+frozenNet10Services.AddScoped<FrozenVendor.Contract1Net10.IRepository<string>, FrozenVendor.Contract1Net10.StringRepository>();
+frozenNet10Services.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1Net10.Marker>());
+await using (var frozenNet10Provider = frozenNet10Services.BuildServiceProvider())
+{
+    var frozen = frozenNet10Provider.GetRequiredService<FrozenVendor.Contract1Net10.IService>();
+    if (frozen.Read(42) != 1 || frozen.Read(42) != 1 || await frozen.ReadAsync(42) != 2 || await frozen.ReadAsync(42) != 2)
+        failures.Add("Frozen net10 inline return shapes did not preserve caching.");
+    if (await frozen.ReadValueAsync(42) != 3 || await frozen.ReadValueAsync(42) != 3)
+        failures.Add("Frozen net10 inline ValueTask did not preserve caching.");
+    await frozen.UpdateAsync(42);
+    if (frozen.Read(42) != 4) failures.Add("Frozen net10 tag invalidation failed.");
+    var client = frozenNet10Provider.GetRequiredService<FrozenVendor.ThirdPartyNet10.IClient>();
+    if (await client.ReadAsync(42) != 1 || await client.ReadAsync(42) != 1)
+        failures.Add("Frozen net10 third-party CacheInterface did not preserve caching.");
+    await using var scope = frozenNet10Provider.CreateAsyncScope();
+    var repository = scope.ServiceProvider.GetRequiredService<FrozenVendor.Contract1Net10.IRepository<string>>();
+    if (await repository.ReadAsync(42) != "1" || await repository.ReadAsync(42) != "1")
+        failures.Add("Frozen net10 closed generic interface did not preserve caching.");
+}
+
 try { await HttpAotChecks.RunAsync(); }
 catch (Exception error) { failures.Add("HTTP storage/admin AOT check failed: " + error.GetType().Name); }
 
