@@ -96,6 +96,16 @@
       "file": "ci-followup-aot-smoke-green.log",
       "original_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df",
       "stored_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df"
+    },
+    {
+      "file": "ci-followup-gc-merged-green.log",
+      "original_sha256": "11469b23935bf4e88c3335b83e4ab535b9cbe7b21c781cbe4b5a8dbea95bc2c4",
+      "stored_sha256": "11469b23935bf4e88c3335b83e4ab535b9cbe7b21c781cbe4b5a8dbea95bc2c4"
+    },
+    {
+      "file": "ci-followup-clean-docs.log",
+      "original_sha256": "c3037ff555b3f87eb6bad4193fbaa07293151d69e9b880f2d8a18f9a28377c73",
+      "stored_sha256": "dddeb9caca97d1fbc03c3635c3df1c66e99db79b37c8cb2e4fa8355fc295d3dc"
     }
   ],
   "coverage_run": {
@@ -119,5 +129,12 @@
     "signature_corpus_exit": 0,
     "compiled_cases": 175,
     "limitations": "Known KeyArguments/KeyCollectionState trimming/AOT warnings retained. Initial Linux-only jobs.sh invocation on macOS and then external /tmp exporter path both failed as recorded; corrected native macOS smoke/corpus run passes."
+  },
+  "merged_ci_python": {
+    "tests": 50,
+    "passed": 48,
+    "skipped": 2,
+    "dependency_pr": 136,
+    "dependency_head": "21fc48e69fd8b693bb185b2e94542779a88b24fc"
   }
 }

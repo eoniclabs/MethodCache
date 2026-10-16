@@ -27,3 +27,5 @@ GC fix; no duplicate fix was authored here. Original failed statuses are not rep
 Logs preserve their original and normalized stored digests. No timing acceptance is claimed.
 
 Native macOS AOT smoke passes, including frozen vendors; all 175 exported signature cases compile and execute their compilation check. Known trimming warnings remain. Initial local invocations used the Linux-only CI job, then a /tmp path affected by macOS symlink resolution; both failed invocations are retained separately. Corrected host-native checks use an in-worktree export.
+
+The separate PR136 commit 21fc48e is integrated without changing its GC fix. Its real mirror-maintenance regression and all 50 CI Python cases complete (48 pass, the same two newer-SDK publishing checks skip). The clean-head docs job also passes.

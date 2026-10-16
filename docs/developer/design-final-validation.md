@@ -27,6 +27,13 @@ automatic maintenance must finish before the mirror is cloned. Coordinator chang
 with `--update-only`; source changes alone do not update the installed scheduler. No running job is
 stopped by publishing or atomically installing that fix. The old orphan requires separate cleanup.
 
+Local follow-up verification passes all 2,560 facts across sixteen projects, with required native Redis/SQL
+and the single intentional opt-in soak skip. Changed-line coverage is 3486/3708 (94.0%); native macOS
+AOT smoke and all 175 signature cases pass. After integrating PR136, 48 CI Python cases pass and two
+publishing checks skip because they require a newer local SDK. Original failures, pre-fix regression
+outputs and exact proof scopes are retained in the [CI follow-up receipt](../../plans/design-benchmarks/ci-startup-followup/).
+These local passes do not establish the next published head's three-platform CI result.
+
 ## Native fault-fixture failure and bounded cleanup
 
 The b92553d Linux diff-coverage run stalled in the Redis policy-fault fixture. A private diagnostic

@@ -1,0 +1,6 @@
+................................................ss
+----------------------------------------------------------------------
+Ran 50 tests in 11.215s
+
+OK (skipped=2)
+All seven packages target .NET 10; all six integrations require MethodCache [1.2.3].
