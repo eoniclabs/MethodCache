@@ -760,7 +760,7 @@ namespace MethodCache.Extensibility
                 var load = RunLoadAsync(
                     key,
                     methodName,
-                    policy.FailSafeTimeout > 0 && previous != null ? () => BackgroundLoadScope.RunAsync(factory) : factory,
+                    policy.FailSafeTimeout > 0 && previous != null ? InBackgroundScope(factory) : factory,
                     policy,
                     flight,
                     previous,
@@ -873,6 +873,11 @@ namespace MethodCache.Extensibility
 
         private Task<T> InvokeOriginAsync<T>(string key, string name, Func<Task<T>> factory, string[]? tags)
             => _telemetry?.Enabled == true ? _telemetry.OriginAsync(name, key, tags, factory) : factory();
+
+        // Keep the captured factory in the fail-safe branch instead of allocating
+        // its display class at the start of every ordinary load.
+        private static Func<Task<T>> InBackgroundScope<T>(Func<Task<T>> factory)
+            => () => BackgroundLoadScope.RunAsync(factory);
 
         private ValueTask<DistributedEntry<T>> ReadDistributedAsync<T>(string key, EntryPolicy policy, CancellationToken cancellationToken)
             => _distributed!.TryGetAsync<T>(key, cancellationToken, policy.Source?.Identity);
@@ -1340,7 +1345,15 @@ namespace MethodCache.Extensibility
             }
 
             var lifetime = TimeSpan.FromTicks(Math.Min(policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
-            return _distributed.WriteAsync(key, result, policy.Tags, loadStartedAt, lifetime, () => flight.Invalidated, methodName: methodName, identity: policy.Source?.Identity, methodId: policy.Source?.Identity != null ? policy.Source.MethodId : null, publishedAt: flight.PublishedAt);
+            return WriteDistributedCoreAsync(key, result, policy, methodName, flight, loadStartedAt, lifetime);
+        }
+
+        // The invalidation predicate captures its flight. Its allocation belongs
+        // only to an actual L2 write, after the memory-only/disabled guards above.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private Task WriteDistributedCoreAsync<T>(string key, T result, EntryPolicy policy, string methodName, Flight flight, long loadStartedAt, TimeSpan lifetime)
+        {
+            return _distributed!.WriteAsync(key, result, policy.Tags, loadStartedAt, lifetime, () => flight.Invalidated, methodName: methodName, identity: policy.Source?.Identity, methodId: policy.Source?.Identity != null ? policy.Source.MethodId : null, publishedAt: flight.PublishedAt);
         }
 
         private bool RemoveLocal(string key)

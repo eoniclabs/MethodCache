@@ -1,0 +1,29 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> <worktree>/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Serialization.MessagePack -> <worktree>/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.Redis -> <worktree>/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.HttpCaching -> <worktree>/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.SqlServer -> <worktree>/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.Benchmarks.Tests -> <worktree>/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll
+Test run for <worktree>/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.04]   Discovering: MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.09]   Discovered:  MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.10]   Starting:    MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.28]   Finished:    MethodCache.Benchmarks.Tests
+  Passed MethodCache.Benchmarks.Tests.GeneratedMissAllocationTests.MemoryOnlyUniqueMisses_DoNotAllocateUnusedBranchClosures(valueTask: True, budget: 1096) [112 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedMissAllocationTests.MemoryOnlyUniqueMisses_DoNotAllocateUnusedBranchClosures(valueTask: False, budget: 1088) [50 ms]
+
+Test Run Successful.
+Total tests: 2
+     Passed: 2
+ Total time: 0,5257 Seconds

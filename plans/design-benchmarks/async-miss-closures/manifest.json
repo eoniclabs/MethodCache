@@ -1,0 +1,68 @@
+{
+  "at_utc": "2026-10-16T14:41:29.940917+00:00",
+  "source_parent": "7f00b14d099d65522c50d175b2c1a095a195295a",
+  "scope": "Local allocation regression and correctness evidence; no timing speedup or complete design acceptance claimed",
+  "normalization": "Absolute worktree path replaced; line endings normalized and trailing whitespace removed; original hashes retained",
+  "core_tests": 1043,
+  "core_opt_in_soak_skips": 1,
+  "benchmark_tests": 115,
+  "new_theory_cases": 2,
+  "changed_source_coverage": "4/4 executable lines",
+  "task_miss_bytes_before": 1128,
+  "task_miss_bytes_after": 1080,
+  "task_miss_original_cumulative_baseline_bytes": 1080,
+  "files": {
+    "red.log": {
+      "original_sha256": "ba952e9f816e6ec1415420de45892555df6048ed6d30e74928c4052a1663c07a",
+      "stored_sha256": "2ba3602d72f7c33a796d3bdaa53dbab60d0f831fc1c628fb25cf3a7927eba70a"
+    },
+    "green.log": {
+      "original_sha256": "e88e1ba70338a8fb6d7452dac0f1c1eb6cc7d49d5ad59a4f7c79f62d131763bf",
+      "stored_sha256": "5d098d8a006f22c29bec2b386c23227939bf3bed25b3d26c84bd583726a255cb"
+    },
+    "core-green.log": {
+      "original_sha256": "024186f872f436141fffcf422904fba47975df7c051abe1edbdc7c8c1eda9038",
+      "stored_sha256": "0dd25a5ee46c2041ffb0d49de68d477f9d7845f9f7004bae776354f2111d950d"
+    },
+    "benchmarks-green.log": {
+      "original_sha256": "270c530cf7ceab594be0854c19df6e2c35f6cd49aea0517c103f092c31233da3",
+      "stored_sha256": "db74f3812ca9a1239972cb262430ed9a13a159c4ede799f11207f0eeaa7fea60"
+    },
+    "coverage.log": {
+      "original_sha256": "ebe9a5f16acd062e86eef219e5ea452a0ff1aa3abc79f2c945218190ae839814",
+      "stored_sha256": "8b999532611550f51e0cd9c6506d55e30891e53512d52f4d2407e21dbb249687"
+    },
+    "diffcoverage.log": {
+      "original_sha256": "4864d62c81146d450aa3f11f9ac2b099c4fc45de4221cee72a4aab3901e788d6",
+      "stored_sha256": "4864d62c81146d450aa3f11f9ac2b099c4fc45de4221cee72a4aab3901e788d6"
+    },
+    "format.log": {
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    "current.log": {
+      "original_sha256": "d8c91016d8fced5ac5f3eb983dba3a141d5f7d15f2d7e6c957b717b26eeaa6f2",
+      "stored_sha256": "d8c91016d8fced5ac5f3eb983dba3a141d5f7d15f2d7e6c957b717b26eeaa6f2"
+    },
+    "current-layout.log": {
+      "original_sha256": "e1ef8174e5370633cf62c6444769e5c7a241bebe9cf2d3987163e4d172cad352",
+      "stored_sha256": "e1ef8174e5370633cf62c6444769e5c7a241bebe9cf2d3987163e4d172cad352"
+    },
+    "after-closures.log": {
+      "original_sha256": "657527a2892731b67f329c861989189293bd96817886c26922a6f9b655996fe0",
+      "stored_sha256": "657527a2892731b67f329c861989189293bd96817886c26922a6f9b655996fe0"
+    },
+    "probe.cs.txt": {
+      "original_sha256": "236df40ce565adf8142f09e353339a5c4137653ef14ee7704bf627a24e94784a",
+      "stored_sha256": "236df40ce565adf8142f09e353339a5c4137653ef14ee7704bf627a24e94784a"
+    },
+    "probe.csproj.txt": {
+      "original_sha256": "f4beaf997d05fd1b8360a0be2cf5a37059c09239e4a0d19f8b4ee44cd4791ea6",
+      "stored_sha256": "f4beaf997d05fd1b8360a0be2cf5a37059c09239e4a0d19f8b4ee44cd4791ea6"
+    }
+  },
+  "candidate_source_sha256": {
+    "src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs": "24be711057e79d66e1f141deda5377ab65edc657c2a5ba83a8209e2eb29557fb",
+    "tests/MethodCache.Benchmarks.Tests/GeneratedMissAllocationTests.cs": "c3a715fbadbb4952506bab46e399232bbf3ab5e90ea16c1e0c709257d3a93c1b"
+  }
+}

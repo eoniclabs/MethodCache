@@ -94,3 +94,5 @@ uses the configured weigher's units (one per method entry by default), with no o
 
 Dictionary hashes are process-local implementation metadata. Canonical key text, L2 identities, administration and
 invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.
+
+Memory-only asynchronous misses avoid allocating closures for inactive fail-safe and distributed-write branches.
