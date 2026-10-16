@@ -1,7 +1,11 @@
 # Design-series performance evidence
 
 `create-harness.py --runtime-root CHECKOUT --output OUTPUT` copies identical public workload sources into an
-external BenchmarkDotNet project. Build that project in Release, invoke its DLL with `--verify-generated`, then
+external BenchmarkDotNet project. Build that project in Release, then invoke its DLL from that project's
+directory with `--build-only '*'`. This also generates and compiles BenchmarkDotNet's executable programs
+without running any setup or timing. It catches unsupported iteration-hook signatures that compiling
+the workload library and expanding its inventory cannot detect. Run this gate for every runtime point.
+Then invoke its DLL with `--verify-generated`, then
 run `--verify-native` before timing. The generated guard checks eight initial origin calls, repeated resident
 hits without new origins, and thirty distinct-key misses. Origin counters run only inside factories; all
 revisions use the same instrumented workload and earlier measurements remain separate.

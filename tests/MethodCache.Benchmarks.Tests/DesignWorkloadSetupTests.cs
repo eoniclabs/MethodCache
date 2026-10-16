@@ -1,6 +1,8 @@
 using MethodCache.Benchmarks.Microbenchmarks;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
+using BenchmarkDotNet.Attributes;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -8,6 +10,18 @@ namespace MethodCache.Benchmarks.Tests;
 
 public class DesignWorkloadSetupTests
 {
+    [Fact]
+    public void IterationHooks_BindToTheActionUsedByGeneratedBenchmarkPrograms()
+    {
+        var hooks = typeof(HttpColdMissBenchmarks).Assembly.GetTypes()
+            .Where(type => type.Namespace?.StartsWith("MethodCache.Benchmarks", StringComparison.Ordinal) == true)
+            .SelectMany(type => type.GetMethods().Where(method =>
+                method.IsDefined(typeof(IterationSetupAttribute)) || method.IsDefined(typeof(IterationCleanupAttribute))));
+        Assert.NotEmpty(hooks);
+        foreach (var hook in hooks)
+            Assert.IsType<Action>(hook.CreateDelegate(typeof(Action), Activator.CreateInstance(hook.DeclaringType!)));
+    }
+
     [Fact]
     public void HttpColdPublication_UsesAnExplicitBoundedBatch_WithIterationReset()
     {
@@ -33,7 +47,7 @@ public class DesignWorkloadSetupTests
             await benchmark.Setup();
             for (var batch = 0; batch < 2; batch++)
             {
-                if (batch != 0) await benchmark.ResetBatch();
+                if (batch != 0) benchmark.ResetBatch();
                 var warm = afterInvalidation ? 7 : 3;
                 Assert.Equal(warm, benchmark.OriginLoads);
                 var admin = benchmark.Services.GetRequiredService<ICacheAdministrator>();

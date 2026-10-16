@@ -6,6 +6,7 @@ The harness is kept outside the checkout: the primary repository and frozen vend
 Then dotnet build <output>/DesignValidation.csproj -c Release; run its DLL with --verify-native before timing.
 """
 import argparse
+from generated_build import add_build_validation
 import hashlib
 import json
 from pathlib import Path
@@ -121,6 +122,7 @@ if (args.Contains("--verify-native"))
 }
 BenchmarkSwitcher.FromTypes(types).Run(args, config);
 ''')
+add_build_validation(output / 'Program.cs')
 metadata = {
     'runtime_root': str(runtime_root),
     'runtime_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=runtime_root, text=True).strip(),

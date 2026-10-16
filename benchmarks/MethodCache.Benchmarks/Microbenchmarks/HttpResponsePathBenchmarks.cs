@@ -106,10 +106,12 @@ public class HttpColdMissBenchmarks
     public int OriginLoads => _workload!.OriginLoads;
     internal IServiceProvider Services => _workload!.Services;
 
-    [GlobalSetup] public Task Setup() => ResetBatch();
+    [GlobalSetup] public Task Setup() => ResetBatchAsync();
 
     [IterationSetup]
-    public async Task ResetBatch()
+    public void ResetBatch() => ResetBatchAsync().GetAwaiter().GetResult();
+
+    private async Task ResetBatchAsync()
     {
         _workload?.Cleanup();
         _workload = new HttpResponsePathBenchmarks { Listening = Listening, AfterInvalidation = AfterInvalidation };

@@ -1,5 +1,6 @@
 from pathlib import Path
 import argparse,hashlib,json,re,subprocess
+from generated_build import add_build_validation
 p=argparse.ArgumentParser();p.add_argument('--runtime-root',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--workloads-root',type=Path,required=True);a=p.parse_args()
 root=a.runtime_root.resolve();source=a.workloads_root.resolve();out=a.output.resolve();out.mkdir(exist_ok=True,parents=True)
 files=['Microbenchmarks/PrefixHitPathBenchmarks.cs','Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs','Microbenchmarks/KeyHashLookupBenchmarks.cs','Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs']
@@ -18,7 +19,7 @@ if sip:features.append('METHODCACHE_SIPHASH')
 if constructor:features.append('METHODCACHE_KEY_BUILDER_CONSTRUCTOR')
 symbol=''.join(';'+feature for feature in features)
 capabilities={'prefix_hash':sip or marvin,'hash_algorithm':'SipHash-1-3' if sip else 'Marvin32' if marvin else 'runtime string hash','in_place_key_builder':constructor}
-(out/'PrefixValidation.csproj').write_text(f'''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
+(out/'MethodCache.Benchmarks.csproj').write_text(f'''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
 <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><AssemblyName>MethodCache.Benchmarks</AssemblyName>
 <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><LangVersion>latest</LangVersion>
 <ServerGarbageCollection>false</ServerGarbageCollection><ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
@@ -126,5 +127,6 @@ if (args.Contains("--verify-components"))
 }
 BenchmarkSwitcher.FromTypes(types).Run(args,config);
 ''')
+add_build_validation(out/'Program.cs')
 (out/'source-manifest.json').write_text(json.dumps({'runtime_root':str(root),'runtime_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'workload_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=source,text=True).strip(),'source_sha256':checksums,'harness_program_sha256':hashlib.sha256((out/'Program.cs').read_bytes()).hexdigest(),'compiled_capabilities':capabilities,'statistics':'PR5 and later have no independent statistics toggle; facade and generated-interface cases measure both MeterListener states. No ineffective flag is varied.'},indent=2))
-print(out/'PrefixValidation.csproj')
+print(out/'MethodCache.Benchmarks.csproj')

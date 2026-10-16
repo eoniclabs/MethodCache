@@ -2,22 +2,22 @@
 
 ## Latest complete three-platform functional checkpoint
 
-Combined head `dd6b1c6a7b7ca47396d2ac4a06fd0df4332a45b0` passes all fourteen CI jobs
+Combined head `5dd27bb25e574869fbf766448b3c1c652e6dc835` passes all fourteen CI jobs
 and all four commit statuses. Linux runs 2,561 facts across sixteen projects, with no failures
 and the single intentional opt-in soak skip. Required Redis/SQL, randomized properties,
 enabled soak, both cultures, demo, AOT175, all installed packages and docs pass; changed-line
 coverage is 3486/3708 (94.0%). The complete no-listener probe passes on all three platforms.
-The preceding 6caa856 also passes all fourteen jobs. Neither result explains the historical
-272-byte object's exact source or establishes timing acceptance. Subsequent analysis-tool and
+The preceding dd6b1c6 and 6caa856 also pass all fourteen jobs. These results do not explain the historical
+272-byte object's exact source or establish timing acceptance. Subsequent benchmark-tool, test and
 documentation edits require their own published-head CI.
-[Exact logs, exits, source hashes and commit statuses](../../plans/design-benchmarks/combined-functional-dd6b1c6/).
+[Exact logs, exits, source hashes and commit statuses](../../plans/design-benchmarks/combined-functional-5dd27bb/).
 
 Source review before full timing also corrects the archived V4 analysis helper's L2 label:
 enabled round-trip validation already existed before PR4. The new opt-out changes writes;
 all measured L2 reads remain comparable. Use the corrected reviewer under benchmark validation,
 retaining the original archived helper and its failed classification as historical evidence.
 Six assertion subtest failures reproduce the error before correction; all twelve summary tests
-and all 52 benchmark-validation Python tests pass afterward. The deployed measurement protocol,
+and all 52 benchmark-validation Python tests pass afterward locally and on Nimbus. The deployed measurement protocol,
 workloads, process order and sample counts are unchanged. This correction grants no timing waiver.
 [Fourteen exact source checks, statistics defaults and red/green evidence](../../plans/design-benchmarks/guid-feature-review-v1/).
 
@@ -133,7 +133,13 @@ A separate [fixed nine-pair protocol](../../plans/design-benchmarks/http-304-hea
 starts both revisions on CPU2 before CLR startup and verifies actual affinity for the host
 and four benchmark children. All eighteen launches and four cases are retained; previous
 samples are not pooled and there is no early stopping. It reuses the same compiled inputs,
-pinning all 138 DLLs per side. Results remain pending; section 10 stays open.
+pinning all 138 DLLs per side. All eighteen launches now complete, but all four cases
+still have insufficient precision. Point changes are −20.41%, −15.04%, −0.51% and −20.01%;
+wide 95% intervals establish no speedup or timing acceptance. BDN retains twelve Actual
+measurements per case and applies its existing outlier filter to each process mean; every
+launch remains included. The CPU2 cohort takes substantially longer than the earlier
+unrestricted cohort, with no established cause. Section 10 stays open.
+[Complete nine-pair results, original measurements and provenance](../../plans/design-benchmarks/http-304-header-affinity-confirmation/).
 
 The older int-baseline startup-affinity study also completes all nine independent launches.
 Its SyncHit/TaskHit intervals narrow, but GenericHit/ValueTaskHit remain broad. It has no
@@ -161,7 +167,7 @@ Earlier [e84a549](../../plans/design-benchmarks/net10-functional-e84a549/) and
 The earlier .NET-10-only #130 head befb50a also passes all three platform and aggregate
 statuses. The telemetry/null-key fixture follow-ups f793d0a and 1b43211 are historical.
 Current #129 f0dd6c2 includes the 304 header-copy optimization; current #130 1bafff1 merges it.
-Both require fresh CI; the old 0dae335 macOS net9 failure is retained below.
+Both pass all four exact-head commit statuses; the old 0dae335 macOS net9 failure is retained below.
 
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
@@ -193,19 +199,37 @@ and one net9 Redis contract setup failed in subscriber Ping with TaskCanceledExc
 explained by the pub/sub startup race and addressed in test readiness as described above; no production change is claimed. Selected failing
 and updated-probe output is preserved alongside this final receipt.
 
+## Generated benchmark program compilation
+
+The V4 attempt executes zero benchmarks. Its first batch reveals that an asynchronous iteration
+setup compiles in the harness but fails in BDN's generated program (CS0407). A delegate-contract
+regression fails before the correction; all 113 benchmark tests pass afterward. The iteration
+boundary is now void and waits for the unchanged asynchronous reset outside the measured cache call.
+The new build-only gate also finds the component project's filename/assembly-name mismatch; its
+factory regression fails before the rename. The actual corrected generated programs compile all
+67 primary cases (including four untimed diagnostics) and 102 component cases locally. All 53
+Python validation tests pass. Every runtime point must pass the new generated compilation gate
+before a fresh cohort; no rejected V4 sample is carried forward.
+[Original failures and concrete red/green evidence](../../plans/design-benchmarks/guid-full-bdn-build-failure-v4/).
+
 ## Remaining acceptance gates
 
 - Constructor PR #132 at 2b3cb93 and SipHash PR #133 at 4f6cd73 pass current commit statuses.
-  The GUID-workload update #135 at 419c786 is integrated in the combined branch. Its Linux
-  and Windows jobs pass, but macOS fails before tests because the exact retained CI clone
-  lacks reachable Git objects. Native Git confirms that failure; the mirror itself is healthy.
-  PR136 reproduces the detached-maintenance race and supplies its fix. Preserve the [exact failure and
-  connectivity checks](../../plans/design-benchmarks/guid-macos-history-419c786/).
+  The GUID-workload update #135 at unchanged 419c786 is integrated and now independently passes
+  all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator. It runs
+  2,522 Linux facts, AOT172, required backends/packages and 94.0% changed-line coverage.
+  [Exact fresh same-head evidence](../../plans/design-benchmarks/guid-functional-419c786/).
+  Its historical macOS checkout lacks reachable Git objects before tests; PR136 reproduces and
+  fixes detached maintenance. Preserve that [original failure and connectivity evidence](../../plans/design-benchmarks/guid-macos-history-419c786/).
 - Primary workload bytes are frozen at B925 and component workload bytes at bbff4a6.
-  Complete Nimbus preparation of all fourteen runtime points and six component points,
-  including actual image-ID validation for the pinned Redis/SQL containers. Then validate
-  inputs and run the fixed 180-launch matrix. The full dispatcher has not started. Compare
-  identical key types and workloads across revisions; keep int and GUID results separate.
+  Nimbus preparation of all fourteen runtime points and six component points now passes,
+  including actual before/after Redis/SQL image IDs and all sixty compiled family validations.
+  The independent preflight rehashes 2,358 harness DLLs. The fixed 180-launch dispatcher starts
+  at 08:30:54 UTC on 2026-10-16, then stops at 08:32:09 before executing any benchmark:
+  BDN rejects the asynchronous cold-HTTP iteration setup. Its original attempt is retained;
+  a corrected fresh cohort must also compile BDN-generated programs during preflight. Compare identical key
+  types and workloads across revisions; keep int and GUID results separate.
+  [Completed preparation and dispatch provenance](../../plans/design-benchmarks/guid-full-preparation-v4/).
 - Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
   independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
   intervals are insufficient evidence. There is no accepted full-series timing result yet.
@@ -219,9 +243,10 @@ commit statuses pass for each. HTTP's historical branch still ran three framewor
 expand the final .NET 10 support target. Combined-head CI and timing are separate remaining gates.
 
 The [frozen version-4 protocol sources](../../plans/design-benchmarks/guid-full-protocol-v4/) retain all
-180 planned launches and the actual PR comparison edges. Its newly deployed validation controller waits
-for preparation, then checks all sixty compiled family inventories without creating a timing directory.
-The full measurement dispatcher remains stopped until those inputs are reviewed.
+180 planned launches and the actual PR comparison edges. Preparation and all sixty compiled-family
+validations complete before the independent input review and explicit dispatcher launch. The series
+stops at its first generated-program compilation. Setup/inventory passes alone were insufficient;
+a new corrected cohort and complete section-10 review remain required.
 
 An additional historical #129 package run at 2bb7c0 failed its net8.0 SQL independent-process
 check at phase 2, exit 5: the L2 value and zero origin calls had passed, but the expected key
