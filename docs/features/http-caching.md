@@ -69,6 +69,8 @@ generation, so later requests fetch the updated response. With native Redis or S
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
 SQL Server reads already initialized, permanent generation records without rewriting them. Missing or
 non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
+The transport retains only its latest bounded command-text shape. It does not cache generation values;
+reordered or duplicate keys still return generations in the caller's order.
 
 The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
 URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes

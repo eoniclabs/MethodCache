@@ -1,0 +1,59 @@
+{
+  "at_utc": "2026-10-16T14:55:32.283710+00:00",
+  "source_parent": "8417d2529b8b017b20bf399ff8be8d50fa7c88bc",
+  "scope": "Local SQL command-shape allocation and correctness evidence; not a completed timing comparison",
+  "red_setup": "Extract the existing text builder without caching and express result positions in sorted order, mapping them back to the caller. The frozen red source is retained; the allocation test fails before adding the one-template cache.",
+  "normalization": "Absolute worktree path replaced; line endings normalized and trailing whitespace removed; original hashes retained",
+  "sql_unit_tests": 45,
+  "sql_epoch_tests": 5,
+  "sql_integration_tests": 67,
+  "infrastructure_skips": 0,
+  "changed_source_coverage": "28/28 executable lines",
+  "three_row_command_bytes_before": 21200,
+  "warmed_command_text_budget_bytes_per_call": 8,
+  "retention": "One immutable last-shape text per provider; counts are restricted to 1..128; no keys or epoch values are retained",
+  "files": {
+    "red.log": {
+      "original_sha256": "f86b1b6355cf867df5a9e3690f00eb2386d4466c99a5c3774eb45414ae7434bc",
+      "stored_sha256": "976e08533d89dece2da7917bee5664404594bc29c6eb09f1a47d02eaab058b8d"
+    },
+    "unit-green.log": {
+      "original_sha256": "5e2d5552c0bdb04530e2f52e6613013f481d48c88fd36cbc9e53101aeab6298d",
+      "stored_sha256": "83f4c59d7f34fbf65be6cfbffbdbda12f4e551670e24afce4567b09d08201271"
+    },
+    "epochs-green.log": {
+      "original_sha256": "9a331d33884f31c652af1def2fc626ffe98d4fa48272d5a4c1832640d01fb461",
+      "stored_sha256": "4b2fa81ef3ac82e350ffe155d44ee050c2443030d7f268bde57c8d63c315389f"
+    },
+    "integration-green.log": {
+      "original_sha256": "d6c9e1470143c4758abc857ce1df4221b7950945c5ed0c16bc71a32b499e951e",
+      "stored_sha256": "c7c3c3c0515554aae62b7588f8728023527d8a624efca311df8fa9f259f14943"
+    },
+    "diffcoverage.log": {
+      "original_sha256": "a8e8f0efcd73eb6544cb3fa355496617bb40eb0b0a2ba3fb62dbbb058de1214e",
+      "stored_sha256": "a8e8f0efcd73eb6544cb3fa355496617bb40eb0b0a2ba3fb62dbbb058de1214e"
+    },
+    "format.log": {
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    "red-source.cs.txt": {
+      "original_sha256": "d1e2c153870abb4e836eb8650b6b4764ec8a6a53001d812d14b961507d61ac22",
+      "stored_sha256": "d1e2c153870abb4e836eb8650b6b4764ec8a6a53001d812d14b961507d61ac22"
+    }
+  },
+  "candidate_sources": [
+    {
+      "path": "src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs",
+      "sha256": "3b198008ee826dbc127e1c9f7a7eb89fecd4ed23e4762d1b151863dcb5cb7aed"
+    },
+    {
+      "path": "tests/MethodCache.SqlServer.Tests/EpochCommandAllocationTests.cs",
+      "sha256": "88011477ca0bb0d3b2677dfb3e7896aaf348d0139c146f889b818bc3bc7cc01c"
+    },
+    {
+      "path": "tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs",
+      "sha256": "3b4d769cf52ce52f3c0f5cf2befb81bcdd7198e76b978324c4c92d237e50059d"
+    }
+  ]
+}

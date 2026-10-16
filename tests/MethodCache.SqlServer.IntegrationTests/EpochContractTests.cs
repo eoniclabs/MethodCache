@@ -6,6 +6,24 @@ namespace MethodCache.SqlServer.IntegrationTests;
 [Collection(SqlServerCollection.Name)]
 public class EpochContractTests(SqlServerFixture fixture)
 {
+    [SkippableFact]
+    public async Task EnsureEpochs_ReorderedAndDuplicateKeys_RetainCallerPositions()
+    {
+        var options = new SqlServerOptions
+        { ConnectionString = fixture.RequireConnectionString(), SchemaName = "epoch_order_" + Guid.NewGuid().ToString("N") };
+        try
+        {
+            var cache = new SqlServerDistributedCache(options);
+            var first = await cache.EnsureEpochsAsync(["z", "a", "m"]);
+            var advanced = await cache.AdvanceEpochAsync("a");
+            var reordered = await cache.EnsureEpochsAsync(["m", "a", "z"]);
+            Assert.Equal(new[] { first[2], advanced, first[0] }, reordered);
+            var duplicates = await cache.EnsureEpochsAsync(["a", "z", "a", "m"]);
+            Assert.Equal(new[] { advanced, first[0], advanced, first[2] }, duplicates);
+        }
+        finally { await BackplaneIsolationTests.DropSchemaAsync(options); }
+    }
+
     [SkippableTheory]
     [InlineData(false)]
     [InlineData(true)]

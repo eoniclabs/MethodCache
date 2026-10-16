@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Reuse the latest SQL Server epoch command shape instead of rebuilding its SQL text on every HTTP lookup.
+  Generation values remain fresh; reordered and duplicate keys retain their caller positions.
+
 - Avoid temporary sets and sorting when HTTP responses have no custom key headers or `Vary` fields;
   private caches still select by `Authorization` and `Cookie`.
 
