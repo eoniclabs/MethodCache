@@ -1,5 +1,26 @@
 # Final design verification
 
+## Latest complete three-platform functional checkpoint
+
+Combined head `dd6b1c6a7b7ca47396d2ac4a06fd0df4332a45b0` passes all fourteen CI jobs
+and all four commit statuses. Linux runs 2,561 facts across sixteen projects, with no failures
+and the single intentional opt-in soak skip. Required Redis/SQL, randomized properties,
+enabled soak, both cultures, demo, AOT175, all installed packages and docs pass; changed-line
+coverage is 3486/3708 (94.0%). The complete no-listener probe passes on all three platforms.
+The preceding 6caa856 also passes all fourteen jobs. Neither result explains the historical
+272-byte object's exact source or establishes timing acceptance. Subsequent analysis-tool and
+documentation edits require their own published-head CI.
+[Exact logs, exits, source hashes and commit statuses](../../plans/design-benchmarks/combined-functional-dd6b1c6/).
+
+Source review before full timing also corrects the archived V4 analysis helper's L2 label:
+enabled round-trip validation already existed before PR4. The new opt-out changes writes;
+all measured L2 reads remain comparable. Use the corrected reviewer under benchmark validation,
+retaining the original archived helper and its failed classification as historical evidence.
+Six assertion subtest failures reproduce the error before correction; all twelve summary tests
+and all 52 benchmark-validation Python tests pass afterward. The deployed measurement protocol,
+workloads, process order and sample counts are unchanged. This correction grants no timing waiver.
+[Fourteen exact source checks, statistics defaults and red/green evidence](../../plans/design-benchmarks/guid-feature-review-v1/).
+
 ## Whole-probe allocation warmup
 
 The 388050f Linux jobs and Windows build/unit checks pass, but macOS unit CI reports 272 bytes in
@@ -102,8 +123,22 @@ A new candidate merges 304 headers directly into the replacement dictionary and 
 per-response filter allocations when Connection options are absent. The local header-only
 probe falls from 1248 B to 880 B; this is not full HTTP timing evidence. All 322 HTTP tests
 pass, including two new preservation cases that also pass before the optimization, and
-all nine changed executable lines are covered. Fresh Nimbus comparison and final-head CI
-remain required; this change does not close section 10.
+all nine changed executable lines are covered. Its completed six-launch Nimbus comparison
+has insufficient precision in all four cases: mean changes are +2.17%, +0.88%, +8.03% and
++7.16%, with overlapping/wide intervals. Allocation falls from 8256 B to 7168 B without
+listeners and 7368 B with listeners; this does not establish timing acceptance.
+[Exact three-pair header-copy results](../../plans/design-benchmarks/http-304-header-confirmation/).
+
+A separate [fixed nine-pair protocol](../../plans/design-benchmarks/http-304-header-affinity-protocol-v1/)
+starts both revisions on CPU2 before CLR startup and verifies actual affinity for the host
+and four benchmark children. All eighteen launches and four cases are retained; previous
+samples are not pooled and there is no early stopping. It reuses the same compiled inputs,
+pinning all 138 DLLs per side. Results remain pending; section 10 stays open.
+
+The older int-baseline startup-affinity study also completes all nine independent launches.
+Its SyncHit/TaskHit intervals narrow, but GenericHit/ValueTaskHit remain broad. It has no
+change comparator and cannot prove an optimization, GUID precision or HTTP performance.
+[All nine baseline runs, actual affinity and intervals](../../plans/design-benchmarks/startup-affinity-baseline-v4/).
 
 ## Current supported candidate: .NET 10
 

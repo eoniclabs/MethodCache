@@ -18,13 +18,13 @@ A passing ancestor does not establish the latest head's result.
 | PR 4 | codex/transport-format-v1 / #126 | D01–D10 implemented; head 399e165 passes all three platforms. Native fault/state, format, retention and package evidence remains in the validation reports. Section-10 timing remains required. |
 | PR 5 | codex/core-telemetry-v1 / #127 | T01–T05 implemented; head 2f4a91d passes all three platforms. Listener/privacy/health coverage is retained. Timing gates remain required. |
 | Prefix hash | codex/prefix-hash-v1 / #128 | Marvin head 9c31e3b passes all three platforms; standalone runtime source 850cef8 has its own full functional receipt. Final algorithm is SipHash in #133; retain this revision as a separate comparison point. |
-| PR 6 | codex/http-core-store-v1 / #129 | Current f0dd6c2 optimizes 304 header copying after the earlier response-reuse candidate failed timing. All four current commit statuses pass. Fresh HTTP timing remains required. |
+| PR 6 | codex/http-core-store-v1 / #129 | Current f0dd6c2 optimizes 304 header copying after the earlier response-reuse candidate failed timing. All four current commit statuses pass. Its six-launch comparison has four insufficient intervals; a separate fixed eighteen-launch CPU2 comparison is now running. Full section-10 acceptance remains required. |
 | .NET 10 only | codex/net10-only-v1 / #130 | Current 1bafff1 merges #129's header optimization and retains the .NET 10 minimum. All four current commit statuses pass; performance acceptance remains required. |
 | PR 7, standalone | codex/design-final-gates-v1 / #131 | Exact head 9767fec passes all 14 jobs across Linux/macOS/Windows: 2,519 Linux facts, zero failures, one intentional soak skip, required native backends, properties/soak/cultures, AOT172, packages and docs. Shipped source matches 12bf99d. This excludes constructor/SipHash changes and does not pass section 10. |
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
-| GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Head 419c786 is integrated in #134. Linux and Windows pass; macOS build fails because its retained CI clone lacks reachable Git objects, confirmed by native Git. Unit tests were skipped there. PR136 reproduces and fixes the detached-maintenance race; the coordinator needs reinstallation. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Published 388050f passes Linux and Windows; macOS reports 272 bytes in the no-listener allocation probe. The current fixture follow-up warms the complete probe once, keeps its single exact-zero window and detects one injected allocation. Core1039 and the fourteen-project unit job pass locally. The coordinator remains installed from 388050f; Johan-approved SDK cleanup ends the old B925 orphan, preserving exit 137. Full timing and fresh combined-head CI remain required. |
+| GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Head 419c786 is integrated in #134. Its historical macOS clone fails before tests with missing reachable objects. PR136 reproduces and fixes the detached-maintenance race, is integrated and installed atomically from 388050f, and was subsequently merged by Johan. The newer combined checkpoints pass actual macOS build/unit CI. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Checkpoint dd6b1c6 passes all fourteen jobs and four statuses: 2,561 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. The complete strict allocation probe passes all three platforms; the historical 272-byte source remains unproven. A later analysis-only round-trip classification correction passes 52 Python guards locally and requires fresh CI on publication. Full timing remains required. |
 
 ## Remaining performance work
 
@@ -45,8 +45,10 @@ Complete all adjacent behavior-change comparisons and the cumulative f43854d com
 components and the local/native L2 workloads specified in section 10. Use three independent alternating
 launches, reviewed 95% intervals over run means and unchanged hit-allocation budgets. Wide intervals
 remain insufficient evidence. The completed HTTP response-reuse confirmation fails one comparable
-case by 9.36% with disjoint intervals. A fresh fixed comparison of the header-copy candidate is in
-progress; smaller allocations alone do not establish its timing acceptance.
+case by 9.36% with disjoint intervals. The completed six-launch header-copy comparison has four
+insufficient intervals despite lower allocations. A separate fixed nine-pair startup-affinity
+comparison is running; no samples are pooled and all eighteen launches are required. The completed
+older nine-launch int baseline still has two broad intervals and supplies no optimization pass.
 
 The authoritative receipts and remaining failures are in [design-final-validation.md](design-final-validation.md).
 The standalone runtime, constructor candidate and combined SipHash runtime have separate proof scopes.
