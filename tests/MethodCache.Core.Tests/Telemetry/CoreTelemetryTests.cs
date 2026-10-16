@@ -10,6 +10,7 @@ namespace MethodCache.Core.Tests.Telemetry;
 
 public class CoreTelemetryTests
 {
+    private static object? _allocationProbeSink;
     [Fact]
     public void Containers_UseTheirOwnMeterFactoriesAndObservationState()
     {
@@ -113,7 +114,19 @@ public class CoreTelemetryTests
         Assert.Equal(0, await MeasureNoListenerOperationsOnOwnedThread());
     }
 
-    private static Task<long> MeasureNoListenerOperationsOnOwnedThread()
+    [Fact]
+    public async Task NoListenerProbe_DetectsEvenOneAllocationInsideItsMeasuredWindow()
+    {
+        try
+        {
+            var allocated = await MeasureNoListenerOperationsOnOwnedThread(static () => _allocationProbeSink = new object());
+            Assert.True(allocated > 0);
+            Assert.NotNull(_allocationProbeSink);
+        }
+        finally { _allocationProbeSink = null; }
+    }
+
+    private static Task<long> MeasureNoListenerOperationsOnOwnedThread(Action? insideMeasuredWindow = null)
     {
         var completion = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
         using (ExecutionContext.SuppressFlow())
@@ -129,7 +142,10 @@ public class CoreTelemetryTests
                         telemetry.Request("method", "M", RequestResult.Hit);
                         EnsureNoOperation(telemetry);
                     }
-                    completion.SetResult(MeasureNoListenerOperations(telemetry));
+                    // Warm the complete probe, including its allocation counters and loop/JIT path, once.
+                    // The following single fixed window still requires exactly zero bytes; no retry/minimum.
+                    _ = MeasureNoListenerOperations(telemetry);
+                    completion.SetResult(MeasureNoListenerOperations(telemetry, insideMeasuredWindow));
                 }
                 catch (Exception error) { completion.SetException(error); }
             })
@@ -140,9 +156,10 @@ public class CoreTelemetryTests
 
     // Count only the actual telemetry calls; assertions, setup and completion stay outside.
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureNoListenerOperations(CoreTelemetry telemetry)
+    private static long MeasureNoListenerOperations(CoreTelemetry telemetry, Action? insideMeasuredWindow = null)
     {
         var before = GC.GetAllocatedBytesForCurrentThread();
+        insideMeasuredWindow?.Invoke();
         for (var i = 0; i < 10_000; i++)
         {
             telemetry.Request("method", "M", RequestResult.Hit);
