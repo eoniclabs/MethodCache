@@ -284,6 +284,9 @@ the containing type and the interface, including `unmanaged` and base class cons
 `scoped` parameters on forwarded members. Each overload has its own
 [method id](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson) and its own cache entries.
 
+Memory-only `Task<T>` and `ValueTask<T>` misses avoid allocating closures for inactive fail-safe and
+distributed-write branches. Enabling those features retains their origin and invalidation behavior.
+
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
 implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
@@ -3094,6 +3097,8 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- Avoid allocating unused fail-safe and distributed-write closures on memory-only asynchronous misses.
 
 - Read already initialized, permanent SQL Server HTTP epoch metadata without rewriting its rows. Missing,
   expired or finite/sliding metadata is still initialized or repaired under the same atomic locks.

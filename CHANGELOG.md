@@ -6,6 +6,8 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Avoid allocating unused fail-safe and distributed-write closures on memory-only asynchronous misses.
+
 - Read already initialized, permanent SQL Server HTTP epoch metadata without rewriting its rows. Missing,
   expired or finite/sliding metadata is still initialized or repaired under the same atomic locks.
 

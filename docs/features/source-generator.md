@@ -9,6 +9,9 @@ the containing type and the interface, including `unmanaged` and base class cons
 `scoped` parameters on forwarded members. Each overload has its own
 [method id](configuration.md#appsettingsjson) and its own cache entries.
 
+Memory-only `Task<T>` and `ValueTask<T>` misses avoid allocating closures for inactive fail-safe and
+distributed-write branches. Enabling those features retains their origin and invalidation behavior.
+
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
 implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
