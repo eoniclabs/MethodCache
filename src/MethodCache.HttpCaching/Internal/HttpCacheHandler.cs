@@ -810,11 +810,19 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     internal bool ShouldWarnCookies() => Interlocked.Exchange(ref _state.CookieWarningLogged, 1) == 0;
 
-    private async Task<HttpResponseMessage> SendOriginAsync(HttpRequestMessage request, CancellationToken token)
+    private Task<HttpResponseMessage> SendOriginAsync(HttpRequestMessage request, CancellationToken token)
     {
-        using var origin = _metrics?.BeginLoad("http", _keyName);
-        try { return await base.SendAsync(request, token).ConfigureAwait(false); }
-        catch (Exception error) { origin?.Fail(error); throw; }
+        var origin = _metrics?.BeginLoad("http", _keyName);
+        return origin == null ? base.SendAsync(request, token) : SendObservedOriginAsync(origin, request, token);
+    }
+
+    private async Task<HttpResponseMessage> SendObservedOriginAsync(TelemetryOperation origin, HttpRequestMessage request, CancellationToken token)
+    {
+        using (origin)
+        {
+            try { return await base.SendAsync(request, token).ConfigureAwait(false); }
+            catch (Exception error) { origin.Fail(error); throw; }
+        }
     }
 
     private HttpResponseMessage Record(RequestResult outcome, HttpResponseMessage response)
