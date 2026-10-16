@@ -56,3 +56,6 @@ more than 3 % above it; an interval wider than 6 % or a missing time fails too. 
 `time` bound (the largest accepted ratio) in `accepted.json`. Each case and launch takes about 6 seconds, so filter
 it. Run it on a quiet machine. The profile does not see a change that only costs CPU time, so §10 says when this
 step is required.
+
+The precision limit applies even to a faster result or an accepted slowdown. Both sides must contain every
+launch; duplicate cases and non-finite times are rejected instead of being discarded or overwritten.

@@ -1,5 +1,9 @@
 # Design-series performance evidence
 
+The multi-revision BenchmarkDotNet matrix below is historical evidence tooling. Johan replaced that matrix
+with the [cost-profile gate](../../MethodCache.CostProfile/README.md) in design-spec §10 on 2026-10-16;
+do not restart its cancelled schedule. The guard regression tests remain part of CI.
+
 `create-harness.py --runtime-root CHECKOUT --output OUTPUT` copies identical public workload sources into an
 external BenchmarkDotNet project. Build that project in Release, then invoke its DLL from that project's
 directory with `--build-only '*'`. This also generates and compiles BenchmarkDotNet's executable programs
